@@ -121,6 +121,7 @@ services:
 
   nginx:
     build: ./nginx
+    image: caspintunel-nginx
     restart: unless-stopped
     environment:
       SSL_DOMAIN: ${DOMAIN:-}
@@ -132,6 +133,7 @@ services:
       - static_data:/var/www/static:ro
       - ./nginx/letsencrypt:/etc/letsencrypt
       - ./nginx/certbot-webroot:/var/www/certbot
+      - ./nginx/manual-certs:/etc/nginx/manual-certs:ro
     depends_on:
       - web
       - frontend_user

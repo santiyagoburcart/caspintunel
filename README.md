@@ -9,11 +9,13 @@ app, on top of a Pasargad / **PasarGuard** panel (consumed over its HTTP API onl
 ## Install
 
 ```bash
-./install.sh --prod
+./install.sh            # menu: 1) Install  2) Update  3) Uninstall  4) Exit
+./install.sh --offline  # air-gapped server (pre-built images, manual cert)
 ```
 
-See **[docs/](docs/)** — [install](docs/install.md) · [deploy](docs/deploy.md) ·
-[architecture](docs/architecture.md) · [api](docs/api.md) · [operations](docs/operations.md).
+See **[docs/](docs/)** — [install](docs/install.md) · [offline](docs/offline.md) ·
+[deploy](docs/deploy.md) · [architecture](docs/architecture.md) · [api](docs/api.md) ·
+[operations](docs/operations.md).
 
 ## Features
 
@@ -24,8 +26,8 @@ See **[docs/](docs/)** — [install](docs/install.md) · [deploy](docs/deploy.md
 - Telegram sales bot (buy/renew/custom/status/QR, forced channels + phone, first-time → random site account) · separate backup bot
 - Admin panel — users, plans, payments queue, **Jalali accounting**, per-card deposit report, broadcast, dynamic branding, roles/RBAC, CMS pages, themes
 - Monitoring — 9 health targets, CPU/RAM/disk, automatic backups, service usage/expiry alerts
-- One-click `install.sh` / `update.sh` + in-panel **Update** button + `VERSION`; domain changeable with no rebuild
-- Cloudflare DNS automation (A/MX/SPF/DKIM/DMARC, mail record DNS-only)
+- Menu-driven `install.sh` (install / update / uninstall) + in-panel **Update** button + `VERSION`; **offline / air-gapped** install path; domain changeable with no rebuild
+- Cloudflare DNS automation (A/MX/SPF/DKIM/DMARC); self-hosted mail (Postfix + Dovecot + DKIM); Let's Encrypt **or** manual-upload TLS
 
 ## Security
 

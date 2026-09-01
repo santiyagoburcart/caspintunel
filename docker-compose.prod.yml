@@ -67,6 +67,7 @@ services:
       - ./nginx/prod.conf:/etc/nginx/conf.d/caspintunel.conf:ro
       - ./nginx/letsencrypt:/etc/letsencrypt
       - ./nginx/certbot-webroot:/var/www/certbot
+      - ./nginx/manual-certs:/etc/nginx/manual-certs:ro
 
   phpmyadmin:
     ports: []

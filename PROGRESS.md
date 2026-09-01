@@ -7,7 +7,7 @@
 ## Locked build decisions
 - Frontend (user site + admin panel): **React + Vite + Tailwind** — two SPAs against the API
 - Android SMS app: **Native Kotlin**
-- Server IP: **66.245.202.46** · Domain: **caspin.skin**
+- Server IP: **66.245.202.46** · Active domain: **aicaspin.ir** (was caspin.skin — Cloudflare ToS hold)
 - Panel: host `https://pas.hunaex.shop` — it's **PasarGuard API v5.3.0** (Marzban lineage), *not* Marzneshin. Token `POST /api/admin/token` (form), users under `/api/user`, groups (not "services"), user `status` field carries on_hold. `/openapi.json` is the source of truth.
 - Django 5.2 LTS · Python 3.12 in container
 
@@ -171,6 +171,28 @@ All 11 phases done. Backend 153 tests green. See `docs/` and `PROGRESS.md` sessi
 Remaining optional work (not in any phase spec): native-Kotlin Android SMS app,
 self-hosted mail server (Postfix/Dovecot — DNS is ready, `EMAIL_HOST` wire-up
 pending), `telegram_stats` population, a few secondary admin screens.
+
+## Post-1.0 — superuser, menu installer, manual-SSL, offline-prep (2026-09-01, part 3)
+- **A) Superuser + privacy**: created the operator superuser + Super Admin Staff (username from `DJANGO_SUPERUSER_*`); removed the old default `admin` account
+  and **all smoke-test data** (test users/plans/cards/orders/sms/notifications, monitoring history, audit log).
+  Git history rewritten to `caspintunel <deploy@aicaspin.ir>` and the repo **deleted + recreated** on GitHub
+  (old-author commits gone). LE account contact → `admin@aicaspin.ir`; mail logs/queue purged. `init-letsencrypt.sh`
+  now uses `LETSENCRYPT_EMAIL` (never the site-admin email). Personal name/email appears nowhere except the
+  `.env` `DJANGO_SUPERUSER_*` lines (the account itself).
+- **B) Menu installer**: `install.sh` rewritten — one command → menu (1 Install / 2 Update / 3 Uninstall / 4 Exit),
+  detects install state + deployed VERSION. Install collects domain / site-admin / DB passwords / tz / PMA port /
+  TLS mode; generates keys; `chmod 600 .env`; **does NOT ask for panel creds** — prints the "set them in /panel/"
+  instruction. Update: "not installed" → stop, else pull/build/up/migrate/seed/collectstatic. Uninstall: confirm by
+  domain → `down -v` + optional cleanup.
+- **C) Manual SSL**: nginx `entrypoint.sh` picks a cert with precedence manual (`nginx/manual-certs/`) → Let's Encrypt;
+  `ssl.conf.template` parametrised (`SSL_CERT`/`SSL_KEY`). `scripts/ssl-manual.sh` validates + installs an uploaded
+  pair. Installer TLS choice: auto (LE) / manual (upload). nginx mounts `./nginx/manual-certs`.
+- **D) Offline-friendly**: Vazirmatn self-hosted via `@fontsource/vazirmatn` (bundled — **no CDN at runtime**;
+  verified in both builds). `docker-compose.offline.yml` (`pull_policy: never`). `scripts/save-images.sh`
+  (build + `docker save` all 9 images) / `scripts/load-images.sh` (`docker load`). `install.sh --offline` skips
+  build/pull/git/LE/DNS. `image:` tag added to nginx. `docs/offline.md`. **Full Iran offline deploy not done** —
+  noted in offline.md (image digest pinning, private registry, host hardening).
+- 153/153 tests, no drift, deploy check clean. Stack (13 containers) up, health 9/9, `https://aicaspin.ir` + operator-superuser login verified.
 
 ## Post-1.0 — aicaspin.ir DNS applied + HTTPS live + mail server (2026-09-01, part 2)
 - **DNS applied on Cloudflare** (`aicaspin.ir` zone, node records untouched): `A @`+`A www` DNS-only → `66.245.202.46`;

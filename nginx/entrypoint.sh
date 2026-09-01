@@ -1,17 +1,27 @@
 #!/bin/sh
-# Enable the HTTPS vhost only when a Let's Encrypt cert exists (a missing cert
-# never stops nginx), then run nginx with a background reload loop so renewed
-# certs are picked up without a restart.
+# Enable the HTTPS vhost when a cert is available. Precedence:
+#   1. manually-uploaded pair  /etc/nginx/manual-certs/{fullchain,privkey}.pem
+#   2. Let's Encrypt           /etc/letsencrypt/live/<domain>/{fullchain,privkey}.pem
+# A missing cert never stops nginx — it just serves HTTP.
 set -e
 
 DOMAIN="${SSL_DOMAIN:-}"
-CERT="/etc/letsencrypt/live/${DOMAIN}/fullchain.pem"
+MAN_CERT="/etc/nginx/manual-certs/fullchain.pem"
+MAN_KEY="/etc/nginx/manual-certs/privkey.pem"
+LE_CERT="/etc/letsencrypt/live/${DOMAIN}/fullchain.pem"
+LE_KEY="/etc/letsencrypt/live/${DOMAIN}/privkey.pem"
 OUT="/etc/nginx/conf.d/10-ssl.conf"
 
-if [ -n "$DOMAIN" ] && [ -s "$CERT" ]; then
-    export SSL_DOMAIN="$DOMAIN"
-    envsubst '${SSL_DOMAIN}' < /etc/nginx/ssl.conf.template > "$OUT"
-    echo "[nginx-entrypoint] HTTPS enabled for $DOMAIN"
+if [ -s "$MAN_CERT" ] && [ -s "$MAN_KEY" ]; then
+    CERT="$MAN_CERT"; KEY="$MAN_KEY"; SRC="manual upload"
+elif [ -n "$DOMAIN" ] && [ -s "$LE_CERT" ] && [ -s "$LE_KEY" ]; then
+    CERT="$LE_CERT"; KEY="$LE_KEY"; SRC="Let's Encrypt"
+fi
+
+if [ -n "${CERT:-}" ]; then
+    export SSL_DOMAIN="${DOMAIN:-_}" SSL_CERT="$CERT" SSL_KEY="$KEY"
+    envsubst '${SSL_DOMAIN} ${SSL_CERT} ${SSL_KEY}' < /etc/nginx/ssl.conf.template > "$OUT"
+    echo "[nginx-entrypoint] HTTPS enabled for '${DOMAIN:-*}' ($SRC)"
 else
     rm -f "$OUT"
     echo "[nginx-entrypoint] no cert for '${DOMAIN:-<unset>}' — HTTP only"

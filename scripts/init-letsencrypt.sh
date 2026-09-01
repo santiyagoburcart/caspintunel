@@ -9,7 +9,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$ROOT"
 
 set -a; . ./.env; set +a
 DOMAIN="${DOMAIN:?set DOMAIN in .env}"
-EMAIL="${DJANGO_SUPERUSER_EMAIL:-admin@$DOMAIN}"
+# a neutral contact address for expiry notices — never the site-admin email
+EMAIL="${LETSENCRYPT_EMAIL:-admin@$DOMAIN}"
 SERVER_IP="${SERVER_IP:-$(curl -fsS4 https://api.ipify.org || true)}"
 
 COMPOSE="docker compose -f docker-compose.yml"
@@ -43,10 +44,16 @@ echo "==> making sure nginx is up (HTTP)"
 $COMPOSE up -d nginx
 sleep 3
 
-echo "==> requesting certificate for $DOMAIN, www.$DOMAIN"
+# include mail.<domain> in the SAN list if it resolves (the mail server reuses this cert)
+DOMS=(-d "$DOMAIN" -d "www.$DOMAIN")
+if dig +short A "mail.$DOMAIN" @1.1.1.1 | grep -qE '^[0-9.]+$'; then
+  DOMS+=(-d "mail.$DOMAIN"); echo "   including mail.$DOMAIN"
+fi
+
+echo "==> requesting certificate: ${DOMS[*]}"
 $COMPOSE run --rm --entrypoint certbot certbot \
-  certonly --webroot -w /var/www/certbot \
-  -d "$DOMAIN" -d "www.$DOMAIN" \
+  certonly --webroot -w /var/www/certbot --expand \
+  "${DOMS[@]}" \
   --email "$EMAIL" --agree-tos --no-eff-email --non-interactive $STAGING
 
 echo "==> enabling HTTPS (nginx restart)"

@@ -2,38 +2,50 @@
 
 ## Requirements
 - Linux host with Docker Engine + Compose v2
-- A domain on Cloudflare (for DNS + mail records)
-- Panel (PasarGuard) admin credentials
+- A domain (DNS you control)
+- Ports 80 + 443 reachable (for Let's Encrypt; not required with a manual cert)
 
-## Quick start
+## One command
 
 ```bash
 git clone <repo> caspintunel && cd caspintunel
-./install.sh            # dev
-./install.sh --prod     # production
+./install.sh
 ```
 
-`install.sh` will:
-1. create `.env` (prompts for IP, domain, DB/panel/admin credentials, optional Cloudflare + GitHub tokens) and generate `SECRET_KEY` + `FIELD_ENCRYPTION_KEY`
-2. build images and start the stack
-3. `migrate`, `seed` (permissions, roles, Midnight Aurora theme, settings, CMS pages, panel row, beat schedules, a Super Admin `Staff` from the admin credentials)
-4. create the Django superuser
-5. optionally run `configure_dns --apply` and `scripts/setup_github.sh`
+`./install.sh` opens a menu:
 
-## After install
+```
+1) Install    2) Update    3) Uninstall    4) Exit
+```
 
-| URL | |
-|---|---|
-| `/` | user site |
-| `/panel/` | admin panel — log in with the admin credentials from install |
-| `/api/docs/` | Swagger |
-| `/admin/` | Django admin (break-glass) |
-| `:8080` | phpMyAdmin (dev only) |
+It detects whether the stack is already installed and shows the deployed VERSION.
 
-Set in the panel (`/panel/`):
-- **Panel → default group ids** — `Plan.group_ids` / `Panel.default_group_ids`; run `manage.py panel_check` to list them
-- **Telegram** — paste the sales/backup bot tokens (stored encrypted); the bot containers pick them up within 60 s
-- **Bank cards**, **plans**, **SMS sender numbers + device tokens**
+### Install
+Prompts for: **domain**, **site-admin username / password / email**, **DB password**
++ **DB root password**, timezone, phpMyAdmin port, and the **TLS mode**:
+
+- **auto** — Let's Encrypt (needs inbound port 80 from the internet)
+- **manual** — you upload `fullchain.pem` + `privkey.pem` (`./scripts/ssl-manual.sh`)
+
+It generates `SECRET_KEY` + `FIELD_ENCRYPTION_KEY`, writes `.env` (`chmod 600`),
+builds, starts, migrates, seeds, and creates the superuser.
+
+**It does NOT ask for the Pasargad panel credentials.** After install, log into
+`https://<domain>/panel/` (or `/admin/`) and enter the panel base URL + admin
+username/password under **Panel settings** — plus bot tokens, bank cards, plans,
+SMS devices.
+
+### Update
+Fails with *"not installed"* if there's no `.env`/stack. Otherwise: `git pull` →
+build → `up` → `migrate` + `seed` → `collectstatic`.
+
+### Uninstall
+Confirms by re-typing the domain, then `docker compose down -v` and (optionally)
+removes `.env`, certs, mail data and backups.
+
+## Offline / air-gapped
+
+`./install.sh --offline` — see **[offline.md](offline.md)**.
 
 ## Manual `.env`
 

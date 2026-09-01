@@ -10,15 +10,38 @@ nginx ──┬─ /            → frontend_user   (static SPA)
         ├─ /panel/      → frontend_admin  (static SPA)
         ├─ /api/ /admin/ /static/ /media/ → web (Django + gunicorn)
 web · celery_worker · celery_beat · bot_sales · bot_backup   (image: caspintunel-backend)
-db (MySQL 8) · redis · phpmyadmin
+db (MySQL 8) · redis · phpmyadmin · certbot · mailserver
 ```
 
-## TLS
+`docker-compose.offline.yml` is a third overlay that sets `pull_policy: never`
+everywhere — for air-gapped installs from pre-loaded images (see `offline.md`).
 
-Nginx listens on 80 and 443. Put a cert + key at `nginx/certs/` (e.g. `certbot
-certonly --standalone -d caspin.skin -d www.caspin.skin` then copy `fullchain.pem`
-/ `privkey.pem`) and add the `ssl_certificate` lines to `nginx/prod.conf`, or
-terminate TLS at Cloudflare (proxied A records) and keep origin on 80.
+## TLS — two modes
+
+nginx listens on 80 and 443. `/nginx-entrypoint.sh` enables the HTTPS vhost
+(`conf.d/10-ssl.conf`, from `ssl.conf.template`) as soon as a cert is present —
+**a missing cert never stops nginx**, it just serves HTTP. Precedence:
+
+1. **manual** — `nginx/manual-certs/{fullchain,privkey}.pem`
+2. **Let's Encrypt** — `nginx/letsencrypt/live/<domain>/`
+
+### auto (Let's Encrypt)
+```bash
+./scripts/init-letsencrypt.sh --prod           # <domain> + www (+ mail if it resolves)
+./scripts/init-letsencrypt.sh --prod --staging  # test against LE staging first
+```
+DNS preflight (public resolvers) → webroot HTTP-01 → nginx restart. Renews via the
+`certbot` service every 12 h; nginx reloads every 6 h. Contact address =
+`LETSENCRYPT_EMAIL` (default `admin@<domain>`), never the site-admin email.
+
+### manual (upload a cert — for filtered networks)
+Obtain the cert anywhere (DNS-01, a jump host, a commercial CA), then:
+```bash
+./scripts/ssl-manual.sh --prod  /path/fullchain.pem  /path/privkey.pem
+```
+It validates the pair (key matches cert), copies them to `nginx/manual-certs/`,
+and restarts nginx. The manual cert **wins** over any Let's Encrypt cert, so this
+is also how you override a broken auto-renewal.
 
 ## Active domain
 
@@ -102,27 +125,6 @@ then `docker compose up -d mailserver`. (Or ask the host to unblock port 25.)
 
 Email is always sent gracefully — an SMTP/relay outage never breaks the app; the
 verification step is skipped with a message and can be retried.
-
-## TLS (Let's Encrypt, direct on the server)
-
-Since the site may not be behind Cloudflare's proxy, nginx terminates TLS with a
-Let's Encrypt cert. The plumbing is always present; the cert is issued once DNS
-resolves to the server:
-
-```bash
-./scripts/init-letsencrypt.sh            # aicaspin.ir + www, prod-safe cert
-./scripts/init-letsencrypt.sh --staging  # LE staging (rate-limit-free test)
-./scripts/init-letsencrypt.sh --prod     # against the production compose files
-```
-
-- nginx `40-ssl.sh` enables the HTTPS vhost (`conf.d/10-ssl.conf`, generated from
-  `ssl.conf.template`) **only when** `/etc/letsencrypt/live/<domain>/fullchain.pem`
-  exists — so a missing cert never stops nginx; HTTP keeps working.
-- the `certbot` service renews every 12 h; nginx reloads every 6 h to pick it up.
-- HTTPS block proxies to the plain-HTTP vhost on the same nginx (`127.0.0.1:80`)
-  so routing lives in one place; it sets `X-Forwarded-Proto: https`.
-- Cloudflare-proxied records also work (Cloudflare → origin on 80/443); grey-cloud
-  the records if you want Let's Encrypt HTTP-01 to reach the origin directly.
 
 ## The "Update" button
 

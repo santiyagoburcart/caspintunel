@@ -1,0 +1,20 @@
+# Offline overlay — no image pulls, no builds. Use with the prod files:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.offline.yml up -d
+#
+# Every image must already be present (see scripts/load-images.sh). Registry
+# images get pull_policy:never; built images are expected to be `docker load`ed
+# with their caspintunel-* tags so compose reuses them instead of building.
+services:
+  web:            { pull_policy: never }
+  celery_worker:  { pull_policy: never }
+  celery_beat:    { pull_policy: never }
+  bot_sales:      { pull_policy: never }
+  bot_backup:     { pull_policy: never }
+  nginx:          { pull_policy: never }
+  frontend_user:  { pull_policy: never }
+  frontend_admin: { pull_policy: never }
+  db:             { pull_policy: never }
+  redis:          { pull_policy: never }
+  phpmyadmin:     { pull_policy: never }
+  certbot:        { pull_policy: never }
+  mailserver:     { pull_policy: never }

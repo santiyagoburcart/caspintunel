@@ -1,14 +1,15 @@
-# Enabled by 40-ssl.sh as conf.d/10-ssl.conf once a cert for ${SSL_DOMAIN}
-# exists. Terminates TLS and forwards to the plain-HTTP vhost on this same
-# nginx (server_name _) so the routing rules live in exactly one place.
+# Enabled by /nginx-entrypoint.sh as conf.d/10-ssl.conf once a cert exists
+# (Let's Encrypt at /etc/letsencrypt/live, or a manually-uploaded pair at
+# /etc/nginx/manual-certs). Terminates TLS and forwards to the plain-HTTP vhost
+# on this same nginx (server_name _) so routing lives in exactly one place.
 
 server {
     listen 443 ssl;
     http2 on;
     server_name ${SSL_DOMAIN} www.${SSL_DOMAIN};
 
-    ssl_certificate     /etc/letsencrypt/live/${SSL_DOMAIN}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/${SSL_DOMAIN}/privkey.pem;
+    ssl_certificate     ${SSL_CERT};
+    ssl_certificate_key ${SSL_KEY};
     ssl_protocols       TLSv1.2 TLSv1.3;
     ssl_ciphers         HIGH:!aNULL:!MD5;
     ssl_prefer_server_ciphers on;
@@ -29,6 +30,3 @@ server {
         proxy_set_header Connection $connection_upgrade;
     }
 }
-
-# optional http -> https redirect (kept off by default so a bad cert can't
-# lock you out; enable by setting SSL_REDIRECT=1)
