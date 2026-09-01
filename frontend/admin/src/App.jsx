@@ -11,6 +11,7 @@ import Accounting from './pages/Accounting'
 import Cards from './pages/Cards'
 import Monitoring from './pages/Monitoring'
 import Branding from './pages/Branding'
+import { PanelConnection, Bots } from './pages/Integrations'
 import { Pages, Roles, Themes } from './pages/Simple'
 
 function Private({ children }) {
@@ -31,6 +32,8 @@ export default function App() {
         <Route path="/accounting" element={<Accounting />} />
         <Route path="/cards" element={<Cards />} />
         <Route path="/monitoring" element={<Monitoring />} />
+        <Route path="/panel-link" element={<PanelConnection />} />
+        <Route path="/bots" element={<Bots />} />
         <Route path="/branding" element={<Branding />} />
         <Route path="/pages" element={<Pages />} />
         <Route path="/themes" element={<Themes />} />

@@ -11,6 +11,8 @@ const dict = {
     from: 'از', to: 'تا', period: 'بازه', deposit_report: 'گزارش واریز هر کارت',
     health: 'سلامت سرویس‌ها', resources: 'منابع سرور', run_backup: 'پشتیبان‌گیری',
     up: 'برقرار', down: 'قطع', search: 'جستجو', create: 'ایجاد', total: 'مجموع',
+    panel_link: 'اتصال پنل پاسارگارد', bots: 'ربات‌های تلگرام',
+    cancel: 'انصراف', unlimited: 'نامحدود', test_connection: 'تست اتصال',
   },
   en: {
     login: 'Login', logout: 'Logout', username: 'Username', password: 'Password',
@@ -22,6 +24,8 @@ const dict = {
     from: 'From', to: 'To', period: 'Period', deposit_report: 'Per-card deposit report',
     health: 'Health', resources: 'Server resources', run_backup: 'Run backup',
     up: 'up', down: 'down', search: 'Search', create: 'Create', total: 'Total',
+    panel_link: 'Pasargad Panel', bots: 'Telegram Bots',
+    cancel: 'Cancel', unlimited: 'unlimited', test_connection: 'Test connection',
   },
 }
 

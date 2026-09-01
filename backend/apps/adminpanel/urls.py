@@ -13,6 +13,7 @@ from .views.catalog import (
     ThemeViewSet,
 )
 from .views.finance import AccountingView, TransactionViewSet
+from .views.integrations import PanelConfigView, PanelTestView, TelegramConfigView
 from .views.monitoring import BackupViewSet, HealthView, MonitoringView, ResourcesView
 from .views.notifications import NotificationViewSet
 from .views.ops import DashboardView, ServiceListViewSet, TelegramStatsView
@@ -45,5 +46,8 @@ urlpatterns = [
     path("resources/", ResourcesView.as_view(), name="admin-resources"),
     path("monitoring/", MonitoringView.as_view(), name="admin-monitoring"),
     path("system/", SystemView.as_view(), name="admin-system"),
+    path("integrations/panel/", PanelConfigView.as_view(), name="admin-panel-config"),
+    path("integrations/panel/test/", PanelTestView.as_view(), name="admin-panel-test"),
+    path("integrations/telegram/", TelegramConfigView.as_view(), name="admin-telegram-config"),
     path("", include(router.urls)),
 ]

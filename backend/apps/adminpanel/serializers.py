@@ -4,10 +4,11 @@ from rest_framework import serializers
 from apps.accounts.models import Permission, Role, Staff
 from apps.notifications.models import Notification
 from apps.ops.models import BackupLog, HealthCheck, ResourceStat
-from apps.panel.models import Service
+from apps.panel.models import Panel, Service
 from apps.payments_sms.models import BankCard, Payment
 from apps.plans.models import Plan
 from apps.settings_app.models import Page, SiteConfig, Theme
+from apps.telegram.models import TelegramConfig
 
 User = get_user_model()
 
@@ -45,6 +46,67 @@ class AdminUserCreateSerializer(serializers.ModelSerializer):
 
 class SetPasswordSerializer(serializers.Serializer):
     password = serializers.CharField(min_length=8, trim_whitespace=False)
+
+
+# --- integrations: pasargad panel + telegram bots ----------------
+class PanelConfigSerializer(serializers.ModelSerializer):
+    """Panel connection settings. The admin password is write-only; reads only
+    report whether one is stored."""
+
+    name = serializers.CharField(required=False)
+    admin_password = serializers.CharField(
+        write_only=True, required=False, allow_blank=True, trim_whitespace=False,
+        style={"input_type": "password"},
+        help_text="leave blank to keep the stored password unchanged",
+    )
+    admin_password_set = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Panel
+        fields = ("id", "name", "base_url", "admin_username", "admin_password",
+                  "admin_password_set", "subscription_base_url", "verify_ssl",
+                  "default_group_ids", "is_active", "updated_at")
+        read_only_fields = ("id", "updated_at")
+
+    def get_admin_password_set(self, obj) -> bool:
+        return bool(getattr(obj, "pk", None) and obj.admin_password_enc)
+
+    def _apply(self, instance, validated):
+        pw = validated.pop("admin_password", None)
+        for key, value in validated.items():
+            setattr(instance, key, value)
+        if pw:  # blank / omitted -> keep whatever is stored
+            instance.admin_password_enc = pw
+        if not instance.name:
+            instance.name = "Pasargad"
+        instance.save()
+        return instance
+
+    def create(self, validated_data):
+        return self._apply(Panel(), validated_data)
+
+    def update(self, instance, validated_data):
+        return self._apply(instance, validated_data)
+
+
+class TelegramConfigSerializer(serializers.ModelSerializer):
+    """One bot's settings. The token is write-only; reads only report whether
+    one is stored."""
+
+    token = serializers.CharField(
+        write_only=True, required=False, allow_blank=True, trim_whitespace=False,
+        help_text="leave blank to keep the stored token unchanged",
+    )
+    token_set = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TelegramConfig
+        fields = ("bot_type", "token", "token_set", "proxy_url", "backup_chat_id",
+                  "is_active", "updated_at")
+        read_only_fields = ("bot_type", "updated_at")
+
+    def get_token_set(self, obj) -> bool:
+        return bool(getattr(obj, "token", ""))
 
 
 # --- plans / cards / pages / themes -------------------------------

@@ -8,7 +8,7 @@ import { Spinner } from '../components/ui'
 const GB = 1024 ** 3
 
 export default function Store() {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const nav = useNavigate()
   const [plans, setPlans] = useState(null)
 
@@ -25,7 +25,7 @@ export default function Store() {
         {plans.map((p) => (
           <div key={p.id} className="card flex flex-col gap-2">
             <div className="font-bold">{p.name_fa}</div>
-            <div className="text-sm text-muted">{p.desc_fa}</div>
+            <div className="whitespace-pre-line text-sm text-muted">{(lang === 'fa' ? p.desc_fa : p.desc_en) || p.desc_fa}</div>
             <ul className="mt-1 space-y-1 text-sm">
               <li>حجم: {p.type === 'custom_volume' ? 'انتخابی' : p.data_limit ? `${p.data_limit / GB} GB` : t('unlimited')}</li>
               <li>مدت: {p.duration_days ? `${p.duration_days} روز` : 'بدون انقضا'}</li>
