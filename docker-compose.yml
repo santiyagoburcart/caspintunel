@@ -45,6 +45,7 @@ services:
       - ./backend:/app
       - ./VERSION:/app/VERSION:ro
       - ./backups:/app/backups
+      - /proc:/hostproc:ro             # monitoring: host net stats via /hostproc/1/net
       - media_data:/app/media
       - static_data:/app/staticfiles
     depends_on:

@@ -12,6 +12,7 @@ services:
       - ./VERSION:/app/VERSION:ro
       - ./backups:/app/backups
       - ./backend/mail-keys:/app/mail-keys
+      - /proc:/hostproc:ro             # monitoring: host net stats via /hostproc/1/net
       - media_data:/app/media
       - static_data:/app/staticfiles
 
