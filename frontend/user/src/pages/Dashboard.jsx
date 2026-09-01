@@ -5,7 +5,7 @@ import { useI18n } from '../lib/i18n'
 import { jalali, gb } from '../lib/format'
 import { Alert, Copyable, Spinner, StatusBadge } from '../components/ui'
 
-function ServiceCard({ s, t }) {
+function ServiceCard({ s, t, lang }) {
   const pct = s.data_limit ? Math.min(100, Math.round((s.data_used / s.data_limit) * 100)) : 0
   return (
     <div className="card space-y-3">
@@ -22,7 +22,7 @@ function ServiceCard({ s, t }) {
         </div>
       )}
       <div className="text-sm text-muted">
-        {s.expire_at ? `${s.days_left} ${t('days_left')} — ${jalali(s.expire_at)}` : t('unlimited')}
+        {s.expire_at ? `${s.days_left} ${t('days_left')} — ${jalali(s.expire_at, false, lang)}` : t('unlimited')}
       </div>
       {s.subscription_url && (
         <div className="flex items-center gap-2">
@@ -39,7 +39,7 @@ function ServiceCard({ s, t }) {
 }
 
 export default function Dashboard() {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const { state } = useLocation()
   const [items, setItems] = useState(null)
   const [flash, setFlash] = useState(state?.flash || '')
@@ -57,7 +57,7 @@ export default function Dashboard() {
       </div>
       {items === null ? <div className="grid place-items-center py-16"><Spinner /></div>
         : items.length === 0 ? <div className="card text-center text-muted">{t('no_services')}</div>
-        : <div className="grid gap-4 sm:grid-cols-2">{items.map((s) => <ServiceCard key={s.id} s={s} t={t} />)}</div>}
+        : <div className="grid gap-4 sm:grid-cols-2">{items.map((s) => <ServiceCard key={s.id} s={s} t={t} lang={lang} />)}</div>}
     </div>
   )
 }

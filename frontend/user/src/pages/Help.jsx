@@ -19,17 +19,23 @@ export default function Help() {
   return (
     <div className="space-y-3">
       <h1 className="text-lg font-bold">{t('pages')}</h1>
-      <div className="flex gap-2">
-        {pages.map((p) => (
-          <button key={p.slug} onClick={() => setOpen(p.slug)}
-            className={`btn-ghost text-sm ${open === p.slug ? 'text-primary' : ''}`}>
-            {lang === 'fa' ? p.title_fa : p.title_en || p.title_fa}
-          </button>
-        ))}
-      </div>
-      <div className="card whitespace-pre-wrap leading-7">
-        {(lang === 'fa' ? cur?.body_fa : cur?.body_en) || 'محتوایی ثبت نشده است.'}
-      </div>
+      {pages.length === 0 ? (
+        <div className="card text-center text-muted">{t('no_content')}</div>
+      ) : (
+        <>
+          <div className="flex flex-wrap gap-2">
+            {pages.map((p) => (
+              <button key={p.slug} onClick={() => setOpen(p.slug)}
+                className={`btn-ghost text-sm ${open === p.slug ? 'text-primary' : ''}`}>
+                {(lang === 'fa' ? p.title_fa : p.title_en) || p.title_fa}
+              </button>
+            ))}
+          </div>
+          <div className="card whitespace-pre-wrap leading-7">
+            {(lang === 'fa' ? cur?.body_fa : cur?.body_en) || cur?.body_fa || t('no_content')}
+          </div>
+        </>
+      )}
     </div>
   )
 }

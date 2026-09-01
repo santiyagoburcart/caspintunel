@@ -14,11 +14,11 @@ export default function Profile() {
 
   const changePw = async (e) => {
     e.preventDefault(); setBusy(true); setErr(''); setMsg('')
-    try { await api.post('/auth/password/change/', pw); setMsg('رمز تغییر کرد'); setPw({ current_password: '', new_password: '' }) }
+    try { await api.post('/auth/password/change/', pw); setMsg(t('pw_changed')); setPw({ current_password: '', new_password: '' }) }
     catch (e2) { setErr(apiError(e2)) } finally { setBusy(false) }
   }
   const resend = async () => {
-    try { await api.post('/auth/email/verify/resend/'); setMsg('ایمیل تأیید ارسال شد') }
+    try { await api.post('/auth/email/verify/resend/'); setMsg(t('verify_sent')) }
     catch (e2) { setErr(apiError(e2)) }
   }
 

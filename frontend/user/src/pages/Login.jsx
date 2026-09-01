@@ -6,10 +6,17 @@ import { apiError } from '../lib/api'
 import { Alert, Field, Spinner } from '../components/ui'
 
 function AuthShell({ title, children }) {
+  const { lang, setLang } = useI18n()
   return (
     <div className="min-h-full aurora grid place-items-center p-4">
       <div className="card w-full max-w-sm">
-        <h1 className="mb-4 text-xl font-bold">{title}</h1>
+        <div className="mb-4 flex items-center justify-between">
+          <h1 className="text-xl font-bold">{title}</h1>
+          <button type="button" className="btn-ghost text-xs"
+            onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')}>
+            {lang === 'fa' ? 'EN' : 'فا'}
+          </button>
+        </div>
         {children}
       </div>
     </div>
@@ -28,7 +35,7 @@ export default function Login() {
     e.preventDefault()
     setBusy(true); setErr('')
     try { await login(f.username, f.password); nav('/') }
-    catch (e2) { setErr(apiError(e2, 'ورود ناموفق بود')) }
+    catch (e2) { setErr(apiError(e2, t('login_failed'))) }
     finally { setBusy(false) }
   }
 

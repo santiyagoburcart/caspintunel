@@ -20,7 +20,7 @@ export default function Register() {
     try {
       const res = await register(f)
       nav('/', { state: { flash: res.detail } })
-    } catch (e2) { setErr(apiError(e2, 'ثبت‌نام ناموفق بود')) }
+    } catch (e2) { setErr(apiError(e2, t('register_failed'))) }
     finally { setBusy(false) }
   }
 

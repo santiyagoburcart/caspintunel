@@ -6,7 +6,7 @@ import { jalali, toman } from '../lib/format'
 import { Alert, Copyable, Field, Spinner, StatusBadge } from '../components/ui'
 
 export default function Checkout() {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const nav = useNavigate()
   const [sp] = useSearchParams()
   const planId = sp.get('plan')
@@ -41,7 +41,7 @@ export default function Checkout() {
       const { data } = await api.post('/orders/', body)
       setOrder(data.order)
       setInstructions(data.payment_instructions)
-    } catch (e2) { setErr(apiError(e2, 'ثبت سفارش ناموفق بود')) }
+    } catch (e2) { setErr(apiError(e2, t('order_failed'))) }
     finally { setBusy(false) }
   }
 
@@ -60,7 +60,7 @@ export default function Checkout() {
   const checkStatus = async () => {
     const { data } = await api.get(`/orders/${order.id}/`)
     setOrder(data)
-    if (data.status === 'completed') nav('/', { state: { flash: 'سرویس شما فعال شد 🎉' } })
+    if (data.status === 'completed') nav('/', { state: { flash: t('service_activated') } })
   }
 
   if (!order) {
@@ -71,7 +71,7 @@ export default function Checkout() {
         <Field label={t('store')}>
           <select className="input" value={chosenPlan} onChange={(e) => setChosenPlan(e.target.value)}>
             <option value="">—</option>
-            {plans.map((p) => <option key={p.id} value={p.id}>{p.name_fa}</option>)}
+            {plans.map((p) => <option key={p.id} value={p.id}>{(lang === 'fa' ? p.name_fa : p.name_en) || p.name_fa}</option>)}
           </select>
         </Field>
         {!renewId && plan?.type !== 'custom_volume' && (
@@ -100,8 +100,8 @@ export default function Checkout() {
         <>
           <div className="rounded-xl p-3 text-center" style={{ background: 'color-mix(in srgb, var(--c-primary) 12%, transparent)' }}>
             <div className="text-sm text-muted">{t('amount')}</div>
-            <div className="text-2xl font-bold">{toman(instructions.amount_to_pay)}</div>
-            <div className="text-xs text-muted">دقیقاً همین مبلغ را واریز کنید</div>
+            <div className="text-2xl font-bold">{toman(instructions.amount_to_pay, lang)}</div>
+            <div className="text-xs text-muted">{t('pay_exact')}</div>
           </div>
           <div className="space-y-2">
             {instructions.cards.map((c) => (
@@ -111,9 +111,9 @@ export default function Checkout() {
               </div>
             ))}
           </div>
-          <div className="text-xs text-muted">مهلت: {jalali(instructions.reserved_until, true)}</div>
+          <div className="text-xs text-muted">{t('deadline')}: {jalali(instructions.reserved_until, true, lang)}</div>
           {payment ? (
-            <Alert kind="success">رسید ثبت شد؛ پس از تأیید، سرویس فعال می‌شود.</Alert>
+            <Alert kind="success">{t('receipt_saved')}</Alert>
           ) : (
             <label className="btn-ghost w-full cursor-pointer">
               {t('uploadReceipt')}
