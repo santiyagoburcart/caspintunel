@@ -1,0 +1,106 @@
+from decimal import Decimal
+
+import pytest
+from django.utils import timezone
+from rest_framework.test import APIClient
+
+from apps.accounts.models import User
+from apps.orders.models import Order, OrderStatus
+from apps.orders.services import OrderError, create_order, expire_stale_reservations
+from apps.payments_sms.models import Payment, PaymentMethod, PaymentStatus
+from apps.plans.models import Plan, PlanType
+from apps.settings_app.utils import set_setting
+
+pytestmark = pytest.mark.django_db
+
+
+@pytest.fixture
+def user():
+    return User.objects.create_user("cust", "Str0ngPass!")
+
+
+@pytest.fixture
+def fixed_plan():
+    return Plan.objects.create(name_fa="30d", price=Decimal("100000"),
+                               data_limit=50 * 1024**3, duration_days=30, discount_percent=Decimal("10"))
+
+
+def test_create_fixed_order_allocates_unique_amount(user, fixed_plan):
+    set_setting("unique_amount_min", "200", "int")
+    set_setting("unique_amount_max", "1500", "int")
+    order = create_order(user=user, plan_id=fixed_plan.id, requested_account_name="cust-1")
+    assert order.amount == Decimal("90000")               # 10% discount
+    assert Decimal("90200") <= order.amount_unique <= Decimal("91500")
+    assert order.amount_unique_lock == order.amount_unique
+    assert order.status == OrderStatus.PENDING_PAYMENT
+    assert order.unique_expire_at > timezone.now()
+
+
+def test_unique_amount_is_not_reused_while_active(user, fixed_plan):
+    o1 = create_order(user=user, plan_id=fixed_plan.id, requested_account_name="a")
+    o2 = create_order(user=user, plan_id=fixed_plan.id, requested_account_name="b")
+    assert o1.amount_unique != o2.amount_unique
+
+
+def test_fixed_new_order_needs_account_name(user, fixed_plan):
+    with pytest.raises(OrderError):
+        create_order(user=user, plan_id=fixed_plan.id)
+
+
+def test_custom_volume_order_prices_by_gb(user):
+    plan = Plan.objects.create(name_fa="CV", type=PlanType.CUSTOM_VOLUME, price=Decimal("0"),
+                               price_per_gb=Decimal("3000"), min_gb=5, max_gb=50)
+    order = create_order(user=user, plan_id=plan.id, requested_account_name="cv-1", custom_volume_gb=10)
+    assert order.amount == Decimal("30000")
+    assert order.custom_volume_gb == 10
+
+
+def test_custom_volume_out_of_range_rejected(user):
+    plan = Plan.objects.create(name_fa="CV", type=PlanType.CUSTOM_VOLUME, price=Decimal("0"),
+                               price_per_gb=Decimal("3000"), min_gb=5, max_gb=50)
+    with pytest.raises(OrderError):
+        create_order(user=user, plan_id=plan.id, requested_account_name="cv-2", custom_volume_gb=100)
+
+
+def test_expire_stale_reservations_releases_lock(user, fixed_plan):
+    order = create_order(user=user, plan_id=fixed_plan.id, requested_account_name="x")
+    Order.objects.filter(pk=order.id).update(unique_expire_at=timezone.now() - timezone.timedelta(minutes=1))
+
+    assert expire_stale_reservations() == 1
+    order.refresh_from_db()
+    assert order.status == OrderStatus.EXPIRED
+    assert order.amount_unique_lock is None
+
+
+def test_reservation_not_expired_when_receipt_pending(user, fixed_plan):
+    order = create_order(user=user, plan_id=fixed_plan.id, requested_account_name="y")
+    Payment.objects.create(order=order, method=PaymentMethod.CARD_MANUAL,
+                           amount=order.amount_unique, status=PaymentStatus.PENDING)
+    Order.objects.filter(pk=order.id).update(unique_expire_at=timezone.now() - timezone.timedelta(minutes=1))
+    assert expire_stale_reservations() == 0
+
+
+def test_order_api_create_returns_payment_instructions(user, fixed_plan):
+    from apps.payments_sms.models import BankCard
+    BankCard.objects.create(card_number="6037-9911-1111-1111", holder_name="Owner", sort_order=1)
+
+    client = APIClient()
+    client.force_authenticate(user)
+    r = client.post("/api/v1/orders/", {"plan": fixed_plan.id, "type": "new",
+                                        "requested_account_name": "web-1"}, format="json")
+    assert r.status_code == 201, r.data
+    pi = r.data["payment_instructions"]
+    assert pi["amount_to_pay"] == r.data["order"]["amount_unique"]
+    assert len(pi["cards"]) == 1
+    assert "card_number" in pi["cards"][0]
+
+
+def test_order_api_rejects_taken_account_name(user, fixed_plan):
+    from apps.panel.models import Panel, Service
+    panel = Panel.objects.create(name="P", base_url="https://x", admin_username="a", admin_password_enc="p")
+    Service.objects.create(user=user, panel=panel, panel_username="taken", current_plan=fixed_plan)
+
+    client = APIClient()
+    client.force_authenticate(user)
+    r = client.post("/api/v1/orders/", {"plan": fixed_plan.id, "requested_account_name": "taken"}, format="json")
+    assert r.status_code == 400

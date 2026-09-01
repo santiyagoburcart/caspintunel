@@ -1,0 +1,55 @@
+from rest_framework import serializers
+
+from apps.plans.models import Plan, PlanType
+
+from .models import Order, OrderType
+from .services import OrderError, create_order
+
+
+class OrderSerializer(serializers.ModelSerializer):
+    plan_name = serializers.CharField(source="plan.name_fa", read_only=True)
+    payment_status = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Order
+        fields = (
+            "id", "type", "status", "plan", "plan_name", "service",
+            "requested_account_name", "custom_volume_gb",
+            "amount", "amount_unique", "unique_expire_at",
+            "payment_status", "source", "created_at",
+        )
+        read_only_fields = fields
+
+    def get_payment_status(self, obj) -> str | None:
+        pay = getattr(obj, "payment", None)
+        return pay.status if pay else None
+
+
+class OrderCreateSerializer(serializers.Serializer):
+    plan = serializers.PrimaryKeyRelatedField(queryset=Plan.objects.filter(is_active=True))
+    type = serializers.ChoiceField(choices=OrderType.choices, default=OrderType.NEW)
+    requested_account_name = serializers.RegexField(r"^[A-Za-z0-9_.\-]{2,64}$", required=False, allow_blank=True)
+    custom_volume_gb = serializers.IntegerField(required=False, min_value=1)
+    service = serializers.IntegerField(required=False)
+
+    def validate_requested_account_name(self, value):
+        from apps.panel.models import Service
+
+        if value and Service.objects.filter(panel_username__iexact=value).exists():
+            raise serializers.ValidationError("that account name is taken")
+        return value
+
+    def create(self, validated):
+        request = self.context["request"]
+        try:
+            return create_order(
+                user=request.user,
+                plan_id=validated["plan"].id,
+                order_type=validated["type"],
+                requested_account_name=validated.get("requested_account_name"),
+                custom_volume_gb=validated.get("custom_volume_gb"),
+                service_id=validated.get("service"),
+                source=self.context.get("source", "site"),
+            )
+        except OrderError as exc:
+            raise serializers.ValidationError(str(exc))

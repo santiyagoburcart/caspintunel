@@ -1,0 +1,62 @@
+# ---- secrets ----
+.env
+*.env
+!.env.example
+*.pem
+*.key
+secrets/
+backend/mail-keys/
+nginx/certs/
+.update-requested
+
+# ---- python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ---- django ----
+*.log
+backend/staticfiles/
+backend/media/
+backend/db.sqlite3
+local_settings.py
+
+# ---- node / frontend ----
+node_modules/
+frontend/*/dist/
+frontend/*/.vite/
+npm-debug.log*
+yarn-error.log*
+
+# ---- android ----
+mobile_sms/.gradle/
+mobile_sms/build/
+mobile_sms/app/build/
+mobile_sms/local.properties
+*.apk
+*.keystore
+*.jks
+
+# ---- docker / data ----
+data/
+backups/
+*.sql
+*.sql.gz
+
+# ---- editor / os ----
+.idea/
+.vscode/
+.DS_Store
+*.swp
+
+# ---- planning docs kept out of the repo (root only; docs/ is tracked) ----
+/architecture.md
+/data-model.md
+/erd.mermaid
+/build-spec.md
+/claude-code-prompts.md

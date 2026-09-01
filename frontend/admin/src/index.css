@@ -1,0 +1,65 @@
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --c-bg: #f5f7fa;
+  --c-surface: rgba(255, 255, 255, 0.7);
+  --c-primary: #6d48f0;
+  --c-secondary: #0ea5b7;
+  --c-success: #059669;
+  --c-danger: #dc2626;
+  --c-warning: #d97706;
+  --c-text: #111827;
+  --c-text-muted: #6b7280;
+  --c-border: rgba(0, 0, 0, 0.08);
+}
+.dark {
+  --c-bg: #0b0e14;
+  --c-surface: rgba(255, 255, 255, 0.06);
+  --c-primary: #7c5cff;
+  --c-secondary: #22d3ee;
+  --c-success: #34d399;
+  --c-danger: #f87171;
+  --c-warning: #fbbf24;
+  --c-text: #e6e8ec;
+  --c-text-muted: #9aa3b2;
+  --c-border: rgba(255, 255, 255, 0.1);
+}
+
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: 'Vazirmatn', ui-sans-serif, system-ui, sans-serif;
+  transition: background .3s, color .3s;
+}
+
+@layer components {
+  .glass {
+    background: var(--c-surface);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--c-border);
+    border-radius: 16px;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 font-medium transition disabled:opacity-50;
+  }
+  .btn-primary { @apply btn text-white; background: var(--c-primary); }
+  .btn-ghost { @apply btn border; border-color: var(--c-border); }
+  .input {
+    @apply w-full rounded-xl px-3 py-2 outline-none border bg-transparent;
+    border-color: var(--c-border);
+  }
+  .input:focus { border-color: var(--c-primary); }
+  .label { @apply block text-sm mb-1 text-muted; }
+  .card { @apply glass p-5; }
+  .aurora {
+    background:
+      radial-gradient(60% 60% at 20% 10%, color-mix(in srgb, var(--c-primary) 22%, transparent), transparent),
+      radial-gradient(50% 50% at 90% 20%, color-mix(in srgb, var(--c-secondary) 18%, transparent), transparent);
+  }
+}

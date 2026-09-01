@@ -1,0 +1,126 @@
+"""
+High-level panel operations used by Celery tasks and (from phase 5) the order
+pipeline. Every function is idempotent / retry-safe.
+"""
+from __future__ import annotations
+
+import logging
+
+from django.db import transaction
+from django.utils import timezone
+
+from apps.common.models import write_audit
+
+from .client import PasarGuardClient
+from .exceptions import PanelConflict, PanelNotFound
+from .mappers import apply_user_to_service, build_create_payload, build_renew_payload
+from .models import Panel, Service, ServiceStatus
+
+log = logging.getLogger("caspintunel")
+
+
+def get_active_panel() -> Panel | None:
+    return Panel.objects.filter(is_active=True).order_by("id").first()
+
+
+def client_for(panel: Panel) -> PasarGuardClient:
+    return PasarGuardClient(panel)
+
+
+@transaction.atomic
+def provision_service(service_id: int, plan=None) -> Service:
+    """
+    Create the user on the panel for `service`. Idempotent: if the username
+    already exists on the panel (409 or our record already provisioned), we
+    adopt it instead of failing.
+    """
+    service = Service.objects.select_for_update().select_related("panel", "current_plan").get(pk=service_id)
+    plan = plan or service.current_plan
+    if plan is None:
+        raise ValueError(f"service {service_id} has no plan to provision")
+
+    client = client_for(service.panel)
+
+    if service.subscription_url and service.status not in (ServiceStatus.PENDING,):
+        # already provisioned — just resync
+        return sync_service(service_id)
+
+    try:
+        api_user = client.create_user(build_create_payload(service, plan, service.panel))
+    except PanelConflict:
+        log.warning("panel user %s already exists — adopting", service.panel_username)
+        api_user = client.get_user(service.panel_username)
+
+    service.current_plan = plan
+    apply_user_to_service(service, api_user, service.panel)
+    if service.status == ServiceStatus.PENDING:
+        service.status = ServiceStatus.ON_HOLD if plan.duration_days else ServiceStatus.ACTIVE
+    service.save()
+    write_audit(action="service.provisioned", target=service, detail={"plan": plan.id})
+    return service
+
+
+@transaction.atomic
+def renew_service(service_id: int, plan) -> Service:
+    """Flowchart 1.5: PUT the same username, reset usage, keep subscription_url."""
+    service = Service.objects.select_for_update().select_related("panel").get(pk=service_id)
+    client = client_for(service.panel)
+
+    api_user = client.update_user(service.panel_username, build_renew_payload(service, plan))
+    try:
+        client.reset_user_usage(service.panel_username)
+    except PanelNotFound:
+        pass
+    api_user = client.get_user(service.panel_username)
+
+    service.current_plan = plan
+    service.alert_vol_sent = False
+    service.alert_exp_sent = False
+    apply_user_to_service(service, api_user, service.panel)
+    service.status = ServiceStatus.ACTIVE
+    service.save()
+    write_audit(action="service.renewed", target=service, detail={"plan": plan.id})
+    return service
+
+
+@transaction.atomic
+def add_service_data_limit(service_id: int, extra_bytes: int) -> Service:
+    """Add-on volume: bump the panel user's data_limit (0 = unlimited, left as-is)."""
+    service = Service.objects.select_for_update().select_related("panel").get(pk=service_id)
+    client = client_for(service.panel)
+    current = client.get_user(service.panel_username)
+    base = int(current.get("data_limit") or 0)
+    if base == 0:
+        return service  # unlimited already
+    client.update_user(service.panel_username, {"data_limit": base + int(extra_bytes)})
+    api_user = client.get_user(service.panel_username)
+    apply_user_to_service(service, api_user, service.panel)
+    service.save()
+    write_audit(action="service.volume_added", target=service, detail={"extra_bytes": int(extra_bytes)})
+    return service
+
+
+def reset_service_usage(service_id: int) -> Service:
+    service = Service.objects.select_related("panel").get(pk=service_id)
+    client = client_for(service.panel)
+    client.reset_user_usage(service.panel_username)
+    service.alert_vol_sent = False
+    return sync_service(service_id)
+
+
+@transaction.atomic
+def sync_service(service_id: int) -> Service:
+    service = Service.objects.select_for_update().select_related("panel").get(pk=service_id)
+    client = client_for(service.panel)
+    try:
+        api_user = client.get_user(service.panel_username)
+    except PanelNotFound:
+        if service.status != ServiceStatus.DISABLED:
+            service.status = ServiceStatus.DISABLED
+            service.save(update_fields=["status", "updated_at"])
+        return service
+
+    changed = apply_user_to_service(service, api_user, service.panel)
+    service.last_synced_at = timezone.now()
+    service.save(update_fields=sorted(set(changed) | {"last_synced_at", "updated_at"}))
+    return service

@@ -1,0 +1,76 @@
+# Production overrides. Use together with the base file:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+
+services:
+  web:
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      RUN_MIGRATIONS: "1"
+      COLLECT_STATIC: "1"
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 60
+    volumes:
+      - ./VERSION:/app/VERSION:ro
+      - ./backups:/app/backups
+      - ./backend/mail-keys:/app/mail-keys
+      - media_data:/app/media
+      - static_data:/app/staticfiles
+
+  celery_worker:
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      RUN_MIGRATIONS: "0"
+    volumes:
+      - ./VERSION:/app/VERSION:ro
+      - media_data:/app/media
+      - ./backups:/app/backups
+
+  celery_beat:
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      RUN_MIGRATIONS: "0"
+    volumes:
+      - ./VERSION:/app/VERSION:ro
+
+  bot_sales:
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      RUN_MIGRATIONS: "0"
+    volumes:
+      - ./VERSION:/app/VERSION:ro
+
+  bot_backup:
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      RUN_MIGRATIONS: "0"
+    volumes:
+      - ./VERSION:/app/VERSION:ro
+      - ./backups:/app/backups
+
+  frontend_user:
+    image: caspintunel-frontend-user
+    build: ./frontend/user
+    command: ["nginx", "-g", "daemon off;"]
+    environment: {}
+    ports: []
+
+  frontend_admin:
+    image: caspintunel-frontend-admin
+    build: ./frontend/admin
+    command: ["nginx", "-g", "daemon off;"]
+    environment: {}
+    ports: []
+
+  nginx:
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - media_data:/var/www/media:ro
+      - static_data:/var/www/static:ro
+      - ./nginx/prod.conf:/etc/nginx/conf.d/caspintunel.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+
+  phpmyadmin:
+    ports: []
+    expose:
+      - "80"

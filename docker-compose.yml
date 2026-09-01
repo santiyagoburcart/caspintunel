@@ -1,0 +1,182 @@
+# Base compose — development-friendly (Django runserver, ports exposed).
+# Production overrides live in docker-compose.prod.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+name: caspintunel
+
+x-backend-env: &backend-env
+  env_file: [.env]
+
+services:
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+
+  web:
+    build: ./backend
+    image: caspintunel-backend
+    restart: unless-stopped
+    <<: *backend-env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      RUN_MIGRATIONS: "1"
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./backend:/app
+      - ./VERSION:/app/VERSION:ro
+      - ./backups:/app/backups
+      - media_data:/app/media
+      - static_data:/app/staticfiles
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  celery_worker:
+    build: ./backend
+    image: caspintunel-backend
+    restart: unless-stopped
+    <<: *backend-env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      RUN_MIGRATIONS: "0"
+    command: celery -A config worker -l info
+    volumes:
+      - ./backend:/app
+      - ./VERSION:/app/VERSION:ro
+      - media_data:/app/media
+      - ./backups:/app/backups
+    depends_on:
+      - web
+      - redis
+
+  celery_beat:
+    build: ./backend
+    image: caspintunel-backend
+    restart: unless-stopped
+    <<: *backend-env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      RUN_MIGRATIONS: "0"
+    command: celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    volumes:
+      - ./backend:/app
+      - ./VERSION:/app/VERSION:ro
+    depends_on:
+      - web
+      - redis
+
+  frontend_user:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    environment:
+      API_TARGET: http://web:8000
+    volumes:
+      - ./frontend/user:/app
+      - fe_user_modules:/app/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - web
+
+  frontend_admin:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    environment:
+      API_TARGET: http://web:8000
+    volumes:
+      - ./frontend/admin:/app
+      - fe_admin_modules:/app/node_modules
+    ports:
+      - "5174:5174"
+    depends_on:
+      - web
+
+  nginx:
+    build: ./nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - media_data:/var/www/media:ro
+      - static_data:/var/www/static:ro
+    depends_on:
+      - web
+      - frontend_user
+      - frontend_admin
+
+  phpmyadmin:
+    image: phpmyadmin:5
+    restart: unless-stopped
+    environment:
+      PMA_HOST: db
+      UPLOAD_LIMIT: 256M
+    ports:
+      - "${PMA_PORT:-8080}:80"
+    depends_on:
+      - db
+
+  # --- Telegram bots (idle until a TelegramConfig token is set in the admin) ---
+  bot_sales:
+    build: ./backend
+    image: caspintunel-backend
+    restart: unless-stopped
+    <<: *backend-env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      RUN_MIGRATIONS: "0"
+    command: python manage.py run_sales_bot
+    volumes:
+      - ./backend:/app
+      - ./VERSION:/app/VERSION:ro
+    depends_on:
+      - web
+      - redis
+
+  bot_backup:
+    build: ./backend
+    image: caspintunel-backend
+    restart: unless-stopped
+    <<: *backend-env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      RUN_MIGRATIONS: "0"
+    command: python manage.py run_backup_bot
+    volumes:
+      - ./backend:/app
+      - ./VERSION:/app/VERSION:ro
+      - ./backups:/app/backups
+    depends_on:
+      - web
+      - redis
+
+volumes:
+  db_data:
+  redis_data:
+  media_data:
+  static_data:
+  fe_user_modules:
+  fe_admin_modules:
