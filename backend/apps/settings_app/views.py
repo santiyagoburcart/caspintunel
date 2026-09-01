@@ -9,6 +9,13 @@ from .serializers import PublicPageSerializer, PublicSiteConfigSerializer, Publi
 
 
 class PublicSiteConfigView(APIView):
+    # No auth at all: both frontends' shared `api` client always attaches a
+    # bearer token when one is present (admin staff token, user token) — even
+    # on public calls like this one. SimpleJWT's JWTAuthentication doesn't
+    # recognize the staff token shape and raises 401 despite AllowAny, which
+    # trips the axios refresh-token interceptor on every page load. Truly
+    # public endpoints must skip authentication entirely, not just permission.
+    authentication_classes = []
     permission_classes = [AllowAny]
 
     @extend_schema(responses=PublicSiteConfigSerializer, summary="Public branding / site config")
@@ -17,6 +24,7 @@ class PublicSiteConfigView(APIView):
 
 
 class PublicActiveThemeView(APIView):
+    authentication_classes = []
     permission_classes = [AllowAny]
 
     @extend_schema(responses=PublicThemeSerializer, summary="The active theme's palette")
@@ -28,12 +36,14 @@ class PublicActiveThemeView(APIView):
 
 
 class PublicPageListView(generics.ListAPIView):
+    authentication_classes = []
     permission_classes = [AllowAny]
     serializer_class = PublicPageSerializer
     queryset = Page.objects.filter(is_active=True).order_by("slug")
 
 
 class PublicPageDetailView(generics.RetrieveAPIView):
+    authentication_classes = []
     permission_classes = [AllowAny]
     serializer_class = PublicPageSerializer
     lookup_field = "slug"

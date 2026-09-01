@@ -64,7 +64,7 @@ export default function Layout() {
           <span className="ms-auto truncate text-muted">{staff?.username} · {staff?.role || (staff?.is_superadmin ? 'superadmin' : '')}</span>
           <button className="btn-ghost" onClick={() => { logout(); go('/login') }}>{t('logout')}</button>
         </header>
-        <main key={loc.pathname} className="mx-auto max-w-6xl p-3"><Outlet /></main>
+        <main className="mx-auto max-w-6xl p-3"><Outlet /></main>
       </div>
     </div>
   )
