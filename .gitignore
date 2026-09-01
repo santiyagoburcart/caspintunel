@@ -62,3 +62,6 @@ backups/
 /claude-code-prompts.md
 nginx/letsencrypt/
 nginx/certbot-webroot/
+
+# ---- mail server runtime state (accounts, dkim keys, mailboxes) ----
+mail/

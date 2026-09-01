@@ -23,15 +23,19 @@ done
 
 mkdir -p nginx/certbot-webroot nginx/letsencrypt
 
-echo "==> DNS preflight"
+echo "==> DNS preflight (public resolvers — this is what Let's Encrypt sees)"
 for host in "$DOMAIN" "www.$DOMAIN"; do
-  got="$(dig +short A "$host" | tail -1 || true)"
-  if [ "$got" != "$SERVER_IP" ]; then
-    echo "   !! $host resolves to '${got:-<none>}', expected $SERVER_IP"
-    echo "      create the A records and wait for propagation, then re-run."
-    [ "${FORCE:-0}" = 1 ] || exit 1
-  else
+  got=""
+  for r in 1.1.1.1 8.8.8.8 9.9.9.9; do
+    a="$(dig +short A "$host" "@$r" 2>/dev/null | grep -E '^[0-9.]+$' | tail -1 || true)"
+    [ -n "$a" ] && got="$a" && break
+  done
+  if [ "$got" = "$SERVER_IP" ]; then
     echo "   ok $host -> $got"
+  else
+    echo "   !! $host resolves to '${got:-<none>}', expected $SERVER_IP"
+    [ "${FORCE:-0}" = 1 ] || { echo "      wait for propagation, then re-run (or FORCE=1 to skip)."; exit 1; }
+    echo "      FORCE=1 set — continuing anyway."
   fi
 done
 

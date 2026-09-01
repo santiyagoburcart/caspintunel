@@ -59,12 +59,49 @@ Full run adds (when the mail server is up):
 | TXT | `_dmarc` | `v=DMARC1; p=quarantine; …` | — |
 | TXT | `default._domainkey` | generated DKIM public key | — |
 
-Existing VPN-node subdomain records are never touched. The DKIM **private** key
-is written to `backend/mail-keys/default.private` (git-ignored, `0600`) — point
-your mail server (OpenDKIM / docker-mailserver) at it, selector `default`. The
-mail server itself (Postfix/Dovecot) is out of scope; wire
-`EMAIL_HOST=mail.<domain>` in `.env` once it's up. Email is always sent
-gracefully — an outage never breaks the app.
+Existing VPN-node subdomain records are never touched.
+
+## Mail server (Postfix + Dovecot)
+
+The `mailserver` compose service is [docker-mailserver](https://docker-mailserver.github.io/)
+(Postfix + Dovecot + OpenDKIM + OpenDMARC). It reuses the Let's Encrypt cert
+(`SSL_TYPE=manual`, needs `mail.<domain>` in the cert SANs — `init-letsencrypt.sh`
+includes it). The app talks to it over the private docker network
+(`EMAIL_HOST=mailserver`, port 25, `PERMIT_DOCKER=connected-networks` — no auth).
+
+First-run setup:
+
+```bash
+docker compose up -d mailserver
+# within 120s, add at least one mailbox:
+docker compose exec mailserver setup email add noreply@<domain> '<password>'
+docker compose exec mailserver setup config dkim keysize 2048 selector default domain <domain>
+# publish the DKIM public key it prints (or re-run configure_dns which reads it):
+docker compose exec mailserver setup config dkim   # shows the DNS TXT value
+docker compose restart mailserver            # force-recreate if OpenDKIM tables stay empty
+docker compose exec mailserver opendkim-testkey -d <domain> -s default -vvv   # -> "key OK"
+```
+
+`setup config dkim` generates its own key; publish **that** public key at
+`default._domainkey.<domain>` (a `configure_dns --apply` will pick it up from
+`mail/config/opendkim/keys/<domain>/default.txt`).
+
+### Outbound port 25
+
+Vultr / DigitalOcean / most clouds **block outbound port 25**, so the mail server
+can't deliver directly to external MX servers (Gmail etc.) — mail to local
+`@<domain>` mailboxes works, external mail sits in the queue. Fix with a relay:
+
+```
+SMTP_RELAY_HOST=smtp.mailgun.org      # or sendgrid / SES / smtp.gmail.com
+SMTP_RELAY_PORT=587
+SMTP_RELAY_USER=postmaster@<domain>
+SMTP_RELAY_PASSWORD=...
+```
+then `docker compose up -d mailserver`. (Or ask the host to unblock port 25.)
+
+Email is always sent gracefully — an SMTP/relay outage never breaks the app; the
+verification step is skipped with a message and can be retried.
 
 ## TLS (Let's Encrypt, direct on the server)
 

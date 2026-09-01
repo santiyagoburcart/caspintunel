@@ -37,6 +37,8 @@ class Command(BaseCommand):
         parser.add_argument("--apply", action="store_true", help="write changes (default: dry-run)")
         parser.add_argument("--no-mail", action="store_true",
                             help="only the A/www records — skip MX/SPF/DKIM/DMARC")
+        parser.add_argument("--proxied", action="store_true",
+                            help="orange-cloud @/www (default: DNS-only, for direct TLS)")
         parser.add_argument("--server-ip", default=getattr(settings, "SERVER_IP", "") or None)
         parser.add_argument("--domain", default=getattr(settings, "CLOUDFLARE_ZONE", None)
                             or getattr(settings, "DOMAIN", "aicaspin.ir"))
@@ -59,9 +61,10 @@ class Command(BaseCommand):
         except CloudflareError as exc:
             raise CommandError(str(exc))
 
+        web_proxied = bool(o["proxied"])
         plan = [
-            dict(type="A", name=domain, content=ip, proxied=True),
-            dict(type="A", name=f"www.{domain}", content=ip, proxied=True),
+            dict(type="A", name=domain, content=ip, proxied=web_proxied),
+            dict(type="A", name=f"www.{domain}", content=ip, proxied=web_proxied),
         ]
         if not o["no_mail"]:
             dkim_txt = self._ensure_dkim(selector, apply)

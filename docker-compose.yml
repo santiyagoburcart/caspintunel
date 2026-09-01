@@ -93,6 +93,8 @@ services:
     command: sh -c "npm install && npm run dev"
     environment:
       API_TARGET: http://web:8000
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-}
+      DOMAIN: ${DOMAIN:-}
     volumes:
       - ./frontend/user:/app
       - fe_user_modules:/app/node_modules
@@ -107,6 +109,8 @@ services:
     command: sh -c "npm install && npm run dev"
     environment:
       API_TARGET: http://web:8000
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-}
+      DOMAIN: ${DOMAIN:-}
     volumes:
       - ./frontend/admin:/app
       - fe_admin_modules:/app/node_modules
@@ -120,8 +124,6 @@ services:
     restart: unless-stopped
     environment:
       SSL_DOMAIN: ${DOMAIN:-}
-    # reload every 6h so renewed certs are picked up without a restart
-    command: sh -c "while :; do sleep 6h; nginx -s reload 2>/dev/null || true; done & exec nginx -g 'daemon off;'"
     ports:
       - "80:80"
       - "443:443"
@@ -154,6 +156,52 @@ services:
       - "${PMA_PORT:-8080}:80"
     depends_on:
       - db
+
+  # Self-hosted Postfix + Dovecot (docker-mailserver). Signs DKIM, enforces
+  # SPF/DMARC. NOTE: many cloud hosts (incl. Vultr) block OUTBOUND port 25, so
+  # external delivery needs a relay — set SMTP_RELAY_* in .env to enable it.
+  mailserver:
+    image: ghcr.io/docker-mailserver/docker-mailserver:14.0
+    hostname: mail.${DOMAIN:-aicaspin.ir}
+    restart: unless-stopped
+    environment:
+      OVERRIDE_HOSTNAME: mail.${DOMAIN:-aicaspin.ir}
+      POSTMASTER_ADDRESS: postmaster@${DOMAIN:-aicaspin.ir}
+      ENABLE_OPENDKIM: 1
+      ENABLE_OPENDMARC: 1
+      ENABLE_POLICYD_SPF: 1
+      ENABLE_SPAMASSASSIN: 0
+      ENABLE_CLAMAV: 0
+      ENABLE_RSPAMD: 0
+      ENABLE_FAIL2BAN: 0
+      ENABLE_POP3: 0
+      ONE_DIR: 1
+      PERMIT_DOCKER: connected-networks
+      SSL_TYPE: manual
+      SSL_CERT_PATH: /etc/letsencrypt/live/${DOMAIN:-aicaspin.ir}/fullchain.pem
+      SSL_KEY_PATH: /etc/letsencrypt/live/${DOMAIN:-aicaspin.ir}/privkey.pem
+      RELAY_HOST: ${SMTP_RELAY_HOST:-}
+      RELAY_PORT: ${SMTP_RELAY_PORT:-587}
+      RELAY_USER: ${SMTP_RELAY_USER:-}
+      RELAY_PASSWORD: ${SMTP_RELAY_PASSWORD:-}
+    ports:
+      - "25:25"
+      - "465:465"
+      - "587:587"
+      - "993:993"
+    volumes:
+      - ./mail/data:/var/mail
+      - ./mail/state:/var/mail-state
+      - ./mail/logs:/var/log/mail
+      - ./mail/config:/tmp/docker-mailserver
+      - ./nginx/letsencrypt:/etc/letsencrypt:ro
+      - /etc/localtime:/etc/localtime:ro
+    cap_add: [NET_ADMIN]
+    healthcheck:
+      test: ["CMD-SHELL", "ss -lnt | grep -q ':587' || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
 
   # --- Telegram bots (idle until a TelegramConfig token is set in the admin) ---
   bot_sales:

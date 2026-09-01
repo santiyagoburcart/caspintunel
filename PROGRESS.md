@@ -172,7 +172,25 @@ Remaining optional work (not in any phase spec): native-Kotlin Android SMS app,
 self-hosted mail server (Postfix/Dovecot — DNS is ready, `EMAIL_HOST` wire-up
 pending), `telegram_stats` population, a few secondary admin screens.
 
-## Post-1.0 — domain switch to aicaspin.ir + direct TLS (2026-09-01)
+## Post-1.0 — aicaspin.ir DNS applied + HTTPS live + mail server (2026-09-01, part 2)
+- **DNS applied on Cloudflare** (`aicaspin.ir` zone, node records untouched): `A @`+`A www` DNS-only → `66.245.202.46`;
+  `A mail` DNS-only, `MX → mail.aicaspin.ir`, SPF `v=spf1 mx a:mail.aicaspin.ir ~all`, DMARC `p=quarantine`, DKIM
+  (DMS-generated key, published). `configure_dns` gained `--proxied` (default now DNS-only) + `--no-mail`.
+- **HTTPS live**: real Let's Encrypt cert for `aicaspin.ir, www.aicaspin.ir, mail.aicaspin.ir` (expires 2026-11-30).
+  nginx `entrypoint.sh` (replaces the entrypoint.d approach — worked around the image only running `.d` scripts when
+  CMD is `nginx`) enables the 443 vhost when the cert exists + 6-hourly reload. `nginx/conf.d` now uses
+  `resolver 127.0.0.11` + variable `proxy_pass` so recreating an upstream container no longer 502s.
+  `vite.config.js` `allowedHosts` from `ALLOWED_HOSTS`/`DOMAIN` env (Vite 6 blocks unknown Host headers).
+- **Mail server**: `mailserver` service = docker-mailserver 14 (Postfix + Dovecot + OpenDKIM + OpenDMARC),
+  `SSL_TYPE=manual` reusing the LE cert, `PERMIT_DOCKER=connected-networks`. `.env`: `EMAIL_HOST=mailserver` port 25,
+  `dev.py` uses real SMTP when `EMAIL_HOST` set (console otherwise), `EMAIL_BACKEND` now env-overridable.
+  Mailboxes `noreply@` + `test@aicaspin.ir`. **Verified**: app password-reset email → DKIM-signed (`s=default d=aicaspin.ir`,
+  `opendkim-testkey` = key OK) → delivered to local INBOX; link uses `https://aicaspin.ir/...`. Health check **mail = green**.
+  ⚠️ **Vultr blocks outbound port 25** → external delivery (Gmail) times out; needs `SMTP_RELAY_*` (env vars added, empty)
+  or a Vultr port-25 unblock. Firewall: ufw inactive, iptables ACCEPT — 80/443/25/587 all open inbound.
+- 153/153 tests, no drift, deploy check clean. Full stack (13 containers) up.
+
+## Post-1.0 — domain switch to aicaspin.ir + direct TLS (2026-09-01, part 1)
 - `caspin.skin` has a Cloudflare ToS hold → switched the active domain to **`aicaspin.ir`**
   (its own DNS/zone untouched). `.env` (`DOMAIN`/`ALLOWED_HOSTS`/`CORS`/`CSRF`/`PUBLIC_BASE_URL`/`CLOUDFLARE_ZONE`/`DEFAULT_FROM_EMAIL`),
   `site_config.site_domain` (via `seed`, which now syncs it from `DOMAIN`), settings defaults,

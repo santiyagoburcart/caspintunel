@@ -12,6 +12,9 @@ REST_FRAMEWORK = {**REST_FRAMEWORK, "DEFAULT_THROTTLE_CLASSES": [], "DEFAULT_THR
 CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
 
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+# deterministic regardless of the operator's .env; tests that need a configured
+# host set settings.EMAIL_HOST themselves.
+EMAIL_HOST = ""
 
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]  # faster tests
 
