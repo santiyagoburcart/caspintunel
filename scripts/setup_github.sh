@@ -29,11 +29,14 @@ git add -A
 git -c user.email="deploy@${DOMAIN:-caspin.skin}" -c user.name="caspintunel deploy" \
     commit -q -m "Deploy $(cat VERSION)" || echo "   (nothing to commit)"
 
-# push with an ephemeral credential; leave a clean remote behind
 git remote remove origin 2>/dev/null || true
 git remote add origin "https://github.com/$OWNER/$REPO.git"
-git -c credential.helper= \
-    -c "http.https://github.com/.extraheader=Authorization: Bearer $GITHUB_TOKEN" \
-    push -u origin main
 
-echo "==> pushed to https://github.com/$OWNER/$REPO (private)"
+# store a credential so `update.sh` (git reset --hard @{upstream}) can pull the
+# private repo unattended. ~/.git-credentials is chmod 600 and host-local.
+git config credential.helper store
+printf 'https://x-access-token:%s@github.com\n' "$GITHUB_TOKEN" > "$HOME/.git-credentials"
+chmod 600 "$HOME/.git-credentials"
+
+git push -u origin main
+echo "==> pushed to https://github.com/$OWNER/$REPO (private); credential stored for update.sh"
