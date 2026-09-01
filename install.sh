@@ -91,7 +91,7 @@ do_install() {
   DB_ROOT=$(asks "  DB root password")
 
   echo; TZ=$(ask "Timezone" "Asia/Tehran")
-  PMA=$(ask "phpMyAdmin port (blank = disabled externally)" "")
+  PMA=$(ask "phpMyAdmin localhost port (opt-in tool, blank = default 8080)" "")
 
   echo; echo "TLS / HTTPS:"
   echo "  1) auto  — Let's Encrypt (needs inbound port 80 reachable from the internet)"
@@ -126,6 +126,27 @@ do_install() {
   set_env EMAIL_PORT          25
   set_env EMAIL_USE_TLS       false
   set_env DEFAULT_FROM_EMAIL  "no-reply@$DOMAIN"
+
+  echo
+  echo "Email relay (needed for real delivery — most hosts block outbound port 25):"
+  echo "  provider SMTP, e.g. Mailgun smtp.mailgun.org / SendGrid smtp.sendgrid.net"
+  echo "  leave blank to skip for now (set SMTP_RELAY_* in .env later)."
+  local RH RU RP RPORT
+  RH=$(ask "  relay SMTP host" "")
+  if [ -n "$RH" ]; then
+    RPORT=$(ask "  relay port" "587")
+    RU=$(ask "  relay username")
+    RP=$(asks "  relay password / API key")
+    set_env SMTP_RELAY_HOST     "$RH"
+    set_env SMTP_RELAY_PORT     "$RPORT"
+    set_env SMTP_RELAY_USER     "$RU"
+    set_env SMTP_RELAY_PASSWORD "$RP"
+  else
+    set_env SMTP_RELAY_HOST     ""
+    set_env SMTP_RELAY_PORT     587
+    set_env SMTP_RELAY_USER     ""
+    set_env SMTP_RELAY_PASSWORD ""
+  fi
   [ -n "$PMA" ] && set_env PMA_PORT "$PMA"
   # panel credentials are intentionally NOT collected here
   set_env PANEL_BASE_URL      ""
@@ -163,6 +184,15 @@ do_install() {
   echo "  ( https://$DOMAIN/panel/  or  https://$DOMAIN/admin/ ) and enter the"
   echo "  Pasargad panel base URL + admin username/password under the Panel settings."
   echo "  Also set: bot tokens, bank cards, plans, SMS devices."
+  echo
+  echo "$(c '1;33' 'EMAIL:')"
+  if grep -q '^SMTP_RELAY_HOST=.\+' "$ENV_FILE"; then
+    echo "  relay configured. Verify delivery:"
+  else
+    echo "  no relay set — external email will NOT be delivered. Add SMTP_RELAY_*"
+    echo "  to .env (see docs/email-relay.md), then: docker compose up -d --force-recreate mailserver"
+  fi
+  echo "  ./scripts/… →  docker compose exec web python manage.py send_test_email you@example.com"
   hr
 }
 

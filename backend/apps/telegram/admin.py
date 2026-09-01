@@ -1,3 +1,4 @@
+from django import forms
 from django.contrib import admin, messages
 
 from .client import TelegramError
@@ -5,8 +6,32 @@ from .config import client_for
 from .models import RequiredChannel, TelegramConfig, TelegramStats
 
 
+class TelegramConfigForm(forms.ModelForm):
+    """Bot token is write-only in the admin — never rendered back."""
+
+    token = forms.CharField(
+        label="Bot token", required=False,
+        widget=forms.PasswordInput(render_value=False),
+        help_text="leave blank to keep the stored token",
+    )
+
+    class Meta:
+        model = TelegramConfig
+        exclude = ("token",)
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        tok = self.cleaned_data.get("token")
+        if tok:
+            obj.token = tok
+        if commit:
+            obj.save()
+        return obj
+
+
 @admin.register(TelegramConfig)
 class TelegramConfigAdmin(admin.ModelAdmin):
+    form = TelegramConfigForm
     list_display = ("bot_type", "is_active", "has_token", "backup_chat_id", "updated_at")
     list_filter = ("is_active",)
     actions = ("test_connection",)

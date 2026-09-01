@@ -70,7 +70,9 @@ services:
       - ./nginx/certbot-webroot:/var/www/certbot
       - ./nginx/manual-certs:/etc/nginx/manual-certs:ro
 
+  # phpMyAdmin stays in the "tools" profile (see base file) — never started in a
+  # normal prod bring-up. If you must use it: `docker compose --profile tools up
+  # -d phpmyadmin` then tunnel to 127.0.0.1:8080, and stop it again afterwards.
   phpmyadmin:
-    ports: []
-    expose:
-      - "80"
+    ports:
+      - "127.0.0.1:${PMA_PORT:-8080}:80"

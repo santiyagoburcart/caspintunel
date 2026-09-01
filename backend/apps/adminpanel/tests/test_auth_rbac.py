@@ -29,6 +29,24 @@ def test_me_and_refresh(api, superadmin):
     assert r.status_code == 200 and r.data["access"]
 
 
+def test_staff_refresh_token_is_single_use(api, superadmin):
+    login = api.post("/api/v1/admin/auth/login/",
+                     {"username": "boss", "password": "Str0ngPass!"}, format="json")
+    rt = login.data["refresh"]
+
+    first = api.post("/api/v1/admin/auth/refresh/", {"refresh": rt}, format="json")
+    assert first.status_code == 200
+    new_rt = first.data["refresh"]
+    assert new_rt and new_rt != rt
+
+    # the consumed token is now revoked
+    replay = api.post("/api/v1/admin/auth/refresh/", {"refresh": rt}, format="json")
+    assert replay.status_code == 401
+    # but the freshly issued one still works
+    assert api.post("/api/v1/admin/auth/refresh/",
+                    {"refresh": new_rt}, format="json").status_code == 200
+
+
 def test_permission_enforced_per_endpoint(staff_client, perms):
     viewer = make_staff("viewer", ["users.view"], perms)
     c = staff_client(viewer)

@@ -1,6 +1,7 @@
 # Security review (v1.0.0)
 
 Reviewed at the close of Phase 11. Findings and their disposition.
+Post-1.0 follow-up (2026-09) resolved items 1–5 below — see **Resolved** section.
 
 ## Handled well
 - **Secrets** — only in `.env` (git-ignored, `chmod 600` by `install.sh`).
@@ -28,16 +29,24 @@ Reviewed at the close of Phase 11. Findings and their disposition.
 - **mysqldump** — password passed via `MYSQL_PWD` env, not argv.
 - **DKIM/SPF/DMARC** — 2048-bit RSA, `~all` softfail, `p=quarantine`.
 
+## Resolved (post-1.0, 2026-09)
+
+| # | Item | Fix |
+|---|------|-----|
+| 1 | **Media (receipts) served without auth** | `GET /api/v1/payments/<id>/receipt/` (`ReceiptFileView`) authorises first — receipt owner, or a panel operator with `payment.view` — then streams the file (dev) or `X-Accel-Redirect`s to an nginx `internal` location (`SERVE_MEDIA_VIA_XACCEL`, prod default). nginx returns **404** for `/media/receipts/` directly (both dev + prod confs). The serializer now emits `receipt_url` (the API endpoint), never a media path; the admin SPA fetches it as an authenticated blob. |
+| 2 | **phpMyAdmin exposed** | Moved to the compose `profiles: ["tools"]` — a normal `docker compose up` **does not start it**. When explicitly run (`--profile tools`) the port binds to `127.0.0.1` only (SSH-tunnel access). Prod override no longer publishes it. |
+| 3 | **Panel password visible in Django admin** | `PanelAdminForm` — `admin_password` is a write-only `PasswordInput(render_value=False)`, the stored value is never rendered; blank = keep. Same treatment applied to `TelegramConfigForm` (bot token). List view shows a "password set" / "token set" boolean. |
+| 4 | **Staff refresh tokens not rotated** | `/api/v1/admin/auth/refresh/` now rotates: the consumed refresh token's `jti` is blacklisted in the cache until its natural expiry (`revoke_refresh`), `decode()` rejects a re-used `staff_refresh`. The SPA already stored the rotated pair. Refresh tokens are single-use. |
+| 5 | **No Content-Security-Policy** | `nginx/prod.conf` sets a strict CSP (`default-src 'self'`, `script-src 'self'`, `frame-ancestors 'none'`, `object-src 'none'`, …) plus `Referrer-Policy`, `Permissions-Policy`, `Cross-Origin-Opener-Policy`, `X-Frame-Options`, `nosniff`. `nginx/conf.d/caspintunel.conf` (dev) sets the same headers with a Vite-compatible CSP (`'unsafe-inline' 'unsafe-eval'`, `ws:`). |
+
 ## Accepted risks / operator notes
 | # | Item | Note |
 |---|------|------|
-| 1 | **Media (receipts) served without auth** | URL path is dated + unguessable but not access-controlled. Low sensitivity (a bank transfer screenshot). To lock down: serve `/media/receipts/` via an authenticated Django view or nginx `internal` + `X-Accel-Redirect`. |
-| 2 | **phpMyAdmin** | dev-only host port; in prod it is `expose`-only (not published) and not routed by the main nginx. Recommend removing the service entirely in prod or fronting it with basic-auth + IP allow-list. |
-| 3 | **Panel password visible in Django admin** | the `admin_password_enc` field renders decrypted in the change form for staff who can reach Django admin (superusers). The DRF admin API never exposes it. |
-| 4 | **Staff refresh tokens are not rotated/blacklisted** | 30-minute access window limits exposure; acceptable for an internal panel. |
-| 5 | **No Content-Security-Policy header** | SPAs load same-origin JS/CSS + Google Fonts only. Add a CSP in `nginx/prod.conf` if desired. |
 | 6 | **Secrets pasted in the build transcript** | the panel password, GitHub PAT and Cloudflare token were provided in plaintext during setup — **rotate them** now that setup is complete. |
 | 7 | **`db/init` test-grant script** | grants the app user rights on `test\_%` databases only; harmless in prod, used by the test suite. |
+| 8 | **CSP allows `style-src 'unsafe-inline'`** | React sets element `style` attributes and the Monitoring page injects a `<style>` block; inline styles are low-risk (no script execution). Scripts remain `'self'`-only in prod. |
+| 9 | **phpMyAdmin, when opted in, has no extra auth** | it's localhost-bound and meant for short-lived tunnelled sessions; stop it (`docker compose stop phpmyadmin`) when done. Add HTTP basic-auth in front if you leave it running. |
+| 10 | **Django admin (`/admin/`) still reachable** | protected by the Django superuser login; break-glass only. Consider an IP allow-list at nginx if not needed day-to-day. |
 
 ## Not applicable
 - SSRF: no user-controlled outbound URLs.

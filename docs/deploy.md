@@ -109,22 +109,30 @@ docker compose exec mailserver opendkim-testkey -d <domain> -s default -vvv   # 
 `default._domainkey.<domain>` (a `configure_dns --apply` will pick it up from
 `mail/config/opendkim/keys/<domain>/default.txt`).
 
-### Outbound port 25
+### Outbound port 25 — you need a relay
 
 Vultr / DigitalOcean / most clouds **block outbound port 25**, so the mail server
 can't deliver directly to external MX servers (Gmail etc.) — mail to local
 `@<domain>` mailboxes works, external mail sits in the queue. Fix with a relay:
 
 ```
-SMTP_RELAY_HOST=smtp.mailgun.org      # or sendgrid / SES / smtp.gmail.com
+SMTP_RELAY_HOST=smtp.mailgun.org      # or sendgrid / brevo / SES / smtp.gmail.com
 SMTP_RELAY_PORT=587
-SMTP_RELAY_USER=postmaster@<domain>
+SMTP_RELAY_USER=postmaster@mg.<domain>
 SMTP_RELAY_PASSWORD=...
 ```
-then `docker compose up -d mailserver`. (Or ask the host to unblock port 25.)
+
+```bash
+docker compose up -d --force-recreate mailserver   # RELAY_* is read at start-up
+docker compose exec web python manage.py send_test_email you@example.com
+```
+
+**Full walkthrough (which provider, domain verification, per-provider
+credentials, troubleshooting): [`email-relay.md`](email-relay.md).**
 
 Email is always sent gracefully — an SMTP/relay outage never breaks the app; the
-verification step is skipped with a message and can be retried.
+verification step is skipped with a message and can be retried. Email
+verification is off by default (`email_verification_required` setting).
 
 ## The "Update" button
 

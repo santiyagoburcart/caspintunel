@@ -149,14 +149,18 @@ services:
     # renew twice a day; nginx reloads every 6h and picks up new certs
     entrypoint: ["sh", "-c", "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet || true; sleep 12h & wait $${!}; done"]
 
+  # Opt-in only. Not started by a plain `docker compose up` — run:
+  #   docker compose --profile tools up -d phpmyadmin
+  # Port is bound to localhost; reach it over an SSH tunnel, never the public IP.
   phpmyadmin:
     image: phpmyadmin:5
+    profiles: ["tools"]
     restart: unless-stopped
     environment:
       PMA_HOST: db
       UPLOAD_LIMIT: 256M
     ports:
-      - "${PMA_PORT:-8080}:80"
+      - "127.0.0.1:${PMA_PORT:-8080}:80"
     depends_on:
       - db
 

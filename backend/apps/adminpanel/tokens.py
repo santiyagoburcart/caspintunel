@@ -6,16 +6,19 @@ distinct from customer tokens.
 """
 from __future__ import annotations
 
+import time
 import uuid
 from datetime import timedelta
 
 import jwt
 from django.conf import settings
+from django.core.cache import cache
 from django.utils import timezone
 
 ACCESS_TTL = timedelta(minutes=getattr(settings, "STAFF_JWT_ACCESS_MIN", 30))
 REFRESH_TTL = timedelta(days=getattr(settings, "STAFF_JWT_REFRESH_DAYS", 7))
 _ALG = "HS256"
+_BLACKLIST_PREFIX = "staff_rt_revoked:"
 
 
 def _encode(payload: dict) -> str:
@@ -34,4 +37,20 @@ def decode(token: str, expected_type: str) -> dict:
     payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[_ALG])
     if payload.get("type") != expected_type:
         raise jwt.InvalidTokenError("wrong token type")
+    if expected_type == "staff_refresh":
+        jti = payload.get("jti", "")
+        if jti and cache.get(_BLACKLIST_PREFIX + jti):
+            raise jwt.InvalidTokenError("refresh token already used")
     return payload
+
+
+def revoke_refresh(payload: dict) -> None:
+    """Blacklist a refresh token's jti until its natural expiry (rotation:
+    every /auth/refresh/ retires the token it consumed, so a stolen refresh
+    token is single-use)."""
+    jti = payload.get("jti")
+    if not jti:
+        return
+    ttl = int(payload.get("exp", 0) - time.time())
+    if ttl > 0:
+        cache.set(_BLACKLIST_PREFIX + jti, 1, ttl)

@@ -27,6 +27,12 @@ const T = {
     token_none: 'هنوز توکنی ذخیره نشده است.',
     chat_hint: 'فایل‌های پشتیبان به این چت ارسال می‌شوند. برای گرفتن شناسه، در آن چت به ربات بک‌آپ /id بفرستید.',
     bots_saved: 'ذخیره شد. برای اعمال توکن جدید، کانتینر ربات ظرف یک دقیقه به‌روز می‌شود (در صورت نیاز ری‌استارت کنید).',
+    email_title: 'ارسال ایمیل', email_host: 'میزبان', email_from: 'فرستنده',
+    email_relay_on: 'رله فعال است', email_relay_off: 'رله تنظیم نشده — ایمیل خارجی ارسال نمی‌شود',
+    email_ready: 'آمادهٔ ارسال بیرونی', email_not_ready: 'ارسال بیرونی فعال نیست',
+    email_relay_hint: 'اطلاعات رله در فایل .env تنظیم می‌شود (SMTP_RELAY_*) — راهنما: docs/email-relay.md',
+    email_test_to: 'ارسال ایمیل آزمایشی به', email_send_test: 'ارسال آزمایشی',
+    email_verif_on: 'تأیید ایمیل الزامی است', email_verif_off: 'تأیید ایمیل اختیاری است',
   },
   en: {
     panel_intro: 'Enter the Pasargad panel admin login here. The password is stored encrypted and never shown again.',
@@ -51,6 +57,12 @@ const T = {
     token_none: 'No token stored yet.',
     chat_hint: 'Backups are sent to this chat. Send /id to the backup bot there to get the id.',
     bots_saved: 'Saved. The bot container picks up a new token within a minute (restart it if needed).',
+    email_title: 'Email delivery', email_host: 'Host', email_from: 'From',
+    email_relay_on: 'Relay configured', email_relay_off: 'No relay — external email will not be delivered',
+    email_ready: 'Ready for external delivery', email_not_ready: 'External delivery not active',
+    email_relay_hint: 'Relay credentials are set in .env (SMTP_RELAY_*) — see docs/email-relay.md',
+    email_test_to: 'Send a test email to', email_send_test: 'Send test',
+    email_verif_on: 'Email verification is required', email_verif_off: 'Email verification is optional',
   },
 }
 
@@ -217,6 +229,77 @@ export function PanelConnection() {
           </button>
         </div>
       </form>
+
+      <EmailCard s={s} />
+    </div>
+  )
+}
+
+function EmailCard({ s }) {
+  const [st, setSt] = useState(null)
+  const [to, setTo] = useState('')
+  const [sending, setSending] = useState(false)
+  const [msg, setMsg] = useState(null)
+
+  useEffect(() => {
+    api.get('/admin/integrations/email/').then((r) => setSt(r.data)).catch(() => setSt({ error: true }))
+  }, [])
+
+  const sendTest = async () => {
+    setSending(true); setMsg(null)
+    try {
+      const r = await api.post('/admin/integrations/email/', { to })
+      setMsg({ kind: r.data.ok ? 'success' : 'danger', text: r.data.detail })
+    } catch (e) {
+      setMsg({ kind: 'danger', text: apiError(e) })
+    } finally { setSending(false) }
+  }
+
+  if (!st) return <div className="card"><Spinner /></div>
+  if (st.error) return null
+
+  const dot = (ok) => (
+    <span className="inline-block h-2 w-2 shrink-0 rounded-full"
+      style={{ background: ok ? 'var(--c-success)' : 'var(--c-danger)' }} />
+  )
+
+  return (
+    <div className="card space-y-3">
+      <div className="font-bold">{s.email_title}</div>
+
+      <div className="space-y-1.5 text-sm">
+        <div className="flex items-center gap-2">
+          {dot(st.external_delivery_ready)}
+          <span>{st.external_delivery_ready ? s.email_ready : s.email_not_ready}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          {dot(st.relay_configured)}
+          <span className="text-muted">
+            {st.relay_configured ? `${s.email_relay_on} — ${st.relay_host}` : s.email_relay_off}
+          </span>
+        </div>
+        <div className="text-xs text-muted">
+          {s.email_host}: <span dir="ltr">{st.host || '—'}:{st.port}</span> · {s.email_from}: <span dir="ltr">{st.from_address}</span>
+        </div>
+        <div className="text-xs text-muted">
+          {st.verification_required ? s.email_verif_on : s.email_verif_off}
+        </div>
+        <p className="text-xs text-muted">{s.email_relay_hint}</p>
+      </div>
+
+      {msg && <Alert kind={msg.kind}>{msg.text}</Alert>}
+
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="flex-1" style={{ minWidth: '12rem' }}>
+          <Field label={s.email_test_to}>
+            <input className="input" dir="ltr" type="email" placeholder="you@example.com"
+              value={to} onChange={(e) => setTo(e.target.value)} />
+          </Field>
+        </div>
+        <button type="button" className="btn-ghost text-sm" onClick={sendTest} disabled={sending || !to}>
+          {sending ? '…' : s.email_send_test}
+        </button>
+      </div>
     </div>
   )
 }

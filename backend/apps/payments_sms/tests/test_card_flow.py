@@ -125,3 +125,64 @@ def test_cards_endpoint_lists_active(user):
     r = client.get("/api/v1/payments/cards/")
     assert r.status_code == 200
     assert len(r.data["results"]) == 1
+
+
+# --- receipt file access control (ReceiptFileView) -----------------------
+def _pending_payment(user, order):
+    from apps.payments_sms.services import submit_receipt
+    submit_receipt(order=order, image=_png(), user=user)
+    return Payment.objects.get(order=order)
+
+
+def test_receipt_file_served_to_owner(user, order):
+    p = _pending_payment(user, order)
+    c = APIClient(); c.force_authenticate(user)
+    r = c.get(f"/api/v1/payments/{p.id}/receipt/")
+    assert r.status_code == 200
+    assert r["Content-Type"].startswith("image/")
+
+
+def test_receipt_file_hidden_from_other_users(user, order):
+    p = _pending_payment(user, order)
+    mallory = User.objects.create_user("mallory2", "Str0ngPass!")
+    c = APIClient(); c.force_authenticate(mallory)
+    assert c.get(f"/api/v1/payments/{p.id}/receipt/").status_code == 404
+
+
+def test_receipt_file_requires_auth(user, order):
+    p = _pending_payment(user, order)
+    assert APIClient().get(f"/api/v1/payments/{p.id}/receipt/").status_code in (401, 403)
+
+
+def test_receipt_file_served_to_staff(user, order, django_user_model):
+    p = _pending_payment(user, order)
+    staff = django_user_model.objects.create_user("op", "Str0ngPass!", is_staff=True)
+    c = APIClient(); c.force_authenticate(staff)
+    assert c.get(f"/api/v1/payments/{p.id}/receipt/").status_code == 200
+
+
+def test_receipt_file_served_to_panel_operator_with_perm(user, order):
+    from apps.accounts.models import Permission, Role, Staff
+    from apps.adminpanel.tokens import issue_tokens
+    p = _pending_payment(user, order)
+    role = Role.objects.create(name="ops")
+    role.permissions.add(Permission.objects.create(code="payment.view", name="v"))
+    op = Staff(username="viewer", role=role); op.set_password("x"); op.save()
+    c = APIClient()
+    c.credentials(HTTP_AUTHORIZATION=f"Bearer {issue_tokens(op)['access']}")
+    assert c.get(f"/api/v1/payments/{p.id}/receipt/").status_code == 200
+
+    noperm = Staff(username="noperm", role=Role.objects.create(name="empty"))
+    noperm.set_password("x"); noperm.save()
+    c2 = APIClient()
+    c2.credentials(HTTP_AUTHORIZATION=f"Bearer {issue_tokens(noperm)['access']}")
+    assert c2.get(f"/api/v1/payments/{p.id}/receipt/").status_code == 404
+
+
+def test_receipt_url_is_not_a_public_media_path(user, order):
+    p = _pending_payment(user, order)
+    c = APIClient(); c.force_authenticate(user)
+    from apps.payments_sms.serializers import PaymentSerializer
+    data = PaymentSerializer(p).data
+    assert data["receipt_url"] == f"/api/v1/payments/{p.id}/receipt/"
+    assert "receipt_image" not in data

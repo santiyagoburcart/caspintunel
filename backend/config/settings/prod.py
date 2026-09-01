@@ -17,3 +17,12 @@ if not FIELD_ENCRYPTION_KEY:  # noqa: F405
     raise RuntimeError("FIELD_ENCRYPTION_KEY must be set in production.")
 if SECRET_KEY == "dev-insecure-change-me":  # noqa: F405
     raise RuntimeError("SECRET_KEY must be set in production.")
+
+# No mail host configured -> don't let anything attempt a doomed SMTP connect.
+# Every feature already tolerates "email unavailable"; this just makes it explicit.
+if not EMAIL_HOST:  # noqa: F405
+    EMAIL_BACKEND = "django.core.mail.backends.dummy.EmailBackend"
+
+# Receipts: nginx serves the file (via an `internal` location) after Django has
+# authorised the request. Override to False if you don't run behind our nginx.
+SERVE_MEDIA_VIA_XACCEL = env.bool("SERVE_MEDIA_VIA_XACCEL", default=True)

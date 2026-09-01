@@ -166,6 +166,9 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
+# When True, protected media (receipts) is handed to nginx via X-Accel-Redirect
+# instead of streamed by Django. prod.py turns this on.
+SERVE_MEDIA_VIA_XACCEL = env.bool("SERVE_MEDIA_VIA_XACCEL", default=False)
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
@@ -269,6 +272,12 @@ EMAIL_HOST_PASSWORD = env("EMAIL_PASSWORD", default="")
 EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
 EMAIL_TIMEOUT = 10
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default=f"no-reply@{DOMAIN}")
+
+# Outbound relay for the mailserver container (hosts that block port 25). These
+# are consumed by docker-compose -> docker-mailserver's RELAY_* vars, not by
+# Django directly; exposed here only so the admin panel can report the state.
+SMTP_RELAY_HOST = env("SMTP_RELAY_HOST", default="")
+SMTP_RELAY_PORT = env.int("SMTP_RELAY_PORT", default=587)
 
 # ---------------------------------------------------------------------------
 # External services (also overridable from panel settings later)

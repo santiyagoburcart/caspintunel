@@ -5,6 +5,7 @@ from .views import (
     PaymentApproveView,
     PaymentPendingListView,
     PaymentRejectView,
+    ReceiptFileView,
     ReceiptUploadView,
     SmsInboundView,
     SmsPingView,
@@ -16,6 +17,7 @@ urlpatterns = [
     path("cards/", BankCardListView.as_view(), name="cards"),
     path("receipt/", ReceiptUploadView.as_view(), name="receipt"),
     path("pending/", PaymentPendingListView.as_view(), name="pending"),
+    path("<int:pk>/receipt/", ReceiptFileView.as_view(), name="receipt-file"),
     path("<int:pk>/approve/", PaymentApproveView.as_view(), name="approve"),
     path("<int:pk>/reject/", PaymentRejectView.as_view(), name="reject"),
     # Android SMS app

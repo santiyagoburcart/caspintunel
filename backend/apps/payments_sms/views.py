@@ -1,3 +1,7 @@
+import mimetypes
+
+from django.conf import settings
+from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
@@ -6,6 +10,11 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from rest_framework.authentication import SessionAuthentication
+from rest_framework_simplejwt.authentication import JWTAuthentication
+
+from apps.accounts.models import Staff
+from apps.adminpanel.permissions import StaffJWTAuthentication
 from apps.orders.models import Order
 
 from .authentication import IsSmsDevice, SmsDeviceAuthentication
@@ -64,6 +73,53 @@ class PaymentPendingListView(generics.ListAPIView):
             .select_related("order", "order__user", "bank_card")
             .order_by("created_at")
         )
+
+
+class ReceiptFileView(APIView):
+    """Serve a payment receipt image to its owner (customer) or to a panel
+    operator with `payment.view` only.
+
+    In prod (`SERVE_MEDIA_VIA_XACCEL`) hands off to nginx via X-Accel-Redirect;
+    in dev it streams the file directly. Either way the media path is never a
+    public, guessable URL — access is checked here first."""
+
+    authentication_classes = [
+        StaffJWTAuthentication,
+        JWTAuthentication,
+        SessionAuthentication,
+    ]
+    permission_classes = [permissions.AllowAny]  # authorised explicitly below
+
+    def get(self, request, pk):
+        payment = get_object_or_404(
+            Payment.objects.select_related("order", "order__user"), pk=pk
+        )
+        user = request.user
+        if isinstance(user, Staff):
+            allowed = user.is_superadmin or user.has_perm("payment.view")
+        elif getattr(user, "is_authenticated", False):
+            allowed = payment.order.user_id == user.id or getattr(user, "is_staff", False)
+        else:
+            return Response({"detail": "authentication required"}, status=401)
+        if not allowed or not payment.receipt_image:
+            raise Http404
+
+        name = payment.receipt_image.name  # e.g. "receipts/2026/09/foo.jpg"
+        ctype = mimetypes.guess_type(name)[0] or "application/octet-stream"
+
+        if getattr(settings, "SERVE_MEDIA_VIA_XACCEL", False):
+            resp = HttpResponse(content_type=ctype)
+            resp["X-Accel-Redirect"] = f"/_protected_media/{name}"
+            resp["Content-Disposition"] = "inline"
+            return resp
+        try:
+            fh = payment.receipt_image.open("rb")
+        except FileNotFoundError as exc:
+            raise Http404 from exc
+        resp = FileResponse(fh, content_type=ctype)
+        resp["Content-Disposition"] = "inline"
+        resp["Cache-Control"] = "private, max-age=0, no-store"
+        return resp
 
 
 class PaymentApproveView(APIView):

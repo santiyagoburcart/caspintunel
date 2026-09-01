@@ -9,7 +9,7 @@ from rest_framework.views import APIView
 from apps.accounts.models import Staff
 
 from ..permissions import StaffJWTAuthentication
-from ..tokens import decode, issue_tokens
+from ..tokens import decode, issue_tokens, revoke_refresh
 
 
 class StaffLoginSerializer(serializers.Serializer):
@@ -52,6 +52,7 @@ class StaffRefreshView(APIView):
         staff = Staff.objects.filter(pk=payload["staff_id"], is_active=True).first()
         if not staff:
             return Response({"detail": "staff account not found or disabled"}, status=401)
+        revoke_refresh(payload)  # rotation — the presented refresh token is now spent
         return Response(issue_tokens(staff))
 
 
