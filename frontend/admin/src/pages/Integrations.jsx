@@ -1,15 +1,70 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { api, apiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 import { Alert, Field, Spinner } from '../components/ui'
 
-/* ------------------------------------------------------------------ *
- *  Pasargad Panel  —  /panel/#/panel-link                            *
- * ------------------------------------------------------------------ */
+const T = {
+  fa: {
+    panel_intro: 'اطلاعات ورود پنل پاسارگارد را اینجا وارد کنید. رمز عبور رمزنگاری‌شده ذخیره می‌شود و دیگر نمایش داده نمی‌شود.',
+    base_url: 'آدرس پایه پنل (Base URL)', admin_user: 'نام کاربری ادمین پنل',
+    admin_pass: 'رمز عبور ادمین پنل', sub_url: 'آدرس پایهٔ اشتراک (اختیاری)',
+    verify_ssl: 'بررسی گواهی SSL پنل', panel_active: 'این پنل فعال است',
+    unchanged: '•••••••• (بدون تغییر)',
+    pass_stored: 'رمزی ذخیره شده است؛ برای تغییر، رمز جدید را وارد کنید.',
+    pass_none: 'هنوز رمزی ذخیره نشده است.',
+    saved: 'ذخیره شد.', save: 'ذخیره', test: 'تست اتصال',
+    groups: 'گروه‌های پیش‌فرض پنل', fetch_groups: 'دریافت گروه‌ها از پنل',
+    fetching: 'در حال دریافت…',
+    groups_hint: 'وقتی یک پلن گروهی تعیین نکند، این گروه‌ها استفاده می‌شوند.',
+    groups_none_fetched: 'برای انتخاب از روی نام گروه‌ها، دکمهٔ «دریافت گروه‌ها از پنل» را بزنید. شناسه‌های ذخیره‌شدهٔ فعلی:',
+    groups_empty: 'هیچ شناسه‌ای انتخاب نشده است.',
+    group_word: 'گروه',
+    bots_intro: 'هر ربات توکن جداگانه دارد. توکن‌ها رمزنگاری‌شده ذخیره می‌شوند و نمایش داده نمی‌شوند.',
+    sales_bot: 'ربات فروش', backup_bot: 'ربات بک‌آپ', active: 'فعال',
+    bot_token: 'توکن ربات (BotFather)', proxy: 'پروکسی (اختیاری)',
+    chat_id: 'شناسهٔ چت بک‌آپ (chat_id)',
+    token_stored: 'توکنی ذخیره شده است؛ برای تغییر، توکن جدید را وارد کنید.',
+    token_none: 'هنوز توکنی ذخیره نشده است.',
+    chat_hint: 'فایل‌های پشتیبان به این چت ارسال می‌شوند. برای گرفتن شناسه، در آن چت به ربات بک‌آپ /id بفرستید.',
+    bots_saved: 'ذخیره شد. برای اعمال توکن جدید، کانتینر ربات ظرف یک دقیقه به‌روز می‌شود (در صورت نیاز ری‌استارت کنید).',
+  },
+  en: {
+    panel_intro: 'Enter the Pasargad panel admin login here. The password is stored encrypted and never shown again.',
+    base_url: 'Panel Base URL', admin_user: 'Panel admin username',
+    admin_pass: 'Panel admin password', sub_url: 'Subscription base URL (optional)',
+    verify_ssl: 'Verify panel SSL certificate', panel_active: 'Panel is active',
+    unchanged: '•••••••• (unchanged)',
+    pass_stored: 'A password is stored; type a new one only to change it.',
+    pass_none: 'No password stored yet.',
+    saved: 'Saved.', save: 'Save', test: 'Test connection',
+    groups: 'Default panel groups', fetch_groups: 'Fetch groups from panel',
+    fetching: 'Fetching…',
+    groups_hint: 'Used whenever a plan does not set its own groups.',
+    groups_none_fetched: 'Click “Fetch groups from panel” to pick them by name. Currently saved ids:',
+    groups_empty: 'No ids selected.',
+    group_word: 'group',
+    bots_intro: 'Each bot has its own token. Tokens are stored encrypted and never shown.',
+    sales_bot: 'Sales bot', backup_bot: 'Backup bot', active: 'Active',
+    bot_token: 'Bot token (BotFather)', proxy: 'Proxy (optional)',
+    chat_id: 'Backup chat_id',
+    token_stored: 'A token is stored; type a new one only to change it.',
+    token_none: 'No token stored yet.',
+    chat_hint: 'Backups are sent to this chat. Send /id to the backup bot there to get the id.',
+    bots_saved: 'Saved. The bot container picks up a new token within a minute (restart it if needed).',
+  },
+}
+
+/* ================================================================== *
+ *  Pasargad Panel  —  /panel/panel-link                              *
+ * ================================================================== */
 export function PanelConnection() {
   const { t, lang } = useI18n()
+  const s = T[lang] || T.fa
   const [cfg, setCfg] = useState(null)
   const [form, setForm] = useState(null)
+  const [selected, setSelected] = useState([])       // chosen group ids
+  const [groups, setGroups] = useState(null)         // [{id,name}] once fetched
+  const [fetching, setFetching] = useState(false)
   const [msg, setMsg] = useState(null)
   const [err, setErr] = useState('')
   const [testing, setTesting] = useState(false)
@@ -17,13 +72,13 @@ export function PanelConnection() {
   const load = () =>
     api.get('/admin/integrations/panel/').then((r) => {
       setCfg(r.data)
+      setSelected(r.data.default_group_ids || [])
       setForm({
         base_url: r.data.base_url || '',
         admin_username: r.data.admin_username || '',
         admin_password: '',
         subscription_base_url: r.data.subscription_base_url || '',
         verify_ssl: r.data.verify_ssl ?? true,
-        default_group_ids: (r.data.default_group_ids || []).join(', '),
         is_active: r.data.is_active ?? true,
       })
     }).catch(() => setCfg({ error: true }))
@@ -31,19 +86,35 @@ export function PanelConnection() {
   useEffect(() => { load() }, [])
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }))
+  const toggleGroup = (id) =>
+    setSelected((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]))
+
+  // union of fetched groups + any saved id the panel didn't return
+  const groupRows = useMemo(() => {
+    if (!groups) return null
+    const byId = new Map(groups.map((g) => [g.id, g.name]))
+    selected.forEach((id) => { if (!byId.has(id)) byId.set(id, `${s.group_word} ${id}`) })
+    return [...byId.entries()].map(([id, name]) => ({ id, name })).sort((a, b) => a.id - b.id)
+  }, [groups, selected, s.group_word])
+
+  const fetchGroups = async () => {
+    setFetching(true); setErr(''); setMsg(null)
+    try {
+      const r = await api.get('/admin/integrations/panel/groups/')
+      setGroups(r.data.groups || [])
+    } catch (e2) {
+      setMsg({ kind: 'danger', text: apiError(e2) })
+    } finally { setFetching(false) }
+  }
 
   const save = async (e) => {
     e.preventDefault()
     setErr(''); setMsg(null)
-    const body = {
-      ...form,
-      default_group_ids: form.default_group_ids
-        .split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !Number.isNaN(n)),
-    }
+    const body = { ...form, default_group_ids: selected }
     if (!body.admin_password) delete body.admin_password
     try {
       await api.put('/admin/integrations/panel/', body)
-      setMsg({ kind: 'success', text: 'ذخیره شد.' })
+      setMsg({ kind: 'success', text: s.saved })
       load()
     } catch (e2) { setErr(apiError(e2)) }
   }
@@ -64,11 +135,7 @@ export function PanelConnection() {
     <div className="space-y-4">
       <div>
         <h1 className="text-lg font-bold">{t('panel_link')}</h1>
-        <p className="mt-1 text-sm text-muted">
-          {lang === 'fa'
-            ? 'اطلاعات ورود پنل پاسارگارد را اینجا وارد کنید. رمز عبور رمزنگاری‌شده ذخیره می‌شود و دیگر نمایش داده نمی‌شود.'
-            : 'Enter the Pasargad panel admin login here. The password is stored encrypted and never shown again.'}
-        </p>
+        <p className="mt-1 text-sm text-muted">{s.panel_intro}</p>
       </div>
 
       <Alert>{err}</Alert>
@@ -76,49 +143,77 @@ export function PanelConnection() {
 
       <form onSubmit={save} className="card grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
-          <Field label={lang === 'fa' ? 'آدرس پایه پنل (Base URL)' : 'Panel Base URL'}>
+          <Field label={s.base_url}>
             <input className="input" dir="ltr" placeholder="https://panel.example.com" required
               value={form.base_url} onChange={(e) => set('base_url', e.target.value)} />
           </Field>
         </div>
-        <Field label={lang === 'fa' ? 'نام کاربری ادمین پنل' : 'Panel admin username'}>
+        <Field label={s.admin_user}>
           <input className="input" dir="ltr" required
             value={form.admin_username} onChange={(e) => set('admin_username', e.target.value)} />
         </Field>
-        <Field label={lang === 'fa' ? 'رمز عبور ادمین پنل' : 'Panel admin password'}>
+        <Field label={s.admin_pass}>
           <input className="input" dir="ltr" type="password" autoComplete="new-password"
-            placeholder={cfg.admin_password_set ? '•••••••• (بدون تغییر)' : ''}
+            placeholder={cfg.admin_password_set ? s.unchanged : ''}
             value={form.admin_password} onChange={(e) => set('admin_password', e.target.value)} />
           <span className="mt-1 block text-xs text-muted">
-            {cfg.admin_password_set
-              ? (lang === 'fa' ? 'رمزی ذخیره شده است؛ برای تغییر، رمز جدید را وارد کنید.'
-                               : 'A password is stored; type a new one only to change it.')
-              : (lang === 'fa' ? 'هنوز رمزی ذخیره نشده است.' : 'No password stored yet.')}
+            {cfg.admin_password_set ? s.pass_stored : s.pass_none}
           </span>
         </Field>
-        <Field label={lang === 'fa' ? 'آدرس پایهٔ اشتراک (اختیاری)' : 'Subscription base URL (optional)'}>
+        <Field label={s.sub_url}>
           <input className="input" dir="ltr"
             value={form.subscription_base_url} onChange={(e) => set('subscription_base_url', e.target.value)} />
         </Field>
-        <Field label={lang === 'fa' ? 'گروه‌های پیش‌فرض پنل (با کاما)' : 'Default panel group ids (comma-separated)'}>
-          <input className="input" dir="ltr" placeholder="5, 6, 8, 10"
-            value={form.default_group_ids} onChange={(e) => set('default_group_ids', e.target.value)} />
-        </Field>
+
+        {/* ---- panel groups: fetch-and-pick ---- */}
+        <div className="sm:col-span-2">
+          <div className="mb-1 flex flex-wrap items-center gap-2">
+            <span className="label mb-0">{s.groups}</span>
+            <button type="button" className="btn-ghost text-xs" onClick={fetchGroups} disabled={fetching}>
+              {fetching ? s.fetching : `⭳ ${s.fetch_groups}`}
+            </button>
+          </div>
+          <p className="mb-2 text-xs text-muted">{s.groups_hint}</p>
+
+          {!groupRows && (
+            <p className="text-sm">
+              {s.groups_none_fetched}{' '}
+              <span dir="ltr" className="font-mono">
+                {selected.length ? selected.join(', ') : s.groups_empty}
+              </span>
+            </p>
+          )}
+
+          {groupRows && (
+            <div className="grid gap-2 sm:grid-cols-2">
+              {groupRows.map((g) => (
+                <label key={g.id} className="flex items-center gap-2 rounded-xl border px-3 py-2 text-sm"
+                  style={{ borderColor: 'var(--c-border)' }}>
+                  <input type="checkbox" checked={selected.includes(g.id)} onChange={() => toggleGroup(g.id)} />
+                  <span className="truncate">{g.name}</span>
+                  <span dir="ltr" className="ms-auto shrink-0 text-xs text-muted">#{g.id}</span>
+                </label>
+              ))}
+              {groupRows.length === 0 && <p className="text-sm text-muted">—</p>}
+            </div>
+          )}
+        </div>
+
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={form.verify_ssl}
             onChange={(e) => set('verify_ssl', e.target.checked)} />
-          {lang === 'fa' ? 'بررسی گواهی SSL پنل' : 'Verify panel SSL certificate'}
+          {s.verify_ssl}
         </label>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={form.is_active}
             onChange={(e) => set('is_active', e.target.checked)} />
-          {lang === 'fa' ? 'این پنل فعال است' : 'Panel is active'}
+          {s.panel_active}
         </label>
 
-        <div className="flex gap-2 sm:col-span-2">
-          <button className="btn-primary text-sm">{t('save')}</button>
+        <div className="flex flex-wrap gap-2 sm:col-span-2">
+          <button className="btn-primary text-sm">{s.save}</button>
           <button type="button" className="btn-ghost text-sm" onClick={test} disabled={testing}>
-            {testing ? '…' : t('test_connection')}
+            {testing ? '…' : s.test}
           </button>
         </div>
       </form>
@@ -126,11 +221,12 @@ export function PanelConnection() {
   )
 }
 
-/* ------------------------------------------------------------------ *
- *  Telegram Bots  —  /panel/#/bots                                   *
- * ------------------------------------------------------------------ */
+/* ================================================================== *
+ *  Telegram Bots  —  /panel/bots                                     *
+ * ================================================================== */
 export function Bots() {
   const { t, lang } = useI18n()
+  const s = T[lang] || T.fa
   const [data, setData] = useState(null)
   const [sales, setSales] = useState(null)
   const [backup, setBackup] = useState(null)
@@ -167,9 +263,7 @@ export function Bots() {
         sales: clean(sales, false),
         backup: clean(backup, true),
       })
-      setMsg({ kind: 'success', text: lang === 'fa'
-        ? 'ذخیره شد. برای اعمال توکن جدید، کانتینر ربات ظرف یک دقیقه به‌روز می‌شود (در صورت نیاز ری‌استارت کنید).'
-        : 'Saved. The bot container picks up a new token within a minute (restart it if needed).' })
+      setMsg({ kind: 'success', text: s.bots_saved })
       load()
     } catch (e2) { setErr(apiError(e2)) }
   }
@@ -180,36 +274,22 @@ export function Bots() {
     <div className="space-y-4">
       <div>
         <h1 className="text-lg font-bold">{t('bots')}</h1>
-        <p className="mt-1 text-sm text-muted">
-          {lang === 'fa'
-            ? 'هر ربات توکن جداگانه دارد. توکن‌ها رمزنگاری‌شده ذخیره می‌شوند و نمایش داده نمی‌شوند.'
-            : 'Each bot has its own token. Tokens are stored encrypted and never shown.'}
-        </p>
+        <p className="mt-1 text-sm text-muted">{s.bots_intro}</p>
       </div>
 
       <Alert>{err}</Alert>
       {msg && <Alert kind={msg.kind}>{msg.text}</Alert>}
 
       <form onSubmit={save} className="space-y-4">
-        {sales && (
-          <BotCard
-            title={lang === 'fa' ? 'ربات فروش' : 'Sales bot'}
-            row={data.sales} value={sales} onChange={setSales} lang={lang}
-          />
-        )}
-        {backup && (
-          <BotCard
-            title={lang === 'fa' ? 'ربات بک‌آپ' : 'Backup bot'}
-            row={data.backup} value={backup} onChange={setBackup} lang={lang} showChatId
-          />
-        )}
-        <button className="btn-primary text-sm">{t('save')}</button>
+        {sales && <BotCard title={s.sales_bot} row={data.sales} value={sales} onChange={setSales} s={s} />}
+        {backup && <BotCard title={s.backup_bot} row={data.backup} value={backup} onChange={setBackup} s={s} showChatId />}
+        <button className="btn-primary text-sm">{s.save}</button>
       </form>
     </div>
   )
 }
 
-function BotCard({ title, row, value, onChange, lang, showChatId }) {
+function BotCard({ title, row, value, onChange, s, showChatId }) {
   const set = (k, v) => onChange({ ...value, [k]: v })
   return (
     <div className="card grid gap-4 sm:grid-cols-2">
@@ -218,36 +298,29 @@ function BotCard({ title, row, value, onChange, lang, showChatId }) {
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={value.is_active}
             onChange={(e) => set('is_active', e.target.checked)} />
-          {lang === 'fa' ? 'فعال' : 'Active'}
+          {s.active}
         </label>
       </div>
 
-      <Field label={lang === 'fa' ? 'توکن ربات (BotFather)' : 'Bot token (BotFather)'}>
+      <Field label={s.bot_token}>
         <input className="input" dir="ltr" type="password" autoComplete="new-password"
-          placeholder={row.token_set ? '•••••••• (بدون تغییر)' : '123456:ABC-DEF…'}
+          placeholder={row.token_set ? s.unchanged : '123456:ABC-DEF…'}
           value={value.token} onChange={(e) => set('token', e.target.value)} />
         <span className="mt-1 block text-xs text-muted">
-          {row.token_set
-            ? (lang === 'fa' ? 'توکنی ذخیره شده است؛ برای تغییر، توکن جدید را وارد کنید.'
-                             : 'A token is stored; type a new one only to change it.')
-            : (lang === 'fa' ? 'هنوز توکنی ذخیره نشده است.' : 'No token stored yet.')}
+          {row.token_set ? s.token_stored : s.token_none}
         </span>
       </Field>
 
-      <Field label={lang === 'fa' ? 'پروکسی (اختیاری)' : 'Proxy (optional)'}>
+      <Field label={s.proxy}>
         <input className="input" dir="ltr" placeholder="socks5://user:pass@host:port"
           value={value.proxy_url} onChange={(e) => set('proxy_url', e.target.value)} />
       </Field>
 
       {showChatId && (
-        <Field label={lang === 'fa' ? 'شناسهٔ چت بک‌آپ (chat_id)' : 'Backup chat_id'}>
+        <Field label={s.chat_id}>
           <input className="input" dir="ltr" inputMode="numeric" placeholder="-1001234567890"
             value={value.backup_chat_id} onChange={(e) => set('backup_chat_id', e.target.value)} />
-          <span className="mt-1 block text-xs text-muted">
-            {lang === 'fa'
-              ? 'فایل‌های پشتیبان به این چت ارسال می‌شوند. برای گرفتن شناسه، در آن چت به ربات بک‌آپ /id بفرستید.'
-              : 'Backups are sent to this chat. Send /id to the backup bot there to get the id.'}
-          </span>
+          <span className="mt-1 block text-xs text-muted">{s.chat_hint}</span>
         </Field>
       )}
     </div>

@@ -6,15 +6,22 @@ const jfTime = new Intl.DateTimeFormat('fa-IR-u-ca-persian-nu-latn', {
   year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
 })
 
-export function jalali(value, withTime = false) {
+const gEn = new Intl.DateTimeFormat('en-GB', { year: 'numeric', month: '2-digit', day: '2-digit' })
+const gEnTime = new Intl.DateTimeFormat('en-GB', {
+  year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
+})
+
+export function jalali(value, withTime = false, lang = 'fa') {
   if (!value) return '—'
   const d = new Date(value)
+  if (lang === 'en') return (withTime ? gEnTime : gEn).format(d)
   return (withTime ? jfTime : jf).format(d)
 }
 
-export function toman(n) {
+export function toman(n, lang = 'fa') {
   if (n == null) return '—'
-  return Number(n).toLocaleString('en-US') + ' تومان'
+  const v = Number(n).toLocaleString('en-US')
+  return lang === 'en' ? `${v} T` : `${v} تومان`
 }
 
 const GB = 1024 ** 3

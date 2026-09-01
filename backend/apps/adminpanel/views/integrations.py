@@ -86,6 +86,30 @@ class PanelTestView(AdminAPIView):
         return Response({"ok": True, "detail": "اتصال با پنل برقرار است."})
 
 
+class PanelGroupsView(AdminAPIView):
+    """GET — the groups the configured panel exposes (id + name), live."""
+
+    perms_map = {"GET": ["settings.manage"]}
+
+    @extend_schema(request=None, responses=dict,
+                   summary="List the panel's groups (live, from GET /api/groups)")
+    def get(self, request):
+        panel = _panel_row()
+        if not panel or not panel.base_url or not panel.admin_password_enc:
+            return Response({"detail": "پنل هنوز کامل پیکربندی نشده است."}, status=400)
+        try:
+            raw = client_for(panel).list_groups()
+        except PanelError as exc:
+            return Response({"detail": str(exc)}, status=502)
+        except Exception as exc:  # noqa: BLE001
+            return Response({"detail": str(exc)}, status=502)
+        groups = [
+            {"id": g["id"], "name": g.get("name") or g.get("title") or f"group {g['id']}"}
+            for g in raw if isinstance(g, dict) and g.get("id") is not None
+        ]
+        return Response({"groups": groups})
+
+
 class TelegramConfigView(AdminAPIView):
     """GET / PUT both bot rows at once, keyed by bot type."""
 

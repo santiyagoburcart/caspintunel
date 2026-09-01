@@ -63,7 +63,11 @@ export default function Plans() {
       setEdit(null); load()
     } catch (e2) { setErr(apiError(e2)) }
   }
-  const del = async (id) => { if (confirm('حذف شود؟')) { await api.delete(`/admin/plans/${id}/`); load() } }
+  const del = async (id) => {
+    if (confirm(lang === 'fa' ? 'حذف شود؟' : 'Delete this plan?')) {
+      await api.delete(`/admin/plans/${id}/`); load()
+    }
+  }
 
   if (rows === null) return <div className="grid place-items-center py-16"><Spinner /></div>
 
@@ -181,7 +185,7 @@ export default function Plans() {
               : r.data_limit ? `${r.data_limit / GB} GB` : t('unlimited')) },
           { key: 'duration_days', label: lang === 'fa' ? 'مدت' : 'Duration', render: (r) => r.duration_days || '∞' },
           { key: 'price', label: lang === 'fa' ? 'قیمت' : 'Price',
-            render: (r) => (r.type === 'custom_volume' ? `${toman(r.price_per_gb)} / GB` : toman(r.price)) },
+            render: (r) => (r.type === 'custom_volume' ? `${toman(r.price_per_gb, lang)} / GB` : toman(r.price, lang)) },
           { key: 'is_active', label: lang === 'fa' ? 'فعال' : 'Active', render: (r) => (r.is_active ? '✓' : '—') },
           { key: 'act', label: '', render: (r) => (
             <span className="flex gap-1">

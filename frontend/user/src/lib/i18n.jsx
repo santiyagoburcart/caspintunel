@@ -14,6 +14,8 @@ const dict = {
     forgot: 'فراموشی رمز', reset: 'بازیابی', verify_email: 'تأیید ایمیل',
     referral_count: 'تعداد معرفی‌ها', no_services: 'هنوز سرویسی ندارید',
     submit: 'ثبت', copy: 'کپی', copied: 'کپی شد',
+    duration: 'مدت', days: 'روز', no_expiry: 'بدون انقضا', selectable: 'انتخابی',
+    discount: 'تخفیف', per_gb: 'هر گیگ', menu: 'منو', close: 'بستن',
   },
   en: {
     login: 'Login', register: 'Register', logout: 'Logout', email: 'Email', username: 'Username',
@@ -28,6 +30,8 @@ const dict = {
     forgot: 'Forgot password', reset: 'Reset', verify_email: 'Verify email',
     referral_count: 'Referrals', no_services: 'You have no services yet',
     submit: 'Submit', copy: 'Copy', copied: 'Copied',
+    duration: 'Duration', days: 'days', no_expiry: 'No expiry', selectable: 'Selectable',
+    discount: 'Discount', per_gb: 'per GB', menu: 'Menu', close: 'Close',
   },
 }
 

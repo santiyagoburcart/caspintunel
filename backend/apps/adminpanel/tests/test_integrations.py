@@ -1,10 +1,18 @@
 import pytest
+import responses
 
 from apps.adminpanel.tests.conftest import make_staff
 from apps.panel.models import Panel
 from apps.telegram.models import BotType, TelegramConfig
 
 pytestmark = pytest.mark.django_db
+
+
+def _panel():
+    return Panel.objects.create(
+        name="Pasargad", base_url="https://panel.test", admin_username="root",
+        admin_password_enc="pw", is_active=True,
+    )
 
 
 @pytest.fixture
@@ -39,6 +47,32 @@ def test_panel_blank_password_keeps_stored_one(boss):
     panel = Panel.objects.get()
     assert panel.base_url == "https://b.test"
     assert panel.admin_password_enc == "keepme"
+
+
+@responses.activate
+def test_panel_groups_lists_id_and_name(boss):
+    _panel()
+    responses.add(responses.POST, "https://panel.test/api/admin/token",
+                  json={"access_token": "t"}, status=200)
+    responses.add(responses.GET, "https://panel.test/api/groups",
+                  json={"groups": [{"id": 5, "name": "Germany"}, {"id": 8, "name": "France"}]},
+                  status=200)
+    r = boss.get("/api/v1/admin/integrations/panel/groups/")
+    assert r.status_code == 200
+    assert r.data["groups"] == [{"id": 5, "name": "Germany"}, {"id": 8, "name": "France"}]
+
+
+def test_panel_groups_needs_configured_panel(boss):
+    r = boss.get("/api/v1/admin/integrations/panel/groups/")
+    assert r.status_code == 400
+
+
+@responses.activate
+def test_panel_groups_reports_panel_failure(boss):
+    _panel()
+    responses.add(responses.POST, "https://panel.test/api/admin/token", status=401)
+    r = boss.get("/api/v1/admin/integrations/panel/groups/")
+    assert r.status_code == 502
 
 
 def test_panel_config_requires_settings_manage(staff_client, perms):

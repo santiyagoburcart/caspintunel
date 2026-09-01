@@ -24,16 +24,16 @@ export default function Store() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {plans.map((p) => (
           <div key={p.id} className="card flex flex-col gap-2">
-            <div className="font-bold">{p.name_fa}</div>
+            <div className="font-bold">{(lang === 'fa' ? p.name_fa : p.name_en) || p.name_fa}</div>
             <div className="whitespace-pre-line text-sm text-muted">{(lang === 'fa' ? p.desc_fa : p.desc_en) || p.desc_fa}</div>
             <ul className="mt-1 space-y-1 text-sm">
-              <li>حجم: {p.type === 'custom_volume' ? 'انتخابی' : p.data_limit ? `${p.data_limit / GB} GB` : t('unlimited')}</li>
-              <li>مدت: {p.duration_days ? `${p.duration_days} روز` : 'بدون انقضا'}</li>
-              {p.discount_percent > 0 && <li className="text-success">تخفیف {p.discount_percent}%</li>}
+              <li>{t('volume')}: {p.type === 'custom_volume' ? t('selectable') : p.data_limit ? `${p.data_limit / GB} GB` : t('unlimited')}</li>
+              <li>{t('duration')}: {p.duration_days ? `${p.duration_days} ${t('days')}` : t('no_expiry')}</li>
+              {p.discount_percent > 0 && <li className="text-success">{t('discount')} {p.discount_percent}%</li>}
             </ul>
             <div className="mt-auto flex items-center justify-between pt-2">
               <span className="font-bold">
-                {p.type === 'custom_volume' ? `${toman(p.price_per_gb)} / GB` : toman(p.final_price)}
+                {p.type === 'custom_volume' ? `${toman(p.price_per_gb, lang)} / GB` : toman(p.final_price, lang)}
               </span>
               <button className="btn-primary text-sm" onClick={() => nav(`/checkout?plan=${p.id}`)}>{t('buy')}</button>
             </div>
