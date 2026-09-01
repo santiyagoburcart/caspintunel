@@ -61,14 +61,12 @@ services:
     ports: []
 
   nginx:
-    ports:
-      - "80:80"
-      - "443:443"
     volumes:
       - media_data:/var/www/media:ro
       - static_data:/var/www/static:ro
       - ./nginx/prod.conf:/etc/nginx/conf.d/caspintunel.conf:ro
-      - ./nginx/certs:/etc/nginx/certs:ro
+      - ./nginx/letsencrypt:/etc/letsencrypt
+      - ./nginx/certbot-webroot:/var/www/certbot
 
   phpmyadmin:
     ports: []

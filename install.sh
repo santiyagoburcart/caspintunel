@@ -22,7 +22,7 @@ if [ ! -f .env ]; then
   echo "==> creating .env"
   cp .env.example .env
   read -rp "Server public IP: " SERVER_IP
-  read -rp "Domain [caspin.skin]: " DOMAIN; DOMAIN=${DOMAIN:-caspin.skin}
+  read -rp "Domain [aicaspin.ir]: " DOMAIN; DOMAIN=${DOMAIN:-aicaspin.ir}
   read -rp "DB password: " DB_PASSWORD
   read -rp "DB root password: " DB_ROOT_PASSWORD
   read -rp "Panel base URL [https://pas.hunaex.shop]: " PANEL_URL; PANEL_URL=${PANEL_URL:-https://pas.hunaex.shop}

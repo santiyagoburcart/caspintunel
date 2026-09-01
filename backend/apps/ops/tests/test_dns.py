@@ -51,9 +51,9 @@ def test_configure_dns_dry_run(capsys, settings):
     from django.core.management import call_command
 
     settings.CLOUDFLARE_API_TOKEN = "test-token"
-    responses.add(responses.GET, f"{API}/zones", json=_ok([{"id": ZONE, "name": "caspin.skin"}]))
-    call_command("configure_dns", "--server-ip", "1.2.3.4", "--domain", "caspin.skin")
+    responses.add(responses.GET, f"{API}/zones", json=_ok([{"id": ZONE, "name": "aicaspin.ir"}]))
+    call_command("configure_dns", "--server-ip", "1.2.3.4", "--domain", "aicaspin.ir")
     out = capsys.readouterr().out
     assert "dry-run" in out
-    assert "mail.caspin.skin" in out
-    assert "_dmarc.caspin.skin" in out
+    assert "mail.aicaspin.ir" in out
+    assert "_dmarc.aicaspin.ir" in out

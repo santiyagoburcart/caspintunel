@@ -27,7 +27,7 @@ DEBUG = env.bool("DEBUG", default=False)
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 
 PROJECT_NAME = env("PROJECT_NAME", default="caspintunel")
-DOMAIN = env("DOMAIN", default="caspin.skin")
+DOMAIN = env("DOMAIN", default="aicaspin.ir")
 
 # Encryption key for sensitive model fields (panel password, tokens).
 FIELD_ENCRYPTION_KEY = env("FIELD_ENCRYPTION_KEY", default="")
@@ -268,7 +268,7 @@ EMAIL_HOST_USER = env("EMAIL_USER", default="")
 EMAIL_HOST_PASSWORD = env("EMAIL_PASSWORD", default="")
 EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
 EMAIL_TIMEOUT = 10
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-reply@caspin.skin")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default=f"no-reply@{DOMAIN}")
 
 # ---------------------------------------------------------------------------
 # External services (also overridable from panel settings later)
@@ -301,7 +301,7 @@ UPDATE_CHECK_URL = env(
 UPDATE_SENTINEL_PATH = env("UPDATE_SENTINEL_PATH", default="/app/backups/.update-requested")
 
 CLOUDFLARE_API_TOKEN = env("CLOUDFLARE_API_TOKEN", default="")
-CLOUDFLARE_ZONE = env("CLOUDFLARE_ZONE", default="caspin.skin")
+CLOUDFLARE_ZONE = env("CLOUDFLARE_ZONE", default=DOMAIN)
 
 GITHUB_TOKEN = env("GITHUB_TOKEN", default="")
 GITHUB_REPO = env("GITHUB_REPO", default="caspintunel")

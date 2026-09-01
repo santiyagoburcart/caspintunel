@@ -26,7 +26,7 @@ fi
 
 [ -d .git ] || { git init -q; git branch -M main; }
 git add -A
-git -c user.email="deploy@${DOMAIN:-caspin.skin}" -c user.name="caspintunel deploy" \
+git -c user.email="deploy@${DOMAIN:-aicaspin.ir}" -c user.name="caspintunel deploy" \
     commit -q -m "Deploy $(cat VERSION)" || echo "   (nothing to commit)"
 
 git remote remove origin 2>/dev/null || true

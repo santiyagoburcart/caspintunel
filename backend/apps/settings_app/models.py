@@ -48,7 +48,7 @@ class SiteConfig(models.Model):
 
     site_name_fa = models.CharField(max_length=120, default="کسپین تانل")
     site_name_en = models.CharField(max_length=120, default="caspintunel")
-    site_domain = models.CharField(max_length=120, default="caspin.skin")
+    site_domain = models.CharField(max_length=120, default="aicaspin.ir")
     logo = models.FileField(upload_to="branding/", null=True, blank=True)
     favicon = models.FileField(upload_to="branding/", null=True, blank=True)
     bot_description_fa = models.TextField(blank=True)

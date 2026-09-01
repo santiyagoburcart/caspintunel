@@ -118,15 +118,31 @@ services:
   nginx:
     build: ./nginx
     restart: unless-stopped
+    environment:
+      SSL_DOMAIN: ${DOMAIN:-}
+    # reload every 6h so renewed certs are picked up without a restart
+    command: sh -c "while :; do sleep 6h; nginx -s reload 2>/dev/null || true; done & exec nginx -g 'daemon off;'"
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - media_data:/var/www/media:ro
       - static_data:/var/www/static:ro
+      - ./nginx/letsencrypt:/etc/letsencrypt
+      - ./nginx/certbot-webroot:/var/www/certbot
     depends_on:
       - web
       - frontend_user
       - frontend_admin
+
+  certbot:
+    image: certbot/certbot:latest
+    restart: unless-stopped
+    volumes:
+      - ./nginx/letsencrypt:/etc/letsencrypt
+      - ./nginx/certbot-webroot:/var/www/certbot
+    # renew twice a day; nginx reloads every 6h and picks up new certs
+    entrypoint: ["sh", "-c", "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet || true; sleep 12h & wait $${!}; done"]
 
   phpmyadmin:
     image: phpmyadmin:5

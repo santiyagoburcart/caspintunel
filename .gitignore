@@ -60,3 +60,5 @@ backups/
 /erd.mermaid
 /build-spec.md
 /claude-code-prompts.md
+nginx/letsencrypt/
+nginx/certbot-webroot/

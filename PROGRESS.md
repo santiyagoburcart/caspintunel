@@ -172,6 +172,21 @@ Remaining optional work (not in any phase spec): native-Kotlin Android SMS app,
 self-hosted mail server (Postfix/Dovecot — DNS is ready, `EMAIL_HOST` wire-up
 pending), `telegram_stats` population, a few secondary admin screens.
 
+## Post-1.0 — domain switch to aicaspin.ir + direct TLS (2026-09-01)
+- `caspin.skin` has a Cloudflare ToS hold → switched the active domain to **`aicaspin.ir`**
+  (its own DNS/zone untouched). `.env` (`DOMAIN`/`ALLOWED_HOSTS`/`CORS`/`CSRF`/`PUBLIC_BASE_URL`/`CLOUDFLARE_ZONE`/`DEFAULT_FROM_EMAIL`),
+  `site_config.site_domain` (via `seed`, which now syncs it from `DOMAIN`), settings defaults,
+  `.env.example`, `install.sh` prompt, `configure_dns` — all → `aicaspin.ir`. `DynamicAllowedHostsMiddleware`
+  verified under prod settings: `aicaspin.ir` allowed, `caspin.skin` rejected. Migration `settings_app/0002`.
+- `aicaspin.ir` DNS provider = **Cloudflare** (`edna/otto.ns.cloudflare.com`, same account) — **not applied**
+  (awaiting user go-ahead). Needs: `A aicaspin.ir` + `A www` → `66.245.202.46` (proxied). `configure_dns --no-mail` added.
+- **Direct TLS**: `certbot` compose service + `scripts/init-letsencrypt.sh` (DNS preflight, webroot issuance,
+  nginx restart). nginx: ACME challenge location, `ssl.conf.template` + `40-ssl.sh` entrypoint that enables the
+  443 vhost only when a cert exists (missing cert never stops nginx), 6-hourly reload, HTTPS→`127.0.0.1:80` with
+  `X-Forwarded-Proto`. `nginx` service now maps `443` + `./nginx/letsencrypt` + `./nginx/certbot-webroot`.
+  **Cert not issued yet** — `aicaspin.ir` has no A record; run `init-letsencrypt.sh` after DNS propagates.
+- Stack up on HTTP (11 + certbot containers), 153/153 tests, no drift, deploy check clean.
+
 ---
 
 ## Session log

@@ -35,9 +35,11 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("--apply", action="store_true", help="write changes (default: dry-run)")
+        parser.add_argument("--no-mail", action="store_true",
+                            help="only the A/www records — skip MX/SPF/DKIM/DMARC")
         parser.add_argument("--server-ip", default=getattr(settings, "SERVER_IP", "") or None)
         parser.add_argument("--domain", default=getattr(settings, "CLOUDFLARE_ZONE", None)
-                            or getattr(settings, "DOMAIN", "caspin.skin"))
+                            or getattr(settings, "DOMAIN", "aicaspin.ir"))
         parser.add_argument("--dkim-selector", default="default")
 
     def handle(self, *args, **o):
@@ -57,20 +59,22 @@ class Command(BaseCommand):
         except CloudflareError as exc:
             raise CommandError(str(exc))
 
-        dkim_txt = self._ensure_dkim(selector, apply)
-
         plan = [
             dict(type="A", name=domain, content=ip, proxied=True),
             dict(type="A", name=f"www.{domain}", content=ip, proxied=True),
-            dict(type="A", name=f"mail.{domain}", content=ip, proxied=False),   # DNS-only
-            dict(type="MX", name=domain, content=f"mail.{domain}", priority=10),
-            dict(type="TXT", name=domain, content=f"v=spf1 mx a:mail.{domain} ~all",
-                 match_prefix="v=spf1"),
-            dict(type="TXT", name=f"_dmarc.{domain}", match_prefix="v=DMARC1",
-                 content=f"v=DMARC1; p=quarantine; rua=mailto:postmaster@{domain}; adkim=s; aspf=s"),
-            dict(type="TXT", name=f"{selector}._domainkey.{domain}", content=dkim_txt,
-                 match_prefix="v=DKIM1"),
         ]
+        if not o["no_mail"]:
+            dkim_txt = self._ensure_dkim(selector, apply)
+            plan += [
+                dict(type="A", name=f"mail.{domain}", content=ip, proxied=False),   # DNS-only
+                dict(type="MX", name=domain, content=f"mail.{domain}", priority=10),
+                dict(type="TXT", name=domain, content=f"v=spf1 mx a:mail.{domain} ~all",
+                     match_prefix="v=spf1"),
+                dict(type="TXT", name=f"_dmarc.{domain}", match_prefix="v=DMARC1",
+                     content=f"v=DMARC1; p=quarantine; rua=mailto:postmaster@{domain}; adkim=s; aspf=s"),
+                dict(type="TXT", name=f"{selector}._domainkey.{domain}", content=dkim_txt,
+                     match_prefix="v=DKIM1"),
+            ]
 
         self.stdout.write(f"zone {domain} ({zone[:8]}…) · server IP {ip} · {'APPLY' if apply else 'dry-run'}\n")
         for rec in plan:

@@ -137,8 +137,13 @@ class Command(BaseCommand):
             name="Midnight Aurora", defaults={"palette": MIDNIGHT_AURORA, "is_active": True}
         )
 
-        # --- site config (singleton) ---
-        SiteConfig.load()
+        # --- site config (singleton) — keep the domain in step with DOMAIN ---
+        site = SiteConfig.load()
+        domain = getattr(dj_settings, "DOMAIN", "") or ""
+        if domain and site.site_domain != domain:
+            site.site_domain = domain
+            site.save(update_fields=["site_domain", "updated_at"])
+            self.stdout.write(f"site_domain -> {domain}")
 
         # --- settings ---
         for key, value, vtype in SETTINGS_DEFAULTS:

@@ -20,37 +20,72 @@ certonly --standalone -d caspin.skin -d www.caspin.skin` then copy `fullchain.pe
 / `privkey.pem`) and add the `ssl_certificate` lines to `nginx/prod.conf`, or
 terminate TLS at Cloudflare (proxied A records) and keep origin on 80.
 
-## Changing the domain — no rebuild
+## Active domain
 
-The site domain lives in `site_config.site_domain` (panel → Branding). A change
-there is picked up within 60 s by `DynamicAllowedHostsMiddleware`, which adds the
-new host + `www.` to `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS` at runtime. The
-env `ALLOWED_HOSTS` stays as the always-valid baseline. Update the Cloudflare
-records with `manage.py configure_dns --apply --domain newdomain`.
+`DOMAIN` in `.env` is the active domain (currently **`aicaspin.ir`** — the
+`caspin.skin` zone has a Cloudflare ToS hold). `install.sh` / `seed` also set
+`site_config.site_domain` to it. Everything else derives at runtime:
+`ALLOWED_HOSTS` / `CORS` / `CSRF` / email links.
 
-## DNS + mail (Cloudflare)
+### Changing it — no rebuild
+1. `.env`: `DOMAIN=`, `ALLOWED_HOSTS=`, `CORS_ALLOWED_ORIGINS=`, `CSRF_TRUSTED_ORIGINS=`, `PUBLIC_BASE_URL=` → `docker compose up -d` (recreate, no build)
+2. panel → Branding, or `docker compose exec web python manage.py seed` → syncs `site_config.site_domain`
+3. `DynamicAllowedHostsMiddleware` also adds `site_config.site_domain` (+`www`) to
+   `ALLOWED_HOSTS` / `CSRF_TRUSTED_ORIGINS` at runtime (60 s cache), so the DB
+   value alone is enough for host validation even before an env edit.
+4. DNS: `configure_dns` (below) with the new zone.
+
+## DNS (Cloudflare)
 
 ```bash
-docker compose exec web python manage.py configure_dns            # dry-run
-docker compose exec web python manage.py configure_dns --apply
+docker compose exec web python manage.py configure_dns --no-mail          # dry-run, A + www only
+docker compose exec web python manage.py configure_dns --no-mail --apply
+docker compose exec web python manage.py configure_dns --apply            # + mail records, when mail is ready
 ```
 
-Records managed (existing VPN-node records are never touched):
+`--no-mail` writes only:
 
 | Type | Name | Value | Proxy |
 |---|---|---|---|
-| A | `caspin.skin`, `www` | server IP | proxied |
-| A | `mail` | server IP | **DNS-only** (SMTP needs the real IP) |
-| MX | `caspin.skin` | `mail.caspin.skin` (10) | — |
-| TXT | `caspin.skin` | `v=spf1 mx a:mail.caspin.skin ~all` | — |
+| A | `<domain>`, `www` | server IP | proxied (orange) |
+
+Full run adds (when the mail server is up):
+
+| Type | Name | Value | Proxy |
+|---|---|---|---|
+| A | `mail` | server IP | **DNS-only** (grey — SMTP needs the real IP) |
+| MX | `<domain>` | `mail.<domain>` (10) | — |
+| TXT | `<domain>` | `v=spf1 mx a:mail.<domain> ~all` | — |
 | TXT | `_dmarc` | `v=DMARC1; p=quarantine; …` | — |
 | TXT | `default._domainkey` | generated DKIM public key | — |
 
-The DKIM **private** key is written to `backend/mail-keys/default.private`
-(git-ignored, `chmod 600`). Point your mail server (OpenDKIM / docker-mailserver)
-at it with selector `default`. The self-hosted mail server itself (Postfix/Dovecot)
-is out of scope of this repo — wire `EMAIL_HOST=mail.caspin.skin` in `.env` once
-it is up; email is always sent gracefully (an outage never breaks the app).
+Existing VPN-node subdomain records are never touched. The DKIM **private** key
+is written to `backend/mail-keys/default.private` (git-ignored, `0600`) — point
+your mail server (OpenDKIM / docker-mailserver) at it, selector `default`. The
+mail server itself (Postfix/Dovecot) is out of scope; wire
+`EMAIL_HOST=mail.<domain>` in `.env` once it's up. Email is always sent
+gracefully — an outage never breaks the app.
+
+## TLS (Let's Encrypt, direct on the server)
+
+Since the site may not be behind Cloudflare's proxy, nginx terminates TLS with a
+Let's Encrypt cert. The plumbing is always present; the cert is issued once DNS
+resolves to the server:
+
+```bash
+./scripts/init-letsencrypt.sh            # aicaspin.ir + www, prod-safe cert
+./scripts/init-letsencrypt.sh --staging  # LE staging (rate-limit-free test)
+./scripts/init-letsencrypt.sh --prod     # against the production compose files
+```
+
+- nginx `40-ssl.sh` enables the HTTPS vhost (`conf.d/10-ssl.conf`, generated from
+  `ssl.conf.template`) **only when** `/etc/letsencrypt/live/<domain>/fullchain.pem`
+  exists — so a missing cert never stops nginx; HTTP keeps working.
+- the `certbot` service renews every 12 h; nginx reloads every 6 h to pick it up.
+- HTTPS block proxies to the plain-HTTP vhost on the same nginx (`127.0.0.1:80`)
+  so routing lives in one place; it sets `X-Forwarded-Proto: https`.
+- Cloudflare-proxied records also work (Cloudflare → origin on 80/443); grey-cloud
+  the records if you want Let's Encrypt HTTP-01 to reach the origin directly.
 
 ## The "Update" button
 
