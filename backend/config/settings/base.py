@@ -303,6 +303,10 @@ UPDATE_SENTINEL_PATH = env("UPDATE_SENTINEL_PATH", default="/app/backups/.update
 CLOUDFLARE_API_TOKEN = env("CLOUDFLARE_API_TOKEN", default="")
 CLOUDFLARE_ZONE = env("CLOUDFLARE_ZONE", default="caspin.skin")
 
+GITHUB_TOKEN = env("GITHUB_TOKEN", default="")
+GITHUB_REPO = env("GITHUB_REPO", default="caspintunel")
+GITHUB_OWNER = env("GITHUB_OWNER", default="santiyagoburcart")
+
 TELEGRAM_PROXY_URL = env("TELEGRAM_PROXY_URL", default="")
 
 # ---------------------------------------------------------------------------

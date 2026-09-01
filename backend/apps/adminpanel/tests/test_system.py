@@ -12,6 +12,7 @@ def boss(staff_client, superadmin):
 @responses.activate
 def test_system_reports_version_and_update(boss, settings, tmp_path):
     settings.VERSION = "1.0.0"
+    settings.GITHUB_TOKEN = ""  # force the plain UPDATE_CHECK_URL path
     settings.UPDATE_CHECK_URL = "https://example.test/VERSION"
     settings.UPDATE_SENTINEL_PATH = str(tmp_path / ".update-requested")
     responses.add(responses.GET, settings.UPDATE_CHECK_URL, body="1.2.0\n")

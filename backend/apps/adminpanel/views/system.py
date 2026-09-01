@@ -22,11 +22,22 @@ def _version_tuple(v):
 
 
 def _latest_version():
-    if not settings.UPDATE_CHECK_URL:
-        return None
+    token = getattr(settings, "GITHUB_TOKEN", "")
+    owner = getattr(settings, "GITHUB_OWNER", "")
+    repo = getattr(settings, "GITHUB_REPO", "")
     try:
-        r = requests.get(settings.UPDATE_CHECK_URL, timeout=5)
-        if r.ok:
+        if token and owner and repo:  # works for private repos
+            r = requests.get(
+                f"https://api.github.com/repos/{owner}/{repo}/contents/VERSION",
+                headers={"Authorization": f"Bearer {token}",
+                         "Accept": "application/vnd.github.raw+json"},
+                timeout=5,
+            )
+        elif settings.UPDATE_CHECK_URL:
+            r = requests.get(settings.UPDATE_CHECK_URL, timeout=5)
+        else:
+            return None
+        if r.ok and r.text.strip():
             return r.text.strip().splitlines()[0].strip()
     except requests.RequestException as exc:
         log.info("update check failed: %s", exc)
