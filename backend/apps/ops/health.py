@@ -76,14 +76,49 @@ def _check_bot(target):
     return True, "alive"
 
 
-def _check_panel():
-    from apps.panel.services import client_for, get_active_panel
+def _probe_one_panel(panel):
+    from apps.panel.services import client_for
 
-    panel = get_active_panel()
-    if not panel:
-        return False, "no active panel configured"
     client_for(panel).check()
     return True, "auth ok"
+
+
+def _run_panel_checks():
+    """One HealthCheck row per active panel + one aggregate row (panel=NULL).
+    Returns the list of per-target result dicts (all target='panel')."""
+    from apps.panel.models import Panel
+
+    panels = list(Panel.objects.filter(is_active=True).order_by("id"))
+    results = []
+    up = 0
+    worst_latency = 0
+    for panel in panels:
+        ok, detail, latency = _timed(lambda p=panel: _probe_one_panel(p))
+        worst_latency = max(worst_latency, latency)
+        up += 1 if ok else 0
+        HealthCheck.objects.create(
+            target=HealthTarget.PANEL, panel=panel, is_up=ok,
+            latency_ms=latency, detail=detail,
+        )
+        results.append({"target": HealthTarget.PANEL, "panel": panel.id,
+                        "panel_name": panel.name, "is_up": ok,
+                        "latency_ms": latency, "detail": detail})
+        if not ok:
+            log.warning("health: panel %s DOWN — %s", panel.name, detail)
+
+    if panels:
+        agg_ok = up == len(panels)
+        agg_detail = f"{up}/{len(panels)} panels up"
+    else:
+        agg_ok, agg_detail = False, "no active panel configured"
+    HealthCheck.objects.create(
+        target=HealthTarget.PANEL, panel=None, is_up=agg_ok,
+        latency_ms=worst_latency or None, detail=agg_detail,
+    )
+    results.append({"target": HealthTarget.PANEL, "panel": None,
+                    "is_up": agg_ok, "latency_ms": worst_latency or None,
+                    "detail": agg_detail})
+    return results
 
 
 def _check_mail():
@@ -105,7 +140,6 @@ _PROBES = {
     HealthTarget.CELERY_BEAT: _check_beat,
     HealthTarget.BOT_SALES: lambda: _check_bot(HealthTarget.BOT_SALES),
     HealthTarget.BOT_BACKUP: lambda: _check_bot(HealthTarget.BOT_BACKUP),
-    HealthTarget.PANEL: _check_panel,
     HealthTarget.MAIL: _check_mail,
 }
 
@@ -118,6 +152,7 @@ def run_health_checks() -> list[dict]:
         results.append({"target": target, "is_up": ok, "latency_ms": latency, "detail": detail})
         if not ok:
             log.warning("health: %s DOWN — %s", target, detail)
+    results.extend(_run_panel_checks())
     return results
 
 

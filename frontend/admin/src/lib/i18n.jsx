@@ -36,7 +36,8 @@ const dict = {
     services_by_status: 'سرویس‌ها بر اساس وضعیت',
     // accounting
     daily: 'روزانه', weekly: 'هفتگی', monthly: 'ماهانه', daily_trend: 'روند روزانه',
-    by_method: 'بر اساس روش', by_source: 'بر اساس منبع', date_hint: 'مثال: ۱۴۰۳/۰۱/۰۱',
+    by_method: 'بر اساس روش', by_source: 'بر اساس منبع', by_card: 'بر اساس کارت',
+    by_panel: 'بر اساس پنل', date_hint: 'مثال: ۱۴۰۳/۰۱/۰۱',
     // cards
     card_number: 'شماره کارت', holder: 'صاحب کارت', bank: 'بانک',
     deposit_count: 'تعداد واریز', deposit_total: 'جمع واریز',
@@ -86,7 +87,8 @@ const dict = {
     online_now: 'Online now', services_total: 'Total services', last_30d: 'last 30 days',
     services_by_status: 'Services by status',
     daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly', daily_trend: 'Daily trend',
-    by_method: 'By method', by_source: 'By source', date_hint: 'e.g. 1403/01/01',
+    by_method: 'By method', by_source: 'By source', by_card: 'By card', by_panel: 'By panel',
+    date_hint: 'e.g. 1403/01/01',
     card_number: 'Card number', holder: 'Card holder', bank: 'Bank',
     deposit_count: 'Deposits', deposit_total: 'Total deposited',
     site_name_fa: 'Site name (fa)', site_name_en: 'Site name (en)', domain: 'Domain',

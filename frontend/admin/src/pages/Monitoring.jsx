@@ -26,7 +26,9 @@ const T = {
     svc_site: 'سایت (Web)', svc_mysql: 'دیتابیس (MySQL)', svc_redis: 'ردیس (Redis)',
     svc_celery_worker: 'Celery Worker', svc_celery_beat: 'Celery Beat',
     svc_bot_sales: 'ربات فروش', svc_bot_backup: 'ربات بک‌آپ',
-    svc_panel: 'پنل پاسارگارد', svc_mail: 'میل‌سرور (SMTP)',
+    svc_panel: 'پنل‌ها (مجموع)', svc_mail: 'میل‌سرور (SMTP)',
+    panels: 'وضعیت پنل‌ها', panel_users: 'کاربران', panel_online: 'آنلاین',
+    panel_nodes: 'نودها', panel_cpu: 'CPU', panel_ram: 'RAM', panel_no_stats: 'آمار در دسترس نیست',
   },
   en: {
     title: 'Monitoring', autorefresh: '↻ Auto-refresh (15s)', run_backup: '↑ Run backup',
@@ -47,8 +49,18 @@ const T = {
     svc_site: 'Website (Web)', svc_mysql: 'Database (MySQL)', svc_redis: 'Redis',
     svc_celery_worker: 'Celery Worker', svc_celery_beat: 'Celery Beat',
     svc_bot_sales: 'Sales bot', svc_bot_backup: 'Backup bot',
-    svc_panel: 'Pasargad panel', svc_mail: 'Mail server (SMTP)',
+    svc_panel: 'Panels (overall)', svc_mail: 'Mail server (SMTP)',
+    panels: 'Panel status', panel_users: 'users', panel_online: 'online',
+    panel_nodes: 'nodes', panel_cpu: 'CPU', panel_ram: 'RAM', panel_no_stats: 'stats unavailable',
   },
+}
+
+function fmtBytes(n) {
+  if (n == null) return null
+  const u = ['B', 'KB', 'MB', 'GB', 'TB']
+  let i = 0; let v = Number(n)
+  while (v >= 1024 && i < u.length - 1) { v /= 1024; i++ }
+  return `${v.toFixed(v >= 10 || i === 0 ? 0 : 1)} ${u[i]}`
 }
 
 // Build an SVG polyline path (600x150 viewBox) from the throughput series.
@@ -119,7 +131,7 @@ export default function Monitoring() {
     )
   }
 
-  const { resources: rs, network: net, server: srv, targets, backups } = data
+  const { resources: rs, network: net, server: srv, targets, backups, panels } = data
   const disHigh = rs.disk.percent >= 90
   const bkStatus = (s) => m['bk_' + s] || s
 
@@ -222,6 +234,57 @@ export default function Monitoring() {
         </div>
       </div>
 
+      {/* ---- per-panel status ---- */}
+      {(panels || []).length > 0 && (
+        <div className="grid r1">
+          <div className="card">
+            <div className="title">{m.panels}</div>
+            <div className="panel-grid">
+              {panels.map((p) => {
+                const st = p.stats || {}
+                return (
+                  <div className="panel-box" key={p.id}>
+                    <div className="panel-top">
+                      <span className={'badge ' + (p.is_up ? 'up' : p.is_up === false ? 'down' : 'na')}>
+                        {p.is_up ? m.up : p.is_up === false ? m.down : '—'}
+                      </span>
+                      <span className="name">{p.name}</span>
+                      <span className="lat">
+                        {p.latency_ms != null ? d(p.latency_ms) + ' ms' : ''}
+                      </span>
+                    </div>
+                    <div className="panel-detail">{p.detail}</div>
+                    {(st.users_total != null || st.nodes || st.cpu_usage != null) ? (
+                      <div className="panel-stats">
+                        {st.users_total != null && (
+                          <span>{m.panel_users}: <b>{d(st.users_active ?? st.users_total)}</b>
+                            {st.users_active != null ? ` / ${d(st.users_total)}` : ''}
+                            {st.users_online != null ? ` · ${d(st.users_online)} ${m.panel_online}` : ''}</span>
+                        )}
+                        {(st.cpu_usage != null || st.mem_used != null) && (
+                          <span>
+                            {st.cpu_usage != null && <>{m.panel_cpu} <b>{d(Math.round(st.cpu_usage))}%</b></>}
+                            {st.cpu_usage != null && st.mem_used != null ? ' · ' : ''}
+                            {st.mem_used != null && st.mem_total != null &&
+                              <>{m.panel_ram} <b>{fmtBytes(st.mem_used)}</b>/{fmtBytes(st.mem_total)}</>}
+                          </span>
+                        )}
+                        {Array.isArray(st.nodes) && st.nodes.length > 0 && (
+                          <span>{m.panel_nodes}: <b>{st.nodes.filter((n) => n.status === 'connected').length}</b> / {st.nodes.length}</span>
+                        )}
+                        {st.version && <span className="panel-detail" style={{ margin: 0 }}>v{st.version}</span>}
+                      </div>
+                    ) : (
+                      <div className="panel-detail">{m.panel_no_stats}</div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ---- backups + server IPs ---- */}
       <div className="grid r2">
         <div className="card">
@@ -291,7 +354,18 @@ const CSS = `
 .mon .grid { display:grid; gap:16px; margin-bottom:16px; }
 .mon .grid.r4 { grid-template-columns:repeat(4,minmax(0,1fr)); }
 .mon .grid.r2 { grid-template-columns:1.3fr 1fr; }
+.mon .grid.r1 { grid-template-columns:1fr; }
 @media (max-width:1000px){ .mon .grid.r4{grid-template-columns:repeat(2,minmax(0,1fr));} .mon .grid.r2{grid-template-columns:1fr;} }
+
+.mon .panel-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px; }
+.mon .panel-box { border:1px solid var(--c-border); border-radius:12px; padding:12px; min-width:0; }
+.mon .panel-top { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:8px; }
+.mon .panel-top .name { font-weight:700; font-size:13.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mon .panel-top .lat { font-size:11.5px; color:var(--c-text-muted); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.mon .panel-detail { font-size:11.5px; color:var(--c-text-muted); margin-top:6px;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.mon .panel-stats { display:flex; flex-direction:column; gap:3px; margin-top:8px; font-size:12px; color:var(--c-text-muted); }
+.mon .panel-stats b { color:var(--c-text); font-variant-numeric:tabular-nums; }
 @media (max-width:560px){ .mon .grid.r4{grid-template-columns:1fr;} }
 
 .mon .card { position:relative; overflow:hidden; padding:18px; min-width:0;

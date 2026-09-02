@@ -120,6 +120,18 @@ class AccountingView(AdminAPIView):
         by_card = list(
             approved.values("bank_card__card_number").annotate(revenue=Sum("amount"), count=Count("id"))
         )
+        # multi-panel: revenue split by which panel each order's plan belongs to
+        by_panel = [
+            {
+                "panel_id": row["order__plan__panel_id"],
+                "panel": row["order__plan__panel__name"] or "—",
+                "revenue": row["revenue"],
+                "count": row["count"],
+            }
+            for row in approved.values("order__plan__panel_id", "order__plan__panel__name")
+            .annotate(revenue=Sum("amount"), count=Count("id"))
+            .order_by("-revenue")
+        ]
         daily = [
             {
                 "date": to_jalali_str(row["day"], "%Y/%m/%d"),
@@ -146,6 +158,7 @@ class AccountingView(AdminAPIView):
             "by_method": by_method,
             "by_source": by_source,
             "by_card": by_card,
+            "by_panel": by_panel,
             "daily": daily,
         })
 

@@ -75,6 +75,7 @@ class MonitoringView(AdminAPIView):
             "up_count": sum(1 for t in health["targets"] if t["is_up"]),
             "total_count": len(health["targets"]),
             "targets": health["targets"],
+            "panels": health["panels"],
             "resources": _resources_snapshot(),
             "network": _network_snapshot(),
             "server": _server_snapshot(),
@@ -86,11 +87,20 @@ class MonitoringView(AdminAPIView):
 
 # --------------------------------------------------------------------------
 def _health_snapshot() -> dict:
+    # non-panel targets: latest row per target
+    non_panel = HealthCheck.objects.exclude(target=HealthTarget.PANEL)
     latest_ids = (
-        HealthCheck.objects.values("target")
-        .annotate(last=Max("id")).values_list("last", flat=True)
+        non_panel.values("target").annotate(last=Max("id")).values_list("last", flat=True)
     )
     rows = {c.target: c for c in HealthCheck.objects.filter(id__in=list(latest_ids))}
+    # the "panel" line in the main list = latest aggregate row (panel_id IS NULL)
+    agg = (
+        HealthCheck.objects.filter(target=HealthTarget.PANEL, panel__isnull=True)
+        .order_by("-id").first()
+    )
+    if agg:
+        rows[HealthTarget.PANEL] = agg
+
     targets = []
     for target in HealthTarget.values:
         c = rows.get(target)
@@ -102,7 +112,78 @@ def _health_snapshot() -> dict:
             "checked_at": c.checked_at if c else None,
         })
     healthy = all(t["is_up"] for t in targets if t["is_up"] is not None)
-    return {"overall": "ok" if healthy else "degraded", "targets": targets}
+    return {
+        "overall": "ok" if healthy else "degraded",
+        "targets": targets,
+        "panels": _panel_health_rows(),
+    }
+
+
+def _panel_health_rows() -> list[dict]:
+    """Per-panel health (from the latest stored check) + a live, cached stats
+    blob. Never raises; the panel name is admin-only so exposing it is fine."""
+    from apps.panel.models import Panel
+
+    out = []
+    for panel in Panel.objects.filter(is_active=True).order_by("id"):
+        c = (
+            HealthCheck.objects.filter(target=HealthTarget.PANEL, panel=panel)
+            .order_by("-id").first()
+        )
+        healthy = bool(c and c.is_up)
+        out.append({
+            "id": panel.id,
+            "name": panel.name,
+            "base_url": panel.base_url,
+            "is_up": bool(c.is_up) if c else None,
+            "latency_ms": c.latency_ms if c else None,
+            "detail": c.detail if c else "no data yet",
+            "checked_at": c.checked_at if c else None,
+            # only hit a panel that the last health check said is reachable, so a
+            # down panel never makes this endpoint hang on a timeout
+            "stats": _panel_stats(panel) if healthy else None,
+        })
+    return out
+
+
+def _panel_stats(panel) -> dict | None:
+    """Live node/system stats for one panel — cached 60 s, best-effort."""
+    key = f"mon:panel_stats:{panel.id}"
+    cached = cache.get(key)
+    if cached is not None:
+        return cached or None
+    stats = {}
+    try:
+        from apps.panel.services import client_for
+
+        client = client_for(panel)
+        s = client.system_stats() or {}
+        stats = {
+            "version": s.get("version"),
+            "users_total": s.get("total_user"),
+            "users_active": s.get("users_active"),
+            "users_online": s.get("online_users") or s.get("users_online"),
+            "mem_used": s.get("mem_used"),
+            "mem_total": s.get("mem_total"),
+            "cpu_usage": s.get("cpu_usage"),
+            "cpu_cores": s.get("cpu_cores"),
+            "incoming_bandwidth": s.get("incoming_bandwidth"),
+            "outgoing_bandwidth": s.get("outgoing_bandwidth"),
+        }
+        try:
+            nodes = client.list_nodes() or []
+            stats["nodes"] = [
+                {"name": n.get("name"), "status": n.get("status"),
+                 "xray_version": n.get("xray_version")}
+                for n in nodes if isinstance(n, dict)
+            ]
+        except Exception:  # noqa: BLE001 - nodes endpoint is optional
+            pass
+        stats = {k: v for k, v in stats.items() if v is not None}
+    except Exception:  # noqa: BLE001 - panel down / stats unsupported
+        stats = {}
+    cache.set(key, stats, 60)
+    return stats or None
 
 
 def _resources_snapshot() -> dict:

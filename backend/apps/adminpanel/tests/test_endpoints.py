@@ -108,6 +108,33 @@ def test_accounting_accepts_jalali_range(boss):
     assert r.data["range"]["from_gregorian"].startswith("2024-")
 
 
+def test_accounting_revenue_split_by_panel(boss):
+    p_wg = Panel.objects.create(name="Wireguard", base_url="https://wg.test",
+                                admin_username="a", admin_password_enc="pw")
+    p_vol = Panel.objects.create(name="Volume", base_url="https://vol.test",
+                                 admin_username="a", admin_password_enc="pw")
+    card = BankCard.objects.create(card_number="1", holder_name="A")
+
+    def _pay(panel, amount):
+        u = User.objects.create_user(f"u{panel.id}{amount}", "Str0ngPass!")
+        plan = Plan.objects.create(panel=panel, name_fa="p", price=Decimal(amount))
+        o = Order.objects.create(user=u, plan=plan, amount=amount, amount_unique=amount,
+                                 unique_expire_at=timezone.now(), status=OrderStatus.COMPLETED)
+        Payment.objects.create(order=o, bank_card=card, method=PaymentMethod.CARD_MANUAL,
+                               amount=amount, status=PaymentStatus.APPROVED,
+                               confirmed_by=ConfirmedBy.ADMIN, confirmed_at=timezone.now())
+
+    _pay(p_wg, 120000)
+    _pay(p_wg, 30000)
+    _pay(p_vol, 50000)
+
+    r = boss.get("/api/v1/admin/accounting/?period=monthly")
+    by_panel = {row["panel"]: (row["revenue"], row["count"]) for row in r.data["by_panel"]}
+    assert by_panel == {"Wireguard": (150000, 2), "Volume": (50000, 1)}
+    # highest-revenue panel first
+    assert r.data["by_panel"][0]["panel"] == "Wireguard"
+
+
 # --- broadcast ---------------------------------------------
 def test_broadcast_creates_notification(boss):
     User.objects.create_user("x1", "Str0ngPass!")

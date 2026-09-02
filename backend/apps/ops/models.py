@@ -43,6 +43,12 @@ class HealthCheck(models.Model):
     """data-model · Module 9 · `health_check`."""
 
     target = models.CharField(max_length=16, choices=HealthTarget.choices, db_index=True)
+    # multi-panel: PANEL checks get one row per panel + one aggregate row
+    # (panel = NULL). Other targets always have panel = NULL.
+    panel = models.ForeignKey(
+        "panel.Panel", null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="health_checks",
+    )
     is_up = models.BooleanField(default=False)
     latency_ms = models.IntegerField(null=True, blank=True)
     detail = models.CharField(max_length=255, blank=True)

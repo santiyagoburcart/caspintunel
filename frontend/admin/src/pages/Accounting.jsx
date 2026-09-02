@@ -70,8 +70,10 @@ export default function Accounting() {
             )}
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
+            <Breakdown title={t('by_panel')} rows={d.by_panel} keyName="panel" prefix="panel_" t={t} lang={lang} empty={t('none_found')} />
             <Breakdown title={t('by_method')} rows={d.by_method} keyName="method" prefix="m_" t={t} lang={lang} empty={t('none_found')} />
             <Breakdown title={t('by_source')} rows={d.by_source} keyName="order__source" prefix="src_" t={t} lang={lang} empty={t('none_found')} />
+            <Breakdown title={t('by_card')} rows={d.by_card} keyName="bank_card__card_number" prefix="card_" t={t} lang={lang} empty={t('none_found')} />
           </div>
         </>
       )}
