@@ -24,6 +24,8 @@ const dict = {
     set_force_channel_join: 'عضویت اجباری در کانال (ربات)',
     set_force_share_phone: 'اشتراک‌گذاری اجباری شماره (ربات)',
     set_default_language: 'زبان پیش‌فرض',
+    set_product_display_mode: 'نمایش محصولات (سایت و ربات)',
+    display_grouped: 'دسته‌بندی‌شده', display_flat: 'فهرست ساده',
     // shared
     name: 'نام', phone: 'تلفن', source: 'منبع', date: 'تاریخ', all: 'همه',
     inactive: 'غیرفعال', description: 'توضیح', slug: 'اسلاگ', title: 'عنوان',
@@ -75,6 +77,8 @@ const dict = {
     set_force_channel_join: 'Force channel join (bot)',
     set_force_share_phone: 'Force phone share (bot)',
     set_default_language: 'Default language',
+    set_product_display_mode: 'Product display (site & bot)',
+    display_grouped: 'Grouped by category', display_flat: 'Flat list',
     name: 'Name', phone: 'Phone', source: 'Source', date: 'Date', all: 'All',
     inactive: 'Inactive', description: 'Description', slug: 'Slug', title: 'Title',
     activate: 'Activate', deactivate: 'Deactivate', saved: 'Saved',

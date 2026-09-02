@@ -18,6 +18,37 @@ def active_plans():
     return Plan.objects.filter(is_active=True).order_by("sort_order", "id")
 
 
+# --- product display mode (grouped | flat) — shared with the site -----
+_OTHER_FA = "سایر"
+
+
+def product_display_mode() -> str:
+    from apps.settings_app.utils import get_setting
+
+    mode = get_setting("product_display_mode", "grouped")
+    return mode if mode in ("grouped", "flat") else "grouped"
+
+
+def plan_category_label(plan) -> str:
+    """Bot is Persian-only: prefer category_fa, fall back to category_en."""
+    return (plan.category_fa or plan.category_en or "").strip()
+
+
+def grouped_plans(plans):
+    """[(label, [plan, ...]), ...] in first-seen order; the no-category group
+    ('سایر') always comes last. Never exposes the panel name."""
+    groups: dict[str, list] = {}
+    order: list[str] = []
+    for p in plans:
+        label = plan_category_label(p) or _OTHER_FA
+        if label not in groups:
+            groups[label] = []
+            order.append(label)
+        groups[label].append(p)
+    order.sort(key=lambda lbl: 1 if lbl == _OTHER_FA else 0)
+    return [(lbl, groups[lbl]) for lbl in order]
+
+
 def user_services(user):
     """The user's services, with on_hold/pending ones freshly synced from the
     panel (so a just-connected service shows as active without any action)."""
@@ -48,12 +79,18 @@ def renew(user, service, plan):
 
 
 # --- message formatting (Persian) ---------------------------------
-def plan_label(plan) -> str:
+def plan_label(plan, *, with_badge=False) -> str:
     if plan.type == PlanType.CUSTOM_VOLUME:
-        return f"{plan.name_fa} (حجمی)"
-    vol = "نامحدود" if not plan.data_limit else f"{plan.data_limit // _GB} گیگ"
-    days = "بدون انقضا" if not plan.duration_days else f"{plan.duration_days} روزه"
-    return f"{plan.name_fa} — {vol} / {days} — {int(plan.final_price):,} تومان"
+        base = f"{plan.name_fa} (حجمی)"
+    else:
+        vol = "نامحدود" if not plan.data_limit else f"{plan.data_limit // _GB} گیگ"
+        days = "بدون انقضا" if not plan.duration_days else f"{plan.duration_days} روزه"
+        base = f"{plan.name_fa} — {vol} / {days} — {int(plan.final_price):,} تومان"
+    if with_badge:
+        cat = plan_category_label(plan)
+        if cat:
+            base = f"[{cat}] {base}"
+    return base
 
 
 def service_summary(svc) -> str:

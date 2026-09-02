@@ -60,6 +60,17 @@ export default function Settings() {
             </Field>
           )
         }
+        if (s.key === 'product_display_mode') {
+          return (
+            <Field key={s.key} label={label}>
+              <select className="input" value={form[s.key]}
+                onChange={(e) => setForm({ ...form, [s.key]: e.target.value })}>
+                <option value="grouped">{t('display_grouped')}</option>
+                <option value="flat">{t('display_flat')}</option>
+              </select>
+            </Field>
+          )
+        }
         return (
           <Field key={s.key} label={label}>
             <input className="input" dir="ltr" type="number"

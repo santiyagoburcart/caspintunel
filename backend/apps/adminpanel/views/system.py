@@ -27,8 +27,15 @@ EDITABLE_SETTINGS = [
     ("force_channel_join", "bool", False, None, None),
     ("force_share_phone", "bool", False, None, None),
     ("default_language", "str", "fa", None, None),
+    ("product_display_mode", "str", "grouped", None, None),
 ]
 _SPEC = {k: (t, d, lo, hi) for (k, t, d, lo, hi) in EDITABLE_SETTINGS}
+
+# str settings restricted to a fixed choice set
+_ENUM = {
+    "default_language": {"fa", "en"},
+    "product_display_mode": {"grouped", "flat"},
+}
 
 
 class SettingsView(AdminAPIView):
@@ -62,6 +69,9 @@ class SettingsView(AdminAPIView):
                     val = "true" if val else "false"
                 else:
                     val = str(raw).strip()
+                    if key in _ENUM and val not in _ENUM[key]:
+                        return Response(
+                            {"detail": f"{key} must be one of {sorted(_ENUM[key])}"}, status=400)
             except (TypeError, ValueError):
                 return Response({"detail": f"bad value for {key}"}, status=400)
             set_setting(key, val, vtype)

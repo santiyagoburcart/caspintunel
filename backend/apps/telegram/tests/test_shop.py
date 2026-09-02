@@ -110,3 +110,51 @@ def test_service_summary_shows_waiting_for_connection(user, plan):
     text = service_summary(svc)
     assert "با اولین اتصال فعال می‌شود" in text
     assert "30 روز" in text
+
+
+# --- grouped / flat product display (MP-Phase 3) ---------------------
+def test_grouped_plans_orders_by_first_seen_and_other_last(user, panel):
+    from apps.telegram.shop import grouped_plans
+
+    wg1 = Plan.objects.create(panel=panel, name_fa="wg1", price=Decimal("1"),
+                              category_fa="وایرگارد", sort_order=1)
+    plain = Plan.objects.create(panel=panel, name_fa="plain", price=Decimal("1"), sort_order=2)
+    wg2 = Plan.objects.create(panel=panel, name_fa="wg2", price=Decimal("1"),
+                              category_fa="وایرگارد", sort_order=3)
+    unl = Plan.objects.create(panel=panel, name_fa="unl", price=Decimal("1"),
+                              category_fa="نامحدود", sort_order=4)
+
+    groups = grouped_plans([wg1, plain, wg2, unl])
+    labels = [g[0] for g in groups]
+    assert labels == ["وایرگارد", "نامحدود", "سایر"]        # "سایر" last
+    assert [p.id for p in groups[0][1]] == [wg1.id, wg2.id]  # both wireguard plans
+    assert [p.id for p in groups[2][1]] == [plain.id]
+
+
+def test_plan_label_badge_only_in_flat(user, panel):
+    from apps.telegram.shop import plan_label
+
+    p = Plan.objects.create(panel=panel, name_fa="X", price=Decimal("1000"),
+                            duration_days=30, category_fa="وایرگارد")
+    assert "[وایرگارد]" not in plan_label(p)
+    assert plan_label(p, with_badge=True).startswith("[وایرگارد]")
+
+
+def test_plan_list_keyboard_grouped_vs_flat(user, panel):
+    from apps.settings_app.utils import set_setting
+    from apps.telegram.bot import keyboards as kb
+
+    wg = Plan.objects.create(panel=panel, name_fa="wg", price=Decimal("1"),
+                             duration_days=30, category_fa="وایرگارد", sort_order=1)
+    other = Plan.objects.create(panel=panel, name_fa="basic", price=Decimal("1"),
+                                duration_days=30, sort_order=2)
+    plans = [wg, other]
+
+    set_setting("product_display_mode", "grouped", "str")
+    texts = [b.text for row in kb.plan_list(plans).keyboard for b in row]
+    assert "— وایرگارد —" in texts and "— سایر —" in texts
+
+    set_setting("product_display_mode", "flat", "str")
+    texts = [b.text for row in kb.plan_list(plans).keyboard for b in row]
+    assert not any(x.startswith("— ") for x in texts)
+    assert any(x.startswith("[وایرگارد]") for x in texts)

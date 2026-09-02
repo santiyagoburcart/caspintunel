@@ -3,7 +3,11 @@ from django.conf import settings
 from telebot import types
 
 from apps.plans.models import PlanType
-from apps.telegram.shop import plan_label
+from apps.telegram.shop import (
+    grouped_plans,
+    plan_label,
+    product_display_mode,
+)
 
 MINIAPP_URL = getattr(settings, "MINIAPP_URL", "") or ""
 
@@ -20,10 +24,24 @@ def main_menu():
 
 
 def plan_list(plans, *, prefix="p", svc_id=None):
+    """Grouped (category headers) or flat (category badge in the label),
+    per the `product_display_mode` setting — same as the site Store."""
+    plans = list(plans)
     kb = types.InlineKeyboardMarkup()
-    for plan in plans:
-        data = f"{prefix}:{plan.id}" if svc_id is None else f"rn:{svc_id}:{plan.id}"
-        kb.add(types.InlineKeyboardButton(plan_label(plan), callback_data=data))
+
+    def _cb(plan):
+        return f"{prefix}:{plan.id}" if svc_id is None else f"rn:{svc_id}:{plan.id}"
+
+    if product_display_mode() == "grouped":
+        for label, group in grouped_plans(plans):
+            kb.add(types.InlineKeyboardButton(f"— {label} —", callback_data="noop"))
+            for plan in group:
+                kb.add(types.InlineKeyboardButton(plan_label(plan), callback_data=_cb(plan)))
+    else:
+        for plan in plans:
+            kb.add(types.InlineKeyboardButton(
+                plan_label(plan, with_badge=True), callback_data=_cb(plan)))
+
     kb.add(types.InlineKeyboardButton("« بازگشت", callback_data="m:home"))
     return kb
 

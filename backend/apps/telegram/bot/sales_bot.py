@@ -162,7 +162,9 @@ def _register(bot: telebot.TeleBot):
         user, *_ = _user(c.from_user)
         data = c.data or ""
         try:
-            if data in ("m:home", "g:re"):
+            if data == "noop":
+                pass  # category header button — not clickable
+            elif data in ("m:home", "g:re"):
                 if _enforce_gate(bot, c.message.chat.id, user, c.from_user.id):
                     bot.send_message(c.message.chat.id, "منو:", reply_markup=kb.main_menu())
             elif not check_access(user, c.from_user.id).ok:

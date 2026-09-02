@@ -47,3 +47,26 @@ def test_put_ignores_unknown_keys(boss):
 def test_settings_needs_settings_manage(staff_client, perms):
     weak = staff_client(make_staff("weak", ["monitoring.view"], perms))
     assert weak.get("/api/v1/admin/settings/").status_code == 403
+
+
+def test_product_display_mode_default_and_enum(boss):
+    row = next(s for s in boss.get("/api/v1/admin/settings/").data["settings"]
+               if s["key"] == "product_display_mode")
+    assert row["value"] == "grouped"                       # default
+
+    assert boss.put("/api/v1/admin/settings/", {"product_display_mode": "flat"},
+                    format="json").status_code == 200
+    assert get_setting("product_display_mode") == "flat"
+
+    bad = boss.put("/api/v1/admin/settings/", {"product_display_mode": "sideways"},
+                   format="json")
+    assert bad.status_code == 400
+    assert get_setting("product_display_mode") == "flat"   # unchanged
+
+
+def test_public_config_exposes_display_mode(api):
+    from apps.settings_app.utils import set_setting
+
+    assert api.get("/api/v1/config/").data["product_display_mode"] == "grouped"
+    set_setting("product_display_mode", "flat", "str")
+    assert api.get("/api/v1/config/").data["product_display_mode"] == "flat"
