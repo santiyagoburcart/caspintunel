@@ -88,19 +88,12 @@ def create_order(
         from apps.panel.models import Service
 
         name = (requested_account_name or "").strip()
-        if name:
-            if Service.objects.filter(panel_username__iexact=name).exists():
-                raise OrderError("that account name is already taken — pick another")
-        elif plan.type == PlanType.FIXED:
+        if not name:
+            # every new service needs a customer-chosen username — fixed AND
+            # custom-volume. We never auto-generate it.
             raise OrderError("requested_account_name is required for a new service")
-        else:
-            # custom-volume checkout doesn't ask for a name — generate a unique one
-            import secrets
-
-            for _ in range(10):
-                name = f"u{user.id}{secrets.token_hex(3)}"
-                if not Service.objects.filter(panel_username__iexact=name).exists():
-                    break
+        if Service.objects.filter(panel_username__iexact=name).exists():
+            raise OrderError("that account name is already taken — pick another")
         requested_account_name = name
 
     # --- amount ---

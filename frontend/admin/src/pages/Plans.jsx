@@ -11,6 +11,7 @@ const blank = {
   type: 'fixed', name_fa: '', name_en: '', desc_fa: '', desc_en: '',
   price: 0, discount_percent: 0, data_limit_gb: '', duration_days: '',
   device_limit: '', min_gb: '', max_gb: '', price_per_gb: '', is_active: true,
+  group_ids: [],
 }
 
 // API row (bytes / nullable) -> form model (GB / '')
@@ -23,6 +24,7 @@ function toForm(r) {
     min_gb: r.min_gb ?? '',
     max_gb: r.max_gb ?? '',
     price_per_gb: r.price_per_gb ?? '',
+    group_ids: Array.isArray(r.group_ids) ? r.group_ids : [],
   }
 }
 
@@ -33,9 +35,29 @@ export default function Plans() {
   const [rows, setRows] = useState(null)
   const [edit, setEdit] = useState(null)
   const [err, setErr] = useState('')
+  const [panelGroups, setPanelGroups] = useState(null)   // [{id,name}] | null
+  const [panelDefaultGroups, setPanelDefaultGroups] = useState([])
+  const [groupsErr, setGroupsErr] = useState('')
 
   const load = () => api.get('/admin/plans/').then((r) => setRows(r.data.results)).catch(() => setRows([]))
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+    api.get('/admin/integrations/panel/groups/')
+      .then((r) => setPanelGroups(r.data.groups || []))
+      .catch((e) => { setPanelGroups([]); setGroupsErr(apiError(e)) })
+    api.get('/admin/integrations/panel/')
+      .then((r) => setPanelDefaultGroups(r.data.default_group_ids || []))
+      .catch(() => {})
+  }, [])
+
+  const groupName = (id) => panelGroups?.find((g) => g.id === id)?.name || `group ${id}`
+  const toggleGroup = (id) => setEdit((p) => {
+    const has = p.group_ids.includes(id)
+    return { ...p, group_ids: has ? p.group_ids.filter((x) => x !== id) : [...p.group_ids, id] }
+  })
+  const effectiveGroups = edit
+    ? (edit.group_ids.length ? edit.group_ids : panelDefaultGroups)
+    : []
 
   const isVolume = edit?.type === 'custom_volume'
 
@@ -50,6 +72,7 @@ export default function Plans() {
       duration_days: numOrNull(edit.duration_days),
       device_limit: numOrNull(edit.device_limit),
       is_active: edit.is_active,
+      group_ids: edit.group_ids,
       // Fixed: admin sets the volume (blank = unlimited).
       // Volume-based: the customer picks GB at checkout, so no fixed data_limit.
       data_limit: isVolume ? null : (edit.data_limit_gb === '' ? null : Math.round(Number(edit.data_limit_gb) * GB)),
@@ -164,6 +187,48 @@ export default function Plans() {
             <input type="checkbox" checked={edit.is_active} onChange={(e) => setEdit({ ...edit, is_active: e.target.checked })} />
             {lang === 'fa' ? 'فعال' : 'Active'}
           </label>
+
+          {/* -- panel groups -------------------------------------------- */}
+          <div className="sm:col-span-2">
+            <span className="label">{lang === 'fa' ? 'گروه‌های پنل' : 'Panel groups'}</span>
+            <p className="mb-2 text-xs text-muted">
+              {lang === 'fa'
+                ? 'هیچ‌کدام انتخاب نشود = استفاده از گروه‌های پیش‌فرض پنل (در صفحهٔ «اتصال پنل»).'
+                : 'Select none = inherit the panel default groups (set on the “Panel connection” page).'}
+            </p>
+            {groupsErr && <Alert>{groupsErr}</Alert>}
+            {panelGroups === null ? (
+              <p className="text-sm text-muted">…</p>
+            ) : panelGroups.length === 0 ? (
+              <p className="text-sm text-muted">
+                {lang === 'fa' ? 'گروه‌های پنل در دسترس نیست.' : 'Panel groups unavailable.'}
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {panelGroups.map((g) => {
+                  const on = edit.group_ids.includes(g.id)
+                  return (
+                    <button type="button" key={g.id} onClick={() => toggleGroup(g.id)}
+                      className="rounded-full border px-3 py-1 text-sm transition"
+                      style={{
+                        borderColor: on ? 'var(--c-primary)' : 'var(--c-border)',
+                        background: on ? 'color-mix(in srgb, var(--c-primary) 14%, transparent)' : 'transparent',
+                      }}>
+                      {on ? '✓ ' : ''}{g.name} <span className="text-xs text-muted">#{g.id}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+            <p className="mt-2 text-xs" style={{ color: 'var(--c-primary)' }}>
+              {lang === 'fa' ? 'اعمال‌شده روی کاربر جدید: ' : 'Applied to a new user: '}
+              {effectiveGroups.length
+                ? effectiveGroups.map(groupName).join('، ')
+                : (lang === 'fa' ? '— (پنل هیچ گروه پیش‌فرضی ندارد)' : '— (panel has no default groups)')}
+              {!edit.group_ids.length && effectiveGroups.length
+                ? (lang === 'fa' ? ' (از پیش‌فرض پنل)' : ' (from panel default)') : ''}
+            </p>
+          </div>
 
           <div className="col-span-full flex gap-2">
             <button className="btn-primary text-sm">{t('save')}</button>

@@ -229,26 +229,29 @@ def _register(bot: telebot.TeleBot):
             bot.register_next_step_handler(m, _got_custom_gb, plan.id)
         else:
             m = bot.send_message(chat_id, "یک نام دلخواه برای اکانت وارد کنید (حروف/اعداد انگلیسی):")
-            bot.register_next_step_handler(m, _got_account_name, plan.id)
-
-    def _got_account_name(msg, plan_id):
-        close_old_connections()
-        user, *_ = _user(msg.from_user)
-        plan = Plan.objects.filter(pk=plan_id, is_active=True).first()
-        try:
-            order = buy_new(user, plan, account_name=(msg.text or "").strip())
-        except Exception as exc:  # noqa: BLE001
-            bot.send_message(msg.chat.id, f"ثبت نشد: {exc}")
-            return
-        bot.send_message(msg.chat.id, payment_instructions(order), reply_markup=kb.order_status(order.id))
+            bot.register_next_step_handler(m, _got_account_name, plan.id, None)
 
     def _got_custom_gb(msg, plan_id):
         close_old_connections()
-        user, *_ = _user(msg.from_user)
         plan = Plan.objects.filter(pk=plan_id, is_active=True).first()
         try:
             gb = int((msg.text or "").strip())
-            order = buy_new(user, plan, account_name=f"cv{user.id}{msg.message_id}", custom_gb=gb)
+        except (TypeError, ValueError):
+            bot.send_message(msg.chat.id, "عدد معتبر وارد کنید. دوباره /start را بزنید.")
+            return
+        lo, hi = plan.min_gb or 1, plan.max_gb or 0
+        if gb < lo or (hi and gb > hi):
+            bot.send_message(msg.chat.id, f"حجم باید بین {lo} و {hi} گیگ باشد. دوباره /start را بزنید.")
+            return
+        m = bot.send_message(msg.chat.id, "یک نام دلخواه برای اکانت وارد کنید (حروف/اعداد انگلیسی):")
+        bot.register_next_step_handler(m, _got_account_name, plan_id, gb)
+
+    def _got_account_name(msg, plan_id, custom_gb):
+        close_old_connections()
+        user, *_ = _user(msg.from_user)
+        plan = Plan.objects.filter(pk=plan_id, is_active=True).first()
+        try:
+            order = buy_new(user, plan, account_name=(msg.text or "").strip(), custom_gb=custom_gb)
         except Exception as exc:  # noqa: BLE001
             bot.send_message(msg.chat.id, f"ثبت نشد: {exc}")
             return

@@ -62,6 +62,18 @@ def test_group_ids_fall_back_to_panel_default(user, panel):
     assert payload["group_ids"] == [9]
 
 
+def test_new_plan_inherits_panel_default_groups_by_default(user, panel):
+    """A plan created without an explicit group_ids must NOT bake in every panel
+    group — it inherits Panel.default_group_ids, so unchecking a group there
+    actually takes effect."""
+    panel.default_group_ids = [5, 6, 8]
+    panel.save()
+    plan = Plan.objects.create(name_fa="p", price=Decimal("1"), duration_days=7)
+    assert plan.group_ids == []
+    payload = build_create_payload(_svc(user, panel, plan), plan, panel)
+    assert payload["group_ids"] == [5, 6, 8]   # exactly the panel default, no wirgard
+
+
 @responses.activate
 def test_created_panel_user_gets_plan_group_ids(user, panel):
     import json
@@ -188,7 +200,7 @@ def test_custom_volume_service_provisions_with_the_right_data_limit():
                                  admin_password_enc="p", is_active=True)
     plan = Plan.objects.create(name_fa="CV", type=PlanType.CUSTOM_VOLUME, price=Decimal("0"),
                                price_per_gb=Decimal("2000"), min_gb=1, max_gb=100, group_ids=[6])
-    order = create_order(user=u, plan_id=plan.id, order_type=OrderType.NEW, custom_volume_gb=25)
+    order = create_order(user=u, plan_id=plan.id, order_type=OrderType.NEW, custom_volume_gb=25, requested_account_name="cvprov")
 
     svc = _ensure_service(order, panel)
     assert svc.data_limit == 25 * 1024**3

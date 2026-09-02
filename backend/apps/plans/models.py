@@ -1,7 +1,6 @@
 from django.db import models
 
 from apps.common.models import TimeStampedModel
-from apps.panel.constants import default_group_ids
 
 
 class PlanType(models.TextChoices):
@@ -29,10 +28,11 @@ class Plan(TimeStampedModel):
     is_active = models.BooleanField(default=True)
     sort_order = models.IntegerField(default=0)
 
-    # Panel groups this plan's service attaches to. Empty -> fall back to
-    # Panel.default_group_ids. Editable per-plan from the Django admin.
+    # Panel groups this plan's service attaches to. Empty (the default) -> fall
+    # back to Panel.default_group_ids, so unchecking a group at the panel level
+    # takes effect for every plan that hasn't deliberately overridden the set.
     group_ids = models.JSONField(
-        default=default_group_ids, blank=True,
+        default=list, blank=True,
         help_text="panel group ids for this plan; empty = use the panel's default set",
     )
 

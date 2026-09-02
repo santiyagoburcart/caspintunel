@@ -115,9 +115,15 @@ def test_new_order_rejects_a_taken_account_name(user, fixed_plan):
         create_order(user=user, plan_id=fixed_plan.id, requested_account_name="taken")
 
 
-def test_custom_volume_new_order_auto_generates_account_name(user):
+def test_custom_volume_new_order_requires_account_name(user):
+    """The customer must pick their own username for custom-volume plans too —
+    we never auto-generate it."""
     from apps.plans.models import PlanType
     plan = Plan.objects.create(name_fa="CV2", type=PlanType.CUSTOM_VOLUME, price=Decimal("0"),
                                price_per_gb=Decimal("1000"), min_gb=1, max_gb=100)
-    order = create_order(user=user, plan_id=plan.id, custom_volume_gb=10)  # no account name
-    assert order.requested_account_name and order.requested_account_name.startswith(f"u{user.id}")
+    with pytest.raises(OrderError):
+        create_order(user=user, plan_id=plan.id, custom_volume_gb=10)  # no account name
+
+    order = create_order(user=user, plan_id=plan.id, custom_volume_gb=10,
+                         requested_account_name="myvpn")
+    assert order.requested_account_name == "myvpn"

@@ -95,9 +95,10 @@ export default function Checkout() {
             {plans.map((p) => <option key={p.id} value={p.id}>{(lang === 'fa' ? p.name_fa : p.name_en) || p.name_fa}</option>)}
           </select>
         </Field>
-        {!renewId && plan?.type !== 'custom_volume' && (
+        {!renewId && (
           <Field label={t('account_name')}>
-            <input className="input" value={accountName} onChange={(e) => setAccountName(e.target.value)} />
+            <input className="input" dir="ltr" value={accountName}
+              onChange={(e) => setAccountName(e.target.value)} />
           </Field>
         )}
         {!renewId && plan?.type === 'custom_volume' && (
@@ -105,7 +106,11 @@ export default function Checkout() {
             <input className="input" type="number" value={customGb} onChange={(e) => setCustomGb(e.target.value)} />
           </Field>
         )}
-        <button className="btn-primary w-full" disabled={busy || !chosenPlan}>{busy ? <Spinner /> : t('submit')}</button>
+        <button className="btn-primary w-full"
+          disabled={busy || !chosenPlan || (!renewId && !accountName.trim())
+            || (plan?.type === 'custom_volume' && !customGb)}>
+          {busy ? <Spinner /> : t('submit')}
+        </button>
       </form>
     )
   }
