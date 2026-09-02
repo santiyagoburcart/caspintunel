@@ -29,10 +29,12 @@ from ..shop import (
     active_plans,
     buy_new,
     delivery_message,
+    order_awaiting_receipt,
     payment_instructions,
     plan_label,
     renew,
     service_summary,
+    submit_bot_receipt,
     user_services,
 )
 from . import keyboards as kb
@@ -60,7 +62,7 @@ def _sync_menu_button(bot: telebot.TeleBot) -> None:
         return
     try:
         bot.set_chat_menu_button(menu_button=types.MenuButtonWebApp(
-            text="🌐 اپ", web_app=types.WebAppInfo(url=url)))
+            type="web_app", text="🌐 اپ", web_app=types.WebAppInfo(url=url)))
         log.info("sales bot: menu button -> mini app %s", url)
     except Exception as exc:  # noqa: BLE001
         log.warning("sales bot: could not set menu button: %s", exc)
@@ -111,6 +113,28 @@ def _register(bot: telebot.TeleBot):
         bot.send_message(msg.chat.id, _welcome_text(created, password, user.username))
         if _enforce_gate(bot, msg.chat.id, user, msg.from_user.id):
             bot.send_message(msg.chat.id, "یک گزینه را انتخاب کنید:", reply_markup=kb.main_menu())
+
+    @bot.message_handler(content_types=["photo"])
+    def receipt_photo(msg):
+        close_old_connections()
+        user, *_ = _user(msg.from_user)
+        order = order_awaiting_receipt(user)
+        if not order:
+            bot.send_message(msg.chat.id, "سفارشی در انتظار پرداخت ندارید. برای خرید /start را بزنید.")
+            return
+        try:
+            file_info = bot.get_file(msg.photo[-1].file_id)  # largest size
+            image_bytes = bot.download_file(file_info.file_path)
+            submit_bot_receipt(user, order, image_bytes)
+        except Exception as exc:  # noqa: BLE001
+            log.exception("bot receipt upload failed: %s", exc)
+            bot.send_message(msg.chat.id, f"ثبت رسید ناموفق بود: {exc}")
+            return
+        bot.send_message(
+            msg.chat.id,
+            "رسید شما دریافت شد ✅\nدر انتظار تأیید ادمین. پس از تأیید، سرویس فعال می‌شود.",
+            reply_markup=kb.order_status(order.id),
+        )
 
     @bot.message_handler(content_types=["contact"])
     def contact(msg):
@@ -233,7 +257,8 @@ def _register(bot: telebot.TeleBot):
         bot.send_message(chat_id, payment_instructions(order), reply_markup=kb.order_status(order.id))
 
     def _check_order(bot, chat_id, user, order_id):
-        order = Order.objects.filter(pk=order_id, user=user).select_related("service").first()
+        order = (Order.objects.filter(pk=order_id, user=user)
+                 .select_related("service", "payment").first())
         if not order:
             return
         status_fa = {
@@ -241,7 +266,16 @@ def _register(bot: telebot.TeleBot):
             "completed": "تکمیل شد", "rejected": "رد شد", "failed": "ناموفق",
             "expired": "مهلت پرداخت تمام شد",
         }.get(order.status, order.status)
-        bot.send_message(chat_id, f"وضعیت سفارش: {status_fa}")
+        msg = f"وضعیت سفارش: {status_fa}"
+        pay = getattr(order, "payment", None)
+        if order.status == "pending_payment" and pay:
+            if pay.status == "pending":
+                msg += "\n📸 رسید شما ثبت شده و در انتظار تأیید ادمین است."
+            elif pay.status == "rejected":
+                msg += f"\n❌ رسید رد شد: {pay.reject_reason or 'نامشخص'}\nلطفاً عکس رسید جدید ارسال کنید."
+        elif order.status == "pending_payment":
+            msg += "\nپس از واریز، عکس رسید را همین‌جا ارسال کنید."
+        bot.send_message(chat_id, msg)
         if order.status == "completed" and order.service and order.service.subscription_url:
             bot.send_message(chat_id, delivery_message(order.service),
                              reply_markup=kb.service_detail(order.service))

@@ -220,6 +220,29 @@ class TransactionSerializer(serializers.ModelSerializer):
         return None
 
 
+class AdminPendingPaymentSerializer(serializers.ModelSerializer):
+    """One row in the approval queue."""
+
+    order_id = serializers.IntegerField(source="order.id", read_only=True)
+    user = serializers.CharField(source="order.user.username", read_only=True)
+    user_telegram = serializers.CharField(source="order.user.telegram_username", read_only=True, default="")
+    plan_name = serializers.CharField(source="order.plan.name_fa", read_only=True, default=None)
+    order_type = serializers.CharField(source="order.type", read_only=True)
+    order_source = serializers.CharField(source="order.source", read_only=True)
+    account_name = serializers.CharField(source="order.requested_account_name", read_only=True, default="")
+    receipt_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Payment
+        fields = ("id", "order_id", "user", "user_telegram", "plan_name", "order_type",
+                  "order_source", "account_name", "method", "amount", "status",
+                  "receipt_url", "reject_reason", "created_at")
+
+    def get_receipt_url(self, obj) -> str | None:
+        # authenticated endpoint (ReceiptFileView), never a public media path
+        return f"/api/v1/payments/{obj.id}/receipt/" if obj.receipt_image else None
+
+
 # --- notifications ---------------------------------------------
 class BroadcastSerializer(serializers.Serializer):
     title = serializers.CharField(max_length=200)

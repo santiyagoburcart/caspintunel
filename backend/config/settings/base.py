@@ -342,5 +342,10 @@ LOGGING = {
     "loggers": {
         "django.request": {"handlers": ["console"], "level": "ERROR", "propagate": False},
         "caspintunel": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        # never DEBUG these — urllib3/telebot log full request URLs, which for the
+        # Telegram Bot API contain the bot token.
+        "urllib3": {"level": "WARNING"},
+        "telebot": {"level": "INFO"},
+        "requests": {"level": "WARNING"},
     },
 }

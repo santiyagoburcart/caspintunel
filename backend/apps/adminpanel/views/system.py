@@ -8,10 +8,69 @@ from drf_spectacular.utils import extend_schema
 from rest_framework.response import Response
 
 from apps.common.models import write_audit
+from apps.settings_app.utils import get_setting, set_setting
 
 from .base import AdminAPIView
 
 log = logging.getLogger("caspintunel")
+
+# The runtime settings the operator may change from the panel. Order = UI order.
+EDITABLE_SETTINGS = [
+    # key, type, default, min, max  (min/max advisory, enforced for ints)
+    ("backup_interval_minutes", "int", 1440, 5, 43200),
+    ("unique_amount_reservation_minutes", "int", 30, 5, 720),
+    ("unique_amount_min", "int", 200, 1, 100000),
+    ("unique_amount_max", "int", 1500, 1, 100000),
+    ("alert_volume_percent", "int", 80, 1, 100),
+    ("alert_expire_days", "int", 3, 1, 60),
+    ("email_verification_required", "bool", False, None, None),
+    ("force_channel_join", "bool", False, None, None),
+    ("force_share_phone", "bool", False, None, None),
+    ("default_language", "str", "fa", None, None),
+]
+_SPEC = {k: (t, d, lo, hi) for (k, t, d, lo, hi) in EDITABLE_SETTINGS}
+
+
+class SettingsView(AdminAPIView):
+    """GET / PUT the runtime key-value settings the operator is allowed to touch
+    (backup interval, reservation window, alert thresholds, verification toggle …)."""
+
+    perms_map = {"GET": ["settings.manage"], "PUT": ["settings.manage"], "PATCH": ["settings.manage"]}
+
+    @extend_schema(responses=dict, summary="Runtime settings")
+    def get(self, request):
+        return Response({"settings": [
+            {"key": k, "type": t, "value": get_setting(k, d)}
+            for (k, t, d, _lo, _hi) in EDITABLE_SETTINGS
+        ]})
+
+    @extend_schema(request=dict, responses=dict, summary="Update runtime settings")
+    def put(self, request):
+        changed = []
+        for key, raw in (request.data or {}).items():
+            spec = _SPEC.get(key)
+            if not spec:
+                continue  # ignore unknown / read-only keys
+            vtype, default, lo, hi = spec
+            try:
+                if vtype == "int":
+                    val = int(raw)
+                    if lo is not None:
+                        val = max(lo, min(hi, val))
+                elif vtype == "bool":
+                    val = str(raw).strip().lower() in ("1", "true", "yes", "on") or raw is True
+                    val = "true" if val else "false"
+                else:
+                    val = str(raw).strip()
+            except (TypeError, ValueError):
+                return Response({"detail": f"bad value for {key}"}, status=400)
+            set_setting(key, val, vtype)
+            changed.append(key)
+        if changed:
+            write_audit(action="settings.updated", staff=request.user, detail={"keys": changed})
+        return self.get(request)
+
+    patch = put
 
 
 def _version_tuple(v):

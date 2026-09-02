@@ -9,6 +9,7 @@ from .services import OrderError, create_order
 class OrderSerializer(serializers.ModelSerializer):
     plan_name = serializers.CharField(source="plan.name_fa", read_only=True)
     payment_status = serializers.SerializerMethodField()
+    reject_reason = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
@@ -16,13 +17,17 @@ class OrderSerializer(serializers.ModelSerializer):
             "id", "type", "status", "plan", "plan_name", "service",
             "requested_account_name", "custom_volume_gb",
             "amount", "amount_unique", "unique_expire_at",
-            "payment_status", "source", "created_at",
+            "payment_status", "reject_reason", "source", "created_at",
         )
         read_only_fields = fields
 
     def get_payment_status(self, obj) -> str | None:
         pay = getattr(obj, "payment", None)
         return pay.status if pay else None
+
+    def get_reject_reason(self, obj) -> str:
+        pay = getattr(obj, "payment", None)
+        return pay.reject_reason if pay and pay.status == "rejected" else ""
 
 
 class OrderCreateSerializer(serializers.Serializer):

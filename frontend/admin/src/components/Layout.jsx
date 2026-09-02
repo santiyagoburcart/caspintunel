@@ -15,6 +15,7 @@ const nav = [
   ['/panel-link', 'panel_link', 'settings.manage'],
   ['/bots', 'bots', 'bots.manage'],
   ['/branding', 'branding', 'settings.manage'],
+  ['/settings', 'settings', 'settings.manage'],
   ['/pages', 'pages', 'pages.manage'],
   ['/themes', 'themes', 'themes.manage'],
   ['/roles', 'roles', 'roles.manage'],

@@ -1,10 +1,13 @@
 """Bot-side buy / renew / status helpers (thin wrappers over apps.orders)."""
 from __future__ import annotations
 
+from django.core.files.base import ContentFile
+
 from apps.common.jalali import to_jalali_str
-from apps.orders.models import OrderType
+from apps.orders.models import Order, OrderStatus, OrderType
 from apps.orders.services import create_order
 from apps.payments_sms.models import BankCard
+from apps.payments_sms.services import submit_receipt
 from apps.plans.models import Plan, PlanType
 
 _GB = 1024**3
@@ -64,14 +67,41 @@ def payment_instructions(order) -> str:
         f"مبلغ دقیق قابل پرداخت: <b>{int(order.amount_unique):,} تومان</b>",
         "(لطفاً همین مبلغ دقیق را واریز کنید تا خودکار تأیید شود)",
         "",
-        "کارت‌ها:",
     ]
-    for c in cards:
-        lines.append(f"• <code>{c.card_number}</code> — {c.holder_name}")
+    if cards:
+        lines.append("کارت‌ها:")
+        for c in cards:
+            lines.append(f"• <code>{c.card_number}</code> — {c.holder_name}")
+    else:
+        lines.append("⚠️ کارتی برای واریز ثبت نشده — لطفاً با پشتیبانی تماس بگیرید.")
     if order.unique_expire_at:
         lines.append("")
         lines.append(f"مهلت پرداخت تا: {to_jalali_str(order.unique_expire_at, '%H:%M')}")
+    lines.append("")
+    lines.append("پس از واریز، <b>عکس رسید</b> را همین‌جا ارسال کنید 📸")
     return "\n".join(lines)
+
+
+def order_awaiting_receipt(user):
+    """The most recent order this bot user still needs to pay for."""
+    return (
+        Order.objects.filter(user=user, status=OrderStatus.PENDING_PAYMENT)
+        .select_related("payment")
+        .order_by("-created_at")
+        .first()
+    )
+
+
+def submit_bot_receipt(user, order, image_bytes: bytes, *, filename="receipt.jpg"):
+    """Attach a photo sent to the bot as the order's card-to-card receipt —
+    the exact same `submit_receipt` path the website uses (creates the pending
+    Payment that lands in the admin approval queue)."""
+    return submit_receipt(
+        order=order,
+        image=ContentFile(image_bytes, name=filename),
+        bank_card=None,
+        user=user,
+    )
 
 
 def delivery_message(service) -> str:

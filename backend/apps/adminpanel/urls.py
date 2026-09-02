@@ -12,7 +12,12 @@ from .views.catalog import (
     StaffViewSet,
     ThemeViewSet,
 )
-from .views.finance import AccountingView, TransactionViewSet
+from .views.finance import (
+    AccountingView,
+    PaymentDecisionView,
+    PendingPaymentsView,
+    TransactionViewSet,
+)
 from .views.integrations import (
     EmailStatusView,
     PanelConfigView,
@@ -23,7 +28,7 @@ from .views.integrations import (
 from .views.monitoring import BackupViewSet, HealthView, MonitoringView, ResourcesView
 from .views.notifications import NotificationViewSet
 from .views.ops import DashboardView, ServiceListViewSet, TelegramStatsView
-from .views.system import SystemView
+from .views.system import SettingsView, SystemView
 from .views.users import UserAdminViewSet
 
 router = SimpleRouter()
@@ -45,6 +50,8 @@ urlpatterns = [
     path("auth/refresh/", StaffRefreshView.as_view(), name="admin-refresh"),
     path("auth/me/", StaffMeView.as_view(), name="admin-me"),
     path("accounting/", AccountingView.as_view(), name="admin-accounting"),
+    path("payments/pending/", PendingPaymentsView.as_view(), name="admin-payments-pending"),
+    path("payments/<int:pk>/<str:action>/", PaymentDecisionView.as_view(), name="admin-payment-decision"),
     path("branding/", SiteConfigView.as_view(), name="admin-branding"),
     path("dashboard/", DashboardView.as_view(), name="admin-dashboard"),
     path("telegram-stats/", TelegramStatsView.as_view(), name="admin-telegram-stats"),
@@ -52,6 +59,7 @@ urlpatterns = [
     path("resources/", ResourcesView.as_view(), name="admin-resources"),
     path("monitoring/", MonitoringView.as_view(), name="admin-monitoring"),
     path("system/", SystemView.as_view(), name="admin-system"),
+    path("settings/", SettingsView.as_view(), name="admin-settings"),
     path("integrations/panel/", PanelConfigView.as_view(), name="admin-panel-config"),
     path("integrations/panel/test/", PanelTestView.as_view(), name="admin-panel-test"),
     path("integrations/panel/groups/", PanelGroupsView.as_view(), name="admin-panel-groups"),

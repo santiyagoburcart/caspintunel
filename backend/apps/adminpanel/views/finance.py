@@ -11,8 +11,9 @@ from rest_framework.response import Response
 
 from apps.common.jalali import to_jalali_str
 from apps.payments_sms.models import Payment, PaymentStatus
+from apps.payments_sms.services import PaymentError, approve_payment, reject_payment
 
-from ..serializers import TransactionSerializer
+from ..serializers import AdminPendingPaymentSerializer, TransactionSerializer
 from .base import AdminAPIView, _AUTH
 from ..permissions import StaffPermission
 
@@ -36,6 +37,46 @@ class TransactionViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, views
         if src:
             qs = qs.filter(order__source=src)
         return qs.order_by("-created_at")
+
+
+class PendingPaymentsView(AdminAPIView):
+    """The card-to-card approval queue — pending receipts from site + bot."""
+
+    perms_map = {"GET": ["payment.view"]}
+
+    @extend_schema(responses=AdminPendingPaymentSerializer(many=True),
+                   summary="Payments awaiting manual approval")
+    def get(self, request):
+        qs = (
+            Payment.objects.filter(status=PaymentStatus.PENDING)
+            .select_related("order", "order__user", "order__plan", "bank_card")
+            .order_by("created_at")
+        )
+        data = AdminPendingPaymentSerializer(qs, many=True, context={"request": request}).data
+        return Response({"results": data, "count": len(data)})
+
+
+class PaymentDecisionView(AdminAPIView):
+    """POST /admin/payments/<id>/(approve|reject) — the manual decision."""
+
+    perms_map = {"POST": ["payment.approve"]}
+
+    @extend_schema(request=dict, responses=AdminPendingPaymentSerializer,
+                   summary="Approve or reject a pending payment")
+    def post(self, request, pk, action):
+        try:
+            if action == "approve":
+                payment = approve_payment(pk, actor=request.user)
+            elif action == "reject":
+                reason = (request.data.get("reason") or "").strip() or "رد شد"
+                payment = reject_payment(pk, reason=reason, actor=request.user)
+            else:
+                return Response({"detail": "unknown action"}, status=400)
+        except Payment.DoesNotExist:
+            return Response({"detail": "payment not found"}, status=404)
+        except PaymentError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        return Response(AdminPendingPaymentSerializer(payment, context={"request": request}).data)
 
 
 class AccountingView(AdminAPIView):
