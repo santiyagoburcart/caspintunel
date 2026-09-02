@@ -58,6 +58,8 @@ class TelegramConfigAdmin(admin.ModelAdmin):
 class RequiredChannelAdmin(admin.ModelAdmin):
     list_display = ("channel_id", "title", "member_count", "is_active", "last_synced_at")
     list_editable = ("is_active",)
+    fields = ("channel_id", "title", "invite_link", "is_active", "member_count", "last_synced_at")
+    readonly_fields = ("member_count", "last_synced_at")
 
 
 @admin.register(TelegramStats)

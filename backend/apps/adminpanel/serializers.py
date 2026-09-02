@@ -9,7 +9,7 @@ from apps.payments_sms.models import BankCard, Payment
 from apps.plans.models import Plan
 from apps.plans.serializers import PlanPanelDefaultMixin
 from apps.settings_app.models import Page, SiteConfig, Theme
-from apps.telegram.models import TelegramConfig
+from apps.telegram.models import RequiredChannel, TelegramConfig
 
 User = get_user_model()
 
@@ -163,6 +163,23 @@ class TelegramConfigSerializer(serializers.ModelSerializer):
 
     def get_token_set(self, obj) -> bool:
         return bool(getattr(obj, "token", ""))
+
+
+class AdminRequiredChannelSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RequiredChannel
+        fields = ("id", "channel_id", "title", "invite_link", "member_count",
+                  "last_synced_at", "is_active")
+        read_only_fields = ("id", "member_count", "last_synced_at")
+
+    def validate_channel_id(self, value):
+        value = (value or "").strip()
+        if not value:
+            raise serializers.ValidationError("channel username or id is required")
+        # normalise: bare name -> @name ; leave -100... ids and @names as-is
+        if not value.startswith("@") and not value.lstrip("-").isdigit():
+            value = "@" + value.lstrip("@")
+        return value
 
 
 # --- plans / cards / pages / themes -------------------------------

@@ -30,6 +30,10 @@ class RequiredChannel(models.Model):
 
     channel_id = models.CharField(max_length=100, help_text="@username or -100... id")
     title = models.CharField(max_length=150, blank=True)
+    invite_link = models.URLField(
+        blank=True,
+        help_text="optional; needed for private channels so users get a join button",
+    )
     member_count = models.IntegerField(default=0)
     last_synced_at = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True)

@@ -36,6 +36,18 @@ const T = {
     email_relay_hint: 'اطلاعات رله در فایل .env تنظیم می‌شود (SMTP_RELAY_*) — راهنما: docs/email-relay.md',
     email_test_to: 'ارسال ایمیل آزمایشی به', email_send_test: 'ارسال آزمایشی',
     email_verif_on: 'تأیید ایمیل الزامی است', email_verif_off: 'تأیید ایمیل اختیاری است',
+    inactive: 'غیرفعال',
+    ch_title_h: 'کانال‌های اجباری (عضویت پیش از استفاده از ربات)',
+    ch_intro: 'کاربر باید پیش از استفاده از ربات فروش، در همهٔ کانال‌های فعال زیر عضو باشد.',
+    ch_add: 'افزودن کانال', ch_cancel: 'انصراف', ch_confirm_del: 'این کانال حذف شود؟',
+    ch_none: 'هنوز کانالی اضافه نشده است.',
+    ch_id: 'شناسهٔ کانال (@username یا -100...)', ch_title: 'عنوان (اختیاری)',
+    ch_invite: 'لینک دعوت (برای کانال خصوصی)',
+    ch_invite_hint: 'برای کانال خصوصی که username ندارد، لینک دعوت را وارد کنید تا دکمهٔ «عضویت» به کاربر نمایش داده شود.',
+    ch_members: 'اعضا', ch_test: 'تست دسترسی',
+    force_join: 'عضویت اجباری در کانال‌ها (force_channel_join)',
+    force_phone: 'اشتراک‌گذاری اجباری شمارهٔ تلفن (force_share_phone)',
+    ch_admin_hint: 'برای بررسی عضویت کاربران، ربات فروش باید «ادمین» هر کانال باشد. پس از افزودن کانال، ربات را در آن ادمین کنید و سپس «تست دسترسی» را بزنید.',
   },
   en: {
     panel_intro: 'Manage your Pasargad / PasarGuard panels here. Every plan is bound to one panel. Passwords are stored encrypted and never shown again.',
@@ -69,6 +81,18 @@ const T = {
     email_relay_hint: 'Relay credentials are set in .env (SMTP_RELAY_*) — see docs/email-relay.md',
     email_test_to: 'Send a test email to', email_send_test: 'Send test',
     email_verif_on: 'Email verification is required', email_verif_off: 'Email verification is optional',
+    inactive: 'Disabled',
+    ch_title_h: 'Required channels (join before using the bot)',
+    ch_intro: 'A user must be a member of every active channel below before using the sales bot.',
+    ch_add: 'Add channel', ch_cancel: 'Cancel', ch_confirm_del: 'Delete this channel?',
+    ch_none: 'No channels added yet.',
+    ch_id: 'Channel (@username or -100...)', ch_title: 'Title (optional)',
+    ch_invite: 'Invite link (for private channels)',
+    ch_invite_hint: 'For a private channel with no username, add its invite link so users get a “Join” button.',
+    ch_members: 'members', ch_test: 'Test access',
+    force_join: 'Force channel join (force_channel_join)',
+    force_phone: 'Force phone-number share (force_share_phone)',
+    ch_admin_hint: 'To check user membership, the sales bot must be an ADMIN of each channel. After adding a channel, make the bot an admin there, then click “Test access”.',
   },
 }
 
@@ -435,6 +459,166 @@ export function Bots() {
         {backup && <BotCard title={s.backup_bot} row={data.backup} value={backup} onChange={setBackup} s={s} showChatId />}
         <button className="btn-primary text-sm">{s.save}</button>
       </form>
+
+      <RequiredChannels s={s} />
+    </div>
+  )
+}
+
+/* ================================================================== *
+ *  Forced-join channels  —  on the Bots page                         *
+ * ================================================================== */
+function RequiredChannels({ s }) {
+  const { lang } = useI18n()
+  const blank = { channel_id: '', title: '', invite_link: '', is_active: true }
+  const [rows, setRows] = useState(null)
+  const [enf, setEnf] = useState({ force_channel_join: false, force_share_phone: false })
+  const [edit, setEdit] = useState(null)          // {channel...} | null
+  const [adding, setAdding] = useState(false)
+  const [msg, setMsg] = useState(null)
+  const [testing, setTesting] = useState(null)    // channel id being tested
+
+  const load = () =>
+    api.get('/admin/channels/').then((r) => {
+      setRows(r.data.results || [])
+      setEnf(r.data.enforcement || {})
+    }).catch((e) => { setRows([]); setMsg({ kind: 'danger', text: apiError(e) }) })
+  useEffect(() => { load() }, [])
+
+  const setToggle = async (k, v) => {
+    setEnf((c) => ({ ...c, [k]: v }))
+    try { await api.patch('/admin/channels/enforcement/', { [k]: v }) }
+    catch (e) { setMsg({ kind: 'danger', text: apiError(e) }); load() }
+  }
+
+  const saveChannel = async (e) => {
+    e.preventDefault(); setMsg(null)
+    const body = { ...edit }
+    try {
+      if (edit.id) await api.patch(`/admin/channels/${edit.id}/`, body)
+      else await api.post('/admin/channels/', body)
+      setEdit(null); setAdding(false); load()
+    } catch (e2) { setMsg({ kind: 'danger', text: apiError(e2) }) }
+  }
+
+  const del = async (id) => {
+    if (!confirm(s.ch_confirm_del)) return
+    try { await api.delete(`/admin/channels/${id}/`); load() }
+    catch (e) { setMsg({ kind: 'danger', text: apiError(e) }) }
+  }
+
+  const test = async (id) => {
+    setTesting(id); setMsg(null)
+    try {
+      const r = await api.post(`/admin/channels/${id}/test/`)
+      setMsg({ kind: r.data.ok ? 'success' : 'danger', text: r.data.detail })
+      load()
+    } catch (e) { setMsg({ kind: 'danger', text: apiError(e) }) }
+    finally { setTesting(null) }
+  }
+
+  if (!rows) return <div className="card"><Spinner /></div>
+
+  const Form = ({ value, onChange, onSubmit, onCancel }) => (
+    <form onSubmit={onSubmit} className="card grid gap-3 sm:grid-cols-2"
+      style={{ background: 'color-mix(in srgb, var(--c-primary) 5%, var(--c-surface))' }}>
+      <Field label={s.ch_id}>
+        <input className="input" dir="ltr" required placeholder="@mychannel  یا  -1001234567890"
+          value={value.channel_id} onChange={(e) => onChange({ ...value, channel_id: e.target.value })} />
+      </Field>
+      <Field label={s.ch_title}>
+        <input className="input" value={value.title}
+          onChange={(e) => onChange({ ...value, title: e.target.value })} />
+      </Field>
+      <div className="sm:col-span-2">
+        <Field label={s.ch_invite}>
+          <input className="input" dir="ltr" placeholder="https://t.me/+AbC..."
+            value={value.invite_link} onChange={(e) => onChange({ ...value, invite_link: e.target.value })} />
+        </Field>
+        <p className="mt-1 text-xs text-muted">{s.ch_invite_hint}</p>
+      </div>
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={value.is_active}
+          onChange={(e) => onChange({ ...value, is_active: e.target.checked })} />
+        {s.active}
+      </label>
+      <div className="flex gap-2 sm:col-span-2">
+        <button className="btn-primary text-sm">{s.save}</button>
+        <button type="button" className="btn-ghost text-sm" onClick={onCancel}>{s.ch_cancel}</button>
+      </div>
+    </form>
+  )
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h2 className="font-bold">{s.ch_title_h}</h2>
+          <p className="mt-1 text-sm text-muted">{s.ch_intro}</p>
+        </div>
+        {!adding && !edit && (
+          <button className="btn-primary shrink-0 text-sm" onClick={() => { setAdding(true); setEdit({ ...blank }) }}>
+            + {s.ch_add}
+          </button>
+        )}
+      </div>
+
+      {msg && <Alert kind={msg.kind}>{msg.text}</Alert>}
+
+      {/* enforcement toggles */}
+      <div className="card space-y-2">
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={!!enf.force_channel_join}
+            onChange={(e) => setToggle('force_channel_join', e.target.checked)} />
+          {s.force_join}
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={!!enf.force_share_phone}
+            onChange={(e) => setToggle('force_share_phone', e.target.checked)} />
+          {s.force_phone}
+        </label>
+      </div>
+
+      <div className="rounded-xl p-3 text-xs" style={{ background: 'color-mix(in srgb, var(--c-warning) 12%, transparent)', color: 'var(--c-warning)' }}>
+        ⚠️ {s.ch_admin_hint}
+      </div>
+
+      {adding && <Form value={edit} onChange={setEdit} onSubmit={saveChannel}
+        onCancel={() => { setAdding(false); setEdit(null) }} />}
+
+      {rows.length === 0 && !adding && (
+        <div className="card text-center text-sm text-muted">{s.ch_none}</div>
+      )}
+
+      {rows.map((c) => (
+        edit && edit.id === c.id ? (
+          <Form key={c.id} value={edit} onChange={setEdit} onSubmit={saveChannel}
+            onCancel={() => setEdit(null)} />
+        ) : (
+          <div key={c.id} className="card flex flex-wrap items-center gap-3">
+            <span className={'shrink-0 rounded-full px-2 py-0.5 text-xs ' + (c.is_active ? '' : 'opacity-60')}
+              style={{ background: c.is_active ? 'color-mix(in srgb, var(--c-success) 16%, transparent)' : 'var(--c-border)',
+                color: c.is_active ? 'var(--c-success)' : 'var(--c-text-muted)' }}>
+              {c.is_active ? s.active : s.inactive}
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="truncate font-bold">{c.title || c.channel_id}</div>
+              <div dir="ltr" className="truncate text-xs text-muted">{c.channel_id}</div>
+            </div>
+            <div className="text-xs text-muted">
+              {s.ch_members}: {c.member_count ?? 0}
+              {c.last_synced_at ? ` · ${new Date(c.last_synced_at).toLocaleDateString(lang === 'fa' ? 'fa-IR' : 'en-GB')}` : ''}
+            </div>
+            <div className="flex gap-1">
+              <button className="btn-ghost text-xs" onClick={() => test(c.id)} disabled={testing === c.id}>
+                {testing === c.id ? '…' : s.ch_test}
+              </button>
+              <button className="btn-ghost text-xs" onClick={() => { setEdit({ ...c }); setAdding(false) }}>✎</button>
+              <button className="btn-ghost text-xs" style={{ color: 'var(--c-danger)' }} onClick={() => del(c.id)}>🗑</button>
+            </div>
+          </div>
+        )
+      ))}
     </div>
   )
 }

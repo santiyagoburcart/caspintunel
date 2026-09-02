@@ -190,6 +190,92 @@ def test_telegram_config_requires_bots_manage(staff_client, perms):
     assert ok.get("/api/v1/admin/integrations/telegram/").status_code == 200
 
 
+# --- required channels (forced-join) -----------------------------
+def test_required_channels_crud_and_normalisation(boss):
+    from apps.telegram.models import RequiredChannel
+
+    r = boss.post("/api/v1/admin/channels/",
+                  {"channel_id": "mychan", "title": "My Channel"}, format="json")
+    assert r.status_code == 201
+    assert r.data["channel_id"] == "@mychan"                 # bare name normalised
+
+    r2 = boss.post("/api/v1/admin/channels/",
+                   {"channel_id": "-1001234567890", "invite_link": "https://t.me/+abc"},
+                   format="json")
+    assert r2.status_code == 201 and r2.data["channel_id"] == "-1001234567890"
+
+    lst = boss.get("/api/v1/admin/channels/")
+    assert len(lst.data["results"]) == 2
+    assert lst.data["enforcement"] == {"force_channel_join": False, "force_share_phone": False}
+
+    cid = r.data["id"]
+    assert boss.patch(f"/api/v1/admin/channels/{cid}/", {"is_active": False},
+                      format="json").status_code == 200
+    assert boss.delete(f"/api/v1/admin/channels/{cid}/").status_code == 204
+    assert RequiredChannel.objects.count() == 1
+
+
+def test_channel_enforcement_toggles(boss):
+    from apps.settings_app.utils import get_setting
+
+    r = boss.patch("/api/v1/admin/channels/enforcement/",
+                   {"force_channel_join": True, "force_share_phone": True}, format="json")
+    assert r.status_code == 200
+    assert r.data == {"force_channel_join": True, "force_share_phone": True}
+    assert get_setting("force_channel_join") is True
+    assert get_setting("force_share_phone") is True
+
+
+@responses.activate
+def test_channel_test_action_reports_bot_admin_status(boss):
+    from apps.telegram.models import BotType, RequiredChannel, TelegramConfig
+
+    TelegramConfig.objects.create(bot_type=BotType.SALES, token="123:abc", is_active=True)
+    ch = RequiredChannel.objects.create(channel_id="@vip", title="VIP")
+
+    B = "https://api.telegram.org/bot123:abc"
+    responses.add(responses.POST, f"{B}/getChat",
+                  json={"ok": True, "result": {"id": -100, "title": "VIP CHAN", "type": "channel"}})
+    responses.add(responses.POST, f"{B}/getChatMemberCount",
+                  json={"ok": True, "result": 4210})
+    responses.add(responses.POST, f"{B}/getMe",
+                  json={"ok": True, "result": {"id": 777, "is_bot": True}})
+    responses.add(responses.POST, f"{B}/getChatMember",
+                  json={"ok": True, "result": {"status": "administrator"}})
+
+    r = boss.post(f"/api/v1/admin/channels/{ch.id}/test/")
+    assert r.data["ok"] is True and r.data["bot_is_admin"] is True
+    assert r.data["member_count"] == 4210
+    ch.refresh_from_db()
+    assert ch.title == "VIP CHAN" and ch.member_count == 4210 and ch.last_synced_at
+
+
+@responses.activate
+def test_channel_test_warns_when_bot_not_admin(boss):
+    from apps.telegram.models import BotType, RequiredChannel, TelegramConfig
+
+    TelegramConfig.objects.create(bot_type=BotType.SALES, token="123:abc", is_active=True)
+    ch = RequiredChannel.objects.create(channel_id="@vip")
+
+    B = "https://api.telegram.org/bot123:abc"
+    responses.add(responses.POST, f"{B}/getChat",
+                  json={"ok": True, "result": {"id": -100, "title": "VIP", "type": "channel"}})
+    responses.add(responses.POST, f"{B}/getChatMemberCount", json={"ok": True, "result": 10})
+    responses.add(responses.POST, f"{B}/getMe", json={"ok": True, "result": {"id": 777}})
+    responses.add(responses.POST, f"{B}/getChatMember",
+                  json={"ok": True, "result": {"status": "left"}})
+
+    r = boss.post(f"/api/v1/admin/channels/{ch.id}/test/")
+    assert r.data["ok"] is False and r.data["bot_is_admin"] is False
+
+
+def test_channels_require_bots_manage(staff_client, perms):
+    weak = staff_client(make_staff("weakc", ["settings.manage"], perms))
+    assert weak.get("/api/v1/admin/channels/").status_code == 403
+    ok = staff_client(make_staff("okc", ["bots.manage"], perms))
+    assert ok.get("/api/v1/admin/channels/").status_code == 200
+
+
 # --- email status -------------------------------------------------
 def test_email_status_reports_relay_state(boss, settings):
     settings.EMAIL_HOST = "mailserver"

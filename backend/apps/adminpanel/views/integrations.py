@@ -18,9 +18,12 @@ from apps.common.models import write_audit
 from apps.panel.exceptions import PanelError
 from apps.panel.models import Panel
 from apps.panel.services import client_for, get_active_panel
-from apps.telegram.models import BotType, TelegramConfig
+from apps.telegram.models import BotType, RequiredChannel, TelegramConfig
+
+from apps.settings_app.utils import get_setting, set_setting
 
 from ..serializers import (
+    AdminRequiredChannelSerializer,
     PanelAdminSerializer,
     PanelConfigSerializer,
     TelegramConfigSerializer,
@@ -236,6 +239,97 @@ class TelegramConfigView(AdminAPIView):
             return {"bot_type": bot_type, "token_set": False, "proxy_url": "",
                     "backup_chat_id": None, "is_active": False, "updated_at": None}
         return TelegramConfigSerializer(cfg).data
+
+
+_ENFORCEMENT_KEYS = ("force_channel_join", "force_share_phone")
+
+
+class RequiredChannelViewSet(AdminViewSet):
+    """Forced-join channels for the sales bot (flowchart 1.7) + the two
+    enforcement toggles. The bot must be an ADMIN of each channel to read its
+    membership — see the `test` action."""
+
+    queryset = RequiredChannel.objects.order_by("id")
+    serializer_class = AdminRequiredChannelSerializer
+    perms_map = {"GET": ["bots.manage"], "*": ["bots.manage"]}
+
+    def list(self, request, *args, **kwargs):
+        resp = super().list(request, *args, **kwargs)
+        data = resp.data
+        rows = data["results"] if isinstance(data, dict) and "results" in data else data
+        return Response({
+            "results": rows,
+            "enforcement": {k: bool(get_setting(k, False)) for k in _ENFORCEMENT_KEYS},
+        })
+
+    @action(detail=False, methods=["get", "put", "patch"], url_path="enforcement")
+    def enforcement(self, request):
+        if request.method != "GET":
+            for k in _ENFORCEMENT_KEYS:
+                if k in request.data:
+                    val = request.data[k]
+                    val = val is True or str(val).strip().lower() in ("1", "true", "yes", "on")
+                    set_setting(k, "true" if val else "false", "bool")
+            write_audit(action="telegram.enforcement_updated", staff=request.user,
+                        detail={k: bool(get_setting(k, False)) for k in _ENFORCEMENT_KEYS})
+        return Response({k: bool(get_setting(k, False)) for k in _ENFORCEMENT_KEYS})
+
+    @action(detail=True, methods=["post"], url_path="test")
+    def test(self, request, pk=None):
+        """Verify the sales bot can read this channel's membership.
+        Passes only when the bot is an administrator of the channel."""
+        from django.utils import timezone
+
+        from apps.telegram.client import TelegramError
+        from apps.telegram.config import sales_client
+
+        channel = self.get_object()
+        client = sales_client()
+        if client is None:
+            return Response({"ok": False, "bot_is_admin": False,
+                             "detail": "ربات فروش پیکربندی نشده است."})
+        try:
+            chat = client._call("getChat", chat_id=channel.channel_id)
+        except TelegramError as exc:
+            return Response({"ok": False, "bot_is_admin": False,
+                             "detail": f"دسترسی به کانال ممکن نشد: {exc}"})
+
+        title = chat.get("title") or channel.title
+        member_count = None
+        try:
+            member_count = int(client._call("getChatMemberCount", chat_id=channel.channel_id))
+        except TelegramError:
+            pass
+
+        bot_is_admin = False
+        try:
+            me = client.get_me()
+            status = client.get_chat_member(channel.channel_id, me["id"]).get("status")
+            bot_is_admin = status in ("administrator", "creator")
+        except TelegramError as exc:
+            return Response({"ok": False, "bot_is_admin": False, "title": title,
+                             "member_count": member_count,
+                             "detail": f"بررسی عضویت ممکن نشد: {exc}"})
+
+        # opportunistically refresh the stored row
+        fields = []
+        if title and title != channel.title:
+            channel.title = title; fields.append("title")
+        if member_count is not None:
+            channel.member_count = member_count; fields.append("member_count")
+            channel.last_synced_at = timezone.now(); fields.append("last_synced_at")
+        if fields:
+            channel.save(update_fields=fields)
+
+        if bot_is_admin:
+            detail = "✅ ربات ادمین کانال است و می‌تواند عضویت را بررسی کند."
+        else:
+            detail = ("⚠️ ربات عضو/ادمین این کانال نیست. برای بررسی عضویت کاربران، "
+                      "ربات را در کانال ادمین کنید.")
+        return Response({
+            "ok": bot_is_admin, "bot_is_admin": bot_is_admin,
+            "title": title, "member_count": member_count, "detail": detail,
+        })
 
 
 class _EmailTestSerializer(serializers.Serializer):

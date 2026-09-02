@@ -74,8 +74,11 @@ def order_status(order_id):
 def join_channels(channels):
     kb = types.InlineKeyboardMarkup()
     for ch in channels:
-        ident = ch.channel_id
-        url = f"https://t.me/{ident.lstrip('@')}" if not str(ident).startswith("-") else None
+        ident = str(ch.channel_id)
+        url = (
+            ch.invite_link
+            or (f"https://t.me/{ident.lstrip('@')}" if ident.startswith("@") else None)
+        )
         if url:
             kb.add(types.InlineKeyboardButton(f"عضویت در {ch.title or ident}", url=url))
     kb.add(types.InlineKeyboardButton("✅ عضو شدم، بررسی کن", callback_data="g:re"))

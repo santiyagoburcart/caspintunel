@@ -42,6 +42,22 @@ def test_member_of_all_channels_passes(user):
     assert check_access(user, 1, client=FakeClient(member=True)).ok is True
 
 
+def test_must_be_member_of_every_active_channel(user):
+    """Partial membership is not enough — flowchart 1.7."""
+    set_setting("force_channel_join", "true", "bool")
+    RequiredChannel.objects.create(channel_id="@a", is_active=True)
+    RequiredChannel.objects.create(channel_id="@b", is_active=True)
+    RequiredChannel.objects.create(channel_id="@old", is_active=False)  # ignored
+
+    class PerChannel:
+        def is_member(self, chat_id, user_id):
+            return chat_id == "@a"          # in @a, not in @b
+
+    result = check_access(user, 1, client=PerChannel())
+    assert result.ok is False
+    assert [c.channel_id for c in result.missing_channels] == ["@b"]
+
+
 def test_phone_requirement(user):
     set_setting("force_channel_join", "false", "bool")
     set_setting("force_share_phone", "true", "bool")

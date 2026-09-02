@@ -24,6 +24,7 @@ from .views.integrations import (
     PanelConfigView,
     PanelGroupsView,
     PanelTestView,
+    RequiredChannelViewSet,
     TelegramConfigView,
 )
 from .views.monitoring import BackupViewSet, HealthView, MonitoringView, ResourcesView
@@ -46,6 +47,7 @@ router.register("notifications", NotificationViewSet, basename="admin-notificati
 router.register("services", ServiceListViewSet, basename="admin-services")
 router.register("backups", BackupViewSet, basename="admin-backups")
 router.register("panels", PanelAdminViewSet, basename="admin-panels")
+router.register("channels", RequiredChannelViewSet, basename="admin-channels")
 
 urlpatterns = [
     path("auth/login/", StaffLoginView.as_view(), name="admin-login"),
