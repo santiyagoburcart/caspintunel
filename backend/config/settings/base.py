@@ -216,6 +216,11 @@ PASSWORD_RESET_TOKEN_MAX_AGE = env.int("PASSWORD_RESET_TOKEN_MAX_AGE", default=6
 # Public base URL used to build links in emails (falls back to the domain).
 PUBLIC_BASE_URL = env("PUBLIC_BASE_URL", default=f"https://{DOMAIN}")
 
+# Telegram Mini App: the URL Telegram opens (our user SPA), and how long a
+# signed initData blob stays acceptable after Telegram issued it.
+MINIAPP_URL = env("MINIAPP_URL", default=PUBLIC_BASE_URL)
+MINIAPP_INITDATA_MAX_AGE = env.int("MINIAPP_INITDATA_MAX_AGE", default=3600)
+
 SPECTACULAR_SETTINGS = {
     "TITLE": "caspintunel API",
     "DESCRIPTION": "VPN sales system — website, admin panel, Telegram bots, SMS app.",

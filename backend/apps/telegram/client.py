@@ -70,6 +70,15 @@ class TelegramClient:
     def get_chat_member(self, chat_id, user_id) -> dict:
         return self._call("getChatMember", chat_id=chat_id, user_id=user_id)
 
+    def set_chat_menu_button(self, *, text: str, url: str) -> dict:
+        """Set the bot's global menu button (next to the message box) to open a
+        web-app URL — i.e. launch the Mini App."""
+        import json
+
+        return self._call("setChatMenuButton", menu_button=json.dumps({
+            "type": "web_app", "text": text, "web_app": {"url": url},
+        }))
+
     def is_member(self, chat_id, user_id) -> bool:
         try:
             status = self.get_chat_member(chat_id, user_id).get("status")

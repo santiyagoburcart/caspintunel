@@ -1,5 +1,6 @@
 import logging
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core import signing
 from django.utils import timezone
@@ -24,8 +25,10 @@ from .serializers import (
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
     RegisterSerializer,
+    TelegramMiniAppSerializer,
     UserSerializer,
 )
+from .telegram_auth import InitDataError, sales_bot_token, validate_init_data
 
 log = logging.getLogger("caspintunel")
 User = get_user_model()
@@ -67,6 +70,72 @@ class RegisterView(GenericAPIView):
 class LoginView(TokenObtainPairView):
     serializer_class = LoginSerializer
     throttle_scope = "auth"
+
+
+class TelegramMiniAppLoginView(GenericAPIView):
+    """
+    Exchange a validated Telegram Mini App `initData` for a normal user JWT.
+
+    initData's HMAC is verified against the sales-bot token server-side
+    (`telegram_auth.validate_init_data`); only then is the Telegram user linked
+    to a site account (existing `telegram_id`, else created exactly like the
+    first-time bot user — random `tg_*` username, `source=bot`). The token that
+    comes back is an ordinary SimpleJWT pair: a Mini App session has the same
+    permissions as any other logged-in customer, nothing more.
+    """
+
+    permission_classes = [permissions.AllowAny]
+    serializer_class = TelegramMiniAppSerializer
+    throttle_scope = "auth"
+
+    @extend_schema(summary="Start a session from Telegram Mini App initData")
+    def post(self, request):
+        ser = self.get_serializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+
+        token = sales_bot_token()
+        if not token:
+            return Response(
+                {"detail": "the Telegram mini app is not configured yet "
+                           "(set the sales bot token in the admin panel)"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        try:
+            parsed = validate_init_data(
+                ser.validated_data["init_data"],
+                bot_token=token,
+                max_age_seconds=settings.MINIAPP_INITDATA_MAX_AGE,
+            )
+        except InitDataError as exc:
+            log.warning("mini app initData rejected: %s", exc)
+            return Response(
+                {"detail": f"invalid Telegram session ({exc})"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        tg = parsed["user"]
+        from apps.telegram.accounts import ensure_bot_user
+
+        user, created, _pw = ensure_bot_user(
+            int(tg["id"]),
+            telegram_username=tg.get("username") or "",
+            name=" ".join(filter(None, [tg.get("first_name"), tg.get("last_name")])) or None,
+        )
+        if not user.is_active:
+            return Response({"detail": "this account is disabled"},
+                            status=status.HTTP_403_FORBIDDEN)
+
+        user.last_login = timezone.now()
+        user.save(update_fields=["last_login"])
+        refresh = RefreshToken.for_user(user)
+        write_audit(action="user.miniapp_session", target=user,
+                    detail={"telegram_id": int(tg["id"]), "created": created})
+        return Response({
+            "user": UserSerializer(user).data,
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+            "created": created,
+        })
 
 
 class LogoutView(GenericAPIView):

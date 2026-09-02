@@ -3,8 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <link id="favicon" rel="icon" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>caspintunel</title>
+    <!-- Telegram Mini App SDK. Harmless outside Telegram (window.Telegram.WebApp
+         is just inert). Loaded from telegram.org — allowed by the user-site CSP. -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
   </head>
   <body>
     <div id="root"></div>

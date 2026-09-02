@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { useI18n } from '../lib/i18n'
 import { useTheme } from '../theme/ThemeProvider'
+import { isTelegramMiniApp } from '../lib/telegram'
 
 const links = [
   ['/', 'dashboard'],
@@ -18,6 +19,7 @@ export default function Layout() {
   const { mode, toggle, config } = useTheme()
   const nav = useNavigate()
   const [open, setOpen] = useState(false)
+  const inTelegram = isTelegramMiniApp()
 
   return (
     <div className="min-h-full aurora">
@@ -44,7 +46,10 @@ export default function Layout() {
             {lang === 'fa' ? 'EN' : 'فا'}
           </button>
           <span className="hidden text-sm text-muted sm:inline">{user?.name || user?.username}</span>
-          <button className="btn-ghost text-sm" onClick={() => logout().then(() => nav('/login'))}>{t('logout')}</button>
+          {/* In Telegram the identity is the Telegram account — no password to log back in with. */}
+          {!inTelegram && (
+            <button className="btn-ghost text-sm" onClick={() => logout().then(() => nav('/login'))}>{t('logout')}</button>
+          )}
         </div>
       </header>
 

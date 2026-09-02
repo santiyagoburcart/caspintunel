@@ -1,6 +1,8 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { useEffect, useRef } from 'react'
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { useAuth } from './lib/auth'
-import { Spinner } from './components/ui'
+import { isTelegramMiniApp, tgStartParam } from './lib/telegram'
+import { Alert, Spinner } from './components/ui'
 import Layout from './components/Layout'
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -13,10 +15,38 @@ import History from './pages/History'
 import Profile from './pages/Profile'
 import Help from './pages/Help'
 
+const TG_ROUTES = { store: '/store', dashboard: '/', history: '/history', help: '/help', profile: '/profile' }
+
 function Private({ children }) {
-  const { user, loading } = useAuth()
+  const { user, loading, tgError } = useAuth()
   if (loading) return <div className="grid min-h-full place-items-center"><Spinner /></div>
+  if (tgError && isTelegramMiniApp()) {
+    return (
+      <div className="mx-auto grid min-h-full max-w-sm place-items-center p-6">
+        <div className="card space-y-3 text-center">
+          <div className="text-lg font-bold">⚠️</div>
+          <Alert>{tgError}</Alert>
+          <button className="btn-primary w-full" onClick={() => window.location.reload()}>
+            تلاش دوباره / Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
   return user ? children : <Navigate to="/login" replace />
+}
+
+// Honour a t.me/<bot>/<app>?startapp=<route> deep link, once, after login.
+function TelegramStart() {
+  const nav = useNavigate()
+  const done = useRef(false)
+  useEffect(() => {
+    if (done.current || !isTelegramMiniApp()) return
+    done.current = true
+    const dest = TG_ROUTES[tgStartParam()]
+    if (dest && dest !== window.location.pathname) nav(dest, { replace: true })
+  }, [])
+  return null
 }
 
 export default function App() {
@@ -26,7 +56,7 @@ export default function App() {
       <Route path="/register" element={<Register />} />
       <Route path="/reset" element={<ResetPassword />} />
       <Route path="/verify-email" element={<VerifyEmail />} />
-      <Route element={<Private><Layout /></Private>}>
+      <Route element={<Private><><TelegramStart /><Layout /></></Private>}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/store" element={<Store />} />
         <Route path="/checkout" element={<Checkout />} />

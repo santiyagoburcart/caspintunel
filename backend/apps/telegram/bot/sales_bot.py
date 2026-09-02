@@ -12,7 +12,9 @@ import logging
 
 import qrcode
 import telebot
+from django.conf import settings
 from django.db import close_old_connections
+from telebot import types
 
 from apps.orders.models import Order
 from apps.panel.models import Service
@@ -46,7 +48,22 @@ def build_bot() -> telebot.TeleBot | None:
         telebot.apihelper.proxy = {"http": cfg.proxy_url, "https": cfg.proxy_url}
     bot = telebot.TeleBot(cfg.token, parse_mode="HTML", threaded=False)
     _register(bot)
+    _sync_menu_button(bot)
     return bot
+
+
+def _sync_menu_button(bot: telebot.TeleBot) -> None:
+    """Point the bot's menu button at the Mini App (our user SPA). Idempotent;
+    a Telegram hiccup here must not stop the bot."""
+    url = getattr(settings, "MINIAPP_URL", "") or ""
+    if not url.startswith("https://"):
+        return
+    try:
+        bot.set_chat_menu_button(menu_button=types.MenuButtonWebApp(
+            text="🌐 اپ", web_app=types.WebAppInfo(url=url)))
+        log.info("sales bot: menu button -> mini app %s", url)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("sales bot: could not set menu button: %s", exc)
 
 
 # --- helpers ---------------------------------------------------------

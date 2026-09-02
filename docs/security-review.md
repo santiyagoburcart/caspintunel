@@ -47,6 +47,17 @@ Post-1.0 follow-up (2026-09) resolved items 1–5 below — see **Resolved** sec
 | 8 | **CSP allows `style-src 'unsafe-inline'`** | React sets element `style` attributes and the Monitoring page injects a `<style>` block; inline styles are low-risk (no script execution). Scripts remain `'self'`-only in prod. |
 | 9 | **phpMyAdmin, when opted in, has no extra auth** | it's localhost-bound and meant for short-lived tunnelled sessions; stop it (`docker compose stop phpmyadmin`) when done. Add HTTP basic-auth in front if you leave it running. |
 | 10 | **Django admin (`/admin/`) still reachable** | protected by the Django superuser login; break-glass only. Consider an IP allow-list at nginx if not needed day-to-day. |
+| 11 | **User site is frameable by `*.telegram.org`** | required for the Telegram Mini App (Telegram Desktop/Web embed it in an iframe). Scoped to the user site only — `/panel/`, `/api/`, `/admin/` keep `frame-ancestors 'none'` + Django's `X-Frame-Options: DENY`. A Mini App session is a plain customer JWT (no ambient cookie auth), so clickjacking a framed user site can't drive privileged actions. |
+| 12 | **Mini App loads `telegram.org/js/telegram-web-app.js`** | Telegram's official SDK, `script-src`-allowed on the user site only (not the panel). Loaded from Telegram's CDN as they recommend (keeps it current); it makes no network calls of its own. |
+
+### Mini App validation (see `docs/telegram-miniapp.md`)
+`POST /api/v1/auth/telegram/miniapp/` verifies Telegram's `initData` HMAC against
+the **sales bot token, server-side**, on every launch (`telegram_auth.validate_init_data`
+— constant-time compare, `auth_date` freshness, `hash`/`signature` handled per
+spec). Only then is a normal customer JWT issued for the `telegram_id`-linked
+account. The bot token never reaches the frontend. Forged / tampered / expired /
+wrong-token initData → **401**; unconfigured → **503**. Covered by 11 tests in
+`apps/accounts/tests/test_telegram_miniapp.py`.
 
 ## Not applicable
 - SSRF: no user-controlled outbound URLs.

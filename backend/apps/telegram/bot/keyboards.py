@@ -1,12 +1,18 @@
 """Inline-keyboard builders for the sales bot."""
+from django.conf import settings
 from telebot import types
 
 from apps.plans.models import PlanType
 from apps.telegram.shop import plan_label
 
+MINIAPP_URL = getattr(settings, "MINIAPP_URL", "") or ""
+
 
 def main_menu():
     kb = types.InlineKeyboardMarkup()
+    if MINIAPP_URL.startswith("https://"):
+        kb.add(types.InlineKeyboardButton(
+            "🌐 باز کردن اپ", web_app=types.WebAppInfo(url=MINIAPP_URL)))
     kb.add(types.InlineKeyboardButton("🛒 خرید سرویس", callback_data="m:buy"))
     kb.add(types.InlineKeyboardButton("📦 سرویس‌های من", callback_data="m:svcs"))
     kb.add(types.InlineKeyboardButton("☎️ پشتیبانی", callback_data="m:help"))

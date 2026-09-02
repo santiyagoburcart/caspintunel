@@ -118,6 +118,12 @@ class LogoutSerializer(serializers.Serializer):
     refresh = serializers.CharField()
 
 
+class TelegramMiniAppSerializer(serializers.Serializer):
+    """The raw `Telegram.WebApp.initData` string, verified server-side."""
+
+    init_data = serializers.CharField(trim_whitespace=False, max_length=8192)
+
+
 class EmptySerializer(serializers.Serializer):
     """No input; used by action-only endpoints so the schema generator is happy."""
 

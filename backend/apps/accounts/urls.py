@@ -12,6 +12,7 @@ from .views import (
     PasswordResetConfirmView,
     PasswordResetRequestView,
     RegisterView,
+    TelegramMiniAppLoginView,
 )
 
 app_name = "accounts"
@@ -19,6 +20,7 @@ app_name = "accounts"
 urlpatterns = [
     path("register/", RegisterView.as_view(), name="register"),
     path("login/", LoginView.as_view(), name="login"),
+    path("telegram/miniapp/", TelegramMiniAppLoginView.as_view(), name="telegram-miniapp"),
     path("token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),
     path("logout/", LogoutView.as_view(), name="logout"),
     path("me/", MeView.as_view(), name="me"),

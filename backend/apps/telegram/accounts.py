@@ -4,7 +4,7 @@ from __future__ import annotations
 import secrets
 
 from django.contrib.auth import get_user_model
-from django.db import transaction
+from django.db import IntegrityError, transaction
 
 from apps.accounts.models import Source
 from apps.common.models import write_audit
@@ -47,15 +47,24 @@ def ensure_bot_user(telegram_id: int, *, telegram_username: str | None = None,
         return user, False, None
 
     password = secrets.token_urlsafe(9)
-    user = User.objects.create_user(
-        username=_unique_username(),
-        password=password,
-        telegram_id=telegram_id,
-        telegram_username=telegram_username or "",
-        phone=phone or "",
-        name=name or "",
-        source=Source.BOT,
-    )
+    try:
+        with transaction.atomic():
+            user = User.objects.create_user(
+                username=_unique_username(),
+                password=password,
+                telegram_id=telegram_id,
+                telegram_username=telegram_username or "",
+                phone=phone or "",
+                name=name or "",
+                source=Source.BOT,
+            )
+    except IntegrityError:
+        # a concurrent first-contact (two Mini App launches / bot + app at once)
+        # already created the row — adopt it instead of failing.
+        user = User.objects.filter(telegram_id=telegram_id).first()
+        if user is None:
+            raise
+        return user, False, None
     write_audit(action="user.created_via_bot", target=user, detail={"telegram_id": telegram_id})
     return user, True, password
 
