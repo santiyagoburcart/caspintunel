@@ -28,6 +28,26 @@ def expire_stale_reservations_task():
         return {"expired": expire_stale_reservations()}
 
 
+@shared_task
+def retry_unfulfilled_orders():
+    """Re-dispatch fulfilment for orders whose payment was approved but which
+    never reached the panel (panel was down / not yet configured / rejected the
+    first attempt). Self-heals once the panel is fixed — the operator does not
+    have to re-approve anything."""
+    from django.utils import timezone
+
+    cutoff = timezone.now() - timezone.timedelta(minutes=2)
+    stuck = list(
+        Order.objects.filter(status=OrderStatus.PAID, updated_at__lt=cutoff)
+        .values_list("id", flat=True)
+    )
+    for oid in stuck:
+        fulfill_order.delay(oid)
+    if stuck:
+        log.info("retry_unfulfilled_orders: re-dispatched %s", stuck)
+    return {"redispatched": len(stuck)}
+
+
 @shared_task(bind=True, **_RETRY)
 def fulfill_order(self, order_id: int):
     """Provision / renew / top-up the service for a paid order (flowchart 1.2 & 1.5)."""
@@ -90,13 +110,22 @@ def _ensure_service(order: Order, panel: Panel | None) -> Service:
         return order.service
     if panel is None:
         raise PanelError("no active panel configured")
-    service, _ = Service.objects.get_or_create(
-        panel_username=order.requested_account_name,
-        defaults=dict(
+
+    existing = Service.objects.filter(panel_username=order.requested_account_name).first()
+    if existing is not None:
+        if existing.user_id != order.user_id:
+            # someone else already owns this panel username — do not cross-link
+            raise PanelError(
+                f"account name '{order.requested_account_name}' is already taken; "
+                "reject this order and ask the customer to pick another name"
+            )
+        service = existing
+    else:
+        service = Service.objects.create(
+            panel_username=order.requested_account_name,
             user=order.user, panel=panel, current_plan=order.plan,
             source=order.source, status=ServiceStatus.PENDING,
-        ),
-    )
+        )
     order.service = service
     order.save(update_fields=["service", "updated_at"])
     return service

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from django.core.files.base import ContentFile
+from django.utils import timezone
 
 from apps.common.jalali import to_jalali_str
 from apps.orders.models import Order, OrderStatus, OrderType
@@ -44,19 +45,49 @@ def plan_label(plan) -> str:
     return f"{plan.name_fa} — {vol} / {days} — {int(plan.final_price):,} تومان"
 
 
+def _refresh_service_if_waiting(svc):
+    """When the customer opens their service in the bot, pull a fresh panel
+    state for on-hold / pending services so a just-connected user sees 'active'
+    without waiting for the 15-minute background sync."""
+    from apps.panel.services import sync_service
+
+    if svc.status not in ("on_hold", "pending"):
+        return svc
+    if svc.last_synced_at and (timezone.now() - svc.last_synced_at).total_seconds() < 60:
+        return svc
+    try:
+        return sync_service(svc.id)
+    except Exception:  # noqa: BLE001
+        return svc
+
+
 def service_summary(svc) -> str:
+    svc = _refresh_service_if_waiting(svc)
     used = svc.data_used // _GB
     total = "∞" if not svc.data_limit else f"{svc.data_limit // _GB}"
-    exp = to_jalali_str(svc.expire_at, "%Y/%m/%d") if svc.expire_at else "بدون انقضا"
     status_fa = {
         "active": "فعال", "on_hold": "در انتظار اولین اتصال", "expired": "منقضی",
         "limited": "اتمام حجم", "disabled": "غیرفعال", "pending": "در حال ساخت",
     }.get(svc.status, svc.status)
+
+    waiting = svc.status == "on_hold" and not svc.online_at
+    if waiting:
+        days = round((svc.on_hold_duration or 0) / 86400)
+        time_line = (
+            f"⏳ با اولین اتصال فعال می‌شود (اعتبار {days} روز)" if days
+            else "⏳ با اولین اتصال فعال می‌شود"
+        )
+    elif svc.expire_at:
+        left = max((svc.expire_at - timezone.now()).days, 0)
+        time_line = f"انقضا: {to_jalali_str(svc.expire_at, '%Y/%m/%d')} ({left} روز مانده)"
+    else:
+        time_line = "بدون محدودیت زمان"
+
     return (
         f"<b>{svc.panel_username}</b>\n"
         f"وضعیت: {status_fa}\n"
         f"مصرف: {used} از {total} گیگ\n"
-        f"انقضا: {exp}"
+        f"{time_line}"
     )
 
 
@@ -92,13 +123,31 @@ def order_awaiting_receipt(user):
     )
 
 
-def submit_bot_receipt(user, order, image_bytes: bytes, *, filename="receipt.jpg"):
-    """Attach a photo sent to the bot as the order's card-to-card receipt —
-    the exact same `submit_receipt` path the website uses (creates the pending
-    Payment that lands in the admin approval queue)."""
+def submit_bot_receipt(user, order, image_bytes: bytes):
+    """Attach a photo/document sent to the bot as the order's card-to-card
+    receipt — the exact same `submit_receipt` path the website uses (creates the
+    pending Payment that lands in the admin approval queue).
+
+    The bot path bypasses DRF's ImageField validation, so we validate the bytes
+    with Pillow here and pick the right extension from the real format."""
+    from io import BytesIO
+
+    from PIL import Image
+    from apps.payments_sms.services import PaymentError
+
+    if not image_bytes:
+        raise PaymentError("empty file")
+    try:
+        img = Image.open(BytesIO(image_bytes))
+        img.verify()
+        fmt = (img.format or "JPEG").lower()
+    except Exception as exc:  # noqa: BLE001
+        raise PaymentError("that file is not a valid image") from exc
+
+    ext = {"jpeg": "jpg", "png": "png", "webp": "webp"}.get(fmt, "jpg")
     return submit_receipt(
         order=order,
-        image=ContentFile(image_bytes, name=filename),
+        image=ContentFile(image_bytes, name=f"receipt.{ext}"),
         bank_card=None,
         user=user,
     )

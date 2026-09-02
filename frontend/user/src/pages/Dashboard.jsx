@@ -1,37 +1,93 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { api } from '../lib/api'
+import { api, apiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 import { jalali, gb } from '../lib/format'
 import { Alert, Copyable, Spinner, StatusBadge } from '../components/ui'
+import { AuthImage } from '../components/AuthImage'
 
-function ServiceCard({ s, t, lang }) {
+function ServiceCard({ s, t, lang, onRefresh }) {
+  const [showQr, setShowQr] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+
   const pct = s.data_limit ? Math.min(100, Math.round((s.data_used / s.data_limit) * 100)) : 0
+  const waiting = s.waiting_for_connection
+  const gbUsed = gb(s.data_used)
+  const gbTotal = s.data_limit ? gb(s.data_limit) : null
+
+  const refresh = async () => {
+    setBusy(true); setErr('')
+    try { await onRefresh(s.id) } catch (e) { setErr(apiError(e)) } finally { setBusy(false) }
+  }
+
   return (
     <div className="card space-y-3">
-      <div className="flex items-center justify-between">
-        <span className="font-bold">{s.panel_username}</span>
+      <div className="flex items-center justify-between gap-2">
+        <span dir="ltr" className="truncate font-bold">{s.panel_username}</span>
         <StatusBadge status={s.status} />
       </div>
+
+      {/* --- time / validity --- */}
+      {waiting ? (
+        <div className="rounded-xl px-3 py-2 text-sm" style={{ background: 'color-mix(in srgb, var(--c-warning) 14%, transparent)', color: 'var(--c-warning)' }}>
+          <div className="font-medium">{t('waiting_connect')}</div>
+          <div className="text-xs opacity-90">
+            {s.validity_days ? t('validity_after', { n: s.validity_days }) : t('unlimited_time')}
+          </div>
+        </div>
+      ) : (
+        <div className="text-sm text-muted">
+          {s.expire_at
+            ? `${s.days_left} ${t('days_left')} — ${jalali(s.expire_at, false, lang)}`
+            : t('unlimited_time')}
+        </div>
+      )}
+
+      {/* --- volume --- */}
       <div className="text-sm text-muted">
-        {t('volume')}: {s.data_limit ? `${gb(s.data_used)} / ${gb(s.data_limit)} GB` : t('unlimited')}
+        {t('volume')}: {gbTotal != null ? t('used_of', { used: gbUsed, total: gbTotal }) : t('unlimited')}
+        {gbTotal != null && ` · ${Math.max(gbTotal - gbUsed, 0)} ${t('remaining')}`}
       </div>
-      {s.data_limit > 0 && (
+      {gbTotal != null && (
         <div className="h-2 rounded-full" style={{ background: 'var(--c-border)' }}>
-          <div className="h-2 rounded-full" style={{ width: `${pct}%`, background: pct > 85 ? 'var(--c-danger)' : 'var(--c-primary)' }} />
+          <div className="h-2 rounded-full"
+            style={{ width: `${pct}%`, background: pct > 85 ? 'var(--c-danger)' : 'var(--c-primary)' }} />
         </div>
       )}
-      <div className="text-sm text-muted">
-        {s.expire_at ? `${s.days_left} ${t('days_left')} — ${jalali(s.expire_at, false, lang)}` : t('unlimited')}
-      </div>
+
+      {(s.status === 'limited' || s.status === 'expired') && (
+        <div className="text-xs" style={{ color: 'var(--c-danger)' }}>
+          {s.status === 'limited' ? t('st_limited_note') : t('st_expired_note')}
+        </div>
+      )}
+
+      {/* --- subscription link + QR --- */}
       {s.subscription_url && (
-        <div className="flex items-center gap-2">
-          <code className="truncate rounded bg-black/10 px-2 py-1 text-xs">{s.subscription_url}</code>
-          <Copyable text={s.subscription_url} />
+        <div className="space-y-2">
+          <div className="text-xs text-muted">{t('qr_link')}</div>
+          <div className="flex items-center gap-2">
+            <code dir="ltr" className="min-w-0 flex-1 truncate rounded bg-black/10 px-2 py-1 text-xs">{s.subscription_url}</code>
+            <Copyable text={s.subscription_url} />
+          </div>
+          <button className="btn-ghost w-full text-sm" onClick={() => setShowQr((v) => !v)}>
+            {showQr ? '▲ QR' : '▼ QR'}
+          </button>
+          {showQr && (
+            <div className="grid place-items-center rounded-xl bg-white p-3">
+              <AuthImage path={`/services/${s.id}/qr/`} alt="QR" className="h-44 w-44" />
+            </div>
+          )}
         </div>
       )}
-      <div className="flex gap-2">
-        {s.qr && <a className="btn-ghost text-sm" href={s.qr} target="_blank" rel="noreferrer">{t('qr')}</a>}
+
+      <Alert>{err}</Alert>
+      <div className="flex flex-wrap gap-2">
+        {waiting && (
+          <button className="btn-ghost text-sm" onClick={refresh} disabled={busy}>
+            {busy ? t('refreshing') : t('connected_btn')}
+          </button>
+        )}
         <Link className="btn-primary text-sm" to={`/checkout?renew=${s.id}`}>{t('renew')}</Link>
       </div>
     </div>
@@ -43,21 +99,34 @@ export default function Dashboard() {
   const { state } = useLocation()
   const [items, setItems] = useState(null)
   const [flash, setFlash] = useState(state?.flash || '')
+  const [err, setErr] = useState('')
 
-  useEffect(() => {
-    api.get('/services/').then((r) => setItems(r.data.results)).catch(() => setItems([]))
-  }, [])
+  const load = () =>
+    api.get('/services/')
+      .then((r) => { setItems(r.data.results); setErr('') })
+      .catch(() => { setItems([]); setErr(t('load_error') || '') })
+
+  useEffect(() => { load() }, [])
+
+  const refreshOne = async (id) => {
+    const { data } = await api.post(`/services/${id}/refresh/`)
+    setItems((cur) => (cur || []).map((x) => (x.id === id ? data : x)))
+    if (data.status === 'active') setFlash(t('service_activated'))
+  }
 
   return (
     <div className="space-y-4">
       {flash && <Alert kind="success">{flash}</Alert>}
+      {err && <Alert>{err}</Alert>}
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold">{t('services')}</h1>
         <Link to="/store" className="btn-primary text-sm">{t('buy')}</Link>
       </div>
       {items === null ? <div className="grid place-items-center py-16"><Spinner /></div>
         : items.length === 0 ? <div className="card text-center text-muted">{t('no_services')}</div>
-        : <div className="grid gap-4 sm:grid-cols-2">{items.map((s) => <ServiceCard key={s.id} s={s} t={t} lang={lang} />)}</div>}
+        : <div className="grid gap-4 sm:grid-cols-2">
+            {items.map((s) => <ServiceCard key={s.id} s={s} t={t} lang={lang} onRefresh={refreshOne} />)}
+          </div>}
     </div>
   )
 }

@@ -114,7 +114,7 @@ def _register(bot: telebot.TeleBot):
         if _enforce_gate(bot, msg.chat.id, user, msg.from_user.id):
             bot.send_message(msg.chat.id, "یک گزینه را انتخاب کنید:", reply_markup=kb.main_menu())
 
-    @bot.message_handler(content_types=["photo"])
+    @bot.message_handler(content_types=["photo", "document"])
     def receipt_photo(msg):
         close_old_connections()
         user, *_ = _user(msg.from_user)
@@ -122,13 +122,23 @@ def _register(bot: telebot.TeleBot):
         if not order:
             bot.send_message(msg.chat.id, "سفارشی در انتظار پرداخت ندارید. برای خرید /start را بزنید.")
             return
+        # a compressed photo, or a document sent as an image file
+        if getattr(msg, "photo", None):
+            file_id = msg.photo[-1].file_id
+        elif getattr(msg, "document", None) and (msg.document.mime_type or "").startswith("image/"):
+            file_id = msg.document.file_id
+        else:
+            bot.send_message(msg.chat.id, "لطفاً عکس رسید را بفرستید (تصویر، نه فایل دیگر).")
+            return
         try:
-            file_info = bot.get_file(msg.photo[-1].file_id)  # largest size
+            file_info = bot.get_file(file_id)
             image_bytes = bot.download_file(file_info.file_path)
-            submit_bot_receipt(user, order, image_bytes)
+            payment = submit_bot_receipt(user, order, image_bytes)
+            log.info("bot receipt: payment %s for order %s (%s bytes)",
+                     payment.id, order.id, len(image_bytes or b""))
         except Exception as exc:  # noqa: BLE001
-            log.exception("bot receipt upload failed: %s", exc)
-            bot.send_message(msg.chat.id, f"ثبت رسید ناموفق بود: {exc}")
+            log.exception("bot receipt upload failed for order %s: %s", order.id, exc)
+            bot.send_message(msg.chat.id, f"ثبت رسید ناموفق بود: {exc}\nلطفاً دوباره تلاش کنید.")
             return
         bot.send_message(
             msg.chat.id,

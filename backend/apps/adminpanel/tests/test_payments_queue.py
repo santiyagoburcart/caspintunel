@@ -96,3 +96,25 @@ def test_decision_needs_payment_approve_perm(staff_client, perms, pending_paymen
     # (approve makes a panel call; just assert the perm gate passed, not 403)
     assert approver.post(f"/api/v1/admin/payments/{pending_payment.id}/reject/",
                          {"reason": "x"}, format="json").status_code == 200
+
+
+# --- transactions list (status filters) --------------------------------
+def test_transactions_list_and_status_filter(boss, pending_payment):
+    from apps.payments_sms.models import Payment
+    # one pending (fixture) + one approved + one rejected
+    Payment.objects.filter(id=pending_payment.id).update(status="approved", confirmed_by="admin")
+    u2 = User.objects.create_user("c2", "x")
+    o2 = create_order(user=u2, plan_id=pending_payment.order.plan_id, requested_account_name="a2")
+    p2 = submit_receipt(order=o2, image=_png(), user=u2)
+    Payment.objects.filter(id=p2.id).update(status="rejected", reject_reason="bad")
+
+    all_r = boss.get("/api/v1/admin/transactions/")
+    assert all_r.status_code == 200
+    rows = all_r.data["results"]
+    assert len(rows) == 2
+    assert {"order_source", "confirmer", "receipt_url", "order_status", "reject_reason"} <= set(rows[0])
+
+    appr = boss.get("/api/v1/admin/transactions/?status=approved").data["results"]
+    assert len(appr) == 1 and appr[0]["status"] == "approved"
+    rej = boss.get("/api/v1/admin/transactions/?status=rejected").data["results"]
+    assert len(rej) == 1 and rej[0]["reject_reason"] == "bad"

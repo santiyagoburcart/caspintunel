@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard'
 import Users from './pages/Users'
 import Plans from './pages/Plans'
 import Payments from './pages/Payments'
+import Transactions from './pages/Transactions'
 import Accounting from './pages/Accounting'
 import Cards from './pages/Cards'
 import Monitoring from './pages/Monitoring'
@@ -30,6 +31,7 @@ export default function App() {
         <Route path="/users" element={<Users />} />
         <Route path="/plans" element={<Plans />} />
         <Route path="/payments" element={<Payments />} />
+        <Route path="/transactions" element={<Transactions />} />
         <Route path="/accounting" element={<Accounting />} />
         <Route path="/cards" element={<Cards />} />
         <Route path="/monitoring" element={<Monitoring />} />

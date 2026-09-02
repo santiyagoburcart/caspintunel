@@ -47,3 +47,70 @@ def test_qr_endpoint_returns_png(setup):
     assert r.status_code == 200
     assert r["Content-Type"] == "image/png"
     assert r.content[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+# --- on-hold -> active flip when the customer connects -------------------
+import responses  # noqa: E402
+
+
+@pytest.fixture
+def onhold_setup():
+    user = User.objects.create_user("hold", "Str0ngPass!")
+    panel = Panel.objects.create(name="P2", base_url="https://ph", admin_username="a",
+                                 admin_password_enc="p", is_active=True)
+    plan = Plan.objects.create(name_fa="p", price=Decimal("1"), duration_days=30)
+    svc = Service.objects.create(
+        user=user, panel=panel, panel_username="hold-1", current_plan=plan,
+        status=ServiceStatus.ON_HOLD, subscription_url="https://ph/s/tok/",
+        data_limit=50 * 1024**3, data_used=0, on_hold_duration=30 * 86400,
+        expire_at=None, online_at=None,
+    )
+    return user, svc
+
+
+def test_onhold_service_shows_waiting_for_connection(onhold_setup):
+    user, svc = onhold_setup
+    c = APIClient(); c.force_authenticate(user)
+    with responses.RequestsMock(assert_all_requests_are_fired=False) as r:
+        r.add(responses.POST, "https://ph/api/admin/token", json={"access_token": "t"})
+        r.add(responses.GET, "https://ph/api/user/hold-1",
+              json={"username": "hold-1", "status": "on_hold", "used_traffic": 0,
+                    "data_limit": 50 * 1024**3, "on_hold_expire_duration": 30 * 86400})
+        row = c.get("/api/v1/services/").data["results"][0]
+    assert row["status"] == "on_hold"
+    assert row["waiting_for_connection"] is True
+    assert row["validity_days"] == 30
+    assert row["days_left"] is None
+
+
+def test_first_connection_flips_status_to_active(onhold_setup):
+    user, svc = onhold_setup
+    c = APIClient(); c.force_authenticate(user)
+    expire = (timezone.now() + timezone.timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%S")
+    online = timezone.now().strftime("%Y-%m-%dT%H:%M:%S")
+    with responses.RequestsMock(assert_all_requests_are_fired=False) as r:
+        r.add(responses.POST, "https://ph/api/admin/token", json={"access_token": "t"})
+        r.add(responses.GET, "https://ph/api/user/hold-1",
+              json={"username": "hold-1", "status": "active", "used_traffic": 2 * 1024**3,
+                    "data_limit": 50 * 1024**3, "expire": expire, "online_at": online})
+        row = c.get("/api/v1/services/").data["results"][0]
+    assert row["status"] == "active"
+    assert row["waiting_for_connection"] is False
+    assert row["days_left"] in (29, 30)
+    assert row["data_used"] == 2 * 1024**3
+    svc.refresh_from_db()
+    assert svc.status == "active" and svc.expire_at is not None
+
+
+def test_refresh_action_forces_a_sync(onhold_setup):
+    user, svc = onhold_setup
+    c = APIClient(); c.force_authenticate(user)
+    with responses.RequestsMock(assert_all_requests_are_fired=False) as r:
+        r.add(responses.POST, "https://ph/api/admin/token", json={"access_token": "t"})
+        r.add(responses.GET, "https://ph/api/user/hold-1",
+              json={"username": "hold-1", "status": "active",
+                    "expire": (timezone.now() + timezone.timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%S"),
+                    "online_at": timezone.now().strftime("%Y-%m-%dT%H:%M:%S")})
+        r2 = c.post(f"/api/v1/services/{svc.id}/refresh/")
+    assert r2.status_code == 200
+    assert r2.data["status"] == "active"

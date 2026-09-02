@@ -107,7 +107,11 @@ export function I18nProvider({ children }) {
     document.documentElement.lang = lang
     document.documentElement.dir = lang === 'fa' ? 'rtl' : 'ltr'
   }, [lang])
-  const t = (k) => (dict[lang][k] ?? dict.fa[k] ?? k)
+  const t = (k, p) => {
+    let s = dict[lang][k] ?? dict.fa[k] ?? k
+    if (p) for (const [pk, pv] of Object.entries(p)) s = s.split(`{${pk}}`).join(String(pv))
+    return s
+  }
   return <I18n.Provider value={{ lang, setLang, t }}>{children}</I18n.Provider>
 }
 

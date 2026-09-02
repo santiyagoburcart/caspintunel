@@ -3,6 +3,7 @@ import { api, apiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 import { jalali, toman } from '../lib/format'
 import { Alert, Spinner } from '../components/ui'
+import { ReceiptThumb } from '../components/ReceiptThumb'
 
 const T = {
   fa: {
@@ -74,7 +75,9 @@ export default function Payments() {
               <div>{s.order} #{p.order_id} · {s.plan}: {p.plan_name || '—'}{p.account_name ? ` · ${s.account}: ${p.account_name}` : ''}</div>
               <div className="text-xs">{jalali(p.created_at, true, lang)}</div>
             </div>
-            <Receipt url={p.receipt_url} s={s} />
+            {p.receipt_url
+              ? <ReceiptThumb url={p.receipt_url} alt={s.receipt} variant="full" />
+              : <div className="text-xs text-muted">{s.no_receipt}</div>}
             <div className="flex gap-2 pt-1">
               <button className="btn-primary text-sm" disabled={busyId === p.id}
                 onClick={() => act(p.id, 'approve')}>
@@ -92,34 +95,3 @@ export default function Payments() {
   )
 }
 
-/** Lazily fetches the receipt as an authenticated blob (the URL is not public). */
-function Receipt({ url, s }) {
-  const [src, setSrc] = useState(null)
-  const [state, setState] = useState('idle') // idle | loading | ok | error
-
-  useEffect(() => {
-    if (!url) return
-    let revoked = false
-    let objectUrl
-    setState('loading')
-    api.get(url.replace(/^\/api\/v1/, ''), { responseType: 'blob' })
-      .then((r) => {
-        if (revoked) return
-        objectUrl = URL.createObjectURL(r.data)
-        setSrc(objectUrl)
-        setState('ok')
-      })
-      .catch(() => !revoked && setState('error'))
-    return () => { revoked = true; if (objectUrl) URL.revokeObjectURL(objectUrl) }
-  }, [url])
-
-  if (!url) return <div className="text-xs text-muted">{s.no_receipt}</div>
-  if (state === 'loading') return <div className="grid h-24 place-items-center"><Spinner /></div>
-  if (state === 'error') return <div className="text-xs text-danger">— {s.receipt} —</div>
-  return (
-    <a href={src} target="_blank" rel="noreferrer">
-      <img src={src} alt={s.receipt} className="max-h-48 rounded-xl border"
-        style={{ borderColor: 'var(--c-border)' }} />
-    </a>
-  )
-}

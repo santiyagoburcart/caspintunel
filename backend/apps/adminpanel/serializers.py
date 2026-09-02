@@ -197,18 +197,25 @@ class StaffSerializer(serializers.ModelSerializer):
 class TransactionSerializer(serializers.ModelSerializer):
     order_id = serializers.IntegerField(source="order.id", read_only=True)
     user = serializers.CharField(source="order.user.username", read_only=True)
+    plan_name = serializers.CharField(source="order.plan.name_fa", read_only=True, default=None)
     order_source = serializers.CharField(source="order.source", read_only=True)
     order_type = serializers.CharField(source="order.type", read_only=True)
+    order_status = serializers.CharField(source="order.status", read_only=True)
     card = serializers.CharField(source="bank_card.card_number", read_only=True, default=None)
     confirmer = serializers.SerializerMethodField()
+    reject_reason = serializers.CharField(read_only=True)
+    receipt_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Payment
         fields = (
-            "id", "order_id", "user", "amount", "method", "status",
-            "card", "confirmed_by", "confirmer", "confirmed_at",
-            "order_source", "order_type", "created_at",
+            "id", "order_id", "user", "plan_name", "amount", "method", "status",
+            "card", "confirmed_by", "confirmer", "confirmed_at", "reject_reason",
+            "receipt_url", "order_source", "order_type", "order_status", "created_at",
         )
+
+    def get_receipt_url(self, obj) -> str | None:
+        return f"/api/v1/payments/{obj.id}/receipt/" if obj.receipt_image else None
 
     def get_confirmer(self, obj) -> str | None:
         if obj.confirmed_by == "system":

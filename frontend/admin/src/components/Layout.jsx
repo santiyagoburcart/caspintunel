@@ -9,6 +9,7 @@ const nav = [
   ['/users', 'users', 'users.view'],
   ['/plans', 'plans', 'plans.manage'],
   ['/payments', 'payments', 'payment.view'],
+  ['/transactions', 'transactions', 'payment.view'],
   ['/accounting', 'accounting', 'accounting.view'],
   ['/cards', 'cards', 'payment.view'],
   ['/monitoring', 'monitoring', 'monitoring.view'],

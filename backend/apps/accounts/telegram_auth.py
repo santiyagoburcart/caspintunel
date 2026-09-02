@@ -8,21 +8,28 @@ is never trusted until this passes.
 
 Algorithm (https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app):
   1. parse initData as a query string, url-decoding each value once
-  2. pull out `hash`; also drop `signature` (that field is only for Telegram's
-     separate Ed25519 third-party check, never part of the bot-token HMAC)
+  2. pull out `hash`
   3. data_check_string = "\n".join(f"{k}={v}") for the remaining keys, sorted
   4. secret_key = HMAC_SHA256(key="WebAppData", msg=bot_token)
   5. computed   = hex(HMAC_SHA256(key=secret_key, msg=data_check_string))
   6. constant-time compare computed vs. the received hash
   7. reject if `auth_date` is missing or older than MINIAPP_INITDATA_MAX_AGE
+
+Telegram Bot API 8.0 added a `signature` field for a *separate* Ed25519
+third-party check. Whether it belongs in the bot-token data-check-string has
+flip-flopped across clients, so we accept a match computed **either** with or
+without it — both still require a valid HMAC of the real bot token.
 """
 from __future__ import annotations
 
 import hashlib
 import hmac
 import json
+import logging
 import time
 from urllib.parse import parse_qsl
+
+log = logging.getLogger("caspintunel")
 
 
 class InitDataError(Exception):
@@ -37,10 +44,15 @@ def sales_bot_token() -> str | None:
     cfg = TelegramConfig.objects.filter(bot_type=BotType.SALES).first()
     if not cfg or not cfg.token:
         return None
-    return cfg.token
+    return (cfg.token or "").strip()
 
 
-def validate_init_data(raw: str, *, bot_token: str, max_age_seconds: int) -> dict:
+def _hmac_hex(secret_key: bytes, msg: str) -> str:
+    return hmac.new(secret_key, msg.encode(), hashlib.sha256).hexdigest()
+
+
+def validate_init_data(raw: str, *, bot_token: str, max_age_seconds: int,
+                       debug: bool = False) -> dict:
     """Verify a Mini App initData string. Returns the parsed Telegram user dict
     (and auth_date) on success; raises InitDataError otherwise."""
     if not raw or not isinstance(raw, str):
@@ -48,14 +60,27 @@ def validate_init_data(raw: str, *, bot_token: str, max_age_seconds: int) -> dic
 
     fields = dict(parse_qsl(raw, keep_blank_values=True))
     received_hash = fields.pop("hash", "")
-    fields.pop("signature", None)  # Ed25519 third-party check only — not in the HMAC
     if not received_hash:
         raise InitDataError("missing hash")
 
-    data_check_string = "\n".join(f"{k}={fields[k]}" for k in sorted(fields))
-    secret_key = hmac.new(b"WebAppData", bot_token.encode(), hashlib.sha256).digest()
-    computed = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
-    if not hmac.compare_digest(computed, received_hash):
+    secret_key = hmac.new(b"WebAppData", (bot_token or "").encode(), hashlib.sha256).digest()
+
+    # candidate A: exclude `signature` (Bot API 8.0 spec)   B: keep it (older clients)
+    without_sig = {k: v for k, v in fields.items() if k != "signature"}
+    dcs_a = "\n".join(f"{k}={without_sig[k]}" for k in sorted(without_sig))
+    dcs_b = "\n".join(f"{k}={fields[k]}" for k in sorted(fields))
+    matched = any(
+        hmac.compare_digest(_hmac_hex(secret_key, dcs), received_hash)
+        for dcs in ({dcs_a, dcs_b})
+    )
+    if not matched:
+        if debug:
+            log.warning(
+                "miniapp initData signature mismatch: keys=%s token_len=%d "
+                "got=%s… calc_a=%s… calc_b=%s…",
+                sorted(fields), len(bot_token or ""), received_hash[:12],
+                _hmac_hex(secret_key, dcs_a)[:12], _hmac_hex(secret_key, dcs_b)[:12],
+            )
         raise InitDataError("signature mismatch")
 
     try:

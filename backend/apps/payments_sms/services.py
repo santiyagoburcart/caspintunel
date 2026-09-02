@@ -28,20 +28,26 @@ def submit_receipt(*, order: Order, image, bank_card=None, user) -> Payment:
     if order.unique_expire_at and order.unique_expire_at < timezone.now():
         raise PaymentError("the payment reservation has expired; place the order again")
 
-    payment, _ = Payment.objects.update_or_create(
-        order=order,
-        defaults=dict(
-            method=PaymentMethod.CARD_MANUAL,
-            amount=order.amount_unique,
-            status=PaymentStatus.PENDING,
-            receipt_image=image,
-            bank_card=bank_card,
-            reject_reason="",
-            confirmed_by=None,
-            confirmed_by_staff=None,
-            confirmed_at=None,
-        ),
-    )
+    # Two explicit steps (not update_or_create) so the FileField save is
+    # unambiguous, and we can verify the file actually landed on storage.
+    payment = Payment.objects.select_for_update().filter(order=order).first()
+    if payment is None:
+        payment = Payment(order=order)
+    payment.method = PaymentMethod.CARD_MANUAL
+    payment.amount = order.amount_unique
+    payment.status = PaymentStatus.PENDING
+    payment.bank_card = bank_card
+    payment.reject_reason = ""
+    payment.confirmed_by = None
+    payment.confirmed_by_staff = None
+    payment.confirmed_at = None
+    payment.receipt_image = image
+    payment.save()
+
+    payment.refresh_from_db(fields=["receipt_image"])
+    if not payment.receipt_image or not payment.receipt_image.storage.exists(payment.receipt_image.name):
+        raise PaymentError("the receipt image could not be stored — please try again")
+
     write_audit(action="payment.receipt_uploaded", target=payment, staff=None)
     return payment
 

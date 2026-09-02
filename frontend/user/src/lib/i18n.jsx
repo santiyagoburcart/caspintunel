@@ -26,8 +26,13 @@ const dict = {
     no_cards: 'کارتی برای واریز ثبت نشده — با پشتیبانی تماس بگیرید.',
     refresh_status: 'بررسی وضعیت', uploading: 'در حال ارسال…',
     invalid_link: 'لینک نامعتبر است', checking: 'در حال بررسی…', back: 'بازگشت',
-    no_orders: 'هنوز سفارشی ثبت نشده', checkout: 'تکمیل خرید',
+    no_orders: 'هنوز سفارشی ثبت نشده', checkout: 'تکمیل خرید', load_error: 'خطا در دریافت اطلاعات',
     o_new: 'خرید جدید', o_renew: 'تمدید', o_addon_volume: 'افزودن حجم',
+    waiting_connect: 'با اولین اتصال فعال می‌شود',
+    validity_after: 'اعتبار پس از فعال‌سازی: {n} روز', unlimited_time: 'بدون محدودیت زمان',
+    connected_btn: 'وصل شدم، بررسی کن', refreshing: 'در حال بررسی…',
+    remaining: 'باقی‌مانده', used_of: '{used} از {total} گیگ', qr_link: 'لینک اشتراک',
+    st_limited_note: 'حجم تمام شده — تمدید کنید', st_expired_note: 'منقضی شده — تمدید کنید',
     st_active: 'فعال', st_on_hold: 'در انتظار اتصال', st_expired: 'منقضی',
     st_limited: 'اتمام حجم', st_disabled: 'غیرفعال', st_pending: 'در حال ساخت',
     st_pending_payment: 'در انتظار پرداخت', st_paid: 'پرداخت شد',
@@ -58,8 +63,13 @@ const dict = {
     no_cards: 'No card configured for transfer — contact support.',
     refresh_status: 'Check status', uploading: 'Uploading…',
     invalid_link: 'Invalid link', checking: 'Checking…', back: 'Back',
-    no_orders: 'No orders yet', checkout: 'Checkout',
+    no_orders: 'No orders yet', checkout: 'Checkout', load_error: 'Failed to load data',
     o_new: 'New purchase', o_renew: 'Renewal', o_addon_volume: 'Add-on volume',
+    waiting_connect: 'Activates on your first connection',
+    validity_after: 'Validity after activation: {n} days', unlimited_time: 'No time limit',
+    connected_btn: "I've connected — check", refreshing: 'Checking…',
+    remaining: 'remaining', used_of: '{used} / {total} GB', qr_link: 'Subscription link',
+    st_limited_note: 'Data used up — renew', st_expired_note: 'Expired — renew',
     st_active: 'Active', st_on_hold: 'Awaiting connection', st_expired: 'Expired',
     st_limited: 'Data used up', st_disabled: 'Disabled', st_pending: 'Provisioning',
     st_pending_payment: 'Awaiting payment', st_paid: 'Paid',
@@ -84,7 +94,11 @@ export function I18nProvider({ children }) {
     document.documentElement.lang = lang
     document.documentElement.dir = lang === 'fa' ? 'rtl' : 'ltr'
   }, [lang])
-  const t = (k) => (dict[lang][k] ?? dict.fa[k] ?? k)
+  const t = (k, p) => {
+    let s = dict[lang][k] ?? dict.fa[k] ?? k
+    if (p) for (const [pk, pv] of Object.entries(p)) s = s.split(`{${pk}}`).join(String(pv))
+    return s
+  }
   return <I18n.Provider value={{ lang, setLang, t }}>{children}</I18n.Provider>
 }
 

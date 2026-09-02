@@ -105,6 +105,7 @@ class TelegramMiniAppLoginView(GenericAPIView):
                 ser.validated_data["init_data"],
                 bot_token=token,
                 max_age_seconds=settings.MINIAPP_INITDATA_MAX_AGE,
+                debug=settings.DEBUG,
             )
         except InitDataError as exc:
             log.warning("mini app initData rejected: %s", exc)

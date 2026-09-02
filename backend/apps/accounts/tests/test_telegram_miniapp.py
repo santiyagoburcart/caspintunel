@@ -48,6 +48,21 @@ def client():
     return APIClient()
 
 
+def test_valid_initdata_with_signature_field(client, sales_bot):
+    """Bot API 8.0 clients add a `signature` field; the launch must still validate
+    whether or not that field is folded into the bot-token HMAC."""
+    f = _fields(tg_id=8001)
+    f["chat_instance"] = "-123456789"
+    f["chat_type"] = "private"
+    # Telegram (8.0) computes `hash` over everything except `hash` and `signature`
+    dcs = "\n".join(f"{k}={f[k]}" for k in sorted(f))
+    secret = hmac.new(b"WebAppData", BOT_TOKEN.encode(), hashlib.sha256).digest()
+    f["hash"] = hmac.new(secret, dcs.encode(), hashlib.sha256).hexdigest()
+    f["signature"] = "abc_ed25519_sig_-_"
+    r = client.post(URL, {"init_data": urlencode(f)}, format="json")
+    assert r.status_code == 200, r.data
+
+
 # --- happy path ---------------------------------------------------------
 def test_valid_initdata_creates_linked_user_and_issues_jwt(client, sales_bot):
     r = client.post(URL, {"init_data": _sign(_fields(tg_id=42))}, format="json")

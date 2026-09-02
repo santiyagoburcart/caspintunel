@@ -55,3 +55,54 @@ def test_custom_volume_label(user):
     cv = Plan.objects.create(name_fa="حجمی", type=PlanType.CUSTOM_VOLUME, price=Decimal("0"),
                              price_per_gb=Decimal("2500"), min_gb=5, max_gb=100)
     assert "حجمی" in plan_label(cv)
+
+
+# --- bot receipt upload ------------------------------------------------
+def test_submit_bot_receipt_creates_pending_payment_with_a_real_file(user, plan):
+    import io
+    import os
+
+    from PIL import Image
+
+    from apps.orders.models import OrderStatus
+    from apps.payments_sms.models import PaymentStatus
+    from apps.telegram.shop import order_awaiting_receipt, submit_bot_receipt
+
+    order = buy_new(user, plan, account_name="tgacc")
+    assert order.status == OrderStatus.PENDING_PAYMENT
+    assert order_awaiting_receipt(user).id == order.id
+
+    buf = io.BytesIO()
+    Image.new("RGB", (200, 120), (10, 90, 200)).save(buf, format="JPEG")
+    payment = submit_bot_receipt(user, order, buf.getvalue())
+
+    assert payment.status == PaymentStatus.PENDING
+    assert payment.method == "card_manual"
+    assert payment.amount == order.amount_unique
+    assert payment.receipt_image.name.endswith(".jpg")
+    assert os.path.exists(payment.receipt_image.path)
+    assert payment.receipt_image.storage.exists(payment.receipt_image.name)
+
+
+def test_submit_bot_receipt_rejects_non_image_bytes(user, plan):
+    from apps.payments_sms.services import PaymentError
+    from apps.telegram.shop import submit_bot_receipt
+
+    order = buy_new(user, plan, account_name="tgacc2")
+    with pytest.raises(PaymentError):
+        submit_bot_receipt(user, order, b"not an image at all")
+    with pytest.raises(PaymentError):
+        submit_bot_receipt(user, order, b"")
+
+
+def test_service_summary_shows_waiting_for_connection(user, plan):
+    panel = Panel.objects.create(name="P", base_url="https://x", admin_username="a",
+                                 admin_password_enc="p")
+    svc = Service.objects.create(
+        user=user, panel=panel, panel_username="s-1", current_plan=plan,
+        status=ServiceStatus.ON_HOLD, on_hold_duration=30 * 86400, online_at=None,
+        subscription_url="https://x/s/",
+    )
+    text = service_summary(svc)
+    assert "با اولین اتصال فعال می‌شود" in text
+    assert "30 روز" in text

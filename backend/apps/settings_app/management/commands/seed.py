@@ -217,6 +217,18 @@ class Command(BaseCommand):
                 "enabled": True,
             },
         )
+        every_10, _ = IntervalSchedule.objects.get_or_create(
+            every=10, period=IntervalSchedule.MINUTES
+        )
+        PeriodicTask.objects.update_or_create(
+            name="orders: retry unfulfilled (paid but not provisioned)",
+            defaults={
+                "task": "apps.orders.tasks.retry_unfulfilled_orders",
+                "interval": every_10,
+                "kwargs": _json.dumps({}),
+                "enabled": True,
+            },
+        )
 
         from apps.settings_app.models import Setting
 
