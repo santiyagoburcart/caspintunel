@@ -16,8 +16,14 @@ def user():
 
 
 @pytest.fixture
-def plan():
-    return Plan.objects.create(name_fa="۳۰روزه", price=Decimal("120000"),
+def panel():
+    return Panel.objects.create(name="P", base_url="https://x", admin_username="a",
+                                admin_password_enc="p")
+
+
+@pytest.fixture
+def plan(panel):
+    return Plan.objects.create(panel=panel, name_fa="۳۰روزه", price=Decimal("120000"),
                                data_limit=50 * 1024**3, duration_days=30, group_ids=[6])
 
 
@@ -29,8 +35,7 @@ def test_buy_new_creates_bot_sourced_order(user, plan):
     assert order.requested_account_name == "tguser1"
 
 
-def test_renew_creates_renew_order(user, plan):
-    panel = Panel.objects.create(name="P", base_url="https://x", admin_username="a", admin_password_enc="p")
+def test_renew_creates_renew_order(user, plan, panel):
     svc = Service.objects.create(user=user, panel=panel, panel_username="tguser1",
                                  current_plan=plan, status=ServiceStatus.EXPIRED)
     order = renew(user, svc, plan)
@@ -39,11 +44,10 @@ def test_renew_creates_renew_order(user, plan):
     assert order.source == "bot"
 
 
-def test_plan_label_and_service_summary(user, plan):
+def test_plan_label_and_service_summary(user, plan, panel):
     label = plan_label(plan)
     assert "۳۰روزه" in label and "50 گیگ" in label and "تومان" in label
 
-    panel = Panel.objects.create(name="P", base_url="https://x", admin_username="a", admin_password_enc="p")
     svc = Service.objects.create(user=user, panel=panel, panel_username="x1", current_plan=plan,
                                  status=ServiceStatus.ACTIVE, data_limit=50 * 1024**3,
                                  data_used=10 * 1024**3)

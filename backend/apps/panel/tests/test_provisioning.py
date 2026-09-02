@@ -29,8 +29,8 @@ def user():
 
 
 @pytest.fixture
-def timed_plan():
-    return Plan.objects.create(name_fa="30d", price=Decimal("100000"),
+def timed_plan(panel):
+    return Plan.objects.create(panel=panel, name_fa="30d", price=Decimal("100000"),
                                data_limit=50 * 1024**3, duration_days=30, group_ids=[1, 2])
 
 
@@ -57,7 +57,7 @@ def test_timed_plan_maps_to_on_hold(user, panel, timed_plan):
 def test_group_ids_fall_back_to_panel_default(user, panel):
     panel.default_group_ids = [9]
     panel.save()
-    plan = Plan.objects.create(name_fa="p", price=Decimal("1"), duration_days=7, group_ids=[])
+    plan = Plan.objects.create(panel=panel, name_fa="p", price=Decimal("1"), duration_days=7, group_ids=[])
     payload = build_create_payload(_svc(user, panel, plan), plan, panel)
     assert payload["group_ids"] == [9]
 
@@ -68,7 +68,7 @@ def test_new_plan_inherits_panel_default_groups_by_default(user, panel):
     actually takes effect."""
     panel.default_group_ids = [5, 6, 8]
     panel.save()
-    plan = Plan.objects.create(name_fa="p", price=Decimal("1"), duration_days=7)
+    plan = Plan.objects.create(panel=panel, name_fa="p", price=Decimal("1"), duration_days=7)
     assert plan.group_ids == []
     payload = build_create_payload(_svc(user, panel, plan), plan, panel)
     assert payload["group_ids"] == [5, 6, 8]   # exactly the panel default, no wirgard
@@ -78,7 +78,7 @@ def test_new_plan_inherits_panel_default_groups_by_default(user, panel):
 def test_created_panel_user_gets_plan_group_ids(user, panel):
     import json
     _token(responses)
-    plan = Plan.objects.create(name_fa="p", price=Decimal("1"), duration_days=7, group_ids=[6, 8])
+    plan = Plan.objects.create(panel=panel, name_fa="p", price=Decimal("1"), duration_days=7, group_ids=[6, 8])
     responses.add(responses.POST, f"{BASE}/api/user",
                   json={"username": "cust-1", "status": "on_hold", "subscription_url": "/myac/z/"},
                   status=200)
@@ -89,7 +89,7 @@ def test_created_panel_user_gets_plan_group_ids(user, panel):
 
 
 def test_timeless_plan_maps_to_active_no_expire(user, panel):
-    plan = Plan.objects.create(name_fa="inf", price=Decimal("1"), data_limit=0, duration_days=None)
+    plan = Plan.objects.create(panel=panel, name_fa="inf", price=Decimal("1"), data_limit=0, duration_days=None)
     payload = build_create_payload(_svc(user, panel, plan), plan, panel)
     assert payload["status"] == "active"
     assert payload["expire"] is None
@@ -198,7 +198,7 @@ def test_custom_volume_service_provisions_with_the_right_data_limit():
     u = User.objects.create_user("cv", "x")
     panel = Panel.objects.create(name="P", base_url="https://x", admin_username="a",
                                  admin_password_enc="p", is_active=True)
-    plan = Plan.objects.create(name_fa="CV", type=PlanType.CUSTOM_VOLUME, price=Decimal("0"),
+    plan = Plan.objects.create(panel=panel, name_fa="CV", type=PlanType.CUSTOM_VOLUME, price=Decimal("0"),
                                price_per_gb=Decimal("2000"), min_gb=1, max_gb=100, group_ids=[6])
     order = create_order(user=u, plan_id=plan.id, order_type=OrderType.NEW, custom_volume_gb=25, requested_account_name="cvprov")
 
@@ -207,3 +207,50 @@ def test_custom_volume_service_provisions_with_the_right_data_limit():
 
     payload = build_create_payload(svc, plan, panel)
     assert payload["data_limit"] == 25 * 1024**3
+
+
+@responses.activate
+def test_fulfill_provisions_on_the_plans_panel_not_the_active_one(user):
+    """Multi-panel: the service is created on order.plan.panel even when a
+    different panel is the 'active' one."""
+    import json
+
+    from apps.orders.models import OrderType
+    from apps.orders.services import create_order
+    from apps.orders.tasks import fulfill_order
+
+    active = Panel.objects.create(name="Active", base_url="https://active.test",
+                                  admin_username="a", admin_password_enc="p", is_active=True,
+                                  default_group_ids=[1])
+    wg = Panel.objects.create(name="Wireguard", base_url="https://wg.test",
+                              admin_username="a", admin_password_enc="p", is_active=True,
+                              default_group_ids=[7])
+    plan = Plan.objects.create(panel=wg, name_fa="wg", price=Decimal("1"), duration_days=30)
+    order = create_order(user=user, plan_id=plan.id, order_type=OrderType.NEW,
+                         requested_account_name="wguser")
+
+    responses.add(responses.POST, "https://wg.test/api/admin/token",
+                  json={"access_token": "t"}, status=200)
+    responses.add(responses.POST, "https://wg.test/api/user",
+                  json={"username": "wguser", "status": "on_hold", "subscription_url": "/s/z/"},
+                  status=200)
+
+    fulfill_order(order.id)
+
+    order.refresh_from_db()
+    assert order.service.panel_id == wg.id
+    create_call = next(c for c in responses.calls if c.request.url == "https://wg.test/api/user"
+                       and c.request.method == "POST")
+    assert json.loads(create_call.request.body)["group_ids"] == [7]   # wg panel default
+    # nothing was sent to the "active" panel
+    assert not any("active.test" in c.request.url for c in responses.calls)
+
+
+def test_renew_rejects_a_plan_from_a_different_panel(user, panel):
+    other = Panel.objects.create(name="Other", base_url="https://o.test",
+                                 admin_username="a", admin_password_enc="p")
+    p_other = Plan.objects.create(panel=other, name_fa="o", price=Decimal("1"), duration_days=30)
+    svc = _svc(user, panel, Plan.objects.create(panel=panel, name_fa="p", price=Decimal("1")))
+    from apps.panel.exceptions import PanelError
+    with pytest.raises(PanelError):
+        renew_service(svc.id, p_other)

@@ -57,7 +57,8 @@ class Service(TimeStampedModel):
 
     user = models.ForeignKey("accounts.User", on_delete=models.CASCADE, related_name="services")
     panel = models.ForeignKey(Panel, on_delete=models.PROTECT, related_name="services")
-    panel_username = models.CharField(max_length=64, unique=True)
+    # unique per panel (see Meta) — the same username may exist on another panel
+    panel_username = models.CharField(max_length=64)
     subscription_url = models.CharField(max_length=500, blank=True, help_text="fixed — used for QR")
 
     status = models.CharField(max_length=10, choices=ServiceStatus.choices, default=ServiceStatus.PENDING)
@@ -90,6 +91,11 @@ class Service(TimeStampedModel):
     class Meta:
         db_table = "service"
         ordering = ("-created_at",)
+        constraints = [
+            models.UniqueConstraint(
+                fields=["panel", "panel_username"], name="uniq_service_panel_username"
+            ),
+        ]
 
     def __str__(self) -> str:
         return self.panel_username

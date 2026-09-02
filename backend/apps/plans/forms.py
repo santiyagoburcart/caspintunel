@@ -19,7 +19,8 @@ class PlanAdminForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         current = list(self.instance.group_ids or []) if self.instance and self.instance.pk else []
-        choices = get_group_choices()
+        panel = getattr(self.instance, "panel", None) if self.instance and self.instance.pk else None
+        choices = get_group_choices(panel)
         known = {c[0] for c in choices}
         # keep any id already stored on the plan even if the panel no longer lists it
         choices = choices + [(gid, f"Group {gid} (not on panel)") for gid in current if gid not in known]

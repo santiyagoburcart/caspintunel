@@ -28,7 +28,8 @@ def _parse_dt(value) -> datetime | None:
 
 # --- outbound: build payloads --------------------------------------
 def resolve_group_ids(plan, panel) -> list[int]:
-    """Plan's own group_ids win; otherwise fall back to the panel default."""
+    """Plan's own group_ids win; otherwise fall back to its panel's default.
+    `panel` is the plan's panel (multi-panel: service.panel == plan.panel)."""
     if plan is not None and plan.group_ids:
         return list(plan.group_ids)
     return list(panel.default_group_ids or [])

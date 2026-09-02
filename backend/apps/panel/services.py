@@ -12,7 +12,7 @@ from django.utils import timezone
 from apps.common.models import write_audit
 
 from .client import PasarGuardClient
-from .exceptions import PanelConflict, PanelNotFound
+from .exceptions import PanelConflict, PanelError, PanelNotFound
 from .mappers import apply_user_to_service, build_create_payload, build_renew_payload
 from .models import Panel, Service, ServiceStatus
 
@@ -64,6 +64,10 @@ def provision_service(service_id: int, plan=None) -> Service:
 def renew_service(service_id: int, plan) -> Service:
     """Flowchart 1.5: PUT the same username, reset usage, keep subscription_url."""
     service = Service.objects.select_for_update().select_related("panel").get(pk=service_id)
+    if plan is not None and getattr(plan, "panel_id", service.panel_id) != service.panel_id:
+        raise PanelError(
+            f"plan {plan.id} is on panel {plan.panel_id}, service {service_id} is on {service.panel_id}"
+        )
     client = client_for(service.panel)
 
     api_user = client.update_user(service.panel_username, build_renew_payload(service, plan))

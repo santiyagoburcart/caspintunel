@@ -4,6 +4,7 @@ import pytest
 from rest_framework.test import APIClient
 
 from apps.accounts.models import User
+from apps.panel.models import Panel
 from apps.plans.models import Plan, PlanType
 
 pytestmark = pytest.mark.django_db
@@ -12,6 +13,12 @@ pytestmark = pytest.mark.django_db
 @pytest.fixture
 def client():
     return APIClient()
+
+
+@pytest.fixture
+def panel():
+    return Panel.objects.create(name="P", base_url="https://x", admin_username="a",
+                                admin_password_enc="p")
 
 
 def test_list_shows_only_active_plans_to_public(client):
@@ -23,15 +30,26 @@ def test_list_shows_only_active_plans_to_public(client):
     assert names == ["A"]
 
 
-def test_admin_sees_inactive_and_can_create(client):
+def test_admin_sees_inactive_and_can_create(client, panel):
     admin = User.objects.create_superuser("root", "Str0ngPass!")
     client.force_authenticate(admin)
     r = client.post("/api/v1/plans/", {
         "type": "fixed", "name_fa": "New", "price": 250000, "data_limit": 53687091200,
-        "duration_days": 30, "group_ids": [6, 8],
+        "duration_days": 30, "group_ids": [6, 8], "panel": panel.id,
     }, format="json")
     assert r.status_code == 201, r.data
-    assert Plan.objects.get(name_fa="New").group_ids == [6, 8]
+    plan = Plan.objects.get(name_fa="New")
+    assert plan.group_ids == [6, 8]
+    assert plan.panel_id == panel.id
+
+
+def test_create_plan_requires_a_panel(client):
+    admin = User.objects.create_superuser("root", "Str0ngPass!")
+    client.force_authenticate(admin)
+    r = client.post("/api/v1/plans/", {"type": "fixed", "name_fa": "NoPanel", "price": 1000},
+                    format="json")
+    assert r.status_code == 400
+    assert "panel" in r.data
 
 
 def test_custom_volume_plan_requires_price_per_gb(client):

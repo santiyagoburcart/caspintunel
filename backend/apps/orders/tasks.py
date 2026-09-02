@@ -53,18 +53,18 @@ def fulfill_order(self, order_id: int):
     """Provision / renew / top-up the service for a paid order (flowchart 1.2 & 1.5)."""
     from apps.panel.services import (
         add_service_data_limit,
-        get_active_panel,
         provision_service,
         renew_service,
     )
 
-    order = Order.objects.select_related("plan", "service").get(pk=order_id)
+    order = Order.objects.select_related("plan", "plan__panel", "service").get(pk=order_id)
     if order.status == OrderStatus.COMPLETED:
         return {"already": "completed"}
 
     try:
         if order.type == OrderType.NEW:
-            service = _ensure_service(order, get_active_panel())
+            # multi-panel: the service is created on the plan's own panel
+            service = _ensure_service(order, order.plan.panel)
             provision_service(service.id, plan=order.plan)
         elif order.type == OrderType.RENEW:
             renew_service(order.service_id, order.plan)
@@ -120,7 +120,10 @@ def _ensure_service(order: Order, panel: Panel | None) -> Service:
     if order.plan.type == PlanType.CUSTOM_VOLUME and order.custom_volume_gb:
         data_limit = order.plan.data_limit_for_volume(order.custom_volume_gb)
 
-    existing = Service.objects.filter(panel_username=order.requested_account_name).first()
+    # username uniqueness is per-panel: the same name may exist on another panel
+    existing = Service.objects.filter(
+        panel=panel, panel_username=order.requested_account_name
+    ).first()
     if existing is not None:
         if existing.user_id != order.user_id:
             # someone else already owns this panel username — do not cross-link

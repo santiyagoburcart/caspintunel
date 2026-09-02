@@ -7,6 +7,7 @@ from apps.ops.models import BackupLog, HealthCheck, ResourceStat
 from apps.panel.models import Panel, Service
 from apps.payments_sms.models import BankCard, Payment
 from apps.plans.models import Plan
+from apps.plans.serializers import PlanPanelDefaultMixin
 from apps.settings_app.models import Page, SiteConfig, Theme
 from apps.telegram.models import TelegramConfig
 
@@ -110,10 +111,16 @@ class TelegramConfigSerializer(serializers.ModelSerializer):
 
 
 # --- plans / cards / pages / themes -------------------------------
-class AdminPlanSerializer(serializers.ModelSerializer):
+class AdminPlanSerializer(PlanPanelDefaultMixin, serializers.ModelSerializer):
+    panel_name = serializers.CharField(source="panel.name", read_only=True)
+    panel_default_group_ids = serializers.JSONField(
+        source="panel.default_group_ids", read_only=True
+    )
+
     class Meta:
         model = Plan
         fields = "__all__"
+        extra_kwargs = {"panel": {"required": False}}
 
 
 class AdminBankCardSerializer(serializers.ModelSerializer):

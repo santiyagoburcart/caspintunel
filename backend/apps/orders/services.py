@@ -73,7 +73,7 @@ def create_order(
 ) -> Order:
     expire_stale_reservations()
 
-    plan = Plan.objects.filter(pk=plan_id, is_active=True).first()
+    plan = Plan.objects.filter(pk=plan_id, is_active=True).select_related("panel").first()
     if not plan:
         raise OrderError("plan not found or inactive")
 
@@ -84,6 +84,10 @@ def create_order(
         service = Service.objects.filter(pk=service_id, user=user).first()
         if not service:
             raise OrderError("service not found")
+        # multi-panel: a renew / top-up plan must live on the same panel as the
+        # service (you can't move an account between panels).
+        if service.panel_id != plan.panel_id:
+            raise OrderError("this plan is on a different panel than the service")
     elif order_type == OrderType.NEW:
         from apps.panel.models import Service
 
@@ -92,7 +96,8 @@ def create_order(
             # every new service needs a customer-chosen username — fixed AND
             # custom-volume. We never auto-generate it.
             raise OrderError("requested_account_name is required for a new service")
-        if Service.objects.filter(panel_username__iexact=name).exists():
+        # username uniqueness is scoped to the plan's panel
+        if Service.objects.filter(panel=plan.panel, panel_username__iexact=name).exists():
             raise OrderError("that account name is already taken — pick another")
         requested_account_name = name
 

@@ -16,8 +16,11 @@ log = logging.getLogger("caspintunel")
 _CACHE_KEY = "panel:group_choices"
 
 
-def get_group_choices() -> list[tuple[int, str]]:
-    cached = cache.get(_CACHE_KEY)
+def get_group_choices(panel=None) -> list[tuple[int, str]]:
+    """(id, label) choices for a panel's groups. `panel` targets a specific
+    panel (multi-panel); without it, the active/first panel."""
+    cache_key = f"{_CACHE_KEY}:{panel.id if panel is not None else 'active'}"
+    cached = cache.get(cache_key)
     if cached:
         return cached
 
@@ -25,7 +28,7 @@ def get_group_choices() -> list[tuple[int, str]]:
     try:
         from .services import client_for, get_active_panel
 
-        panel = get_active_panel()
+        panel = panel or get_active_panel()
         if panel:
             groups = client_for(panel).list_groups()
             live = [
@@ -38,5 +41,5 @@ def get_group_choices() -> list[tuple[int, str]]:
     except Exception as exc:  # noqa: BLE001 - admin must not break on panel outage
         log.warning("group choices: falling back to static list (%s)", exc)
 
-    cache.set(_CACHE_KEY, choices, 300)
+    cache.set(cache_key, choices, 300)
     return choices

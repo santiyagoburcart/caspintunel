@@ -16,6 +16,18 @@ class Plan(TimeStampedModel):
     desc_fa = models.TextField(blank=True)
     desc_en = models.TextField(blank=True)
 
+    # Multi-panel: every plan is provisioned on exactly one panel. The plan's
+    # service always lives on this panel; its group_ids are scoped to it.
+    panel = models.ForeignKey(
+        "panel.Panel", on_delete=models.PROTECT, related_name="plans",
+        help_text="the panel this plan's services are created / renewed on",
+    )
+
+    # Optional grouping for the store / bot (e.g. wireguard, unlimited, volume).
+    # Free-text bilingual labels — grouping later matches on these.
+    category_fa = models.CharField(max_length=60, blank=True)
+    category_en = models.CharField(max_length=60, blank=True)
+
     type = models.CharField(max_length=13, choices=PlanType.choices, default=PlanType.FIXED)
 
     data_limit = models.BigIntegerField(null=True, blank=True, help_text="bytes; null = unlimited")
@@ -28,12 +40,13 @@ class Plan(TimeStampedModel):
     is_active = models.BooleanField(default=True)
     sort_order = models.IntegerField(default=0)
 
-    # Panel groups this plan's service attaches to. Empty (the default) -> fall
-    # back to Panel.default_group_ids, so unchecking a group at the panel level
-    # takes effect for every plan that hasn't deliberately overridden the set.
+    # Panel groups this plan's service attaches to — scoped to `self.panel`.
+    # Empty (the default) -> fall back to that panel's default_group_ids, so
+    # unchecking a group at the panel level takes effect for every plan that
+    # hasn't deliberately overridden the set.
     group_ids = models.JSONField(
         default=list, blank=True,
-        help_text="panel group ids for this plan; empty = use the panel's default set",
+        help_text="panel group ids for this plan (from its own panel); empty = the panel's default set",
     )
 
     # custom_volume only

@@ -90,14 +90,22 @@ class PanelTestView(AdminAPIView):
 
 
 class PanelGroupsView(AdminAPIView):
-    """GET — the groups the configured panel exposes (id + name), live."""
+    """GET — the groups a panel exposes (id + name), live.
+
+    `?panel=<id>` targets a specific panel (multi-panel: the plan form fetches
+    groups for the plan's own panel); without it, the active/first panel.
+    """
 
     perms_map = {"GET": ["settings.manage"]}
 
     @extend_schema(request=None, responses=dict,
-                   summary="List the panel's groups (live, from GET /api/groups)")
+                   summary="List a panel's groups (live, from GET /api/groups)")
     def get(self, request):
-        panel = _panel_row()
+        panel_id = request.query_params.get("panel")
+        if panel_id:
+            panel = Panel.objects.filter(pk=panel_id).first()
+        else:
+            panel = _panel_row()
         if not panel or not panel.base_url or not panel.admin_password_enc:
             return Response({"detail": "پنل هنوز کامل پیکربندی نشده است."}, status=400)
         try:
