@@ -30,6 +30,15 @@ from .serializers import (
 from .services import PaymentError, approve_payment, reject_payment, submit_receipt
 
 
+def _bank_card_from_request(request) -> BankCard | None:
+    """Optional `bank_card` id in the approve request body — lets the admin say
+    which card this deposit actually landed on (drives the per-card report)."""
+    raw = request.data.get("bank_card")
+    if raw in (None, "", 0, "0"):
+        return None
+    return BankCard.objects.filter(pk=raw).first()
+
+
 class BankCardListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = BankCardSerializer
@@ -128,7 +137,9 @@ class PaymentApproveView(APIView):
     @extend_schema(request=None, responses=PaymentSerializer, summary="Approve a pending payment")
     def post(self, request, pk):
         try:
-            payment = approve_payment(pk, actor=request.user)
+            payment = approve_payment(
+                pk, actor=request.user, bank_card=_bank_card_from_request(request)
+            )
         except PaymentError as exc:
             return Response({"detail": str(exc)}, status=400)
         return Response(PaymentSerializer(payment).data)

@@ -10,13 +10,25 @@ from apps.common.models import write_audit
 from apps.orders.models import Order, OrderStatus
 from apps.orders.services import mark_paid_and_fulfill
 
-from .models import ConfirmedBy, Payment, PaymentMethod, PaymentStatus
+from .models import BankCard, ConfirmedBy, Payment, PaymentMethod, PaymentStatus
 
 log = logging.getLogger("caspintunel")
 
 
 class PaymentError(Exception):
     pass
+
+
+def default_bank_card() -> BankCard | None:
+    """The card to credit a deposit to when nothing more specific is known.
+
+    Card-to-card receipts (site + bot) and SMS auto-confirms don't reliably tell
+    us *which* card the customer paid to. When there's exactly one active card,
+    that's unambiguous — use it so the per-card deposit report is correct.
+    With several active cards we leave it blank for the admin to set at approval.
+    """
+    cards = list(BankCard.objects.filter(is_active=True).order_by("sort_order", "id")[:2])
+    return cards[0] if len(cards) == 1 else None
 
 
 @transaction.atomic
@@ -36,7 +48,7 @@ def submit_receipt(*, order: Order, image, bank_card=None, user) -> Payment:
     payment.method = PaymentMethod.CARD_MANUAL
     payment.amount = order.amount_unique
     payment.status = PaymentStatus.PENDING
-    payment.bank_card = bank_card
+    payment.bank_card = bank_card or default_bank_card()
     payment.reject_reason = ""
     payment.confirmed_by = None
     payment.confirmed_by_staff = None
@@ -65,6 +77,8 @@ def approve_payment(payment_id: int, *, actor=None, bank_card=None) -> Payment:
     payment.confirmed_at = timezone.now()
     if bank_card is not None:
         payment.bank_card = bank_card
+    elif payment.bank_card_id is None:
+        payment.bank_card = default_bank_card()
     payment.save(update_fields=["status", "confirmed_by", "confirmed_at", "bank_card", "updated_at"])
 
     mark_paid_and_fulfill(payment.order)

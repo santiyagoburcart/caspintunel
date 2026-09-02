@@ -238,12 +238,15 @@ class AdminPendingPaymentSerializer(serializers.ModelSerializer):
     order_source = serializers.CharField(source="order.source", read_only=True)
     account_name = serializers.CharField(source="order.requested_account_name", read_only=True, default="")
     receipt_url = serializers.SerializerMethodField()
+    bank_card = serializers.PrimaryKeyRelatedField(read_only=True)
+    bank_card_number = serializers.CharField(source="bank_card.card_number", read_only=True, default=None)
 
     class Meta:
         model = Payment
         fields = ("id", "order_id", "user", "user_telegram", "plan_name", "order_type",
                   "order_source", "account_name", "method", "amount", "status",
-                  "receipt_url", "reject_reason", "created_at")
+                  "receipt_url", "reject_reason", "created_at",
+                  "bank_card", "bank_card_number")
 
     def get_receipt_url(self, obj) -> str | None:
         # authenticated endpoint (ReceiptFileView), never a public media path

@@ -11,12 +11,14 @@ const T = {
     user: 'کاربر', order: 'سفارش', plan: 'پلن', account: 'نام اکانت', receipt: 'رسید',
     no_receipt: 'رسیدی پیوست نشده', reject_reason: 'دلیل رد؟', unspecified: 'نامشخص',
     load_fail: 'دریافت فهرست ناموفق بود', src_site: 'سایت', src_bot: 'ربات',
+    deposit_card: 'واریز به کارت',
   },
   en: {
     title: 'Payment approval queue', none: 'Nothing to review', refresh: '↻ Refresh',
     user: 'User', order: 'Order', plan: 'Plan', account: 'Account', receipt: 'Receipt',
     no_receipt: 'No receipt attached', reject_reason: 'Rejection reason?', unspecified: 'unspecified',
     load_fail: 'Failed to load the queue', src_site: 'Website', src_bot: 'Bot',
+    deposit_card: 'Deposited to card',
   },
 }
 
@@ -26,13 +28,20 @@ export default function Payments() {
   const [rows, setRows] = useState(null)
   const [err, setErr] = useState('')
   const [busyId, setBusyId] = useState(null)
+  const [cards, setCards] = useState([])
+  const [cardById, setCardById] = useState({})
 
   const load = () =>
     api.get('/admin/payments/pending/')
       .then((r) => { setRows(r.data.results); setErr('') })
       .catch(() => { setRows([]); setErr(s.load_fail) })
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+    api.get('/admin/cards/')
+      .then((r) => setCards((r.data.results || r.data || []).filter((c) => c.is_active)))
+      .catch(() => setCards([]))
+  }, [])
 
   const act = async (id, kind) => {
     setErr('')
@@ -42,8 +51,11 @@ export default function Payments() {
       if (reason === null) return
     }
     setBusyId(id)
+    const body = kind === 'reject'
+      ? { reason: reason || s.unspecified }
+      : { bank_card: cardById[id] ?? rows.find((r) => r.id === id)?.bank_card ?? cards[0]?.id ?? null }
     try {
-      await api.post(`/admin/payments/${id}/${kind}/`, kind === 'reject' ? { reason: reason || s.unspecified } : {})
+      await api.post(`/admin/payments/${id}/${kind}/`, body)
       await load()
     } catch (e) { setErr(apiError(e)) } finally { setBusyId(null) }
   }
@@ -78,6 +90,18 @@ export default function Payments() {
             {p.receipt_url
               ? <ReceiptThumb url={p.receipt_url} alt={s.receipt} variant="full" />
               : <div className="text-xs text-muted">{s.no_receipt}</div>}
+            {cards.length > 0 && (
+              <label className="block text-xs text-muted">
+                {s.deposit_card}
+                <select className="input mt-0.5 text-sm"
+                  value={cardById[p.id] ?? p.bank_card ?? cards[0]?.id ?? ''}
+                  onChange={(e) => setCardById((m) => ({ ...m, [p.id]: Number(e.target.value) }))}>
+                  {cards.map((c) => (
+                    <option key={c.id} value={c.id}>{c.card_number}{c.holder_name ? ` — ${c.holder_name}` : ''}</option>
+                  ))}
+                </select>
+              </label>
+            )}
             <div className="flex gap-2 pt-1">
               <button className="btn-primary text-sm" disabled={busyId === p.id}
                 onClick={() => act(p.id, 'approve')}>

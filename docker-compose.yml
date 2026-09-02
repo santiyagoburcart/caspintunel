@@ -223,6 +223,8 @@ services:
     volumes:
       - ./backend:/app
       - ./VERSION:/app/VERSION:ro
+      - media_data:/app/media          # receipts uploaded via the bot must land
+                                       # in the same store web + nginx serve from
     depends_on:
       - web
       - redis

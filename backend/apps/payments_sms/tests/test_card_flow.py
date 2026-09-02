@@ -117,6 +117,33 @@ def test_approve_endpoint_is_admin_only(user, order):
     assert client.post(f"/api/v1/payments/{payment.id}/approve/").status_code == 403
 
 
+def test_receipt_links_to_sole_active_card_for_deposit_report(user, order):
+    """Bug fix: card-to-card payments used to save bank_card=NULL, so the
+    per-card deposit total (BankCard.deposit_total) stayed 0 forever."""
+    card = BankCard.objects.create(card_number="6037-XXXX", holder_name="H", is_active=True)
+    submit_receipt(order=order, image=_png(), user=user)
+    payment = Payment.objects.get(order=order)
+    assert payment.bank_card_id == card.id  # auto-linked at upload time
+
+    approve_payment(payment.id)
+    payment.refresh_from_db()
+    assert payment.status == PaymentStatus.APPROVED
+    assert payment.bank_card_id == card.id
+
+
+def test_admin_can_set_deposit_card_at_approval(user, order):
+    c1 = BankCard.objects.create(card_number="AAAA", holder_name="A", is_active=True, sort_order=1)
+    c2 = BankCard.objects.create(card_number="BBBB", holder_name="B", is_active=True, sort_order=2)
+    submit_receipt(order=order, image=_png(), user=user)
+    payment = Payment.objects.get(order=order)
+    assert payment.bank_card_id is None  # ambiguous: two active cards
+
+    approve_payment(payment.id, bank_card=c2)
+    payment.refresh_from_db()
+    assert payment.bank_card_id == c2.id
+    assert c1.payments.count() == 0
+
+
 def test_cards_endpoint_lists_active(user):
     BankCard.objects.create(card_number="1", holder_name="A", is_active=True, sort_order=1)
     BankCard.objects.create(card_number="2", holder_name="B", is_active=False, sort_order=2)

@@ -10,7 +10,7 @@ from rest_framework import filters, mixins, viewsets
 from rest_framework.response import Response
 
 from apps.common.jalali import to_jalali_str
-from apps.payments_sms.models import Payment, PaymentStatus
+from apps.payments_sms.models import BankCard, Payment, PaymentStatus
 from apps.payments_sms.services import PaymentError, approve_payment, reject_payment
 
 from ..serializers import AdminPendingPaymentSerializer, TransactionSerializer
@@ -66,7 +66,11 @@ class PaymentDecisionView(AdminAPIView):
     def post(self, request, pk, action):
         try:
             if action == "approve":
-                payment = approve_payment(pk, actor=request.user)
+                card = None
+                raw = request.data.get("bank_card")
+                if raw not in (None, "", 0, "0"):
+                    card = BankCard.objects.filter(pk=raw).first()
+                payment = approve_payment(pk, actor=request.user, bank_card=card)
             elif action == "reject":
                 reason = (request.data.get("reason") or "").strip() or "رد شد"
                 payment = reject_payment(pk, reason=reason, actor=request.user)

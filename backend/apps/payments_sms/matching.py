@@ -98,6 +98,8 @@ def match_sms_message(msg: SmsMessage) -> Payment | None:
 def _auto_confirm(order: Order, msg: SmsMessage) -> Payment:
     from apps.orders.services import mark_paid_and_fulfill
 
+    from .services import default_bank_card
+
     payment, _ = Payment.objects.update_or_create(
         order=order,
         defaults=dict(
@@ -105,6 +107,7 @@ def _auto_confirm(order: Order, msg: SmsMessage) -> Payment:
             amount=order.amount_unique,
             status=PaymentStatus.APPROVED,
             sms_message=msg,
+            bank_card=default_bank_card(),
             confirmed_by=ConfirmedBy.SYSTEM,
             confirmed_by_staff=None,
             confirmed_at=timezone.now(),
