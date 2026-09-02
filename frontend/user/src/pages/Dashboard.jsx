@@ -25,7 +25,20 @@ function ServiceCard({ s, t, lang, onRefresh }) {
     <div className="card space-y-3">
       <div className="flex items-center justify-between gap-2">
         <span dir="ltr" className="truncate font-bold">{s.panel_username}</span>
-        <StatusBadge status={s.status} />
+        <div className="flex shrink-0 items-center gap-1">
+          {waiting && (
+            <button
+              className="btn-ghost px-1.5 py-0.5 text-sm leading-none"
+              onClick={refresh}
+              disabled={busy}
+              title={t('refresh_status')}
+              aria-label={t('refresh_status')}
+            >
+              <span className={busy ? 'inline-block animate-spin' : ''}>↻</span>
+            </button>
+          )}
+          <StatusBadge status={s.status} />
+        </div>
       </div>
 
       {/* --- time / validity --- */}
@@ -83,11 +96,6 @@ function ServiceCard({ s, t, lang, onRefresh }) {
 
       <Alert>{err}</Alert>
       <div className="flex flex-wrap gap-2">
-        {waiting && (
-          <button className="btn-ghost text-sm" onClick={refresh} disabled={busy}>
-            {busy ? t('refreshing') : t('connected_btn')}
-          </button>
-        )}
         <Link className="btn-primary text-sm" to={`/checkout?renew=${s.id}`}>{t('renew')}</Link>
       </div>
     </div>
@@ -101,12 +109,40 @@ export default function Dashboard() {
   const [flash, setFlash] = useState(state?.flash || '')
   const [err, setErr] = useState('')
 
+  // merge a fresh /services/ payload in place; flash if anything just went live
+  const apply = (rows) => {
+    setItems((cur) => {
+      const before = Object.fromEntries((cur || []).map((x) => [x.id, x.status]))
+      const activated = rows.some(
+        (r) => before[r.id] && before[r.id] !== 'active' && r.status === 'active',
+      )
+      if (activated) setFlash(t('service_activated'))
+      return rows
+    })
+    setErr('')
+  }
+
   const load = () =>
     api.get('/services/')
-      .then((r) => { setItems(r.data.results); setErr('') })
-      .catch(() => { setItems([]); setErr(t('load_error') || '') })
+      .then((r) => apply(r.data.results))
+      .catch(() => { setItems((cur) => cur || []); setErr(t('load_error') || '') })
 
   useEffect(() => { load() }, [])
+
+  // While any service is still "waiting for first connection", poll silently so
+  // the card flips to active on its own (backend throttles the real panel sync).
+  const waitingCount = (items || []).filter(
+    (s) => s.status === 'on_hold' || s.status === 'pending',
+  ).length
+  useEffect(() => {
+    if (!waitingCount) return
+    const started = Date.now()
+    const id = setInterval(() => {
+      if (Date.now() - started > 13 * 60 * 1000) { clearInterval(id); return }
+      api.get('/services/').then((r) => apply(r.data.results)).catch(() => {})
+    }, 20000)
+    return () => clearInterval(id)
+  }, [waitingCount])
 
   const refreshOne = async (id) => {
     const { data } = await api.post(`/services/${id}/refresh/`)

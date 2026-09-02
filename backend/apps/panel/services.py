@@ -108,6 +108,35 @@ def reset_service_usage(service_id: int) -> Service:
     return sync_service(service_id)
 
 
+# on_hold / pending services flip the instant the customer first connects, so we
+# re-pull them from the panel whenever the customer looks at their services (site
+# poll or bot). Throttled per service + capped per call so an open dashboard
+# never hammers the panel.
+_WATCHABLE = (ServiceStatus.ON_HOLD, ServiceStatus.PENDING)
+_REFRESH_THROTTLE_SECONDS = 15
+_REFRESH_MAX_PER_CALL = 3
+
+
+def refresh_watchable_services(services) -> int:
+    """Sync any on_hold/pending services older than the throttle window.
+    Returns how many were synced. Never raises."""
+    now = timezone.now()
+    synced = 0
+    for svc in services:
+        if synced >= _REFRESH_MAX_PER_CALL:
+            break
+        if svc.status not in _WATCHABLE:
+            continue
+        if svc.last_synced_at and (now - svc.last_synced_at).total_seconds() < _REFRESH_THROTTLE_SECONDS:
+            continue
+        try:
+            sync_service(svc.id)
+            synced += 1
+        except Exception as exc:  # noqa: BLE001 - a panel hiccup must not break the page
+            log.info("on-view sync of service %s skipped: %s", svc.id, exc)
+    return synced
+
+
 @transaction.atomic
 def sync_service(service_id: int) -> Service:
     service = Service.objects.select_for_update().select_related("panel").get(pk=service_id)

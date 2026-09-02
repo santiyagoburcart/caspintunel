@@ -19,7 +19,18 @@ def active_plans():
 
 
 def user_services(user):
-    return user.services.select_related("current_plan", "panel").order_by("-created_at")
+    """The user's services, with on_hold/pending ones freshly synced from the
+    panel (so a just-connected service shows as active without any action)."""
+    from apps.panel.services import refresh_watchable_services
+
+    services = list(
+        user.services.select_related("current_plan", "panel").order_by("-created_at")
+    )
+    if refresh_watchable_services(services):
+        services = list(
+            user.services.select_related("current_plan", "panel").order_by("-created_at")
+        )
+    return services
 
 
 def buy_new(user, plan, *, account_name=None, custom_gb=None):
@@ -45,24 +56,11 @@ def plan_label(plan) -> str:
     return f"{plan.name_fa} — {vol} / {days} — {int(plan.final_price):,} تومان"
 
 
-def _refresh_service_if_waiting(svc):
-    """When the customer opens their service in the bot, pull a fresh panel
-    state for on-hold / pending services so a just-connected user sees 'active'
-    without waiting for the 15-minute background sync."""
-    from apps.panel.services import sync_service
-
-    if svc.status not in ("on_hold", "pending"):
-        return svc
-    if svc.last_synced_at and (timezone.now() - svc.last_synced_at).total_seconds() < 60:
-        return svc
-    try:
-        return sync_service(svc.id)
-    except Exception:  # noqa: BLE001
-        return svc
-
-
 def service_summary(svc) -> str:
-    svc = _refresh_service_if_waiting(svc)
+    from apps.panel.services import refresh_watchable_services
+
+    if refresh_watchable_services([svc]):
+        svc.refresh_from_db()
     used = svc.data_used // _GB
     total = "∞" if not svc.data_limit else f"{svc.data_limit // _GB}"
     status_fa = {
