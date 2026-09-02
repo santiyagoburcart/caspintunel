@@ -111,6 +111,15 @@ def _ensure_service(order: Order, panel: Panel | None) -> Service:
     if panel is None:
         raise PanelError("no active panel configured")
 
+    # custom-volume plans carry no data_limit on the plan — the GB the customer
+    # bought lives on the order; bake it onto the service so provisioning sends
+    # the right cap (not "unlimited").
+    from apps.plans.models import PlanType
+
+    data_limit = int(order.plan.data_limit or 0)
+    if order.plan.type == PlanType.CUSTOM_VOLUME and order.custom_volume_gb:
+        data_limit = order.plan.data_limit_for_volume(order.custom_volume_gb)
+
     existing = Service.objects.filter(panel_username=order.requested_account_name).first()
     if existing is not None:
         if existing.user_id != order.user_id:
@@ -125,6 +134,7 @@ def _ensure_service(order: Order, panel: Panel | None) -> Service:
             panel_username=order.requested_account_name,
             user=order.user, panel=panel, current_plan=order.plan,
             source=order.source, status=ServiceStatus.PENDING,
+            data_limit=data_limit,
         )
     order.service = service
     order.save(update_fields=["service", "updated_at"])

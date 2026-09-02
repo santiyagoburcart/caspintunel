@@ -104,3 +104,20 @@ def test_order_api_rejects_taken_account_name(user, fixed_plan):
     client.force_authenticate(user)
     r = client.post("/api/v1/orders/", {"plan": fixed_plan.id, "requested_account_name": "taken"}, format="json")
     assert r.status_code == 400
+
+
+def test_new_order_rejects_a_taken_account_name(user, fixed_plan):
+    from apps.panel.models import Panel, Service
+    panel = Panel.objects.create(name="P", base_url="https://x", admin_username="a", admin_password_enc="p")
+    other = User.objects.create_user("other", "Str0ngPass!")
+    Service.objects.create(user=other, panel=panel, panel_username="taken", current_plan=fixed_plan)
+    with pytest.raises(OrderError):
+        create_order(user=user, plan_id=fixed_plan.id, requested_account_name="taken")
+
+
+def test_custom_volume_new_order_auto_generates_account_name(user):
+    from apps.plans.models import PlanType
+    plan = Plan.objects.create(name_fa="CV2", type=PlanType.CUSTOM_VOLUME, price=Decimal("0"),
+                               price_per_gb=Decimal("1000"), min_gb=1, max_gb=100)
+    order = create_order(user=user, plan_id=plan.id, custom_volume_gb=10)  # no account name
+    assert order.requested_account_name and order.requested_account_name.startswith(f"u{user.id}")

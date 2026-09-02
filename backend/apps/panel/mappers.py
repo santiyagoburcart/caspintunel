@@ -35,9 +35,11 @@ def resolve_group_ids(plan, panel) -> list[int]:
 
 
 def build_create_payload(service, plan, panel) -> dict:
+    # custom-volume: the cap is on the service (set from the order), not the plan
+    data_limit = int(service.data_limit or 0) or int(plan.data_limit or 0)
     payload: dict = {
         "username": service.panel_username,
-        "data_limit": int(plan.data_limit or 0),
+        "data_limit": data_limit,
         "data_limit_reset_strategy": "no_reset",
         "group_ids": resolve_group_ids(plan, panel),
         "note": f"caspintunel#{service.id}",
@@ -54,7 +56,8 @@ def build_create_payload(service, plan, panel) -> dict:
 
 def build_renew_payload(service, plan) -> dict:
     """Flowchart 1.5: extend expiry + set new data_limit; usage reset separately."""
-    payload: dict = {"data_limit": int(plan.data_limit or 0), "status": "active"}
+    data_limit = int(plan.data_limit or 0) or int(service.data_limit or 0)
+    payload: dict = {"data_limit": data_limit, "status": "active"}
     if plan.duration_days:
         now = timezone.now()
         anchor = service.expire_at if service.expire_at and service.expire_at > now else now

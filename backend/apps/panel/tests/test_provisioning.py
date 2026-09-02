@@ -169,3 +169,29 @@ def test_sync_accepts_unix_timestamp_expire(user, panel, timed_plan):
                   json={"username": "cust-1", "status": "active", "expire": 1790000000}, status=200)
     out = sync_service(svc.id)
     assert out.expire_at is not None and out.expire_at.year == 2026
+
+
+def test_custom_volume_service_provisions_with_the_right_data_limit():
+    """A custom-volume purchase must send the bought GB as data_limit, not 0."""
+    from decimal import Decimal
+
+    from apps.accounts.models import User
+    from apps.orders.models import OrderType
+    from apps.orders.services import create_order
+    from apps.orders.tasks import _ensure_service
+    from apps.panel.mappers import build_create_payload
+    from apps.panel.models import Panel
+    from apps.plans.models import Plan, PlanType
+
+    u = User.objects.create_user("cv", "x")
+    panel = Panel.objects.create(name="P", base_url="https://x", admin_username="a",
+                                 admin_password_enc="p", is_active=True)
+    plan = Plan.objects.create(name_fa="CV", type=PlanType.CUSTOM_VOLUME, price=Decimal("0"),
+                               price_per_gb=Decimal("2000"), min_gb=1, max_gb=100, group_ids=[6])
+    order = create_order(user=u, plan_id=plan.id, order_type=OrderType.NEW, custom_volume_gb=25)
+
+    svc = _ensure_service(order, panel)
+    assert svc.data_limit == 25 * 1024**3
+
+    payload = build_create_payload(svc, plan, panel)
+    assert payload["data_limit"] == 25 * 1024**3

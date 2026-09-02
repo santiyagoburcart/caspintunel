@@ -84,10 +84,23 @@ def create_order(
         service = Service.objects.filter(pk=service_id, user=user).first()
         if not service:
             raise OrderError("service not found")
-    elif plan.type == PlanType.FIXED:
+    elif order_type == OrderType.NEW:
+        from apps.panel.models import Service
+
         name = (requested_account_name or "").strip()
-        if not name:
+        if name:
+            if Service.objects.filter(panel_username__iexact=name).exists():
+                raise OrderError("that account name is already taken — pick another")
+        elif plan.type == PlanType.FIXED:
             raise OrderError("requested_account_name is required for a new service")
+        else:
+            # custom-volume checkout doesn't ask for a name — generate a unique one
+            import secrets
+
+            for _ in range(10):
+                name = f"u{user.id}{secrets.token_hex(3)}"
+                if not Service.objects.filter(panel_username__iexact=name).exists():
+                    break
         requested_account_name = name
 
     # --- amount ---
