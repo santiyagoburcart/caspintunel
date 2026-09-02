@@ -9,7 +9,8 @@ const GB = 1024 ** 3
 
 const blank = {
   type: 'fixed', name_fa: '', name_en: '', desc_fa: '', desc_en: '',
-  price: 0, discount_percent: 0, data_limit_gb: '', duration_days: '',
+  category_fa: '', category_en: '',
+  panel: '', price: 0, discount_percent: 0, data_limit_gb: '', duration_days: '',
   device_limit: '', min_gb: '', max_gb: '', price_per_gb: '', is_active: true,
   group_ids: [],
 }
@@ -18,6 +19,9 @@ const blank = {
 function toForm(r) {
   return {
     ...blank, ...r,
+    panel: r.panel ?? '',
+    category_fa: r.category_fa ?? '',
+    category_en: r.category_en ?? '',
     data_limit_gb: r.data_limit ? String(r.data_limit / GB) : '',
     duration_days: r.duration_days ?? '',
     device_limit: r.device_limit ?? '',
@@ -35,20 +39,33 @@ export default function Plans() {
   const [rows, setRows] = useState(null)
   const [edit, setEdit] = useState(null)
   const [err, setErr] = useState('')
-  const [panelGroups, setPanelGroups] = useState(null)   // [{id,name}] | null
-  const [panelDefaultGroups, setPanelDefaultGroups] = useState([])
+  const [panels, setPanels] = useState([])               // [{id,name,default_group_ids}]
+  const [panelGroups, setPanelGroups] = useState(null)    // [{id,name}] for the selected panel
   const [groupsErr, setGroupsErr] = useState('')
 
   const load = () => api.get('/admin/plans/').then((r) => setRows(r.data.results)).catch(() => setRows([]))
   useEffect(() => {
     load()
-    api.get('/admin/integrations/panel/groups/')
+    api.get('/admin/panels/')
+      .then((r) => setPanels(r.data.results || r.data || []))
+      .catch(() => setPanels([]))
+  }, [])
+
+  const selectedPanel = panels.find((p) => String(p.id) === String(edit?.panel))
+  const panelDefaultGroups = selectedPanel?.default_group_ids || []
+
+  // (re)fetch the groups of whichever panel the plan is on
+  const fetchGroupsFor = (panelId) => {
+    setPanelGroups(null); setGroupsErr('')
+    if (!panelId) return
+    api.get(`/admin/panels/${panelId}/groups/`)
       .then((r) => setPanelGroups(r.data.groups || []))
       .catch((e) => { setPanelGroups([]); setGroupsErr(apiError(e)) })
-    api.get('/admin/integrations/panel/')
-      .then((r) => setPanelDefaultGroups(r.data.default_group_ids || []))
-      .catch(() => {})
-  }, [])
+  }
+  useEffect(() => { if (edit?.panel) fetchGroupsFor(edit.panel) }, [edit?.panel])
+
+  const setPanel = (panelId) =>
+    setEdit((p) => ({ ...p, panel: panelId, group_ids: [] }))   // groups are panel-scoped
 
   const groupName = (id) => panelGroups?.find((g) => g.id === id)?.name || `group ${id}`
   const toggleGroup = (id) => setEdit((p) => {
@@ -63,10 +80,13 @@ export default function Plans() {
 
   const save = async (e) => {
     e.preventDefault(); setErr('')
+    if (!edit.panel) { setErr(lang === 'fa' ? 'انتخاب پنل الزامی است.' : 'Panel is required.'); return }
     const body = {
       type: edit.type,
+      panel: Number(edit.panel),
       name_fa: edit.name_fa, name_en: edit.name_en,
       desc_fa: edit.desc_fa, desc_en: edit.desc_en,
+      category_fa: edit.category_fa, category_en: edit.category_en,
       price: Number(edit.price) || 0,
       discount_percent: Number(edit.discount_percent) || 0,
       duration_days: numOrNull(edit.duration_days),
@@ -128,6 +148,29 @@ export default function Plans() {
             <input className="input" dir="ltr" value={edit.name_en} onChange={(e) => setEdit({ ...edit, name_en: e.target.value })} />
           </Field>
 
+          {/* -- panel (required) ----------------------------------------- */}
+          <Field label={lang === 'fa' ? 'پنل (روی کدام پنل ساخته شود؟)' : 'Panel (which panel this plan uses)'}>
+            <select className="input" required value={edit.panel}
+              onChange={(e) => setPanel(e.target.value)}>
+              <option value="">{lang === 'fa' ? '— انتخاب پنل —' : '— select a panel —'}</option>
+              {panels.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}{p.is_active ? '' : (lang === 'fa' ? ' (غیرفعال)' : ' (disabled)')}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <div className="grid grid-cols-2 gap-2">
+            <Field label={lang === 'fa' ? 'دسته (فارسی)' : 'Category (fa)'}>
+              <input className="input" placeholder={lang === 'fa' ? 'مثلاً وایرگارد' : ''}
+                value={edit.category_fa} onChange={(e) => setEdit({ ...edit, category_fa: e.target.value })} />
+            </Field>
+            <Field label={lang === 'fa' ? 'دسته (انگلیسی)' : 'Category (en)'}>
+              <input className="input" dir="ltr" placeholder="e.g. wireguard"
+                value={edit.category_en} onChange={(e) => setEdit({ ...edit, category_en: e.target.value })} />
+            </Field>
+          </div>
+
           {/* -- customer-facing description -------------------------------- */}
           <Field label={lang === 'fa' ? 'توضیح برای مشتری (فارسی)' : 'Customer description (fa)'}>
             <textarea className="input" rows={2} value={edit.desc_fa}
@@ -188,20 +231,27 @@ export default function Plans() {
             {lang === 'fa' ? 'فعال' : 'Active'}
           </label>
 
-          {/* -- panel groups -------------------------------------------- */}
+          {/* -- panel groups (scoped to the selected panel) ------------- */}
           <div className="sm:col-span-2">
-            <span className="label">{lang === 'fa' ? 'گروه‌های پنل' : 'Panel groups'}</span>
+            <span className="label">
+              {lang === 'fa' ? 'گروه‌های پنل' : 'Panel groups'}
+              {selectedPanel ? ` — ${selectedPanel.name}` : ''}
+            </span>
             <p className="mb-2 text-xs text-muted">
               {lang === 'fa'
-                ? 'هیچ‌کدام انتخاب نشود = استفاده از گروه‌های پیش‌فرض پنل (در صفحهٔ «اتصال پنل»).'
-                : 'Select none = inherit the panel default groups (set on the “Panel connection” page).'}
+                ? 'هیچ‌کدام انتخاب نشود = استفاده از گروه‌های پیش‌فرض همین پنل.'
+                : "Select none = inherit this panel's default groups."}
             </p>
             {groupsErr && <Alert>{groupsErr}</Alert>}
-            {panelGroups === null ? (
+            {!edit.panel ? (
+              <p className="text-sm text-muted">
+                {lang === 'fa' ? 'ابتدا پنل را انتخاب کنید.' : 'Select a panel first.'}
+              </p>
+            ) : panelGroups === null ? (
               <p className="text-sm text-muted">…</p>
             ) : panelGroups.length === 0 ? (
               <p className="text-sm text-muted">
-                {lang === 'fa' ? 'گروه‌های پنل در دسترس نیست.' : 'Panel groups unavailable.'}
+                {lang === 'fa' ? 'گروه‌های این پنل در دسترس نیست.' : "This panel's groups are unavailable."}
               </p>
             ) : (
               <div className="flex flex-wrap gap-2">
@@ -239,7 +289,17 @@ export default function Plans() {
 
       <DataTable
         columns={[
-          { key: 'name_fa', label: lang === 'fa' ? 'نام' : 'Name' },
+          { key: 'name_fa', label: lang === 'fa' ? 'نام' : 'Name',
+            render: (r) => (
+              <span>
+                {r.name_fa}
+                {(r.category_fa || r.category_en) && (
+                  <span className="ms-1 text-xs text-muted">· {r.category_fa || r.category_en}</span>
+                )}
+              </span>
+            ) },
+          { key: 'panel', label: lang === 'fa' ? 'پنل' : 'Panel',
+            render: (r) => r.panel_name || panels.find((p) => p.id === r.panel)?.name || '—' },
           { key: 'type', label: lang === 'fa' ? 'نوع' : 'Type',
             render: (r) => (r.type === 'custom_volume'
               ? (lang === 'fa' ? 'حجمی' : 'Volume')

@@ -82,6 +82,81 @@ def test_panel_config_requires_settings_manage(staff_client, perms):
     assert ok.get("/api/v1/admin/integrations/panel/").status_code == 200
 
 
+# --- multi-panel manager (MP-Phase 2) -----------------------------
+def test_panels_crud_add_second_and_third(boss):
+    p1 = _panel()
+
+    r2 = boss.post("/api/v1/admin/panels/", {
+        "name": "Wireguard", "base_url": "https://wg.test", "admin_username": "a",
+        "admin_password": "pw2", "default_group_ids": [7], "is_active": True,
+    }, format="json")
+    assert r2.status_code == 201, r2.data
+    assert r2.data["admin_password_set"] is True and "admin_password" not in r2.data
+
+    r3 = boss.post("/api/v1/admin/panels/", {
+        "name": "Volume", "base_url": "https://vol.test", "admin_username": "a",
+        "admin_password": "pw3",
+    }, format="json")
+    assert r3.status_code == 201
+
+    listing = boss.get("/api/v1/admin/panels/")
+    names = {row["name"] for row in listing.data["results"]}
+    assert names == {"Pasargad", "Wireguard", "Volume"}
+    assert "pw2" not in str(listing.data) and "pw3" not in str(listing.data)
+
+    # edit without a password keeps the stored one
+    edit = boss.patch(f"/api/v1/admin/panels/{r2.data['id']}/",
+                      {"name": "WG"}, format="json")
+    assert edit.status_code == 200
+    assert Panel.objects.get(pk=r2.data["id"]).admin_password_enc == "pw2"
+
+
+def test_panel_new_requires_password(boss):
+    r = boss.post("/api/v1/admin/panels/", {
+        "name": "X", "base_url": "https://x.test", "admin_username": "a",
+    }, format="json")
+    assert r.status_code == 400
+
+
+def test_panel_delete_blocked_while_a_plan_uses_it(boss):
+    from decimal import Decimal
+
+    from apps.plans.models import Plan
+
+    p = _panel()
+    Plan.objects.create(panel=p, name_fa="on-p", price=Decimal("1"))
+    r = boss.delete(f"/api/v1/admin/panels/{p.id}/")
+    assert r.status_code == 409
+    assert Panel.objects.filter(pk=p.id).exists()
+
+
+def test_panel_delete_ok_when_unused(boss):
+    p = _panel()
+    p2 = Panel.objects.create(name="spare", base_url="https://s.test",
+                              admin_username="a", admin_password_enc="pw")
+    assert boss.delete(f"/api/v1/admin/panels/{p2.id}/").status_code == 204
+    assert not Panel.objects.filter(pk=p2.id).exists()
+
+
+@responses.activate
+def test_panel_groups_action_targets_that_panel(boss):
+    p = _panel()
+    responses.add(responses.POST, "https://panel.test/api/admin/token",
+                  json={"access_token": "t"}, status=200)
+    responses.add(responses.GET, "https://panel.test/api/groups",
+                  json={"groups": [{"id": 7, "name": "WG-DE"}]}, status=200)
+    r = boss.get(f"/api/v1/admin/panels/{p.id}/groups/")
+    assert r.status_code == 200
+    assert r.data["groups"] == [{"id": 7, "name": "WG-DE"}]
+
+
+def test_panels_require_settings_manage(staff_client, perms):
+    weak = staff_client(make_staff("weakp", ["plans.manage"], perms))
+    assert weak.get("/api/v1/admin/panels/").status_code == 403
+    ok = staff_client(make_staff("okp", ["settings.manage"], perms))
+    assert ok.get("/api/v1/admin/panels/").status_code == 200
+
+
 # --- telegram -----------------------------------------------------
 def test_telegram_config_per_bot(boss):
     r = boss.put("/api/v1/admin/integrations/telegram/", {

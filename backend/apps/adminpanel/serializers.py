@@ -90,6 +90,61 @@ class PanelConfigSerializer(serializers.ModelSerializer):
         return self._apply(instance, validated_data)
 
 
+class PanelAdminSerializer(serializers.ModelSerializer):
+    """One panel in the multi-panel manager. Password write-only; reads report
+    only whether one is stored, plus how many plans / services depend on it."""
+
+    admin_password = serializers.CharField(
+        write_only=True, required=False, allow_blank=True, trim_whitespace=False,
+        style={"input_type": "password"},
+        help_text="leave blank to keep the stored password unchanged",
+    )
+    admin_password_set = serializers.SerializerMethodField()
+    plan_count = serializers.SerializerMethodField()
+    service_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Panel
+        fields = ("id", "name", "base_url", "admin_username", "admin_password",
+                  "admin_password_set", "subscription_base_url", "verify_ssl",
+                  "default_group_ids", "is_active", "plan_count", "service_count",
+                  "created_at", "updated_at")
+        read_only_fields = ("id", "created_at", "updated_at")
+
+    def get_admin_password_set(self, obj) -> bool:
+        return bool(getattr(obj, "pk", None) and obj.admin_password_enc)
+
+    def get_plan_count(self, obj) -> int:
+        return obj.plans.count() if obj.pk else 0
+
+    def get_service_count(self, obj) -> int:
+        return obj.services.count() if obj.pk else 0
+
+    def validate_name(self, value):
+        value = (value or "").strip()
+        if not value:
+            raise serializers.ValidationError("name is required")
+        return value
+
+    def _apply(self, instance, validated):
+        pw = validated.pop("admin_password", None)
+        for key, value in validated.items():
+            setattr(instance, key, value)
+        if pw:  # blank / omitted -> keep whatever is stored
+            instance.admin_password_enc = pw
+        instance.save()
+        return instance
+
+    def create(self, validated_data):
+        if not validated_data.get("admin_password"):
+            raise serializers.ValidationError(
+                {"admin_password": "a password is required for a new panel"})
+        return self._apply(Panel(), validated_data)
+
+    def update(self, instance, validated_data):
+        return self._apply(instance, validated_data)
+
+
 class TelegramConfigSerializer(serializers.ModelSerializer):
     """One bot's settings. The token is write-only; reads only report whether
     one is stored."""

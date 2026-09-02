@@ -8,8 +8,10 @@ only a boolean saying whether one is stored.
 from django.conf import settings
 from django.core.mail import get_connection, send_mail
 from django.db import transaction
+from django.db.models import ProtectedError
 from drf_spectacular.utils import extend_schema
 from rest_framework import serializers
+from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from apps.common.models import write_audit
@@ -18,14 +20,84 @@ from apps.panel.models import Panel
 from apps.panel.services import client_for, get_active_panel
 from apps.telegram.models import BotType, TelegramConfig
 
-from ..serializers import PanelConfigSerializer, TelegramConfigSerializer
-from .base import AdminAPIView
+from ..serializers import (
+    PanelAdminSerializer,
+    PanelConfigSerializer,
+    TelegramConfigSerializer,
+)
+from .base import AdminAPIView, AdminViewSet
 
 _BOTS = (BotType.SALES, BotType.BACKUP)
 
 
 def _panel_row():
     return get_active_panel() or Panel.objects.order_by("id").first()
+
+
+def _panel_groups(panel) -> list[dict]:
+    raw = client_for(panel).list_groups()
+    return [
+        {"id": g["id"], "name": g.get("name") or g.get("title") or f"group {g['id']}"}
+        for g in raw if isinstance(g, dict) and g.get("id") is not None
+    ]
+
+
+class PanelAdminViewSet(AdminViewSet):
+    """Multi-panel manager — list / add / edit / disable / delete panels, with a
+    per-panel 'test connection' and 'fetch groups'."""
+
+    queryset = Panel.objects.order_by("id")
+    serializer_class = PanelAdminSerializer
+    perms_map = {"GET": ["settings.manage"], "*": ["settings.manage"]}
+
+    def perform_update(self, serializer):
+        obj = serializer.save()
+        # base URL / credentials may have changed -> drop the cached API token
+        Panel.objects.filter(pk=obj.pk).update(token_cache=None, token_expires_at=None)
+        write_audit(action="panel.config_updated", target=obj, staff=self.request.user,
+                    detail={"fields": list(self.request.data.keys())})
+
+    def perform_create(self, serializer):
+        obj = serializer.save()
+        write_audit(action="panel.created", target=obj, staff=self.request.user)
+
+    def destroy(self, request, *args, **kwargs):
+        panel = self.get_object()
+        try:
+            panel.delete()
+        except ProtectedError:
+            return Response(
+                {"detail": "این پنل به پلن یا سرویس متصل است و حذف نمی‌شود — "
+                           "ابتدا پلن‌ها را به پنل دیگری منتقل کنید یا غیرفعالش کنید."},
+                status=409,
+            )
+        write_audit(action="panel.deleted", target=None, staff=request.user,
+                    detail={"panel": panel.name})
+        return Response(status=204)
+
+    @action(detail=True, methods=["post"], url_path="test")
+    def test(self, request, pk=None):
+        panel = self.get_object()
+        if not panel.base_url or not panel.admin_password_enc:
+            return Response({"ok": False, "detail": "پنل هنوز کامل پیکربندی نشده است."})
+        try:
+            client_for(panel).check()
+        except Exception as exc:  # noqa: BLE001 - never 500 on a probe
+            return Response({"ok": False, "detail": str(exc)})
+        write_audit(action="panel.tested", target=panel, staff=request.user)
+        return Response({"ok": True, "detail": "اتصال با پنل برقرار است."})
+
+    @action(detail=True, methods=["get"], url_path="groups")
+    def groups(self, request, pk=None):
+        panel = self.get_object()
+        if not panel.base_url or not panel.admin_password_enc:
+            return Response({"detail": "پنل هنوز کامل پیکربندی نشده است."}, status=400)
+        try:
+            return Response({"groups": _panel_groups(panel)})
+        except PanelError as exc:
+            return Response({"detail": str(exc)}, status=502)
+        except Exception as exc:  # noqa: BLE001
+            return Response({"detail": str(exc)}, status=502)
 
 
 class PanelConfigView(AdminAPIView):

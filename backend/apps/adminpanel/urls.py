@@ -20,6 +20,7 @@ from .views.finance import (
 )
 from .views.integrations import (
     EmailStatusView,
+    PanelAdminViewSet,
     PanelConfigView,
     PanelGroupsView,
     PanelTestView,
@@ -44,6 +45,7 @@ router.register("transactions", TransactionViewSet, basename="admin-transactions
 router.register("notifications", NotificationViewSet, basename="admin-notifications")
 router.register("services", ServiceListViewSet, basename="admin-services")
 router.register("backups", BackupViewSet, basename="admin-backups")
+router.register("panels", PanelAdminViewSet, basename="admin-panels")
 
 urlpatterns = [
     path("auth/login/", StaffLoginView.as_view(), name="admin-login"),

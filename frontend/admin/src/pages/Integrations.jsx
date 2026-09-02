@@ -5,7 +5,10 @@ import { Alert, Field, Spinner } from '../components/ui'
 
 const T = {
   fa: {
-    panel_intro: 'اطلاعات ورود پنل پاسارگارد را اینجا وارد کنید. رمز عبور رمزنگاری‌شده ذخیره می‌شود و دیگر نمایش داده نمی‌شود.',
+    panel_intro: 'پنل‌های پاسارگارد/PasarGuard خود را اینجا مدیریت کنید. هر پلن به یک پنل متصل می‌شود. رمز عبور رمزنگاری‌شده ذخیره می‌شود و دیگر نمایش داده نمی‌شود.',
+    add_panel: 'افزودن پنل', panel_name: 'نام پنل', new_panel: 'پنل جدید',
+    del_panel: 'حذف پنل', confirm_del: 'این پنل حذف شود؟',
+    in_use: 'پلن', in_use2: 'سرویس',
     base_url: 'آدرس پایه پنل (Base URL)', admin_user: 'نام کاربری ادمین پنل',
     admin_pass: 'رمز عبور ادمین پنل', sub_url: 'آدرس پایهٔ اشتراک (اختیاری)',
     verify_ssl: 'بررسی گواهی SSL پنل', panel_active: 'این پنل فعال است',
@@ -13,9 +16,9 @@ const T = {
     pass_stored: 'رمزی ذخیره شده است؛ برای تغییر، رمز جدید را وارد کنید.',
     pass_none: 'هنوز رمزی ذخیره نشده است.',
     saved: 'ذخیره شد.', save: 'ذخیره', test: 'تست اتصال',
-    groups: 'گروه‌های پیش‌فرض پنل', fetch_groups: 'دریافت گروه‌ها از پنل',
+    groups: 'گروه‌های پیش‌فرض این پنل', fetch_groups: 'دریافت گروه‌ها از پنل',
     fetching: 'در حال دریافت…',
-    groups_hint: 'وقتی یک پلن گروهی تعیین نکند، این گروه‌ها استفاده می‌شوند.',
+    groups_hint: 'وقتی یک پلن روی این پنل گروهی تعیین نکند، این گروه‌ها استفاده می‌شوند.',
     groups_none_fetched: 'برای انتخاب از روی نام گروه‌ها، دکمهٔ «دریافت گروه‌ها از پنل» را بزنید. شناسه‌های ذخیره‌شدهٔ فعلی:',
     groups_empty: 'هیچ شناسه‌ای انتخاب نشده است.',
     group_word: 'گروه',
@@ -35,7 +38,10 @@ const T = {
     email_verif_on: 'تأیید ایمیل الزامی است', email_verif_off: 'تأیید ایمیل اختیاری است',
   },
   en: {
-    panel_intro: 'Enter the Pasargad panel admin login here. The password is stored encrypted and never shown again.',
+    panel_intro: 'Manage your Pasargad / PasarGuard panels here. Every plan is bound to one panel. Passwords are stored encrypted and never shown again.',
+    add_panel: 'Add panel', panel_name: 'Panel name', new_panel: 'New panel',
+    del_panel: 'Delete panel', confirm_del: 'Delete this panel?',
+    in_use: 'plan', in_use2: 'service',
     base_url: 'Panel Base URL', admin_user: 'Panel admin username',
     admin_pass: 'Panel admin password', sub_url: 'Subscription base URL (optional)',
     verify_ssl: 'Verify panel SSL certificate', panel_active: 'Panel is active',
@@ -43,9 +49,9 @@ const T = {
     pass_stored: 'A password is stored; type a new one only to change it.',
     pass_none: 'No password stored yet.',
     saved: 'Saved.', save: 'Save', test: 'Test connection',
-    groups: 'Default panel groups', fetch_groups: 'Fetch groups from panel',
+    groups: "This panel's default groups", fetch_groups: 'Fetch groups from panel',
     fetching: 'Fetching…',
-    groups_hint: 'Used whenever a plan does not set its own groups.',
+    groups_hint: 'Used whenever a plan on this panel does not set its own groups.',
     groups_none_fetched: 'Click “Fetch groups from panel” to pick them by name. Currently saved ids:',
     groups_empty: 'No ids selected.',
     group_word: 'group',
@@ -67,41 +73,81 @@ const T = {
 }
 
 /* ================================================================== *
- *  Pasargad Panel  —  /panel/panel-link                              *
+ *  Pasargad / PasarGuard Panels  —  /panel/panel-link                *
+ *  Multi-panel manager: list, add, edit, disable, delete.            *
  * ================================================================== */
 export function PanelConnection() {
   const { t, lang } = useI18n()
   const s = T[lang] || T.fa
-  const [cfg, setCfg] = useState(null)
-  const [form, setForm] = useState(null)
-  const [selected, setSelected] = useState([])       // chosen group ids
-  const [groups, setGroups] = useState(null)         // [{id,name}] once fetched
-  const [fetching, setFetching] = useState(false)
-  const [msg, setMsg] = useState(null)
+  const [panels, setPanels] = useState(null)
+  const [adding, setAdding] = useState(false)
   const [err, setErr] = useState('')
-  const [testing, setTesting] = useState(false)
 
   const load = () =>
-    api.get('/admin/integrations/panel/').then((r) => {
-      setCfg(r.data)
-      setSelected(r.data.default_group_ids || [])
-      setForm({
-        base_url: r.data.base_url || '',
-        admin_username: r.data.admin_username || '',
-        admin_password: '',
-        subscription_base_url: r.data.subscription_base_url || '',
-        verify_ssl: r.data.verify_ssl ?? true,
-        is_active: r.data.is_active ?? true,
-      })
-    }).catch(() => setCfg({ error: true }))
+    api.get('/admin/panels/')
+      .then((r) => { setPanels(r.data.results || r.data || []); setErr('') })
+      .catch((e) => { setPanels([]); setErr(apiError(e)) })
 
   useEffect(() => { load() }, [])
 
+  if (!panels) return <div className="grid place-items-center py-16"><Spinner /></div>
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h1 className="text-lg font-bold">{t('panel_link')}</h1>
+          <p className="mt-1 text-sm text-muted">{s.panel_intro}</p>
+        </div>
+        {!adding && (
+          <button className="btn-primary shrink-0 text-sm" onClick={() => setAdding(true)}>
+            + {s.add_panel}
+          </button>
+        )}
+      </div>
+
+      <Alert>{err}</Alert>
+
+      {(adding || panels.length === 0) && (
+        <PanelCard s={s} isNew
+          onSaved={() => { setAdding(false); load() }}
+          onCancel={() => setAdding(false)} />
+      )}
+
+      {panels.map((p) => (
+        <PanelCard key={p.id} s={s} panel={p} onSaved={load} onDeleted={load} />
+      ))}
+
+      <EmailCard s={s} />
+    </div>
+  )
+}
+
+function PanelCard({ s, panel, isNew = false, onSaved, onDeleted, onCancel }) {
+  const { t } = useI18n()
+  const blank = {
+    name: '', base_url: '', admin_username: '', admin_password: '',
+    subscription_base_url: '', verify_ssl: true, is_active: true,
+  }
+  const [form, setForm] = useState(
+    isNew ? blank : {
+      name: panel.name || '', base_url: panel.base_url || '',
+      admin_username: panel.admin_username || '', admin_password: '',
+      subscription_base_url: panel.subscription_base_url || '',
+      verify_ssl: panel.verify_ssl ?? true, is_active: panel.is_active ?? true,
+    },
+  )
+  const [selected, setSelected] = useState(panel?.default_group_ids || [])
+  const [groups, setGroups] = useState(null)
+  const [fetching, setFetching] = useState(false)
+  const [testing, setTesting] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState(null)
+
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }))
   const toggleGroup = (id) =>
-    setSelected((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]))
+    setSelected((c) => (c.includes(id) ? c.filter((x) => x !== id) : [...c, id]))
 
-  // union of fetched groups + any saved id the panel didn't return
   const groupRows = useMemo(() => {
     if (!groups) return null
     const byId = new Map(groups.map((g) => [g.id, g.name]))
@@ -110,128 +156,149 @@ export function PanelConnection() {
   }, [groups, selected, s.group_word])
 
   const fetchGroups = async () => {
-    setFetching(true); setErr(''); setMsg(null)
+    setFetching(true); setMsg(null)
     try {
-      const r = await api.get('/admin/integrations/panel/groups/')
+      const r = await api.get(`/admin/panels/${panel.id}/groups/`)
       setGroups(r.data.groups || [])
-    } catch (e2) {
-      setMsg({ kind: 'danger', text: apiError(e2) })
-    } finally { setFetching(false) }
+    } catch (e) { setMsg({ kind: 'danger', text: apiError(e) }) }
+    finally { setFetching(false) }
+  }
+
+  const test = async () => {
+    setTesting(true); setMsg(null)
+    try {
+      const r = await api.post(`/admin/panels/${panel.id}/test/`)
+      setMsg({ kind: r.data.ok ? 'success' : 'danger', text: r.data.detail })
+    } catch (e) { setMsg({ kind: 'danger', text: apiError(e) }) }
+    finally { setTesting(false) }
   }
 
   const save = async (e) => {
     e.preventDefault()
-    setErr(''); setMsg(null)
+    setSaving(true); setMsg(null)
     const body = { ...form, default_group_ids: selected }
     if (!body.admin_password) delete body.admin_password
     try {
-      await api.put('/admin/integrations/panel/', body)
-      setMsg({ kind: 'success', text: s.saved })
-      load()
-    } catch (e2) { setErr(apiError(e2)) }
+      if (isNew) await api.post('/admin/panels/', body)
+      else await api.patch(`/admin/panels/${panel.id}/`, body)
+      onSaved?.()
+      if (!isNew) setMsg({ kind: 'success', text: s.saved })
+    } catch (e2) { setMsg({ kind: 'danger', text: apiError(e2) }) }
+    finally { setSaving(false) }
   }
 
-  const test = async () => {
-    setTesting(true); setErr(''); setMsg(null)
-    try {
-      const r = await api.post('/admin/integrations/panel/test/')
-      setMsg({ kind: r.data.ok ? 'success' : 'danger', text: r.data.detail })
-    } catch (e2) {
-      setMsg({ kind: 'danger', text: apiError(e2) })
-    } finally { setTesting(false) }
+  const del = async () => {
+    if (!confirm(s.confirm_del)) return
+    try { await api.delete(`/admin/panels/${panel.id}/`); onDeleted?.() }
+    catch (e) { setMsg({ kind: 'danger', text: apiError(e) }) }
   }
 
-  if (!cfg) return <div className="grid place-items-center py-16"><Spinner /></div>
+  const inUse = !isNew && (panel.plan_count > 0 || panel.service_count > 0)
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-lg font-bold">{t('panel_link')}</h1>
-        <p className="mt-1 text-sm text-muted">{s.panel_intro}</p>
+    <form onSubmit={save} className="card grid gap-4 sm:grid-cols-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 sm:col-span-2">
+        <span className="font-bold">
+          {isNew ? s.new_panel : (form.name || panel.name)}
+        </span>
+        {!isNew && (
+          <span className="text-xs text-muted">
+            {panel.plan_count} {s.in_use} · {panel.service_count} {s.in_use2}
+          </span>
+        )}
       </div>
 
-      <Alert>{err}</Alert>
-      {msg && <Alert kind={msg.kind}>{msg.text}</Alert>}
+      {msg && <div className="sm:col-span-2"><Alert kind={msg.kind}>{msg.text}</Alert></div>}
 
-      <form onSubmit={save} className="card grid gap-4 sm:grid-cols-2">
-        <div className="sm:col-span-2">
-          <Field label={s.base_url}>
-            <input className="input" dir="ltr" placeholder="https://panel.example.com" required
-              value={form.base_url} onChange={(e) => set('base_url', e.target.value)} />
-          </Field>
-        </div>
-        <Field label={s.admin_user}>
-          <input className="input" dir="ltr" required
-            value={form.admin_username} onChange={(e) => set('admin_username', e.target.value)} />
-        </Field>
-        <Field label={s.admin_pass}>
-          <input className="input" dir="ltr" type="password" autoComplete="new-password"
-            placeholder={cfg.admin_password_set ? s.unchanged : ''}
-            value={form.admin_password} onChange={(e) => set('admin_password', e.target.value)} />
-          <span className="mt-1 block text-xs text-muted">
-            {cfg.admin_password_set ? s.pass_stored : s.pass_none}
-          </span>
-        </Field>
-        <Field label={s.sub_url}>
-          <input className="input" dir="ltr"
-            value={form.subscription_base_url} onChange={(e) => set('subscription_base_url', e.target.value)} />
-        </Field>
+      <Field label={s.panel_name}>
+        <input className="input" required placeholder="Wireguard / Unlimited / Volume"
+          value={form.name} onChange={(e) => set('name', e.target.value)} />
+      </Field>
+      <Field label={s.base_url}>
+        <input className="input" dir="ltr" required placeholder="https://panel.example.com"
+          value={form.base_url} onChange={(e) => set('base_url', e.target.value)} />
+      </Field>
+      <Field label={s.admin_user}>
+        <input className="input" dir="ltr" required
+          value={form.admin_username} onChange={(e) => set('admin_username', e.target.value)} />
+      </Field>
+      <Field label={s.admin_pass}>
+        <input className="input" dir="ltr" type="password" autoComplete="new-password"
+          placeholder={!isNew && panel.admin_password_set ? s.unchanged : ''}
+          value={form.admin_password} onChange={(e) => set('admin_password', e.target.value)} />
+        <span className="mt-1 block text-xs text-muted">
+          {!isNew && panel.admin_password_set ? s.pass_stored : s.pass_none}
+        </span>
+      </Field>
+      <Field label={s.sub_url}>
+        <input className="input" dir="ltr"
+          value={form.subscription_base_url} onChange={(e) => set('subscription_base_url', e.target.value)} />
+      </Field>
 
-        {/* ---- panel groups: fetch-and-pick ---- */}
-        <div className="sm:col-span-2">
-          <div className="mb-1 flex flex-wrap items-center gap-2">
-            <span className="label mb-0">{s.groups}</span>
+      <label className="flex items-center gap-2 self-end text-sm">
+        <input type="checkbox" checked={form.verify_ssl}
+          onChange={(e) => set('verify_ssl', e.target.checked)} />
+        {s.verify_ssl}
+      </label>
+
+      {/* ---- this panel's default groups ---- */}
+      <div className="sm:col-span-2">
+        <div className="mb-1 flex flex-wrap items-center gap-2">
+          <span className="label mb-0">{s.groups}</span>
+          {!isNew && (
             <button type="button" className="btn-ghost text-xs" onClick={fetchGroups} disabled={fetching}>
               {fetching ? s.fetching : `⭳ ${s.fetch_groups}`}
             </button>
-          </div>
-          <p className="mb-2 text-xs text-muted">{s.groups_hint}</p>
-
-          {!groupRows && (
-            <p className="text-sm">
-              {s.groups_none_fetched}{' '}
-              <span dir="ltr" className="font-mono">
-                {selected.length ? selected.join(', ') : s.groups_empty}
-              </span>
-            </p>
-          )}
-
-          {groupRows && (
-            <div className="grid gap-2 sm:grid-cols-2">
-              {groupRows.map((g) => (
-                <label key={g.id} className="flex items-center gap-2 rounded-xl border px-3 py-2 text-sm"
-                  style={{ borderColor: 'var(--c-border)' }}>
-                  <input type="checkbox" checked={selected.includes(g.id)} onChange={() => toggleGroup(g.id)} />
-                  <span className="truncate">{g.name}</span>
-                  <span dir="ltr" className="ms-auto shrink-0 text-xs text-muted">#{g.id}</span>
-                </label>
-              ))}
-              {groupRows.length === 0 && <p className="text-sm text-muted">—</p>}
-            </div>
           )}
         </div>
+        <p className="mb-2 text-xs text-muted">{s.groups_hint}</p>
 
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={form.verify_ssl}
-            onChange={(e) => set('verify_ssl', e.target.checked)} />
-          {s.verify_ssl}
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={form.is_active}
-            onChange={(e) => set('is_active', e.target.checked)} />
-          {s.panel_active}
-        </label>
+        {isNew ? (
+          <p className="text-xs text-muted">{s.groups_none_fetched.split('.')[0]}.</p>
+        ) : !groupRows ? (
+          <p className="text-sm">
+            {s.groups_none_fetched}{' '}
+            <span dir="ltr" className="font-mono">
+              {selected.length ? selected.join(', ') : s.groups_empty}
+            </span>
+          </p>
+        ) : (
+          <div className="grid gap-2 sm:grid-cols-2">
+            {groupRows.map((g) => (
+              <label key={g.id} className="flex items-center gap-2 rounded-xl border px-3 py-2 text-sm"
+                style={{ borderColor: 'var(--c-border)' }}>
+                <input type="checkbox" checked={selected.includes(g.id)} onChange={() => toggleGroup(g.id)} />
+                <span className="truncate">{g.name}</span>
+                <span dir="ltr" className="ms-auto shrink-0 text-xs text-muted">#{g.id}</span>
+              </label>
+            ))}
+            {groupRows.length === 0 && <p className="text-sm text-muted">—</p>}
+          </div>
+        )}
+      </div>
 
-        <div className="flex flex-wrap gap-2 sm:col-span-2">
-          <button className="btn-primary text-sm">{s.save}</button>
+      <label className="flex items-center gap-2 text-sm sm:col-span-2">
+        <input type="checkbox" checked={form.is_active}
+          onChange={(e) => set('is_active', e.target.checked)} />
+        {s.panel_active}
+      </label>
+
+      <div className="flex flex-wrap gap-2 sm:col-span-2">
+        <button className="btn-primary text-sm" disabled={saving}>{saving ? '…' : s.save}</button>
+        {!isNew && (
           <button type="button" className="btn-ghost text-sm" onClick={test} disabled={testing}>
             {testing ? '…' : s.test}
           </button>
-        </div>
-      </form>
-
-      <EmailCard s={s} />
-    </div>
+        )}
+        {isNew && (
+          <button type="button" className="btn-ghost text-sm" onClick={onCancel}>{t('cancel')}</button>
+        )}
+        {!isNew && !inUse && (
+          <button type="button" className="btn-ghost ms-auto text-sm"
+            style={{ color: 'var(--c-danger)' }} onClick={del}>🗑 {s.del_panel}</button>
+        )}
+      </div>
+    </form>
   )
 }
 
