@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { useI18n } from '../lib/i18n'
 import { apiError } from '../lib/api'
-import { Alert, Field, Spinner } from '../components/ui'
+import { Alert, Field, PasswordField, Spinner } from '../components/ui'
 
 function AuthShell({ title, children }) {
   const { lang, setLang } = useI18n()
@@ -46,9 +46,8 @@ export default function Login() {
         <Field label={t('username')}>
           <input className="input" value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} autoFocus />
         </Field>
-        <Field label={t('password')}>
-          <input className="input" type="password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} />
-        </Field>
+        <PasswordField label={t('password')} value={f.password} autoComplete="current-password"
+          onChange={(e) => setF({ ...f, password: e.target.value })} />
         <button className="btn-primary w-full" disabled={busy}>{busy ? <Spinner /> : t('login')}</button>
         <div className="flex justify-between text-sm text-muted">
           <Link to="/register" className="hover:text-primary">{t('register')}</Link>

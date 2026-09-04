@@ -90,6 +90,22 @@ body {
   /* label + switch row, e.g. a settings list */
   .toggle-row { @apply flex items-center justify-between gap-3 py-3; border-bottom: 1px solid var(--c-border); }
   .toggle-row:last-child { border-bottom: none; }
+
+  /* range slider (e.g. custom-volume picker) — shared across both themes;
+     set the CSS var --pct (0%..100%) on the element to fill the track */
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none; width: 100%; height: 8px; border-radius: 8px; outline: none;
+    background: linear-gradient(90deg, var(--c-primary) 0%, var(--c-secondary) var(--pct, 0%), var(--c-border) var(--pct, 0%), var(--c-border) 100%);
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%;
+    background: #fff; border: 3px solid var(--c-primary); cursor: pointer;
+    box-shadow: 0 3px 10px color-mix(in srgb, var(--c-primary) 40%, transparent);
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 22px; height: 22px; border-radius: 50%; background: #fff;
+    border: 3px solid var(--c-primary); cursor: pointer;
+  }
 }
 
 /* ================================================================== *
@@ -137,17 +153,3 @@ body {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-secondary) 18%, transparent);
 }
 [data-theme-style="frost"] .label { color: var(--c-ink); font-weight: 700; }
-
-[data-theme-style="frost"] input[type="range"] {
-  -webkit-appearance: none; appearance: none; width: 100%; height: 10px; border-radius: 8px;
-  background: linear-gradient(90deg, var(--c-primary) 0%, var(--c-secondary) var(--pct, 0%), var(--c-border) var(--pct, 0%), var(--c-border) 100%);
-  outline: none;
-}
-[data-theme-style="frost"] input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%;
-  background: #fff; border: 3px solid var(--c-primary); cursor: pointer;
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--c-primary) 35%, transparent);
-}
-[data-theme-style="frost"] input[type="range"]::-moz-range-thumb {
-  width: 24px; height: 24px; border-radius: 50%; background: #fff; border: 3px solid var(--c-primary); cursor: pointer;
-}

@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { useI18n } from '../lib/i18n'
 import { apiError } from '../lib/api'
-import { Alert, Field, Spinner } from '../components/ui'
+import { Alert, Field, PasswordField, Spinner } from '../components/ui'
 import { AuthShell } from './Login'
 
 export default function Register() {
@@ -31,7 +31,7 @@ export default function Register() {
       <form onSubmit={submit} className="space-y-3">
         <Alert>{err}</Alert>
         <Field label={t('username')}><input className="input" value={f.username} onChange={set('username')} /></Field>
-        <Field label={t('password')}><input className="input" type="password" value={f.password} onChange={set('password')} /></Field>
+        <PasswordField label={t('password')} value={f.password} autoComplete="new-password" onChange={set('password')} />
         <Field label={t('email')}><input className="input" type="email" value={f.email} onChange={set('email')} /></Field>
         <Field label={t('name')}><input className="input" value={f.name} onChange={set('name')} /></Field>
         <Field label={t('phone')}><input className="input" value={f.phone} onChange={set('phone')} /></Field>

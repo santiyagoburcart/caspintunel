@@ -3,7 +3,7 @@ import { api, apiError } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useI18n } from '../lib/i18n'
 import { useTheme } from '../theme/ThemeProvider'
-import { Alert, Copyable, Field, Spinner, Toggle } from '../components/ui'
+import { Alert, Copyable, PasswordField, Spinner, Toggle } from '../components/ui'
 
 export default function Profile() {
   const { t, lang, setLang } = useI18n()
@@ -52,8 +52,10 @@ export default function Profile() {
         <h2 className="font-bold">{t('change_password')}</h2>
         <Alert>{err}</Alert>
         <Alert kind="success">{msg}</Alert>
-        <Field label={t('current_password')}><input className="input" type="password" value={pw.current_password} onChange={(e) => setPw({ ...pw, current_password: e.target.value })} /></Field>
-        <Field label={t('new_password')}><input className="input" type="password" value={pw.new_password} onChange={(e) => setPw({ ...pw, new_password: e.target.value })} /></Field>
+        <PasswordField label={t('current_password')} value={pw.current_password} autoComplete="current-password"
+          onChange={(e) => setPw({ ...pw, current_password: e.target.value })} />
+        <PasswordField label={t('new_password')} value={pw.new_password} autoComplete="new-password"
+          onChange={(e) => setPw({ ...pw, new_password: e.target.value })} />
         <button className="btn-primary" disabled={busy}>{busy ? <Spinner /> : t('save')}</button>
       </form>
     </div>

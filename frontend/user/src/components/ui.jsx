@@ -19,6 +19,52 @@ export function Field({ label, children }) {
   return <div><span className="label">{label}</span>{children}</div>
 }
 
+function EyeIcon({ off }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {off ? (
+        <>
+          <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+          <path d="M6.61 6.61A18.5 18.5 0 0 0 1 12s4 8 11 8a9.26 9.26 0 0 0 5.39-1.61" />
+          <line x1="1" y1="1" x2="23" y2="23" />
+        </>
+      ) : (
+        <>
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z" />
+          <circle cx="12" cy="12" r="3" />
+        </>
+      )}
+    </svg>
+  )
+}
+
+/** Password input with a show/hide eye toggle — RTL/LTR aware (logical `end`). */
+export function PasswordField({ label, value, onChange, autoComplete, autoFocus }) {
+  const { t } = useI18n()
+  const [show, setShow] = useState(false)
+  return (
+    <Field label={label}>
+      <div className="relative">
+        <input
+          className="input" type={show ? 'text' : 'password'} value={value} onChange={onChange}
+          autoComplete={autoComplete} autoFocus={autoFocus}
+          style={{ paddingInlineEnd: '2.75rem' }}
+        />
+        <button
+          type="button" tabIndex={-1}
+          className="absolute inset-y-0 end-0 flex items-center px-3 text-muted"
+          onClick={() => setShow((v) => !v)}
+          aria-label={show ? t('hide_password') : t('show_password')}
+          title={show ? t('hide_password') : t('show_password')}
+        >
+          <EyeIcon off={show} />
+        </button>
+      </div>
+    </Field>
+  )
+}
+
 /** Modern on/off switch — shared control for every boolean setting. */
 export function Toggle({ checked, onChange, disabled, label }) {
   return (

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api, apiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
-import { Alert, Field, Spinner } from '../components/ui'
+import { Alert, Field, PasswordField, Spinner } from '../components/ui'
 import { AuthShell } from './Login'
 
 export default function ResetPassword() {
@@ -36,9 +36,8 @@ export default function ResetPassword() {
         <Alert>{err}</Alert>
         <Alert kind="success">{msg}</Alert>
         {token ? (
-          <Field label={t('new_password')}>
-            <input className="input" type="password" value={pw} onChange={(e) => setPw(e.target.value)} />
-          </Field>
+          <PasswordField label={t('new_password')} value={pw} autoComplete="new-password"
+            onChange={(e) => setPw(e.target.value)} />
         ) : (
           <Field label={`${t('username')} / ${t('email')}`}>
             <input className="input" value={identifier} onChange={(e) => setIdentifier(e.target.value)} />
