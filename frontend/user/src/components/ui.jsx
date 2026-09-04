@@ -19,6 +19,21 @@ export function Field({ label, children }) {
   return <div><span className="label">{label}</span>{children}</div>
 }
 
+/** Modern on/off switch — shared control for every boolean setting. */
+export function Toggle({ checked, onChange, disabled, label }) {
+  return (
+    <label className="toggle" aria-label={label}>
+      <input
+        type="checkbox"
+        checked={!!checked}
+        disabled={disabled}
+        onChange={(e) => onChange?.(e.target.checked)}
+      />
+      <span className="track" />
+    </label>
+  )
+}
+
 const BADGE_COLOR = {
   active: 'success', on_hold: 'warning', expired: 'danger', limited: 'danger',
   disabled: 'muted', pending: 'secondary', pending_payment: 'warning',

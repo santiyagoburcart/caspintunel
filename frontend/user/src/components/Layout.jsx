@@ -16,7 +16,7 @@ const links = [
 export default function Layout() {
   const { user, logout } = useAuth()
   const { t, lang, setLang } = useI18n()
-  const { mode, toggle, config } = useTheme()
+  const { mode, toggle, locked, config } = useTheme()
   const nav = useNavigate()
   const [open, setOpen] = useState(false)
   const inTelegram = isTelegramMiniApp()
@@ -41,7 +41,10 @@ export default function Layout() {
         </nav>
 
         <div className="ms-auto flex items-center gap-2">
-          <button className="btn-ghost text-sm" onClick={toggle}>{mode === 'dark' ? '☀️' : '🌙'}</button>
+          {/* the active theme can lock the whole site to one mode (e.g. Royal Frost is light-only) */}
+          {!locked && (
+            <button className="btn-ghost text-sm" onClick={toggle}>{mode === 'dark' ? '☀️' : '🌙'}</button>
+          )}
           <button className="btn-ghost text-sm" onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')}>
             {lang === 'fa' ? 'EN' : 'فا'}
           </button>

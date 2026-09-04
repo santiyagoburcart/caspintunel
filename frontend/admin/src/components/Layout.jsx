@@ -38,7 +38,7 @@ function NavLinks({ items, t, onNavigate }) {
 export default function Layout() {
   const { staff, logout, can } = useAuth()
   const { t, lang, setLang } = useI18n()
-  const { mode, toggle, config } = useTheme()
+  const { mode, toggle, locked, config } = useTheme()
   const go = useNavigate()
   const [open, setOpen] = useState(false)
 
@@ -80,7 +80,10 @@ export default function Layout() {
       <div className="min-w-0 flex-1">
         <header className="glass m-3 flex items-center gap-2 px-3 py-2 text-sm sm:px-4">
           <button className="btn-ghost shrink-0 md:hidden" onClick={() => setOpen(true)} aria-label="menu">☰</button>
-          <button className="btn-ghost shrink-0" onClick={toggle}>{mode === 'dark' ? '☀️' : '🌙'}</button>
+          {/* the active theme can lock the whole site to one mode (e.g. Royal Frost is light-only) */}
+          {!locked && (
+            <button className="btn-ghost shrink-0" onClick={toggle}>{mode === 'dark' ? '☀️' : '🌙'}</button>
+          )}
           <button className="btn-ghost shrink-0" onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')}>{lang === 'fa' ? 'EN' : 'فا'}</button>
           <span className="ms-auto truncate text-muted">
             {staff?.username}{staff?.role ? ` · ${staff.role}` : staff?.is_superadmin ? ' · superadmin' : ''}

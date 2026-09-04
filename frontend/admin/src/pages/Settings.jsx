@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, apiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
-import { Alert, Field, Spinner } from '../components/ui'
+import { Alert, Field, Spinner, Toggle } from '../components/ui'
 
 export default function Settings() {
   const { t, lang } = useI18n()
@@ -42,11 +42,11 @@ export default function Settings() {
         const label = t('set_' + s.key)
         if (s.type === 'bool') {
           return (
-            <label key={s.key} className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={!!form[s.key]}
-                onChange={(e) => setForm({ ...form, [s.key]: e.target.checked })} />
-              {label}
-            </label>
+            <div key={s.key} className="toggle-row">
+              <span className="text-sm">{label}</span>
+              <Toggle checked={!!form[s.key]}
+                onChange={(v) => setForm({ ...form, [s.key]: v })} label={label} />
+            </div>
           )
         }
         if (s.key === 'default_language') {

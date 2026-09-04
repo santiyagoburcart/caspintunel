@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api, apiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
-import { Alert, Field, Spinner } from '../components/ui'
+import { Alert, Field, Spinner, Toggle } from '../components/ui'
 
 const T = {
   fa: {
@@ -260,8 +260,7 @@ function PanelCard({ s, panel, isNew = false, onSaved, onDeleted, onCancel }) {
       </Field>
 
       <label className="flex items-center gap-2 self-end text-sm">
-        <input type="checkbox" checked={form.verify_ssl}
-          onChange={(e) => set('verify_ssl', e.target.checked)} />
+        <Toggle checked={form.verify_ssl} onChange={(v) => set('verify_ssl', v)} label={s.verify_ssl} />
         {s.verify_ssl}
       </label>
 
@@ -302,8 +301,7 @@ function PanelCard({ s, panel, isNew = false, onSaved, onDeleted, onCancel }) {
       </div>
 
       <label className="flex items-center gap-2 text-sm sm:col-span-2">
-        <input type="checkbox" checked={form.is_active}
-          onChange={(e) => set('is_active', e.target.checked)} />
+        <Toggle checked={form.is_active} onChange={(v) => set('is_active', v)} label={s.panel_active} />
         {s.panel_active}
       </label>
 
@@ -538,8 +536,7 @@ function RequiredChannels({ s }) {
         <p className="mt-1 text-xs text-muted">{s.ch_invite_hint}</p>
       </div>
       <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" checked={value.is_active}
-          onChange={(e) => onChange({ ...value, is_active: e.target.checked })} />
+        <Toggle checked={value.is_active} onChange={(v) => onChange({ ...value, is_active: v })} label={s.active} />
         {s.active}
       </label>
       <div className="flex gap-2 sm:col-span-2">
@@ -566,17 +563,17 @@ function RequiredChannels({ s }) {
       {msg && <Alert kind={msg.kind}>{msg.text}</Alert>}
 
       {/* enforcement toggles */}
-      <div className="card space-y-2">
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={!!enf.force_channel_join}
-            onChange={(e) => setToggle('force_channel_join', e.target.checked)} />
-          {s.force_join}
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={!!enf.force_share_phone}
-            onChange={(e) => setToggle('force_share_phone', e.target.checked)} />
-          {s.force_phone}
-        </label>
+      <div className="card">
+        <div className="toggle-row">
+          <span className="text-sm">{s.force_join}</span>
+          <Toggle checked={!!enf.force_channel_join}
+            onChange={(v) => setToggle('force_channel_join', v)} label={s.force_join} />
+        </div>
+        <div className="toggle-row">
+          <span className="text-sm">{s.force_phone}</span>
+          <Toggle checked={!!enf.force_share_phone}
+            onChange={(v) => setToggle('force_share_phone', v)} label={s.force_phone} />
+        </div>
       </div>
 
       <div className="rounded-xl p-3 text-xs" style={{ background: 'color-mix(in srgb, var(--c-warning) 12%, transparent)', color: 'var(--c-warning)' }}>
@@ -630,8 +627,7 @@ function BotCard({ title, row, value, onChange, s, showChatId }) {
       <div className="flex items-center justify-between sm:col-span-2">
         <span className="font-bold">{title}</span>
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={value.is_active}
-            onChange={(e) => set('is_active', e.target.checked)} />
+          <Toggle checked={value.is_active} onChange={(v) => set('is_active', v)} label={s.active} />
           {s.active}
         </label>
       </div>

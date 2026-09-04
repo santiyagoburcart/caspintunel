@@ -1,3 +1,7 @@
+# ---- design references (never commit) ----
+refs/
+/root/refs/
+
 # ---- secrets ----
 .env
 *.env

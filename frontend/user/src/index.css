@@ -13,6 +13,11 @@
   --c-text: #111827;
   --c-text-muted: #6b7280;
   --c-border: rgba(0, 0, 0, 0.08);
+  /* extended tokens (Royal Frost sets these explicitly; Midnight Aurora falls
+     back to sensible aurora-consistent defaults so it renders unchanged) */
+  --c-primary-2: var(--c-secondary);
+  --c-ink: var(--c-text);
+  --c-glass-border: var(--c-border);
 }
 .dark {
   --c-bg: #0b0e14;
@@ -25,6 +30,9 @@
   --c-text: #e6e8ec;
   --c-text-muted: #9aa3b2;
   --c-border: rgba(255, 255, 255, 0.1);
+  --c-primary-2: var(--c-secondary);
+  --c-ink: var(--c-text);
+  --c-glass-border: var(--c-border);
 }
 
 html, body, #root { height: 100%; }
@@ -61,4 +69,85 @@ body {
       radial-gradient(60% 60% at 20% 10%, color-mix(in srgb, var(--c-primary) 22%, transparent), transparent),
       radial-gradient(50% 50% at 90% 20%, color-mix(in srgb, var(--c-secondary) 18%, transparent), transparent);
   }
+
+  /* ===== modern toggle switch — shared across both themes ===== */
+  .toggle { position: relative; display: inline-flex; width: 44px; height: 24px; flex-shrink: 0; cursor: pointer; }
+  .toggle input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+  .toggle .track {
+    position: absolute; inset: 0; border-radius: 999px; transition: background .2s;
+    background: color-mix(in srgb, var(--c-text-muted) 38%, transparent);
+  }
+  .toggle .track::before {
+    content: ""; position: absolute; width: 18px; height: 18px; border-radius: 50%;
+    background: #fff; top: 3px; inset-inline-start: 3px; transition: inset-inline-start .2s;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, .25);
+  }
+  .toggle input:checked + .track { background: linear-gradient(135deg, var(--c-primary), var(--c-primary-2)); }
+  .toggle input:checked + .track::before { inset-inline-start: calc(100% - 21px); }
+  .toggle input:focus-visible + .track { outline: 2px solid var(--c-primary); outline-offset: 2px; }
+  .toggle input:disabled + .track { opacity: .5; cursor: not-allowed; }
+
+  /* label + switch row, e.g. a settings list */
+  .toggle-row { @apply flex items-center justify-between gap-3 py-3; border-bottom: 1px solid var(--c-border); }
+  .toggle-row:last-child { border-bottom: none; }
+}
+
+/* ================================================================== *
+ *  Royal Frost — light frosted-glass style, selected via              *
+ *  data-theme-style="frost" (set by ThemeProvider from the active     *
+ *  theme's palette.style). Midnight Aurora (no attr / "aurora") is    *
+ *  completely untouched by anything below.                            *
+ * ================================================================== */
+[data-theme-style="frost"] body {
+  background:
+    radial-gradient(1100px 500px at 85% -8%, color-mix(in srgb, var(--c-secondary) 25%, transparent), transparent 60%),
+    radial-gradient(900px 500px at -5% 108%, color-mix(in srgb, var(--c-success) 12%, transparent), transparent 55%),
+    var(--c-bg);
+}
+[data-theme-style="frost"] .aurora { background: none; }
+
+[data-theme-style="frost"] .glass,
+[data-theme-style="frost"] .card {
+  background: var(--c-surface);
+  -webkit-backdrop-filter: blur(22px);
+  backdrop-filter: blur(22px);
+  border: 1px solid var(--c-glass-border);
+  border-radius: 18px;
+  box-shadow: 0 10px 38px color-mix(in srgb, var(--c-primary) 10%, transparent), inset 0 1px 0 rgba(255, 255, 255, .7);
+}
+
+[data-theme-style="frost"] .btn { border-radius: 12px; font-weight: 700; }
+[data-theme-style="frost"] .btn-primary {
+  background: linear-gradient(135deg, var(--c-primary), var(--c-primary-2));
+  box-shadow: 0 7px 18px color-mix(in srgb, var(--c-primary) 30%, transparent);
+}
+[data-theme-style="frost"] .btn-ghost {
+  background: rgba(255, 255, 255, .85);
+  color: var(--c-primary);
+  border-color: var(--c-border);
+}
+
+[data-theme-style="frost"] .input {
+  background: rgba(255, 255, 255, .85);
+  border-color: var(--c-border);
+  border-radius: 12px;
+}
+[data-theme-style="frost"] .input:focus {
+  border-color: var(--c-secondary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-secondary) 18%, transparent);
+}
+[data-theme-style="frost"] .label { color: var(--c-ink); font-weight: 700; }
+
+[data-theme-style="frost"] input[type="range"] {
+  -webkit-appearance: none; appearance: none; width: 100%; height: 10px; border-radius: 8px;
+  background: linear-gradient(90deg, var(--c-primary) 0%, var(--c-secondary) var(--pct, 0%), var(--c-border) var(--pct, 0%), var(--c-border) 100%);
+  outline: none;
+}
+[data-theme-style="frost"] input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%;
+  background: #fff; border: 3px solid var(--c-primary); cursor: pointer;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--c-primary) 35%, transparent);
+}
+[data-theme-style="frost"] input[type="range"]::-moz-range-thumb {
+  width: 24px; height: 24px; border-radius: 50%; background: #fff; border: 3px solid var(--c-primary); cursor: pointer;
 }

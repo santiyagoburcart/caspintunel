@@ -49,6 +49,31 @@ MIDNIGHT_AURORA = {
     },
 }
 
+# A theme now carries more than colours: `base` locks the site to light/dark
+# (omit / "auto" to keep the user's dark-mode toggle, as Midnight Aurora does)
+# and `style` selects the component look (`aurora` = existing default,
+# `frost` = the new glass/light look). `vars` are extra raw CSS custom
+# properties applied alongside the 10 semantic colour tokens.
+ROYAL_FROST = {
+    "base": "light",
+    "style": "frost",
+    "light": {
+        "background": "#EEF3FB", "surface": "rgba(255,255,255,0.55)", "primary": "#2E56C8",
+        "secondary": "#5B8DEF", "success": "#16A34A", "danger": "#DC2626", "warning": "#D97706",
+        "text": "#1F2F55", "text_muted": "#6B7A9C", "border": "rgba(46,86,200,0.14)",
+    },
+    # frost is light-only (base="light" locks it) — kept identical to `light`
+    # so a stray dark-mode read (e.g. a cached ct_mode) never breaks
+    "dark": {
+        "background": "#EEF3FB", "surface": "rgba(255,255,255,0.55)", "primary": "#2E56C8",
+        "secondary": "#5B8DEF", "success": "#16A34A", "danger": "#DC2626", "warning": "#D97706",
+        "text": "#1F2F55", "text_muted": "#6B7A9C", "border": "rgba(46,86,200,0.14)",
+    },
+    "vars": {
+        "--c-primary-2": "#3B6FE0", "--c-ink": "#1E3A8A", "--c-glass-border": "rgba(255,255,255,0.85)",
+    },
+}
+
 SETTINGS_DEFAULTS = [
     ("email_verification_required", "false", ValueType.BOOL),
     ("force_channel_join", "false", ValueType.BOOL),
@@ -132,10 +157,21 @@ class Command(BaseCommand):
         )
         support_role.permissions.set([perms[c] for c in SUPPORT_PERMS])
 
-        # --- theme ---
-        theme, _ = Theme.objects.update_or_create(
+        # --- themes ---
+        # `seed` re-runs on every container start / update, so `is_active` must
+        # only be set when a theme row is first created — otherwise re-running
+        # it would silently undo an admin's choice to activate another theme.
+        mid, created = Theme.objects.get_or_create(
             name="Midnight Aurora", defaults={"palette": MIDNIGHT_AURORA, "is_active": True}
         )
+        if not created:
+            Theme.objects.filter(pk=mid.pk).update(palette=MIDNIGHT_AURORA)
+
+        frost, created = Theme.objects.get_or_create(
+            name="Royal Frost", defaults={"palette": ROYAL_FROST, "is_active": False}
+        )
+        if not created:
+            Theme.objects.filter(pk=frost.pk).update(palette=ROYAL_FROST)
 
         # --- site config (singleton) — keep the domain in step with DOMAIN ---
         site = SiteConfig.load()
@@ -148,9 +184,12 @@ class Command(BaseCommand):
         # --- settings ---
         for key, value, vtype in SETTINGS_DEFAULTS:
             Setting.objects.get_or_create(key=key, defaults={"value": value, "value_type": vtype})
-        Setting.objects.update_or_create(
-            key="active_theme_id", defaults={"value": str(theme.id), "value_type": ValueType.INT}
-        )
+        active_theme = Theme.objects.filter(is_active=True).first()
+        if active_theme:
+            Setting.objects.update_or_create(
+                key="active_theme_id",
+                defaults={"value": str(active_theme.id), "value_type": ValueType.INT},
+            )
 
         # --- CMS pages ---
         for slug, fa, en in PAGES:

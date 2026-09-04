@@ -3,7 +3,7 @@ import { api, apiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 import { toman } from '../lib/format'
 import { DataTable } from '../components/DataTable'
-import { Alert, Field, Spinner } from '../components/ui'
+import { Alert, Field, Spinner, Toggle } from '../components/ui'
 
 const blank = { card_number: '', holder_name: '', bank_name: '', sort_order: 0, is_active: true }
 
@@ -76,8 +76,8 @@ export default function Cards() {
               value={edit.sort_order} onChange={(e) => setEdit({ ...edit, sort_order: e.target.value })} />
           </Field>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={edit.is_active}
-              onChange={(e) => setEdit({ ...edit, is_active: e.target.checked })} />
+            <Toggle checked={edit.is_active}
+              onChange={(v) => setEdit({ ...edit, is_active: v })} label={t('active')} />
             {t('active')}
           </label>
           <div className="col-span-full flex gap-2">

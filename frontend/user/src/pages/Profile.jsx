@@ -3,11 +3,11 @@ import { api, apiError } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useI18n } from '../lib/i18n'
 import { useTheme } from '../theme/ThemeProvider'
-import { Alert, Copyable, Field, Spinner } from '../components/ui'
+import { Alert, Copyable, Field, Spinner, Toggle } from '../components/ui'
 
 export default function Profile() {
   const { t, lang, setLang } = useI18n()
-  const { mode, toggle } = useTheme()
+  const { mode, toggle, locked } = useTheme()
   const { user, refreshMe } = useAuth()
   const [pw, setPw] = useState({ current_password: '', new_password: '' })
   const [msg, setMsg] = useState(''); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false)
@@ -35,11 +35,17 @@ export default function Profile() {
         <div className="flex justify-between"><span className="text-muted">{t('referral_count')}</span><span>{user?.referral_count}</span></div>
       </div>
 
-      <div className="card flex flex-wrap items-center gap-3">
-        <span className="text-muted">{t('theme')}:</span>
-        <button className="btn-ghost text-sm" onClick={toggle}>{mode === 'dark' ? t('dark') : t('light')}</button>
-        <span className="text-muted">{t('language')}:</span>
-        <button className="btn-ghost text-sm" onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')}>{lang === 'fa' ? 'فارسی' : 'English'}</button>
+      <div className="card">
+        {!locked && (
+          <div className="toggle-row">
+            <span>{t('theme')}: {mode === 'dark' ? t('dark') : t('light')}</span>
+            <Toggle checked={mode === 'dark'} onChange={toggle} label={t('theme')} />
+          </div>
+        )}
+        <div className="toggle-row">
+          <span>{t('language')}: {lang === 'fa' ? 'فارسی' : 'English'}</span>
+          <Toggle checked={lang === 'en'} onChange={(v) => setLang(v ? 'en' : 'fa')} label={t('language')} />
+        </div>
       </div>
 
       <form onSubmit={changePw} className="card space-y-3">
