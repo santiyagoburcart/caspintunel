@@ -111,6 +111,11 @@ export default function Plans() {
       await api.delete(`/admin/plans/${id}/`); load()
     }
   }
+  const quickToggleActive = async (r) => {
+    setRows((cur) => cur.map((x) => (x.id === r.id ? { ...x, is_active: !r.is_active } : x)))
+    try { await api.patch(`/admin/plans/${r.id}/`, { is_active: !r.is_active }) }
+    catch { load() }
+  }
 
   if (rows === null) return <div className="grid place-items-center py-16"><Spinner /></div>
 
@@ -312,7 +317,11 @@ export default function Plans() {
           { key: 'duration_days', label: lang === 'fa' ? 'مدت' : 'Duration', render: (r) => r.duration_days || '∞' },
           { key: 'price', label: lang === 'fa' ? 'قیمت' : 'Price',
             render: (r) => (r.type === 'custom_volume' ? `${toman(r.price_per_gb, lang)} / GB` : toman(r.price, lang)) },
-          { key: 'is_active', label: lang === 'fa' ? 'فعال' : 'Active', render: (r) => (r.is_active ? '✓' : '—') },
+          { key: 'is_active', label: lang === 'fa' ? 'فعال' : 'Active',
+            render: (r) => (
+              <Toggle checked={r.is_active} onChange={() => quickToggleActive(r)}
+                label={lang === 'fa' ? 'فعال' : 'Active'} />
+            ) },
           { key: 'act', label: '', render: (r) => (
             <span className="flex gap-1">
               <button className="btn-ghost text-xs" onClick={() => setEdit(toForm(r))}>✎</button>

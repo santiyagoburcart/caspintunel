@@ -28,6 +28,8 @@ const dict = {
     display_grouped: 'دسته‌بندی‌شده', display_flat: 'فهرست ساده',
     // shared
     name: 'نام', phone: 'تلفن', source: 'منبع', date: 'تاریخ', all: 'همه',
+    user: 'کاربر', amount: 'مبلغ', status: 'وضعیت', plan: 'پلن', recent_transactions: 'تراکنش‌های اخیر',
+    tx_pending: 'در انتظار', tx_approved: 'تأییدشده', tx_rejected: 'ردشده',
     inactive: 'غیرفعال', description: 'توضیح', slug: 'اسلاگ', title: 'عنوان',
     activate: 'فعال‌سازی', deactivate: 'غیرفعال‌سازی', saved: 'ذخیره شد',
     none_found: 'موردی یافت نشد', load_error: 'خطا در دریافت اطلاعات', count: 'تعداد',
@@ -81,6 +83,8 @@ const dict = {
     set_product_display_mode: 'Product display (site & bot)',
     display_grouped: 'Grouped by category', display_flat: 'Flat list',
     name: 'Name', phone: 'Phone', source: 'Source', date: 'Date', all: 'All',
+    user: 'User', amount: 'Amount', status: 'Status', plan: 'Plan', recent_transactions: 'Recent transactions',
+    tx_pending: 'Pending', tx_approved: 'Approved', tx_rejected: 'Rejected',
     inactive: 'Inactive', description: 'Description', slug: 'Slug', title: 'Title',
     activate: 'Activate', deactivate: 'Deactivate', saved: 'Saved',
     none_found: 'Nothing found', load_error: 'Failed to load data', count: 'Count',

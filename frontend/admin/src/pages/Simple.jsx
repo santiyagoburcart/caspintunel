@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, apiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 import { DataTable } from '../components/DataTable'
-import { Alert, Spinner } from '../components/ui'
+import { Alert, Spinner, Toggle } from '../components/ui'
 
 /** Generic list + toggle-active screen for Pages / Themes / Roles. */
 export function Pages() {
@@ -10,7 +10,6 @@ export function Pages() {
   return <CrudList title={t('pages')} url="/admin/pages/" columns={[
     { key: 'slug', label: t('slug') },
     { key: 'title_fa', label: t('title') },
-    { key: 'is_active', label: t('active'), render: (r) => (r.is_active ? '✓' : '—') },
   ]} />
 }
 
@@ -87,11 +86,8 @@ function CrudList({ title, url, columns }) {
       <h1 className="text-lg font-bold">{title}</h1>
       <Alert>{err}</Alert>
       <DataTable rows={rows} empty={t('none_found')} columns={[...columns, {
-        key: 'act', label: '', render: (r) => (
-          <button className="btn-ghost text-xs" onClick={() => toggle(r)}>
-            {r.is_active ? t('deactivate') : t('activate')}
-          </button>
-        ),
+        key: 'is_active', label: t('active'),
+        render: (r) => <Toggle checked={r.is_active} onChange={() => toggle(r)} label={t('active')} />,
       }]} />
     </div>
   )

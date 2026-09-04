@@ -153,3 +153,32 @@ body {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-secondary) 18%, transparent);
 }
 [data-theme-style="frost"] .label { color: var(--c-ink); font-weight: 700; }
+
+/* admin sidebar shell — dark navy/royal-blue, independent of the light frost
+   surface everywhere else (matches the reference's `.side`) */
+[data-theme-style="frost"] .admin-side {
+  background: linear-gradient(180deg, var(--c-ink), #14285f);
+  border-color: transparent;
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--c-ink) 25%, transparent);
+}
+[data-theme-style="frost"] .admin-side .admin-brand,
+[data-theme-style="frost"] .admin-side .admin-brand .text-muted {
+  color: #fff;
+}
+[data-theme-style="frost"] .admin-side .btn-ghost {
+  background: transparent;
+  border-color: rgba(255, 255, 255, .2);
+  color: rgba(255, 255, 255, .82);
+}
+[data-theme-style="frost"] .admin-side .btn-ghost:hover {
+  background: rgba(255, 255, 255, .08);
+  color: #fff;
+}
+[data-theme-style="frost"] .admin-side .admin-nav-link {
+  border-color: transparent;
+}
+[data-theme-style="frost"] .admin-side .admin-nav-link.active-nav {
+  background: rgba(255, 255, 255, .16);
+  color: #fff;
+  font-weight: 600;
+}

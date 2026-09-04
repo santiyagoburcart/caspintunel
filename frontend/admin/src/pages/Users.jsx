@@ -3,7 +3,7 @@ import { api, apiError } from '../lib/api'
 import { useI18n, enumLabel } from '../lib/i18n'
 import { jalali } from '../lib/format'
 import { DataTable } from '../components/DataTable'
-import { Alert, Spinner } from '../components/ui'
+import { Alert, Spinner, Toggle } from '../components/ui'
 
 export default function Users() {
   const { t, lang } = useI18n()
@@ -56,11 +56,8 @@ export default function Users() {
             { key: 'service_count', label: t('services_total'), render: (r) => r.service_count ?? 0 },
             { key: 'created_at', label: t('date'), render: (r) => jalali(r.created_at, false, lang) },
             {
-              key: 'act', label: '', render: (r) => (
-                <button className="btn-ghost text-xs" onClick={() => toggle(r)}>
-                  {r.is_active ? t('disable') : t('enable')}
-                </button>
-              ),
+              key: 'is_active', label: t('active'),
+              render: (r) => <Toggle checked={r.is_active} onChange={() => toggle(r)} label={t('active')} />,
             },
           ]}
           rows={rows}

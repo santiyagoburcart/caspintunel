@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
 import { useI18n, enumLabel } from '../lib/i18n'
-import { toman } from '../lib/format'
+import { jalali, toman } from '../lib/format'
 import { Alert, Spinner } from '../components/ui'
+import { DataTable } from '../components/DataTable'
 
 function Stat({ label, value, sub }) {
   return (
@@ -14,15 +15,30 @@ function Stat({ label, value, sub }) {
   )
 }
 
+const STATUS_COLOR = { pending: 'warning', approved: 'success', rejected: 'danger' }
+
+function StatusPill({ t, status }) {
+  const color = `var(--c-${STATUS_COLOR[status] || 'text-muted'})`
+  return (
+    <span className="rounded-full px-2 py-0.5 text-xs"
+      style={{ background: `color-mix(in srgb, ${color} 18%, transparent)`, color }}>
+      {enumLabel(t, 'tx_', status)}
+    </span>
+  )
+}
+
 export default function Dashboard() {
   const { t, lang } = useI18n()
   const [d, setD] = useState(null)
   const [rev, setRev] = useState(null)
+  const [recent, setRecent] = useState(null)
   const [err, setErr] = useState('')
 
   useEffect(() => {
     api.get('/admin/dashboard/').then((r) => setD(r.data)).catch(() => { setD({}); setErr(t('load_error')) })
     api.get('/admin/accounting/?period=monthly').then((r) => setRev(r.data)).catch(() => {})
+    // a staff role without payment.view simply won't see this section
+    api.get('/admin/transactions/?limit=5').then((r) => setRecent(r.data.results ?? r.data)).catch(() => setRecent([]))
   }, [])
 
   if (!d) return <div className="grid place-items-center py-16"><Spinner /></div>
@@ -59,6 +75,23 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {recent && recent.length > 0 && (
+        <div className="space-y-2">
+          <div className="font-bold">{t('recent_transactions')}</div>
+          <DataTable
+            empty={t('none_found')}
+            columns={[
+              { key: 'user', label: t('user') },
+              { key: 'plan_name', label: t('plan'), render: (r) => r.plan_name || '—' },
+              { key: 'amount', label: t('amount'), render: (r) => toman(r.amount, lang) },
+              { key: 'status', label: t('status'), render: (r) => <StatusPill t={t} status={r.status} /> },
+              { key: 'created_at', label: t('date'), render: (r) => jalali(r.created_at, true, lang) },
+            ]}
+            rows={recent}
+          />
+        </div>
+      )}
     </div>
   )
 }

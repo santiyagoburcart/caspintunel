@@ -95,13 +95,11 @@ export default function Cards() {
           { key: 'bank_name', label: t('bank'), render: (r) => r.bank_name || '—' },
           { key: 'deposit_count', label: t('deposit_count'), render: (r) => r.deposit_count || 0 },
           { key: 'deposit_total', label: t('deposit_total'), render: (r) => toman(r.deposit_total || 0, lang) },
-          { key: 'is_active', label: t('active'), render: (r) => (r.is_active ? '✓' : '—') },
+          { key: 'is_active', label: t('active'),
+            render: (r) => <Toggle checked={r.is_active} onChange={() => toggle(r)} label={t('active')} /> },
           { key: 'act', label: '', render: (r) => (
             <span className="flex gap-1">
               <button className="btn-ghost text-xs" onClick={() => setEdit({ ...r })}>✎</button>
-              <button className="btn-ghost text-xs" onClick={() => toggle(r)}>
-                {r.is_active ? t('disable') : t('enable')}
-              </button>
               <button className="btn-ghost text-xs" onClick={() => del(r)}>🗑</button>
             </span>
           ) },

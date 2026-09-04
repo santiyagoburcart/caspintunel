@@ -27,7 +27,8 @@ function NavLinks({ items, t, onNavigate }) {
     <nav className="flex flex-col gap-1">
       {items.map(([to, key]) => (
         <NavLink key={to} to={to} end onClick={onNavigate}
-          className={({ isActive }) => `btn-ghost whitespace-nowrap text-sm ${isActive ? 'text-primary' : ''}`}>
+          className={({ isActive }) =>
+            `admin-nav-link btn-ghost whitespace-nowrap text-sm ${isActive ? 'active-nav text-primary' : ''}`}>
           {t(key)}
         </NavLink>
       ))}
@@ -46,7 +47,7 @@ export default function Layout() {
   const brand = (lang === 'fa' ? config?.site_name_fa : config?.site_name_en) || (lang === 'fa' ? 'کسپین' : 'caspin')
 
   const Brand = ({ children }) => (
-    <div className="mb-3 flex items-center gap-2 font-bold">
+    <div className="admin-brand mb-3 flex items-center gap-2 font-bold">
       {config?.logo && <img src={config.logo} className="h-6 w-6 rounded" alt="" />}
       <span className="truncate">{brand} · {t('panel_word')}</span>
       {children}
@@ -56,7 +57,7 @@ export default function Layout() {
   return (
     <div className="min-h-full aurora md:flex">
       {/* desktop sidebar — always visible from md up */}
-      <aside className="glass m-3 hidden w-56 shrink-0 self-start overflow-y-auto p-3 md:block">
+      <aside className="admin-side glass m-3 hidden w-56 shrink-0 self-start overflow-y-auto p-3 md:block">
         <Brand />
         <NavLinks items={items} t={t} />
       </aside>
@@ -66,7 +67,7 @@ export default function Layout() {
         <div className="fixed inset-0 z-30 md:hidden" onClick={() => setOpen(false)}>
           <div className="absolute inset-0 bg-black/40" />
           <aside
-            className="glass absolute inset-y-0 start-0 w-64 max-w-[80vw] overflow-y-auto p-3"
+            className="admin-side glass absolute inset-y-0 start-0 w-64 max-w-[80vw] overflow-y-auto p-3"
             onClick={(e) => e.stopPropagation()}
           >
             <Brand>
