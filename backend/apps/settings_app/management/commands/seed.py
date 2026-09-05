@@ -74,6 +74,42 @@ ROYAL_FROST = {
     },
 }
 
+# Third theme: "Caspian" — two user-switchable variants (dark "Caspian
+# Tunnel" / light "Azure Telemetry") sharing style="caspian". No `base` is
+# set, so it behaves like Midnight Aurora: the user's own dark-mode toggle
+# picks the variant. `light`/`dark` carry the 10 semantic tokens (auto
+# picked by mode); `vars` carries the extra Caspian-only tokens, each
+# suffixed -light/-dark and picked apart in CSS by [data-theme-style=
+# "caspian"] vs. [data-theme-style="caspian"].dark (see index.css).
+CASPIAN = {
+    "style": "caspian",
+    "light": {
+        "background": "#F8FAFC", "surface": "#FFFFFF", "primary": "#0284C7",
+        "secondary": "#0EA5E9", "success": "#10B981", "danger": "#F43F5E", "warning": "#F59E0B",
+        "text": "#0F172A", "text_muted": "#64748B", "border": "#E2E8F0",
+    },
+    "dark": {
+        "background": "#080B14", "surface": "rgba(19,24,43,0.72)", "primary": "#8B5CF6",
+        "secondary": "#06B6D4", "success": "#10B981", "danger": "#EF4444", "warning": "#F59E0B",
+        "text": "#E0E2EF", "text_muted": "#94A3B8", "border": "#1E2640",
+    },
+    "vars": {
+        "--csp-font-ui-light": "'Inter'", "--csp-font-ui-dark": "'Plus Jakarta Sans'",
+        "--csp-font-display-light": "'Space Grotesk'", "--csp-font-display-dark": "'Plus Jakarta Sans'",
+        "--csp-well-light": "#F8FAFC", "--csp-well-dark": "#060910",
+        "--csp-muted-bg-light": "#F1F5F9", "--csp-muted-bg-dark": "#181B25",
+        "--csp-text2-light": "#1E293B", "--csp-text2-dark": "#CBC3D7",
+        "--csp-text3-light": "#334155", "--csp-text3-dark": "#94A3B8",
+        "--csp-border-strong-light": "#CBD5E1", "--csp-border-strong-dark": "#494454",
+        "--csp-signal-light": "#38BDF8", "--csp-signal-dark": "#06B6D4",
+        "--csp-vibrant-light": "#0369A1", "--csp-vibrant-dark": "#7C3AED",
+        "--csp-gauge-from-light": "#38BDF8", "--csp-gauge-from-dark": "#06B6D4",
+        "--csp-gauge-to-light": "#0284C7", "--csp-gauge-to-dark": "#8B5CF6",
+        "--csp-glow-light": "rgba(2,132,199,0.28)", "--csp-glow-dark": "rgba(139,92,246,0.45)",
+        "--csp-radius-card-light": "1.5rem", "--csp-radius-card-dark": "1rem",
+    },
+}
+
 SETTINGS_DEFAULTS = [
     ("email_verification_required", "false", ValueType.BOOL),
     ("force_channel_join", "false", ValueType.BOOL),
@@ -172,6 +208,12 @@ class Command(BaseCommand):
         )
         if not created:
             Theme.objects.filter(pk=frost.pk).update(palette=ROYAL_FROST)
+
+        caspian, created = Theme.objects.get_or_create(
+            name="Caspian", defaults={"palette": CASPIAN, "is_active": False}
+        )
+        if not created:
+            Theme.objects.filter(pk=caspian.pk).update(palette=CASPIAN)
 
         # --- site config (singleton) — keep the domain in step with DOMAIN ---
         site = SiteConfig.load()

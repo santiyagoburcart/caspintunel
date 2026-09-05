@@ -182,3 +182,265 @@ body {
   color: #fff;
   font-weight: 600;
 }
+
+/* ================================================================== *
+ *  Caspian — third theme, TWO user-switchable variants under ONE      *
+ *  `style` key: light = "Azure Telemetry", dark = "Caspian Tunnel".   *
+ *  Selected via data-theme-style="caspian" (palette.style). The       *
+ *  dark/light SWITCH reuses the exact mechanism Midnight Aurora       *
+ *  already has — the Caspian theme row carries no `base`, so          *
+ *  ThemeProvider treats it as "auto" and honours the user's own       *
+ *  ct_mode toggle, adding/removing .dark on <html> — no new toggle    *
+ *  plumbing needed, just the [data-theme-style="caspian"] vs.         *
+ *  [data-theme-style="caspian"].dark split below.                     *
+ *  Neither Midnight Aurora nor Royal Frost is touched by anything     *
+ *  here (they never carry data-theme-style="caspian").                *
+ * ================================================================== */
+
+/* mode-scoped alias tokens — every rule below reads the unsuffixed
+   alias so it never needs to know which variant is active; the actual
+   -light/-dark values come from the active theme's palette.vars (with
+   hardcoded fallbacks here so the look is correct even if a var is
+   ever missing). */
+[data-theme-style="caspian"] {
+  --csp-font-ui: var(--csp-font-ui-light, 'Inter');
+  --csp-font-display: var(--csp-font-display-light, 'Space Grotesk');
+  --csp-well: var(--csp-well-light, #f8fafc);
+  --csp-muted-bg: var(--csp-muted-bg-light, #f1f5f9);
+  --csp-text-2: var(--csp-text2-light, #1e293b);
+  --csp-text-3: var(--csp-text3-light, #334155);
+  --csp-border-strong: var(--csp-border-strong-light, #cbd5e1);
+  --csp-signal: var(--csp-signal-light, #38bdf8);
+  --csp-vibrant: var(--csp-vibrant-light, #0369a1);
+  --csp-gauge-from: var(--csp-gauge-from-light, #38bdf8);
+  --csp-gauge-to: var(--csp-gauge-to-light, #0284c7);
+  --csp-glow: var(--csp-glow-light, rgba(2, 132, 199, .28));
+  --csp-radius-card: var(--csp-radius-card-light, 1.5rem);
+}
+[data-theme-style="caspian"].dark {
+  --csp-font-ui: var(--csp-font-ui-dark, 'Plus Jakarta Sans');
+  --csp-font-display: var(--csp-font-display-dark, 'Plus Jakarta Sans');
+  --csp-well: var(--csp-well-dark, #060910);
+  --csp-muted-bg: var(--csp-muted-bg-dark, #181b25);
+  --csp-text-2: var(--csp-text2-dark, #cbc3d7);
+  --csp-text-3: var(--csp-text3-dark, #94a3b8);
+  --csp-border-strong: var(--csp-border-strong-dark, #494454);
+  --csp-signal: var(--csp-signal-dark, #06b6d4);
+  --csp-vibrant: var(--csp-vibrant-dark, #7c3aed);
+  --csp-gauge-from: var(--csp-gauge-from-dark, #06b6d4);
+  --csp-gauge-to: var(--csp-gauge-to-dark, #8b5cf6);
+  --csp-glow: var(--csp-glow-dark, rgba(139, 92, 246, .45));
+  --csp-radius-card: var(--csp-radius-card-dark, 1rem);
+}
+
+[data-theme-style="caspian"] body {
+  font-family: var(--csp-font-ui), 'Vazirmatn', ui-sans-serif, system-ui, sans-serif;
+  background: var(--c-bg);
+}
+[data-theme-style="caspian"].dark body {
+  background:
+    radial-gradient(1000px 500px at 90% -10%, color-mix(in srgb, var(--c-primary) 20%, transparent), transparent 60%),
+    radial-gradient(800px 460px at -10% 105%, color-mix(in srgb, var(--c-secondary) 16%, transparent), transparent 55%),
+    var(--c-bg);
+}
+[data-theme-style="caspian"] .aurora { background: none; }
+
+/* headline / KPI type — Space Grotesk (light) or heavier Plus Jakarta Sans (dark) */
+[data-theme-style="caspian"] .csp-display,
+[data-theme-style="caspian"] .csp-headline {
+  font-family: var(--csp-font-display), 'Vazirmatn', ui-sans-serif, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* mono, tabular telemetry readouts — IPs, throughput, percentages, ports */
+[data-theme-style="caspian"] .mono-num {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+/* ---- cards: crisp bordered white (light) / neomorphic frosted glass (dark) ---- */
+[data-theme-style="caspian"] .glass,
+[data-theme-style="caspian"] .card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--csp-radius-card);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, .05), 0 1px 2px -1px rgba(15, 23, 42, .03);
+}
+[data-theme-style="caspian"].dark .glass,
+[data-theme-style="caspian"].dark .card {
+  border-color: var(--c-border);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
+  box-shadow:
+    -6px -6px 14px rgba(255, 255, 255, .02),
+    6px 6px 18px rgba(0, 0, 0, .65),
+    inset 1px 1px 1px rgba(255, 255, 255, .05);
+}
+
+/* ---- buttons ---- */
+[data-theme-style="caspian"] .btn { border-radius: 12px; font-weight: 600; }
+[data-theme-style="caspian"] .btn-primary {
+  background: var(--c-primary);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--c-primary) 30%, transparent);
+}
+[data-theme-style="caspian"] .btn-primary:hover { background: color-mix(in srgb, var(--c-primary) 88%, white 12%); }
+[data-theme-style="caspian"].dark .btn-primary {
+  background: linear-gradient(135deg, var(--c-primary), var(--csp-vibrant));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .25), 0 4px 14px color-mix(in srgb, var(--c-primary) 30%, transparent);
+}
+[data-theme-style="caspian"].dark .btn-primary:hover {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .25), 0 0 20px color-mix(in srgb, var(--c-primary) 50%, transparent);
+}
+[data-theme-style="caspian"] .btn-ghost {
+  background: var(--c-surface);
+  border-color: var(--c-border);
+  color: var(--csp-text-3);
+}
+[data-theme-style="caspian"] .btn-ghost:hover { border-color: var(--csp-signal); }
+[data-theme-style="caspian"].dark .btn-ghost {
+  background: var(--csp-well);
+  box-shadow: -4px -4px 10px rgba(255, 255, 255, .02), 4px 4px 12px rgba(0, 0, 0, .6);
+}
+[data-theme-style="caspian"].dark .btn-ghost:active {
+  box-shadow: inset 3px 3px 6px rgba(0, 0, 0, .8), inset -2px -2px 5px rgba(255, 255, 255, .03);
+}
+
+/* ---- inputs: recessed glow well (dark) / crisp bordered field (light) ---- */
+[data-theme-style="caspian"] .input {
+  background: var(--c-surface);
+  border-color: var(--c-border);
+  border-radius: 12px;
+  color: var(--c-text);
+  transition: border-color .15s, box-shadow .15s;
+}
+[data-theme-style="caspian"] .input::placeholder { color: var(--c-text-muted); }
+[data-theme-style="caspian"] .input:focus {
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-primary) 15%, transparent);
+}
+[data-theme-style="caspian"].dark .input {
+  background: var(--csp-well);
+  border-color: var(--c-border);
+  box-shadow: inset 3px 3px 6px rgba(0, 0, 0, .8), inset -2px -2px 5px rgba(255, 255, 255, .03);
+}
+[data-theme-style="caspian"].dark .input:focus {
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 1px var(--c-primary), 0 0 12px color-mix(in srgb, var(--c-primary) 35%, transparent);
+}
+[data-theme-style="caspian"] .label { color: var(--csp-text-2); font-weight: 600; }
+
+/* ---- neon toggle switch (extends the shared .toggle used app-wide) ---- */
+[data-theme-style="caspian"] .toggle .track { background: var(--c-border); }
+[data-theme-style="caspian"] .toggle input:checked + .track { background: var(--c-primary); }
+[data-theme-style="caspian"].dark .toggle .track {
+  background: var(--csp-well);
+  box-shadow: inset 3px 3px 6px rgba(0, 0, 0, .8), inset -2px -2px 5px rgba(255, 255, 255, .03);
+}
+[data-theme-style="caspian"].dark .toggle .track::before {
+  background: #7d84a0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .5);
+}
+[data-theme-style="caspian"].dark .toggle input:checked + .track {
+  background: linear-gradient(135deg, var(--csp-gauge-from), var(--csp-gauge-to));
+  box-shadow: inset 3px 3px 6px rgba(0, 0, 0, .35);
+}
+[data-theme-style="caspian"].dark .toggle input:checked + .track::before {
+  background: #fff;
+  box-shadow: 0 0 8px 2px color-mix(in srgb, var(--csp-gauge-to) 70%, transparent), 0 2px 6px rgba(0, 0, 0, .4);
+}
+
+/* ---- pill tabs / filter bar (.csp-tabs > .csp-tab.active) — recessed
+   well containing a raised capsule for the active tab ---- */
+[data-theme-style="caspian"] .csp-tabs {
+  display: inline-flex;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--csp-muted-bg);
+  border: 1px solid var(--c-border);
+}
+[data-theme-style="caspian"].dark .csp-tabs {
+  background: var(--csp-well);
+  border-color: transparent;
+  box-shadow: inset 3px 3px 6px rgba(0, 0, 0, .7), inset -2px -2px 5px rgba(255, 255, 255, .02);
+}
+[data-theme-style="caspian"] .csp-tab {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  padding: 6px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-text-muted);
+  transition: background .2s, color .2s, box-shadow .2s;
+}
+[data-theme-style="caspian"] .csp-tab.active {
+  background: var(--c-surface);
+  color: var(--c-primary);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, .12);
+}
+[data-theme-style="caspian"].dark .csp-tab.active {
+  background: var(--csp-muted-bg);
+  color: var(--c-text);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), 0 2px 8px rgba(0, 0, 0, .4);
+}
+
+/* ---- live pulsating status dot (.csp-pulse[.warning|.danger]) ---- */
+[data-theme-style="caspian"] .csp-pulse {
+  position: relative;
+  display: inline-flex;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--c-success);
+  flex: 0 0 auto;
+}
+[data-theme-style="caspian"] .csp-pulse::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid var(--c-success);
+  animation: csp-ripple 2.4s ease-out infinite;
+}
+[data-theme-style="caspian"] .csp-pulse.warning { background: var(--c-warning); }
+[data-theme-style="caspian"] .csp-pulse.warning::after { border-color: var(--c-warning); }
+[data-theme-style="caspian"] .csp-pulse.danger { background: var(--c-danger); }
+[data-theme-style="caspian"] .csp-pulse.danger::after { border-color: var(--c-danger); }
+@keyframes csp-ripple {
+  0% { transform: scale(.4); opacity: .8; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+/* ---- circular SVG progress gauge — the ring is drawn by the <Gauge>
+   React component (components/caspian.jsx); this styles its center
+   label typography only ---- */
+[data-theme-style="caspian"] .csp-gauge-value {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  fill: var(--c-text);
+  direction: ltr;
+}
+[data-theme-style="caspian"] .csp-gauge-label {
+  font-family: var(--csp-font-ui), 'Vazirmatn', sans-serif;
+  fill: var(--c-text-muted);
+}
+
+/* ---- sparkline / area-chart well ---- */
+[data-theme-style="caspian"] .csp-chart-well {
+  background: var(--csp-well);
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+[data-theme-style="caspian"].dark .csp-chart-well {
+  box-shadow: inset 3px 3px 6px rgba(0, 0, 0, .7), inset -2px -2px 5px rgba(255, 255, 255, .02);
+}
