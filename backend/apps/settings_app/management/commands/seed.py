@@ -106,7 +106,7 @@ CASPIAN = {
         "--csp-gauge-from-light": "#38BDF8", "--csp-gauge-from-dark": "#06B6D4",
         "--csp-gauge-to-light": "#0284C7", "--csp-gauge-to-dark": "#8B5CF6",
         "--csp-glow-light": "rgba(2,132,199,0.28)", "--csp-glow-dark": "rgba(139,92,246,0.45)",
-        "--csp-radius-card-light": "1.5rem", "--csp-radius-card-dark": "1rem",
+        "--csp-radius-card-light": "0.75rem", "--csp-radius-card-dark": "1rem",
     },
 }
 

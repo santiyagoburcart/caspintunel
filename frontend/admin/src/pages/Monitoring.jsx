@@ -9,26 +9,26 @@ const REFRESH_MS = 15000
 
 const T = {
   fa: {
-    title: 'مانیتورینگ', autorefresh: '↻ رفرش خودکار (۱۵ث)', run_backup: '↑ اجرای بک‌آپ',
+    title: 'مانیتورینگ', subtitle: 'داشبورد مانیتورینگ عملکرد شبکه و پردازشگر',
+    autorefresh: '↻ رفرش خودکار (۱۵ث)', run_backup: '↑ اجرای بک‌آپ',
     running: 'در حال اجرا…', fetch_fail: 'دریافت اطلاعات مانیتورینگ ناموفق بود.',
     services_active: 'سرویس فعال', of: 'از',
-    cpu: 'پردازنده (CPU)', ram: 'حافظه (RAM)', disk: 'دیسک', bandwidth: 'پهنای باند',
-    swap: 'سواپ (SWAP)',
+    cpu: 'CPU', ram: 'RAM', disk: 'STORAGE', swap: 'SWAP',
     cores: 'هسته', ghz: 'گیگاهرتز', gb: 'گیگابایت', gb_short: 'گیگ',
     avg: 'میانگین', peak: 'اوج', free: 'آزاد', attention: 'توجه', healthy: 'سالم', pct: '٪',
     iface: 'اینترفیس', sent: 'ارسال', recv: 'دریافت',
     svc_status: 'وضعیت سرویس‌ها', up: 'فعال', down: 'قطع', no_data: 'بدون داده', filter_all: 'همه',
-    net_traffic: 'ترافیک شبکه', total_iface: 'مجموع اینترفیس', collecting: 'در حال جمع‌آوری داده…',
+    total_iface: 'مجموع اینترفیس', collecting: 'در حال جمع‌آوری داده…',
     sent_label: 'ارسال‌شده', recv_label: 'دریافت‌شده', sysver: 'نسخه سیستم',
     overall_speed: 'سرعت کلی', avg_window: 'میانگین بازه',
     conn_stats: 'وضعیت اتصالات', open_sockets: 'سوکت باز', tcp: 'TCP', udp: 'UDP',
     recent_backups: 'بک‌آپ‌های اخیر', no_backups: 'هنوز بک‌آپی ثبت نشده است.',
     run_backup_manual: '↑ اجرای بک‌آپ دستی', kb: 'کیلوبایت',
-    ip_addresses: 'آدرس‌های IP', public_ip: 'IP عمومی', local_ip: 'IP لوکال',
+    ip_addresses: 'IP ADDRESSES', public_ip: 'IP عمومی', local_ip: 'IP لوکال',
     docker_net: 'شبکه Docker',
     show: 'نمایش', hide: 'پنهان',
-    uptime: 'مدت کارکرد', uptime_service: 'سرویس', uptime_os: 'سیستم‌عامل',
-    panel_process: 'پردازش پنل', ram_usage: 'مصرف RAM', threads: 'ریسه‌ها',
+    uptime: 'UPTIME', uptime_service: 'سرویس', uptime_os: 'سیستم‌عامل',
+    panel_process: 'PANEL', ram_usage: 'مصرف RAM', threads: 'ریسه‌ها',
     d_u: 'روز', h_u: 'ساعت', m_u: 'دقیقه',
     bk_ok: 'موفق', bk_failed: 'ناموفق', bk_partial: 'ناقص', bk_running: 'در حال اجرا',
     svc_site: 'سایت (Web)', svc_mysql: 'دیتابیس (MySQL)', svc_redis: 'ردیس (Redis)',
@@ -39,26 +39,26 @@ const T = {
     panel_nodes: 'نودها', panel_cpu: 'CPU', panel_ram: 'RAM', panel_no_stats: 'آمار در دسترس نیست',
   },
   en: {
-    title: 'Monitoring', autorefresh: '↻ Auto-refresh (15s)', run_backup: '↑ Run backup',
+    title: 'Monitoring', subtitle: 'Network & server performance monitoring dashboard',
+    autorefresh: '↻ Auto-refresh (15s)', run_backup: '↑ Run backup',
     running: 'running…', fetch_fail: 'Failed to load monitoring data.',
     services_active: 'services up', of: 'of',
-    cpu: 'Processor (CPU)', ram: 'Memory (RAM)', disk: 'Disk', bandwidth: 'Bandwidth',
-    swap: 'Swap (SWAP)',
+    cpu: 'CPU', ram: 'RAM', disk: 'STORAGE', swap: 'SWAP',
     cores: 'cores', ghz: 'GHz', gb: 'GB', gb_short: 'GB',
     avg: 'avg', peak: 'peak', free: 'free', attention: 'attention', healthy: 'healthy', pct: '%',
     iface: 'interface', sent: 'sent', recv: 'received',
     svc_status: 'Service status', up: 'up', down: 'down', no_data: 'no data', filter_all: 'All',
-    net_traffic: 'Network traffic', total_iface: 'total, interface', collecting: 'collecting data…',
+    total_iface: 'total, interface', collecting: 'collecting data…',
     sent_label: 'Sent', recv_label: 'Received', sysver: 'System version',
     overall_speed: 'Overall Speed', avg_window: 'Avg over window',
     conn_stats: 'Connection Stats', open_sockets: 'open sockets', tcp: 'TCP', udp: 'UDP',
     recent_backups: 'Recent backups', no_backups: 'No backups recorded yet.',
     run_backup_manual: '↑ Run manual backup', kb: 'KB',
-    ip_addresses: 'IP addresses', public_ip: 'Public IP', local_ip: 'Local IP',
+    ip_addresses: 'IP ADDRESSES', public_ip: 'Public IP', local_ip: 'Local IP',
     docker_net: 'Docker network',
     show: 'Show', hide: 'Hide',
-    uptime: 'Uptime', uptime_service: 'Service', uptime_os: 'OS',
-    panel_process: 'Panel process', ram_usage: 'RAM usage', threads: 'Threads',
+    uptime: 'UPTIME', uptime_service: 'Service', uptime_os: 'OS',
+    panel_process: 'PANEL', ram_usage: 'RAM usage', threads: 'Threads',
     d_u: 'd', h_u: 'h', m_u: 'm',
     bk_ok: 'success', bk_failed: 'failed', bk_partial: 'partial', bk_running: 'running',
     svc_site: 'Website (Web)', svc_mysql: 'Database (MySQL)', svc_redis: 'Redis',
@@ -88,14 +88,13 @@ function fmtDur(sec, m, d) {
   return `${d(mm)}${m.m_u}`
 }
 
-// Two overlaid series (TCP/UDP) sharing one scale (600x150 viewBox) — the
-// shared <Sparkline> draws a single series, so the dual-colour connection
-// chart keeps its own small helper here.
-function dualPaths(series, keyA, keyB) {
+// Two overlaid series (TCP/UDP) sharing one scale — the shared <Sparkline>
+// draws a single series, so the dual-colour connection chart (+ dashed
+// grid guides, matching the reference) keeps its own small helper here.
+function dualPaths(series, keyA, keyB, W, H) {
   const a = (series || []).map((s) => s[keyA] || 0)
   const b = (series || []).map((s) => s[keyB] || 0)
   if (a.length < 2) return { a: { line: '', area: '' }, b: { line: '', area: '' } }
-  const W = 600; const H = 150
   const max = Math.max(...a, ...b, 1)
   const step = W / (a.length - 1)
   const mk = (pts) => {
@@ -104,6 +103,13 @@ function dualPaths(series, keyA, keyB) {
     return { line, area: `${line} L${W} ${H} L0 ${H} Z` }
   }
   return { a: mk(a), b: mk(b) }
+}
+
+function GridLines({ n, w, h }) {
+  return Array.from({ length: n }).map((_, i) => {
+    const y = (h / (n + 1)) * (i + 1)
+    return <line key={i} x1="0" y1={y} x2={w} y2={y} stroke="var(--c-text-muted)" strokeOpacity="0.25" strokeWidth="1" strokeDasharray="4 4" />
+  })
 }
 
 export default function Monitoring() {
@@ -149,7 +155,7 @@ export default function Monitoring() {
     () => (data?.network?.series || []).map((s) => (s.up || 0) + (s.down || 0)),
     [data?.network?.series],
   )
-  const cg = useMemo(() => dualPaths(data?.connections?.series, 'tcp', 'udp'), [data?.connections?.series])
+  const cg = useMemo(() => dualPaths(data?.connections?.series, 'tcp', 'udp', 400, 150), [data?.connections?.series])
   const netAvg = useMemo(() => {
     const s = data?.network?.series || []
     if (!s.length) return { up: 0, down: 0 }
@@ -180,7 +186,7 @@ export default function Monitoring() {
     svcFilter === 'all' ? true : svcFilter === 'up' ? x.is_up === true : x.is_up === false
   ))
   const ipRow = (label, value) => (
-    <div className="kv">
+    <div className="ip-row" key={label}>
       <span className="k">{label}</span>
       <span
         className={'v mono-num' + (showIp ? '' : ' blurred')}
@@ -196,12 +202,22 @@ export default function Monitoring() {
     <div className="mon">
       <style>{CSS}</style>
 
+      {/* ---- header: status pill + brand block (left) · toolbar (right) ---- */}
       <div className="topbar card">
-        <h1 className="csp-headline">{m.title}</h1>
-        <span className="status-pill">
-          <PulseDot status={data.overall === 'ok' ? 'success' : 'warning'} />
-          {d(data.up_count)} {m.of} {d(data.total_count)} {m.services_active}
-        </span>
+        <div className="topbar-left">
+          <span className="status-pill">
+            <PulseDot status={data.overall === 'ok' ? 'success' : 'warning'} />
+            <span className="mono-num">{d(data.up_count)}/{d(data.total_count)}</span> {m.services_active}
+          </span>
+          <span className="divider" />
+          <div className="brand">
+            <span className="brand-icon">⚡</span>
+            <div className="brand-text">
+              <h1>{m.title}</h1>
+              <span className="brand-sub">{m.subtitle}</span>
+            </div>
+          </div>
+        </div>
         <div className="actions">
           <span className="btn">{m.autorefresh}</span>
           <button className="btn primary" onClick={runBackup} disabled={busy}>
@@ -213,46 +229,43 @@ export default function Monitoring() {
       {/* ---- 4 resource cards: CPU / RAM / SWAP / Storage ---- */}
       <div className="grid r4">
         <ResCard
-          icon="⚡" label={m.cpu} big={d(rs.cpu.percent) + m.pct}
-          sub={`${d(rs.cpu.cores)} ${m.cores} · ${d(rs.cpu.freq_ghz ?? '—')} ${m.ghz}`}
-          color="var(--csp-gauge-to)" series={rs.cpu.series}
-          m1={`${m.avg} ${d(rs.cpu.avg)}${m.pct}`} m2={`${m.peak} ${d(rs.cpu.peak)}${m.pct}`}
+          icon="⚡" label={m.cpu} detail={`${d(rs.cpu.cores)} ${m.cores} · ${d(rs.cpu.freq_ghz ?? '—')} ${m.ghz}`}
+          big={d(rs.cpu.percent)} color="var(--csp-gauge-to)" series={rs.cpu.series}
+          l1={m.avg} v1={d(rs.cpu.avg) + m.pct} l2={m.peak} v2={d(rs.cpu.peak) + m.pct}
         />
         <ResCard
-          icon="▦" label={m.ram} big={d(rs.ram.percent) + m.pct}
-          sub={`${d(rs.ram.used_gb)} / ${d(rs.ram.total_gb)} ${m.gb}`}
-          color="var(--csp-signal)" series={rs.ram.series}
-          m1={`${m.avg} ${d(rs.ram.avg)}${m.pct}`} m2={`${m.peak} ${d(rs.ram.peak)}${m.pct}`}
+          icon="▦" label={m.ram} detail={`${d(rs.ram.used_gb)}/${d(rs.ram.total_gb)} ${m.gb}`}
+          big={d(rs.ram.percent)} color="var(--csp-signal)" series={rs.ram.series}
+          l1={m.avg} v1={d(rs.ram.avg) + m.pct} l2={m.peak} v2={d(rs.ram.peak) + m.pct}
         />
         <ResCard
-          icon="⇄" label={m.swap} big={d(rs.swap.percent) + m.pct}
-          sub={`${d(rs.swap.used_gb)} / ${d(rs.swap.total_gb)} ${m.gb}`}
-          color="var(--c-text-muted)" series={rs.swap.series}
-          m1={`${m.avg} ${d(rs.swap.avg)}${m.pct}`} m2={`${m.peak} ${d(rs.swap.peak)}${m.pct}`}
+          icon="⇄" label={m.swap} detail={`${d(rs.swap.used_gb)}/${d(rs.swap.total_gb)} ${m.gb}`}
+          big={d(rs.swap.percent)} color="var(--c-text-muted)" series={rs.swap.series}
+          l1={m.avg} v1={d(rs.swap.avg) + m.pct} l2={m.peak} v2={d(rs.swap.peak) + m.pct}
         />
         <ResCard
-          icon="🖴" label={m.disk} big={d(rs.disk.percent) + m.pct}
-          sub={`${d(rs.disk.used_gb)} / ${d(rs.disk.total_gb)} ${m.gb}`}
-          color="var(--csp-gauge-from)" series={rs.disk.series}
-          m1={`${m.free} ${d(rs.disk.free_gb)} ${m.gb_short}`}
-          m2={disHigh ? m.attention : m.healthy} m2warn={disHigh}
+          icon="🖴" label={m.disk} detail={`${d(rs.disk.used_gb)}/${d(rs.disk.total_gb)} ${m.gb}`}
+          big={d(rs.disk.percent)} color="var(--csp-gauge-from)" series={rs.disk.series}
+          l1={m.free} v1={`${d(rs.disk.free_gb)} ${m.gb_short}`} l2={m.avg} v2={d(rs.disk.avg) + m.pct} warn2={disHigh}
         />
       </div>
 
-      {/* ---- overall speed (network traffic) + connection stats ---- */}
+      {/* ---- overall speed (2fr) + connection stats (1fr) ---- */}
       <div className="grid r2w">
         <div className="card">
           <div className="speed-head">
             <div>
               <div className="title">{m.overall_speed}</div>
-              <div className="sub">{m.total_iface} {net.iface}</div>
+              <div className="sub mono-num">{m.total_iface} {net.iface}</div>
             </div>
             <div className="speed-pills">
               <span>↑ {B(net.up_bps)}</span>
               <span>↓ {B(net.down_bps)}</span>
             </div>
           </div>
-          <Sparkline series={netCombined} width={600} height={150} color="var(--csp-gauge-to)" />
+          <div className="chart-area big-chart">
+            <Sparkline series={netCombined} width={900} height={210} color="var(--csp-gauge-to)" gridLines={4} />
+          </div>
           <div className="speed-foot">
             <div><span>{m.sent_label}</span><b className="mono-num">{d(gb(net.sent_total))} GB</b></div>
             <div><span>{m.recv_label}</span><b className="mono-num">{d(gb(net.recv_total))} GB</b></div>
@@ -262,28 +275,27 @@ export default function Monitoring() {
         </div>
 
         <div className="card">
-          <div className="speed-head">
-            <div>
-              <div className="title-row" style={{ marginBottom: 0 }}>
-                <span className="title" style={{ marginBottom: 0 }}>{m.conn_stats}</span>
-                <PulseDot status="success" />
-              </div>
-              <div className="big mono-num" style={{ fontSize: 30, marginTop: 6 }}>{d(cn.total)}</div>
-              <div className="sub">{m.open_sockets}</div>
-            </div>
+          <div className="conn-head">
+            <span className="title">{m.conn_stats}</span>
+            <PulseDot status="success" />
           </div>
-          <div className="speed-pills" style={{ margin: '10px 0' }}>
-            <span style={{ color: 'var(--csp-gauge-to)' }}>● {m.tcp} <b className="mono-num">{d(cn.tcp)}</b></span>
-            <span style={{ color: 'var(--c-text-muted)' }}>● {m.udp} <b className="mono-num">{d(cn.udp)}</b></span>
+          <div className="conn-big">
+            <span className="big mono-num">{d(cn.total)}</span>
+            <span className="sub">{m.open_sockets}</span>
           </div>
-          <div className="csp-chart-well">
-            <svg className="speed-graph" viewBox="0 0 600 150" preserveAspectRatio="none">
+          <div className="legend">
+            <span><i className="dot" style={{ background: 'var(--csp-gauge-to)' }} />{m.tcp} <b className="mono-num">{d(cn.tcp)}</b></span>
+            <span><i className="dot" style={{ background: 'var(--c-text-muted)' }} />{m.udp} <b className="mono-num">{d(cn.udp)}</b></span>
+          </div>
+          <div className="chart-area">
+            <svg width="100%" height="150" viewBox="0 0 400 150" preserveAspectRatio="none" style={{ display: 'block' }}>
               <defs>
                 <linearGradient id="cgA" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0" stopColor="var(--csp-gauge-to)" stopOpacity="0.30" />
+                  <stop offset="0" stopColor="var(--csp-gauge-to)" stopOpacity="0.35" />
                   <stop offset="1" stopColor="var(--csp-gauge-to)" stopOpacity="0" />
                 </linearGradient>
               </defs>
+              <GridLines n={3} w={400} h={150} />
               {cg.a.area && <path d={cg.a.area} fill="url(#cgA)" />}
               {cg.b.line && (
                 <path d={cg.b.line} fill="none" stroke="var(--c-text-muted)" strokeWidth="1.6"
@@ -293,7 +305,7 @@ export default function Monitoring() {
                 <path d={cg.a.line} fill="none" stroke="var(--csp-gauge-to)" strokeWidth="2.2"
                   strokeLinejoin="round" strokeLinecap="round" />
               )}
-              {!cg.a.line && <text x="300" y="80" textAnchor="middle" fill="var(--c-text-muted)" fontSize="13">{m.collecting}</text>}
+              {!cg.a.line && <text x="200" y="80" textAnchor="middle" fill="var(--c-text-muted)" fontSize="13">{m.collecting}</text>}
             </svg>
           </div>
         </div>
@@ -394,58 +406,89 @@ export default function Monitoring() {
         </div>
       </div>
 
-      {/* ---- uptime / panel process / IP addresses ---- */}
-      <div className="grid r3">
-        <div className="card">
-          <div className="title">{m.uptime}</div>
-          <div className="kv"><span className="k">{m.uptime_service}</span><span className="v mono-num">{fmtDur(pr.service_uptime_s, m, d)}</span></div>
-          <div className="kv"><span className="k">{m.uptime_os}</span><span className="v mono-num">{fmtDur(pr.os_uptime_s, m, d)}</span></div>
-        </div>
+      {/* ---- bottom strip: ONE card, 3 segments divided by a border
+              (Uptime · Panel · IP addresses) — matches the reference's
+              single BottomSummaryRow section, not 3 separate cards ---- */}
+      <div className="grid r1">
+        <div className="card strip">
+          <div className="strip-grid">
+            <div className="strip-seg">
+              <div className="seg-head"><span className="ic">🕐</span><span className="label-mono">{m.uptime}</span></div>
+              <div className="seg-cols">
+                <div><span className="seg-label">{m.uptime_service}</span><span className="seg-value mono-num">{fmtDur(pr.service_uptime_s, m, d)}</span></div>
+                <div><span className="seg-label">{m.uptime_os}</span><span className="seg-value mono-num accent">{fmtDur(pr.os_uptime_s, m, d)}</span></div>
+              </div>
+            </div>
 
-        <div className="card">
-          <div className="title">{m.panel_process}</div>
-          <div className="kv"><span className="k">{m.ram_usage}</span><span className="v mono-num">{pr.ram_mb != null ? `${d(pr.ram_mb)} MB` : '—'}</span></div>
-          <div className="kv"><span className="k">{m.threads}</span><span className="v mono-num">{pr.threads != null ? d(pr.threads) : '—'}</span></div>
-        </div>
+            <div className="strip-seg">
+              <div className="seg-head"><span className="ic">▦</span><span className="label-mono">{m.panel_process}</span></div>
+              <div className="seg-cols">
+                <div><span className="seg-label">{m.ram_usage}</span><span className="seg-value mono-num">{pr.ram_mb != null ? `${d(pr.ram_mb)} MB` : '—'}</span></div>
+                <div><span className="seg-label">{m.threads}</span><span className="seg-value mono-num accent">{pr.threads != null ? d(pr.threads) : '—'}</span></div>
+              </div>
+            </div>
 
-        <div className="card">
-          <div className="title-row">
-            <div className="title" style={{ marginBottom: 0 }}>{m.ip_addresses}</div>
-            <button type="button" className="eye-btn" onClick={() => setShowIp((s) => !s)}>
-              {showIp ? '🙈' : '👁'} {showIp ? m.hide : m.show}
-            </button>
+            <div className="strip-seg ip-seg">
+              <div className="ip-seg-inner">
+                <div className="ip-seg-content">
+                  <div className="seg-head"><span className="ic">🌐</span><span className="label-mono">{m.ip_addresses}</span></div>
+                  <div className="ip-list">
+                    {ipRow(m.public_ip, srv.public_ip)}
+                    {ipRow(m.local_ip, (srv.local_ips || []).join(lang === 'fa' ? '، ' : ', '))}
+                    {ipRow(m.docker_net, (srv.docker_ips || []).join(lang === 'fa' ? '، ' : ', '))}
+                  </div>
+                </div>
+                <button type="button" className="eye-btn" onClick={() => setShowIp((s) => !s)} title={showIp ? m.hide : m.show} aria-label={showIp ? m.hide : m.show}>
+                  {showIp ? '🙈' : '👁'}
+                </button>
+              </div>
+            </div>
           </div>
-          {ipRow(m.public_ip, srv.public_ip)}
-          {ipRow(m.local_ip, (srv.local_ips || []).join(lang === 'fa' ? '، ' : ', '))}
-          {ipRow(m.docker_net, (srv.docker_ips || []).join(lang === 'fa' ? '، ' : ', '))}
         </div>
       </div>
     </div>
   )
 }
 
-function ResCard({ icon, label, big, sub, color, series, m1, m2, m2warn }) {
+function ResCard({ icon, label, detail, big, color, series, l1, v1, l2, v2, warn2 }) {
   return (
-    <div className="card">
-      <span className="line" />
-      <div className="card-head"><span className="ic">{icon}</span><span>{label}</span></div>
-      <div className="big mono-num">{big}</div>
-      <div className="sub mono-num">{sub}</div>
-      <div className="meta">
-        <span>{m1}</span>
-        <span style={m2warn ? { color: 'var(--c-warning)' } : undefined}>{m2}</span>
+    <div className="card rescard">
+      <div className="card-head">
+        <div className="card-head-left"><span className="ic">{icon}</span><span className="label-mono">{label}</span></div>
+        <span className="head-detail mono-num">{detail}</span>
       </div>
-      <Sparkline series={series} color={color} />
+      <div className="big-row">
+        <span className="big mono-num">{big}</span>
+        <span className="big-unit">%</span>
+      </div>
+      <div className="card-foot">
+        <div className="avgpeak">
+          <span>{l1} <b>{v1}</b></span>
+          <span>{l2} <b className={warn2 ? 'warn' : 'accent'}>{v2}</b></span>
+        </div>
+        <div className="spark-slot">
+          <Sparkline series={series} color={color} width={200} height={40} />
+        </div>
+      </div>
     </div>
   )
 }
 
 const CSS = `
 .mon { max-width: 1400px; margin: 0 auto; }
-.mon .topbar { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:18px; padding:14px 18px; }
-.mon .topbar h1 { font-size:20px; font-weight:800; margin:0; }
-.mon .status-pill { display:inline-flex; align-items:center; gap:8px; font-size:13px;
-  padding:6px 12px; border-radius:999px; background:var(--csp-muted-bg); color:var(--c-text-muted); }
+
+/* ---- header: brand block + status pill (start) · toolbar (end) ---- */
+.mon .topbar { display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:18px; padding:14px 18px; }
+.mon .topbar-left { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+.mon .divider { width:1px; height:20px; background:var(--c-border); }
+.mon .brand { display:flex; align-items:center; gap:10px; }
+.mon .brand-icon { width:32px; height:32px; border-radius:9px; display:grid; place-items:center; font-size:15px; flex:0 0 auto;
+  background:linear-gradient(135deg,var(--csp-gauge-from),var(--csp-gauge-to)); color:#fff; }
+.mon .brand-text { display:flex; flex-direction:column; line-height:1.3; }
+.mon .brand-text h1 { font-size:15px; font-weight:800; margin:0; }
+.mon .brand-sub { font-size:11px; color:var(--c-text-muted); }
+.mon .status-pill { display:inline-flex; align-items:center; gap:8px; font-size:12.5px;
+  padding:6px 12px; border-radius:999px; background:var(--csp-muted-bg); color:var(--c-text-muted); white-space:nowrap; }
 .mon .actions { margin-inline-start:auto; display:flex; gap:8px; flex-wrap:wrap; }
 .mon .btn { display:inline-flex; align-items:center; gap:6px; font-size:13px; cursor:pointer;
   padding:8px 14px; border-radius:12px; background:var(--csp-muted-bg); border:1px solid var(--c-border);
@@ -456,11 +499,32 @@ const CSS = `
 
 .mon .grid { display:grid; gap:16px; margin-bottom:16px; }
 .mon .grid.r4 { grid-template-columns:repeat(4,minmax(0,1fr)); }
-.mon .grid.r3 { grid-template-columns:repeat(3,minmax(0,1fr)); }
-.mon .grid.r2w { grid-template-columns:1.7fr 1fr; }
+.mon .grid.r2w { grid-template-columns:2fr 1fr; }
 .mon .grid.r1 { grid-template-columns:1fr; }
-@media (max-width:1000px){ .mon .grid.r4{grid-template-columns:repeat(2,minmax(0,1fr));} .mon .grid.r2w{grid-template-columns:1fr;} .mon .grid.r3{grid-template-columns:1fr;} }
+@media (max-width:1000px){ .mon .grid.r4{grid-template-columns:repeat(2,minmax(0,1fr));} .mon .grid.r2w{grid-template-columns:1fr;} }
 @media (max-width:560px){ .mon .grid.r4{grid-template-columns:1fr;} }
+
+.mon .card { position:relative; overflow:hidden; padding:18px; min-width:0; }
+
+/* ---- resource cards: header row (icon+label / detail) · big value ·
+        divider · avg-peak row · sparkline pinned to the bottom edge ---- */
+.mon .rescard { display:flex; flex-direction:column; justify-content:space-between; }
+.mon .card-head { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.mon .card-head-left { display:flex; align-items:center; gap:8px; color:var(--csp-gauge-to); font-weight:700; }
+.mon .label-mono { font-family:'JetBrains Mono',ui-monospace,monospace; font-size:12.5px; text-transform:uppercase; letter-spacing:.04em; }
+.mon .head-detail { font-size:11px; color:var(--c-text-muted); white-space:nowrap; }
+.mon .ic { width:22px; height:22px; display:grid; place-items:center; font-size:13px; flex:0 0 auto; }
+.mon .big-row { display:flex; align-items:baseline; gap:4px; margin-top:8px; }
+.mon .big-row .big { font-size:32px; font-weight:800; line-height:1; }
+.mon .big-row .big-unit { font-size:16px; font-weight:600; color:var(--c-text-muted); }
+.mon .card-foot { margin-top:16px; padding-top:12px; border-top:1px solid var(--c-border); }
+.mon .avgpeak { display:flex; justify-content:space-between; font-size:11px; color:var(--c-text-muted); margin-bottom:8px;
+  text-transform:uppercase; letter-spacing:.02em; }
+.mon .avgpeak b { color:var(--c-text); text-transform:none; font-variant-numeric:tabular-nums; }
+.mon .avgpeak b.accent { color:var(--csp-gauge-to); }
+.mon .avgpeak b.warn { color:var(--c-warning); }
+.mon .spark-slot { height:40px; margin:0 -18px -18px; }
+.mon .spark-slot svg { display:block; }
 
 .mon .svc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); column-gap:20px; }
 .mon .svc-grid .svc { border-bottom:1px solid var(--c-border); }
@@ -476,22 +540,9 @@ const CSS = `
 .mon .panel-stats { display:flex; flex-direction:column; gap:3px; margin-top:8px; font-size:12px; color:var(--c-text-muted); }
 .mon .panel-stats b { color:var(--c-text); font-variant-numeric:tabular-nums; }
 
-.mon .card { position:relative; overflow:hidden; padding:18px; min-width:0; }
-.mon .card .line { content:""; position:absolute; inset:0 0 auto 0; height:2px;
-  background:linear-gradient(90deg,var(--csp-gauge-from),var(--csp-gauge-to)); opacity:.7; }
-.mon .card-head { display:flex; align-items:center; gap:10px; color:var(--c-text-muted); font-size:13px; margin-bottom:10px;
-  text-transform:uppercase; letter-spacing:.03em; font-weight:600; }
-.mon .ic { width:26px; height:26px; display:grid; place-items:center; font-size:14px; flex:0 0 auto;
-  border-radius:9px; background:var(--csp-muted-bg); }
-.mon .big { font-size:32px; font-weight:800; line-height:1.05; word-break:break-word; }
-.mon .sub { color:var(--c-text-muted); font-size:12px; margin-top:4px; }
-.mon .meta { display:flex; justify-content:space-between; gap:8px; font-size:11.5px; color:var(--c-text-muted); margin-top:12px; }
-.mon .meta b { color:var(--c-text); font-variant-numeric:tabular-nums; }
-
-.mon .title { font-size:14px; font-weight:700; margin-bottom:14px; text-transform:uppercase; letter-spacing:.03em; }
+.mon .title { font-size:13px; font-weight:700; margin-bottom:14px; text-transform:uppercase; letter-spacing:.05em;
+  font-family:'JetBrains Mono',ui-monospace,monospace; }
 .mon .title-row { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
-.mon .eye-btn { display:inline-flex; align-items:center; gap:5px; font-size:11.5px; cursor:pointer;
-  padding:4px 10px; border-radius:999px; background:var(--csp-muted-bg); border:0; color:var(--c-text); white-space:nowrap; }
 .mon .svc { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:10px;
   padding:9px 0; border-bottom:1px solid var(--c-border); font-size:13.5px; }
 .mon .svc:last-of-type { border-bottom:0; }
@@ -502,16 +553,26 @@ const CSS = `
 .mon .badge.na { background:var(--c-border); color:var(--c-text-muted); }
 .mon .svc .lat { color:var(--c-text-muted); font-size:12px; white-space:nowrap; }
 
-.mon .speed-head { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:10px; flex-wrap:wrap; }
+/* ---- overall speed / connection stats ---- */
+.mon .speed-head { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap; }
 .mon .speed-pills { display:flex; gap:8px; flex-wrap:wrap; }
 .mon .speed-pills span { font-size:12px; padding:4px 10px; border-radius:999px; white-space:nowrap;
   background:var(--csp-muted-bg); color:var(--c-text); font-variant-numeric:tabular-nums; }
-.mon .speed-graph { width:100%; height:150px; display:block; }
+.mon .chart-area { margin:14px -6px 0; }
+.mon .chart-area.big-chart { height:210px; }
 .mon .speed-foot { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin-top:14px; padding-top:14px; border-top:1px solid var(--c-border); }
 .mon .speed-foot div { display:flex; flex-direction:column; gap:3px; min-width:0; }
 .mon .speed-foot span { font-size:11px; color:var(--c-text-muted); text-transform:uppercase; letter-spacing:.03em; }
 .mon .speed-foot b { font-size:14px; font-weight:700; word-break:break-word; }
 @media (max-width:560px){ .mon .speed-foot{grid-template-columns:repeat(2,minmax(0,1fr));} }
+
+.mon .conn-head { display:flex; align-items:center; justify-content:space-between; }
+.mon .conn-big { display:flex; align-items:baseline; gap:8px; margin-top:16px; }
+.mon .conn-big .big { font-size:34px; font-weight:800; }
+.mon .conn-big .sub { font-size:13px; color:var(--c-text-muted); }
+.mon .legend { display:flex; gap:16px; margin-top:10px; font-size:12px; color:var(--c-text-muted); }
+.mon .legend .dot { width:10px; height:3px; border-radius:2px; display:inline-block; margin-inline-end:6px; }
+.mon .legend b { color:var(--c-text); font-weight:700; }
 
 .mon .bk { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:10px;
   padding:9px 0; border-bottom:1px solid var(--c-border); font-size:13px; }
@@ -521,10 +582,31 @@ const CSS = `
 .mon .bk .fn { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .mon .bk .dt { color:var(--c-text-muted); font-size:11.5px; white-space:nowrap; text-align:end; }
 
-.mon .kv { display:flex; justify-content:space-between; align-items:center; gap:10px;
-  padding:10px 0; border-bottom:1px solid var(--c-border); font-size:13px; }
-.mon .kv:last-of-type { border-bottom:0; }
-.mon .kv .k { color:var(--c-text-muted); flex:0 0 auto; }
-.mon .kv .v { font-weight:600; text-align:end; word-break:break-word; cursor:pointer; transition:filter .25s; }
-.mon .kv .v.blurred { filter:blur(5px); user-select:none; }
+/* ---- bottom strip: one card, 3 segments separated by a divider ---- */
+.mon .strip-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:24px; align-items:center; }
+.mon .strip-seg { padding-inline-end:24px; border-inline-end:1px solid var(--c-border); }
+.mon .strip-seg:last-child { border-inline-end:0; padding-inline-end:0; }
+.mon .seg-head { display:flex; align-items:center; gap:8px; color:var(--c-text-muted); margin-bottom:14px; }
+.mon .seg-cols { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.mon .seg-cols > div { display:flex; flex-direction:column; gap:4px; min-width:0; }
+.mon .seg-label { font-size:11px; color:var(--c-text-muted); text-transform:uppercase; letter-spacing:.03em; }
+.mon .seg-value { font-size:17px; font-weight:800; }
+.mon .seg-value.accent { color:var(--csp-gauge-to); }
+/* IP segment: reference keeps the eye button beside the WHOLE label+list
+   block (vertically centered), not inline with just the label */
+.mon .ip-seg-inner { display:flex; align-items:center; justify-content:space-between; gap:14px; }
+.mon .ip-seg-content { min-width:0; flex:1; }
+.mon .ip-seg-content .seg-head { margin-bottom:10px; }
+.mon .eye-btn { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; cursor:pointer;
+  flex:0 0 auto; border-radius:999px; background:var(--csp-muted-bg); border:0; color:var(--c-text); font-size:14px; }
+.mon .ip-list { display:flex; flex-direction:column; gap:8px; }
+.mon .ip-row { display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:12.5px; }
+.mon .ip-row .k { color:var(--c-text-muted); flex:0 0 auto; }
+.mon .ip-row .v { font-weight:600; text-align:end; word-break:break-word; cursor:pointer; transition:filter .25s; }
+.mon .ip-row .v.blurred { filter:blur(5px); user-select:none; }
+@media (max-width:800px){
+  .mon .strip-grid { grid-template-columns:1fr; gap:18px; }
+  .mon .strip-seg { padding-inline-end:0; border-inline-end:0; padding-bottom:18px; border-bottom:1px solid var(--c-border); }
+  .mon .strip-seg:last-child { padding-bottom:0; border-bottom:0; }
+}
 `

@@ -8,13 +8,16 @@
  * These are building blocks for later phases to compose real pages from;
  * this phase only ships the components themselves, not any page wiring.
  */
+import { useRef } from 'react'
+
+let idSeq = 0
 
 /** Circular SVG progress gauge (double-ring: track + animated value arc). */
 export function Gauge({ percent, size = 96, stroke = 10, label, valueText, color }) {
   const pct = Math.max(0, Math.min(100, percent ?? 0))
   const r = (size - stroke) / 2
   const c = 2 * Math.PI * r
-  const gid = 'csp-gauge-' + Math.round(r) + '-' + Math.round(pct)
+  const gid = useRef('csp-gauge-' + (++idSeq)).current
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="csp-gauge">
       <defs>
@@ -78,25 +81,38 @@ function sparkPath(vals, w, h, pad = 3) {
   return { line, area: `${line} L${w} ${h} L0 ${h} Z` }
 }
 
-/** Sparkline / area chart, drawn inside the recessed "chart well" surface. */
-export function Sparkline({ series, width = 240, height = 64, color }) {
-  const gid = 'csp-spark-' + width + '-' + height
+/**
+ * Sparkline / area chart. By default it's a bare SVG block (matches the
+ * Stitch reference: card sparklines and the big traffic charts sit directly
+ * on the card background, pinned to the bottom edge, no bordered box).
+ * Pass `well` to drop it into the recessed "chart well" surface instead
+ * (useful outside a card, e.g. a standalone chart tile), and `gridLines`
+ * to draw N evenly-spaced dashed horizontal guides behind the curve.
+ */
+export function Sparkline({ series, width = 240, height = 64, color, well = false, gridLines = 0 }) {
+  const gid = useRef('csp-spark-' + (++idSeq)).current
   const { line, area } = sparkPath(series, width, height)
-  return (
-    <div className="csp-chart-well" style={{ padding: 8 }}>
-      <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
-        <defs>
-          <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor={color || 'var(--csp-gauge-to)'} stopOpacity="0.35" />
-            <stop offset="1" stopColor={color || 'var(--csp-gauge-to)'} stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        {area && <path d={area} fill={`url(#${gid})`} />}
-        {line && (
-          <path d={line} fill="none" stroke={color || 'var(--csp-gauge-to)'} strokeWidth="2"
-            strokeLinejoin="round" strokeLinecap="round" />
-        )}
-      </svg>
-    </div>
+  const chart = (
+    <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" style={{ display: 'block' }}>
+      <defs>
+        <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={color || 'var(--csp-gauge-to)'} stopOpacity="0.4" />
+          <stop offset="1" stopColor={color || 'var(--csp-gauge-to)'} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      {gridLines > 0 && Array.from({ length: gridLines }).map((_, i) => {
+        const y = (height / (gridLines + 1)) * (i + 1)
+        return (
+          <line key={i} x1="0" y1={y} x2={width} y2={y} stroke="var(--c-text-muted)"
+            strokeOpacity="0.25" strokeWidth="1" strokeDasharray="4 4" />
+        )
+      })}
+      {area && <path d={area} fill={`url(#${gid})`} />}
+      {line && (
+        <path d={line} fill="none" stroke={color || 'var(--csp-gauge-to)'} strokeWidth="2"
+          strokeLinejoin="round" strokeLinecap="round" />
+      )}
+    </svg>
   )
+  return well ? <div className="csp-chart-well" style={{ padding: 8 }}>{chart}</div> : chart
 }

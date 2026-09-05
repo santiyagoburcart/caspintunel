@@ -302,7 +302,7 @@ body {
   --csp-gauge-from: var(--csp-gauge-from-light, #38bdf8);
   --csp-gauge-to: var(--csp-gauge-to-light, #0284c7);
   --csp-glow: var(--csp-glow-light, rgba(2, 132, 199, .28));
-  --csp-radius-card: var(--csp-radius-card-light, 1.5rem);
+  --csp-radius-card: var(--csp-radius-card-light, 0.75rem);
 }
 [data-theme-style="caspian"].dark {
   --csp-font-ui: var(--csp-font-ui-dark, 'Plus Jakarta Sans');
