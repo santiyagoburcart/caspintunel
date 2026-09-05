@@ -12,16 +12,23 @@ const T = {
     running: 'در حال اجرا…', fetch_fail: 'دریافت اطلاعات مانیتورینگ ناموفق بود.',
     services_active: 'سرویس فعال', of: 'از',
     cpu: 'پردازنده (CPU)', ram: 'حافظه (RAM)', disk: 'دیسک', bandwidth: 'پهنای باند',
+    swap: 'سواپ (SWAP)',
     cores: 'هسته', ghz: 'گیگاهرتز', gb: 'گیگابایت', gb_short: 'گیگ',
     avg: 'میانگین', peak: 'اوج', free: 'آزاد', attention: 'توجه', healthy: 'سالم', pct: '٪',
     iface: 'اینترفیس', sent: 'ارسال', recv: 'دریافت',
     svc_status: 'وضعیت سرویس‌ها', up: 'فعال', down: 'قطع', no_data: 'بدون داده',
     net_traffic: 'ترافیک شبکه', total_iface: 'مجموع اینترفیس', collecting: 'در حال جمع‌آوری داده…',
     sent_label: 'ارسال‌شده', recv_label: 'دریافت‌شده', sysver: 'نسخه سیستم',
+    overall_speed: 'سرعت کلی', avg_window: 'میانگین بازه',
+    conn_stats: 'وضعیت اتصالات', open_sockets: 'سوکت‌های باز', tcp: 'TCP', udp: 'UDP',
     recent_backups: 'بک‌آپ‌های اخیر', no_backups: 'هنوز بک‌آپی ثبت نشده است.',
     run_backup_manual: '↑ اجرای بک‌آپ دستی', kb: 'کیلوبایت',
     server_ips: 'آدرس‌های IP سرور', public_ip: 'IP عمومی (IPv4)', local_ip: 'IP لوکال',
     docker_net: 'شبکه Docker', open_conns: 'اتصالات باز',
+    show: 'نمایش', hide: 'پنهان',
+    uptime: 'مدت کارکرد', uptime_service: 'سرویس', uptime_os: 'سیستم‌عامل',
+    panel_process: 'پردازش پنل', ram_usage: 'مصرف RAM', threads: 'ریسه‌ها',
+    d_u: 'روز', h_u: 'ساعت', m_u: 'دقیقه',
     bk_ok: 'موفق', bk_failed: 'ناموفق', bk_partial: 'ناقص', bk_running: 'در حال اجرا',
     svc_site: 'سایت (Web)', svc_mysql: 'دیتابیس (MySQL)', svc_redis: 'ردیس (Redis)',
     svc_celery_worker: 'Celery Worker', svc_celery_beat: 'Celery Beat',
@@ -35,16 +42,23 @@ const T = {
     running: 'running…', fetch_fail: 'Failed to load monitoring data.',
     services_active: 'services up', of: 'of',
     cpu: 'Processor (CPU)', ram: 'Memory (RAM)', disk: 'Disk', bandwidth: 'Bandwidth',
+    swap: 'Swap (SWAP)',
     cores: 'cores', ghz: 'GHz', gb: 'GB', gb_short: 'GB',
     avg: 'avg', peak: 'peak', free: 'free', attention: 'attention', healthy: 'healthy', pct: '%',
     iface: 'interface', sent: 'sent', recv: 'received',
     svc_status: 'Service status', up: 'up', down: 'down', no_data: 'no data',
     net_traffic: 'Network traffic', total_iface: 'total, interface', collecting: 'collecting data…',
     sent_label: 'Sent', recv_label: 'Received', sysver: 'System version',
+    overall_speed: 'Overall Speed', avg_window: 'Avg over window',
+    conn_stats: 'Connection Stats', open_sockets: 'Open sockets', tcp: 'TCP', udp: 'UDP',
     recent_backups: 'Recent backups', no_backups: 'No backups recorded yet.',
     run_backup_manual: '↑ Run manual backup', kb: 'KB',
     server_ips: 'Server IP addresses', public_ip: 'Public IP (IPv4)', local_ip: 'Local IP',
     docker_net: 'Docker network', open_conns: 'Open connections',
+    show: 'Show', hide: 'Hide',
+    uptime: 'Uptime', uptime_service: 'Service', uptime_os: 'OS',
+    panel_process: 'Panel process', ram_usage: 'RAM usage', threads: 'Threads',
+    d_u: 'd', h_u: 'h', m_u: 'm',
     bk_ok: 'success', bk_failed: 'failed', bk_partial: 'partial', bk_running: 'running',
     svc_site: 'Website (Web)', svc_mysql: 'Database (MySQL)', svc_redis: 'Redis',
     svc_celery_worker: 'Celery Worker', svc_celery_beat: 'Celery Beat',
@@ -63,18 +77,68 @@ function fmtBytes(n) {
   return `${v.toFixed(v >= 10 || i === 0 ? 0 : 1)} ${u[i]}`
 }
 
-// Build an SVG polyline path (600x150 viewBox) from the throughput series.
-function graphPaths(series) {
-  const pts = (series || []).map((s) => (s.up || 0) + (s.down || 0))
+function fmtDur(sec, m, d) {
+  if (sec == null) return '—'
+  const dd = Math.floor(sec / 86400)
+  const hh = Math.floor((sec % 86400) / 3600)
+  const mm = Math.floor((sec % 3600) / 60)
+  if (dd > 0) return `${d(dd)}${m.d_u} ${d(hh)}${m.h_u}`
+  if (hh > 0) return `${d(hh)}${m.h_u} ${d(mm)}${m.m_u}`
+  return `${d(mm)}${m.m_u}`
+}
+
+// Build an SVG polyline+area path (WxH viewBox) from a plain numeric series.
+function seriesPath(vals, W, H, pad = 4) {
+  const pts = (vals || []).filter((v) => typeof v === 'number')
   if (pts.length < 2) return { line: '', area: '' }
   const max = Math.max(...pts, 1)
-  const W = 600
-  const H = 150
+  const min = Math.min(0, ...pts)
+  const span = Math.max(max - min, 1)
   const step = W / (pts.length - 1)
-  const xy = pts.map((v, i) => [i * step, H - (v / max) * (H - 12) - 4])
+  const xy = pts.map((v, i) => [i * step, H - pad - ((v - min) / span) * (H - pad * 2)])
   const line = xy.map(([x, y], i) => (i ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1)).join(' ')
   const area = `${line} L${W} ${H} L0 ${H} Z`
   return { line, area }
+}
+
+// Network graph: combined up+down throughput over time (600x150 viewBox).
+function graphPaths(series) {
+  const pts = (series || []).map((s) => (s.up || 0) + (s.down || 0))
+  return seriesPath(pts, 600, 150, 4)
+}
+
+// Two overlaid series (e.g. tcp/udp) sharing one scale (600x150 viewBox).
+function dualPaths(series, keyA, keyB) {
+  const a = (series || []).map((s) => s[keyA] || 0)
+  const b = (series || []).map((s) => s[keyB] || 0)
+  if (a.length < 2) return { a: { line: '', area: '' }, b: { line: '', area: '' } }
+  const W = 600; const H = 150
+  const max = Math.max(...a, ...b, 1)
+  const step = W / (a.length - 1)
+  const mk = (pts) => {
+    const xy = pts.map((v, i) => [i * step, H - (v / max) * (H - 12) - 4])
+    const line = xy.map(([x, y], i) => (i ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1)).join(' ')
+    return { line, area: `${line} L${W} ${H} L0 ${H} Z` }
+  }
+  return { a: mk(a), b: mk(b) }
+}
+
+let sparkSeq = 0
+function Sparkline({ series, color }) {
+  const gid = useRef(`spk${++sparkSeq}`).current
+  const { line, area } = useMemo(() => seriesPath(series, 200, 46, 3), [series])
+  return (
+    <svg className="spark" viewBox="0 0 200 46" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id={gid} x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0" stopColor={color} stopOpacity="0.35" />
+          <stop offset="1" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      {area && <path d={area} fill={`url(#${gid})`} />}
+      {line && <path d={line} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />}
+    </svg>
+  )
 }
 
 export default function Monitoring() {
@@ -86,6 +150,7 @@ export default function Monitoring() {
   const [data, setData] = useState(null)
   const [err, setErr] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [showIp, setShowIp] = useState(false)
   const timer = useRef(null)
 
   const load = useCallback(async () => {
@@ -115,6 +180,14 @@ export default function Monitoring() {
   }
 
   const g = useMemo(() => graphPaths(data?.network?.series), [data?.network?.series])
+  const cg = useMemo(() => dualPaths(data?.connections?.series, 'tcp', 'udp'), [data?.connections?.series])
+  const netAvg = useMemo(() => {
+    const s = data?.network?.series || []
+    if (!s.length) return { up: 0, down: 0 }
+    const up = s.reduce((a, x) => a + (x.up || 0), 0) / s.length
+    const down = s.reduce((a, x) => a + (x.down || 0), 0) / s.length
+    return { up, down }
+  }, [data?.network?.series])
 
   const svcLat = (x) => {
     if (x.is_up == null) return m.no_data
@@ -131,9 +204,11 @@ export default function Monitoring() {
     )
   }
 
-  const { resources: rs, network: net, server: srv, targets, backups, panels } = data
+  const { resources: rs, network: net, connections: cn, process: pr, server: srv, targets, backups, panels } = data
   const disHigh = rs.disk.percent >= 90
   const bkStatus = (s) => m['bk_' + s] || s
+  const maskIp = (s) => (s ? s.replace(/[0-9a-zA-Z]/g, '•') : '—')
+  const joinIps = (arr) => (arr || []).map((x) => (showIp ? x : maskIp(x))).join(lang === 'fa' ? '، ' : ', ')
 
   return (
     <div className="mon">
@@ -153,61 +228,41 @@ export default function Monitoring() {
         </div>
       </div>
 
-      {/* ---- 4 resource cards ---- */}
+      {/* ---- 4 resource cards: CPU / RAM / SWAP / Storage ---- */}
       <div className="grid r4">
         <ResCard
           icon="⚡" label={m.cpu} big={d(rs.cpu.percent) + m.pct}
           sub={`${d(rs.cpu.cores)} ${m.cores} · ${d(rs.cpu.freq_ghz ?? '—')} ${m.ghz}`}
-          pct={rs.cpu.percent} grad="#7C5CFF,#22D3EE"
+          pct={rs.cpu.percent} grad="#7C5CFF,#22D3EE" color="#7C5CFF" series={rs.cpu.series}
           m1={`${m.avg} ${d(rs.cpu.avg)}${m.pct}`} m2={`${m.peak} ${d(rs.cpu.peak)}${m.pct}`}
         />
         <ResCard
           icon="▦" label={m.ram} big={d(rs.ram.percent) + m.pct}
           sub={`${d(rs.ram.used_gb)} / ${d(rs.ram.total_gb)} ${m.gb}`}
-          pct={rs.ram.percent} grad="#22D3EE,#34D399"
+          pct={rs.ram.percent} grad="#22D3EE,#34D399" color="#22D3EE" series={rs.ram.series}
           m1={`${m.avg} ${d(rs.ram.avg)}${m.pct}`} m2={`${m.peak} ${d(rs.ram.peak)}${m.pct}`}
+        />
+        <ResCard
+          icon="⇄" label={m.swap} big={d(rs.swap.percent) + m.pct}
+          sub={`${d(rs.swap.used_gb)} / ${d(rs.swap.total_gb)} ${m.gb}`}
+          pct={rs.swap.percent} grad="#F472B6,#7C5CFF" color="#F472B6" series={rs.swap.series}
+          m1={`${m.avg} ${d(rs.swap.avg)}${m.pct}`} m2={`${m.peak} ${d(rs.swap.peak)}${m.pct}`}
         />
         <ResCard
           icon="🖴" label={m.disk} big={d(rs.disk.percent) + m.pct}
           sub={`${d(rs.disk.used_gb)} / ${d(rs.disk.total_gb)} ${m.gb}`}
-          pct={rs.disk.percent} grad="#FBBF24,#F87171"
+          pct={rs.disk.percent} grad="#FBBF24,#F87171" color="#FBBF24" series={rs.disk.series}
           m1={`${m.free} ${d(rs.disk.free_gb)} ${m.gb_short}`}
           m2={disHigh ? m.attention : m.healthy} m2warn={disHigh}
         />
-        <div className="card bw">
-          <span className="line" style={{ background: 'linear-gradient(90deg,#34D399,#22D3EE)' }} />
-          <div className="card-head"><span className="ic">📶</span><span>{m.bandwidth}</span></div>
-          <div className="bwvals">
-            <span>↑ {B(net.up_bps)}</span>
-            <span>↓ {B(net.down_bps)}</span>
-          </div>
-          <div className="sub">{m.iface} {net.iface}</div>
-          <div className="meta">
-            <span>{m.sent} {d(gb(net.sent_total))} {m.gb_short}</span>
-            <span>{m.recv} {d(gb(net.recv_total))} {m.gb_short}</span>
-          </div>
-        </div>
       </div>
 
-      {/* ---- service status + network graph ---- */}
-      <div className="grid r2">
-        <div className="card">
-          <div className="title">{m.svc_status}</div>
-          {targets.map((x) => (
-            <div className="svc" key={x.target}>
-              <span className={'badge ' + (x.is_up ? 'up' : x.is_up === false ? 'down' : 'na')}>
-                {x.is_up ? m.up : x.is_up === false ? m.down : '—'}
-              </span>
-              <span className="name">{m['svc_' + x.target] || x.target}</span>
-              <span className="lat">{svcLat(x)}</span>
-            </div>
-          ))}
-        </div>
-
+      {/* ---- overall speed (network traffic) + connection stats ---- */}
+      <div className="grid r2w">
         <div className="card">
           <div className="speed-head">
             <div>
-              <div className="title">{m.net_traffic}</div>
+              <div className="title">{m.overall_speed}</div>
               <div className="sub">{m.total_iface} {net.iface}</div>
             </div>
             <div className="speed-pills">
@@ -229,7 +284,57 @@ export default function Monitoring() {
           <div className="speed-foot">
             <div><span>{m.sent_label}</span><b>{d(gb(net.sent_total))} GB</b></div>
             <div><span>{m.recv_label}</span><b>{d(gb(net.recv_total))} GB</b></div>
+            <div><span>{m.avg_window}</span><b>↑ {B(netAvg.up)} ↓ {B(netAvg.down)}</b></div>
             <div><span>{m.sysver}</span><b>v{d(data.version)}</b></div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="speed-head">
+            <div>
+              <div className="title">{m.conn_stats}</div>
+              <div className="big" style={{ fontSize: 30, marginTop: 2 }}>{d(cn.total)}</div>
+              <div className="sub">{m.open_sockets}</div>
+            </div>
+          </div>
+          <div className="speed-pills" style={{ marginBottom: 6 }}>
+            <span style={{ color: '#22D3EE' }}>● {m.tcp} {d(cn.tcp)}</span>
+            <span style={{ color: '#34D399' }}>● {m.udp} {d(cn.udp)}</span>
+          </div>
+          <svg className="speed-graph" viewBox="0 0 600 150" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="cgA" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0" stopColor="#22D3EE" stopOpacity="0.30" />
+                <stop offset="1" stopColor="#22D3EE" stopOpacity="0" />
+              </linearGradient>
+              <linearGradient id="cgB" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0" stopColor="#34D399" stopOpacity="0.28" />
+                <stop offset="1" stopColor="#34D399" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            {cg.a.area && <path d={cg.a.area} fill="url(#cgA)" />}
+            {cg.b.area && <path d={cg.b.area} fill="url(#cgB)" />}
+            {cg.a.line && <path d={cg.a.line} fill="none" stroke="#22D3EE" strokeWidth="2.5" strokeLinejoin="round" />}
+            {cg.b.line && <path d={cg.b.line} fill="none" stroke="#34D399" strokeWidth="2.5" strokeLinejoin="round" />}
+            {!cg.a.line && <text x="300" y="80" textAnchor="middle" fill="var(--c-text-muted)" fontSize="13">{m.collecting}</text>}
+          </svg>
+        </div>
+      </div>
+
+      {/* ---- service status ---- */}
+      <div className="grid r1">
+        <div className="card">
+          <div className="title">{m.svc_status}</div>
+          <div className="svc-grid">
+            {targets.map((x) => (
+              <div className="svc" key={x.target}>
+                <span className={'badge ' + (x.is_up ? 'up' : x.is_up === false ? 'down' : 'na')}>
+                  {x.is_up ? m.up : x.is_up === false ? m.down : '—'}
+                </span>
+                <span className="name">{m['svc_' + x.target] || x.target}</span>
+                <span className="lat">{svcLat(x)}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -285,8 +390,8 @@ export default function Monitoring() {
         </div>
       )}
 
-      {/* ---- backups + server IPs ---- */}
-      <div className="grid r2">
+      {/* ---- recent backups ---- */}
+      <div className="grid r1">
         <div className="card">
           <div className="title">{m.recent_backups}</div>
           {(backups || []).length === 0 && <div className="sub">{m.no_backups}</div>}
@@ -303,23 +408,39 @@ export default function Monitoring() {
             {busy ? m.running : m.run_backup_manual}
           </button>
         </div>
+      </div>
+
+      {/* ---- uptime / panel process / IP addresses ---- */}
+      <div className="grid r3">
+        <div className="card">
+          <div className="title">{m.uptime}</div>
+          <div className="kv"><span className="k">{m.uptime_service}</span><span className="v">{fmtDur(pr.service_uptime_s, m, d)}</span></div>
+          <div className="kv"><span className="k">{m.uptime_os}</span><span className="v">{fmtDur(pr.os_uptime_s, m, d)}</span></div>
+        </div>
 
         <div className="card">
-          <div className="title">{m.server_ips}</div>
-          <div className="kv"><span className="k">{m.public_ip}</span><span className="v">{srv.public_ip || '—'}</span></div>
-          <div className="kv"><span className="k">{m.local_ip}</span><span className="v">{(srv.local_ips || []).join(lang === 'fa' ? '، ' : ', ') || '—'}</span></div>
-          <div className="kv"><span className="k">{m.docker_net}</span><span className="v">{(srv.docker_ips || []).join(lang === 'fa' ? '، ' : ', ') || '—'}</span></div>
-          <div className="kv">
-            <span className="k">{m.open_conns}</span>
-            <span className="v">TCP {d(srv.tcp_open)} · UDP {d(srv.udp_open)}</span>
+          <div className="title">{m.panel_process}</div>
+          <div className="kv"><span className="k">{m.ram_usage}</span><span className="v">{pr.ram_mb != null ? `${d(pr.ram_mb)} MB` : '—'}</span></div>
+          <div className="kv"><span className="k">{m.threads}</span><span className="v">{pr.threads != null ? d(pr.threads) : '—'}</span></div>
+        </div>
+
+        <div className="card">
+          <div className="title-row">
+            <div className="title" style={{ marginBottom: 0 }}>{m.ip_addresses}</div>
+            <button type="button" className="eye-btn" onClick={() => setShowIp((s) => !s)}>
+              {showIp ? '🙈' : '👁'} {showIp ? m.hide : m.show}
+            </button>
           </div>
+          <div className="kv"><span className="k">{m.public_ip}</span><span className="v">{showIp ? (srv.public_ip || '—') : maskIp(srv.public_ip)}</span></div>
+          <div className="kv"><span className="k">{m.local_ip}</span><span className="v">{joinIps(srv.local_ips) || '—'}</span></div>
+          <div className="kv"><span className="k">{m.docker_net}</span><span className="v">{joinIps(srv.docker_ips) || '—'}</span></div>
         </div>
       </div>
     </div>
   )
 }
 
-function ResCard({ icon, label, big, sub, pct, grad, m1, m2, m2warn }) {
+function ResCard({ icon, label, big, sub, pct, grad, color, series, m1, m2, m2warn }) {
   const w = Math.max(0, Math.min(100, Math.round(pct || 0)))
   return (
     <div className="card">
@@ -332,6 +453,7 @@ function ResCard({ icon, label, big, sub, pct, grad, m1, m2, m2warn }) {
         <span>{m1}</span>
         <span style={m2warn ? { color: 'var(--c-warning)' } : undefined}>{m2}</span>
       </div>
+      <Sparkline series={series} color={color} />
     </div>
   )
 }
@@ -353,9 +475,16 @@ const CSS = `
 
 .mon .grid { display:grid; gap:16px; margin-bottom:16px; }
 .mon .grid.r4 { grid-template-columns:repeat(4,minmax(0,1fr)); }
-.mon .grid.r2 { grid-template-columns:1.3fr 1fr; }
+.mon .grid.r3 { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.mon .grid.r2 { grid-template-columns:1fr 1fr; }
+.mon .grid.r2w { grid-template-columns:1.7fr 1fr; }
 .mon .grid.r1 { grid-template-columns:1fr; }
-@media (max-width:1000px){ .mon .grid.r4{grid-template-columns:repeat(2,minmax(0,1fr));} .mon .grid.r2{grid-template-columns:1fr;} }
+@media (max-width:1000px){ .mon .grid.r4{grid-template-columns:repeat(2,minmax(0,1fr));} .mon .grid.r2{grid-template-columns:1fr;} .mon .grid.r2w{grid-template-columns:1fr;} .mon .grid.r3{grid-template-columns:1fr;} }
+@media (max-width:560px){ .mon .grid.r4{grid-template-columns:1fr;} }
+
+.mon .svc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); column-gap:20px; }
+.mon .svc-grid .svc { border-bottom:1px solid var(--c-border); }
+@media (max-width:640px){ .mon .svc-grid{grid-template-columns:1fr;} }
 
 .mon .panel-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px; }
 .mon .panel-box { border:1px solid var(--c-border); border-radius:12px; padding:12px; min-width:0; }
@@ -366,7 +495,6 @@ const CSS = `
   display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
 .mon .panel-stats { display:flex; flex-direction:column; gap:3px; margin-top:8px; font-size:12px; color:var(--c-text-muted); }
 .mon .panel-stats b { color:var(--c-text); font-variant-numeric:tabular-nums; }
-@media (max-width:560px){ .mon .grid.r4{grid-template-columns:1fr;} }
 
 .mon .card { position:relative; overflow:hidden; padding:18px; min-width:0;
   background:var(--c-surface); border:1px solid var(--c-border); border-radius:16px;
@@ -378,13 +506,16 @@ const CSS = `
 .mon .ic { width:26px; height:26px; display:grid; place-items:center; font-size:15px; flex:0 0 auto;
   border-radius:9px; background:rgba(124,92,255,.14); }
 .mon .big { font-size:34px; font-weight:800; line-height:1.05; word-break:break-word; }
-.mon .bwvals { display:flex; flex-direction:column; gap:2px; font-size:22px; font-weight:800; line-height:1.15; font-variant-numeric:tabular-nums; }
 .mon .sub { color:var(--c-text-muted); font-size:12.5px; margin-top:6px; }
 .mon .bar { height:7px; border-radius:999px; background:var(--c-border); margin-top:14px; overflow:hidden; }
 .mon .bar i { display:block; height:100%; border-radius:999px; transition:width .5s ease; }
 .mon .meta { display:flex; justify-content:space-between; gap:8px; font-size:12px; color:var(--c-text-muted); margin-top:10px; }
+.mon .spark { width:100%; height:46px; display:block; margin-top:12px; }
 
 .mon .title { font-size:15px; font-weight:700; margin-bottom:14px; }
+.mon .title-row { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+.mon .eye-btn { display:inline-flex; align-items:center; gap:5px; font-size:11.5px; cursor:pointer;
+  padding:4px 10px; border-radius:999px; background:var(--c-border); border:0; color:var(--c-text); white-space:nowrap; }
 .mon .svc { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:10px;
   padding:9px 0; border-bottom:1px solid var(--c-border); font-size:13.5px; }
 .mon .svc:last-of-type { border-bottom:0; }
@@ -400,10 +531,11 @@ const CSS = `
 .mon .speed-pills span { font-size:12px; padding:4px 10px; border-radius:999px; white-space:nowrap;
   background:var(--c-border); color:var(--c-text); font-variant-numeric:tabular-nums; }
 .mon .speed-graph { width:100%; height:150px; display:block; margin:6px 0 4px; }
-.mon .speed-foot { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:8px; }
+.mon .speed-foot { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin-top:8px; }
 .mon .speed-foot div { display:flex; flex-direction:column; gap:3px; min-width:0; }
 .mon .speed-foot span { font-size:11px; color:var(--c-text-muted); }
 .mon .speed-foot b { font-size:14px; font-weight:700; word-break:break-word; }
+@media (max-width:560px){ .mon .speed-foot{grid-template-columns:repeat(2,minmax(0,1fr));} }
 
 .mon .bk { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:10px;
   padding:9px 0; border-bottom:1px solid var(--c-border); font-size:13px; }

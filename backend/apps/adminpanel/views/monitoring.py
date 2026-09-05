@@ -1,9 +1,10 @@
+import os
 import time
 
 import psutil
 from django.conf import settings
 from django.core.cache import cache
-from django.db.models import Avg, Max
+from django.db.models import Max
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, viewsets
@@ -21,6 +22,9 @@ _GB = 1024 ** 3
 _SERIES_KEY = "mon:net:series"
 _NET_KEY = "mon:net:last"
 _PUBIP_KEY = "mon:public_ip"
+_CONN_SERIES_KEY = "mon:conn:series"
+_SPARK_POINTS = 30
+_RES_HISTORY_HOURS = 24
 
 
 class HealthView(AdminAPIView):
@@ -78,6 +82,8 @@ class MonitoringView(AdminAPIView):
             "panels": health["panels"],
             "resources": _resources_snapshot(),
             "network": _network_snapshot(),
+            "connections": _connections_snapshot(),
+            "process": _process_snapshot(),
             "server": _server_snapshot(),
             "backups": BackupLogSerializer(
                 BackupLog.objects.order_by("-created_at")[:6], many=True
@@ -186,40 +192,97 @@ def _panel_stats(panel) -> dict | None:
     return stats or None
 
 
+def _metric_history(rows: list[dict], key: str) -> dict:
+    """avg/peak over the lookback window + a short series for the sparkline."""
+    vals = [r[key] for r in rows] or [0.0]
+    return {
+        "avg": round(sum(vals) / len(vals), 1),
+        "peak": round(max(vals), 1),
+        "series": [round(v, 1) for v in vals[-_SPARK_POINTS:]],
+    }
+
+
 def _resources_snapshot() -> dict:
     vm = psutil.virtual_memory()
+    swap = psutil.swap_memory()
     try:
         du = psutil.disk_usage(settings.RESOURCE_DISK_PATH)
     except OSError:
         du = psutil.disk_usage("/")
     freq = psutil.cpu_freq()
-    agg = ResourceStat.objects.filter(
-        sampled_at__gte=timezone.now() - timezone.timedelta(hours=24)
-    ).aggregate(
-        cpu_avg=Avg("cpu_percent"), cpu_max=Max("cpu_percent"),
-        ram_avg=Avg("ram_percent"), ram_max=Max("ram_percent"),
+
+    since = timezone.now() - timezone.timedelta(hours=_RES_HISTORY_HOURS)
+    rows = list(
+        ResourceStat.objects.filter(sampled_at__gte=since)
+        .order_by("-sampled_at")[:300]
+        .values("cpu_percent", "ram_percent", "swap_percent", "disk_percent")
     )
+    rows.reverse()  # chronological, oldest first, for the sparkline
+
+    cpu_h, ram_h = _metric_history(rows, "cpu_percent"), _metric_history(rows, "ram_percent")
+    swap_h, disk_h = _metric_history(rows, "swap_percent"), _metric_history(rows, "disk_percent")
+
     return {
         "cpu": {
             "percent": round(psutil.cpu_percent(interval=0.3), 1),
             "cores": psutil.cpu_count(logical=True),
             "freq_ghz": round((freq.current or 0) / 1000, 2) if freq else None,
-            "avg": round(agg["cpu_avg"] or 0, 1),
-            "peak": round(agg["cpu_max"] or 0, 1),
+            **cpu_h,
         },
         "ram": {
             "percent": round(vm.percent, 1),
             "used_gb": round(vm.used / _GB, 2),
             "total_gb": round(vm.total / _GB, 2),
-            "avg": round(agg["ram_avg"] or 0, 1),
-            "peak": round(agg["ram_max"] or 0, 1),
+            **ram_h,
+        },
+        "swap": {
+            "percent": round(swap.percent, 1),
+            "used_gb": round(swap.used / _GB, 2),
+            "total_gb": round(swap.total / _GB, 2),
+            **swap_h,
         },
         "disk": {
             "percent": round(du.percent, 1),
             "used_gb": round(du.used / _GB, 1),
             "total_gb": round(du.total / _GB, 1),
             "free_gb": round(du.free / _GB, 1),
+            **disk_h,
         },
+    }
+
+
+def _connections_snapshot() -> dict:
+    """Open TCP/UDP sockets on the host + a short rolling series (per-poll,
+    ~15s cadence, capped to the last 40 points ≈ 10 min)."""
+    socks = hostnet.socket_counts()
+    tcp, udp = max(socks["tcp"], 0), max(socks["udp"], 0)
+
+    series = cache.get(_CONN_SERIES_KEY) or []
+    series.append({"t": timezone.now().strftime("%H:%M:%S"), "tcp": tcp, "udp": udp})
+    series = series[-40:]
+    cache.set(_CONN_SERIES_KEY, series, 600)
+
+    return {"tcp": tcp, "udp": udp, "total": tcp + udp, "series": series}
+
+
+def _process_snapshot() -> dict:
+    """This backend process's own memory/thread footprint + the two uptimes
+    (this process vs. the host OS) — the "Panel" / "Uptime" cards."""
+    ram_mb = threads = service_uptime_s = None
+    try:
+        proc = psutil.Process(os.getpid())
+        ram_mb = round(proc.memory_info().rss / (1024 ** 2), 1)
+        threads = proc.num_threads()
+        service_uptime_s = int(time.time() - proc.create_time())
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        os_uptime_s = int(time.time() - psutil.boot_time())
+    except Exception:  # noqa: BLE001
+        os_uptime_s = None
+    return {
+        "ram_mb": ram_mb, "threads": threads,
+        "service_uptime_s": service_uptime_s, "os_uptime_s": os_uptime_s,
     }
 
 

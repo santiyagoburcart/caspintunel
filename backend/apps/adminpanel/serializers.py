@@ -371,7 +371,7 @@ class HealthCheckSerializer(serializers.ModelSerializer):
 class ResourceStatSerializer(serializers.ModelSerializer):
     class Meta:
         model = ResourceStat
-        fields = ("cpu_percent", "ram_percent", "disk_percent", "net_in", "net_out",
+        fields = ("cpu_percent", "ram_percent", "swap_percent", "disk_percent", "net_in", "net_out",
                   "bandwidth_used", "sampled_at")
 
 

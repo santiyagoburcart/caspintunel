@@ -67,6 +67,7 @@ class ResourceStat(models.Model):
 
     cpu_percent = models.FloatField(default=0)
     ram_percent = models.FloatField(default=0)
+    swap_percent = models.FloatField(default=0)
     disk_percent = models.FloatField(default=0)
     net_in = models.BigIntegerField(default=0)
     net_out = models.BigIntegerField(default=0)

@@ -29,6 +29,7 @@ def sample_resources() -> ResourceStat:
     return ResourceStat.objects.create(
         cpu_percent=psutil.cpu_percent(interval=0.5),
         ram_percent=psutil.virtual_memory().percent,
+        swap_percent=psutil.swap_memory().percent,
         disk_percent=disk,
         net_in=net_in,
         net_out=net_out,
