@@ -302,7 +302,7 @@ body {
   --csp-gauge-from: var(--csp-gauge-from-light, #38bdf8);
   --csp-gauge-to: var(--csp-gauge-to-light, #0284c7);
   --csp-glow: var(--csp-glow-light, rgba(2, 132, 199, .28));
-  --csp-radius-card: var(--csp-radius-card-light, 1.5rem);
+  --csp-radius-card: var(--csp-radius-card-light, 0.75rem);
 }
 [data-theme-style="caspian"].dark {
   --csp-font-ui: var(--csp-font-ui-dark, 'Plus Jakarta Sans');
@@ -353,8 +353,9 @@ body {
 [data-theme-style="caspian"].dark .glass,
 [data-theme-style="caspian"].dark .card {
   border-color: var(--c-border);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  backdrop-filter: blur(16px) saturate(180%);
+  /* surface-panel (#0D111F) is opaque — this is neomorphic extrusion, not
+     glassmorphism, so no backdrop-filter here (that's reserved for actual
+     floating overlays using the translucent surface-glass tone instead) */
   box-shadow:
     -6px -6px 14px rgba(255, 255, 255, .02),
     6px 6px 18px rgba(0, 0, 0, .65),
@@ -436,15 +437,35 @@ body {
 /* ---- pill tabs — dark gets a recessed well + raised active capsule ---- */
 [data-theme-style="caspian"].dark .csp-tabs {
   border-color: transparent;
-  box-shadow: inset 3px 3px 6px rgba(0, 0, 0, .7), inset -2px -2px 5px rgba(255, 255, 255, .02);
+  box-shadow: inset 3px 3px 6px rgba(0, 0, 0, .8), inset -2px -2px 5px rgba(255, 255, 255, .03);
 }
 [data-theme-style="caspian"].dark .csp-tab.active {
   background: var(--csp-muted-bg);
   color: var(--c-text);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), 0 2px 8px rgba(0, 0, 0, .4);
 }
 
 /* ---- chart well — dark gets an inset neomorphic recess ---- */
 [data-theme-style="caspian"].dark .csp-chart-well {
-  box-shadow: inset 3px 3px 6px rgba(0, 0, 0, .7), inset -2px -2px 5px rgba(255, 255, 255, .02);
+  box-shadow: inset 3px 3px 6px rgba(0, 0, 0, .8), inset -2px -2px 5px rgba(255, 255, 255, .03);
+}
+
+/* ---- live pulsating status dot: dark gets an outer glow behind the ripple ---- */
+[data-theme-style="caspian"].dark .csp-pulse { box-shadow: 0 0 8px var(--c-success); }
+[data-theme-style="caspian"].dark .csp-pulse.warning { box-shadow: 0 0 8px var(--c-warning); }
+[data-theme-style="caspian"].dark .csp-pulse.danger { box-shadow: 0 0 8px var(--c-danger); }
+
+/* ---- active radiant glow: focused/active interactive elements emit an
+   ambient cyan corona (dark only — the light variant stays flat/crisp) ---- */
+[data-theme-style="caspian"].dark .btn:focus-visible,
+[data-theme-style="caspian"].dark .csp-tab:focus-visible {
+  box-shadow: 0 0 16px rgba(6, 182, 212, .35), 0 0 2px #06B6D4;
+}
+[data-theme-style="caspian"].dark .csp-tab.active {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), 0 2px 8px rgba(0, 0, 0, .4), 0 0 16px rgba(6, 182, 212, .2);
+}
+
+/* soft outer glow on the live sparkline/area-chart stroke (the reference's
+   `chart-glow-path`) — dark only, grid guides and secondary lines untouched */
+[data-theme-style="caspian"].dark .csp-glow-path {
+  filter: drop-shadow(0 0 3px var(--csp-glow));
 }

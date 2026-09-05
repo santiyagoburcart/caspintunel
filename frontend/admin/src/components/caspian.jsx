@@ -110,7 +110,7 @@ export function Sparkline({ series, width = 240, height = 64, color, well = fals
       {area && <path d={area} fill={`url(#${gid})`} />}
       {line && (
         <path d={line} fill="none" stroke={color || 'var(--csp-gauge-to)'} strokeWidth="2"
-          strokeLinejoin="round" strokeLinecap="round" />
+          strokeLinejoin="round" strokeLinecap="round" className="csp-glow-path" />
       )}
     </svg>
   )

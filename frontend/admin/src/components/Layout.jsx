@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { useI18n } from '../lib/i18n'
 import { useTheme } from '../theme/ThemeProvider'
@@ -39,9 +39,18 @@ function NavLinks({ items, t, onNavigate }) {
 export default function Layout() {
   const { staff, logout, can } = useAuth()
   const { t, lang, setLang } = useI18n()
-  const { mode, toggle, locked, config } = useTheme()
+  const { mode, toggle, locked, styleKey, config } = useTheme()
   const go = useNavigate()
+  const location = useLocation()
   const [open, setOpen] = useState(false)
+
+  // Caspian's Monitoring page is a standalone full-bleed command-center
+  // screen (matches the Stitch reference _7/_11 — no sidebar rail, its own
+  // header) — it supplies its own chrome, so skip the sidebar shell here.
+  // Every other page/theme keeps the normal sidebar layout.
+  if (styleKey === 'caspian' && location.pathname === '/monitoring') {
+    return <Outlet />
+  }
 
   const items = nav.filter(([, , p]) => !p || can(p))
   const brand = (lang === 'fa' ? config?.site_name_fa : config?.site_name_en) || (lang === 'fa' ? 'کسپین' : 'caspin')

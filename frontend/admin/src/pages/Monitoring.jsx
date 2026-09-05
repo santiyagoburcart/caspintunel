@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useI18n } from '../lib/i18n'
+import { useTheme } from '../theme/ThemeProvider'
 import { digits as D, gb, relTime, bps } from '../lib/format'
 import { Spinner } from '../components/ui'
 import { Sparkline, PulseDot, PillTabs } from '../components/caspian'
@@ -10,6 +12,7 @@ const REFRESH_MS = 15000
 const T = {
   fa: {
     title: 'مانیتورینگ', subtitle: 'داشبورد مانیتورینگ عملکرد شبکه و پردازشگر',
+    back_to_panel: 'بازگشت به پنل', refresh_now: '↻ رفرش', online: 'آنلاین', degraded: 'اختلال',
     autorefresh: '↻ رفرش خودکار (۱۵ث)', run_backup: '↑ اجرای بک‌آپ',
     running: 'در حال اجرا…', fetch_fail: 'دریافت اطلاعات مانیتورینگ ناموفق بود.',
     services_active: 'سرویس فعال', of: 'از',
@@ -40,6 +43,7 @@ const T = {
   },
   en: {
     title: 'Monitoring', subtitle: 'Network & server performance monitoring dashboard',
+    back_to_panel: 'Back to panel', refresh_now: '↻ Refresh', online: 'Online', degraded: 'Degraded',
     autorefresh: '↻ Auto-refresh (15s)', run_backup: '↑ Run backup',
     running: 'running…', fetch_fail: 'Failed to load monitoring data.',
     services_active: 'services up', of: 'of',
@@ -113,10 +117,14 @@ function GridLines({ n, w, h }) {
 }
 
 export default function Monitoring() {
-  const { lang } = useI18n()
+  const { lang, setLang } = useI18n()
+  const { mode, toggle, locked, styleKey, config } = useTheme()
+  const isCaspian = styleKey === 'caspian'
   const m = T[lang] || T.fa
   const d = (v) => D(v, lang)
   const B = (v) => bps(v, lang)
+  const brandFa = config?.site_name_fa || 'کسپین تانل'
+  const brandEn = config?.site_name_en || 'Caspian Tunnel'
 
   const [data, setData] = useState(null)
   const [err, setErr] = useState(false)
@@ -199,32 +207,65 @@ export default function Monitoring() {
   )
 
   return (
-    <div className="mon">
+    <div className={'mon' + (isCaspian ? ' mon--full' : '')}>
       <style>{CSS}</style>
 
-      {/* ---- header: status pill + brand block (left) · toolbar (right) ---- */}
-      <div className="topbar card">
-        <div className="topbar-left">
-          <span className="status-pill">
-            <PulseDot status={data.overall === 'ok' ? 'success' : 'warning'} />
-            <span className="mono-num">{d(data.up_count)}/{d(data.total_count)}</span> {m.services_active}
-          </span>
-          <span className="divider" />
-          <div className="brand">
-            <span className="brand-icon">⚡</span>
-            <div className="brand-text">
-              <h1>{m.title}</h1>
-              <span className="brand-sub">{m.subtitle}</span>
+      {isCaspian ? (
+        /* ---- Caspian: standalone full-bleed page, no admin sidebar —
+                its own header mirrors the reference _7/_11 exactly:
+                status pill + divider + brand block (start) · toolbar
+                with only our REAL actions (end) ---- */
+        <header className="csp-header card">
+          <div className="csp-header-left">
+            <span className="status-pill xray">
+              <PulseDot status={data.overall === 'ok' ? 'success' : 'warning'} />
+              <span className="mono-num">{brandEn} · {data.overall === 'ok' ? m.online : m.degraded}</span>
+              <span className="ver-badge mono-num">v{d(data.version)}</span>
+            </span>
+            <span className="divider" />
+            <div className="brand">
+              <span className="brand-icon">⚡</span>
+              <div className="brand-text">
+                <h1>{brandFa} <span className="brand-en mono-num">| {brandEn}</span></h1>
+                <span className="brand-sub">{m.subtitle}</span>
+              </div>
             </div>
           </div>
+          <div className="csp-toolbar">
+            <Link to="/" className="btn">↩ {m.back_to_panel}</Link>
+            {!locked && <button type="button" className="btn" onClick={toggle}>{mode === 'dark' ? '☀️' : '🌙'}</button>}
+            <button type="button" className="btn" onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')}>{lang === 'fa' ? 'EN' : 'فا'}</button>
+            <span className="btn">{m.autorefresh}</span>
+            <button type="button" className="btn" onClick={load}>{m.refresh_now}</button>
+            <button className="btn primary" onClick={runBackup} disabled={busy}>
+              {busy ? m.running : m.run_backup}
+            </button>
+          </div>
+        </header>
+      ) : (
+        <div className="topbar card">
+          <div className="topbar-left">
+            <span className="status-pill">
+              <PulseDot status={data.overall === 'ok' ? 'success' : 'warning'} />
+              <span className="mono-num">{d(data.up_count)}/{d(data.total_count)}</span> {m.services_active}
+            </span>
+            <span className="divider" />
+            <div className="brand">
+              <span className="brand-icon">⚡</span>
+              <div className="brand-text">
+                <h1>{m.title}</h1>
+                <span className="brand-sub">{m.subtitle}</span>
+              </div>
+            </div>
+          </div>
+          <div className="actions">
+            <span className="btn">{m.autorefresh}</span>
+            <button className="btn primary" onClick={runBackup} disabled={busy}>
+              {busy ? m.running : m.run_backup}
+            </button>
+          </div>
         </div>
-        <div className="actions">
-          <span className="btn">{m.autorefresh}</span>
-          <button className="btn primary" onClick={runBackup} disabled={busy}>
-            {busy ? m.running : m.run_backup}
-          </button>
-        </div>
-      </div>
+      )}
 
       {/* ---- 4 resource cards: CPU / RAM / SWAP / Storage ---- */}
       <div className="grid r4">
@@ -303,7 +344,7 @@ export default function Monitoring() {
               )}
               {cg.a.line && (
                 <path d={cg.a.line} fill="none" stroke="var(--csp-gauge-to)" strokeWidth="2.2"
-                  strokeLinejoin="round" strokeLinecap="round" />
+                  strokeLinejoin="round" strokeLinecap="round" className="csp-glow-path" />
               )}
               {!cg.a.line && <text x="200" y="80" textAnchor="middle" fill="var(--c-text-muted)" fontSize="13">{m.collecting}</text>}
             </svg>
@@ -476,23 +517,32 @@ function ResCard({ icon, label, detail, big, color, series, l1, v1, l2, v2, warn
 
 const CSS = `
 .mon { max-width: 1400px; margin: 0 auto; }
+/* Caspian: standalone full-bleed page (no admin sidebar), matching the
+   reference's own p-4 md:p-6 lg:p-8 / max-w-[1720px] rhythm */
+.mon.mon--full { max-width: 1720px; padding: 16px; }
+@media (min-width: 768px) { .mon.mon--full { padding: 24px; } }
+@media (min-width: 1024px) { .mon.mon--full { padding: 32px; } }
 
 /* ---- header: brand block + status pill (start) · toolbar (end) ---- */
-.mon .topbar { display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:18px; padding:14px 18px; }
-.mon .topbar-left { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+.mon .topbar, .mon .csp-header { display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:18px; padding:14px 18px; }
+.mon .topbar-left, .mon .csp-header-left { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
 .mon .divider { width:1px; height:20px; background:var(--c-border); }
 .mon .brand { display:flex; align-items:center; gap:10px; }
 .mon .brand-icon { width:32px; height:32px; border-radius:9px; display:grid; place-items:center; font-size:15px; flex:0 0 auto;
   background:linear-gradient(135deg,var(--csp-gauge-from),var(--csp-gauge-to)); color:#fff; }
 .mon .brand-text { display:flex; flex-direction:column; line-height:1.3; }
 .mon .brand-text h1 { font-size:15px; font-weight:800; margin:0; }
+.mon .brand-en { font-weight:500; font-size:12px; color:var(--csp-gauge-to); }
 .mon .brand-sub { font-size:11px; color:var(--c-text-muted); }
 .mon .status-pill { display:inline-flex; align-items:center; gap:8px; font-size:12.5px;
   padding:6px 12px; border-radius:999px; background:var(--csp-muted-bg); color:var(--c-text-muted); white-space:nowrap; }
-.mon .actions { margin-inline-start:auto; display:flex; gap:8px; flex-wrap:wrap; }
-.mon .btn { display:inline-flex; align-items:center; gap:6px; font-size:13px; cursor:pointer;
+.mon .status-pill.xray { background:color-mix(in srgb, var(--c-success) 14%, transparent);
+  border:1px solid color-mix(in srgb, var(--c-success) 30%, transparent); color:var(--c-success); }
+.mon .ver-badge { font-size:10px; padding:2px 7px; border-radius:6px; background:color-mix(in srgb, var(--c-success) 20%, transparent); }
+.mon .actions, .mon .csp-toolbar { margin-inline-start:auto; display:flex; gap:8px; flex-wrap:wrap; }
+.mon .btn { display:inline-flex; align-items:center; gap:6px; font-size:13px; cursor:pointer; text-decoration:none;
   padding:8px 14px; border-radius:12px; background:var(--csp-muted-bg); border:1px solid var(--c-border);
-  color:var(--c-text); transition:opacity .2s; white-space:nowrap; }
+  color:var(--c-text); transition:opacity .2s, box-shadow .2s; white-space:nowrap; }
 .mon .btn.primary { background:linear-gradient(90deg,var(--csp-gauge-from),var(--csp-gauge-to)); border:0; color:#fff; }
 .mon .btn.full { width:100%; justify-content:center; margin-top:12px; }
 .mon .btn:disabled { opacity:.55; cursor:default; }
@@ -609,4 +659,23 @@ const CSS = `
   .mon .strip-seg { padding-inline-end:0; border-inline-end:0; padding-bottom:18px; border-bottom:1px solid var(--c-border); }
   .mon .strip-seg:last-child { padding-bottom:0; border-bottom:0; }
 }
+
+/* ---- Caspian dark ("Caspian Tunnel") only: recessed neomorphic wells for
+   chart troughs, per DESIGN-dark-caspian-tunnel.md's Layer 2 spec — the
+   light "Azure Telemetry" variant stays crisp/flat (untouched). ---- */
+[data-theme-style="caspian"].dark .mon .spark-slot {
+  background: var(--csp-well);
+  box-shadow: inset 3px 3px 6px rgba(0, 0, 0, .8), inset -2px -2px 5px rgba(255, 255, 255, .03);
+  border-bottom-left-radius: var(--csp-radius-card);
+  border-bottom-right-radius: var(--csp-radius-card);
+}
+[data-theme-style="caspian"].dark .mon .chart-area {
+  background: var(--csp-well);
+  border-radius: 12px;
+  box-shadow: inset 3px 3px 6px rgba(0, 0, 0, .8), inset -2px -2px 5px rgba(255, 255, 255, .03);
+  margin: 14px 0 0;
+  padding: 10px;
+  box-sizing: border-box;
+}
+[data-theme-style="caspian"].dark .mon .chart-area.big-chart { height: auto; }
 `

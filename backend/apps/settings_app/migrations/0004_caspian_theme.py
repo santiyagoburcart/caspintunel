@@ -14,7 +14,7 @@ CASPIAN = {
         "text": "#0F172A", "text_muted": "#64748B", "border": "#E2E8F0",
     },
     "dark": {
-        "background": "#080B14", "surface": "rgba(19,24,43,0.72)", "primary": "#8B5CF6",
+        "background": "#080B14", "surface": "#0D111F", "primary": "#8B5CF6",
         "secondary": "#06B6D4", "success": "#10B981", "danger": "#EF4444", "warning": "#F59E0B",
         "text": "#E0E2EF", "text_muted": "#94A3B8", "border": "#1E2640",
     },
