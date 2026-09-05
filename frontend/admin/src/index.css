@@ -18,6 +18,24 @@
   --c-primary-2: var(--c-secondary);
   --c-ink: var(--c-text);
   --c-glass-border: var(--c-border);
+  /* Caspian-only tokens (fonts, wells, gauge gradient stops…) — Caspian's
+     own [data-theme-style="caspian"] block overrides these to its exact
+     Azure Telemetry / Caspian Tunnel values; the fallbacks here just make
+     sure a shared component (Gauge, Sparkline, pill tabs, pulse dot…)
+     still looks sane and on-brand if it's ever used on an Aurora/Frost page. */
+  --csp-font-ui: 'Vazirmatn';
+  --csp-font-display: 'Vazirmatn';
+  --csp-well: color-mix(in srgb, var(--c-text) 5%, transparent);
+  --csp-muted-bg: color-mix(in srgb, var(--c-text) 6%, transparent);
+  --csp-text-2: var(--c-text);
+  --csp-text-3: var(--c-text-muted);
+  --csp-border-strong: var(--c-border);
+  --csp-signal: var(--c-secondary);
+  --csp-vibrant: var(--c-primary);
+  --csp-gauge-from: var(--c-primary);
+  --csp-gauge-to: var(--c-secondary);
+  --csp-glow: transparent;
+  --csp-radius-card: 16px;
 }
 .dark {
   --c-bg: #0b0e14;
@@ -33,6 +51,19 @@
   --c-primary-2: var(--c-secondary);
   --c-ink: var(--c-text);
   --c-glass-border: var(--c-border);
+  --csp-font-ui: 'Vazirmatn';
+  --csp-font-display: 'Vazirmatn';
+  --csp-well: color-mix(in srgb, black 20%, transparent);
+  --csp-muted-bg: color-mix(in srgb, white 6%, transparent);
+  --csp-text-2: var(--c-text);
+  --csp-text-3: var(--c-text-muted);
+  --csp-border-strong: var(--c-border);
+  --csp-signal: var(--c-secondary);
+  --csp-vibrant: var(--c-primary);
+  --csp-gauge-from: var(--c-primary);
+  --csp-gauge-to: var(--c-secondary);
+  --csp-glow: transparent;
+  --csp-radius-card: 16px;
 }
 
 html, body, #root { height: 100%; }
@@ -105,6 +136,62 @@ body {
   input[type="range"]::-moz-range-thumb {
     width: 22px; height: 22px; border-radius: 50%; background: #fff;
     border: 3px solid var(--c-primary); cursor: pointer;
+  }
+
+  /* ===== Caspian shared components (components/caspian.jsx) — token-driven
+     so they render sensibly in every theme; [data-theme-style="caspian"]
+     below only layers extra neomorphic/glow flourishes on top. ===== */
+  .mono-num {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    direction: ltr;
+    unicode-bidi: isolate;
+  }
+
+  /* pill tabs / filter bar (.csp-tabs > .csp-tab.active) */
+  .csp-tabs {
+    display: inline-flex; gap: 2px; padding: 4px; border-radius: 999px;
+    background: var(--csp-muted-bg); border: 1px solid var(--c-border);
+  }
+  .csp-tab {
+    border: 0; background: transparent; cursor: pointer; white-space: nowrap;
+    padding: 6px 16px; border-radius: 999px; font-size: 13px; font-weight: 600;
+    color: var(--c-text-muted); transition: background .2s, color .2s, box-shadow .2s;
+  }
+  .csp-tab.active {
+    background: var(--c-surface); color: var(--c-primary);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, .12);
+  }
+
+  /* live pulsating status dot (.csp-pulse[.warning|.danger]) */
+  .csp-pulse {
+    position: relative; display: inline-flex; width: 8px; height: 8px;
+    border-radius: 50%; background: var(--c-success); flex: 0 0 auto;
+  }
+  .csp-pulse::after {
+    content: ""; position: absolute; inset: -6px; border-radius: 50%;
+    border: 2px solid var(--c-success); animation: csp-ripple 2.4s ease-out infinite;
+  }
+  .csp-pulse.warning { background: var(--c-warning); }
+  .csp-pulse.warning::after { border-color: var(--c-warning); }
+  .csp-pulse.danger { background: var(--c-danger); }
+  .csp-pulse.danger::after { border-color: var(--c-danger); }
+  @keyframes csp-ripple {
+    0% { transform: scale(.4); opacity: .8; }
+    100% { transform: scale(1.8); opacity: 0; }
+  }
+
+  /* circular SVG gauge center-label typography (ring itself is drawn by <Gauge>) */
+  .csp-gauge-value {
+    font-family: 'JetBrains Mono', ui-monospace, monospace; font-weight: 600;
+    font-variant-numeric: tabular-nums; fill: var(--c-text); direction: ltr;
+  }
+  .csp-gauge-label { font-family: var(--csp-font-ui), 'Vazirmatn', sans-serif; fill: var(--c-text-muted); }
+
+  /* sparkline / area-chart recessed well */
+  .csp-chart-well {
+    background: var(--csp-well); border: 1px solid var(--c-border);
+    border-radius: 12px; overflow: hidden;
   }
 }
 
@@ -253,14 +340,6 @@ body {
   letter-spacing: -0.02em;
 }
 
-/* mono, tabular telemetry readouts — IPs, throughput, percentages, ports */
-[data-theme-style="caspian"] .mono-num {
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-variant-numeric: tabular-nums;
-  direction: ltr;
-  unicode-bidi: isolate;
-}
-
 /* ---- cards: crisp bordered white (light) / neomorphic frosted glass (dark) ---- */
 [data-theme-style="caspian"] .glass,
 [data-theme-style="caspian"] .card {
@@ -354,37 +433,10 @@ body {
   box-shadow: 0 0 8px 2px color-mix(in srgb, var(--csp-gauge-to) 70%, transparent), 0 2px 6px rgba(0, 0, 0, .4);
 }
 
-/* ---- pill tabs / filter bar (.csp-tabs > .csp-tab.active) — recessed
-   well containing a raised capsule for the active tab ---- */
-[data-theme-style="caspian"] .csp-tabs {
-  display: inline-flex;
-  gap: 2px;
-  padding: 4px;
-  border-radius: 999px;
-  background: var(--csp-muted-bg);
-  border: 1px solid var(--c-border);
-}
+/* ---- pill tabs — dark gets a recessed well + raised active capsule ---- */
 [data-theme-style="caspian"].dark .csp-tabs {
-  background: var(--csp-well);
   border-color: transparent;
   box-shadow: inset 3px 3px 6px rgba(0, 0, 0, .7), inset -2px -2px 5px rgba(255, 255, 255, .02);
-}
-[data-theme-style="caspian"] .csp-tab {
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-  white-space: nowrap;
-  padding: 6px 16px;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--c-text-muted);
-  transition: background .2s, color .2s, box-shadow .2s;
-}
-[data-theme-style="caspian"] .csp-tab.active {
-  background: var(--c-surface);
-  color: var(--c-primary);
-  box-shadow: 0 1px 3px rgba(15, 23, 42, .12);
 }
 [data-theme-style="caspian"].dark .csp-tab.active {
   background: var(--csp-muted-bg);
@@ -392,55 +444,7 @@ body {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), 0 2px 8px rgba(0, 0, 0, .4);
 }
 
-/* ---- live pulsating status dot (.csp-pulse[.warning|.danger]) ---- */
-[data-theme-style="caspian"] .csp-pulse {
-  position: relative;
-  display: inline-flex;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--c-success);
-  flex: 0 0 auto;
-}
-[data-theme-style="caspian"] .csp-pulse::after {
-  content: "";
-  position: absolute;
-  inset: -6px;
-  border-radius: 50%;
-  border: 2px solid var(--c-success);
-  animation: csp-ripple 2.4s ease-out infinite;
-}
-[data-theme-style="caspian"] .csp-pulse.warning { background: var(--c-warning); }
-[data-theme-style="caspian"] .csp-pulse.warning::after { border-color: var(--c-warning); }
-[data-theme-style="caspian"] .csp-pulse.danger { background: var(--c-danger); }
-[data-theme-style="caspian"] .csp-pulse.danger::after { border-color: var(--c-danger); }
-@keyframes csp-ripple {
-  0% { transform: scale(.4); opacity: .8; }
-  100% { transform: scale(1.8); opacity: 0; }
-}
-
-/* ---- circular SVG progress gauge — the ring is drawn by the <Gauge>
-   React component (components/caspian.jsx); this styles its center
-   label typography only ---- */
-[data-theme-style="caspian"] .csp-gauge-value {
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  fill: var(--c-text);
-  direction: ltr;
-}
-[data-theme-style="caspian"] .csp-gauge-label {
-  font-family: var(--csp-font-ui), 'Vazirmatn', sans-serif;
-  fill: var(--c-text-muted);
-}
-
-/* ---- sparkline / area-chart well ---- */
-[data-theme-style="caspian"] .csp-chart-well {
-  background: var(--csp-well);
-  border: 1px solid var(--c-border);
-  border-radius: 12px;
-  overflow: hidden;
-}
+/* ---- chart well — dark gets an inset neomorphic recess ---- */
 [data-theme-style="caspian"].dark .csp-chart-well {
   box-shadow: inset 3px 3px 6px rgba(0, 0, 0, .7), inset -2px -2px 5px rgba(255, 255, 255, .02);
 }
