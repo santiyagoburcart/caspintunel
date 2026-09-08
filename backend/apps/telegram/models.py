@@ -36,6 +36,9 @@ class RequiredChannel(models.Model):
     )
     member_count = models.IntegerField(default=0)
     last_synced_at = models.DateTimeField(null=True, blank=True)
+    bot_is_admin = models.BooleanField(
+        default=False, help_text="set by the /test action — is the sales bot an admin here?"
+    )
     is_active = models.BooleanField(default=True)
 
     class Meta:

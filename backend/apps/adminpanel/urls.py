@@ -19,6 +19,8 @@ from .views.finance import (
     TransactionViewSet,
 )
 from .views.integrations import (
+    BackupTestView,
+    BotStatsView,
     EmailStatusView,
     PanelAdminViewSet,
     PanelConfigView,
@@ -68,6 +70,8 @@ urlpatterns = [
     path("integrations/panel/test/", PanelTestView.as_view(), name="admin-panel-test"),
     path("integrations/panel/groups/", PanelGroupsView.as_view(), name="admin-panel-groups"),
     path("integrations/telegram/", TelegramConfigView.as_view(), name="admin-telegram-config"),
+    path("bots/stats/", BotStatsView.as_view(), name="admin-bots-stats"),
+    path("bots/backup-test/", BackupTestView.as_view(), name="admin-bots-backup-test"),
     path("integrations/email/", EmailStatusView.as_view(), name="admin-email-status"),
     path("", include(router.urls)),
 ]

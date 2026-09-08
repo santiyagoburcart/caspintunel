@@ -169,8 +169,8 @@ class AdminRequiredChannelSerializer(serializers.ModelSerializer):
     class Meta:
         model = RequiredChannel
         fields = ("id", "channel_id", "title", "invite_link", "member_count",
-                  "last_synced_at", "is_active")
-        read_only_fields = ("id", "member_count", "last_synced_at")
+                  "last_synced_at", "bot_is_admin", "is_active")
+        read_only_fields = ("id", "member_count", "last_synced_at", "bot_is_admin")
 
     def validate_channel_id(self, value):
         value = (value or "").strip()

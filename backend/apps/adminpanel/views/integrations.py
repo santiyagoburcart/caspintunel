@@ -241,6 +241,95 @@ class TelegramConfigView(AdminAPIView):
         return TelegramConfigSerializer(cfg).data
 
 
+class BotStatsView(AdminAPIView):
+    """Three real metrics for the top of the Telegram-bots screen:
+    bot-user count, last successful backup, and the sales-bot proxy status
+    (a live getMe through the configured proxy)."""
+
+    perms_map = {"GET": ["bots.manage"]}
+
+    @extend_schema(responses=dict, summary="Telegram bots — dashboard metrics")
+    def get(self, request):
+        import time
+
+        from django.contrib.auth import get_user_model
+        from django.utils import timezone as _tz
+
+        from apps.ops.models import BackupLog, BackupStatus
+        from apps.telegram.client import TelegramError
+        from apps.telegram.config import get_bot_config, sales_client
+
+        User = get_user_model()
+
+        # 1 — users who reached us through the bot
+        bot_users = User.objects.filter(telegram_id__isnull=False).count()
+
+        # 2 — last successful backup
+        last = (BackupLog.objects.filter(status=BackupStatus.OK)
+                .order_by("-created_at").first())
+        backup = None
+        if last:
+            backup = {
+                "filename": last.filename,
+                "created_at": last.created_at.isoformat(),
+                "age_seconds": int((_tz.now() - last.created_at).total_seconds()),
+                "size_mb": round((last.size or 0) / 1_048_576, 1),
+                "sent_to_telegram": last.sent_to_telegram,
+            }
+
+        # 3 — proxy status (only meaningful when the sales bot has its own proxy)
+        sales_cfg = get_bot_config("sales")
+        proxy = {"configured": bool(sales_cfg and sales_cfg.proxy_url)}
+        sales_username = None
+        client = sales_client()
+        if client is not None:
+            t0 = time.monotonic()
+            try:
+                me = client.get_me()
+                sales_username = me.get("username")
+                if proxy["configured"]:
+                    proxy.update(ok=True, latency_ms=int((time.monotonic() - t0) * 1000))
+            except TelegramError as exc:
+                if proxy["configured"]:
+                    proxy.update(ok=False, detail=str(exc)[:160])
+        elif proxy["configured"]:
+            proxy.update(ok=False, detail="sales bot is inactive or has no token")
+
+        return Response({
+            "bot_users": bot_users,
+            "backup": backup,
+            "proxy": proxy,
+            "sales_username": sales_username,
+        })
+
+
+class BackupTestView(AdminAPIView):
+    """Send a probe message to the backup bot's target chat."""
+
+    perms_map = {"POST": ["bots.manage"]}
+
+    @extend_schema(request=None, responses=dict, summary="Backup bot — send a test message")
+    def post(self, request):
+        from apps.telegram.client import TelegramError
+        from apps.telegram.config import backup_client, get_bot_config
+
+        cfg = get_bot_config("backup")
+        if not cfg or not cfg.backup_chat_id:
+            return Response({"ok": False, "detail": "شناسهٔ چت بک‌آپ تنظیم نشده است."})
+        client = backup_client()
+        if client is None:
+            return Response({"ok": False, "detail": "ربات بک‌آپ غیرفعال است یا توکن ندارد."})
+        try:
+            client.send_message(
+                cfg.backup_chat_id,
+                "✅ <b>Caspian Tunnel</b> — پیام آزمایشی ربات پشتیبان‌گیری. اتصال برقرار است.",
+            )
+        except TelegramError as exc:
+            return Response({"ok": False, "detail": f"ارسال ناموفق: {exc}"})
+        write_audit(action="telegram.backup_test", staff=request.user)
+        return Response({"ok": True, "detail": "پیام آزمایشی ارسال شد."})
+
+
 _ENFORCEMENT_KEYS = ("force_channel_join", "force_share_phone")
 
 
@@ -312,14 +401,14 @@ class RequiredChannelViewSet(AdminViewSet):
                              "detail": f"بررسی عضویت ممکن نشد: {exc}"})
 
         # opportunistically refresh the stored row
-        fields = []
+        fields = ["bot_is_admin", "last_synced_at"]
+        channel.bot_is_admin = bot_is_admin
+        channel.last_synced_at = timezone.now()
         if title and title != channel.title:
             channel.title = title; fields.append("title")
         if member_count is not None:
             channel.member_count = member_count; fields.append("member_count")
-            channel.last_synced_at = timezone.now(); fields.append("last_synced_at")
-        if fields:
-            channel.save(update_fields=fields)
+        channel.save(update_fields=fields)
 
         if bot_is_admin:
             detail = "✅ ربات ادمین کانال است و می‌تواند عضویت را بررسی کند."

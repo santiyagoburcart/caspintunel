@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api, apiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
-import { digits } from '../lib/format'
+import { digits, relTime } from '../lib/format'
 import { Alert, Field, Spinner, Toggle } from '../components/ui'
 
 function Ico({ d, w = 15 }) {
@@ -24,6 +24,10 @@ const ICONS = {
   dot: <circle cx="12" cy="12" r="4" />,
   close: <path d="M18 6L6 18M6 6l12 12" />,
   refresh: <><path d="M23 4v6h-6M1 20v-6h6" /><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" /></>,
+  users: <><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /></>,
+  router: <><rect x="2" y="14" width="20" height="8" rx="2" /><path d="M6.01 18H6M10 18h-.01M15 10l-3-3m0 0L9 10m3-3v7" /></>,
+  arrow: <><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></>,
+  send: <><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></>,
 }
 
 // password/secret input with a show/hide eye toggle
@@ -53,9 +57,42 @@ const INT_CSS = `
 .int-card-head { display: flex; align-items: center; gap: 11px; }
 .int-card-ico { width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0; display: grid; place-items: center;
   background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary); }
-.int-bot-grid { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; }
+.int-head-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between; }
+.int-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.int-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; padding: 4px 11px; border-radius: 999px; white-space: nowrap; }
+.int-pill.on { background: color-mix(in srgb, var(--c-success) 14%, transparent); color: var(--c-success); }
+.int-pill.off { background: color-mix(in srgb, var(--c-text-muted) 15%, transparent); color: var(--c-text-muted); }
+
+.int-metrics { display: grid; grid-template-columns: 1fr; gap: 14px; }
+@media (min-width: 640px) { .int-metrics { grid-template-columns: repeat(3, 1fr); } }
+.int-metric { display: flex; flex-direction: column; gap: 4px; }
+.int-metric-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.int-metric-label { font-size: 12px; font-weight: 600; color: var(--c-text-muted); }
+.int-metric-ico { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; flex-shrink: 0; }
+.int-metric-val { font-size: 20px; font-weight: 800; letter-spacing: -.01em; margin-top: 4px; }
+.int-metric-sub { font-size: 11px; color: var(--c-text-muted); }
+
+.int-bot-grid { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: stretch; }
 @media (min-width: 1024px) { .int-bot-grid { grid-template-columns: 1fr 1fr; } }
 .int-bot-card { height: 100%; }
+.int-bot-card-foot { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--c-border); }
+.int-bot-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.int-foot-link { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 600; color: var(--c-primary); }
+.int-foot-link:hover { text-decoration: underline; }
+.int-foot-tag { font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.int-foot-tag.ok { background: color-mix(in srgb, var(--c-success) 14%, transparent); color: var(--c-success); }
+.int-foot-tag.muted { background: color-mix(in srgb, var(--c-text-muted) 15%, transparent); color: var(--c-text-muted); }
+.int-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.int-chatid-row { display: flex; gap: 8px; }
+.int-chatid-row .input { flex: 1; }
+.int-test-btn { display: inline-flex; align-items: center; gap: 5px; padding: 0 12px; border-radius: 10px; font-size: 12px; font-weight: 600; white-space: nowrap;
+  border: 1px solid color-mix(in srgb, var(--c-primary) 32%, transparent); color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 8%, transparent); }
+.int-test-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--c-primary) 16%, transparent); }
+.int-test-btn:disabled { opacity: .5; }
+.int-ch-admin { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.int-ch-admin.ok { background: color-mix(in srgb, var(--c-success) 14%, transparent); color: var(--c-success); }
+.int-ch-admin.no { background: color-mix(in srgb, var(--c-danger) 13%, transparent); color: var(--c-danger); }
+.int-ch-admin.unknown { background: color-mix(in srgb, var(--c-text-muted) 15%, transparent); color: var(--c-text-muted); }
 .int-bots-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
 .int-token-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
 .int-token-badge.set { background: color-mix(in srgb, var(--c-success) 15%, transparent); color: var(--c-success); }
@@ -66,7 +103,7 @@ const INT_CSS = `
   background: color-mix(in srgb, var(--c-warning) 12%, transparent); color: var(--c-warning); }
 
 .int-ch-wrap { overflow-x: auto; }
-.int-ch-table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 13px; }
+.int-ch-table { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 13px; }
 .int-ch-table thead th { text-align: start; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .03em;
   color: var(--c-text-muted); padding: 12px 16px; white-space: nowrap; border-bottom: 1px solid var(--c-border); }
 .int-ch-table td { padding: 12px 16px; vertical-align: middle; border-bottom: 1px solid var(--c-border); }
@@ -193,6 +230,16 @@ const T = {
     chat_hint: 'فایل‌های پشتیبان به این چت ارسال می‌شوند. برای گرفتن شناسه، در آن چت به ربات بک‌آپ /id بفرستید.',
     bots_saved: 'پیکربندی ربات‌ها و کانال‌ها ذخیره شد. کانتینر ربات ظرف یک دقیقه توکن جدید را می‌گیرد (در صورت نیاز ری‌استارت کنید).',
     bots_apply_note: 'همهٔ تغییرات پس از ذخیره، آنی روی ربات‌ها و کانال‌ها اعمال می‌شوند.',
+    pill_sales_on: 'ربات فروش متصل', pill_sales_off: 'ربات فروش غیرفعال',
+    pill_backup_on: 'ربات بک‌آپ متصل', pill_backup_off: 'ربات بک‌آپ غیرفعال',
+    m_users: 'کاربران ربات', m_users_sub: 'کاربر با شناسهٔ تلگرام',
+    m_backup: 'آخرین بک‌آپ', m_backup_none: 'بدون سابقه', m_backup_sub: 'DB: {mb} مگابایت',
+    m_proxy: 'وضعیت پروکسی تلگرام', m_proxy_none: 'بدون پروکسی', m_proxy_none_sub: 'روی ربات فروش پروکسی تنظیم نشده',
+    m_proxy_ok: 'متصل', m_proxy_ok_sub: '{ms}ms · Socks5', m_proxy_fail: 'قطع', m_proxy_fail_sub: 'اتصال از طریق پروکسی ناموفق',
+    bot_detected: 'نام کاربری شناسایی‌شده:', bot_menu_edit: 'ویرایش منوها و دستورات (BotFather)',
+    backup_last: 'آخرین پشتیبان: {ago}', backup_send_test: 'تست ارسال',
+    ch_admin_ok: 'ادمین تأیید شده', ch_admin_no: 'ادمین نیست', ch_admin_unknown: 'بررسی‌نشده',
+    ch_col_admin: 'دسترسی ادمین', ch_col_sync: 'آخرین سینک',
     email_title: 'ارسال ایمیل', email_host: 'میزبان', email_from: 'فرستنده',
     email_relay_on: 'رله فعال است', email_relay_off: 'رله تنظیم نشده — ایمیل خارجی ارسال نمی‌شود',
     email_ready: 'آمادهٔ ارسال بیرونی', email_not_ready: 'ارسال بیرونی فعال نیست',
@@ -258,6 +305,16 @@ const T = {
     chat_hint: 'Backups are sent to this chat. Send /id to the backup bot there to get the id.',
     bots_saved: 'Bots and channels saved. The bot container picks up a new token within a minute (restart it if needed).',
     bots_apply_note: 'After saving, all changes apply to the bots and channels immediately.',
+    pill_sales_on: 'Sales bot connected', pill_sales_off: 'Sales bot inactive',
+    pill_backup_on: 'Backup bot connected', pill_backup_off: 'Backup bot inactive',
+    m_users: 'Bot users', m_users_sub: 'users with a Telegram id',
+    m_backup: 'Last backup', m_backup_none: 'no history', m_backup_sub: 'DB: {mb} MB',
+    m_proxy: 'Telegram proxy status', m_proxy_none: 'No proxy', m_proxy_none_sub: 'no proxy set on the sales bot',
+    m_proxy_ok: 'Connected', m_proxy_ok_sub: '{ms}ms · Socks5', m_proxy_fail: 'Failed', m_proxy_fail_sub: 'getMe through the proxy failed',
+    bot_detected: 'Detected username:', bot_menu_edit: 'Edit menus & commands (BotFather)',
+    backup_last: 'Last backup: {ago}', backup_send_test: 'Test send',
+    ch_admin_ok: 'Admin verified', ch_admin_no: 'Not an admin', ch_admin_unknown: 'Not checked',
+    ch_col_admin: 'Admin access', ch_col_sync: 'Last sync',
     email_title: 'Email delivery', email_host: 'Host', email_from: 'From',
     email_relay_on: 'Relay configured', email_relay_off: 'No relay — external email will not be delivered',
     email_ready: 'Ready for external delivery', email_not_ready: 'External delivery not active',
@@ -708,14 +765,51 @@ function EmailCard({ s }) {
 /* ================================================================== *
  *  Telegram Bots  —  /panel/bots                                     *
  * ================================================================== */
+function BotMetric({ label, value, sub, tone, icon, ok }) {
+  return (
+    <div className="card int-metric">
+      <div className="int-metric-top">
+        <span className="int-metric-label">{label}</span>
+        <span className="int-metric-ico" style={{ background: `color-mix(in srgb, ${tone} 13%, transparent)`, color: tone }}>{icon}</span>
+      </div>
+      <div className="int-metric-val" style={ok === false ? { color: 'var(--c-danger)' } : ok ? { color: 'var(--c-success)' } : undefined}>{value}</div>
+      {sub ? <div className="int-metric-sub">{sub}</div> : null}
+    </div>
+  )
+}
+
+function BotMetrics({ s, lang }) {
+  const [d, setD] = useState(null)
+  useEffect(() => { api.get('/admin/bots/stats/').then((r) => setD(r.data)).catch(() => setD({})) }, [])
+  const b = d?.backup
+  const p = d?.proxy || {}
+  return (
+    <div className="int-metrics">
+      <BotMetric label={s.m_users} tone="#1464BA" icon={<Ico d={ICONS.users} w={20} />}
+        value={d ? digits(d.bot_users ?? 0, lang) : '…'} sub={s.m_users_sub} />
+      <BotMetric label={s.m_backup} tone="#11AB53" icon={<Ico d={ICONS.backup} w={20} />}
+        value={d ? (b ? relTime(b.created_at, lang) : s.m_backup_none) : '…'}
+        sub={b ? s.m_backup_sub.replace('{mb}', digits(b.size_mb, lang)) : (b === null ? '' : undefined)} />
+      <BotMetric label={s.m_proxy} tone="#7C3AED" icon={<Ico d={ICONS.router} w={20} />}
+        value={!d ? '…' : !p.configured ? s.m_proxy_none : p.ok ? s.m_proxy_ok : s.m_proxy_fail}
+        ok={p.configured ? !!p.ok : undefined}
+        sub={!d ? undefined : !p.configured ? s.m_proxy_none_sub
+          : p.ok ? s.m_proxy_ok_sub.replace('{ms}', digits(p.latency_ms ?? 0, lang))
+          : s.m_proxy_fail_sub} />
+    </div>
+  )
+}
+
 export function Bots() {
   const { t, lang } = useI18n()
   const s = T[lang] || T.fa
   const [data, setData] = useState(null)
   const [sales, setSales] = useState(null)
   const [backup, setBackup] = useState(null)
+  const [stats, setStats] = useState(null)
   const [msg, setMsg] = useState(null)
   const [err, setErr] = useState('')
+  const [testingBackup, setTestingBackup] = useState(false)
 
   const hydrate = (row) => ({
     token: '',
@@ -724,14 +818,25 @@ export function Bots() {
     is_active: row.is_active ?? false,
   })
 
-  const load = () =>
+  const load = () => {
     api.get('/admin/integrations/telegram/').then((r) => {
       setData(r.data)
       setSales(hydrate(r.data.sales))
       setBackup(hydrate(r.data.backup))
     }).catch(() => setData({ error: true }))
+    api.get('/admin/bots/stats/').then((r) => setStats(r.data)).catch(() => setStats({}))
+  }
 
   useEffect(() => { load() }, [])
+
+  const testBackup = async () => {
+    setTestingBackup(true); setMsg(null)
+    try {
+      const r = await api.post('/admin/bots/backup-test/')
+      setMsg({ kind: r.data.ok ? 'success' : 'danger', text: r.data.detail })
+    } catch (e) { setMsg({ kind: 'danger', text: apiError(e) }) }
+    finally { setTestingBackup(false) }
+  }
 
   const save = async (e) => {
     e.preventDefault()
@@ -754,24 +859,70 @@ export function Bots() {
 
   if (!data) return <div className="grid place-items-center py-16"><Spinner /></div>
 
+  const salesOn = data.sales?.is_active && data.sales?.token_set
+  const backupOn = data.backup?.is_active && data.backup?.token_set
+
   return (
     <div className="space-y-4">
       <style>{INT_CSS}</style>
-      <div className="int-head">
-        <span className="int-head-ico"><Ico d={ICONS.bot} w={20} /></span>
-        <div>
-          <h1 className="text-lg font-bold">{t('bots')}</h1>
-          <p className="mt-1 text-sm text-muted">{s.bots_intro}</p>
+      <div className="int-head-row">
+        <div className="int-head">
+          <span className="int-head-ico"><Ico d={ICONS.bot} w={20} /></span>
+          <div>
+            <h1 className="text-lg font-bold">{t('bots')}</h1>
+            <p className="mt-1 text-sm text-muted">{s.bots_intro}</p>
+          </div>
+        </div>
+        <div className="int-pills">
+          <span className={'int-pill ' + (salesOn ? 'on' : 'off')}>
+            <Ico d={ICONS.dot} w={9} />{salesOn ? s.pill_sales_on : s.pill_sales_off}
+          </span>
+          <span className={'int-pill ' + (backupOn ? 'on' : 'off')}>
+            <Ico d={ICONS.dot} w={9} />{backupOn ? s.pill_backup_on : s.pill_backup_off}
+          </span>
         </div>
       </div>
+
+      <BotMetrics s={s} lang={lang} />
 
       <Alert>{err}</Alert>
       {msg && <Alert kind={msg.kind}>{msg.text}</Alert>}
 
       <form onSubmit={save} className="space-y-4">
         <div className="int-bot-grid">
-          {sales && <BotCard title={s.sales_bot} subtitle={s.sales_bot_sub} icon={ICONS.cart} row={data.sales} value={sales} onChange={setSales} s={s} />}
-          {backup && <BotCard title={s.backup_bot} subtitle={s.backup_bot_sub} icon={ICONS.backup} row={data.backup} value={backup} onChange={setBackup} s={s} showChatId />}
+          {sales && (
+            <BotCard title={s.sales_bot} subtitle={s.sales_bot_sub} icon={ICONS.cart}
+              row={data.sales} value={sales} onChange={setSales} s={s}
+              footer={
+                <div className="int-bot-foot">
+                  <span className="text-xs text-muted">
+                    {s.bot_detected} <b dir="ltr" className="int-mono">{stats?.sales_username ? '@' + stats.sales_username : '—'}</b>
+                  </span>
+                  <a href="https://t.me/BotFather" target="_blank" rel="noreferrer" className="int-foot-link">
+                    {s.bot_menu_edit} <Ico d={ICONS.arrow} w={13} />
+                  </a>
+                </div>
+              } />
+          )}
+          {backup && (
+            <BotCard title={s.backup_bot} subtitle={s.backup_bot_sub} icon={ICONS.backup}
+              row={data.backup} value={backup} onChange={setBackup} s={s} showChatId
+              onTestSend={testBackup} testing={testingBackup}
+              footer={
+                <div className="int-bot-foot">
+                  <span className="text-xs text-muted">
+                    {stats?.backup
+                      ? s.backup_last.replace('{ago}', relTime(stats.backup.created_at, lang))
+                      : s.m_backup_none}
+                  </span>
+                  {stats?.backup && (
+                    <span className={'int-foot-tag ' + (stats.backup.sent_to_telegram ? 'ok' : 'muted')}>
+                      DB {digits(stats.backup.size_mb, lang)} MB {stats.backup.sent_to_telegram ? '✓' : ''}
+                    </span>
+                  )}
+                </div>
+              } />
+          )}
         </div>
         <div className="int-bots-foot">
           <p className="text-xs text-muted flex items-center gap-1.5">
@@ -888,7 +1039,10 @@ function RequiredChannels({ s }) {
             <thead>
               <tr>
                 <th>{s.ch_col_name}</th><th>{s.ch_col_id}</th>
-                <th className="int-ch-c">{s.ch_col_members}</th><th className="int-ch-c">{s.ch_col_act}</th>
+                <th>{s.ch_col_admin}</th>
+                <th className="int-ch-c">{s.ch_col_members}</th>
+                <th>{s.ch_col_sync}</th>
+                <th className="int-ch-c">{s.ch_col_act}</th>
               </tr>
             </thead>
             <tbody>
@@ -904,11 +1058,17 @@ function RequiredChannels({ s }) {
                     </div>
                   </td>
                   <td data-label={s.ch_col_id} dir="ltr" className="int-ch-mono">{c.channel_id}</td>
+                  <td data-label={s.ch_col_admin}>
+                    <span className={'int-ch-admin ' + (c.last_synced_at ? (c.bot_is_admin ? 'ok' : 'no') : 'unknown')}>
+                      <Ico d={c.bot_is_admin && c.last_synced_at ? ICONS.check : ICONS.dot} w={11} />
+                      {!c.last_synced_at ? s.ch_admin_unknown : c.bot_is_admin ? s.ch_admin_ok : s.ch_admin_no}
+                    </span>
+                  </td>
                   <td data-label={s.ch_col_members} className="int-ch-c">
                     <div className="int-ch-mem">{digits(c.member_count ?? 0, lang)}</div>
-                    {c.last_synced_at && (
-                      <div className="int-ch-sync">{new Date(c.last_synced_at).toLocaleDateString(lang === 'fa' ? 'fa-IR' : 'en-GB')}</div>
-                    )}
+                  </td>
+                  <td data-label={s.ch_col_sync} className="int-ch-mono int-ch-sync">
+                    {c.last_synced_at ? relTime(c.last_synced_at, lang) : '—'}
                   </td>
                   <td data-label={s.ch_col_act} className="int-ch-c">
                     <div className="int-ch-acts">
@@ -971,7 +1131,7 @@ function RequiredChannels({ s }) {
   )
 }
 
-function BotCard({ title, subtitle, icon, row, value, onChange, s, showChatId }) {
+function BotCard({ title, subtitle, icon, row, value, onChange, s, showChatId, footer, onTestSend, testing }) {
   const set = (k, v) => onChange({ ...value, [k]: v })
   return (
     <div className="card int-bot-card flex flex-col gap-4">
@@ -1015,11 +1175,20 @@ function BotCard({ title, subtitle, icon, row, value, onChange, s, showChatId })
             <span className="label mb-0">{s.chat_id}</span>
             <span className="text-[11px] text-muted">{s.chat_hint_short}</span>
           </div>
-          <input className="input" dir="ltr" inputMode="numeric" placeholder="-1001234567890"
-            value={value.backup_chat_id} onChange={(e) => set('backup_chat_id', e.target.value)} />
+          <div className="int-chatid-row">
+            <input className="input" dir="ltr" inputMode="numeric" placeholder="-1001234567890"
+              value={value.backup_chat_id} onChange={(e) => set('backup_chat_id', e.target.value)} />
+            {onTestSend && (
+              <button type="button" className="int-test-btn" onClick={onTestSend} disabled={testing || !value.backup_chat_id}>
+                <Ico d={ICONS.send} w={13} />{testing ? '…' : s.backup_send_test}
+              </button>
+            )}
+          </div>
           <span className="mt-1 block text-xs text-muted">{s.chat_hint}</span>
         </div>
       )}
+
+      {footer && <div className="int-bot-card-foot">{footer}</div>}
     </div>
   )
 }
