@@ -3,6 +3,56 @@ import { api, apiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 import { Alert, Field, Spinner, Toggle } from '../components/ui'
 
+function Ico({ d, w = 15 }) {
+  return (
+    <svg viewBox="0 0 24 24" width={w} height={w} fill="none" stroke="currentColor"
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{d}</svg>
+  )
+}
+const ICONS = {
+  bot: <><rect x="3" y="11" width="18" height="10" rx="2" /><circle cx="12" cy="5" r="2" /><path d="M12 7v4M8 16h.01M16 16h.01" /></>,
+  cart: <><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6" /></>,
+  backup: <><path d="M21 12a9 9 0 11-3-6.7L21 8" /><path d="M21 3v5h-5" /></>,
+  link: <><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" /></>,
+  edit: <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />,
+  trash: <><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /></>,
+  eye: <><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" /><circle cx="12" cy="12" r="3" /></>,
+  eyeOff: <><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" /><path d="M1 1l22 22" /></>,
+  plus: <path d="M12 5v14M5 12h14" />,
+}
+
+// password/secret input with a show/hide eye toggle
+function SecretInput({ value, onChange, placeholder, autoComplete = 'new-password' }) {
+  const { t } = useI18n()
+  const [show, setShow] = useState(false)
+  return (
+    <div className="int-secret">
+      <input className="input" dir="ltr" type={show ? 'text' : 'password'} autoComplete={autoComplete}
+        placeholder={placeholder} value={value} onChange={onChange} />
+      <button type="button" className="int-secret-eye" onClick={() => setShow((v) => !v)}
+        aria-label={t(show ? 'hide_password' : 'show_password')}>
+        <Ico d={show ? ICONS.eyeOff : ICONS.eye} w={15} />
+      </button>
+    </div>
+  )
+}
+
+const INT_CSS = `
+.int-secret { position: relative; }
+.int-secret .input { width: 100%; padding-inline-end: 40px; }
+.int-secret-eye { position: absolute; inset-inline-end: 10px; top: 50%; transform: translateY(-50%); color: var(--c-text-muted); }
+.int-secret-eye:hover { color: var(--c-text); }
+.int-head { display: flex; align-items: flex-start; gap: 12px; }
+.int-head-ico { width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0; display: grid; place-items: center;
+  background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary); }
+.int-card-head { display: flex; align-items: center; gap: 11px; }
+.int-card-ico { width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0; display: grid; place-items: center;
+  background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary); }
+.int-icon-btn { display: inline-flex; padding: 6px; border-radius: 8px; color: var(--c-text-muted); }
+.int-icon-btn:hover { color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 12%, transparent); }
+.int-icon-btn--del:hover { color: var(--c-danger); background: color-mix(in srgb, var(--c-danger) 12%, transparent); }
+`
+
 const T = {
   fa: {
     panel_intro: 'پنل‌های پاسارگارد/PasarGuard خود را اینجا مدیریت کنید. هر پلن به یک پنل متصل می‌شود. رمز عبور رمزنگاری‌شده ذخیره می‌شود و دیگر نمایش داده نمی‌شود.',
@@ -118,14 +168,18 @@ export function PanelConnection() {
 
   return (
     <div className="space-y-4">
+      <style>{INT_CSS}</style>
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <h1 className="text-lg font-bold">{t('panel_link')}</h1>
-          <p className="mt-1 text-sm text-muted">{s.panel_intro}</p>
+        <div className="int-head">
+          <span className="int-head-ico"><Ico d={ICONS.link} w={20} /></span>
+          <div>
+            <h1 className="text-lg font-bold">{t('panel_link')}</h1>
+            <p className="mt-1 text-sm text-muted">{s.panel_intro}</p>
+          </div>
         </div>
         {!adding && (
-          <button className="btn-primary shrink-0 text-sm" onClick={() => setAdding(true)}>
-            + {s.add_panel}
+          <button className="btn-primary shrink-0 text-sm inline-flex items-center gap-1.5" onClick={() => setAdding(true)}>
+            <Ico d={ICONS.plus} w={14} /> {s.add_panel}
           </button>
         )}
       </div>
@@ -222,7 +276,8 @@ function PanelCard({ s, panel, isNew = false, onSaved, onDeleted, onCancel }) {
   return (
     <form onSubmit={save} className="card grid gap-4 sm:grid-cols-2">
       <div className="flex flex-wrap items-center justify-between gap-2 sm:col-span-2">
-        <span className="font-bold">
+        <span className="int-card-head font-bold">
+          <span className="int-card-ico"><Ico d={ICONS.link} w={16} /></span>
           {isNew ? s.new_panel : (form.name || panel.name)}
         </span>
         {!isNew && (
@@ -247,7 +302,7 @@ function PanelCard({ s, panel, isNew = false, onSaved, onDeleted, onCancel }) {
           value={form.admin_username} onChange={(e) => set('admin_username', e.target.value)} />
       </Field>
       <Field label={s.admin_pass}>
-        <input className="input" dir="ltr" type="password" autoComplete="new-password"
+        <SecretInput
           placeholder={!isNew && panel.admin_password_set ? s.unchanged : ''}
           value={form.admin_password} onChange={(e) => set('admin_password', e.target.value)} />
         <span className="mt-1 block text-xs text-muted">
@@ -316,8 +371,8 @@ function PanelCard({ s, panel, isNew = false, onSaved, onDeleted, onCancel }) {
           <button type="button" className="btn-ghost text-sm" onClick={onCancel}>{t('cancel')}</button>
         )}
         {!isNew && !inUse && (
-          <button type="button" className="btn-ghost ms-auto text-sm"
-            style={{ color: 'var(--c-danger)' }} onClick={del}>🗑 {s.del_panel}</button>
+          <button type="button" className="btn-ghost ms-auto text-sm inline-flex items-center gap-1.5"
+            style={{ color: 'var(--c-danger)' }} onClick={del}><Ico d={ICONS.trash} w={14} /> {s.del_panel}</button>
         )}
       </div>
     </form>
@@ -444,17 +499,21 @@ export function Bots() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-lg font-bold">{t('bots')}</h1>
-        <p className="mt-1 text-sm text-muted">{s.bots_intro}</p>
+      <style>{INT_CSS}</style>
+      <div className="int-head">
+        <span className="int-head-ico"><Ico d={ICONS.bot} w={20} /></span>
+        <div>
+          <h1 className="text-lg font-bold">{t('bots')}</h1>
+          <p className="mt-1 text-sm text-muted">{s.bots_intro}</p>
+        </div>
       </div>
 
       <Alert>{err}</Alert>
       {msg && <Alert kind={msg.kind}>{msg.text}</Alert>}
 
       <form onSubmit={save} className="space-y-4">
-        {sales && <BotCard title={s.sales_bot} row={data.sales} value={sales} onChange={setSales} s={s} />}
-        {backup && <BotCard title={s.backup_bot} row={data.backup} value={backup} onChange={setBackup} s={s} showChatId />}
+        {sales && <BotCard title={s.sales_bot} icon={ICONS.cart} row={data.sales} value={sales} onChange={setSales} s={s} />}
+        {backup && <BotCard title={s.backup_bot} icon={ICONS.backup} row={data.backup} value={backup} onChange={setBackup} s={s} showChatId />}
         <button className="btn-primary text-sm">{s.save}</button>
       </form>
 
@@ -610,8 +669,8 @@ function RequiredChannels({ s }) {
               <button className="btn-ghost text-xs" onClick={() => test(c.id)} disabled={testing === c.id}>
                 {testing === c.id ? '…' : s.ch_test}
               </button>
-              <button className="btn-ghost text-xs" onClick={() => { setEdit({ ...c }); setAdding(false) }}>✎</button>
-              <button className="btn-ghost text-xs" style={{ color: 'var(--c-danger)' }} onClick={() => del(c.id)}>🗑</button>
+              <button className="int-icon-btn" title={s.save} onClick={() => { setEdit({ ...c }); setAdding(false) }}><Ico d={ICONS.edit} w={15} /></button>
+              <button className="int-icon-btn int-icon-btn--del" onClick={() => del(c.id)}><Ico d={ICONS.trash} w={15} /></button>
             </div>
           </div>
         )
@@ -620,12 +679,14 @@ function RequiredChannels({ s }) {
   )
 }
 
-function BotCard({ title, row, value, onChange, s, showChatId }) {
+function BotCard({ title, icon, row, value, onChange, s, showChatId }) {
   const set = (k, v) => onChange({ ...value, [k]: v })
   return (
     <div className="card grid gap-4 sm:grid-cols-2">
       <div className="flex items-center justify-between sm:col-span-2">
-        <span className="font-bold">{title}</span>
+        <span className="int-card-head font-bold">
+          <span className="int-card-ico"><Ico d={icon || ICONS.bot} w={16} /></span>{title}
+        </span>
         <label className="flex items-center gap-2 text-sm">
           <Toggle checked={value.is_active} onChange={(v) => set('is_active', v)} label={s.active} />
           {s.active}
@@ -633,8 +694,7 @@ function BotCard({ title, row, value, onChange, s, showChatId }) {
       </div>
 
       <Field label={s.bot_token}>
-        <input className="input" dir="ltr" type="password" autoComplete="new-password"
-          placeholder={row.token_set ? s.unchanged : '123456:ABC-DEF…'}
+        <SecretInput placeholder={row.token_set ? s.unchanged : '123456:ABC-DEF…'}
           value={value.token} onChange={(e) => set('token', e.target.value)} />
         <span className="mt-1 block text-xs text-muted">
           {row.token_set ? s.token_stored : s.token_none}
