@@ -193,12 +193,14 @@ function CaspianNav({ groups, t, brand, logo, onNavigate }) {
   )
 }
 
-// mobile bottom-nav — 4 most-used routes + "full menu" (opens the drawer).
-// Mirrors Stitch 0197c0c0 / f10ea6b9 (bottom tab bar, no hamburger).
+// mobile bottom-nav — 5 tabs, matches Stitch f10ea6b9 (DOM order; RTL flips it
+// to Settings · Roles · Cards · Users · Dashboard, right→left). Every other
+// route stays reachable through the hamburger drawer in the mobile header.
 const CASPIAN_BOTNAV = [
   ['/', 'dashboard', null, 'dashboard'],
   ['/users', 'users', 'users.view', 'users'],
-  ['/transactions', 'transactions', 'payment.view', 'transactions'],
+  ['/cards', 'cards', 'payment.view', 'cards'],
+  ['/roles', 'roles', 'roles.manage', 'roles'],
   ['/settings', 'settings', 'settings.manage', 'settings'],
 ]
 
@@ -228,18 +230,44 @@ function CaspianLayout() {
         <div className="csp-drawer-bg" />
         <aside className="csp-drawer" onClick={(e) => e.stopPropagation()}>
           <CaspianNav groups={groups} t={t} brand={brand} logo={config?.logo} onNavigate={() => setOpen(false)} />
+          <div className="csp-drawer-foot">
+            {!locked && (
+              <button className="csp-df-btn" onClick={toggle}>
+                <SideIcon name={mode === 'dark' ? 'sun' : 'moon'} />
+                {mode === 'dark' ? (lang === 'fa' ? 'روشن' : 'Light') : (lang === 'fa' ? 'تیره' : 'Dark')}
+              </button>
+            )}
+            <button className="csp-df-btn" onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')}>
+              {lang === 'fa' ? 'English' : 'فارسی'}
+            </button>
+            <button className="csp-df-btn csp-df-out" onClick={() => { logout(); go('/login') }}>{t('logout')}</button>
+          </div>
         </aside>
       </div>
 
       <div className="csp-main">
-        <header className="csp-topbar">
-          {/* mobile brand — the desktop rail carries it at >=768px */}
-          <span className="csp-tb-brand">
-            <span className="csp-tb-brand-ico">
-              {config?.logo ? <img src={config.logo} alt="" /> : <SideIcon name="brand" />}
+        {/* mobile top bar (≤767px) — hamburger · brand · online + avatar */}
+        <header className="csp-mtop">
+          <button className="csp-mtop-burger" onClick={() => setOpen(true)} aria-label="menu">
+            <SideIcon name="menu" />
+          </button>
+          <div className="csp-mtop-brand">
+            <span className="csp-mtop-logo">
+              {config?.logo ? <img src={config.logo} alt="" /> : <b>C</b>}
             </span>
-            <b>{brand}</b>
-          </span>
+            <div className="csp-mtop-txt">
+              <b>{brand}</b>
+              <span>ADMIN CONTROL</span>
+            </div>
+          </div>
+          <div className="csp-mtop-end">
+            <span className="csp-mtop-online"><i />{lang === 'fa' ? 'آنلاین' : 'Online'}</span>
+            <span className="csp-mtop-avatar">{(staff?.username || '?').charAt(0).toUpperCase()}</span>
+          </div>
+        </header>
+
+        {/* desktop top bar (≥768px) */}
+        <header className="csp-topbar">
           {!locked && (
             <button className="csp-tb-btn csp-tb-ico" onClick={toggle} aria-label="theme">
               <SideIcon name={mode === 'dark' ? 'sun' : 'moon'} />
@@ -253,24 +281,19 @@ function CaspianLayout() {
           </span>
           <button className="csp-tb-btn" onClick={() => { logout(); go('/login') }}>{t('logout')}</button>
         </header>
+
         <main className="csp-content mx-auto max-w-6xl p-3"><Outlet /></main>
       </div>
 
-      {/* mobile bottom nav — replaces the hamburger below 768px */}
+      {/* mobile bottom nav (≤767px) — Stitch f10ea6b9 */}
       <nav className="csp-botnav">
         {botnav.map(([to, key, , icon]) => (
           <NavLink key={to} to={to} end
             className={({ isActive }) => 'csp-bn-item' + (isActive ? ' on' : '')}>
-            <span className="csp-bn-dot" />
-            <SideIcon name={icon} />
+            <span className="csp-bn-ico"><SideIcon name={icon} /></span>
             <span className="csp-bn-t">{t(key)}</span>
           </NavLink>
         ))}
-        <button type="button" className={'csp-bn-item' + (open ? ' on' : '')} onClick={() => setOpen(true)}>
-          <span className="csp-bn-dot" />
-          <SideIcon name="menu" />
-          <span className="csp-bn-t">{t('full_menu')}</span>
-        </button>
       </nav>
     </div>
   )
@@ -376,16 +399,19 @@ const CASPIAN_CSS = `
 .csp-drawer {
   position: absolute; inset-block: 0; inset-inline-start: 0;
   width: 17rem; max-width: 82vw;
+  display: flex; flex-direction: column;
   transform: translateX(-100%); transition: transform .25s ease;
 }
+.csp-drawer .csp-side { height: auto; flex: 1 1 auto; min-height: 0; }
 [dir="rtl"] .csp-drawer { transform: translateX(100%); }
 .csp-drawer-wrap.open .csp-drawer { transform: translateX(0); }
 
-/* ---- slim top bar ---- */
+/* ---- desktop slim top bar (>=768px) ---- */
 .csp-topbar {
   display: flex; align-items: center; gap: 8px; padding: 12px 16px; font-size: 13px;
   border-bottom: 1px solid var(--c-border);
 }
+@media (max-width: 767px) { .csp-topbar { display: none; } }
 .dark .csp-topbar { border-bottom: 1px solid rgba(255,255,255,0.05); }
 .csp-tb-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
@@ -403,44 +429,100 @@ const CASPIAN_CSS = `
 }
 .dark .csp-tb-user { color: #87929a; }
 
-/* mobile brand chip in the top bar (desktop rail carries it >=768px) */
-.csp-tb-brand { display: none; align-items: center; gap: 8px; font-size: 14px; font-weight: 800; color: #131b2e; }
-.dark .csp-tb-brand { color: #dfe2ee; }
-.csp-tb-brand-ico { width: 26px; height: 26px; border-radius: 8px; flex-shrink: 0; display: grid; place-items: center; overflow: hidden;
-  background: linear-gradient(135deg, var(--c-primary), color-mix(in srgb, var(--c-primary) 55%, #7cc6ff)); color: #fff; }
-.csp-tb-brand-ico img { width: 100%; height: 100%; object-fit: contain; }
-.csp-tb-brand-ico svg { width: 15px; height: 15px; }
-@media (max-width: 767px) {
-  .csp-tb-brand { display: inline-flex; }
-  .csp-tb-brand + .csp-tb-btn { margin-inline-start: auto; }
-  .csp-tb-user { display: none; }
+/* ---- drawer footer (theme / lang / logout — mobile only) ---- */
+.csp-drawer-foot { padding: 12px; display: flex; flex-wrap: wrap; gap: 8px; border-top: 1px solid var(--c-border); background: #ffffff; }
+.dark .csp-drawer-foot { border-top-color: rgba(255,255,255,0.06); background: rgba(10,14,22,0.94); }
+.csp-df-btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 10px; font-size: 13px; font-weight: 600;
+  border: 1px solid var(--c-border); background: transparent; color: #3f4850; cursor: pointer;
 }
+.csp-df-btn svg { width: 16px; height: 16px; }
+.csp-df-btn:hover { border-color: var(--c-primary); color: var(--c-primary); }
+.dark .csp-df-btn { color: #bdc8d1; border-color: rgba(255,255,255,0.08); }
+.csp-df-out { color: var(--c-danger); border-color: color-mix(in srgb, var(--c-danger) 30%, transparent); margin-inline-start: auto; }
+.csp-df-out:hover { border-color: var(--c-danger); color: var(--c-danger); background: color-mix(in srgb, var(--c-danger) 10%, transparent); }
 
-/* ---- mobile bottom navigation (Stitch 0197c0c0 / f10ea6b9) ---- */
+/* ================================================================= *
+ *  MOBILE ADMIN SHELL (<=767px) — Stitch f10ea6b9 / 0197c0c0        *
+ * ================================================================= */
+.csp-mtop { display: none; }
 .csp-botnav { display: none; }
+
 @media (max-width: 767px) {
+  /* --- top bar: hamburger · brand · online + avatar --- */
+  .csp-mtop {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    position: sticky; top: 0; z-index: 45;
+    padding: 10px 14px;
+    background: color-mix(in srgb, var(--c-surface) 96%, transparent);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--c-border);
+  }
+  .dark .csp-mtop { border-bottom-color: rgba(255,255,255,0.06); }
+
+  .csp-mtop-burger {
+    width: 38px; height: 38px; flex-shrink: 0; border-radius: 11px; cursor: pointer;
+    display: grid; place-items: center; background: transparent; border: 0; color: var(--c-text);
+  }
+  .csp-mtop-burger svg { width: 22px; height: 22px; }
+  .csp-mtop-burger:active { background: color-mix(in srgb, var(--c-primary) 10%, transparent); }
+
+  .csp-mtop-brand { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .csp-mtop-logo {
+    width: 34px; height: 34px; flex-shrink: 0; border-radius: 999px; overflow: hidden;
+    display: grid; place-items: center; color: #fff; font-weight: 900; font-size: 14px;
+    background: linear-gradient(135deg, var(--c-primary), color-mix(in srgb, var(--c-primary) 55%, #7cc6ff));
+    box-shadow: 0 4px 12px -3px color-mix(in srgb, var(--c-primary) 45%, transparent);
+  }
+  .csp-mtop-logo img { width: 100%; height: 100%; object-fit: cover; }
+  .csp-mtop-txt { display: flex; flex-direction: column; min-width: 0; line-height: 1.15; }
+  .csp-mtop-txt b { font-size: 14px; font-weight: 800; color: var(--c-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .csp-mtop-txt span {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 8.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--c-primary);
+  }
+
+  .csp-mtop-end { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .csp-mtop-online {
+    display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
+    font-size: 10.5px; font-weight: 600; padding: 3px 8px; border-radius: 999px;
+    background: color-mix(in srgb, var(--c-success) 14%, transparent); color: var(--c-success);
+    border: 1px solid color-mix(in srgb, var(--c-success) 30%, transparent);
+  }
+  .csp-mtop-online i { width: 6px; height: 6px; border-radius: 50%; background: var(--c-success); }
+  .csp-mtop-avatar {
+    width: 34px; height: 34px; flex-shrink: 0; border-radius: 999px;
+    display: grid; place-items: center; font-weight: 800; font-size: 13px; color: #fff;
+    background: linear-gradient(135deg, var(--c-primary), color-mix(in srgb, var(--c-primary) 60%, #4C90D6));
+  }
+
+  /* --- bottom nav: 5 tabs, active = soft-blue pill behind the icon --- */
   .csp-botnav {
     position: fixed; inset-inline: 0; bottom: 0; z-index: 55;
-    display: flex; gap: 2px; padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
-    background: color-mix(in srgb, var(--c-surface) 94%, transparent);
-    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    display: flex; align-items: stretch;
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
+    background: var(--c-surface);
     border-top: 1px solid var(--c-border);
-    box-shadow: 0 -4px 20px -6px rgba(15, 23, 42, .18);
+    box-shadow: 0 -6px 22px -8px rgba(15, 23, 42, .16);
   }
-  .csp-content { padding-bottom: 78px; }
+  .csp-content { padding-bottom: 80px; }
 }
-.dark .csp-botnav { background: color-mix(in srgb, var(--c-surface) 92%, transparent); border-top-color: rgba(255,255,255,.06); }
+.dark .csp-botnav { border-top-color: rgba(255,255,255,0.07); }
+
 .csp-bn-item {
-  position: relative; flex: 1; min-width: 0;
+  flex: 1; min-width: 0;
   display: flex; flex-direction: column; align-items: center; gap: 3px;
-  padding: 6px 2px 4px; border-radius: 12px; background: none; border: 0; cursor: pointer;
+  padding: 5px 2px 3px; background: none; border: 0; cursor: pointer;
   color: var(--c-text-muted); text-decoration: none; transition: color .15s;
 }
-.csp-bn-item svg { width: 21px; height: 21px; color: currentColor; }
+.csp-bn-ico {
+  display: grid; place-items: center; width: 46px; height: 30px; border-radius: 12px;
+  transition: background .15s;
+}
+.csp-bn-ico svg { width: 22px; height: 22px; color: currentColor; stroke-width: 1.8; }
 .csp-bn-t { font-size: 10px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-.csp-bn-dot { position: absolute; top: 1px; width: 5px; height: 5px; border-radius: 50%; background: var(--c-primary); opacity: 0; transition: opacity .15s; }
 .csp-bn-item.on { color: var(--c-primary); }
+.csp-bn-item.on .csp-bn-ico { background: color-mix(in srgb, var(--c-primary) 13%, transparent); }
+.csp-bn-item.on .csp-bn-ico svg { stroke-width: 2.1; }
 .csp-bn-item.on .csp-bn-t { font-weight: 800; }
-.csp-bn-item.on .csp-bn-dot { opacity: 1; }
-.csp-bn-item:active { background: color-mix(in srgb, var(--c-primary) 10%, transparent); }
 `
