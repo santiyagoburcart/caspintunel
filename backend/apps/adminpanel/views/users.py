@@ -1,5 +1,8 @@
+from datetime import timedelta
+
 from django.contrib.auth import get_user_model
 from django.db.models import Count
+from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status
 from rest_framework.decorators import action
@@ -29,6 +32,37 @@ class UserAdminViewSet(AdminViewSet):
 
     def get_serializer_class(self):
         return AdminUserCreateSerializer if self.action == "create" else AdminUserSerializer
+
+    @action(detail=False, methods=["get"])
+    def stats(self, request):
+        """Per-segment user counts with week-over-week growth. `last_week_count`
+        is the size of the same segment as of 7 days ago (by signup date), so
+        `growth_*` reflects real cohort growth — no estimates."""
+        now = timezone.now()
+        week_ago = now - timedelta(days=7)
+        base = User.objects.all()
+        segments = {
+            "total": base,
+            "active": base.filter(is_active=True),
+            "bot": base.filter(source="bot"),
+            "site": base.filter(source="site"),
+        }
+        out = {}
+        for key, qs in segments.items():
+            count = qs.count()
+            last_week = qs.filter(created_at__lt=week_ago).count()
+            diff = count - last_week
+            if last_week:
+                pct = round(diff / last_week * 100, 1)
+            else:
+                pct = 100.0 if diff > 0 else 0.0
+            out[key] = {
+                "count": count,
+                "last_week_count": last_week,
+                "growth_percent": pct,
+                "growth_direction": "up" if diff > 0 else ("down" if diff < 0 else "flat"),
+            }
+        return Response(out)
 
     @action(detail=True, methods=["post"], url_path="set-password")
     def set_password(self, request, pk=None):

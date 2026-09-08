@@ -38,6 +38,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     source = models.CharField(max_length=8, choices=Source.choices, default=Source.SITE)
     language = models.CharField(max_length=2, choices=Language.choices, default=Language.FA)
     is_legacy = models.BooleanField(default=False)
+    admin_note = models.TextField(blank=True, default="", help_text="Internal staff-only note; never shown to the user")
 
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False, help_text="Django admin access")

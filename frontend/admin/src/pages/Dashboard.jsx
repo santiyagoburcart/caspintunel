@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useI18n, enumLabel } from '../lib/i18n'
 import { jalali, toman, digits } from '../lib/format'
@@ -66,10 +67,16 @@ export default function Dashboard() {
   const maxStatus = Math.max(1, ...byStatus.map(([, v]) => v))
   const down = d.health?.down || []
 
+  const upCount = d.health?.up ?? 0
+  const downCount = down.length
+
   return (
     <div className="dash space-y-4">
       <style>{CSS}</style>
-      <h1 className="text-lg font-bold">{t('dashboard')}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-lg font-bold">{t('dashboard')}</h1>
+        <span className="dash-live"><i />{t('live_sync')}</span>
+      </div>
       <Alert>{err}</Alert>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -84,9 +91,12 @@ export default function Dashboard() {
           sub={down.length ? down.join(' · ') : '—'} />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="card">
-          <div className="mb-3 font-bold">{t('services_by_status')}</div>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="card lg:col-span-2">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <span className="font-bold">{t('services_by_status')}</span>
+            <span className="dash-chip">{t('total')} {digits(d.services?.total ?? 0, lang)}</span>
+          </div>
           {byStatus.length === 0 && <div className="text-sm text-muted">{t('none_found')}</div>}
           <div className="space-y-2.5">
             {byStatus.map(([k, v]) => (
@@ -99,15 +109,43 @@ export default function Dashboard() {
             ))}
           </div>
         </div>
+
+        <div className="card flex flex-col">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <span className="font-bold text-sm">{t('gateway_core_status')}</span>
+            <span className={'dash-ring ' + (downCount ? 'warn' : 'ok')} />
+          </div>
+          <p className="text-xs text-muted leading-6">
+            {downCount ? t('some_down', { n: digits(downCount, lang) }) : t('all_connected')}
+          </p>
+          <div className="mt-auto flex items-center justify-between border-t pt-3 text-xs" style={{ borderColor: 'var(--c-border)' }}>
+            <span className="text-muted">{t('health')}</span>
+            <span className="dash-srow-n font-bold" style={{ color: downCount ? 'var(--c-warning)' : 'var(--c-success)' }}>
+              {digits(upCount, lang)}{d.health?.total ? ` / ${digits(d.health.total, lang)}` : ''} {t('up')}
+            </span>
+          </div>
+        </div>
       </div>
 
       {recent && recent.length > 0 && (
         <div className="space-y-2">
-          <div className="font-bold">{t('recent_transactions')}</div>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="font-bold">{t('recent_transactions')}
+              <span className="dash-chip ms-2">{t('recent_n', { n: digits(recent.length, lang) })}</span>
+            </span>
+            <Link to="/transactions" className="text-xs font-bold" style={{ color: 'var(--c-primary)' }}>
+              {t('view_all_tx')} →
+            </Link>
+          </div>
           <DataTable
             empty={t('none_found')}
             columns={[
-              { key: 'user', label: t('user') },
+              { key: 'user', label: t('user'), render: (r) => (
+                <span className="dash-uchip">
+                  <span className="dash-uav">{String(r.user || '?').replace(/^tg_/, '').slice(0, 2).toUpperCase()}</span>
+                  <span dir="ltr">{r.user}</span>
+                </span>
+              ) },
               { key: 'plan_name', label: t('plan'), render: (r) => r.plan_name || '—' },
               { key: 'amount', label: t('amount'), render: (r) => toman(r.amount, lang) },
               { key: 'status', label: t('status'), render: (r) => <StatusPill t={t} status={r.status} /> },
@@ -160,6 +198,16 @@ const CSS = `
 
 .dash .dash-bar { height: 7px; border-radius: 999px; overflow: hidden; background: color-mix(in srgb, var(--c-text-muted) 20%, transparent); }
 .dash .dash-bar > i { display: block; height: 100%; border-radius: 999px; transition: width .4s ease; }
+
+.dash-live { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; color: var(--c-text-muted); }
+.dash-live i { width: 7px; height: 7px; border-radius: 50%; background: var(--c-success); animation: dash-pp 1.8s ease-in-out infinite; }
+@keyframes dash-pp { 50% { opacity: .35; } }
+.dash-chip { font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; color: var(--c-text-muted); background: color-mix(in srgb, var(--c-text-muted) 12%, transparent); }
+.dash-ring { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+.dash-ring.ok { background: var(--c-success); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c-success) 18%, transparent); }
+.dash-ring.warn { background: var(--c-warning); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c-warning) 18%, transparent); }
+.dash-uchip { display: inline-flex; align-items: center; gap: 8px; }
+.dash-uav { width: 26px; height: 26px; flex-shrink: 0; display: grid; place-items: center; border-radius: 8px; font-size: 10px; font-weight: 800; background: color-mix(in srgb, var(--c-primary) 14%, transparent); color: var(--c-primary); font-family: 'JetBrains Mono', ui-monospace, monospace; }
 
 .dash .dash-srow { display: grid; grid-template-columns: auto 1fr minmax(70px, 90px) auto; align-items: center; gap: 10px; font-size: 13px; }
 .dash .dash-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }

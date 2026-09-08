@@ -25,7 +25,7 @@ class AdminUserSerializer(serializers.ModelSerializer):
             "id", "username", "email", "email_verified", "name", "phone",
             "telegram_id", "telegram_username", "referral_code", "referred_by",
             "referral_count", "service_count", "source", "language",
-            "is_legacy", "is_active", "is_staff", "created_at",
+            "is_legacy", "is_active", "is_staff", "admin_note", "created_at",
         )
         read_only_fields = ("id", "referral_code", "referral_count", "service_count", "created_at")
 
