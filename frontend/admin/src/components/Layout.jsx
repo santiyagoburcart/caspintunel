@@ -246,24 +246,25 @@ function CaspianLayout() {
       </div>
 
       <div className="csp-main">
-        {/* mobile top bar (≤767px) — hamburger · brand · online + avatar */}
+        {/* mobile top bar (≤767px) — Stitch f10ea6b9: RTL renders as
+            [online + avatar : RIGHT] · [brand : CENTER] · [hamburger : LEFT] */}
         <header className="csp-mtop">
-          <button className="csp-mtop-burger" onClick={() => setOpen(true)} aria-label="menu">
-            <SideIcon name="menu" />
-          </button>
+          <div className="csp-mtop-end">
+            <span className="csp-mtop-avatar">{(staff?.username || '?').charAt(0).toUpperCase()}</span>
+            <span className="csp-mtop-online"><i />{lang === 'fa' ? 'آنلاین' : 'Online'}</span>
+          </div>
           <div className="csp-mtop-brand">
-            <span className="csp-mtop-logo">
-              {config?.logo ? <img src={config.logo} alt="" /> : <b>C</b>}
-            </span>
             <div className="csp-mtop-txt">
               <b>{brand}</b>
               <span>ADMIN CONTROL</span>
             </div>
+            <span className="csp-mtop-logo">
+              {config?.logo ? <img src={config.logo} alt="" /> : <b>C</b>}
+            </span>
           </div>
-          <div className="csp-mtop-end">
-            <span className="csp-mtop-online"><i />{lang === 'fa' ? 'آنلاین' : 'Online'}</span>
-            <span className="csp-mtop-avatar">{(staff?.username || '?').charAt(0).toUpperCase()}</span>
-          </div>
+          <button className="csp-mtop-burger" onClick={() => setOpen(true)} aria-label="menu">
+            <SideIcon name="menu" />
+          </button>
         </header>
 
         {/* desktop top bar (≥768px) */}
@@ -285,12 +286,14 @@ function CaspianLayout() {
         <main className="csp-content mx-auto max-w-6xl p-3"><Outlet /></main>
       </div>
 
-      {/* mobile bottom nav (≤767px) — Stitch f10ea6b9 */}
-      <nav className="csp-botnav">
+      {/* mobile bottom nav (≤767px) — Stitch f10ea6b9: 5 tabs, active = dot
+          above the icon + primary colour + bolder stroke (no pill) */}
+      <nav className="csp-botnav" style={{ '--csp-bn-n': botnav.length }}>
         {botnav.map(([to, key, , icon]) => (
           <NavLink key={to} to={to} end
             className={({ isActive }) => 'csp-bn-item' + (isActive ? ' on' : '')}>
-            <span className="csp-bn-ico"><SideIcon name={icon} /></span>
+            <span className="csp-bn-dot" />
+            <SideIcon name={icon} />
             <span className="csp-bn-t">{t(key)}</span>
           </NavLink>
         ))}
@@ -490,39 +493,44 @@ const CASPIAN_CSS = `
     border: 1px solid color-mix(in srgb, var(--c-success) 30%, transparent);
   }
   .csp-mtop-online i { width: 6px; height: 6px; border-radius: 50%; background: var(--c-success); }
+  /* Stitch renders the avatar as a plain neutral circle, not a colour tile */
   .csp-mtop-avatar {
-    width: 34px; height: 34px; flex-shrink: 0; border-radius: 999px;
-    display: grid; place-items: center; font-weight: 800; font-size: 13px; color: #fff;
-    background: linear-gradient(135deg, var(--c-primary), color-mix(in srgb, var(--c-primary) 60%, #4C90D6));
+    width: 36px; height: 36px; flex-shrink: 0; border-radius: 999px;
+    display: grid; place-items: center; font-weight: 700; font-size: 13px;
+    color: var(--c-text);
+    background: color-mix(in srgb, var(--c-text-muted) 16%, transparent);
+    border: 1px solid var(--c-border);
   }
 
-  /* --- bottom nav: 5 tabs, active = soft-blue pill behind the icon --- */
+  /* --- bottom nav (Stitch f10ea6b9): grid of 5, active = DOT above the icon --- */
   .csp-botnav {
     position: fixed; inset-inline: 0; bottom: 0; z-index: 55;
-    display: flex; align-items: stretch;
-    padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
-    background: var(--c-surface);
+    display: grid; grid-template-columns: repeat(var(--csp-bn-n, 5), 1fr); align-items: center;
+    padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px));
+    background: color-mix(in srgb, var(--c-surface) 96%, transparent);
+    -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
     border-top: 1px solid var(--c-border);
-    box-shadow: 0 -6px 22px -8px rgba(15, 23, 42, .16);
+    box-shadow: 0 -8px 24px -10px rgba(15, 23, 42, .14);
   }
-  .csp-content { padding-bottom: 80px; }
+  .csp-content { padding-bottom: 82px; }
 }
 .dark .csp-botnav { border-top-color: rgba(255,255,255,0.07); }
 
 .csp-bn-item {
-  flex: 1; min-width: 0;
-  display: flex; flex-direction: column; align-items: center; gap: 3px;
-  padding: 5px 2px 3px; background: none; border: 0; cursor: pointer;
+  position: relative; min-width: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 4px 2px; background: none; border: 0; cursor: pointer;
   color: var(--c-text-muted); text-decoration: none; transition: color .15s;
 }
-.csp-bn-ico {
-  display: grid; place-items: center; width: 46px; height: 30px; border-radius: 12px;
-  transition: background .15s;
+.csp-bn-item svg { width: 24px; height: 24px; color: currentColor; stroke-width: 1.8; transition: stroke-width .15s; }
+.csp-bn-t { font-size: 10px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.csp-bn-dot {
+  position: absolute; top: -3px; left: 50%; transform: translateX(-50%);
+  width: 6px; height: 6px; border-radius: 999px; background: var(--c-primary);
+  opacity: 0; transition: opacity .15s;
 }
-.csp-bn-ico svg { width: 22px; height: 22px; color: currentColor; stroke-width: 1.8; }
-.csp-bn-t { font-size: 10px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .csp-bn-item.on { color: var(--c-primary); }
-.csp-bn-item.on .csp-bn-ico { background: color-mix(in srgb, var(--c-primary) 13%, transparent); }
-.csp-bn-item.on .csp-bn-ico svg { stroke-width: 2.1; }
+.csp-bn-item.on svg { stroke-width: 2.2; }
 .csp-bn-item.on .csp-bn-t { font-weight: 800; }
+.csp-bn-item.on .csp-bn-dot { opacity: 1; }
 `
