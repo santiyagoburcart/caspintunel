@@ -163,19 +163,19 @@ function TxTable({ s, t, lang }) {
                 return (
                   <Fragment key={r.id}>
                     <tr className={'tx-row' + (note ? ' tx-row--note' : '')}>
-                      <td className="tx-amt">{toman(r.amount, lang)}</td>
-                      <td>
+                      <td className="tx-amt" data-label={s.amount}>{toman(r.amount, lang)}</td>
+                      <td data-label={s.user}>
                         <span className="tx-user">{r.user}</span>
                         <span className="tx-sub">
                           {r.order_source === 'bot' ? s.src_bot : s.src_site}{r.plan_name ? ` · ${r.plan_name}` : ''}
                         </span>
                       </td>
-                      <td>{r.method ? enumLabel(t, 'm_', r.method) : '—'}</td>
-                      <td dir="ltr" className="tx-mono">{groupCard(r.card)}</td>
-                      <td>{confirmer(r)}</td>
-                      <td className="tx-mono tx-date">{jalali(r.created_at, true, lang)}</td>
-                      <td><Pill tone={ST_TONE[r.status]}>{s[r.status] || r.status}</Pill></td>
-                      <td className="tx-c">{r.receipt_url ? <ReceiptThumb url={r.receipt_url} alt={s.receipt} /> : '—'}</td>
+                      <td data-label={s.method}>{r.method ? enumLabel(t, 'm_', r.method) : '—'}</td>
+                      <td dir="ltr" className="tx-mono" data-label={s.card}>{groupCard(r.card)}</td>
+                      <td data-label={s.confirmer}>{confirmer(r)}</td>
+                      <td className="tx-mono tx-date" data-label={s.date}>{jalali(r.created_at, true, lang)}</td>
+                      <td data-label={s.status}><Pill tone={ST_TONE[r.status]}>{s[r.status] || r.status}</Pill></td>
+                      <td className="tx-c" data-label={s.receipt}>{r.receipt_url ? <ReceiptThumb url={r.receipt_url} alt={s.receipt} /> : '—'}</td>
                       <td className="tx-c">
                         <button type="button" className="tx-detail-btn"
                           onClick={() => navigate(`/transactions/${r.id}`)}>
@@ -245,19 +245,19 @@ function ServicesTable({ s, t, lang }) {
             <tbody>
               {rows.map((r) => (
                 <tr className="tx-row" key={r.id}>
-                  <td dir="ltr" className="tx-mono">{r.panel_username}</td>
-                  <td>
+                  <td dir="ltr" className="tx-mono" data-label={s.account}>{r.panel_username}</td>
+                  <td data-label={s.user}>
                     <span className="tx-user">{r.user}</span>
                     {r.user_name ? <span className="tx-sub">{r.user_name}</span> : null}
                   </td>
-                  <td>{(lang === 'fa' ? r.plan : r.plan_en) || r.plan || '—'}</td>
-                  <td><Pill tone={SVC_TONE[r.status]}>{enumLabel(t, 'st_', r.status)}</Pill></td>
-                  <td>
+                  <td data-label={s.plan}>{(lang === 'fa' ? r.plan : r.plan_en) || r.plan || '—'}</td>
+                  <td data-label={s.status}><Pill tone={SVC_TONE[r.status]}>{enumLabel(t, 'st_', r.status)}</Pill></td>
+                  <td data-label={s.conn}>
                     <span className={'tx-conn ' + (r.is_online ? 'on' : 'off')}>
                       <i />{r.is_online ? s.online : s.offline}
                     </span>
                   </td>
-                  <td>
+                  <td data-label={s.usage}>
                     <div className="tx-usage">
                       <span className="tx-mono">{fmtData(r.data_used, r.data_limit, s, lang)}</span>
                       {r.data_limit ? (
@@ -265,7 +265,7 @@ function ServicesTable({ s, t, lang }) {
                       ) : null}
                     </div>
                   </td>
-                  <td className="tx-mono tx-date">{expiry(r)}</td>
+                  <td className="tx-mono tx-date" data-label={s.expiry}>{expiry(r)}</td>
                 </tr>
               ))}
             </tbody>
@@ -330,4 +330,25 @@ const CSS = `
 .tx-usage { display: flex; flex-direction: column; gap: 4px; min-width: 120px; }
 .tx-usage-bar { height: 5px; border-radius: 999px; overflow: hidden; background: color-mix(in srgb, var(--c-text-muted) 20%, transparent); }
 .tx-usage-bar > i { display: block; height: 100%; background: var(--c-primary); border-radius: 999px; }
+
+/* mobile: table -> stacked cards */
+@media (max-width: 767px) {
+  .tx-wrap { overflow-x: visible; }
+  .tx-table, .tx-table tbody, .tx-table tr, .tx-table td { display: block; width: 100%; }
+  .tx-table { min-width: 0; }
+  .tx-table thead { display: none; }
+  .tx-table tr.tx-row { border: 1px solid var(--c-border); border-radius: 12px; margin: 12px; padding: 4px 0; }
+  .tx-table tr.tx-row > td { border-bottom: 0; }
+  .tx-table tr.tx-row:hover > td { background: none; }
+  .tx-table td { padding: 8px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: end; }
+  .tx-table td::before { content: attr(data-label); font-size: 11px; font-weight: 600; color: var(--c-text-muted); text-align: start; white-space: nowrap; }
+  .tx-table td.tx-amt { border-bottom: 1px solid var(--c-border); font-size: 15px; }
+  .tx-table td.tx-c { justify-content: space-between; }
+  .tx-table tr.tx-note-row { margin: -6px 12px 12px; border: 0; padding: 0; }
+  .tx-table tr.tx-note-row > td { display: block; padding: 0 14px 8px !important; border: 0 !important; }
+  .tx-table tr.tx-note-row > td::before { display: none; }
+  .tx-usage { min-width: 0; align-items: flex-end; }
+  .tx-usage-bar { width: 100%; }
+  .tx-detail-btn { width: 100%; justify-content: center; }
+}
 `

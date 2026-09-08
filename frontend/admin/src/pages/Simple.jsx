@@ -70,8 +70,9 @@ const SHARED_CSS = `
 
 .sm-kpis { display: grid; grid-template-columns: 1fr; gap: 14px; }
 @media (min-width: 640px) { .sm-kpis { grid-template-columns: repeat(3, 1fr); } }
-.sm-kpi { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.sm-kpi-label { font-size: 12px; font-weight: 600; color: var(--c-text-muted); }
+.sm-kpi { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; }
+.sm-kpi > div { min-width: 0; }
+.sm-kpi-label { font-size: 12px; font-weight: 600; color: var(--c-text-muted); overflow-wrap: anywhere; }
 .sm-kpi-val { font-size: 22px; font-weight: 800; margin-top: 4px; font-family: 'JetBrains Mono', ui-monospace, monospace; }
 .sm-kpi-unit { font-size: 11px; font-weight: 500; color: var(--c-text-muted); font-family: inherit; }
 .sm-kpi-ico { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; flex-shrink: 0; }
@@ -113,6 +114,24 @@ const SHARED_CSS = `
 .sm-pw-eye { position: absolute; inset-inline-end: 10px; top: 50%; transform: translateY(-50%); color: var(--c-text-muted); }
 .sm-pw-eye:hover { color: var(--c-text); }
 .sm-toggle-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+
+/* mobile: tables -> stacked cards + no page overflow */
+@media (max-width: 767px) {
+  .sm-kpis { grid-template-columns: 1fr; }
+  .sm-wrap { overflow-x: visible; }
+  .sm-table, .sm-table tbody, .sm-table tr, .sm-table td { display: block; width: 100%; }
+  .sm-table { min-width: 0; }
+  .sm-table thead { display: none; }
+  .sm-table tr.sm-row { border: 1px solid var(--c-border); border-radius: 12px; margin: 12px; padding: 4px 0; }
+  .sm-table tr.sm-row > td { border-bottom: 0; }
+  .sm-table tr.sm-row:hover > td { background: none; }
+  .sm-table td { padding: 9px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: end; }
+  .sm-table td::before { content: attr(data-label); font-size: 11px; font-weight: 600; color: var(--c-text-muted); text-align: start; white-space: nowrap; }
+  .sm-table td:first-child { display: block; border-bottom: 1px solid var(--c-border); }
+  .sm-table td:first-child::before { display: none; }
+  .sm-table td.sm-c { text-align: end; }
+  .sm-acts { flex: 1; justify-content: flex-end; }
+}
 `
 
 /* ============================ Themes — preset picker (Stitch 405f…) ============================ */
@@ -429,10 +448,10 @@ export function Pages() {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id} className="sm-row">
-                  <td><span className="sm-slug" dir="ltr">{r.slug}</span></td>
-                  <td>{(lang === 'fa' ? r.title_fa : r.title_en) || r.title_fa || '—'}</td>
-                  <td className="sm-c">{r.is_active ? <span className="sm-ok"><Ico d={I.check} w={14} /></span> : <span className="sm-off">—</span>}</td>
-                  <td className="sm-c">
+                  <td data-label={s.c_slug}><span className="sm-slug" dir="ltr">{r.slug}</span></td>
+                  <td data-label={s.c_title}>{(lang === 'fa' ? r.title_fa : r.title_en) || r.title_fa || '—'}</td>
+                  <td data-label={s.c_active} className="sm-c">{r.is_active ? <span className="sm-ok"><Ico d={I.check} w={14} /></span> : <span className="sm-off">—</span>}</td>
+                  <td data-label={s.c_actions} className="sm-c">
                     <div className="sm-acts">
                       <button className="sm-btn" onClick={() => setModal({ row: r })}>{t('edit')}</button>
                       <button className="sm-btn sm-btn--del" onClick={() => del(r)}>{t('delete')}</button>
@@ -682,10 +701,10 @@ export function Roles() {
               <tbody>
                 {roles.rows.map((r, i) => (
                   <tr key={r.id} className="sm-row">
-                    <td><span className="sm-name-dot"><span className="sm-dot" style={{ background: DOT[i % DOT.length] }} /><b>{r.name}</b></span></td>
-                    <td className="text-muted">{r.description || '—'}</td>
-                    <td className="sm-c"><span className="sm-cnt-pill">{digits((r.permission_codes || []).length, lang)}</span></td>
-                    <td className="sm-c">
+                    <td data-label={s.c_name}><span className="sm-name-dot"><span className="sm-dot" style={{ background: DOT[i % DOT.length] }} /><b>{r.name}</b></span></td>
+                    <td data-label={s.c_desc} className="text-muted">{r.description || '—'}</td>
+                    <td data-label={s.c_perms} className="sm-c"><span className="sm-cnt-pill">{digits((r.permission_codes || []).length, lang)}</span></td>
+                    <td data-label={s.c_actions} className="sm-c">
                       <div className="sm-acts">
                         <button className="sm-btn" onClick={() => setRoleModal({ row: r })}>{t('edit')}</button>
                         <button className="sm-btn sm-btn--del" onClick={() => delRole(r)}>{t('delete')}</button>
@@ -716,19 +735,19 @@ export function Roles() {
               <tbody>
                 {staff.rows.map((r) => (
                   <tr key={r.id} className="sm-row">
-                    <td>
+                    <td data-label={s.c_username}>
                       <span className="sm-uname">
                         <span className="sm-av">{initials(r.username)}</span>
                         <b className="sm-mono" dir="ltr">{r.username}</b>
                       </span>
                     </td>
-                    <td className="sm-c">
+                    <td data-label={s.c_role} className="sm-c">
                       {r.is_superadmin
                         ? <span className="sm-role-badge super">★ {s.super}</span>
                         : <span className="sm-role-badge">{r.role_name || '—'}</span>}
                     </td>
-                    <td className="sm-c">{r.is_active ? <span className="sm-ok"><Ico d={I.check} w={14} /></span> : <span className="sm-off">—</span>}</td>
-                    <td className="sm-c">
+                    <td data-label={s.c_active} className="sm-c">{r.is_active ? <span className="sm-ok"><Ico d={I.check} w={14} /></span> : <span className="sm-off">—</span>}</td>
+                    <td data-label={s.c_actions} className="sm-c">
                       <div className="sm-acts">
                         <button className="sm-btn" onClick={() => setStaffModal({ row: r })}>{t('edit')}</button>
                         <button className="sm-btn sm-btn--del" onClick={() => delStaff(r)}>{t('delete')}</button>

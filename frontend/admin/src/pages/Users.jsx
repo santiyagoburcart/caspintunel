@@ -422,18 +422,18 @@ export default function Users() {
                       </div>
                     </div>
                   </td>
-                  <td>{r.name || <span className="text-muted">—</span>}</td>
-                  <td dir="ltr" className="usr-mono">{r.phone || <span className="text-muted">—</span>}</td>
-                  <td>
+                  <td data-label={t('name')}>{r.name || <span className="text-muted">—</span>}</td>
+                  <td data-label={t('phone')} dir="ltr" className="usr-mono">{r.phone || <span className="text-muted">—</span>}</td>
+                  <td data-label={t('source')}>
                     <span className={'usr-pill ' + (r.source === 'bot' ? 'bot' : 'site')}>
                       <Ico d={r.source === 'bot' ? I.bot : I.globe} w={13} />
                       {enumLabel(t, 'src_', r.source)}
                     </span>
                   </td>
-                  <td className="usr-c"><span className="usr-count">{digits(r.service_count ?? 0, lang)}</span></td>
-                  <td className="usr-mono usr-date">{jalali(r.created_at, false, lang)}</td>
-                  <td className="usr-c"><Toggle checked={r.is_active} onChange={() => toggle(r)} label={t('active')} /></td>
-                  <td className="usr-c">
+                  <td data-label={s.col_services} className="usr-c"><span className="usr-count">{digits(r.service_count ?? 0, lang)}</span></td>
+                  <td data-label={s.col_joined} className="usr-mono usr-date">{jalali(r.created_at, false, lang)}</td>
+                  <td data-label={t('active')} className="usr-c"><Toggle checked={r.is_active} onChange={() => toggle(r)} label={t('active')} /></td>
+                  <td data-label={s.col_actions} className="usr-c">
                     <button type="button" className="usr-edit-btn" onClick={() => setModal({ row: r })}>
                       <Ico d={I.edit} w={14} /> {t('edit')}
                     </button>
@@ -531,6 +531,22 @@ const CSS = `
 
 .usr-foot { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; padding: 13px 16px; border-top: 1px solid var(--c-border); }
 .usr-pager { display: flex; align-items: center; gap: 8px; }
+
+/* mobile: table -> stacked cards */
+@media (max-width: 767px) {
+  .usr-wrap { overflow-x: visible; }
+  .usr-table, .usr-table tbody, .usr-table tr, .usr-table td { display: block; width: 100%; }
+  .usr-table { min-width: 0; }
+  .usr-table thead { display: none; }
+  .usr-table tr.usr-row { border: 1px solid var(--c-border); border-radius: 12px; margin: 12px; padding: 4px 0; }
+  .usr-table tr.usr-row:hover > td { background: none; }
+  .usr-table td { border: 0 !important; padding: 9px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: end; }
+  .usr-table td::before { content: attr(data-label); font-size: 11px; font-weight: 600; color: var(--c-text-muted); text-align: start; white-space: nowrap; }
+  .usr-table td:first-child { display: block; border-bottom: 1px solid var(--c-border) !important; }
+  .usr-table td:first-child::before { display: none; }
+  .usr-table td.usr-c { justify-content: space-between; text-align: end; }
+  .usr-date { font-size: 13px; }
+}
 
 /* modal */
 .usr-backdrop { position: fixed; inset: 0; z-index: 60; background: color-mix(in srgb, #0b1220 62%, transparent); backdrop-filter: blur(3px); display: flex; align-items: flex-start; justify-content: center; padding: 24px 16px; overflow-y: auto; }

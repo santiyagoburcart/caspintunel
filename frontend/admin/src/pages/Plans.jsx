@@ -443,16 +443,16 @@ export default function Plans() {
                         </div>
                       </div>
                     </td>
-                    <td><span className={'pl-type ' + (vol ? 'vol' : 'fix')}>{vol ? s.volume : s.fixed}</span></td>
-                    <td className="pl-muted">{panelName(r)}</td>
-                    <td>
+                    <td data-label={s.c_type}><span className={'pl-type ' + (vol ? 'vol' : 'fix')}>{vol ? s.volume : s.fixed}</span></td>
+                    <td data-label={s.c_panel} className="pl-muted">{panelName(r)}</td>
+                    <td data-label={s.c_vol}>
                       <div className="pl-vol">{volLabel(r)}</div>
                       <div className="pl-sub">{durLabel(r)}</div>
                     </td>
-                    <td className="pl-muted">
+                    <td data-label={s.c_devices} className="pl-muted">
                       {r.device_limit ? s.devices_n.replace('{n}', digits(r.device_limit, lang)) : s.unlimited_short}
                     </td>
-                    <td className="pl-price">
+                    <td data-label={s.c_price} className="pl-price">
                       {vol ? (
                         <>{toman(r.price_per_gb, lang)} <span className="pl-sub">/ {lang === 'fa' ? 'گیگ' : 'GB'}</span></>
                       ) : r.discount_percent > 0 ? (
@@ -462,15 +462,15 @@ export default function Plans() {
                         </>
                       ) : toman(r.price, lang)}
                     </td>
-                    <td>
+                    <td data-label={s.c_discount}>
                       {r.discount_percent > 0
                         ? <span className="pl-discount">{s.discount_off.replace('{n}', digits(r.discount_percent, lang))}</span>
                         : <span className="pl-muted">{digits(0, lang)}{lang === 'fa' ? '٪' : '%'}</span>}
                     </td>
-                    <td className="pl-c">
+                    <td data-label={s.c_status} className="pl-c">
                       <Toggle checked={r.is_active} onChange={() => quickToggleActive(r)} label={s.c_status} />
                     </td>
-                    <td className="pl-c">
+                    <td data-label={s.c_actions} className="pl-c">
                       <div className="pl-acts">
                         <button type="button" className="pl-act" title={s.edit} aria-label={s.edit} onClick={() => setEdit(toForm(r))}><Ico d={I.edit} w={15} /></button>
                         <button type="button" className="pl-act" title={s.copy_link} aria-label={s.copy_link} onClick={() => copyLink(r)}><Ico d={I.link} w={15} /></button>
@@ -555,4 +555,20 @@ const CSS = `
 .pl-act { display: inline-flex; padding: 7px; border-radius: 9px; color: var(--c-text-muted); transition: .15s; }
 .pl-act:hover { color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 12%, transparent); }
 .pl-act--del:hover { color: var(--c-danger); background: color-mix(in srgb, var(--c-danger) 12%, transparent); }
+
+/* mobile: table -> stacked cards */
+@media (max-width: 767px) {
+  .pl-wrap { overflow-x: visible; }
+  .pl-table, .pl-table tbody, .pl-table tr, .pl-table td { display: block; width: 100%; }
+  .pl-table { min-width: 0; }
+  .pl-table thead { display: none; }
+  .pl-table tr.pl-row { border: 1px solid var(--c-border); border-radius: 12px; margin: 12px; padding: 4px 0; }
+  .pl-table tr.pl-row:hover > td { background: none; }
+  .pl-table td { border: 0 !important; padding: 9px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: end; }
+  .pl-table td::before { content: attr(data-label); font-size: 11px; font-weight: 600; color: var(--c-text-muted); text-align: start; white-space: nowrap; }
+  .pl-table td:first-child { display: block; border-bottom: 1px solid var(--c-border) !important; }
+  .pl-table td:first-child::before { display: none; }
+  .pl-table td.pl-c { text-align: end; }
+  .pl-price { font-size: 13px; }
+}
 `

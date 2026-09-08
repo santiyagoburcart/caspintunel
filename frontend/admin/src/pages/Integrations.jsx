@@ -20,6 +20,10 @@ const ICONS = {
   eye: <><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" /><circle cx="12" cy="12" r="3" /></>,
   eyeOff: <><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" /><path d="M1 1l22 22" /></>,
   plus: <path d="M12 5v14M5 12h14" />,
+  check: <polyline points="20 6 9 17 4 12" />,
+  dot: <circle cx="12" cy="12" r="4" />,
+  close: <path d="M18 6L6 18M6 6l12 12" />,
+  refresh: <><path d="M23 4v6h-6M1 20v-6h6" /><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" /></>,
 }
 
 // password/secret input with a show/hide eye toggle
@@ -52,6 +56,55 @@ const INT_CSS = `
 .int-bot-grid { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; }
 @media (min-width: 1024px) { .int-bot-grid { grid-template-columns: 1fr 1fr; } }
 .int-bot-card { height: 100%; }
+.int-bots-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.int-token-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.int-token-badge.set { background: color-mix(in srgb, var(--c-success) 15%, transparent); color: var(--c-success); }
+.int-token-badge.none { background: color-mix(in srgb, var(--c-text-muted) 15%, transparent); color: var(--c-text-muted); }
+.int-code { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 10px; color: var(--c-text-muted); }
+
+.int-warn { display: flex; gap: 10px; align-items: flex-start; border-radius: 12px; padding: 12px 14px; font-size: 12px; line-height: 1.7;
+  background: color-mix(in srgb, var(--c-warning) 12%, transparent); color: var(--c-warning); }
+
+.int-ch-wrap { overflow-x: auto; }
+.int-ch-table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 13px; }
+.int-ch-table thead th { text-align: start; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .03em;
+  color: var(--c-text-muted); padding: 12px 16px; white-space: nowrap; border-bottom: 1px solid var(--c-border); }
+.int-ch-table td { padding: 12px 16px; vertical-align: middle; border-bottom: 1px solid var(--c-border); }
+.int-ch-table tbody tr:last-child td { border-bottom: 0; }
+.int-ch-off { opacity: .6; }
+.int-ch-c { text-align: center; }
+.int-ch-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; color: var(--c-text-muted); }
+.int-ch-name { display: flex; align-items: center; gap: 10px; }
+.int-ch-av { width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0; display: grid; place-items: center; font-weight: 700; font-size: 13px; }
+.int-ch-av.on { background: color-mix(in srgb, var(--c-primary) 14%, transparent); color: var(--c-primary); }
+.int-ch-av.off { background: color-mix(in srgb, var(--c-text-muted) 15%, transparent); color: var(--c-text-muted); }
+.int-ch-tag { display: inline-block; font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 999px; margin-top: 2px; }
+.int-ch-tag.ok { background: color-mix(in srgb, var(--c-success) 15%, transparent); color: var(--c-success); }
+.int-ch-tag.muted { background: color-mix(in srgb, var(--c-text-muted) 15%, transparent); color: var(--c-text-muted); }
+.int-ch-mem { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 13px; }
+.int-ch-sync { font-size: 10px; color: var(--c-text-muted); margin-top: 1px; }
+.int-ch-acts { display: inline-flex; gap: 4px; }
+
+.int-backdrop { position: fixed; inset: 0; z-index: 60; background: color-mix(in srgb, #0b1220 62%, transparent); backdrop-filter: blur(3px);
+  display: flex; align-items: flex-start; justify-content: center; padding: 24px 16px; overflow-y: auto; }
+.int-modal { width: 100%; max-width: 480px; padding: 0; overflow: hidden; }
+.int-modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--c-border); }
+.int-modal-body { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.int-modal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 18px; border-top: 1px solid var(--c-border); }
+.int-modal-hint { display: flex; align-items: flex-start; gap: 6px; font-size: 11px; color: var(--c-text-muted); line-height: 1.6; }
+
+/* mobile: channels table -> cards */
+@media (max-width: 767px) {
+  .int-ch-table, .int-ch-table tbody, .int-ch-table tr, .int-ch-table td { display: block; width: 100%; }
+  .int-ch-table { min-width: 0; }
+  .int-ch-table thead { display: none; }
+  .int-ch-table tr { border: 1px solid var(--c-border); border-radius: 12px; padding: 6px 4px; margin: 10px; }
+  .int-ch-table td { border: 0 !important; padding: 7px 12px; display: flex; justify-content: space-between; gap: 12px; text-align: end; }
+  .int-ch-table td::before { content: attr(data-label); font-size: 11px; font-weight: 600; color: var(--c-text-muted); text-align: start; }
+  .int-ch-table td:first-child::before { display: none; }
+  .int-ch-c { text-align: end; }
+  .int-ch-acts { justify-content: flex-end; }
+}
 .int-icon-btn { display: inline-flex; padding: 6px; border-radius: 8px; color: var(--c-text-muted); }
 .int-icon-btn:hover { color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 12%, transparent); }
 .int-icon-btn--del:hover { color: var(--c-danger); background: color-mix(in srgb, var(--c-danger) 12%, transparent); }
@@ -127,14 +180,19 @@ const T = {
     groups_none_fetched: 'برای انتخاب از روی نام گروه‌ها، دکمهٔ «دریافت گروه‌ها از پنل» را بزنید. شناسه‌های ذخیره‌شدهٔ فعلی:',
     groups_empty: 'هیچ شناسه‌ای انتخاب نشده است.',
     group_word: 'گروه',
-    bots_intro: 'هر ربات توکن جداگانه دارد. توکن‌ها رمزنگاری‌شده ذخیره می‌شوند و نمایش داده نمی‌شوند.',
-    sales_bot: 'ربات فروش', backup_bot: 'ربات بک‌آپ', active: 'فعال',
-    bot_token: 'توکن ربات (BotFather)', proxy: 'پروکسی (اختیاری)',
-    chat_id: 'شناسهٔ چت بک‌آپ (chat_id)',
-    token_stored: 'توکنی ذخیره شده است؛ برای تغییر، توکن جدید را وارد کنید.',
+    bots_intro: 'پیکربندی ربات فروش، ربات پشتیبان‌گیری خودکار، پروکسی‌های ضد فیلتر و کانال‌های جوین اجباری کاربران.',
+    sales_bot: 'ربات فروش اصلی', backup_bot: 'ربات پشتیبان‌گیری دیتابیس و کانفیگ‌ها', active: 'فعال',
+    sales_bot_sub: 'پردازش خرید اشتراک و تحویل فوری کانفیگ',
+    backup_bot_sub: 'ارسال خودکار فایل‌های پشتیبان و لاگ‌های سرور',
+    bot_token: 'توکن ربات (BotFather Token)', proxy: 'آدرس پروکسی اختصاصی (Socks5)',
+    chat_id: 'شناسهٔ چت بک‌آپ (Target Chat ID)',
+    token_badge_set: 'ذخیره‌شده', token_badge_none: 'تنظیم‌نشده',
+    token_stored: 'توکن رمزنگاری‌شده ذخیره شده است؛ برای تغییر، مقدار جدید را وارد کنید.',
     token_none: 'هنوز توکنی ذخیره نشده است.',
+    chat_hint_short: 'دریافت با دستور /id',
     chat_hint: 'فایل‌های پشتیبان به این چت ارسال می‌شوند. برای گرفتن شناسه، در آن چت به ربات بک‌آپ /id بفرستید.',
-    bots_saved: 'ذخیره شد. برای اعمال توکن جدید، کانتینر ربات ظرف یک دقیقه به‌روز می‌شود (در صورت نیاز ری‌استارت کنید).',
+    bots_saved: 'پیکربندی ربات‌ها و کانال‌ها ذخیره شد. کانتینر ربات ظرف یک دقیقه توکن جدید را می‌گیرد (در صورت نیاز ری‌استارت کنید).',
+    bots_apply_note: 'همهٔ تغییرات پس از ذخیره، آنی روی ربات‌ها و کانال‌ها اعمال می‌شوند.',
     email_title: 'ارسال ایمیل', email_host: 'میزبان', email_from: 'فرستنده',
     email_relay_on: 'رله فعال است', email_relay_off: 'رله تنظیم نشده — ایمیل خارجی ارسال نمی‌شود',
     email_ready: 'آمادهٔ ارسال بیرونی', email_not_ready: 'ارسال بیرونی فعال نیست',
@@ -142,17 +200,21 @@ const T = {
     email_test_to: 'ارسال ایمیل آزمایشی به', email_send_test: 'ارسال آزمایشی',
     email_verif_on: 'تأیید ایمیل الزامی است', email_verif_off: 'تأیید ایمیل اختیاری است',
     inactive: 'غیرفعال',
-    ch_title_h: 'کانال‌های اجباری (عضویت پیش از استفاده از ربات)',
-    ch_intro: 'کاربر باید پیش از استفاده از ربات فروش، در همهٔ کانال‌های فعال زیر عضو باشد.',
-    ch_add: 'افزودن کانال', ch_cancel: 'انصراف', ch_confirm_del: 'این کانال حذف شود؟',
+    ch_title_h: 'کانال‌های جوین اجباری و احراز هویت کاربران',
+    ch_intro: 'قبل از دسترسی کاربران به ربات و خرید کانفیگ، ملزم به عضویت در کانال‌های فعال زیر خواهند بود.',
+    ch_add: 'افزودن کانال جدید', ch_cancel: 'انصراف', ch_confirm_del: 'این کانال حذف شود؟',
     ch_none: 'هنوز کانالی اضافه نشده است.',
-    ch_id: 'شناسهٔ کانال (@username یا -100...)', ch_title: 'عنوان (اختیاری)',
+    ch_id: 'شناسهٔ کانال (Username یا Chat ID)', ch_title: 'نام نمایشی کانال',
     ch_invite: 'لینک دعوت (برای کانال خصوصی)',
     ch_invite_hint: 'برای کانال خصوصی که username ندارد، لینک دعوت را وارد کنید تا دکمهٔ «عضویت» به کاربر نمایش داده شود.',
-    ch_members: 'اعضا', ch_test: 'تست دسترسی',
-    force_join: 'عضویت اجباری در کانال‌ها (force_channel_join)',
-    force_phone: 'اشتراک‌گذاری اجباری شمارهٔ تلفن (force_share_phone)',
-    ch_admin_hint: 'برای بررسی عضویت کاربران، ربات فروش باید «ادمین» هر کانال باشد. پس از افزودن کانال، ربات را در آن ادمین کنید و سپس «تست دسترسی» را بزنید.',
+    ch_members: 'اعضا', ch_test: 'تست دسترسی', ch_confirm: 'بررسی و افزودن',
+    ch_modal_h: 'افزودن کانال تلگرام',
+    ch_modal_hint: 'ابتدا ربات را در این کانال با سطح ادمین عضو کنید.',
+    ch_col_name: 'نام کانال', ch_col_id: 'شناسه / آدرس', ch_col_members: 'تعداد اعضا', ch_col_act: 'عملیات',
+    ch_synced: 'همگام‌سازی',
+    force_join: 'عضویت اجباری در کانال‌ها',
+    force_phone: 'اشتراک‌گذاری اجباری شمارهٔ تلفن',
+    ch_admin_hint: 'مهم: ربات باید «ادمین» هر کانال باشد و دسترسی «مشاهدهٔ اعضا» داشته باشد؛ در غیر این صورت تأیید خودکار جوین کاربر کار نمی‌کند. پس از افزودن، ربات را ادمین کنید و «تست دسترسی» را بزنید.',
   },
   en: {
     panel_intro: 'Manage your Pasargad / PasarGuard panels here. Every plan is bound to one panel. Passwords are stored encrypted and never shown again.',
@@ -183,14 +245,19 @@ const T = {
     groups_none_fetched: 'Click “Fetch groups from panel” to pick them by name. Currently saved ids:',
     groups_empty: 'No ids selected.',
     group_word: 'group',
-    bots_intro: 'Each bot has its own token. Tokens are stored encrypted and never shown.',
-    sales_bot: 'Sales bot', backup_bot: 'Backup bot', active: 'Active',
-    bot_token: 'Bot token (BotFather)', proxy: 'Proxy (optional)',
-    chat_id: 'Backup chat_id',
-    token_stored: 'A token is stored; type a new one only to change it.',
+    bots_intro: 'Configure the sales bot, the automatic backup bot, anti-filter proxies and the forced-join channels.',
+    sales_bot: 'Main sales bot', backup_bot: 'Database & config backup bot', active: 'Active',
+    sales_bot_sub: 'Handles subscription purchases and instant config delivery',
+    backup_bot_sub: 'Sends automatic backup files and server logs',
+    bot_token: 'Bot token (BotFather)', proxy: 'Dedicated proxy address (Socks5)',
+    chat_id: 'Backup target chat ID',
+    token_badge_set: 'stored', token_badge_none: 'not set',
+    token_stored: 'The token is stored encrypted; type a new one only to change it.',
     token_none: 'No token stored yet.',
+    chat_hint_short: 'get it with the /id command',
     chat_hint: 'Backups are sent to this chat. Send /id to the backup bot there to get the id.',
-    bots_saved: 'Saved. The bot container picks up a new token within a minute (restart it if needed).',
+    bots_saved: 'Bots and channels saved. The bot container picks up a new token within a minute (restart it if needed).',
+    bots_apply_note: 'After saving, all changes apply to the bots and channels immediately.',
     email_title: 'Email delivery', email_host: 'Host', email_from: 'From',
     email_relay_on: 'Relay configured', email_relay_off: 'No relay — external email will not be delivered',
     email_ready: 'Ready for external delivery', email_not_ready: 'External delivery not active',
@@ -198,17 +265,21 @@ const T = {
     email_test_to: 'Send a test email to', email_send_test: 'Send test',
     email_verif_on: 'Email verification is required', email_verif_off: 'Email verification is optional',
     inactive: 'Disabled',
-    ch_title_h: 'Required channels (join before using the bot)',
-    ch_intro: 'A user must be a member of every active channel below before using the sales bot.',
-    ch_add: 'Add channel', ch_cancel: 'Cancel', ch_confirm_del: 'Delete this channel?',
+    ch_title_h: 'Forced-join channels & user verification',
+    ch_intro: 'Before users can access the bot and buy a config, they must join every active channel below.',
+    ch_add: 'Add new channel', ch_cancel: 'Cancel', ch_confirm_del: 'Delete this channel?',
     ch_none: 'No channels added yet.',
-    ch_id: 'Channel (@username or -100...)', ch_title: 'Title (optional)',
+    ch_id: 'Channel (username or Chat ID)', ch_title: 'Channel display name',
     ch_invite: 'Invite link (for private channels)',
     ch_invite_hint: 'For a private channel with no username, add its invite link so users get a “Join” button.',
-    ch_members: 'members', ch_test: 'Test access',
-    force_join: 'Force channel join (force_channel_join)',
-    force_phone: 'Force phone-number share (force_share_phone)',
-    ch_admin_hint: 'To check user membership, the sales bot must be an ADMIN of each channel. After adding a channel, make the bot an admin there, then click “Test access”.',
+    ch_members: 'members', ch_test: 'Test access', ch_confirm: 'Check & add',
+    ch_modal_h: 'Add a Telegram channel',
+    ch_modal_hint: 'First add the bot to this channel as an admin.',
+    ch_col_name: 'Channel', ch_col_id: 'ID / address', ch_col_members: 'Members', ch_col_act: 'Actions',
+    ch_synced: 'sync',
+    force_join: 'Force channel join',
+    force_phone: 'Force real phone-number share',
+    ch_admin_hint: 'Important: the bot must be an ADMIN of each channel with “view members” permission, otherwise auto-verifying a user’s join will not work. After adding, make the bot an admin and click “Test access”.',
   },
 }
 
@@ -699,10 +770,15 @@ export function Bots() {
 
       <form onSubmit={save} className="space-y-4">
         <div className="int-bot-grid">
-          {sales && <BotCard title={s.sales_bot} icon={ICONS.cart} row={data.sales} value={sales} onChange={setSales} s={s} />}
-          {backup && <BotCard title={s.backup_bot} icon={ICONS.backup} row={data.backup} value={backup} onChange={setBackup} s={s} showChatId />}
+          {sales && <BotCard title={s.sales_bot} subtitle={s.sales_bot_sub} icon={ICONS.cart} row={data.sales} value={sales} onChange={setSales} s={s} />}
+          {backup && <BotCard title={s.backup_bot} subtitle={s.backup_bot_sub} icon={ICONS.backup} row={data.backup} value={backup} onChange={setBackup} s={s} showChatId />}
         </div>
-        <button className="btn-primary text-sm">{s.save}</button>
+        <div className="int-bots-foot">
+          <p className="text-xs text-muted flex items-center gap-1.5">
+            <Ico d={ICONS.check} w={13} />{s.bots_apply_note}
+          </p>
+          <button className="btn-primary text-sm">{s.save}</button>
+        </div>
       </form>
 
       <RequiredChannels s={s} />
@@ -764,34 +840,8 @@ function RequiredChannels({ s }) {
 
   if (!rows) return <div className="card"><Spinner /></div>
 
-  const Form = ({ value, onChange, onSubmit, onCancel }) => (
-    <form onSubmit={onSubmit} className="card grid gap-3 sm:grid-cols-2"
-      style={{ background: 'color-mix(in srgb, var(--c-primary) 5%, var(--c-surface))' }}>
-      <Field label={s.ch_id}>
-        <input className="input" dir="ltr" required placeholder="@mychannel  یا  -1001234567890"
-          value={value.channel_id} onChange={(e) => onChange({ ...value, channel_id: e.target.value })} />
-      </Field>
-      <Field label={s.ch_title}>
-        <input className="input" value={value.title}
-          onChange={(e) => onChange({ ...value, title: e.target.value })} />
-      </Field>
-      <div className="sm:col-span-2">
-        <Field label={s.ch_invite}>
-          <input className="input" dir="ltr" placeholder="https://t.me/+AbC..."
-            value={value.invite_link} onChange={(e) => onChange({ ...value, invite_link: e.target.value })} />
-        </Field>
-        <p className="mt-1 text-xs text-muted">{s.ch_invite_hint}</p>
-      </div>
-      <label className="flex items-center gap-2 text-sm">
-        <Toggle checked={value.is_active} onChange={(v) => onChange({ ...value, is_active: v })} label={s.active} />
-        {s.active}
-      </label>
-      <div className="flex gap-2 sm:col-span-2">
-        <button className="btn-primary text-sm">{s.save}</button>
-        <button type="button" className="btn-ghost text-sm" onClick={onCancel}>{s.ch_cancel}</button>
-      </div>
-    </form>
-  )
+  const open = adding || !!edit
+  const chInitials = (c) => (String(c.title || c.channel_id).replace(/[@_\-\s]/g, '').slice(0, 1) || 'C').toUpperCase()
 
   return (
     <div className="space-y-3">
@@ -800,11 +850,10 @@ function RequiredChannels({ s }) {
           <h2 className="font-bold">{s.ch_title_h}</h2>
           <p className="mt-1 text-sm text-muted">{s.ch_intro}</p>
         </div>
-        {!adding && !edit && (
-          <button className="btn-primary shrink-0 text-sm" onClick={() => { setAdding(true); setEdit({ ...blank }) }}>
-            + {s.ch_add}
-          </button>
-        )}
+        <button className="btn-primary shrink-0 text-sm inline-flex items-center gap-1.5"
+          onClick={() => { setAdding(true); setEdit({ ...blank }) }}>
+          <Ico d={ICONS.plus} w={14} /> {s.ch_add}
+        </button>
       </div>
 
       {msg && <Alert kind={msg.kind}>{msg.text}</Alert>}
@@ -812,82 +861,148 @@ function RequiredChannels({ s }) {
       {/* enforcement toggles */}
       <div className="card">
         <div className="toggle-row">
-          <span className="text-sm">{s.force_join}</span>
+          <span className="text-sm">{s.force_join} <span className="int-code">force_channel_join</span></span>
           <Toggle checked={!!enf.force_channel_join}
             onChange={(v) => setToggle('force_channel_join', v)} label={s.force_join} />
         </div>
         <div className="toggle-row">
-          <span className="text-sm">{s.force_phone}</span>
+          <span className="text-sm">{s.force_phone} <span className="int-code">force_share_phone</span></span>
           <Toggle checked={!!enf.force_share_phone}
             onChange={(v) => setToggle('force_share_phone', v)} label={s.force_phone} />
         </div>
       </div>
 
-      <div className="rounded-xl p-3 text-xs" style={{ background: 'color-mix(in srgb, var(--c-warning) 12%, transparent)', color: 'var(--c-warning)' }}>
-        ⚠️ {s.ch_admin_hint}
+      <div className="int-warn">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 mt-0.5">
+          <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+          <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
+        <span>{s.ch_admin_hint}</span>
       </div>
 
-      {adding && <Form value={edit} onChange={setEdit} onSubmit={saveChannel}
-        onCancel={() => { setAdding(false); setEdit(null) }} />}
-
-      {rows.length === 0 && !adding && (
+      {rows.length === 0 ? (
         <div className="card text-center text-sm text-muted">{s.ch_none}</div>
+      ) : (
+        <div className="card p-0 int-ch-wrap">
+          <table className="int-ch-table">
+            <thead>
+              <tr>
+                <th>{s.ch_col_name}</th><th>{s.ch_col_id}</th>
+                <th className="int-ch-c">{s.ch_col_members}</th><th className="int-ch-c">{s.ch_col_act}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((c) => (
+                <tr key={c.id} className={c.is_active ? '' : 'int-ch-off'}>
+                  <td data-label={s.ch_col_name}>
+                    <div className="int-ch-name">
+                      <span className={'int-ch-av ' + (c.is_active ? 'on' : 'off')}>{chInitials(c)}</span>
+                      <div className="min-w-0">
+                        <div className="font-bold truncate">{c.title || c.channel_id}</div>
+                        <span className={'int-ch-tag ' + (c.is_active ? 'ok' : 'muted')}>{c.is_active ? s.active : s.inactive}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td data-label={s.ch_col_id} dir="ltr" className="int-ch-mono">{c.channel_id}</td>
+                  <td data-label={s.ch_col_members} className="int-ch-c">
+                    <div className="int-ch-mem">{digits(c.member_count ?? 0, lang)}</div>
+                    {c.last_synced_at && (
+                      <div className="int-ch-sync">{new Date(c.last_synced_at).toLocaleDateString(lang === 'fa' ? 'fa-IR' : 'en-GB')}</div>
+                    )}
+                  </td>
+                  <td data-label={s.ch_col_act} className="int-ch-c">
+                    <div className="int-ch-acts">
+                      <button className="int-icon-btn" title={s.ch_test} onClick={() => test(c.id)} disabled={testing === c.id}>
+                        {testing === c.id ? '…' : <Ico d={ICONS.refresh} w={15} />}
+                      </button>
+                      <button className="int-icon-btn" title={s.save} onClick={() => { setEdit({ ...c }); setAdding(false) }}><Ico d={ICONS.edit} w={15} /></button>
+                      <button className="int-icon-btn int-icon-btn--del" onClick={() => del(c.id)}><Ico d={ICONS.trash} w={15} /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
-      {rows.map((c) => (
-        edit && edit.id === c.id ? (
-          <Form key={c.id} value={edit} onChange={setEdit} onSubmit={saveChannel}
-            onCancel={() => setEdit(null)} />
-        ) : (
-          <div key={c.id} className="card flex flex-wrap items-center gap-3">
-            <span className={'shrink-0 rounded-full px-2 py-0.5 text-xs ' + (c.is_active ? '' : 'opacity-60')}
-              style={{ background: c.is_active ? 'color-mix(in srgb, var(--c-success) 16%, transparent)' : 'var(--c-border)',
-                color: c.is_active ? 'var(--c-success)' : 'var(--c-text-muted)' }}>
-              {c.is_active ? s.active : s.inactive}
-            </span>
-            <div className="min-w-0 flex-1">
-              <div className="truncate font-bold">{c.title || c.channel_id}</div>
-              <div dir="ltr" className="truncate text-xs text-muted">{c.channel_id}</div>
+      {open && (
+        <div className="int-backdrop" onMouseDown={(e) => e.target === e.currentTarget && (setAdding(false), setEdit(null))}>
+          <form className="int-modal card" onSubmit={saveChannel} role="dialog" aria-modal="true">
+            <div className="int-modal-head">
+              <h3 className="font-bold flex items-center gap-2">
+                <span style={{ color: 'var(--c-primary)' }}><Ico d={ICONS.plus} w={16} /></span>
+                {s.ch_modal_h}
+              </h3>
+              <button type="button" className="int-icon-btn" onClick={() => { setAdding(false); setEdit(null) }}><Ico d={ICONS.close} w={16} /></button>
             </div>
-            <div className="text-xs text-muted">
-              {s.ch_members}: {c.member_count ?? 0}
-              {c.last_synced_at ? ` · ${new Date(c.last_synced_at).toLocaleDateString(lang === 'fa' ? 'fa-IR' : 'en-GB')}` : ''}
+            <div className="int-modal-body">
+              <Field label={s.ch_title}>
+                <input className="input" value={edit.title}
+                  onChange={(e) => setEdit({ ...edit, title: e.target.value })} />
+              </Field>
+              <Field label={s.ch_id}>
+                <input className="input" dir="ltr" required placeholder="@mychannel  |  -1001234567890"
+                  value={edit.channel_id} onChange={(e) => setEdit({ ...edit, channel_id: e.target.value })} />
+              </Field>
+              <Field label={s.ch_invite}>
+                <input className="input" dir="ltr" placeholder="https://t.me/+AbC..."
+                  value={edit.invite_link} onChange={(e) => setEdit({ ...edit, invite_link: e.target.value })} />
+                <span className="mt-1 block text-xs text-muted">{s.ch_invite_hint}</span>
+              </Field>
+              <label className="flex items-center gap-2 text-sm">
+                <Toggle checked={edit.is_active} onChange={(v) => setEdit({ ...edit, is_active: v })} label={s.active} />
+                {s.active}
+              </label>
+              <p className="int-modal-hint">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10" /><path d="M12 16v-4M12 8h.01" />
+                </svg>{s.ch_modal_hint}
+              </p>
             </div>
-            <div className="flex gap-1">
-              <button className="btn-ghost text-xs" onClick={() => test(c.id)} disabled={testing === c.id}>
-                {testing === c.id ? '…' : s.ch_test}
-              </button>
-              <button className="int-icon-btn" title={s.save} onClick={() => { setEdit({ ...c }); setAdding(false) }}><Ico d={ICONS.edit} w={15} /></button>
-              <button className="int-icon-btn int-icon-btn--del" onClick={() => del(c.id)}><Ico d={ICONS.trash} w={15} /></button>
+            <div className="int-modal-foot">
+              <button type="button" className="btn-ghost text-sm" onClick={() => { setAdding(false); setEdit(null) }}>{s.ch_cancel}</button>
+              <button type="submit" className="btn-primary text-sm">{edit.id ? s.save : s.ch_confirm}</button>
             </div>
-          </div>
-        )
-      ))}
+          </form>
+        </div>
+      )}
     </div>
   )
 }
 
-function BotCard({ title, icon, row, value, onChange, s, showChatId }) {
+function BotCard({ title, subtitle, icon, row, value, onChange, s, showChatId }) {
   const set = (k, v) => onChange({ ...value, [k]: v })
   return (
     <div className="card int-bot-card flex flex-col gap-4">
-      <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: 'var(--c-border)' }}>
+      <div className="flex items-start justify-between border-b pb-3 gap-3" style={{ borderColor: 'var(--c-border)' }}>
         <span className="int-card-head font-bold">
-          <span className="int-card-ico"><Ico d={icon || ICONS.bot} w={16} /></span>{title}
+          <span className="int-card-ico"><Ico d={icon || ICONS.bot} w={16} /></span>
+          <span className="min-w-0">
+            <span className="block">{title}</span>
+            {subtitle && <span className="block text-xs font-normal text-muted mt-0.5">{subtitle}</span>}
+          </span>
         </span>
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex items-center gap-2 text-sm shrink-0">
           <Toggle checked={value.is_active} onChange={(v) => set('is_active', v)} label={s.active} />
           {s.active}
         </label>
       </div>
 
-      <Field label={s.bot_token}>
+      <div>
+        <div className="flex items-center justify-between gap-2 mb-1.5">
+          <span className="label mb-0">{s.bot_token}</span>
+          <span className={'int-token-badge ' + (row.token_set ? 'set' : 'none')}>
+            <Ico d={row.token_set ? ICONS.check : ICONS.dot} w={11} />
+            {row.token_set ? s.token_badge_set : s.token_badge_none}
+          </span>
+        </div>
         <SecretInput placeholder={row.token_set ? s.unchanged : '123456:ABC-DEF…'}
           value={value.token} onChange={(e) => set('token', e.target.value)} />
         <span className="mt-1 block text-xs text-muted">
           {row.token_set ? s.token_stored : s.token_none}
         </span>
-      </Field>
+      </div>
 
       <Field label={s.proxy}>
         <input className="input" dir="ltr" placeholder="socks5://user:pass@host:port"
@@ -895,11 +1010,15 @@ function BotCard({ title, icon, row, value, onChange, s, showChatId }) {
       </Field>
 
       {showChatId && (
-        <Field label={s.chat_id}>
+        <div>
+          <div className="flex items-center justify-between gap-2 mb-1.5">
+            <span className="label mb-0">{s.chat_id}</span>
+            <span className="text-[11px] text-muted">{s.chat_hint_short}</span>
+          </div>
           <input className="input" dir="ltr" inputMode="numeric" placeholder="-1001234567890"
             value={value.backup_chat_id} onChange={(e) => set('backup_chat_id', e.target.value)} />
           <span className="mt-1 block text-xs text-muted">{s.chat_hint}</span>
-        </Field>
+        </div>
       )}
     </div>
   )
