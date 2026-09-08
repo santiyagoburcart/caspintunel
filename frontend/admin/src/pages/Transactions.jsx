@@ -1,32 +1,73 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useI18n, enumLabel } from '../lib/i18n'
-import { jalali, toman } from '../lib/format'
+import { jalali, toman, gb, digits } from '../lib/format'
 import { Alert, Spinner } from '../components/ui'
 import { ReceiptThumb } from '../components/ReceiptThumb'
 
 const T = {
   fa: {
-    title: 'تراکنش‌ها', all: 'همه', pending: 'در انتظار', approved: 'تأییدشده', rejected: 'ردشده',
-    amount: 'مبلغ', user: 'کاربر', source: 'منبع', card: 'کارت', confirmer: 'تأییدکننده',
-    date: 'تاریخ', receipt: 'رسید', plan: 'پلن', none: 'تراکنشی نیست', reason: 'دلیل رد',
-    src_site: 'سایت', src_bot: 'ربات', by_admin: 'ادمین', by_system: 'سیستم پیامک',
+    title: 'تراکنش‌ها', services_tab: 'سرویس‌های فروخته‌شده',
+    all: 'همه', pending: 'در انتظار', approved: 'تأییدشده', rejected: 'ردشده',
+    amount: 'مبلغ', user: 'کاربر', method: 'روش', card: 'کارت', confirmer: 'تأییدکننده',
+    date: 'تاریخ', receipt: 'رسید', status: 'وضعیت', none: 'تراکنشی نیست', reason: 'دلیل رد',
+    by_admin: 'ادمین', by_system: 'سیستم پیامک', src_site: 'سایت', src_bot: 'ربات',
     not_delivered: 'پرداخت تأییدشده ولی سرویس تحویل نشده — به‌صورت خودکار تلاش مجدد می‌شود',
+    details: 'جزئیات',
+    account: 'نام کاربری', plan: 'پلن', usage: 'مصرف', expiry: 'انقضا', conn: 'اتصال',
+    online: 'آنلاین', offline: 'آفلاین', unlimited: 'نامحدود', no_services: 'سرویسی فروخته نشده',
+    on_first_conn: 'با اولین اتصال', timeless: 'بدون انقضا',
   },
   en: {
-    title: 'Transactions', all: 'All', pending: 'Pending', approved: 'Approved', rejected: 'Rejected',
-    amount: 'Amount', user: 'User', source: 'Source', card: 'Card', confirmer: 'Confirmed by',
-    date: 'Date', receipt: 'Receipt', plan: 'Plan', none: 'No transactions', reason: 'Reject reason',
-    src_site: 'Website', src_bot: 'Bot', by_admin: 'admin', by_system: 'SMS system',
+    title: 'Transactions', services_tab: 'Purchased services',
+    all: 'All', pending: 'Pending', approved: 'Approved', rejected: 'Rejected',
+    amount: 'Amount', user: 'User', method: 'Method', card: 'Card', confirmer: 'Confirmed by',
+    date: 'Date', receipt: 'Receipt', status: 'Status', none: 'No transactions', reason: 'Reject reason',
+    by_admin: 'admin', by_system: 'SMS system', src_site: 'Website', src_bot: 'Bot',
     not_delivered: 'Payment approved but service not delivered — auto-retrying',
+    details: 'Details',
+    account: 'Account', plan: 'Plan', usage: 'Usage', expiry: 'Expiry', conn: 'Connection',
+    online: 'Online', offline: 'Offline', unlimited: 'unlimited', no_services: 'No services sold yet',
+    on_first_conn: 'on first connection', timeless: 'no expiry',
   },
 }
 
 const FILTERS = ['', 'pending', 'approved', 'rejected']
+const ST_TONE = { pending: 'warning', approved: 'success', rejected: 'danger' }
+const SVC_TONE = { active: 'success', on_hold: 'warning', pending: 'warning', limited: 'warning', expired: 'danger', disabled: 'danger' }
+
+const groupCard = (raw) => {
+  const s = String(raw || '').replace(/\D/g, '')
+  return s.length >= 12 ? s.replace(/(.{4})(?=.)/g, '$1 ') : (raw || '—')
+}
+
+function Pill({ tone, children }) {
+  const c = `var(--c-${tone || 'text-muted'})`
+  return (
+    <span className="tx-pill" style={{ background: `color-mix(in srgb, ${c} 16%, transparent)`, color: c }}>{children}</span>
+  )
+}
 
 export default function Transactions() {
-  const { lang } = useI18n()
+  const { lang, t } = useI18n()
   const s = T[lang] || T.fa
+  const [tab, setTab] = useState('tx')
+
+  return (
+    <div className="tx space-y-3">
+      <style>{CSS}</style>
+      <div className="tx-tabs">
+        <button type="button" className={tab === 'tx' ? 'on' : ''} onClick={() => setTab('tx')}>{s.title}</button>
+        <button type="button" className={tab === 'services' ? 'on' : ''} onClick={() => setTab('services')}>{s.services_tab}</button>
+      </div>
+      {tab === 'tx' ? <TxTable s={s} t={t} lang={lang} /> : <ServicesTable s={s} t={t} lang={lang} />}
+    </div>
+  )
+}
+
+function TxTable({ s, t, lang }) {
+  const navigate = useNavigate()
   const [rows, setRows] = useState(null)
   const [status, setStatus] = useState('')
   const [err, setErr] = useState('')
@@ -39,14 +80,20 @@ export default function Transactions() {
   }
   useEffect(load, [status])
 
+  const confirmer = (r) => {
+    if (!r.confirmer) return '—'
+    if (r.confirmer === 'admin') return s.by_admin
+    if (r.confirmer === 'SMS system') return s.by_system
+    return r.confirmer
+  }
+
   return (
-    <div className="space-y-3">
-      <h1 className="text-lg font-bold">{s.title}</h1>
+    <>
       <Alert>{err}</Alert>
       <div className="flex flex-wrap gap-2">
         {FILTERS.map((f) => (
-          <button key={f || 'all'} onClick={() => setStatus(f)}
-            className={`btn-ghost text-sm ${status === f ? 'text-primary' : ''}`}>
+          <button key={f || 'all'} type="button" onClick={() => setStatus(f)}
+            className={`btn-ghost text-sm ${status === f ? 'tx-filter-on' : ''}`}>
             {f ? s[f] : s.all}
           </button>
         ))}
@@ -57,46 +104,180 @@ export default function Transactions() {
       ) : rows.length === 0 ? (
         <div className="card text-center text-muted">{s.none}</div>
       ) : (
-        <div className="space-y-2">
-          {rows.map((r) => (
-            <div key={r.id} className="card flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-              <span className="font-bold">{toman(r.amount, lang)}</span>
-              <span className="rounded-full px-2 py-0.5 text-xs"
-                style={{ background: 'color-mix(in srgb, var(--c-secondary) 16%, transparent)', color: 'var(--c-secondary)' }}>
-                {r.order_source === 'bot' ? s.src_bot : s.src_site}
-              </span>
-              <StatusPill status={r.status} s={s} />
-              <span className="text-muted">{s.user}: {r.user}</span>
-              {r.plan_name && <span className="text-muted">{s.plan}: {r.plan_name}</span>}
-              {r.card && <span dir="ltr" className="text-muted">{s.card}: {r.card}</span>}
-              {r.confirmer && (
-                <span className="text-muted">
-                  {s.confirmer}: {r.confirmer === 'admin' ? s.by_admin : r.confirmer === 'SMS system' ? s.by_system : r.confirmer}
-                </span>
-              )}
-              {r.status === 'rejected' && r.reject_reason && (
-                <span className="text-warning">{s.reason}: {r.reject_reason}</span>
-              )}
-              {r.status === 'approved' && r.order_status === 'paid' && (
-                <span className="w-full text-xs text-warning">⚠ {s.not_delivered}</span>
-              )}
-              <span className="ms-auto text-xs text-muted">{jalali(r.created_at, true, lang)}</span>
-              {r.receipt_url && <ReceiptThumb url={r.receipt_url} alt={s.receipt} />}
-            </div>
-          ))}
+        <div className="card p-0 tx-wrap">
+          <table className="tx-table">
+            <thead>
+              <tr>
+                <th>{s.amount}</th><th>{s.user}</th><th>{s.method}</th><th>{s.card}</th>
+                <th>{s.confirmer}</th><th>{s.date}</th><th>{s.status}</th>
+                <th className="tx-c">{s.receipt}</th><th className="tx-c" aria-label="actions" />
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => {
+                const note = r.status === 'rejected' && r.reject_reason
+                  ? `${s.reason}: ${r.reject_reason}`
+                  : (r.status === 'approved' && r.order_status === 'paid' ? `⚠ ${s.not_delivered}` : null)
+                return (
+                  <Fragment key={r.id}>
+                    <tr className={'tx-row' + (note ? ' tx-row--note' : '')}>
+                      <td className="tx-amt">{toman(r.amount, lang)}</td>
+                      <td>
+                        <span className="tx-user">{r.user}</span>
+                        <span className="tx-sub">
+                          {r.order_source === 'bot' ? s.src_bot : s.src_site}{r.plan_name ? ` · ${r.plan_name}` : ''}
+                        </span>
+                      </td>
+                      <td>{r.method ? enumLabel(t, 'm_', r.method) : '—'}</td>
+                      <td dir="ltr" className="tx-mono">{groupCard(r.card)}</td>
+                      <td>{confirmer(r)}</td>
+                      <td className="tx-mono tx-date">{jalali(r.created_at, true, lang)}</td>
+                      <td><Pill tone={ST_TONE[r.status]}>{s[r.status] || r.status}</Pill></td>
+                      <td className="tx-c">{r.receipt_url ? <ReceiptThumb url={r.receipt_url} alt={s.receipt} /> : '—'}</td>
+                      <td className="tx-c">
+                        <button type="button" className="tx-detail-btn"
+                          onClick={() => navigate(`/transactions/${r.id}`)}>
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+                            strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                          {s.details}
+                        </button>
+                      </td>
+                    </tr>
+                    {note && (
+                      <tr className="tx-note-row">
+                        <td colSpan={9}><span className={r.status === 'rejected' ? 'tx-note-bad' : 'tx-note-warn'}>{note}</span></td>
+                      </tr>
+                    )}
+                  </Fragment>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       )}
-    </div>
+    </>
   )
 }
 
-function StatusPill({ status, s }) {
-  const c = { pending: 'warning', approved: 'success', rejected: 'danger' }[status] || 'text-muted'
-  const color = `var(--c-${c})`
+const fmtData = (used, limit, s, lang) => {
+  const u = `${digits(gb(used), lang)}`
+  if (!limit) return `${u} / ${s.unlimited}`
+  return `${u} / ${digits(gb(limit), lang)} GB`
+}
+const dataPct = (used, limit) => (limit ? Math.min(100, Math.round((used / limit) * 100)) : 0)
+
+function ServicesTable({ s, t, lang }) {
+  const [rows, setRows] = useState(null)
+  const [err, setErr] = useState('')
+
+  useEffect(() => {
+    api.get('/admin/services/')
+      .then((r) => setRows(r.data.results ?? r.data))
+      .catch(() => { setRows([]); setErr(lang === 'fa' ? 'خطا در دریافت' : 'Failed to load') })
+  }, [])
+
+  const expiry = (r) => {
+    if (r.expire_strategy === 'never') return s.timeless
+    if (r.status === 'on_hold' || !r.expire_at) return r.status === 'on_hold' ? s.on_first_conn : '—'
+    return jalali(r.expire_at, false, lang)
+  }
+
   return (
-    <span className="rounded-full px-2 py-0.5 text-xs"
-      style={{ background: `color-mix(in srgb, ${color} 18%, transparent)`, color }}>
-      {s[status] || status}
-    </span>
+    <>
+      <Alert>{err}</Alert>
+      {rows === null ? (
+        <div className="grid place-items-center py-16"><Spinner /></div>
+      ) : rows.length === 0 ? (
+        <div className="card text-center text-muted">{s.no_services}</div>
+      ) : (
+        <div className="card p-0 tx-wrap">
+          <table className="tx-table">
+            <thead>
+              <tr>
+                <th>{s.account}</th><th>{s.user}</th><th>{s.plan}</th><th>{s.status}</th>
+                <th>{s.conn}</th><th>{s.usage}</th><th>{s.expiry}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr className="tx-row" key={r.id}>
+                  <td dir="ltr" className="tx-mono">{r.panel_username}</td>
+                  <td>
+                    <span className="tx-user">{r.user}</span>
+                    {r.user_name ? <span className="tx-sub">{r.user_name}</span> : null}
+                  </td>
+                  <td>{(lang === 'fa' ? r.plan : r.plan_en) || r.plan || '—'}</td>
+                  <td><Pill tone={SVC_TONE[r.status]}>{enumLabel(t, 'st_', r.status)}</Pill></td>
+                  <td>
+                    <span className={'tx-conn ' + (r.is_online ? 'on' : 'off')}>
+                      <i />{r.is_online ? s.online : s.offline}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="tx-usage">
+                      <span className="tx-mono">{fmtData(r.data_used, r.data_limit, s, lang)}</span>
+                      {r.data_limit ? (
+                        <div className="tx-usage-bar"><i style={{ width: `${dataPct(r.data_used, r.data_limit)}%` }} /></div>
+                      ) : null}
+                    </div>
+                  </td>
+                  <td className="tx-mono tx-date">{expiry(r)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
   )
 }
+
+const CSS = `
+.tx-tabs { display: inline-flex; gap: 4px; padding: 4px; border-radius: 12px; background: color-mix(in srgb, var(--c-text-muted) 12%, transparent); }
+.tx-tabs button { padding: 7px 16px; border-radius: 9px; font-size: 13px; font-weight: 600; color: var(--c-text-muted); }
+.tx-tabs button.on { background: var(--c-primary); color: #fff; }
+
+.tx-filter-on { color: var(--c-primary); border-color: var(--c-primary); }
+.tx-wrap { overflow-x: auto; }
+.tx-table { width: 100%; min-width: 760px; border-collapse: collapse; font-size: 13px; }
+.tx-table thead th {
+  text-align: start; font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: .03em;
+  color: var(--c-text-muted); padding: 12px 14px; white-space: nowrap; border-bottom: 1px solid var(--c-border);
+}
+.tx-table td { padding: 11px 14px; vertical-align: middle; }
+.tx-table tr.tx-row > td { border-bottom: 1px solid var(--c-border); }
+.tx-table tr.tx-row--note > td { border-bottom: 0; }
+.tx-table tr.tx-row:hover > td { background: color-mix(in srgb, var(--c-primary) 5%, transparent); }
+.tx-detail-btn {
+  display: inline-flex; align-items: center; gap: 5px; padding: 5px 11px; border-radius: 9px;
+  font-size: 12px; font-weight: 600; white-space: nowrap;
+  color: var(--c-primary); border: 1px solid color-mix(in srgb, var(--c-primary) 32%, transparent);
+  background: color-mix(in srgb, var(--c-primary) 8%, transparent); transition: background .15s;
+}
+.tx-detail-btn:hover { background: color-mix(in srgb, var(--c-primary) 16%, transparent); }
+
+.tx-amt { font-weight: 700; white-space: nowrap; }
+.tx-user { display: block; font-weight: 500; }
+.tx-sub { display: block; font-size: 11px; color: var(--c-text-muted); margin-top: 1px; }
+.tx-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.tx-date { white-space: nowrap; color: var(--c-text-muted); font-size: 12px; }
+.tx-c { text-align: center; }
+.tx-pill { display: inline-block; border-radius: 999px; padding: 3px 10px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+
+.tx-note-row > td { padding: 0 14px 10px !important; border-bottom: 1px solid var(--c-border) !important; }
+.tx-note-warn, .tx-note-bad { font-size: 11.5px; }
+.tx-note-warn { color: var(--c-warning); }
+.tx-note-bad { color: var(--c-danger); }
+
+
+.tx-conn { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+.tx-conn i { width: 7px; height: 7px; border-radius: 50%; }
+.tx-conn.on { color: var(--c-success); } .tx-conn.on i { background: var(--c-success); }
+.tx-conn.off { color: var(--c-text-muted); } .tx-conn.off i { background: var(--c-text-muted); }
+
+.tx-usage { display: flex; flex-direction: column; gap: 4px; min-width: 120px; }
+.tx-usage-bar { height: 5px; border-radius: 999px; overflow: hidden; background: color-mix(in srgb, var(--c-text-muted) 20%, transparent); }
+.tx-usage-bar > i { display: block; height: 100%; background: var(--c-primary); border-radius: 999px; }
+`

@@ -7,10 +7,12 @@ from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
 from rest_framework import filters, mixins, viewsets
+from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from apps.common.jalali import to_jalali_str
-from apps.payments_sms.models import BankCard, Payment, PaymentStatus
+from apps.common.models import write_audit
+from apps.payments_sms.models import BankCard, ConfirmedBy, Payment, PaymentStatus
 from apps.payments_sms.services import PaymentError, approve_payment, reject_payment
 
 from ..serializers import AdminPendingPaymentSerializer, TransactionSerializer
@@ -21,7 +23,7 @@ from ..permissions import StaffPermission
 class TransactionViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     authentication_classes = _AUTH
     permission_classes = [StaffPermission]
-    perms_map = {"GET": ["payment.view"]}
+    perms_map = {"GET": ["payment.view"], "POST": ["payment.approve"]}
     queryset = Payment.objects.none()
     serializer_class = TransactionSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
@@ -31,12 +33,50 @@ class TransactionViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, views
 
     def get_queryset(self):
         qs = Payment.objects.select_related(
-            "order", "order__user", "bank_card", "confirmed_by_staff"
+            "order", "order__user", "order__plan", "bank_card", "confirmed_by_staff"
         )
         src = self.request.query_params.get("source")
         if src:
             qs = qs.filter(order__source=src)
         return qs.order_by("-created_at")
+
+    @extend_schema(request=dict, responses=TransactionSerializer,
+                   summary="Manually set a payment's status (admin override)")
+    @action(detail=True, methods=["post"], url_path="status")
+    def set_status(self, request, pk=None):
+        payment = self.get_object()
+        target = (request.data.get("status") or "").strip()
+        reason = (request.data.get("reason") or "").strip()
+        if target not in PaymentStatus.values:
+            return Response({"detail": "invalid status"}, status=400)
+        if target == payment.status:
+            return Response(TransactionSerializer(payment).data)
+
+        # pending -> approved/rejected goes through the real flow (fulfilment etc.)
+        try:
+            if payment.status == PaymentStatus.PENDING and target == PaymentStatus.APPROVED:
+                payment = approve_payment(payment.pk, actor=request.user)
+            elif payment.status == PaymentStatus.PENDING and target == PaymentStatus.REJECTED:
+                payment = reject_payment(payment.pk, reason=reason or "رد شد", actor=request.user)
+            else:
+                # any other transition = a manual override, no side effects
+                payment.status = target
+                if target == PaymentStatus.APPROVED:
+                    payment.confirmed_by = ConfirmedBy.ADMIN
+                    payment.confirmed_at = payment.confirmed_at or timezone.now()
+                elif target == PaymentStatus.PENDING:
+                    payment.confirmed_by = None
+                    payment.confirmed_at = None
+                    payment.reject_reason = ""
+                elif target == PaymentStatus.REJECTED:
+                    payment.reject_reason = reason or payment.reject_reason or "رد شد"
+                payment.save(update_fields=["status", "confirmed_by", "confirmed_at",
+                                            "reject_reason", "updated_at"])
+                write_audit(action="payment.status_override", target=payment, staff=request.user,
+                            detail={"to": target, "reason": reason})
+        except PaymentError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        return Response(TransactionSerializer(payment).data)
 
 
 class PendingPaymentsView(AdminAPIView):

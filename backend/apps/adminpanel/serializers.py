@@ -276,11 +276,25 @@ class StaffSerializer(serializers.ModelSerializer):
 class TransactionSerializer(serializers.ModelSerializer):
     order_id = serializers.IntegerField(source="order.id", read_only=True)
     user = serializers.CharField(source="order.user.username", read_only=True)
+    user_name = serializers.CharField(source="order.user.name", read_only=True, default="")
+    user_telegram = serializers.CharField(
+        source="order.user.telegram_username", read_only=True, default=""
+    )
     plan_name = serializers.CharField(source="order.plan.name_fa", read_only=True, default=None)
+    plan_name_en = serializers.CharField(source="order.plan.name_en", read_only=True, default="")
+    account_name = serializers.CharField(
+        source="order.requested_account_name", read_only=True, default=""
+    )
     order_source = serializers.CharField(source="order.source", read_only=True)
     order_type = serializers.CharField(source="order.type", read_only=True)
     order_status = serializers.CharField(source="order.status", read_only=True)
+    amount_unique = serializers.DecimalField(
+        source="order.amount_unique", max_digits=12, decimal_places=0, read_only=True, default=None
+    )
     card = serializers.CharField(source="bank_card.card_number", read_only=True, default=None)
+    card_holder = serializers.CharField(source="bank_card.holder_name", read_only=True, default=None)
+    card_bank = serializers.CharField(source="bank_card.bank_name", read_only=True, default=None)
+    gateway_ref = serializers.CharField(read_only=True, default=None)
     confirmer = serializers.SerializerMethodField()
     reject_reason = serializers.CharField(read_only=True)
     receipt_url = serializers.SerializerMethodField()
@@ -288,9 +302,12 @@ class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payment
         fields = (
-            "id", "order_id", "user", "plan_name", "amount", "method", "status",
-            "card", "confirmed_by", "confirmer", "confirmed_at", "reject_reason",
-            "receipt_url", "order_source", "order_type", "order_status", "created_at",
+            "id", "order_id", "user", "user_name", "user_telegram", "plan_name", "plan_name_en",
+            "account_name", "amount", "amount_unique", "method", "status",
+            "card", "card_holder", "card_bank", "gateway_ref",
+            "confirmed_by", "confirmer", "confirmed_at", "reject_reason",
+            "receipt_url", "order_source", "order_type", "order_status",
+            "created_at", "updated_at",
         )
 
     def get_receipt_url(self, obj) -> str | None:
@@ -360,6 +377,15 @@ class SiteConfigSerializer(serializers.ModelSerializer):
                   "meta_description", "updated_at")
         read_only_fields = ("updated_at",)
 
+    def to_representation(self, obj):
+        from apps.settings_app.serializers import rel_media
+
+        data = super().to_representation(obj)
+        # root-relative URLs — reachable from whatever origin the panel runs on
+        data["logo"] = rel_media(obj.logo)
+        data["favicon"] = rel_media(obj.favicon)
+        return data
+
 
 # --- service lists -------------------------------------------
 class HealthCheckSerializer(serializers.ModelSerializer):
@@ -383,10 +409,19 @@ class BackupLogSerializer(serializers.ModelSerializer):
 
 class AdminServiceSerializer(serializers.ModelSerializer):
     user = serializers.CharField(source="user.username", read_only=True)
+    user_name = serializers.CharField(source="user.name", read_only=True, default="")
     plan = serializers.CharField(source="current_plan.name_fa", read_only=True, default=None)
+    plan_en = serializers.CharField(source="current_plan.name_en", read_only=True, default=None)
+    is_online = serializers.SerializerMethodField()
 
     class Meta:
         model = Service
-        fields = ("id", "panel_username", "user", "plan", "status", "expire_strategy",
-                  "data_limit", "data_used", "expire_at", "online_at", "last_synced_at",
-                  "subscription_url", "created_at")
+        fields = ("id", "panel_username", "user", "user_name", "plan", "plan_en", "status",
+                  "expire_strategy", "data_limit", "data_used", "expire_at", "online_at",
+                  "is_online", "last_synced_at", "subscription_url", "created_at")
+
+    def get_is_online(self, obj) -> bool:
+        if not obj.online_at:
+            return False
+        from django.utils import timezone
+        return obj.online_at >= timezone.now() - timezone.timedelta(minutes=5)

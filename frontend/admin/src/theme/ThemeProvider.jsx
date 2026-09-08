@@ -3,6 +3,24 @@ import { api } from '../lib/api'
 
 const Ctx = createContext(null)
 
+// Some browsers ignore a mutated <link rel=icon> href — remove + re-add a fresh
+// element (with the right MIME type) so the tab icon actually updates. Works in
+// every theme (Midnight Aurora / Royal Frost / Caspian) since it's theme-agnostic.
+function setFavicon(url) {
+  if (!url) return
+  try {
+    document.querySelectorAll("link[rel~='icon'], link#favicon").forEach((el) => el.remove())
+    const link = document.createElement('link')
+    link.id = 'favicon'
+    link.rel = 'icon'
+    const ext = String(url).split('?')[0].split('.').pop().toLowerCase()
+    link.type = { png: 'image/png', svg: 'image/svg+xml', ico: 'image/x-icon',
+      jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp' }[ext] || ''
+    link.href = url
+    document.head.appendChild(link)
+  } catch { /* non-fatal */ }
+}
+
 // map API palette keys -> CSS variable names
 const VARS = {
   background: '--c-bg', surface: '--c-surface', primary: '--c-primary',
@@ -44,8 +62,7 @@ export function ThemeProvider({ children }) {
     api.get('/config/').then((r) => {
       setConfig(r.data)
       if (r.data?.site_name_fa) document.title = r.data.site_name_fa
-      const fav = document.getElementById('favicon')
-      if (fav && r.data?.favicon) fav.href = r.data.favicon
+      setFavicon(r.data?.favicon)
     }).catch(() => {})
   }, [])
 

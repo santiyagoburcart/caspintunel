@@ -297,11 +297,11 @@ body {
   --csp-text-2: var(--csp-text2-light, #1e293b);
   --csp-text-3: var(--csp-text3-light, #334155);
   --csp-border-strong: var(--csp-border-strong-light, #cbd5e1);
-  --csp-signal: var(--csp-signal-light, #38bdf8);
-  --csp-vibrant: var(--csp-vibrant-light, #0369a1);
-  --csp-gauge-from: var(--csp-gauge-from-light, #38bdf8);
-  --csp-gauge-to: var(--csp-gauge-to-light, #0284c7);
-  --csp-glow: var(--csp-glow-light, rgba(2, 132, 199, .28));
+  --csp-signal: var(--csp-signal-light, #4C90D6);
+  --csp-vibrant: var(--csp-vibrant-light, #0F4E92);
+  --csp-gauge-from: var(--csp-gauge-from-light, #4C90D6);
+  --csp-gauge-to: var(--csp-gauge-to-light, #1464BA);
+  --csp-glow: var(--csp-glow-light, rgba(20, 100, 186, .28));
   --csp-radius-card: var(--csp-radius-card-light, 0.75rem);
 }
 [data-theme-style="caspian"].dark {
@@ -312,11 +312,11 @@ body {
   --csp-text-2: var(--csp-text2-dark, #cbc3d7);
   --csp-text-3: var(--csp-text3-dark, #94a3b8);
   --csp-border-strong: var(--csp-border-strong-dark, #494454);
-  --csp-signal: var(--csp-signal-dark, #06b6d4);
-  --csp-vibrant: var(--csp-vibrant-dark, #7c3aed);
-  --csp-gauge-from: var(--csp-gauge-from-dark, #06b6d4);
-  --csp-gauge-to: var(--csp-gauge-to-dark, #8b5cf6);
-  --csp-glow: var(--csp-glow-dark, rgba(139, 92, 246, .45));
+  --csp-signal: var(--csp-signal-dark, #4C90D6);
+  --csp-vibrant: var(--csp-vibrant-dark, #0F4E92);
+  --csp-gauge-from: var(--csp-gauge-from-dark, #4C90D6);
+  --csp-gauge-to: var(--csp-gauge-to-dark, #1464BA);
+  --csp-glow: var(--csp-glow-dark, rgba(76, 144, 214, .45));
   --csp-radius-card: var(--csp-radius-card-dark, 1rem);
 }
 

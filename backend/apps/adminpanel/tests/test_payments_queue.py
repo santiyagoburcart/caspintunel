@@ -118,3 +118,31 @@ def test_transactions_list_and_status_filter(boss, pending_payment):
     assert len(appr) == 1 and appr[0]["status"] == "approved"
     rej = boss.get("/api/v1/admin/transactions/?status=rejected").data["results"]
     assert len(rej) == 1 and rej[0]["reject_reason"] == "bad"
+
+
+def test_transaction_status_override(boss, pending_payment):
+    """pending -> approved goes through the real flow; approved -> pending is a
+    plain manual override (no side effects)."""
+    from apps.payments_sms.models import Payment
+
+    r = boss.post(f"/api/v1/admin/transactions/{pending_payment.id}/status/",
+                  {"status": "approved"}, format="json")
+    assert r.status_code == 200
+    pending_payment.refresh_from_db()
+    assert pending_payment.status == "approved" and pending_payment.confirmed_by == "admin"
+
+    r = boss.post(f"/api/v1/admin/transactions/{pending_payment.id}/status/",
+                  {"status": "pending"}, format="json")
+    assert r.status_code == 200
+    pending_payment.refresh_from_db()
+    assert pending_payment.status == "pending"
+    assert pending_payment.confirmed_at is None and pending_payment.confirmed_by is None
+
+    assert boss.post(f"/api/v1/admin/transactions/{pending_payment.id}/status/",
+                     {"status": "nope"}, format="json").status_code == 400
+
+
+def test_transaction_status_needs_approve_perm(staff_client, perms, pending_payment):
+    viewer = staff_client(make_staff("txviewer", ["payment.view"], perms))
+    assert viewer.post(f"/api/v1/admin/transactions/{pending_payment.id}/status/",
+                       {"status": "approved"}, format="json").status_code == 403

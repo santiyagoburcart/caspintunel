@@ -1,0 +1,82 @@
+"""Re-brand the "Caspian" theme around a single primary blue (#1464BA).
+
+`seed` also carries the new palette, but seed only re-runs on container
+start / update, so this applies it right after a plain `migrate`. Only the
+"Caspian" row is touched; `is_active` is never changed.
+"""
+from django.db import migrations
+
+# keep in sync with apps/settings_app/management/commands/seed.py::CASPIAN
+CASPIAN = {
+    "style": "caspian",
+    "light": {
+        "background": "#F8FAFC", "surface": "#FFFFFF", "primary": "#1464BA",
+        "secondary": "#4C90D6", "success": "#10B981", "danger": "#F43F5E", "warning": "#F59E0B",
+        "text": "#0F172A", "text_muted": "#64748B", "border": "#E2E8F0",
+    },
+    "dark": {
+        "background": "#080B14", "surface": "#0D111F", "primary": "#1464BA",
+        "secondary": "#4C90D6", "success": "#10B981", "danger": "#EF4444", "warning": "#F59E0B",
+        "text": "#E0E2EF", "text_muted": "#94A3B8", "border": "#1E2640",
+    },
+    "vars": {
+        "--csp-font-ui-light": "'Inter'", "--csp-font-ui-dark": "'Plus Jakarta Sans'",
+        "--csp-font-display-light": "'Space Grotesk'", "--csp-font-display-dark": "'Plus Jakarta Sans'",
+        "--csp-well-light": "#F8FAFC", "--csp-well-dark": "#060910",
+        "--csp-muted-bg-light": "#F1F5F9", "--csp-muted-bg-dark": "#181B25",
+        "--csp-text2-light": "#1E293B", "--csp-text2-dark": "#CBC3D7",
+        "--csp-text3-light": "#334155", "--csp-text3-dark": "#94A3B8",
+        "--csp-border-strong-light": "#CBD5E1", "--csp-border-strong-dark": "#494454",
+        "--csp-signal-light": "#4C90D6", "--csp-signal-dark": "#4C90D6",
+        "--csp-vibrant-light": "#0F4E92", "--csp-vibrant-dark": "#0F4E92",
+        "--csp-gauge-from-light": "#4C90D6", "--csp-gauge-from-dark": "#4C90D6",
+        "--csp-gauge-to-light": "#1464BA", "--csp-gauge-to-dark": "#1464BA",
+        "--csp-glow-light": "rgba(20,100,186,0.28)", "--csp-glow-dark": "rgba(76,144,214,0.45)",
+        "--csp-radius-card-light": "0.75rem", "--csp-radius-card-dark": "1rem",
+    },
+}
+
+# the previous (pre-blue) palette, for reverse migration
+_OLD = {
+    "style": "caspian",
+    "light": {
+        "background": "#F8FAFC", "surface": "#FFFFFF", "primary": "#0284C7",
+        "secondary": "#0EA5E9", "success": "#10B981", "danger": "#F43F5E", "warning": "#F59E0B",
+        "text": "#0F172A", "text_muted": "#64748B", "border": "#E2E8F0",
+    },
+    "dark": {
+        "background": "#080B14", "surface": "#0D111F", "primary": "#8B5CF6",
+        "secondary": "#06B6D4", "success": "#10B981", "danger": "#EF4444", "warning": "#F59E0B",
+        "text": "#E0E2EF", "text_muted": "#94A3B8", "border": "#1E2640",
+    },
+    "vars": {**CASPIAN["vars"],
+             "--csp-signal-light": "#38BDF8", "--csp-signal-dark": "#06B6D4",
+             "--csp-vibrant-light": "#0369A1", "--csp-vibrant-dark": "#7C3AED",
+             "--csp-gauge-from-light": "#38BDF8", "--csp-gauge-from-dark": "#06B6D4",
+             "--csp-gauge-to-light": "#0284C7", "--csp-gauge-to-dark": "#8B5CF6",
+             "--csp-glow-light": "rgba(2,132,199,0.28)", "--csp-glow-dark": "rgba(139,92,246,0.45)"},
+}
+
+
+def _set(apps, palette):
+    Theme = apps.get_model("settings_app", "Theme")
+    Theme.objects.filter(name="Caspian").update(palette=palette)
+
+
+def forward(apps, schema_editor):
+    _set(apps, CASPIAN)
+
+
+def backward(apps, schema_editor):
+    _set(apps, _OLD)
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ("settings_app", "0004_caspian_theme"),
+    ]
+
+    operations = [
+        migrations.RunPython(forward, backward),
+    ]

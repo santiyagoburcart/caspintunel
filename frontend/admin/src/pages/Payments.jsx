@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { api, apiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 import { jalali, toman } from '../lib/format'
@@ -24,6 +25,7 @@ const T = {
 
 export default function Payments() {
   const { t, lang } = useI18n()
+  const navigate = useNavigate()
   const s = T[lang] || T.fa
   const [rows, setRows] = useState(null)
   const [err, setErr] = useState('')
@@ -102,7 +104,7 @@ export default function Payments() {
                 </select>
               </label>
             )}
-            <div className="flex gap-2 pt-1">
+            <div className="flex flex-wrap gap-2 pt-1">
               <button className="btn-primary text-sm" disabled={busyId === p.id}
                 onClick={() => act(p.id, 'approve')}>
                 {busyId === p.id ? '…' : t('approve')}
@@ -110,6 +112,15 @@ export default function Payments() {
               <button className="btn-ghost text-sm" disabled={busyId === p.id}
                 onClick={() => act(p.id, 'reject')}>
                 {t('reject')}
+              </button>
+              <button type="button" className="btn-ghost text-sm ms-auto inline-flex items-center gap-1.5"
+                style={{ color: 'var(--c-primary)', borderColor: 'color-mix(in srgb, var(--c-primary) 32%, transparent)' }}
+                onClick={() => navigate(`/payments/${p.id}`)}>
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+                  strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                {t('txd_details')}
               </button>
             </div>
           </div>

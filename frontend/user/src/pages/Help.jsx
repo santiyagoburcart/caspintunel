@@ -9,8 +9,11 @@ export default function Help() {
   const [open, setOpen] = useState(null)
 
   useEffect(() => {
-    api.get('/pages/').then((r) => { setPages(r.data.results || r.data); setOpen((r.data.results || r.data)[0]?.slug) })
-      .catch(() => setPages([]))
+    api.get('/pages/').then((r) => {
+      // "rules" is its own top-level nav screen now — Help = tutorial / faq / etc.
+      const list = (r.data.results || r.data).filter((p) => p.slug !== 'rules')
+      setPages(list); setOpen(list[0]?.slug)
+    }).catch(() => setPages([]))
   }, [])
 
   if (pages === null) return <div className="grid place-items-center py-16"><Spinner /></div>

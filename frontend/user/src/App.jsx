@@ -14,8 +14,9 @@ import Checkout from './pages/Checkout'
 import History from './pages/History'
 import Profile from './pages/Profile'
 import Help from './pages/Help'
+import Rules from './pages/Rules'
 
-const TG_ROUTES = { store: '/store', dashboard: '/', history: '/history', help: '/help', profile: '/profile' }
+const TG_ROUTES = { store: '/store', dashboard: '/', history: '/history', help: '/help', rules: '/rules', profile: '/profile' }
 
 function Private({ children }) {
   const { user, loading, tgError } = useAuth()
@@ -61,6 +62,7 @@ export default function App() {
         <Route path="/store" element={<Store />} />
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/history" element={<History />} />
+        <Route path="/rules" element={<Rules />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/help" element={<Help />} />
       </Route>
