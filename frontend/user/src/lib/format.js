@@ -24,6 +24,13 @@ export function toman(n, lang = 'fa') {
   return lang === 'en' ? `${v} T` : `${v} تومان`
 }
 
+// { num, unit } — so the Latin number can go in a mono span while the
+// Persian "تومان" stays in the normal (non-isolated) run.
+export function tomanParts(n, lang = 'fa') {
+  if (n == null) return { num: '—', unit: '' }
+  return { num: Number(n).toLocaleString('en-US'), unit: lang === 'en' ? 'T' : 'تومان' }
+}
+
 const GB = 1024 ** 3
 export function gb(bytes) {
   if (!bytes) return 0

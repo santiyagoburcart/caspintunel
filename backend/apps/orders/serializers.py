@@ -8,22 +8,35 @@ from .services import OrderError, create_order
 
 class OrderSerializer(serializers.ModelSerializer):
     plan_name = serializers.CharField(source="plan.name_fa", read_only=True)
+    plan_name_en = serializers.CharField(source="plan.name_en", read_only=True, default="")
     payment_status = serializers.SerializerMethodField()
+    payment_method = serializers.SerializerMethodField()
+    receipt_url = serializers.SerializerMethodField()
     reject_reason = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
         fields = (
-            "id", "type", "status", "plan", "plan_name", "service",
+            "id", "type", "status", "plan", "plan_name", "plan_name_en", "service",
             "requested_account_name", "custom_volume_gb",
             "amount", "amount_unique", "unique_expire_at",
-            "payment_status", "reject_reason", "source", "created_at",
+            "payment_status", "payment_method", "receipt_url",
+            "reject_reason", "source", "created_at",
         )
         read_only_fields = fields
 
     def get_payment_status(self, obj) -> str | None:
         pay = getattr(obj, "payment", None)
         return pay.status if pay else None
+
+    def get_payment_method(self, obj) -> str | None:
+        pay = getattr(obj, "payment", None)
+        return pay.method if pay else None
+
+    def get_receipt_url(self, obj) -> str | None:
+        # owner-checked endpoint (ReceiptFileView), never a public media path
+        pay = getattr(obj, "payment", None)
+        return f"/api/v1/payments/{pay.id}/receipt/" if pay and pay.receipt_image else None
 
     def get_reject_reason(self, obj) -> str:
         pay = getattr(obj, "payment", None)

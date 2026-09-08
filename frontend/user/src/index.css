@@ -469,3 +469,38 @@ body {
 [data-theme-style="caspian"].dark .csp-glow-path {
   filter: drop-shadow(0 0 3px var(--csp-glow));
 }
+
+/* ---- Caspian shared page chrome (brand mark, lang pill, auth shell) ---- */
+.csp-brandmark {
+  border-radius: 12px; object-fit: contain; flex-shrink: 0; display: block;
+}
+.csp-brandmark--fallback {
+  display: grid; place-items: center;
+  background: linear-gradient(135deg, var(--c-primary), var(--c-secondary));
+  box-shadow: 0 6px 16px -4px color-mix(in srgb, var(--c-primary) 45%, transparent);
+}
+[data-theme-style="caspian"] .csp-lang {
+  font-size: 12px; font-weight: 700; padding: 6px 12px; border-radius: 10px;
+  border: 1px solid var(--c-border); color: var(--c-text); background: var(--c-surface); cursor: pointer;
+}
+[data-theme-style="caspian"] .csp-lang:hover { border-color: var(--c-primary); color: var(--c-primary); }
+
+[data-theme-style="caspian"] .csp-authshell {
+  min-height: 100%; display: grid; place-items: center; padding: 24px 16px;
+  background: var(--c-bg);
+}
+[data-theme-style="caspian"] .csp-authshell-card {
+  width: 100%; max-width: 400px; background: var(--c-surface);
+  border: 1px solid var(--c-border); border-radius: 22px; padding: 26px;
+  box-shadow: 0 24px 60px -18px rgba(15, 23, 42, .22);
+}
+[data-theme-style="caspian"]:not(.dark) .csp-authshell-card { background: #fff; }
+[data-theme-style="caspian"] .csp-authshell-head {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 20px;
+}
+[data-theme-style="caspian"] .csp-authshell-title { flex: 1; font-size: 18px; font-weight: 800; }
+[data-theme-style="caspian"] .csp-authshell-back {
+  margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--c-border); text-align: center;
+}
+[data-theme-style="caspian"] .csp-link { color: var(--c-primary); font-weight: 600; font-size: 12px; }
+[data-theme-style="caspian"] .csp-link:hover { text-decoration: underline; }

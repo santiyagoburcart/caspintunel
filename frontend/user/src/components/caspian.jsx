@@ -9,8 +9,49 @@
  * this phase only ships the components themselves, not any page wiring.
  */
 import { useRef } from 'react'
+import { useI18n } from '../lib/i18n'
 
 let idSeq = 0
+
+/** Brand mark for the Caspian theme — uploaded logo if present, else a
+ *  gradient shield tile. Used in the header + auth pages. */
+export function CaspianBrand({ logo, size = 36 }) {
+  if (logo) {
+    return <img src={logo} alt="" className="csp-brandmark" style={{ width: size, height: size }} />
+  }
+  return (
+    <span className="csp-brandmark csp-brandmark--fallback" style={{ width: size, height: size }} aria-hidden="true">
+      <svg viewBox="0 0 24 24" width={size * 0.5} height={size * 0.5} fill="none" stroke="#fff"
+        strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        <path d="M9 12l2 2 4-4" />
+      </svg>
+    </span>
+  )
+}
+
+/** Centered auth card shell for the Caspian theme (Register / Reset /
+ *  VerifyEmail). Login has its own richer split-card layout. */
+export function CaspianAuthShell({ title, children }) {
+  const { lang, setLang, t } = useI18n()
+  return (
+    <div className="csp-authshell">
+      <div className="csp-authshell-card">
+        <div className="csp-authshell-head">
+          <CaspianBrand size={34} />
+          <h1 className="csp-headline csp-authshell-title">{title}</h1>
+          <button type="button" className="csp-lang" onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')}>
+            {lang === 'fa' ? 'EN' : 'فا'}
+          </button>
+        </div>
+        {children}
+        <div className="csp-authshell-back">
+          <a href="/panel/" className="csp-link">{t('foot_admin')}</a>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 /** Circular SVG progress gauge (double-ring: track + animated value arc). */
 export function Gauge({ percent, size = 96, stroke = 10, label, valueText, color }) {
