@@ -193,6 +193,15 @@ function CaspianNav({ groups, t, brand, logo, onNavigate }) {
   )
 }
 
+// mobile bottom-nav — 4 most-used routes + "full menu" (opens the drawer).
+// Mirrors Stitch 0197c0c0 / f10ea6b9 (bottom tab bar, no hamburger).
+const CASPIAN_BOTNAV = [
+  ['/', 'dashboard', null, 'dashboard'],
+  ['/users', 'users', 'users.view', 'users'],
+  ['/transactions', 'transactions', 'payment.view', 'transactions'],
+  ['/settings', 'settings', 'settings.manage', 'settings'],
+]
+
 function CaspianLayout() {
   const { staff, logout, can } = useAuth()
   const { t, lang, setLang } = useI18n()
@@ -201,6 +210,7 @@ function CaspianLayout() {
   const [open, setOpen] = useState(false)
 
   const groups = CASPIAN_GROUPS.map(([g, items]) => [g, items.filter(([, , p]) => !p || can(p))])
+  const botnav = CASPIAN_BOTNAV.filter(([, , p]) => !p || can(p))
   const brand = (lang === 'fa' ? config?.site_name_fa : config?.site_name_en)
     || (lang === 'fa' ? 'کسپین تانل' : 'Caspian Tunnel')
 
@@ -223,9 +233,13 @@ function CaspianLayout() {
 
       <div className="csp-main">
         <header className="csp-topbar">
-          <button className="csp-tb-btn csp-burger csp-tb-ico" onClick={() => setOpen(true)} aria-label="menu">
-            <SideIcon name="menu" />
-          </button>
+          {/* mobile brand — the desktop rail carries it at >=768px */}
+          <span className="csp-tb-brand">
+            <span className="csp-tb-brand-ico">
+              {config?.logo ? <img src={config.logo} alt="" /> : <SideIcon name="brand" />}
+            </span>
+            <b>{brand}</b>
+          </span>
           {!locked && (
             <button className="csp-tb-btn csp-tb-ico" onClick={toggle} aria-label="theme">
               <SideIcon name={mode === 'dark' ? 'sun' : 'moon'} />
@@ -239,8 +253,25 @@ function CaspianLayout() {
           </span>
           <button className="csp-tb-btn" onClick={() => { logout(); go('/login') }}>{t('logout')}</button>
         </header>
-        <main className="mx-auto max-w-6xl p-3"><Outlet /></main>
+        <main className="csp-content mx-auto max-w-6xl p-3"><Outlet /></main>
       </div>
+
+      {/* mobile bottom nav — replaces the hamburger below 768px */}
+      <nav className="csp-botnav">
+        {botnav.map(([to, key, , icon]) => (
+          <NavLink key={to} to={to} end
+            className={({ isActive }) => 'csp-bn-item' + (isActive ? ' on' : '')}>
+            <span className="csp-bn-dot" />
+            <SideIcon name={icon} />
+            <span className="csp-bn-t">{t(key)}</span>
+          </NavLink>
+        ))}
+        <button type="button" className={'csp-bn-item' + (open ? ' on' : '')} onClick={() => setOpen(true)}>
+          <span className="csp-bn-dot" />
+          <SideIcon name="menu" />
+          <span className="csp-bn-t">{t('full_menu')}</span>
+        </button>
+      </nav>
     </div>
   )
 }
@@ -371,5 +402,45 @@ const CASPIAN_CSS = `
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .dark .csp-tb-user { color: #87929a; }
-@media (min-width: 768px) { .csp-burger { display: none; } }
+
+/* mobile brand chip in the top bar (desktop rail carries it >=768px) */
+.csp-tb-brand { display: none; align-items: center; gap: 8px; font-size: 14px; font-weight: 800; color: #131b2e; }
+.dark .csp-tb-brand { color: #dfe2ee; }
+.csp-tb-brand-ico { width: 26px; height: 26px; border-radius: 8px; flex-shrink: 0; display: grid; place-items: center; overflow: hidden;
+  background: linear-gradient(135deg, var(--c-primary), color-mix(in srgb, var(--c-primary) 55%, #7cc6ff)); color: #fff; }
+.csp-tb-brand-ico img { width: 100%; height: 100%; object-fit: contain; }
+.csp-tb-brand-ico svg { width: 15px; height: 15px; }
+@media (max-width: 767px) {
+  .csp-tb-brand { display: inline-flex; }
+  .csp-tb-brand + .csp-tb-btn { margin-inline-start: auto; }
+  .csp-tb-user { display: none; }
+}
+
+/* ---- mobile bottom navigation (Stitch 0197c0c0 / f10ea6b9) ---- */
+.csp-botnav { display: none; }
+@media (max-width: 767px) {
+  .csp-botnav {
+    position: fixed; inset-inline: 0; bottom: 0; z-index: 55;
+    display: flex; gap: 2px; padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
+    background: color-mix(in srgb, var(--c-surface) 94%, transparent);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    border-top: 1px solid var(--c-border);
+    box-shadow: 0 -4px 20px -6px rgba(15, 23, 42, .18);
+  }
+  .csp-content { padding-bottom: 78px; }
+}
+.dark .csp-botnav { background: color-mix(in srgb, var(--c-surface) 92%, transparent); border-top-color: rgba(255,255,255,.06); }
+.csp-bn-item {
+  position: relative; flex: 1; min-width: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 6px 2px 4px; border-radius: 12px; background: none; border: 0; cursor: pointer;
+  color: var(--c-text-muted); text-decoration: none; transition: color .15s;
+}
+.csp-bn-item svg { width: 21px; height: 21px; color: currentColor; }
+.csp-bn-t { font-size: 10px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.csp-bn-dot { position: absolute; top: 1px; width: 5px; height: 5px; border-radius: 50%; background: var(--c-primary); opacity: 0; transition: opacity .15s; }
+.csp-bn-item.on { color: var(--c-primary); }
+.csp-bn-item.on .csp-bn-t { font-weight: 800; }
+.csp-bn-item.on .csp-bn-dot { opacity: 1; }
+.csp-bn-item:active { background: color-mix(in srgb, var(--c-primary) 10%, transparent); }
 `

@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 const dict = {
   fa: {
     login: 'ورود', logout: 'خروج', username: 'نام کاربری', password: 'رمز عبور',
+    full_menu: 'منوی کامل',
     dashboard: 'داشبورد', users: 'کاربران', plans: 'پلن‌ها', payments: 'پرداخت‌ها',
     accounting: 'حسابداری', cards: 'کارت‌ها', monitoring: 'مانیتورینگ', branding: 'برندینگ',
     pages: 'صفحات', themes: 'پوسته‌ها', roles: 'نقش‌ها', staff: 'کارکنان', telegram: 'تلگرام',
@@ -127,6 +128,7 @@ const dict = {
   },
   en: {
     login: 'Login', logout: 'Logout', username: 'Username', password: 'Password',
+    full_menu: 'More',
     dashboard: 'Dashboard', users: 'Users', plans: 'Plans', payments: 'Payments',
     accounting: 'Accounting', cards: 'Cards', monitoring: 'Monitoring', branding: 'Branding',
     pages: 'Pages', themes: 'Themes', roles: 'Roles', staff: 'Staff', telegram: 'Telegram',
