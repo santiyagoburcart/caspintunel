@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api, apiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
+import { digits } from '../lib/format'
 import { Alert, Field, Spinner, Toggle } from '../components/ui'
 
 function Ico({ d, w = 15 }) {
@@ -48,9 +49,52 @@ const INT_CSS = `
 .int-card-head { display: flex; align-items: center; gap: 11px; }
 .int-card-ico { width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0; display: grid; place-items: center;
   background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary); }
+.int-bot-grid { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; }
+@media (min-width: 1024px) { .int-bot-grid { grid-template-columns: 1fr 1fr; } }
+.int-bot-card { height: 100%; }
 .int-icon-btn { display: inline-flex; padding: 6px; border-radius: 8px; color: var(--c-text-muted); }
 .int-icon-btn:hover { color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 12%, transparent); }
 .int-icon-btn--del:hover { color: var(--c-danger); background: color-mix(in srgb, var(--c-danger) 12%, transparent); }
+
+/* --- Pasargad panel list --- */
+.pl-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (min-width: 900px) { .pl-stats { grid-template-columns: repeat(4, 1fr); } }
+.pl-stat { padding: 14px 16px; }
+.pl-stat-label { font-size: 11.5px; font-weight: 600; color: var(--c-text-muted); }
+.pl-stat-val { font-size: 22px; font-weight: 800; margin-top: 4px; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.pl-stat-unit { font-size: 11px; font-weight: 500; color: var(--c-text-muted); font-family: inherit; }
+
+.pl-list-h { display: flex; align-items: center; gap: 10px; }
+.pl-count-badge { font-size: 11px; font-weight: 600; padding: 2px 10px; border-radius: 999px;
+  background: color-mix(in srgb, var(--c-text-muted) 14%, transparent); color: var(--c-text-muted); }
+
+.pl-row { display: flex; flex-direction: column; gap: 12px; }
+.pl-row--off { opacity: .62; }
+.pl-row-main { display: flex; gap: 14px; align-items: flex-start; }
+.pl-row-ico { width: 46px; height: 46px; border-radius: 13px; flex-shrink: 0; display: grid; place-items: center; }
+.pl-row-ico.on { background: color-mix(in srgb, var(--c-primary) 13%, transparent); color: var(--c-primary); }
+.pl-row-ico.off { background: color-mix(in srgb, var(--c-text-muted) 14%, transparent); color: var(--c-text-muted); }
+.pl-row-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pl-row-title b { font-size: 14px; }
+.pl-tag { display: inline-flex; align-items: center; gap: 3px; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.pl-tag.ok { background: color-mix(in srgb, var(--c-success) 15%, transparent); color: var(--c-success); }
+.pl-tag.ssl { background: color-mix(in srgb, var(--c-primary) 13%, transparent); color: var(--c-primary); }
+.pl-tag.muted { background: color-mix(in srgb, var(--c-text-muted) 15%, transparent); color: var(--c-text-muted); }
+.pl-row-url { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; color: var(--c-text-muted); margin-top: 4px; word-break: break-all; }
+.pl-row-meta { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 6px; font-size: 12px; color: var(--c-text-muted); }
+.pl-row-groups { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.pl-gchip { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 600; padding: 1px 6px; border-radius: 5px;
+  background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary); }
+.pl-row-acts { display: flex; flex-wrap: wrap; gap: 8px; border-top: 1px solid var(--c-border); padding-top: 12px; }
+.pl-rbtn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border-radius: 9px; font-size: 12px; font-weight: 600;
+  border: 1px solid var(--c-border); background: transparent; color: var(--c-text-muted); transition: .15s; }
+.pl-rbtn:hover:not(:disabled) { color: var(--c-text); border-color: var(--c-primary); }
+.pl-rbtn:disabled { opacity: .5; }
+.pl-rbtn--primary { color: var(--c-primary); border-color: color-mix(in srgb, var(--c-primary) 32%, transparent); background: color-mix(in srgb, var(--c-primary) 8%, transparent); }
+.pl-rbtn--primary:hover { background: color-mix(in srgb, var(--c-primary) 16%, transparent); }
+.pl-rbtn--del { color: var(--c-danger); border-color: color-mix(in srgb, var(--c-danger) 28%, transparent); }
+.pl-rbtn--del:hover { background: color-mix(in srgb, var(--c-danger) 12%, transparent); border-color: var(--c-danger); }
+.pl-row-acts .pl-rbtn--del { margin-inline-start: auto; }
 `
 
 const T = {
@@ -66,6 +110,17 @@ const T = {
     pass_stored: 'رمزی ذخیره شده است؛ برای تغییر، رمز جدید را وارد کنید.',
     pass_none: 'هنوز رمزی ذخیره نشده است.',
     saved: 'ذخیره شد.', save: 'ذخیره', test: 'تست اتصال',
+    pl_h: 'پنل‌های متصل پاسارگاد (PasarGuard)',
+    pl_st_total: 'کل پنل‌های متصل', pl_st_total_u: 'پنل',
+    pl_st_plans: 'پلن‌های زیر پوشش', pl_st_plans_u: 'پلن',
+    pl_st_svc: 'سرویس‌های فعال', pl_st_svc_u: 'سرویس',
+    pl_st_active: 'پنل‌های فعال', pl_st_active_u: 'فعال',
+    pl_list_h: 'لیست پنل‌ها و نودهای فعال', pl_count: '{n} مورد',
+    pl_ssl_on: 'SSL معتبر', pl_ssl_off: 'بدون بررسی SSL',
+    pl_connected: 'فعال', pl_disabled: 'غیرفعال',
+    pl_usage: '{p} پلن فعال / {s} سرویس',
+    pl_node_groups: 'گروه‌های نود:', pl_no_groups: 'گروه پیش‌فرضی ندارد',
+    pl_edit: 'ویرایش و تنظیمات', pl_none: 'هنوز پنلی اضافه نشده است.',
     groups: 'گروه‌های پیش‌فرض این پنل', fetch_groups: 'دریافت گروه‌ها از پنل',
     fetching: 'در حال دریافت…',
     groups_hint: 'وقتی یک پلن روی این پنل گروهی تعیین نکند، این گروه‌ها استفاده می‌شوند.',
@@ -111,6 +166,17 @@ const T = {
     pass_stored: 'A password is stored; type a new one only to change it.',
     pass_none: 'No password stored yet.',
     saved: 'Saved.', save: 'Save', test: 'Test connection',
+    pl_h: 'Connected Pasargad (PasarGuard) panels',
+    pl_st_total: 'Connected panels', pl_st_total_u: 'panels',
+    pl_st_plans: 'Plans covered', pl_st_plans_u: 'plans',
+    pl_st_svc: 'Active services', pl_st_svc_u: 'services',
+    pl_st_active: 'Active panels', pl_st_active_u: 'active',
+    pl_list_h: 'Panels & active nodes', pl_count: '{n} items',
+    pl_ssl_on: 'SSL verified', pl_ssl_off: 'SSL check off',
+    pl_connected: 'Active', pl_disabled: 'Disabled',
+    pl_usage: '{p} plans / {s} services',
+    pl_node_groups: 'Node groups:', pl_no_groups: 'no default groups',
+    pl_edit: 'Edit & settings', pl_none: 'No panels added yet.',
     groups: "This panel's default groups", fetch_groups: 'Fetch groups from panel',
     fetching: 'Fetching…',
     groups_hint: 'Used whenever a plan on this panel does not set its own groups.',
@@ -150,11 +216,94 @@ const T = {
  *  Pasargad / PasarGuard Panels  —  /panel/panel-link                *
  *  Multi-panel manager: list, add, edit, disable, delete.            *
  * ================================================================== */
+const PL_ICONS = {
+  test: <><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></>,
+  ssl: <><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0110 0v4" /></>,
+  sync: <><path d="M23 4v6h-6M1 20v-6h6" /><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" /></>,
+}
+
+function PanelRow({ s, panel, onEdit, onDeleted }) {
+  const [msg, setMsg] = useState(null)
+  const [testing, setTesting] = useState(false)
+  const groups = panel.default_group_ids || []
+  const inUse = panel.plan_count > 0 || panel.service_count > 0
+
+  const test = async () => {
+    setTesting(true); setMsg(null)
+    try {
+      const r = await api.post(`/admin/panels/${panel.id}/test/`)
+      setMsg({ kind: r.data.ok ? 'success' : 'danger', text: r.data.detail })
+    } catch (e) { setMsg({ kind: 'danger', text: apiError(e) }) }
+    finally { setTesting(false) }
+  }
+  const del = async () => {
+    if (!confirm(s.confirm_del)) return
+    try { await api.delete(`/admin/panels/${panel.id}/`); onDeleted?.() }
+    catch (e) { setMsg({ kind: 'danger', text: apiError(e) }) }
+  }
+
+  return (
+    <div className={'card pl-row' + (panel.is_active ? '' : ' pl-row--off')}>
+      <div className="pl-row-main">
+        <span className={'pl-row-ico ' + (panel.is_active ? 'on' : 'off')}>
+          <Ico d={ICONS.link} w={20} />
+        </span>
+        <div className="min-w-0">
+          <div className="pl-row-title">
+            <b>{panel.name}</b>
+            <span className={'pl-tag ' + (panel.is_active ? 'ok' : 'muted')}>
+              {panel.is_active ? s.pl_connected : s.pl_disabled}
+            </span>
+            <span className={'pl-tag ' + (panel.verify_ssl ? 'ssl' : 'muted')}>
+              <Ico d={PL_ICONS.ssl} w={11} />{panel.verify_ssl ? s.pl_ssl_on : s.pl_ssl_off}
+            </span>
+          </div>
+          <div className="pl-row-url" dir="ltr">{panel.base_url}</div>
+          <div className="pl-row-meta">
+            <span>{s.pl_usage.replace('{p}', panel.plan_count ?? 0).replace('{s}', panel.service_count ?? 0)}</span>
+            <span className="pl-row-groups">
+              {s.pl_node_groups}{' '}
+              {groups.length
+                ? groups.map((g) => <span key={g} className="pl-gchip" dir="ltr">{g}</span>)
+                : <span className="text-muted">{s.pl_no_groups}</span>}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {msg && <div className="pl-row-msg"><Alert kind={msg.kind}>{msg.text}</Alert></div>}
+
+      <div className="pl-row-acts">
+        <button type="button" className="pl-rbtn" onClick={test} disabled={testing}>
+          <Ico d={PL_ICONS.test} w={14} />{testing ? '…' : s.test}
+        </button>
+        <button type="button" className="pl-rbtn pl-rbtn--primary" onClick={onEdit}>
+          <Ico d={ICONS.edit} w={14} />{s.pl_edit}
+        </button>
+        {!inUse && (
+          <button type="button" className="pl-rbtn pl-rbtn--del" onClick={del}>
+            <Ico d={ICONS.trash} w={14} />{s.del_panel}
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function PlStat({ label, value, unit, lang }) {
+  return (
+    <div className="card pl-stat">
+      <span className="pl-stat-label">{label}</span>
+      <div className="pl-stat-val">{digits(value, lang)}<span className="pl-stat-unit"> {unit}</span></div>
+    </div>
+  )
+}
+
 export function PanelConnection() {
   const { t, lang } = useI18n()
   const s = T[lang] || T.fa
   const [panels, setPanels] = useState(null)
-  const [adding, setAdding] = useState(false)
+  const [editId, setEditId] = useState(null) // panel id | 'new' | null
   const [err, setErr] = useState('')
 
   const load = () =>
@@ -163,6 +312,16 @@ export function PanelConnection() {
       .catch((e) => { setPanels([]); setErr(apiError(e)) })
 
   useEffect(() => { load() }, [])
+
+  const stats = useMemo(() => {
+    const ps = panels || []
+    return {
+      total: ps.length,
+      active: ps.filter((p) => p.is_active).length,
+      plans: ps.reduce((a, p) => a + (p.plan_count || 0), 0),
+      svc: ps.reduce((a, p) => a + (p.service_count || 0), 0),
+    }
+  }, [panels])
 
   if (!panels) return <div className="grid place-items-center py-16"><Spinner /></div>
 
@@ -173,12 +332,12 @@ export function PanelConnection() {
         <div className="int-head">
           <span className="int-head-ico"><Ico d={ICONS.link} w={20} /></span>
           <div>
-            <h1 className="text-lg font-bold">{t('panel_link')}</h1>
+            <h1 className="text-lg font-bold">{s.pl_h}</h1>
             <p className="mt-1 text-sm text-muted">{s.panel_intro}</p>
           </div>
         </div>
-        {!adding && (
-          <button className="btn-primary shrink-0 text-sm inline-flex items-center gap-1.5" onClick={() => setAdding(true)}>
+        {editId == null && (
+          <button className="btn-primary shrink-0 text-sm inline-flex items-center gap-1.5" onClick={() => setEditId('new')}>
             <Ico d={ICONS.plus} w={14} /> {s.add_panel}
           </button>
         )}
@@ -186,17 +345,44 @@ export function PanelConnection() {
 
       <Alert>{err}</Alert>
 
-      {(adding || panels.length === 0) && (
+      {editId == null && panels.length > 0 && (
+        <div className="pl-stats">
+          <PlStat label={s.pl_st_total} value={stats.total} unit={s.pl_st_total_u} lang={lang} />
+          <PlStat label={s.pl_st_active} value={stats.active} unit={s.pl_st_active_u} lang={lang} />
+          <PlStat label={s.pl_st_plans} value={stats.plans} unit={s.pl_st_plans_u} lang={lang} />
+          <PlStat label={s.pl_st_svc} value={stats.svc} unit={s.pl_st_svc_u} lang={lang} />
+        </div>
+      )}
+
+      {editId === 'new' && (
         <PanelCard s={s} isNew
-          onSaved={() => { setAdding(false); load() }}
-          onCancel={() => setAdding(false)} />
+          onSaved={() => { setEditId(null); load() }}
+          onCancel={() => setEditId(null)} />
+      )}
+
+      {editId == null && panels.length > 0 && (
+        <div className="pl-list-h">
+          <h2 className="font-bold text-sm">{s.pl_list_h}</h2>
+          <span className="pl-count-badge">{s.pl_count.replace('{n}', digits(panels.length, lang))}</span>
+        </div>
+      )}
+
+      {editId == null && panels.length === 0 && (
+        <div className="card text-center text-muted">{s.pl_none}</div>
       )}
 
       {panels.map((p) => (
-        <PanelCard key={p.id} s={s} panel={p} onSaved={load} onDeleted={load} />
+        editId === p.id ? (
+          <PanelCard key={p.id} s={s} panel={p}
+            onSaved={() => { load(); setEditId(null) }}
+            onDeleted={() => { load(); setEditId(null) }}
+            onCancel={() => setEditId(null)} />
+        ) : editId == null ? (
+          <PanelRow key={p.id} s={s} panel={p} onEdit={() => setEditId(p.id)} onDeleted={load} />
+        ) : null
       ))}
 
-      <EmailCard s={s} />
+      {editId == null && <EmailCard s={s} />}
     </div>
   )
 }
@@ -367,7 +553,7 @@ function PanelCard({ s, panel, isNew = false, onSaved, onDeleted, onCancel }) {
             {testing ? '…' : s.test}
           </button>
         )}
-        {isNew && (
+        {onCancel && (
           <button type="button" className="btn-ghost text-sm" onClick={onCancel}>{t('cancel')}</button>
         )}
         {!isNew && !inUse && (
@@ -512,8 +698,10 @@ export function Bots() {
       {msg && <Alert kind={msg.kind}>{msg.text}</Alert>}
 
       <form onSubmit={save} className="space-y-4">
-        {sales && <BotCard title={s.sales_bot} icon={ICONS.cart} row={data.sales} value={sales} onChange={setSales} s={s} />}
-        {backup && <BotCard title={s.backup_bot} icon={ICONS.backup} row={data.backup} value={backup} onChange={setBackup} s={s} showChatId />}
+        <div className="int-bot-grid">
+          {sales && <BotCard title={s.sales_bot} icon={ICONS.cart} row={data.sales} value={sales} onChange={setSales} s={s} />}
+          {backup && <BotCard title={s.backup_bot} icon={ICONS.backup} row={data.backup} value={backup} onChange={setBackup} s={s} showChatId />}
+        </div>
         <button className="btn-primary text-sm">{s.save}</button>
       </form>
 
@@ -682,8 +870,8 @@ function RequiredChannels({ s }) {
 function BotCard({ title, icon, row, value, onChange, s, showChatId }) {
   const set = (k, v) => onChange({ ...value, [k]: v })
   return (
-    <div className="card grid gap-4 sm:grid-cols-2">
-      <div className="flex items-center justify-between sm:col-span-2">
+    <div className="card int-bot-card flex flex-col gap-4">
+      <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: 'var(--c-border)' }}>
         <span className="int-card-head font-bold">
           <span className="int-card-ico"><Ico d={icon || ICONS.bot} w={16} /></span>{title}
         </span>

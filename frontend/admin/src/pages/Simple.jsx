@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { api, apiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 import { digits } from '../lib/format'
-import { DataTable } from '../components/DataTable'
 import { Alert, Spinner, Toggle } from '../components/ui'
 
 function useList(url) {
@@ -116,32 +115,145 @@ const SHARED_CSS = `
 .sm-toggle-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
 `
 
-/* ============================ Themes (unchanged behaviour) ============================ */
+/* ============================ Themes — preset picker (Stitch 405f…) ============================ */
+const TH = {
+  fa: {
+    h: 'پوسته‌ها و استایل ظاهری',
+    sub: 'پوستهٔ فعال، پالت رنگی وب‌سایت، ربات تلگرام و پنل کاربران را از میان پوسته‌های آمادهٔ سیستم انتخاب کنید.',
+    section: 'پوسته‌های آمادهٔ سیستم',
+    active: 'فعال', activate: 'فعال‌سازی این پوسته',
+    palette: 'پالت رنگی', none: 'پوسته‌ای تعریف نشده',
+    modes: { light: 'روشن', dark: 'تیره', both: 'روشن و تیره (طبق انتخاب کاربر)' },
+    mode_label: 'حالت',
+    desc: {
+      Caspian: 'پوستهٔ اصلی کاسپین — آبی سازمانی (#1464BA)، سبز موفقیت (#11AB53)، روشن و تیرهٔ متوازن.',
+      'Midnight Aurora': 'تیرهٔ عمیق با گرادیان‌های بنفش–فیروزه‌ای و جلوهٔ شیشه‌ای.',
+      'Royal Frost': 'روشن و یخی با آبی سلطنتی و سطوح براق.',
+    },
+  },
+  en: {
+    h: 'Themes & appearance',
+    sub: 'Pick the active theme — the colour palette for the website, the Telegram bot and the user panel — from the system presets.',
+    section: 'System presets',
+    active: 'Active', activate: 'Activate this theme',
+    palette: 'Colour palette', none: 'No themes defined',
+    modes: { light: 'Light', dark: 'Dark', both: 'Light & dark (follows the user)' },
+    mode_label: 'Mode',
+    desc: {
+      Caspian: 'Caspian core theme — corporate blue (#1464BA), success green (#11AB53), balanced light & dark.',
+      'Midnight Aurora': 'Deep dark with violet–cyan gradients and a glass effect.',
+      'Royal Frost': 'Bright, icy, royal-blue with glossy surfaces.',
+    },
+  },
+}
+
+const SWATCH_KEYS = ['primary', 'secondary', 'success', 'warning', 'danger']
+
+function paletteMode(p) {
+  if (p?.style === 'caspian' && !p?.base) return 'both'
+  if (p?.base === 'light' || p?.style === 'frost') return 'light'
+  return 'dark'
+}
+function swatches(p) {
+  const src = p?.light || p?.dark || {}
+  return SWATCH_KEYS.map((k) => src[k]).filter(Boolean)
+}
+
 export function Themes() {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
+  const s = TH[lang] || TH.fa
   const { rows, err, load } = useList('/admin/themes/')
   const [e2, setE2] = useState('')
+  const [busy, setBusy] = useState(null)
+
   const activate = async (id) => {
-    setE2('')
-    try { await api.post(`/admin/themes/${id}/activate/`); load() } catch (e) { setE2(apiError(e)) }
+    setE2(''); setBusy(id)
+    try { await api.post(`/admin/themes/${id}/activate/`); await load() }
+    catch (e) { setE2(apiError(e)) } finally { setBusy(null) }
   }
+
   if (!rows) return <div className="grid place-items-center py-16"><Spinner /></div>
+
   return (
-    <div className="space-y-3">
-      <h1 className="text-lg font-bold">{t('themes')}</h1>
-      <Alert>{err ? t('load_error') : e2}</Alert>
-      <DataTable rows={rows} empty={t('none_found')} columns={[
-        { key: 'name', label: t('name') },
-        { key: 'is_active', label: t('active'), render: (r) => (r.is_active ? '✓' : '—') },
-        {
-          key: 'act', label: '', render: (r) => (!r.is_active && (
-            <button className="btn-ghost text-xs" onClick={() => activate(r.id)}>{t('activate')}</button>
-          )),
-        },
-      ]} />
+    <div className="space-y-5">
+      <style>{SHARED_CSS}{TH_CSS}</style>
+      <div>
+        <h1 className="text-lg font-bold">{s.h}</h1>
+        <p className="text-sm text-muted mt-1">{s.sub}</p>
+      </div>
+      <Alert>{(err ? t('load_error') : e2)}</Alert>
+
+      <span className="label th-section">{s.section}</span>
+      {rows.length === 0 ? (
+        <div className="card text-center text-muted">{s.none}</div>
+      ) : (
+        <div className="th-grid">
+          {rows.map((r) => {
+            const mode = paletteMode(r.palette)
+            const sw = swatches(r.palette)
+            const p = r.palette?.light || r.palette?.dark || {}
+            return (
+              <div key={r.id} className={'card th-card' + (r.is_active ? ' th-card--on' : '')}>
+                <div className="th-preview" style={{ background: p.background || p.surface || 'var(--c-bg)' }}>
+                  <span className="th-preview-bar" style={{ background: p.primary || '#1464BA' }} />
+                  <span className="th-preview-dot" style={{ background: p.success || '#11AB53' }} />
+                  <span className="th-preview-line" style={{ background: p.text_muted || '#94A3B8' }} />
+                  <span className="th-preview-line short" style={{ background: p.border || 'rgba(0,0,0,.15)' }} />
+                </div>
+                <div className="th-body">
+                  <div className="th-title-row">
+                    <b>{r.name}</b>
+                    {r.is_active && <span className="th-badge">{s.active}</span>}
+                  </div>
+                  <p className="th-desc">{s.desc[r.name] || ''}</p>
+                  <div className="th-meta">
+                    <span className="text-muted">{s.mode_label}: {s.modes[mode]}</span>
+                  </div>
+                  <div className="th-swatches" title={s.palette}>
+                    {sw.map((c, i) => <span key={i} style={{ background: c }} />)}
+                  </div>
+                  {r.is_active ? (
+                    <span className="th-active-note">{s.active} ✓</span>
+                  ) : (
+                    <button className="btn-primary text-sm th-activate" disabled={busy === r.id}
+                      onClick={() => activate(r.id)}>
+                      {busy === r.id ? '…' : s.activate}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
+
+const TH_CSS = `
+.th-section { display: block; }
+.th-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+@media (min-width: 640px) { .th-grid { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 1080px) { .th-grid { grid-template-columns: repeat(3, 1fr); } }
+.th-card { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
+.th-card--on { border-color: var(--c-primary); box-shadow: 0 0 0 1px var(--c-primary); }
+.th-preview { position: relative; height: 96px; border-bottom: 1px solid var(--c-border); }
+.th-preview-bar { position: absolute; top: 14px; inset-inline: 14px; height: 10px; border-radius: 4px; }
+.th-preview-dot { position: absolute; top: 34px; inset-inline-start: 14px; width: 14px; height: 14px; border-radius: 50%; }
+.th-preview-line { position: absolute; top: 40px; inset-inline-start: 36px; width: 46%; height: 6px; border-radius: 3px; opacity: .7; }
+.th-preview-line.short { top: 54px; width: 30%; opacity: .5; }
+.th-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.th-title-row { display: flex; align-items: center; gap: 8px; }
+.th-title-row b { font-size: 14px; }
+.th-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+  background: color-mix(in srgb, var(--c-success) 16%, transparent); color: var(--c-success); }
+.th-desc { font-size: 11.5px; color: var(--c-text-muted); line-height: 1.6; min-height: 34px; }
+.th-meta { font-size: 11px; }
+.th-swatches { display: flex; gap: 5px; }
+.th-swatches span { width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--c-border); }
+.th-activate { margin-top: 4px; align-self: flex-start; }
+.th-active-note { margin-top: 4px; font-size: 12px; font-weight: 600; color: var(--c-success); }
+`
 
 /* ================================ Pages — full CRUD ================================ */
 const blankPage = { slug: '', title_fa: '', title_en: '', body_fa: '', body_en: '', is_active: true }

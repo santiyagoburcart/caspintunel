@@ -9,19 +9,29 @@ import { ReceiptThumb } from '../components/ReceiptThumb'
 const T = {
   fa: {
     title: 'صف تأیید پرداخت', none: 'موردی برای بررسی نیست', refresh: '↻ تازه‌سازی',
+    subtitle: 'تراکنش‌های کارت‌به‌کارت و فیش‌های نیازمند تطبیق و تأیید دستی',
     user: 'کاربر', order: 'سفارش', plan: 'پلن', account: 'نام اکانت', receipt: 'رسید',
     no_receipt: 'رسیدی پیوست نشده', reject_reason: 'دلیل رد؟', unspecified: 'نامشخص',
     load_fail: 'دریافت فهرست ناموفق بود', src_site: 'سایت', src_bot: 'ربات',
     deposit_card: 'واریز به کارت',
+    tab_all: 'همه', tab_receipt: 'دارای فیش', tab_active: 'در انتظار', tab_expired: 'منقضی',
+    expired_note: 'مهلت رزرو مبلغ یکتا به پایان رسیده است.',
+    none_tab: 'موردی در این دسته نیست',
   },
   en: {
     title: 'Payment approval queue', none: 'Nothing to review', refresh: '↻ Refresh',
+    subtitle: 'Card-to-card transactions and receipts that need manual matching and approval',
     user: 'User', order: 'Order', plan: 'Plan', account: 'Account', receipt: 'Receipt',
     no_receipt: 'No receipt attached', reject_reason: 'Rejection reason?', unspecified: 'unspecified',
     load_fail: 'Failed to load the queue', src_site: 'Website', src_bot: 'Bot',
     deposit_card: 'Deposited to card',
+    tab_all: 'All', tab_receipt: 'Has receipt', tab_active: 'Waiting', tab_expired: 'Expired',
+    expired_note: 'The unique-amount reservation window has elapsed.',
+    none_tab: 'Nothing in this tab',
   },
 }
+
+const TABS = ['all', 'receipt', 'active', 'expired']
 
 export default function Payments() {
   const { t, lang } = useI18n()
@@ -32,6 +42,8 @@ export default function Payments() {
   const [busyId, setBusyId] = useState(null)
   const [cards, setCards] = useState([])
   const [cardById, setCardById] = useState({})
+  const [tab, setTab] = useState('all')
+  const [resMin, setResMin] = useState(30)
 
   const load = () =>
     api.get('/admin/payments/pending/')
@@ -43,7 +55,25 @@ export default function Payments() {
     api.get('/admin/cards/')
       .then((r) => setCards((r.data.results || r.data || []).filter((c) => c.is_active)))
       .catch(() => setCards([]))
+    api.get('/admin/settings/')
+      .then((r) => {
+        const v = r.data.settings.find((x) => x.key === 'unique_amount_reservation_minutes')?.value
+        if (v) setResMin(Number(v))
+      }).catch(() => {})
   }, [])
+
+  const isExpired = (p) => {
+    const t = new Date(p.created_at).getTime() + resMin * 60000
+    return Date.now() > t
+  }
+  const match = (p, tb) => {
+    if (tb === 'receipt') return !!p.receipt_url
+    if (tb === 'expired') return isExpired(p)
+    if (tb === 'active') return !isExpired(p)
+    return true
+  }
+  const counts = Object.fromEntries(TABS.map((tb) => [tb, (rows || []).filter((p) => match(p, tb)).length]))
+  const shown = (rows || []).filter((p) => match(p, tab))
 
   const act = async (id, kind) => {
     setErr('')
@@ -66,29 +96,53 @@ export default function Payments() {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold">{s.title}</h1>
+      <style>{CSS}</style>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h1 className="text-lg font-bold">{s.title}</h1>
+          <p className="text-sm text-muted mt-1">{s.subtitle}</p>
+        </div>
         <button className="btn-ghost text-sm" onClick={load}>{s.refresh}</button>
       </div>
       <Alert>{err}</Alert>
+
+      {rows.length > 0 && (
+        <div className="pq-tabs">
+          {TABS.map((tb) => (
+            <button key={tb} type="button" onClick={() => setTab(tb)}
+              className={'pq-tab' + (tab === tb ? ' on' : '')}>
+              {s['tab_' + tb]}
+              <span className="pq-tab-n">{counts[tb]}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {rows.length === 0 && !err && (
         <div className="card text-center text-muted">{s.none}</div>
       )}
+      {rows.length > 0 && shown.length === 0 && (
+        <div className="card text-center text-muted">{s.none_tab}</div>
+      )}
       <div className="grid gap-3 sm:grid-cols-2">
-        {rows.map((p) => (
-          <div key={p.id} className="card space-y-2">
+        {shown.map((p) => (
+          <div key={p.id} className={'card space-y-2' + (isExpired(p) ? ' pq-card--exp' : '')}>
             <div className="flex items-center justify-between gap-2">
               <span className="font-bold">{toman(p.amount, lang)}</span>
-              <span className="rounded-full px-2 py-0.5 text-xs"
-                style={{ background: 'color-mix(in srgb, var(--c-secondary) 18%, transparent)', color: 'var(--c-secondary)' }}>
-                {p.order_source === 'bot' ? s.src_bot : s.src_site}
-              </span>
+              <div className="flex items-center gap-1.5">
+                {isExpired(p) && <span className="pq-exp-tag">{s.tab_expired}</span>}
+                <span className="rounded-full px-2 py-0.5 text-xs"
+                  style={{ background: 'color-mix(in srgb, var(--c-secondary) 18%, transparent)', color: 'var(--c-secondary)' }}>
+                  {p.order_source === 'bot' ? s.src_bot : s.src_site}
+                </span>
+              </div>
             </div>
             <div className="space-y-0.5 text-sm text-muted">
               <div>{s.user}: {p.user}{p.user_telegram ? ` (@${p.user_telegram})` : ''}</div>
               <div>{s.order} #{p.order_id} · {s.plan}: {p.plan_name || '—'}{p.account_name ? ` · ${s.account}: ${p.account_name}` : ''}</div>
               <div className="text-xs">{jalali(p.created_at, true, lang)}</div>
             </div>
+            {isExpired(p) && <div className="pq-exp-note">{s.expired_note}</div>}
             {p.receipt_url
               ? <ReceiptThumb url={p.receipt_url} alt={s.receipt} variant="full" />
               : <div className="text-xs text-muted">{s.no_receipt}</div>}
@@ -129,4 +183,17 @@ export default function Payments() {
     </div>
   )
 }
+
+const CSS = `
+.pq-tabs { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; border-radius: 12px; background: color-mix(in srgb, var(--c-text-muted) 12%, transparent); }
+.pq-tab { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 9px; font-size: 13px; font-weight: 600; color: var(--c-text-muted); }
+.pq-tab.on { background: var(--c-primary); color: #fff; }
+.pq-tab-n { font-size: 11px; font-weight: 700; padding: 0 6px; min-width: 18px; text-align: center; border-radius: 999px;
+  background: color-mix(in srgb, currentColor 22%, transparent); font-family: 'JetBrains Mono', monospace; }
+.pq-card--exp { border-color: color-mix(in srgb, var(--c-warning) 40%, var(--c-border)); }
+.pq-exp-tag { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap;
+  background: color-mix(in srgb, var(--c-warning) 16%, transparent); color: var(--c-warning); }
+.pq-exp-note { font-size: 11.5px; color: var(--c-warning); background: color-mix(in srgb, var(--c-warning) 10%, transparent);
+  border-radius: 8px; padding: 6px 10px; }
+`
 

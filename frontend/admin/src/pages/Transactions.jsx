@@ -6,6 +6,47 @@ import { jalali, toman, gb, digits } from '../lib/format'
 import { Alert, Spinner } from '../components/ui'
 import { ReceiptThumb } from '../components/ReceiptThumb'
 
+const TXS = {
+  fa: { month: 'واریزی‌های این ماه', today: 'واریزی‌های امروز', queue: 'در صف بررسی', rejected: 'رد شده',
+    tx_n: '{n} تراکنش', pending_n: '{n} مورد نیازمند تأیید', rej_n: '{n} مورد' },
+  en: { month: "This month's deposits", today: "Today's deposits", queue: 'In review queue', rejected: 'Rejected',
+    tx_n: '{n} transactions', pending_n: '{n} awaiting approval', rej_n: '{n} items' },
+}
+
+function TxStat({ label, value, sub, tone, lang }) {
+  return (
+    <div className="card tx-stat">
+      <span className="tx-stat-label">{label}</span>
+      <div className="tx-stat-val">{value == null ? '—' : value}</div>
+      {sub ? <div className="tx-stat-sub" style={tone ? { color: tone } : undefined}>{sub}</div> : null}
+      <span className="tx-stat-accent" style={{ background: tone || 'var(--c-primary)' }} />
+    </div>
+  )
+}
+
+function TxStats({ lang }) {
+  const x = TXS[lang] || TXS.fa
+  const [d, setD] = useState({})
+  useEffect(() => {
+    const acc = (p) => api.get(`/admin/accounting/?period=${p}`).then((r) => r.data).catch(() => null)
+    const cnt = (st) => api.get(`/admin/transactions/?status=${st}&limit=1`).then((r) => r.data.count).catch(() => null)
+    Promise.all([acc('monthly'), acc('daily'), cnt('pending'), cnt('rejected')])
+      .then(([m, t, pend, rej]) => setD({ m, t, pend, rej }))
+  }, [])
+  return (
+    <div className="tx-stats">
+      <TxStat label={x.month} value={d.m ? toman(d.m.revenue, lang) : null}
+        sub={d.m ? x.tx_n.replace('{n}', digits(d.m.transactions, lang)) : ''} tone="#1464BA" lang={lang} />
+      <TxStat label={x.today} value={d.t ? toman(d.t.revenue, lang) : null}
+        sub={d.t ? x.tx_n.replace('{n}', digits(d.t.transactions, lang)) : ''} tone="#11AB53" lang={lang} />
+      <TxStat label={x.queue} value={d.pend == null ? null : digits(d.pend, lang)}
+        sub={d.pend == null ? '' : x.pending_n.replace('{n}', digits(d.pend, lang))} tone="#D97706" lang={lang} />
+      <TxStat label={x.rejected} value={d.rej == null ? null : digits(d.rej, lang)}
+        sub={d.rej == null ? '' : x.rej_n.replace('{n}', digits(d.rej, lang))} tone="#EF4444" lang={lang} />
+    </div>
+  )
+}
+
 const T = {
   fa: {
     title: 'تراکنش‌ها', services_tab: 'سرویس‌های فروخته‌شده',
@@ -89,6 +130,7 @@ function TxTable({ s, t, lang }) {
 
   return (
     <>
+      <TxStats lang={lang} />
       <Alert>{err}</Alert>
       <div className="flex flex-wrap gap-2">
         {FILTERS.map((f) => (
@@ -235,6 +277,14 @@ function ServicesTable({ s, t, lang }) {
 }
 
 const CSS = `
+.tx-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 4px; }
+@media (min-width: 900px) { .tx-stats { grid-template-columns: repeat(4, 1fr); } }
+.tx-stat { position: relative; overflow: hidden; padding: 14px 16px; }
+.tx-stat-label { font-size: 11.5px; font-weight: 600; color: var(--c-text-muted); }
+.tx-stat-val { font-size: 19px; font-weight: 800; margin-top: 5px; letter-spacing: -.01em; }
+.tx-stat-sub { font-size: 11px; color: var(--c-text-muted); margin-top: 4px; }
+.tx-stat-accent { position: absolute; inset-inline: 0; bottom: 0; height: 3px; opacity: .85; }
+
 .tx-tabs { display: inline-flex; gap: 4px; padding: 4px; border-radius: 12px; background: color-mix(in srgb, var(--c-text-muted) 12%, transparent); }
 .tx-tabs button { padding: 7px 16px; border-radius: 9px; font-size: 13px; font-weight: 600; color: var(--c-text-muted); }
 .tx-tabs button.on { background: var(--c-primary); color: #fff; }
