@@ -29,9 +29,19 @@ class StaffLoginView(APIView):
     def post(self, request):
         ser = StaffLoginSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
-        staff = Staff.objects.filter(username=ser.validated_data["username"], is_active=True).first()
+        staff = Staff.objects.filter(username=ser.validated_data["username"]).first()
         if not staff or not staff.check_password(ser.validated_data["password"]):
-            return Response({"detail": "invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response(
+                {"detail": "invalid credentials", "code": "invalid_credentials"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        if not staff.is_active:
+            # only revealed once the password already matched, so a guess can't
+            # be used to probe which usernames exist
+            return Response(
+                {"detail": "account is disabled", "code": "account_disabled"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
         staff.touch_login()
         return Response({**issue_tokens(staff), "staff": _staff_payload(staff)})
 
@@ -46,12 +56,14 @@ class StaffRefreshView(APIView):
         try:
             payload = decode(request.data.get("refresh", ""), "staff_refresh")
         except jwt.ExpiredSignatureError:
-            return Response({"detail": "refresh token expired"}, status=401)
+            return Response({"detail": "refresh token expired", "code": "token_expired"}, status=401)
         except jwt.InvalidTokenError:
-            return Response({"detail": "invalid refresh token"}, status=401)
+            return Response({"detail": "invalid refresh token", "code": "token_invalid"}, status=401)
         staff = Staff.objects.filter(pk=payload["staff_id"], is_active=True).first()
         if not staff:
-            return Response({"detail": "staff account not found or disabled"}, status=401)
+            return Response(
+                {"detail": "staff account not found or disabled", "code": "account_disabled"}, status=401
+            )
         revoke_refresh(payload)  # rotation — the presented refresh token is now spent
         return Response(issue_tokens(staff))
 

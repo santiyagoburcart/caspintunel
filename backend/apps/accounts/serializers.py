@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from .models import Source
@@ -107,9 +108,19 @@ class LoginSerializer(TokenObtainPairSerializer):
     """JWT login that also returns the user profile."""
 
     def validate(self, attrs):
-        data = super().validate(attrs)
-        if not self.user.is_active:
-            raise serializers.ValidationError("account is disabled")
+        try:
+            data = super().validate(attrs)
+        except AuthenticationFailed:
+            # Django's ModelBackend already refuses an inactive user before we
+            # get here, so a wrong password and a disabled account both land in
+            # this except — check the password ourselves to tell them apart.
+            username = attrs.get(self.username_field)
+            candidate = User.objects.filter(**{self.username_field: username}).first()
+            if candidate and not candidate.is_active and candidate.check_password(attrs.get("password", "")):
+                raise AuthenticationFailed({"detail": "account is disabled", "code": "account_disabled"})
+            raise AuthenticationFailed(
+                {"detail": "invalid credentials", "code": "invalid_credentials"}
+            )
         data["user"] = UserSerializer(self.user).data
         return data
 

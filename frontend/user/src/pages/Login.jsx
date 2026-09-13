@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { useI18n } from '../lib/i18n'
 import { useTheme } from '../theme/ThemeProvider'
-import { apiError } from '../lib/api'
+import { SESSION_EXPIRED_KEY } from '../lib/api'
 import { Alert, Field, PasswordField, Spinner } from '../components/ui'
 import { CaspianBrand, CaspianAuthShell } from '../components/caspian'
 
@@ -40,29 +40,48 @@ export default function Login() {
   return styleKey === 'caspian' ? <CaspianLogin /> : <LegacyLogin />
 }
 
+// never show the backend's raw error text (e.g. a SimpleJWT "token not valid"
+// message) on the login form — map the known cases to a friendly string only
+function loginErrorText(e, t) {
+  const code = e?.response?.data?.code
+  if (code === 'invalid_credentials') return t('err_wrong_credentials')
+  if (code === 'account_disabled') return t('err_account_disabled')
+  return t('login_failed')
+}
+
 function useLoginForm() {
   const { t } = useI18n()
   const { login } = useAuth()
   const nav = useNavigate()
   const [f, setF] = useState({ username: '', password: '' })
   const [err, setErr] = useState('')
+  const [info, setInfo] = useState(() => {
+    try {
+      if (sessionStorage.getItem(SESSION_EXPIRED_KEY)) {
+        sessionStorage.removeItem(SESSION_EXPIRED_KEY)
+        return true
+      }
+    } catch { /* private browsing / storage blocked */ }
+    return false
+  })
   const [busy, setBusy] = useState(false)
   const submit = async (e) => {
     e.preventDefault()
-    setBusy(true); setErr('')
+    setBusy(true); setErr(''); setInfo(false)
     try { await login(f.username, f.password); nav('/') }
-    catch (e2) { setErr(apiError(e2, t('login_failed'))) }
+    catch (e2) { setErr(loginErrorText(e2, t)) }
     finally { setBusy(false) }
   }
-  return { f, setF, err, busy, submit }
+  return { f, setF, err, info, busy, submit }
 }
 
 function LegacyLogin() {
   const { t } = useI18n()
-  const { f, setF, err, busy, submit } = useLoginForm()
+  const { f, setF, err, info, busy, submit } = useLoginForm()
   return (
     <AuthShell title={t('login')}>
       <form onSubmit={submit} className="space-y-3">
+        {info && <Alert kind="warning">{t('session_expired_msg')}</Alert>}
         <Alert>{err}</Alert>
         <Field label={t('username')}>
           <input className="input" value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} autoFocus />
@@ -83,7 +102,7 @@ function LegacyLogin() {
 function CaspianLogin() {
   const { t, lang, setLang } = useI18n()
   const { config } = useTheme()
-  const { f, setF, err, busy, submit } = useLoginForm()
+  const { f, setF, err, info, busy, submit } = useLoginForm()
   const brandFa = config?.site_name_fa || 'کسپین تانل'
   const brandEn = config?.site_name_en || 'caspintunel'
   const brand = lang === 'fa' ? brandFa : brandEn
@@ -129,6 +148,7 @@ function CaspianLogin() {
             </div>
 
             <form onSubmit={submit} className="csp-auth-fields">
+              {info && <Alert kind="warning">{t('session_expired_msg')}</Alert>}
               <Alert>{err}</Alert>
 
               <label className="csp-fld">

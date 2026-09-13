@@ -16,12 +16,14 @@ class StaffJWTAuthentication(authentication.BaseAuthentication):
         try:
             payload = decode(header[1].decode(), "staff_access")
         except jwt.ExpiredSignatureError:
-            raise exceptions.AuthenticationFailed("token expired")
+            raise exceptions.AuthenticationFailed({"detail": "token expired", "code": "token_expired"})
         except jwt.InvalidTokenError:
             return None  # not a staff token — let other authenticators try
         staff = Staff.objects.filter(pk=payload["staff_id"], is_active=True).select_related("role").first()
         if not staff:
-            raise exceptions.AuthenticationFailed("staff account not found or disabled")
+            raise exceptions.AuthenticationFailed(
+                {"detail": "staff account not found or disabled", "code": "account_disabled"}
+            )
         return (staff, payload)
 
     def authenticate_header(self, request):
