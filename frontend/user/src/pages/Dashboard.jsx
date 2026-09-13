@@ -180,7 +180,7 @@ const FILTERS = [
 
 function CaspianDashboard() {
   const { t, lang } = useI18n()
-  const { items, flash, err, refreshOne } = useServices(t)
+  const { items, flash, err } = useServices(t)
   const [filter, setFilter] = useState('all')
   const [q, setQ] = useState('')
 
@@ -266,7 +266,7 @@ function CaspianDashboard() {
         <div className="csp-card csp-dash-empty"><p>{t('no_match')}</p></div>
       ) : (
         <div className="csp-dash-grid">
-          {shown.map((s) => <SvcCard key={s.id} s={s} t={t} lang={lang} onRefresh={refreshOne} />)}
+          {shown.map((s) => <SvcCard key={s.id} s={s} t={t} lang={lang} />)}
         </div>
       )}
 
@@ -295,10 +295,8 @@ function Stat({ icon, label, value, sub }) {
   )
 }
 
-function SvcCard({ s, t, lang, onRefresh }) {
+function SvcCard({ s, t, lang }) {
   const [qrOpen, setQrOpen] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const [err, setErr] = useState('')
   const waiting = s.waiting_for_connection
   const gbUsed = gb(s.data_used)
   const gbTotal = s.data_limit ? gb(s.data_limit) : null
@@ -307,10 +305,6 @@ function SvcCard({ s, t, lang, onRefresh }) {
     ? Math.max(3, Math.min(100, Math.round((s.days_left / s.validity_days) * 100)))
     : (s.days_left != null && s.days_left <= 30 ? Math.max(3, Math.round((s.days_left / 30) * 100)) : 100)
 
-  const refresh = async () => {
-    setBusy(true); setErr('')
-    try { await onRefresh(s.id) } catch (e) { setErr(apiError(e)) } finally { setBusy(false) }
-  }
   const st = waiting ? 'pending' : s.status
   const badgeTone = st === 'active' ? 'success' : (st === 'pending' || st === 'on_hold') ? 'warning' : 'danger'
 
@@ -324,18 +318,10 @@ function SvcCard({ s, t, lang, onRefresh }) {
             <span className="csp-svc-code mono-num">{t('svc_id')}: #CT-{s.id}</span>
           </div>
         </div>
-        <div className="csp-svc-head-right">
-          <span className="csp-svc-badge" data-tone={badgeTone}>
-            <i className={badgeTone === 'warning' ? 'spin' : ''} />
-            {waiting ? t('f_pending') : (t('st_' + s.status) === ('st_' + s.status) ? s.status : t('st_' + s.status))}
-          </span>
-          {waiting && (
-            <button type="button" className="csp-svc-refresh" onClick={refresh} disabled={busy}
-              title={busy ? t('refreshing') : t('refresh_status')} aria-label={busy ? t('refreshing') : t('refresh_status')}>
-              <DI d={D.renew} w={13} className={busy ? 'spin' : ''} />
-            </button>
-          )}
-        </div>
+        <span className="csp-svc-badge" data-tone={badgeTone}>
+          <i className={badgeTone === 'warning' ? 'spin' : ''} />
+          {waiting ? t('f_pending') : (t('st_' + s.status) === ('st_' + s.status) ? s.status : t('st_' + s.status))}
+        </span>
       </div>
 
       {waiting ? (
@@ -371,7 +357,6 @@ function SvcCard({ s, t, lang, onRefresh }) {
         </div>
       )}
 
-      <Alert>{err}</Alert>
       <div className="csp-svc-actions">
         {s.subscription_url && (
           <button type="button" className="csp-svc-btn" onClick={() => setQrOpen(true)}>
@@ -569,18 +554,10 @@ const CSS = `
 }
 .csp-svc-id h2 { font-size: 16px; font-weight: 800; }
 .csp-svc-code { font-size: 10.5px; color: var(--c-text-muted); }
-.csp-svc-head-right { flex-shrink: 0; display: flex; align-items: center; gap: 6px; }
 .csp-svc-badge {
   flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
   padding: 4px 10px; border-radius: 999px; font-size: 10.5px; font-weight: 700;
 }
-.csp-svc-refresh {
-  flex-shrink: 0; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%;
-  border: 1px solid var(--c-border); background: transparent; color: var(--c-text-muted); cursor: pointer; transition: .15s;
-}
-.csp-svc-refresh:hover { border-color: var(--c-primary); color: var(--c-primary); }
-.csp-svc-refresh:disabled { opacity: .6; cursor: default; }
-.csp-svc-refresh .spin { animation: csp-spin 1s linear infinite; }
 .csp-svc-badge i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .csp-svc-badge i.spin { border-radius: 2px; animation: csp-spin 1.1s linear infinite; }
 @keyframes csp-spin { to { transform: rotate(360deg); } }
