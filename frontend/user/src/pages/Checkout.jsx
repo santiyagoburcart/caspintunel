@@ -23,6 +23,7 @@ export default function Checkout() {
   const [instructions, setInstructions] = useState(null)
   const [payment, setPayment] = useState(null)
   const [service, setService] = useState(null)
+  const [selectedCard, setSelectedCard] = useState(null)
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -46,6 +47,12 @@ export default function Checkout() {
   }, [])
 
   const plan = useMemo(() => plans.find((p) => String(p.id) === String(chosenPlan)), [plans, chosenPlan])
+
+  // a single active card needs no choice; with several, the customer must pick one
+  useEffect(() => {
+    const cards = instructions?.cards || []
+    if (cards.length === 1) setSelectedCard(cards[0].id)
+  }, [instructions])
 
   // default the custom-volume value to the plan's minimum once it's known
   useEffect(() => {
@@ -80,6 +87,7 @@ export default function Checkout() {
       const fd = new FormData()
       fd.append('order', order.id)
       fd.append('receipt_image', file)
+      if (selectedCard) fd.append('bank_card', selectedCard)
       const { data } = await api.post('/payments/receipt/', fd)
       setPayment(data)
       // refresh the order so payment_status reflects "pending"
@@ -186,7 +194,32 @@ export default function Checkout() {
             <div className="text-xs text-muted">{t('pay_exact')}</div>
           </div>
 
-          {(instructions?.cards || []).length > 0 ? (
+          {(instructions?.cards || []).length > 1 ? (
+            <div className="space-y-2">
+              <div className="text-xs text-muted">{t('choose_card')}</div>
+              {instructions.cards.map((c) => {
+                const isSel = selectedCard === c.id
+                return (
+                  <div key={c.id} role="radio" aria-checked={isSel} tabIndex={0}
+                    className="flex cursor-pointer items-center justify-between gap-2 rounded-xl border-2 px-3 py-2 transition outline-none"
+                    style={{
+                      borderColor: isSel ? 'var(--c-primary)' : 'var(--c-border)',
+                      background: isSel ? 'color-mix(in srgb, var(--c-primary) 7%, transparent)' : undefined,
+                    }}
+                    onClick={() => setSelectedCard(c.id)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedCard(c.id) } }}>
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                        style={{ background: isSel ? 'var(--c-primary)' : 'transparent', border: `2px solid ${isSel ? 'var(--c-primary)' : 'var(--c-border)'}` }}
+                        aria-hidden="true">{isSel ? '✓' : ''}</span>
+                      <div><div className="font-mono">{c.card_number}</div><div className="text-xs text-muted">{c.holder_name}</div></div>
+                    </div>
+                    <Copyable text={c.card_number} />
+                  </div>
+                )
+              })}
+            </div>
+          ) : (instructions?.cards || []).length === 1 ? (
             <div className="space-y-2">
               {instructions.cards.map((c) => (
                 <div key={c.id} className="flex items-center justify-between rounded-xl border px-3 py-2" style={{ borderColor: 'var(--c-border)' }}>
@@ -212,18 +245,21 @@ export default function Checkout() {
             </Alert>
           )}
 
-          {needsReceipt && (
-            <label className={`block cursor-pointer rounded-2xl border-2 border-dashed p-6 text-center transition ${busy ? 'pointer-events-none opacity-60' : ''}`}
-              style={{ borderColor: 'var(--c-border)' }}>
-              <div className="mb-1 text-3xl">📸</div>
-              <div className="font-medium" style={{ color: 'var(--c-ink)' }}>
-                {busy ? t('uploading') : (payStatus === 'rejected' ? t('pay_reupload') : t('uploadReceipt'))}
-              </div>
-              <div className="mt-1 text-xs text-muted">{t('receipt_drop_hint')}</div>
-              <input type="file" accept="image/*" hidden disabled={busy}
-                onChange={(e) => e.target.files[0] && uploadReceipt(e.target.files[0])} />
-            </label>
-          )}
+          {needsReceipt && (() => {
+            const needsCardChoice = (instructions?.cards || []).length > 1 && !selectedCard
+            return (
+              <label className={`block rounded-2xl border-2 border-dashed p-6 text-center transition ${busy || needsCardChoice ? 'pointer-events-none opacity-60' : 'cursor-pointer'}`}
+                style={{ borderColor: 'var(--c-border)' }}>
+                <div className="mb-1 text-3xl">📸</div>
+                <div className="font-medium" style={{ color: 'var(--c-ink)' }}>
+                  {busy ? t('uploading') : needsCardChoice ? t('choose_card_first') : (payStatus === 'rejected' ? t('pay_reupload') : t('uploadReceipt'))}
+                </div>
+                <div className="mt-1 text-xs text-muted">{t('receipt_drop_hint')}</div>
+                <input type="file" accept="image/*" hidden disabled={busy || needsCardChoice}
+                  onChange={(e) => e.target.files[0] && uploadReceipt(e.target.files[0])} />
+              </label>
+            )
+          })()}
         </>
       )}
 

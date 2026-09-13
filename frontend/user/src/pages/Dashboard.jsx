@@ -77,7 +77,9 @@ function LegacyServiceCard({ s, t, lang, onRefresh }) {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const pct = s.data_limit ? Math.min(100, Math.round((s.data_used / s.data_limit) * 100)) : 0
-  const waiting = s.waiting_for_connection
+  // timer hasn't started yet whenever the panel hasn't given us an expiry —
+  // covers the just-connected moment too, before the next sync flips status/expire_at
+  const waiting = s.status === 'on_hold' && !s.expire_at
   const gbUsed = gb(s.data_used)
   const gbTotal = s.data_limit ? gb(s.data_limit) : null
   const refresh = async () => {
@@ -297,7 +299,9 @@ function Stat({ icon, label, value, sub }) {
 
 function SvcCard({ s, t, lang }) {
   const [qrOpen, setQrOpen] = useState(false)
-  const waiting = s.waiting_for_connection
+  // timer hasn't started yet whenever the panel hasn't given us an expiry —
+  // covers the just-connected moment too, before the next sync flips status/expire_at
+  const waiting = s.status === 'on_hold' && !s.expire_at
   const gbUsed = gb(s.data_used)
   const gbTotal = s.data_limit ? gb(s.data_limit) : null
   const pct = gbTotal ? Math.min(100, Math.round((gbUsed / gbTotal) * 100)) : 0
@@ -398,7 +402,7 @@ function QrModal({ s, t, lang, onClose }) {
     a.href = src; a.download = `caspian-${s.panel_username}-qr.png`
     document.body.appendChild(a); a.click(); a.remove()
   }
-  const waiting = s.waiting_for_connection
+  const waiting = s.status === 'on_hold' && !s.expire_at
   const tone = waiting ? 'warning' : s.status === 'active' ? 'success' : 'danger'
   const daysTxt = s.expire_at ? t('days_remaining', { n: fnum(s.days_left, lang) })
     : waiting ? t('waiting_connect') : t('unlimited_time')

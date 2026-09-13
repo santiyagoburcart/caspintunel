@@ -37,6 +37,13 @@ class ReceiptUploadSerializer(serializers.Serializer):
         queryset=BankCard.objects.filter(is_active=True), required=False, allow_null=True
     )
 
+    def validate(self, attrs):
+        # with one active card the client may omit it; with several the customer
+        # must say which one they paid, or admin can't tell them apart at review
+        if not attrs.get("bank_card") and BankCard.objects.filter(is_active=True).count() > 1:
+            raise serializers.ValidationError({"bank_card": "select the card you paid to"})
+        return attrs
+
 
 class RejectSerializer(serializers.Serializer):
     reason = serializers.CharField(max_length=255)

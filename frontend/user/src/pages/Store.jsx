@@ -14,12 +14,15 @@ function Money({ n, lang, per }) {
 
 const GB = 1024 ** 3
 
-// language-aware category: label shown + a stable key for grouping
+// language-aware category: label shown + a stable key for grouping.
+// The key is derived from the resolved label itself (not fa+en combined) so
+// two plans that display the same category name always land in one group,
+// even if their other-language category field differs.
 function category(plan, lang) {
   const fa = (plan.category_fa || '').trim()
   const en = (plan.category_en || '').trim()
   const label = lang === 'fa' ? (fa || en) : (en || fa)
-  const key = `${fa.toLowerCase()}|${en.toLowerCase()}`
+  const key = label.toLowerCase()
   return { label, key: label ? key : '' }   // '' key == no category == "Other"
 }
 
