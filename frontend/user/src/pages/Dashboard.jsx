@@ -324,10 +324,18 @@ function SvcCard({ s, t, lang, onRefresh }) {
             <span className="csp-svc-code mono-num">{t('svc_id')}: #CT-{s.id}</span>
           </div>
         </div>
-        <span className="csp-svc-badge" data-tone={badgeTone}>
-          <i className={badgeTone === 'warning' ? 'spin' : ''} />
-          {waiting ? t('f_pending') : (t('st_' + s.status) === ('st_' + s.status) ? s.status : t('st_' + s.status))}
-        </span>
+        <div className="csp-svc-head-right">
+          <span className="csp-svc-badge" data-tone={badgeTone}>
+            <i className={badgeTone === 'warning' ? 'spin' : ''} />
+            {waiting ? t('f_pending') : (t('st_' + s.status) === ('st_' + s.status) ? s.status : t('st_' + s.status))}
+          </span>
+          {waiting && (
+            <button type="button" className="csp-svc-refresh" onClick={refresh} disabled={busy}
+              title={busy ? t('refreshing') : t('refresh_status')} aria-label={busy ? t('refreshing') : t('refresh_status')}>
+              <DI d={D.renew} w={13} className={busy ? 'spin' : ''} />
+            </button>
+          )}
+        </div>
       </div>
 
       {waiting ? (
@@ -365,11 +373,6 @@ function SvcCard({ s, t, lang, onRefresh }) {
 
       <Alert>{err}</Alert>
       <div className="csp-svc-actions">
-        {waiting && (
-          <button type="button" className="csp-svc-btn" onClick={refresh} disabled={busy}>
-            <DI d={D.renew} w={16} className={busy ? 'spin' : ''} />{busy ? t('refreshing') : t('connected_btn')}
-          </button>
-        )}
         {s.subscription_url && (
           <button type="button" className="csp-svc-btn" onClick={() => setQrOpen(true)}>
             <DI d={D.qr} w={16} />{t('show_qr')}
@@ -566,10 +569,18 @@ const CSS = `
 }
 .csp-svc-id h2 { font-size: 16px; font-weight: 800; }
 .csp-svc-code { font-size: 10.5px; color: var(--c-text-muted); }
+.csp-svc-head-right { flex-shrink: 0; display: flex; align-items: center; gap: 6px; }
 .csp-svc-badge {
   flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
   padding: 4px 10px; border-radius: 999px; font-size: 10.5px; font-weight: 700;
 }
+.csp-svc-refresh {
+  flex-shrink: 0; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%;
+  border: 1px solid var(--c-border); background: transparent; color: var(--c-text-muted); cursor: pointer; transition: .15s;
+}
+.csp-svc-refresh:hover { border-color: var(--c-primary); color: var(--c-primary); }
+.csp-svc-refresh:disabled { opacity: .6; cursor: default; }
+.csp-svc-refresh .spin { animation: csp-spin 1s linear infinite; }
 .csp-svc-badge i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .csp-svc-badge i.spin { border-radius: 2px; animation: csp-spin 1.1s linear infinite; }
 @keyframes csp-spin { to { transform: rotate(360deg); } }
