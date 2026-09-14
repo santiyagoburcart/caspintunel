@@ -89,6 +89,50 @@
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 
+    <androidx.cardview.widget.CardView
+        android:id="@+id/sourcesCard"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        app:cardCornerRadius="14dp"
+        app:cardElevation="0dp"
+        app:cardBackgroundColor="@color/surface"
+        app:layout_constraintTop_toBottomOf="@id/statusCard">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:id="@+id/sourcesTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/sources_title"
+                android:textColor="@color/text_primary"
+                android:textStyle="bold"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/sourcesWarning"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/sources_empty_warning"
+                android:textColor="@color/status_warning"
+                android:textSize="12.5sp"
+                android:visibility="gone" />
+
+            <LinearLayout
+                android:id="@+id/sourcesList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="vertical" />
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
     <TextView
         android:id="@+id/recentLabel"
         android:layout_width="match_parent"
@@ -98,7 +142,7 @@
         android:textColor="@color/text_primary"
         android:textStyle="bold"
         android:textSize="14sp"
-        app:layout_constraintTop_toBottomOf="@id/statusCard" />
+        app:layout_constraintTop_toBottomOf="@id/sourcesCard" />
 
     <TextView
         android:id="@+id/emptyLabel"

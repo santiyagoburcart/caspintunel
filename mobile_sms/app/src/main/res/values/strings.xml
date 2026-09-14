@@ -32,4 +32,7 @@
     <string name="log_status_sent">ارسال شد</string>
     <string name="log_status_failed">ناموفق</string>
     <string name="log_status_pending">در انتظار</string>
+
+    <string name="sources_title">شماره‌های تحت نظارت</string>
+    <string name="sources_empty_warning">هیچ شماره بانکی تعریف نشده</string>
 </resources>

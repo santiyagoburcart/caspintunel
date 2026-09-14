@@ -10,20 +10,27 @@ import com.caspintunel.smsbridge.data.SmsLogEntity
 import com.caspintunel.smsbridge.net.ApiClient
 import com.caspintunel.smsbridge.net.InboundRequest
 import com.caspintunel.smsbridge.net.PingResponse
+import com.caspintunel.smsbridge.net.SmsSourceInfo
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
 const val MAX_SEND_ATTEMPTS = 3
+const val SOURCES_STALE_MILLIS = 30 * 60 * 1000L // refresh at least this often
 
 private const val PING_PATH = "api/v1/payments/sms/ping/"
 private const val INBOUND_PATH = "api/v1/payments/sms/inbound/"
+private const val SOURCES_PATH = "api/v1/payments/sms/sources/"
 
 class SmsRepository private constructor(context: Context) {
     private val dao = AppDatabase.get(context).smsLogDao()
     private val prefs = Prefs(context)
     private val api = ApiClient.service
+    private val gson = Gson()
+    private val sourcesListType = object : TypeToken<List<SmsSourceInfo>>() {}.type
 
     fun recentLog(limit: Int = 20): LiveData<List<SmsLogEntity>> = dao.recent(limit)
 
@@ -80,7 +87,8 @@ class SmsRepository private constructor(context: Context) {
         }
     }
 
-    /** Manual "test connection" ping — also persists the result for the main screen. */
+    /** Manual "test connection" ping — also persists the result for the main screen.
+     * A successful ping also refreshes the allowed-sender cache ("on reconnect"). */
     suspend fun ping(): Result<PingResponse> {
         if (!prefs.isConfigured()) return Result.failure(IllegalStateException("server not configured"))
         val url = ApiClient.buildUrl(prefs.normalizedServerUrl(), PING_PATH)
@@ -91,6 +99,7 @@ class SmsRepository private constructor(context: Context) {
                 prefs.lastPingOk = true
                 prefs.lastPingMessage = "OK — ${body.device ?: "device"}"
                 prefs.lastPingAtMillis = System.currentTimeMillis()
+                refreshSources()
                 Result.success(body)
             } else {
                 val msg = "HTTP ${resp.code()}: ${resp.errorBody()?.string()?.take(200)}"
@@ -104,6 +113,54 @@ class SmsRepository private constructor(context: Context) {
             prefs.lastPingMessage = e.message ?: e.javaClass.simpleName
             prefs.lastPingAtMillis = System.currentTimeMillis()
             Result.failure(e)
+        }
+    }
+
+    /** Pulls the allowed-sender list from the server and replaces the local cache. */
+    suspend fun refreshSources(): Result<List<SmsSourceInfo>> {
+        if (!prefs.isConfigured()) return Result.failure(IllegalStateException("server not configured"))
+        val url = ApiClient.buildUrl(prefs.normalizedServerUrl(), SOURCES_PATH)
+        return try {
+            val resp = api.sources(url, prefs.apiToken)
+            val body = resp.body()
+            if (resp.isSuccessful && body != null) {
+                prefs.allowedSourcesJson = gson.toJson(body.sources)
+                prefs.sourcesFetchedAtMillis = System.currentTimeMillis()
+                Result.success(body.sources)
+            } else {
+                Result.failure(IllegalStateException("HTTP ${resp.code()}"))
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "sources refresh failed", e)
+            Result.failure(e)
+        }
+    }
+
+    /** Cached allowed-sender list — never touches the network. */
+    fun cachedSources(): List<SmsSourceInfo> {
+        val json = prefs.allowedSourcesJson
+        if (json.isBlank()) return emptyList()
+        return try {
+            gson.fromJson(json, sourcesListType) ?: emptyList()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    fun isSourcesCacheStale(): Boolean =
+        System.currentTimeMillis() - prefs.sourcesFetchedAtMillis > SOURCES_STALE_MILLIS
+
+    /** No sources configured yet -> nothing is filtered (matches the server's own
+     * _resolve_source behavior: an empty allow-list means "allow everything"). */
+    fun isSenderAllowed(sender: String?): Boolean {
+        val allowed = cachedSources()
+        if (allowed.isEmpty()) return true
+        if (sender.isNullOrBlank()) return false
+        val tail = normalizePhone(sender)
+        if (tail.isEmpty()) return false
+        return allowed.any { src ->
+            val st = normalizePhone(src.phoneNumber)
+            st.isNotEmpty() && (st == tail || st.endsWith(tail) || tail.endsWith(st))
         }
     }
 
@@ -123,5 +180,17 @@ class SmsRepository private constructor(context: Context) {
         }
 
         fun isoUtc(millis: Long): String = isoFormat.get()!!.format(Date(millis))
+
+        private val PERSIAN_DIGITS = "۰۱۲۳۴۵۶۷۸۹"
+
+        /** Mirrors the backend's `_norm_phone`: strip to digits, take the last 10 —
+         * a short code and a full MSISDN for the same sender still match this way. */
+        fun normalizePhone(value: String): String {
+            val digits = value.map { ch ->
+                val i = PERSIAN_DIGITS.indexOf(ch)
+                if (i >= 0) ('0' + i) else ch
+            }.filter { it.isDigit() }.joinToString("")
+            return if (digits.length >= 10) digits.takeLast(10) else digits
+        }
     }
 }

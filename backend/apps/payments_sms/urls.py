@@ -9,6 +9,7 @@ from .views import (
     ReceiptUploadView,
     SmsInboundView,
     SmsPingView,
+    SmsSourcesView,
 )
 
 app_name = "payments"
@@ -23,4 +24,5 @@ urlpatterns = [
     # Android SMS app
     path("sms/inbound/", SmsInboundView.as_view(), name="sms-inbound"),
     path("sms/ping/", SmsPingView.as_view(), name="sms-ping"),
+    path("sms/sources/", SmsSourcesView.as_view(), name="sms-sources"),
 ]

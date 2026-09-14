@@ -20,3 +20,12 @@ data class PingResponse(
     val device: String? = null,
     @SerializedName("server_time") val serverTime: String? = null,
 )
+
+data class SmsSourceInfo(
+    @SerializedName("phone_number") val phoneNumber: String,
+    val description: String? = null,
+)
+
+data class SourcesResponse(
+    val sources: List<SmsSourceInfo> = emptyList(),
+)

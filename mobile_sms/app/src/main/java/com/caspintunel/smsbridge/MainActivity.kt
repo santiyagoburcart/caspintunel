@@ -5,6 +5,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.view.Gravity
+import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -12,6 +14,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.caspintunel.smsbridge.data.Prefs
 import com.caspintunel.smsbridge.databinding.ActivityMainBinding
+import com.caspintunel.smsbridge.net.SmsSourceInfo
 import com.caspintunel.smsbridge.repo.SmsRepository
 import com.caspintunel.smsbridge.service.SmsForegroundService
 import com.caspintunel.smsbridge.ui.SmsLogAdapter
@@ -51,16 +54,43 @@ class MainActivity : AppCompatActivity() {
         binding.btnTestPing.setOnClickListener { runPing() }
 
         renderStatus()
+        renderSources()
     }
 
     override fun onResume() {
         super.onResume()
         renderStatus()
+        renderSources()
         if (!prefs.isConfigured()) {
             startActivity(Intent(this, SettingsActivity::class.java))
             return
         }
         ensurePermissionsThenStartService()
+        if (repo.isSourcesCacheStale()) {
+            lifecycleScope.launch {
+                repo.refreshSources()
+                renderSources()
+            }
+        }
+    }
+
+    /** Renders the cached allowed-sender list (never blocks on the network —
+     * staleness triggers a background refresh separately, see onResume). */
+    private fun renderSources() {
+        val sources = repo.cachedSources()
+        binding.sourcesWarning.visibility = if (sources.isEmpty()) android.view.View.VISIBLE else android.view.View.GONE
+        binding.sourcesList.removeAllViews()
+        for (src: SmsSourceInfo in sources) {
+            val row = TextView(this).apply {
+                text = if (src.description.isNullOrBlank()) src.phoneNumber else "${src.phoneNumber} — ${src.description}"
+                textDirection = TextView.TEXT_DIRECTION_LTR
+                gravity = Gravity.START
+                setTextColor(getColor(R.color.text_primary))
+                textSize = 13f
+                setPadding(0, 8, 0, 8)
+            }
+            binding.sourcesList.addView(row)
+        }
     }
 
     private fun renderStatus() {
@@ -99,8 +129,9 @@ class MainActivity : AppCompatActivity() {
     private fun runPing() {
         binding.btnTestPing.isEnabled = false
         lifecycleScope.launch {
-            repo.ping()
+            repo.ping() // also refreshes the sources cache on success
             renderStatus()
+            renderSources()
             binding.btnTestPing.isEnabled = true
         }
     }

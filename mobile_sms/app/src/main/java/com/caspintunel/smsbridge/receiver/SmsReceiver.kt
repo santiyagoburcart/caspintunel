@@ -28,8 +28,14 @@ class SmsReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val repo = SmsRepository.get(appContext)
-                val entryId = repo.recordIncoming(sender, body, receivedAt)
-                SmsSendWorker.enqueue(appContext, entryId)
+                // an empty allow-list means "nothing configured yet" -> forward
+                // everything (matches the server's own fail-open matching); once
+                // sources exist, only a matching sender is logged/forwarded at all
+                if (repo.isSenderAllowed(sender)) {
+                    val entryId = repo.recordIncoming(sender, body, receivedAt)
+                    SmsSendWorker.enqueue(appContext, entryId)
+                }
+                if (repo.isSourcesCacheStale()) repo.refreshSources()
             } finally {
                 pendingResult.finish()
             }

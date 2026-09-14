@@ -16,16 +16,28 @@ A pre-built debug APK is committed at
    `android.provider.Telephony.SMS_RECEIVED`, backed by a **foreground
    service** so Android doesn't kill the app, with a `BOOT_COMPLETED`
    receiver so it comes back after a reboot.
-3. **Forwarding** — every incoming SMS is logged locally (Room) and POSTed to
-   `.../api/v1/payments/sms/inbound/` with the sender, full body, and an ISO
-   8601 timestamp.
-4. **Main screen** — connection status (from the last ping), the last 20
-   forwarded messages with their send status, and a manual "test ping"
-   button.
-5. **Retry** — a failed send is retried by WorkManager up to 3 times with
+3. **Sender filtering** — the app fetches the allowed bank-sender numbers from
+   `.../api/v1/payments/sms/sources/` (same device token) and caches them
+   locally. An SMS is only logged/forwarded if its sender matches one of
+   those numbers (matched the same way the backend itself matches senders —
+   last 10 digits, either side a suffix of the other, so a short code and a
+   full MSISDN for the same sender both work). If no sources are configured
+   yet, everything is forwarded (matches the backend's own fail-open
+   behavior for an empty allow-list) and the main screen shows a warning.
+   The cache refreshes after every successful ping/reconnect, opportunistically
+   when it's more than 30 minutes old and an SMS arrives, and on a 30-minute
+   WorkManager periodic job while the foreground service is running.
+4. **Forwarding** — every matching incoming SMS is logged locally (Room) and
+   POSTed to `.../api/v1/payments/sms/inbound/` with the sender, full body,
+   and an ISO 8601 timestamp.
+5. **Main screen** — connection status (from the last ping), the list of
+   monitored sender numbers (or a "هیچ شماره بانکی تعریف نشده" warning if
+   none are configured), the last 20 forwarded messages with their send
+   status, and a manual "test ping" button.
+6. **Retry** — a failed send is retried by WorkManager up to 3 times with
    exponential backoff (30s, 60s, 120s…), then left marked as failed in the
    local log.
-6. **Persistent notification** — "CaspinTunel SMS — فعال" while the
+7. **Persistent notification** — "CaspinTunel SMS — فعال" while the
    foreground service is running.
 
 ## Authentication — important correction
@@ -56,6 +68,15 @@ admin:
 
 To revoke a device, uncheck `is_active` (or delete the row) in Django admin;
 `SmsDeviceAuthentication` rejects inactive/unknown tokens immediately.
+
+## Configuring allowed sender numbers
+
+The admin panel's Settings page (`/panel/settings`, "شماره‌های بانکی مجاز /
+Allowed SMS Sources" section) manages the `SmsSource` rows the app filters
+against — add the bank's deposit-SMS sender number there (e.g. `10008556`
+for Bank Mellat) and it shows up on the phone (main screen, and via
+`GET /api/v1/payments/sms/sources/`) within 30 minutes, or immediately after
+the next "test ping" / reconnect.
 
 ## Permissions
 
@@ -91,8 +112,9 @@ mobile_sms/
         │   ├── service/SmsForegroundService.kt
         │   ├── net/                       # Retrofit service, models, client
         │   ├── data/                      # Prefs (SharedPreferences), Room
-        │   ├── repo/SmsRepository.kt      # ping + send + retry bookkeeping
+        │   ├── repo/SmsRepository.kt      # ping + send + retry + sources cache/matching
         │   ├── work/SmsSendWorker.kt      # WorkManager retry (max 3 attempts)
+        │   ├── work/SourcesRefreshWorker.kt  # 30-min periodic allowed-sender refresh
         │   └── ui/SmsLogAdapter.kt
         └── res/                           # layouts, strings (fa), icons
 ```

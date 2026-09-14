@@ -23,4 +23,10 @@ interface ApiService {
         @Header("X-Device-Token") token: String,
         @Body body: InboundRequest,
     ): Response<InboundResponse>
+
+    @GET
+    suspend fun sources(
+        @Url url: String,
+        @Header("X-Device-Token") token: String,
+    ): Response<SourcesResponse>
 }

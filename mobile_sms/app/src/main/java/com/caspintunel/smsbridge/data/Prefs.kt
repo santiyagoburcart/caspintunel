@@ -31,6 +31,16 @@ class Prefs(context: Context) {
         get() = sp.getLong(KEY_LAST_PING_AT, 0L)
         set(value) = sp.edit().putLong(KEY_LAST_PING_AT, value).apply()
 
+    // cached allowed-sender list, as raw JSON (see SmsRepository for (de)serialization) —
+    // kept here rather than Room since it's a small, whole-list replace-on-refresh cache
+    var allowedSourcesJson: String
+        get() = sp.getString(KEY_SOURCES_JSON, "") ?: ""
+        set(value) = sp.edit().putString(KEY_SOURCES_JSON, value).apply()
+
+    var sourcesFetchedAtMillis: Long
+        get() = sp.getLong(KEY_SOURCES_AT, 0L)
+        set(value) = sp.edit().putLong(KEY_SOURCES_AT, value).apply()
+
     fun isConfigured(): Boolean = serverUrl.isNotBlank() && apiToken.isNotBlank()
 
     /** Normalized so callers can safely do "$base/api/v1/...". */
@@ -42,5 +52,7 @@ class Prefs(context: Context) {
         private const val KEY_LAST_PING_OK = "last_ping_ok"
         private const val KEY_LAST_PING_MSG = "last_ping_msg"
         private const val KEY_LAST_PING_AT = "last_ping_at"
+        private const val KEY_SOURCES_JSON = "allowed_sources_json"
+        private const val KEY_SOURCES_AT = "sources_fetched_at"
     }
 }

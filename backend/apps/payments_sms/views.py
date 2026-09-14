@@ -19,7 +19,7 @@ from apps.orders.models import Order
 
 from .authentication import IsSmsDevice, SmsDeviceAuthentication
 from .matching import ingest_sms
-from .models import BankCard, Payment, PaymentStatus
+from .models import BankCard, Payment, PaymentStatus, SmsSource
 from .serializers import (
     BankCardSerializer,
     PaymentSerializer,
@@ -187,3 +187,23 @@ class SmsPingView(APIView):
     def get(self, request):
         device = request.auth
         return Response({"device": device.name, "server_time": timezone.now().isoformat()})
+
+
+class SmsSourcesView(APIView):
+    """The bank sender numbers the Android app should forward SMS from — the
+    same allow-list `_resolve_source` matches against server-side. The app
+    caches this and filters locally so it isn't uploading every SMS on the
+    phone, only the ones that could plausibly be a deposit notification."""
+
+    authentication_classes = [SmsDeviceAuthentication]
+    permission_classes = [IsSmsDevice]
+
+    @extend_schema(responses=dict, summary="Allowed SMS sender numbers for this device")
+    def get(self, request):
+        sources = SmsSource.objects.filter(is_active=True).order_by("id")
+        return Response({
+            "sources": [
+                {"phone_number": s.phone_number, "description": s.description}
+                for s in sources
+            ],
+        })

@@ -10,6 +10,7 @@ import androidx.core.app.NotificationCompat
 import com.caspintunel.smsbridge.MainActivity
 import com.caspintunel.smsbridge.NOTIFICATION_CHANNEL_ID
 import com.caspintunel.smsbridge.R
+import com.caspintunel.smsbridge.work.SourcesRefreshWorker
 
 /**
  * Persistent foreground service — its only real job is to keep the process
@@ -24,6 +25,7 @@ class SmsForegroundService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startForeground(NOTIFICATION_ID, buildNotification())
+        SourcesRefreshWorker.enqueuePeriodic(applicationContext)
         return START_STICKY
     }
 
