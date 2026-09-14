@@ -28,9 +28,14 @@ class ServiceSerializer(serializers.ModelSerializer):
         return obj.status == "on_hold" and not obj.online_at
 
     def get_validity_days(self, obj) -> int | None:
-        # how long the plan runs *once activated* (for the on-hold message)
+        # how long the plan runs *once activated* (for the on-hold message).
+        # Prefer the panel-synced figure; fall back to the plan's own
+        # duration_days so the message is correct even before the first sync
+        # (or if the panel never reports on_hold_expire_duration at all).
         if obj.on_hold_duration:
             return max(round(obj.on_hold_duration / 86400), 0)
+        if obj.current_plan_id and obj.current_plan.duration_days:
+            return obj.current_plan.duration_days
         return None
 
     def get_days_left(self, obj) -> int | None:

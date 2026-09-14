@@ -13,7 +13,7 @@ const T = {
     user: 'کاربر', order: 'سفارش', plan: 'پلن', account: 'نام اکانت', receipt: 'رسید',
     no_receipt: 'رسیدی پیوست نشده', reject_reason: 'دلیل رد؟', unspecified: 'نامشخص',
     load_fail: 'دریافت فهرست ناموفق بود', src_site: 'سایت', src_bot: 'ربات',
-    deposit_card: 'واریز به کارت',
+    deposit_card: 'واریز به کارت', customer_card: 'کارت اعلام‌شده توسط کاربر',
     tab_all: 'همه', tab_receipt: 'دارای فیش', tab_active: 'در انتظار', tab_expired: 'منقضی',
     expired_note: 'مهلت رزرو مبلغ یکتا به پایان رسیده است.',
     none_tab: 'موردی در این دسته نیست',
@@ -24,7 +24,7 @@ const T = {
     user: 'User', order: 'Order', plan: 'Plan', account: 'Account', receipt: 'Receipt',
     no_receipt: 'No receipt attached', reject_reason: 'Rejection reason?', unspecified: 'unspecified',
     load_fail: 'Failed to load the queue', src_site: 'Website', src_bot: 'Bot',
-    deposit_card: 'Deposited to card',
+    deposit_card: 'Deposited to card', customer_card: 'Card the customer selected',
     tab_all: 'All', tab_receipt: 'Has receipt', tab_active: 'Waiting', tab_expired: 'Expired',
     expired_note: 'The unique-amount reservation window has elapsed.',
     none_tab: 'Nothing in this tab',
@@ -146,6 +146,13 @@ export default function Payments() {
             {p.receipt_url
               ? <ReceiptThumb url={p.receipt_url} alt={s.receipt} variant="full" />
               : <div className="text-xs text-muted">{s.no_receipt}</div>}
+            {p.bank_card_number && (
+              <div className="pq-customer-card">
+                {s.customer_card}: <b className="mono-num" dir="ltr">{p.bank_card_number}</b>
+                {(p.bank_card_bank || p.bank_card_holder) &&
+                  ` — ${[p.bank_card_bank, p.bank_card_holder].filter(Boolean).join(' · ')}`}
+              </div>
+            )}
             {cards.length > 0 && (
               <label className="block text-xs text-muted">
                 {s.deposit_card}
@@ -195,5 +202,8 @@ const CSS = `
   background: color-mix(in srgb, var(--c-warning) 16%, transparent); color: var(--c-warning); }
 .pq-exp-note { font-size: 11.5px; color: var(--c-warning); background: color-mix(in srgb, var(--c-warning) 10%, transparent);
   border-radius: 8px; padding: 6px 10px; }
+.pq-customer-card { font-size: 11.5px; color: var(--c-text-muted); background: color-mix(in srgb, var(--c-primary) 7%, transparent);
+  border-radius: 8px; padding: 6px 10px; }
+.pq-customer-card b { color: var(--c-text); }
 `
 
