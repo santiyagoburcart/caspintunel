@@ -10,6 +10,7 @@ from .views.catalog import (
     PlanAdminViewSet,
     RoleViewSet,
     SmsAppDeviceViewSet,
+    SmsSourceViewSet,
     StaffViewSet,
     ThemeViewSet,
 )
@@ -52,6 +53,7 @@ router.register("backups", BackupViewSet, basename="admin-backups")
 router.register("panels", PanelAdminViewSet, basename="admin-panels")
 router.register("channels", RequiredChannelViewSet, basename="admin-channels")
 router.register("sms-devices", SmsAppDeviceViewSet, basename="admin-sms-devices")
+router.register("sms-sources", SmsSourceViewSet, basename="admin-sms-sources")
 
 urlpatterns = [
     path("auth/login/", StaffLoginView.as_view(), name="admin-login"),

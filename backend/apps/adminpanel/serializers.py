@@ -5,7 +5,7 @@ from apps.accounts.models import Permission, Role, Staff
 from apps.notifications.models import Notification
 from apps.ops.models import BackupLog, HealthCheck, ResourceStat
 from apps.panel.models import Panel, Service
-from apps.payments_sms.models import BankCard, Payment, SmsAppDevice
+from apps.payments_sms.models import BankCard, Payment, SmsAppDevice, SmsSource
 from apps.plans.models import Plan
 from apps.plans.serializers import PlanPanelDefaultMixin
 from apps.settings_app.models import Page, SiteConfig, Theme
@@ -209,6 +209,17 @@ class AdminBankCardSerializer(serializers.ModelSerializer):
 
     def get_deposit_count(self, obj) -> int | None:
         return getattr(obj, "deposit_count", None)
+
+
+class AdminSmsSourceSerializer(serializers.ModelSerializer):
+    """The bank sender numbers that deposit SMS are trusted from — see
+    `apps.payments_sms.matching._resolve_source` for how `phone_number` is
+    matched against an inbound SMS's sender (suffix-compared, last 10 digits)."""
+
+    class Meta:
+        model = SmsSource
+        fields = ("id", "phone_number", "description", "is_active", "created_at")
+        read_only_fields = ("created_at",)
 
 
 class AdminSmsDeviceSerializer(serializers.ModelSerializer):

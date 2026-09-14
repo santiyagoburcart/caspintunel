@@ -16,6 +16,17 @@ const T = {
     info: 'مبلغ افزوده به قیمت، به‌صورت تصادفی بین حداقل و حداکثر به فاکتورهای کارت‌به‌کارت اضافه می‌شود تا سیستم بتواند بدون تداخل، پرداخت هر کاربر را از روی شناسهٔ مبلغ به‌صورت خودکار تأیید کند.',
     lang_fa: 'فارسی', lang_en: 'English',
 
+    src_h: 'شماره‌های بانکی مجاز', src_sub: 'شماره‌های فرستندهٔ پیامک واریزی بانک — فقط پیامک از این شماره‌ها برای تأیید خودکار بررسی می‌شود',
+    src_info: 'این‌ها شماره‌هایی هستند که بانک با آن‌ها پیامک واریز وجه ارسال می‌کند (مثلاً ۱۰۰۰۸۵۵۶ برای بانک ملت). فقط پیامک‌های دریافتی از این شماره‌ها برای تأیید خودکار پرداخت بررسی می‌شوند؛ پیامک از شماره‌های دیگر ذخیره می‌شود ولی نادیده گرفته می‌شود.',
+    src_add: 'افزودن شماره', src_none: 'هنوز شماره‌ای ثبت نشده است — تا زمانی که شماره‌ای اضافه نشود، پیامک همهٔ فرستنده‌ها پذیرفته می‌شود.',
+    src_col_phone: 'شماره', src_col_desc: 'توضیحات', src_col_active: 'وضعیت', src_col_created: 'تاریخ ایجاد', src_col_actions: 'عملیات',
+    src_edit: 'ویرایش', src_delete: 'حذف',
+    src_delete_confirm: 'این شماره حذف شود؟ پیامک‌های آینده از این شماره دیگر برای تأیید خودکار بررسی نمی‌شوند.',
+    src_add_title: 'افزودن شمارهٔ مجاز', src_edit_title: 'ویرایش شمارهٔ مجاز',
+    src_phone_label: 'شماره فرستنده (مثلاً 10008556)', src_phone_placeholder: '10008556',
+    src_desc_label: 'توضیحات (مثلاً نام بانک)', src_desc_placeholder: 'مثلاً بانک ملت',
+    src_create_btn: 'افزودن شماره', src_save_btn: 'ذخیرهٔ تغییرات',
+
     dev_h: 'دستگاه‌های SMS', dev_sub: 'دستگاه‌های اندرویدی مجاز برای ارسال پیامک‌های واریزی به سرور',
     dev_add: 'افزودن دستگاه', dev_none: 'هنوز دستگاهی ثبت نشده است',
     dev_col_name: 'نام دستگاه', dev_col_token: 'توکن', dev_col_active: 'وضعیت',
@@ -38,6 +49,17 @@ const T = {
     info_h: 'About the unique random amount',
     info: 'A random amount between the min and max is added to each card-to-card invoice so the system can auto-verify every payment by its unique amount without clashing with other users’ bank transactions.',
     lang_fa: 'Persian', lang_en: 'English',
+
+    src_h: 'Allowed SMS Sources', src_sub: 'Sender numbers the bank uses for deposit SMS — only messages from these numbers are checked for auto-confirmation',
+    src_info: 'These are the phone numbers the bank sends deposit SMS from (e.g. 10008556 for Bank Mellat). Only incoming SMS from these numbers are checked for auto-confirming a payment; SMS from any other number is stored but ignored.',
+    src_add: 'Add number', src_none: 'No numbers registered yet — until one is added, SMS from any sender is accepted.',
+    src_col_phone: 'Number', src_col_desc: 'Description', src_col_active: 'Status', src_col_created: 'Created', src_col_actions: 'Actions',
+    src_edit: 'Edit', src_delete: 'Delete',
+    src_delete_confirm: 'Delete this number? Future SMS from it will no longer be checked for auto-confirmation.',
+    src_add_title: 'Add an allowed number', src_edit_title: 'Edit allowed number',
+    src_phone_label: 'Sender number (e.g. 10008556)', src_phone_placeholder: '10008556',
+    src_desc_label: 'Description (e.g. bank name)', src_desc_placeholder: 'e.g. Bank Mellat',
+    src_create_btn: 'Add number', src_save_btn: 'Save changes',
 
     dev_h: 'SMS Devices', dev_sub: 'Android devices authorized to forward deposit SMS to the server',
     dev_add: 'Add device', dev_none: 'No devices registered yet',
@@ -76,6 +98,154 @@ const RANGE = {
   backup_interval_minutes: [5, 43200], unique_amount_reservation_minutes: [5, 720],
   unique_amount_min: [1, 100000], unique_amount_max: [1, 100000],
   alert_volume_percent: [1, 100], alert_expire_days: [1, 60],
+}
+
+const SRC_MODAL_TITLE = { add: 'src_add_title', edit: 'src_edit_title' }
+
+// simple add/edit form for one allowed SMS sender number — no token flow,
+// unlike the device modal below.
+function SmsSourceModal({ mode, source, s, t, onClose, onSaved }) {
+  const [phone, setPhone] = useState(mode === 'edit' && source ? source.phone_number : '')
+  const [desc, setDesc] = useState(mode === 'edit' && source ? source.description : '')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+
+  const submit = async (e) => {
+    e.preventDefault(); setBusy(true); setErr('')
+    const body = { phone_number: phone.trim(), description: desc.trim() }
+    try {
+      if (mode === 'edit') await api.patch(`/admin/sms-sources/${source.id}/`, body)
+      else await api.post('/admin/sms-sources/', body)
+      onSaved()
+      onClose()
+    } catch (e2) { setErr(apiError(e2)) } finally { setBusy(false) }
+  }
+
+  return (
+    <div className="sdm-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <form className="sdm-modal card" onSubmit={submit} role="dialog" aria-modal="true">
+        <div className="sdm-modal-head">
+          <h2 className="font-bold">{s[SRC_MODAL_TITLE[mode]]}</h2>
+          <button type="button" className="sdm-icon-btn" onClick={onClose} aria-label={t('cancel')}>✕</button>
+        </div>
+
+        <div className="sdm-modal-body">
+          <Alert>{err}</Alert>
+          <Field label={s.src_phone_label}>
+            <input className="input mono-num" dir="ltr" required autoFocus inputMode="numeric"
+              placeholder={s.src_phone_placeholder}
+              value={phone} onChange={(e) => setPhone(e.target.value)} />
+          </Field>
+          <Field label={s.src_desc_label}>
+            <input className="input" placeholder={s.src_desc_placeholder}
+              value={desc} onChange={(e) => setDesc(e.target.value)} />
+          </Field>
+        </div>
+
+        <div className="sdm-modal-foot">
+          <button type="button" className="btn-ghost text-sm" onClick={onClose}>{t('cancel')}</button>
+          <button type="submit" className="btn-primary text-sm" disabled={busy}>
+            {busy ? '…' : (mode === 'edit' ? s.src_save_btn : s.src_create_btn)}
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
+function SmsSourcesSection({ t, s, lang }) {
+  const [sources, setSources] = useState(null)
+  const [err, setErr] = useState('')
+  const [modal, setModal] = useState(null) // { mode: 'add' } | { mode: 'edit', source }
+
+  const load = () =>
+    api.get('/admin/sms-sources/')
+      .then((r) => { setSources(r.data.results ?? r.data); setErr('') })
+      .catch((e) => { setSources([]); setErr(apiError(e, t('load_error'))) })
+  useEffect(() => { load() }, [])
+
+  const toggle = async (src) => {
+    setErr('')
+    try {
+      await api.patch(`/admin/sms-sources/${src.id}/`, { is_active: !src.is_active })
+      setSources((cur) => cur.map((x) => (x.id === src.id ? { ...x, is_active: !x.is_active } : x)))
+    } catch (e2) { setErr(apiError(e2)) }
+  }
+  const del = async (src) => {
+    if (!confirm(s.src_delete_confirm)) return
+    try { await api.delete(`/admin/sms-sources/${src.id}/`); load() } catch (e2) { setErr(apiError(e2)) }
+  }
+
+  return (
+    <div className="card sms-dev-card">
+      <div className="sms-dev-head">
+        <div>
+          <h3 className="font-bold text-sm">{s.src_h}</h3>
+          <p className="text-xs text-muted mt-0.5">{s.src_sub}</p>
+        </div>
+        <button type="button" className="btn-primary text-sm" onClick={() => setModal({ mode: 'add' })}>
+          {s.src_add}
+        </button>
+      </div>
+
+      <div className="sms-src-info">{s.src_info}</div>
+
+      <Alert>{err}</Alert>
+
+      {sources === null ? (
+        <div className="grid place-items-center py-10"><Spinner /></div>
+      ) : sources.length === 0 ? (
+        <div className="sms-dev-empty">{s.src_none}</div>
+      ) : (
+        <div className="sms-dev-table-wrap">
+          <table className="sms-dev-table">
+            <thead>
+              <tr>
+                <th>{s.src_col_phone}</th>
+                <th>{s.src_col_desc}</th>
+                <th>{s.src_col_active}</th>
+                <th>{s.src_col_created}</th>
+                <th>{s.src_col_actions}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sources.map((src) => (
+                <tr key={src.id}>
+                  <td data-label={s.src_col_phone}><code className="mono-num" dir="ltr">{src.phone_number}</code></td>
+                  <td data-label={s.src_col_desc}>{src.description || '—'}</td>
+                  <td data-label={s.src_col_active}>
+                    <Toggle checked={src.is_active} onChange={() => toggle(src)} label={s.src_col_active} />
+                  </td>
+                  <td data-label={s.src_col_created}>{jalali(src.created_at, false, lang)}</td>
+                  <td data-label={s.src_col_actions}>
+                    <div className="sms-dev-actions">
+                      <button type="button" className="btn-ghost text-xs" onClick={() => setModal({ mode: 'edit', source: src })}>
+                        {s.src_edit}
+                      </button>
+                      <button type="button" className="btn-ghost text-xs sms-dev-del" onClick={() => del(src)}>
+                        {s.src_delete}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {modal && (
+        <SmsSourceModal
+          mode={modal.mode}
+          source={modal.source}
+          s={s}
+          t={t}
+          onClose={() => setModal(null)}
+          onSaved={load}
+        />
+      )}
+    </div>
+  )
 }
 
 const DEV_MODAL_TITLE = { add: 'dev_add_title', reveal: 'dev_reveal_title', edit: 'dev_edit_title' }
@@ -395,6 +565,7 @@ export default function Settings() {
         </div>
       </div>
 
+      <SmsSourcesSection t={t} s={s} lang={lang} />
       <SmsDevicesSection t={t} s={s} lang={lang} />
     </div>
   )
@@ -425,11 +596,14 @@ const CSS = `
 .st-info-ico { width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0; display: grid; place-items: center;
   background: color-mix(in srgb, var(--c-primary) 13%, transparent); color: var(--c-primary); }
 
-/* ---- SMS devices section ---- */
+/* ---- SMS sources & devices sections (share the same table/modal look) ---- */
 .sms-dev-card { padding: 0; overflow: hidden; }
 .sms-dev-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between;
   padding: 18px 20px; border-bottom: 1px solid var(--c-border); }
 .sms-dev-empty { padding: 32px 20px; text-align: center; color: var(--c-text-muted); font-size: 13px; }
+.sms-src-info { margin: 16px 20px 0; padding: 12px 14px; border-radius: 12px; font-size: 12px; line-height: 1.8;
+  color: var(--c-text-muted); background: color-mix(in srgb, var(--c-primary) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--c-primary) 16%, transparent); }
 
 .sms-dev-table-wrap { overflow-x: auto; }
 .sms-dev-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }

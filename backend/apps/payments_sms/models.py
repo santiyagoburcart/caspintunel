@@ -31,6 +31,7 @@ class SmsSource(models.Model):
     phone_number = models.CharField(max_length=20)
     description = models.CharField(max_length=255, blank=True)
     is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
 
     class Meta:
         db_table = "sms_source"

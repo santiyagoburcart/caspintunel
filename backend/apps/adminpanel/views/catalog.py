@@ -7,7 +7,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from apps.accounts.models import Permission, Role, Staff
-from apps.payments_sms.models import BankCard, PaymentStatus, SmsAppDevice
+from apps.payments_sms.models import BankCard, PaymentStatus, SmsAppDevice, SmsSource
 from apps.plans.models import Plan
 from apps.settings_app.models import Page, Theme
 
@@ -15,6 +15,7 @@ from ..serializers import (
     AdminPlanSerializer,
     AdminBankCardSerializer,
     AdminSmsDeviceSerializer,
+    AdminSmsSourceSerializer,
     PageSerializer,
     PermissionSerializer,
     RoleSerializer,
@@ -51,6 +52,15 @@ class BankCardViewSet(AdminViewSet):
         data = AdminBankCardSerializer(rows, many=True).data
         total = sum((Decimal(r["deposit_total"] or 0) for r in data), Decimal(0))
         return Response({"cards": data, "grand_total": total})
+
+
+class SmsSourceViewSet(AdminViewSet):
+    """The bank sender numbers allowed to auto-confirm deposits (see
+    apps.payments_sms.matching._resolve_source)."""
+
+    queryset = SmsSource.objects.all().order_by("-created_at")
+    serializer_class = AdminSmsSourceSerializer
+    perms_map = {"GET": ["sms.manage"], "*": ["sms.manage"]}
 
 
 class SmsAppDeviceViewSet(AdminViewSet):
