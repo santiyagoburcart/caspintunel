@@ -2,18 +2,19 @@ from decimal import Decimal
 
 from django.db.models import Count, Q, Sum
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters
+from rest_framework import filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from apps.accounts.models import Permission, Role, Staff
-from apps.payments_sms.models import BankCard, PaymentStatus
+from apps.payments_sms.models import BankCard, PaymentStatus, SmsAppDevice
 from apps.plans.models import Plan
 from apps.settings_app.models import Page, Theme
 
 from ..serializers import (
     AdminPlanSerializer,
     AdminBankCardSerializer,
+    AdminSmsDeviceSerializer,
     PageSerializer,
     PermissionSerializer,
     RoleSerializer,
@@ -50,6 +51,30 @@ class BankCardViewSet(AdminViewSet):
         data = AdminBankCardSerializer(rows, many=True).data
         total = sum((Decimal(r["deposit_total"] or 0) for r in data), Decimal(0))
         return Response({"cards": data, "grand_total": total})
+
+
+class SmsAppDeviceViewSet(AdminViewSet):
+    """The Android SMS-forwarding app's device tokens (see mobile_sms/).
+    List/patch/delete only ever expose the masked tail — the real token is
+    returned once on create, and again on demand via the `token` action."""
+
+    queryset = SmsAppDevice.objects.all().order_by("-created_at")
+    serializer_class = AdminSmsDeviceSerializer
+    perms_map = {"GET": ["sms.manage"], "*": ["sms.manage"]}
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        data = dict(serializer.data)
+        data["api_token"] = serializer.instance.api_token
+        headers = self.get_success_headers(serializer.data)
+        return Response(data, status=status.HTTP_201_CREATED, headers=headers)
+
+    @action(detail=True, methods=["get"], url_path="token")
+    def token(self, request, pk=None):
+        device = self.get_object()
+        return Response({"api_token": device.api_token})
 
 
 class PageViewSet(AdminViewSet):

@@ -5,7 +5,7 @@ from apps.accounts.models import Permission, Role, Staff
 from apps.notifications.models import Notification
 from apps.ops.models import BackupLog, HealthCheck, ResourceStat
 from apps.panel.models import Panel, Service
-from apps.payments_sms.models import BankCard, Payment
+from apps.payments_sms.models import BankCard, Payment, SmsAppDevice
 from apps.plans.models import Plan
 from apps.plans.serializers import PlanPanelDefaultMixin
 from apps.settings_app.models import Page, SiteConfig, Theme
@@ -209,6 +209,22 @@ class AdminBankCardSerializer(serializers.ModelSerializer):
 
     def get_deposit_count(self, obj) -> int | None:
         return getattr(obj, "deposit_count", None)
+
+
+class AdminSmsDeviceSerializer(serializers.ModelSerializer):
+    """List/create/patch view — the real `api_token` is never included here.
+    A fresh token is only ever returned by the create response (once) and by
+    the dedicated reveal action; everywhere else only the masked tail shows."""
+
+    token_masked = serializers.SerializerMethodField()
+
+    class Meta:
+        model = SmsAppDevice
+        fields = ("id", "name", "is_active", "token_masked", "last_seen_at", "created_at")
+        read_only_fields = ("token_masked", "last_seen_at", "created_at")
+
+    def get_token_masked(self, obj) -> str:
+        return f"****{obj.api_token[-8:]}" if obj.api_token else ""
 
 
 class PageSerializer(serializers.ModelSerializer):
