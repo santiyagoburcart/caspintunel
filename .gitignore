@@ -70,3 +70,12 @@ nginx/certbot-webroot/
 
 # ---- mail server runtime state (accounts, dkim keys, mailboxes) ----
 mail/
+
+# ---- exceptions (must stay last — gitignore uses last-match-wins) ----
+# the SMS app's own "data" package (SharedPreferences/Room code) and its
+# committed release APK would otherwise be swallowed by the generic
+# `data/` and `*.apk` rules above
+!mobile_sms/app/src/main/java/com/caspintunel/smsbridge/data/
+!mobile_sms/app/src/main/java/com/caspintunel/smsbridge/data/*
+!mobile_sms/release/
+!mobile_sms/release/*

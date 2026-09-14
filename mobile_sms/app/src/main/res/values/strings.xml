@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">CaspinTunel SMS</string>
+
+    <string name="notification_channel_name">سرویس پیامک کاسپین</string>
+    <string name="notification_channel_desc">اجرای پس‌زمینه برای دریافت و ارسال پیامک‌های واریزی</string>
+    <string name="notification_title">CaspinTunel SMS — فعال</string>
+    <string name="notification_text">در حال گوش دادن به پیامک‌های ورودی</string>
+
+    <string name="settings_title">تنظیمات اتصال</string>
+    <string name="server_url_label">آدرس سرور (مثلاً https://panel.example.com)</string>
+    <string name="api_token_label">توکن دستگاه (API Token)</string>
+    <string name="btn_save">ذخیره</string>
+    <string name="btn_test_connection">ذخیره و آزمایش اتصال</string>
+    <string name="settings_fill_both">آدرس سرور و توکن را وارد کنید</string>
+    <string name="settings_testing">در حال آزمایش اتصال…</string>
+    <string name="settings_test_ok">اتصال موفق ✅ (دستگاه: %1$s)</string>
+    <string name="settings_test_fail">اتصال ناموفق: %1$s</string>
+
+    <string name="status_not_configured">پیکربندی نشده</string>
+    <string name="status_not_configured_detail">برای شروع، آدرس سرور و توکن دستگاه را در تنظیمات وارد کنید</string>
+    <string name="status_connected">متصل</string>
+    <string name="status_error">خطا در اتصال</string>
+    <string name="status_unknown">وضعیت نامشخص</string>
+    <string name="status_unknown_detail">هنوز آزمایشی انجام نشده است</string>
+
+    <string name="btn_settings">تنظیمات</string>
+    <string name="btn_test_ping">آزمایش اتصال</string>
+    <string name="recent_sms_title">۲۰ پیامک اخیر</string>
+    <string name="empty_log">هنوز پیامکی دریافت نشده است</string>
+
+    <string name="log_status_sent">ارسال شد</string>
+    <string name="log_status_failed">ناموفق</string>
+    <string name="log_status_pending">در انتظار</string>
+</resources>
