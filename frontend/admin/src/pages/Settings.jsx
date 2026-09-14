@@ -20,11 +20,11 @@ const T = {
     dev_add: 'افزودن دستگاه', dev_none: 'هنوز دستگاهی ثبت نشده است',
     dev_col_name: 'نام دستگاه', dev_col_token: 'توکن', dev_col_active: 'وضعیت',
     dev_col_seen: 'آخرین اتصال', dev_col_created: 'تاریخ ایجاد', dev_col_actions: 'عملیات',
-    dev_reveal: 'نمایش توکن', dev_delete: 'حذف', dev_never: 'هرگز',
+    dev_reveal: 'نمایش توکن', dev_edit: 'ویرایش', dev_delete: 'حذف', dev_never: 'هرگز',
     dev_delete_confirm: 'این دستگاه حذف شود؟ اتصال آن به سرور بلافاصله قطع می‌شود.',
-    dev_add_title: 'افزودن دستگاه جدید', dev_reveal_title: 'توکن دستگاه',
+    dev_add_title: 'افزودن دستگاه جدید', dev_reveal_title: 'توکن دستگاه', dev_edit_title: 'ویرایش نام دستگاه',
     dev_name_label: 'نام دستگاه (مثلاً گوشی اپراتور)', dev_name_placeholder: 'مثلاً Samsung A54 — اپراتور اصلی',
-    dev_create_btn: 'ایجاد دستگاه', dev_done: 'متوجه شدم',
+    dev_create_btn: 'ایجاد دستگاه', dev_save_btn: 'ذخیرهٔ تغییرات', dev_done: 'متوجه شدم',
     dev_token_warn: 'این توکن دیگر نمایش داده نمی‌شود — همین حالا آن را کپی و در برنامهٔ اندروید وارد کنید.',
     dev_copy: 'کپی', dev_copied: 'کپی شد',
   },
@@ -43,11 +43,11 @@ const T = {
     dev_add: 'Add device', dev_none: 'No devices registered yet',
     dev_col_name: 'Device name', dev_col_token: 'Token', dev_col_active: 'Status',
     dev_col_seen: 'Last seen', dev_col_created: 'Created', dev_col_actions: 'Actions',
-    dev_reveal: 'Reveal token', dev_delete: 'Delete', dev_never: 'Never',
+    dev_reveal: 'Reveal token', dev_edit: 'Edit', dev_delete: 'Delete', dev_never: 'Never',
     dev_delete_confirm: 'Delete this device? It will be disconnected from the server immediately.',
-    dev_add_title: 'Add a new device', dev_reveal_title: 'Device token',
+    dev_add_title: 'Add a new device', dev_reveal_title: 'Device token', dev_edit_title: 'Edit device name',
     dev_name_label: 'Device name (e.g. the operator\'s phone)', dev_name_placeholder: 'e.g. Samsung A54 — main operator',
-    dev_create_btn: 'Create device', dev_done: 'Got it',
+    dev_create_btn: 'Create device', dev_save_btn: 'Save changes', dev_done: 'Got it',
     dev_token_warn: 'This token will not be shown again — copy it now and paste it into the Android app.',
     dev_copy: 'Copy', dev_copied: 'Copied',
   },
@@ -78,15 +78,19 @@ const RANGE = {
   alert_volume_percent: [1, 100], alert_expire_days: [1, 60],
 }
 
-// mode: 'add' (name form -> shows the new token once) | 'reveal' (fetches an
-// existing device's token on open). Either way, once a token is in hand it's
-// shown the same way — copy button + "won't be shown again" style warning.
+const DEV_MODAL_TITLE = { add: 'dev_add_title', reveal: 'dev_reveal_title', edit: 'dev_edit_title' }
+
+// mode: 'add' (name form -> shows the new token once) | 'edit' (name form ->
+// PATCHes the name, no token involved) | 'reveal' (fetches an existing
+// device's token on open). Whenever a token is in hand it's shown the same
+// way — copy button + "won't be shown again" style warning.
 function SmsDeviceModal({ mode, device, s, t, onClose, onCreated }) {
-  const [name, setName] = useState('')
+  const [name, setName] = useState(mode === 'edit' && device ? device.name : '')
   const [token, setToken] = useState(null)
   const [busy, setBusy] = useState(mode === 'reveal')
   const [err, setErr] = useState('')
   const [copied, setCopied] = useState(false)
+  const showsForm = mode === 'add' || mode === 'edit'
 
   useEffect(() => {
     if (mode !== 'reveal') return
@@ -99,9 +103,15 @@ function SmsDeviceModal({ mode, device, s, t, onClose, onCreated }) {
   const submit = async (e) => {
     e.preventDefault(); setBusy(true); setErr('')
     try {
-      const { data } = await api.post('/admin/sms-devices/', { name })
-      setToken(data.api_token)
-      onCreated()
+      if (mode === 'edit') {
+        await api.patch(`/admin/sms-devices/${device.id}/`, { name })
+        onCreated()
+        onClose()
+      } else {
+        const { data } = await api.post('/admin/sms-devices/', { name })
+        setToken(data.api_token)
+        onCreated()
+      }
     } catch (e2) { setErr(apiError(e2)) } finally { setBusy(false) }
   }
 
@@ -114,14 +124,14 @@ function SmsDeviceModal({ mode, device, s, t, onClose, onCreated }) {
     <div className="sdm-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="sdm-modal card" role="dialog" aria-modal="true">
         <div className="sdm-modal-head">
-          <h2 className="font-bold">{mode === 'add' ? s.dev_add_title : s.dev_reveal_title}</h2>
+          <h2 className="font-bold">{s[DEV_MODAL_TITLE[mode]]}</h2>
           <button type="button" className="sdm-icon-btn" onClick={onClose} aria-label={t('cancel')}>✕</button>
         </div>
 
         <div className="sdm-modal-body">
           <Alert>{err}</Alert>
 
-          {mode === 'add' && !token && (
+          {showsForm && !token && (
             <form id="sms-dev-form" onSubmit={submit}>
               <Field label={s.dev_name_label}>
                 <input className="input" required autoFocus placeholder={s.dev_name_placeholder}
@@ -148,11 +158,11 @@ function SmsDeviceModal({ mode, device, s, t, onClose, onCreated }) {
         <div className="sdm-modal-foot">
           {token ? (
             <button type="button" className="btn-primary text-sm" onClick={onClose}>{s.dev_done}</button>
-          ) : mode === 'add' ? (
+          ) : showsForm ? (
             <>
               <button type="button" className="btn-ghost text-sm" onClick={onClose}>{t('cancel')}</button>
               <button type="submit" form="sms-dev-form" className="btn-primary text-sm" disabled={busy}>
-                {busy ? '…' : s.dev_create_btn}
+                {busy ? '…' : (mode === 'edit' ? s.dev_save_btn : s.dev_create_btn)}
               </button>
             </>
           ) : (
@@ -230,6 +240,9 @@ function SmsDevicesSection({ t, s, lang }) {
                   <td data-label={s.dev_col_created}>{jalali(d.created_at, false, lang)}</td>
                   <td data-label={s.dev_col_actions}>
                     <div className="sms-dev-actions">
+                      <button type="button" className="btn-ghost text-xs" onClick={() => setModal({ mode: 'edit', device: d })}>
+                        {s.dev_edit}
+                      </button>
                       <button type="button" className="btn-ghost text-xs" onClick={() => setModal({ mode: 'reveal', device: d })}>
                         {s.dev_reveal}
                       </button>
