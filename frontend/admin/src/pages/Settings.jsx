@@ -3,6 +3,7 @@ import { api, apiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 import { jalali, relTime } from '../lib/format'
 import { Alert, Field, Spinner, Toggle } from '../components/ui'
+import { useToast } from '../components/Toast'
 
 const T = {
   fa: {
@@ -444,13 +445,13 @@ function SmsDevicesSection({ t, s, lang }) {
 
 export default function Settings() {
   const { t, lang } = useI18n()
+  const toast = useToast()
   const s = T[lang] || T.fa
   const h = HINT[lang] || HINT.fa
   const [rows, setRows] = useState(null)
   const [form, setForm] = useState({})
   const [initial, setInitial] = useState({})
   const [err, setErr] = useState('')
-  const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState(false)
 
   const load = () =>
@@ -463,18 +464,23 @@ export default function Settings() {
   useEffect(() => { load() }, [])
 
   const save = async (e) => {
-    e.preventDefault(); setBusy(true); setErr(''); setMsg('')
+    e.preventDefault(); setBusy(true); setErr('')
+    toast.loading(t('action_in_progress'))
     try {
       await api.put('/admin/settings/', form)
-      setMsg(t('saved')); setTimeout(() => setMsg(''), 2500); load()
-    } catch (e2) { setErr(apiError(e2)) } finally { setBusy(false) }
+      toast.success(t('saved'))
+      load()
+    } catch (e2) { toast.error(apiError(e2)) } finally { setBusy(false) }
   }
   const reset = () => setForm(initial)
 
   if (!rows) return <div className="grid place-items-center py-16"><Spinner /></div>
 
-  const nums = rows.filter((x) => x.type === 'int')
-  const bools = rows.filter((x) => x.type === 'bool')
+  // moved to the Telegram Bots page (they're bot-specific, not general system
+  // settings) — keep them out of this generic list so they don't show twice
+  const MOVED_TO_BOTS = ['force_channel_join', 'force_share_phone', 'backup_interval_minutes']
+  const nums = rows.filter((x) => x.type === 'int' && !MOVED_TO_BOTS.includes(x.key))
+  const bools = rows.filter((x) => x.type === 'bool' && !MOVED_TO_BOTS.includes(x.key))
   const strs = rows.filter((x) => x.type === 'str')
 
   return (
@@ -495,7 +501,6 @@ export default function Settings() {
       </div>
 
       <Alert>{err}</Alert>
-      {msg && <Alert kind="success">{msg}</Alert>}
 
       <form id="settings-form" onSubmit={save} className="card st-card">
         <div className="st-card-head">

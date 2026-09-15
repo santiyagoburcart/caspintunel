@@ -1,13 +1,15 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api, apiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
-import { jalali, toman } from '../lib/format'
+import { toman } from '../lib/format'
 import { Alert, Copyable, Field, Spinner, StatusBadge } from '../components/ui'
 import { AuthImage } from '../components/AuthImage'
+import { useToast } from '../components/Toast'
 
 export default function Checkout() {
   const { t, lang } = useI18n()
+  const toast = useToast()
   const [sp] = useSearchParams()
   const planId = sp.get('plan')
   const renewId = sp.get('renew')
@@ -69,6 +71,7 @@ export default function Checkout() {
   const createOrder = async (e) => {
     e.preventDefault()
     setBusy(true); setErr('')
+    toast.loading(t('action_in_progress'))
     try {
       const body = renewId
         ? { plan: Number(chosenPlan), type: 'renew', service: Number(renewId) }
@@ -77,12 +80,14 @@ export default function Checkout() {
       const { data } = await api.post('/orders/', body)
       setOrder(data.order)
       setInstructions(data.payment_instructions)
-    } catch (e2) { setErr(apiError(e2, t('order_failed'))) }
+      toast.dismiss()
+    } catch (e2) { const msg = apiError(e2, t('order_failed')); setErr(msg); toast.error(msg) }
     finally { setBusy(false) }
   }
 
   const uploadReceipt = async (file) => {
     setBusy(true); setErr('')
+    toast.loading(t('action_in_progress'))
     try {
       const fd = new FormData()
       fd.append('order', order.id)
@@ -93,7 +98,8 @@ export default function Checkout() {
       // refresh the order so payment_status reflects "pending"
       const o = await api.get(`/orders/${order.id}/`)
       setOrder(o.data)
-    } catch (e2) { setErr(apiError(e2)) }
+      toast.success(t('receipt_saved'))
+    } catch (e2) { const msg = apiError(e2); setErr(msg); toast.error(msg) }
     finally { setBusy(false) }
   }
 
@@ -154,6 +160,10 @@ export default function Checkout() {
 
   return (
     <div className="card mx-auto max-w-md space-y-4">
+      <style>{`
+        .ctd-ring { position: relative; margin: 4px auto 0; display: grid; place-items: center; }
+        .ctd-ring-label { position: absolute; font-size: 15px; font-weight: 800; }
+      `}</style>
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold">{order.status === 'completed' ? t('checkout') : t('pay')}</h1>
         <StatusBadge status={order.status} />
@@ -194,6 +204,8 @@ export default function Checkout() {
             <div className="text-xs text-muted">{t('pay_exact')}</div>
           </div>
 
+          {instructions?.reserved_until && <CountdownRing deadline={instructions.reserved_until} />}
+
           {(instructions?.cards || []).length > 1 ? (
             <div className="space-y-2">
               <div className="text-xs text-muted">{t('choose_card')}</div>
@@ -230,10 +242,6 @@ export default function Checkout() {
             </div>
           ) : (
             <Alert kind="warning">{t('no_cards')}</Alert>
-          )}
-
-          {instructions?.reserved_until && (
-            <div className="text-xs text-muted">{t('deadline')}: {jalali(instructions.reserved_until, true, lang)}</div>
           )}
 
           {/* --- receipt status --- */}
@@ -313,6 +321,49 @@ function CustomVolumePicker({ plan, value, onChange, t, lang }) {
         <span>{min} GB</span>
         <span>{max} GB</span>
       </div>
+    </div>
+  )
+}
+
+/** Visual depletion ring for the unique-amount reservation window — shows
+ * only the remaining mm:ss (no date), colored green -> amber (<5min) ->
+ * red (<2min). The "100%" reference is however much time was left the
+ * moment this first rendered, not a value fetched from settings. */
+function CountdownRing({ deadline }) {
+  const [now, setNow] = useState(Date.now())
+  const totalMsRef = useRef(null)
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  const deadlineMs = new Date(deadline).getTime()
+  const remainingMs = Math.max(0, deadlineMs - now)
+  if (totalMsRef.current == null) totalMsRef.current = remainingMs || 1
+  const pct = Math.min(1, remainingMs / totalMsRef.current)
+
+  const totalSeconds = Math.floor(remainingMs / 1000)
+  const mm = String(Math.floor(totalSeconds / 60)).padStart(2, '0')
+  const ss = String(totalSeconds % 60).padStart(2, '0')
+
+  const minutesLeft = remainingMs / 60000
+  const color = minutesLeft < 2 ? 'var(--c-danger)' : minutesLeft < 5 ? 'var(--c-warning)' : 'var(--c-success)'
+
+  const size = 80
+  const stroke = 6
+  const r = (size - stroke) / 2
+  const circumference = 2 * Math.PI * r
+
+  return (
+    <div className="ctd-ring" style={{ width: size, height: size }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--c-border)" strokeWidth={stroke} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke}
+          strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={circumference * (1 - pct)}
+          transform={`rotate(-90 ${size / 2} ${size / 2})`} style={{ transition: 'stroke-dashoffset 1s linear, stroke .3s' }} />
+      </svg>
+      <div className="ctd-ring-label mono-num" dir="ltr" style={{ color }}>{mm}:{ss}</div>
     </div>
   )
 }

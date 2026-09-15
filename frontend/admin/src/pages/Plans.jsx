@@ -3,6 +3,7 @@ import { api, apiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 import { toman, digits } from '../lib/format'
 import { Alert, Field, Spinner, Toggle } from '../components/ui'
+import { useToast } from '../components/Toast'
 
 const GB = 1024 ** 3
 
@@ -114,11 +115,11 @@ const numOrNull = (v) => (v === '' || v === null ? null : Number(v))
 
 export default function Plans() {
   const { t, lang } = useI18n()
+  const toast = useToast()
   const s = T[lang] || T.fa
   const [rows, setRows] = useState(null)
   const [edit, setEdit] = useState(null)
   const [err, setErr] = useState('')
-  const [toast, setToast] = useState('')
   const [panels, setPanels] = useState([])
   const [panelGroups, setPanelGroups] = useState(null)
   const [groupsErr, setGroupsErr] = useState('')
@@ -174,15 +175,19 @@ export default function Plans() {
       max_gb: isVolume ? numOrNull(edit.max_gb) : null,
       price_per_gb: isVolume ? numOrNull(edit.price_per_gb) : null,
     }
+    toast.loading(t('action_in_progress'))
     try {
       if (edit.id) await api.patch(`/admin/plans/${edit.id}/`, body)
       else await api.post('/admin/plans/', body)
       setEdit(null); load()
-      setToast(s.saved_ok); setTimeout(() => setToast(''), 2200)
-    } catch (e2) { setErr(apiError(e2)) }
+      toast.success(s.saved_ok)
+    } catch (e2) { setErr(apiError(e2)); toast.error(apiError(e2)) }
   }
   const del = async (id) => {
-    if (confirm(s.del_confirm)) { await api.delete(`/admin/plans/${id}/`); load() }
+    if (!confirm(s.del_confirm)) return
+    toast.loading(t('action_in_progress'))
+    try { await api.delete(`/admin/plans/${id}/`); load(); toast.success(t('deleted')) }
+    catch (e2) { toast.error(apiError(e2)) }
   }
   const quickToggleActive = async (r) => {
     setRows((cur) => cur.map((x) => (x.id === r.id ? { ...x, is_active: !r.is_active } : x)))
@@ -191,7 +196,7 @@ export default function Plans() {
   const copyLink = (r) => {
     const url = `${location.origin}/checkout?plan=${r.id}`
     navigator.clipboard?.writeText(url)
-    setToast(s.link_copied); setTimeout(() => setToast(''), 2000)
+    toast.success(s.link_copied)
   }
 
   const stats = useMemo(() => {
@@ -253,7 +258,6 @@ export default function Plans() {
       </div>
 
       <Alert>{err}</Alert>
-      {toast && <Alert kind="success">{toast}</Alert>}
 
       {edit && (
         <form onSubmit={save} className="card pl-form grid gap-4 sm:grid-cols-2">

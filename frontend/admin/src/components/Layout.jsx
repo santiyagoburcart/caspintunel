@@ -29,10 +29,11 @@ const CASPIAN_GROUPS = [
   ['nav_group_core', [
     ['/', 'dashboard', null, 'dashboard'],
     ['/monitoring', 'monitoring', 'monitoring.view', 'monitoring'],
+    ['/panel-link', 'panel_link', 'settings.manage', 'panel'],
+  ]],
+  ['nav_group_users', [
     ['/users', 'users', 'users.view', 'users'],
     ['/plans', 'plans', 'plans.manage', 'plans'],
-    ['/panel-link', 'panel_link', 'settings.manage', 'panel'],
-    ['/bots', 'bots', 'bots.manage', 'bots'],
   ]],
   ['nav_group_finance', [
     ['/payments', 'payments', 'payment.view', 'payments'],
@@ -43,6 +44,7 @@ const CASPIAN_GROUPS = [
   ['nav_group_config', [
     ['/branding', 'branding', 'settings.manage', 'branding'],
     ['/settings', 'settings', 'settings.manage', 'settings'],
+    ['/bots', 'bots', 'bots.manage', 'bots'],
     ['/pages', 'pages', 'pages.manage', 'pages'],
     ['/themes', 'themes', 'themes.manage', 'themes'],
     ['/roles', 'roles', 'roles.manage', 'roles'],

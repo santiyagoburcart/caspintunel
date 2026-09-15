@@ -4,6 +4,7 @@ import { api, apiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 import { toman, digits } from '../lib/format'
 import { Alert, Field, Spinner, Toggle } from '../components/ui'
+import { useToast } from '../components/Toast'
 
 const blank = { card_number: '', holder_name: '', bank_name: '', sort_order: 0, is_active: true }
 
@@ -122,6 +123,7 @@ function BankCard({ c, t, lang, preview = false }) {
 }
 
 function CardModal({ row, s, t, lang, onClose, onSaved }) {
+  const toast = useToast()
   const editing = !!row
   const [f, setF] = useState(() => (row ? { ...blank, ...row } : { ...blank }))
   const [busy, setBusy] = useState(false)
@@ -136,11 +138,13 @@ function CardModal({ row, s, t, lang, onClose, onSaved }) {
       sort_order: Number(f.sort_order) || 0,
       is_active: f.is_active,
     }
+    toast.loading(t('action_in_progress'))
     try {
       if (editing) await api.patch(`/admin/cards/${row.id}/`, body)
       else await api.post('/admin/cards/', body)
+      toast.success(t('saved'))
       onSaved()
-    } catch (e2) { setErr(apiError(e2)) } finally { setBusy(false) }
+    } catch (e2) { setErr(apiError(e2)); toast.error(apiError(e2)) } finally { setBusy(false) }
   }
 
   return (
@@ -206,11 +210,11 @@ function CardModal({ row, s, t, lang, onClose, onSaved }) {
 
 export default function Cards() {
   const { t, lang } = useI18n()
+  const toast = useToast()
   const s = L[lang] || L.fa
   const [d, setD] = useState(null)
   const [modal, setModal] = useState(null) // { row } | { row: null } | null
   const [err, setErr] = useState('')
-  const [toast, setToast] = useState('')
   const [range, setRange] = useState(null) // { min, max }
 
   const load = () =>
@@ -230,13 +234,15 @@ export default function Cards() {
     try {
       await api.patch(`/admin/cards/${c.id}/`, { is_active: !c.is_active })
       setD((p) => ({ ...p, cards: p.cards.map((x) => (x.id === c.id ? { ...x, is_active: !x.is_active } : x)) }))
-    } catch (e2) { setErr(apiError(e2)) }
+    } catch (e2) { setErr(apiError(e2)); toast.error(apiError(e2)) }
   }
   const del = async (c) => {
     if (!confirm(t('delete_card_confirm'))) return
-    try { await api.delete(`/admin/cards/${c.id}/`); load() } catch (e2) { setErr(apiError(e2)) }
+    toast.loading(t('action_in_progress'))
+    try { await api.delete(`/admin/cards/${c.id}/`); load(); toast.success(t('deleted')) }
+    catch (e2) { setErr(apiError(e2)); toast.error(apiError(e2)) }
   }
-  const onSaved = () => { setModal(null); load(); setToast(t('saved')); setTimeout(() => setToast(''), 2200) }
+  const onSaved = () => { setModal(null); load() }
 
   const cards = d?.cards || []
   const metrics = useMemo(() => ({
@@ -274,7 +280,6 @@ export default function Cards() {
       </div>
 
       <Alert>{err}</Alert>
-      {toast && <Alert kind="success">{toast}</Alert>}
 
       {/* anti-fraud / unique-amount info card — real range from /admin/settings/ */}
       <div className="card cd-fraud">

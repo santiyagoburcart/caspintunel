@@ -6,6 +6,7 @@ import { useTheme } from '../theme/ThemeProvider'
 import { jalali, gb } from '../lib/format'
 import { Alert, Copyable, Spinner, StatusBadge } from '../components/ui'
 import { AuthImage } from '../components/AuthImage'
+import { useToast } from '../components/Toast'
 
 export default function Dashboard() {
   const { styleKey } = useTheme()
@@ -48,7 +49,12 @@ function useServices(t) {
     setItems((cur) => (cur || []).map((x) => (x.id === id ? data : x)))
     if (data.status === 'active') setFlash(t('service_activated'))
   }
-  return { items, flash, err, refreshOne }
+  const revokeOne = async (id) => {
+    const { data } = await api.post(`/services/${id}/revoke/`)
+    setItems((cur) => (cur || []).map((x) => (x.id === id ? data : x)))
+    return data
+  }
+  return { items, flash, err, refreshOne, revokeOne }
 }
 
 /* ================= Legacy (Aurora / Frost) — unchanged ================= */
@@ -162,6 +168,8 @@ const D = {
   renew: 'M4 4v5h5M20 20v-5h-5M20 9A8 8 0 006 5M4 15a8 8 0 0014 4',
   arrow: 'M19 12H5m7 7l-7-7 7-7',
   x: 'M6 18L18 6M6 6l12 12',
+  link: ['M9 15l6-6', 'M11 6l1-1a4 4 0 015.5 5.5l-1.5 1.5', 'M13 18l-1 1a4 4 0 01-5.5-5.5l1.5-1.5'],
+  warn: 'M12 9v4m0 4h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z',
   spark: 'M12 3v3M12 18v3M4 12H1M23 12h-3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2',
 }
 function DI({ d, w = 18, className }) {
@@ -182,7 +190,7 @@ const FILTERS = [
 
 function CaspianDashboard() {
   const { t, lang } = useI18n()
-  const { items, flash, err } = useServices(t)
+  const { items, flash, err, revokeOne } = useServices(t)
   const [filter, setFilter] = useState('all')
   const [q, setQ] = useState('')
 
@@ -268,7 +276,7 @@ function CaspianDashboard() {
         <div className="csp-card csp-dash-empty"><p>{t('no_match')}</p></div>
       ) : (
         <div className="csp-dash-grid">
-          {shown.map((s) => <SvcCard key={s.id} s={s} t={t} lang={lang} />)}
+          {shown.map((s) => <SvcCard key={s.id} s={s} t={t} lang={lang} onRevoke={revokeOne} />)}
         </div>
       )}
 
@@ -297,8 +305,10 @@ function Stat({ icon, label, value, sub }) {
   )
 }
 
-function SvcCard({ s, t, lang }) {
+function SvcCard({ s, t, lang, onRevoke }) {
+  const toast = useToast()
   const [qrOpen, setQrOpen] = useState(false)
+  const [revokeOpen, setRevokeOpen] = useState(false)
   // timer hasn't started yet whenever the panel hasn't given us an expiry —
   // covers the just-connected moment too, before the next sync flips status/expire_at
   const waiting = s.status === 'on_hold' && !s.expire_at
@@ -367,12 +377,62 @@ function SvcCard({ s, t, lang }) {
             <DI d={D.qr} w={16} />{t('show_qr')}
           </button>
         )}
+        {s.subscription_url && (
+          <button type="button" className="csp-svc-btn" onClick={() => setRevokeOpen(true)}>
+            <DI d={D.link} w={16} />{t('change_sub_link')}
+          </button>
+        )}
         <Link to={`/checkout?renew=${s.id}`} className="csp-svc-btn csp-svc-btn--primary">
           <DI d={D.renew} w={16} />{t('renew')}
         </Link>
       </div>
 
       {qrOpen && <QrModal s={s} t={t} lang={lang} onClose={() => setQrOpen(false)} />}
+      {revokeOpen && (
+        <RevokeSubModal
+          s={s} t={t}
+          onClose={() => setRevokeOpen(false)}
+          onConfirm={async () => {
+            toast.loading(t('action_in_progress'))
+            try {
+              await onRevoke(s.id)
+              toast.success(t('sub_link_changed'))
+              setRevokeOpen(false)
+            } catch (e) { toast.error(apiError(e)) }
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+/** Confirmation gate before revoking the subscription link — every device
+ * on the old link disconnects, so this is deliberately not a one-click action. */
+function RevokeSubModal({ s, t, onClose, onConfirm }) {
+  const [busy, setBusy] = useState(false)
+  const confirm = async () => {
+    setBusy(true)
+    try { await onConfirm() } finally { setBusy(false) }
+  }
+  return (
+    <div className="csp-qr-overlay" onClick={onClose}>
+      <div className="csp-qr-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 380 }}>
+        <div className="csp-qr-head">
+          <div className="flex items-center gap-2">
+            <span style={{ color: 'var(--c-warning)' }}><DI d={D.warn} w={22} /></span>
+            <h2 className="csp-headline">{t('change_sub_link')}</h2>
+          </div>
+          <button type="button" className="csp-qr-x" onClick={onClose} aria-label={t('close')}><DI d={D.x} w={18} /></button>
+        </div>
+        <p className="text-sm" style={{ color: 'var(--c-text-muted)', lineHeight: 1.9 }}>{t('revoke_warning')}</p>
+        <div className="csp-qr-btns">
+          <button type="button" className="csp-qr-btn" onClick={onClose} disabled={busy}>{t('cancel')}</button>
+          <button type="button" className="csp-qr-btn csp-qr-btn--primary" onClick={confirm} disabled={busy}
+            style={{ background: 'var(--c-danger)', borderColor: 'var(--c-danger)' }}>
+            {busy ? '…' : t('confirm')}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

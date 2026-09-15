@@ -5,6 +5,7 @@ import { useI18n } from '../lib/i18n'
 import { jalali, toman } from '../lib/format'
 import { Alert, Spinner } from '../components/ui'
 import { ReceiptThumb } from '../components/ReceiptThumb'
+import { useToast } from '../components/Toast'
 
 const T = {
   fa: {
@@ -35,6 +36,7 @@ const TABS = ['all', 'receipt', 'active', 'expired']
 
 export default function Payments() {
   const { t, lang } = useI18n()
+  const toast = useToast()
   const navigate = useNavigate()
   const s = T[lang] || T.fa
   const [rows, setRows] = useState(null)
@@ -86,10 +88,12 @@ export default function Payments() {
     const body = kind === 'reject'
       ? { reason: reason || s.unspecified }
       : { bank_card: cardById[id] ?? rows.find((r) => r.id === id)?.bank_card ?? cards[0]?.id ?? null }
+    toast.loading(t('action_in_progress'))
     try {
       await api.post(`/admin/payments/${id}/${kind}/`, body)
+      toast.success(kind === 'reject' ? t('reject') : t('approve'))
       await load()
-    } catch (e) { setErr(apiError(e)) } finally { setBusyId(null) }
+    } catch (e) { toast.error(apiError(e)); setErr(apiError(e)) } finally { setBusyId(null) }
   }
 
   if (rows === null) return <div className="grid place-items-center py-16"><Spinner /></div>

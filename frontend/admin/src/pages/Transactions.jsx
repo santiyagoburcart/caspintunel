@@ -54,6 +54,8 @@ const T = {
     amount: 'مبلغ', user: 'کاربر', method: 'روش', card: 'کارت', confirmer: 'تأییدکننده',
     date: 'تاریخ', receipt: 'رسید', status: 'وضعیت', none: 'تراکنشی نیست', reason: 'دلیل رد',
     by_admin: 'ادمین', by_system: 'سیستم پیامک', src_site: 'سایت', src_bot: 'ربات',
+    type_col: 'نوع', src_col: 'منبع',
+    type_new: 'خرید جدید', type_renew: 'تمدید', type_addon_volume: 'افزودن حجم',
     not_delivered: 'پرداخت تأییدشده ولی سرویس تحویل نشده — به‌صورت خودکار تلاش مجدد می‌شود',
     details: 'جزئیات',
     account: 'نام کاربری', plan: 'پلن', usage: 'مصرف', expiry: 'انقضا', conn: 'اتصال',
@@ -66,6 +68,8 @@ const T = {
     amount: 'Amount', user: 'User', method: 'Method', card: 'Card', confirmer: 'Confirmed by',
     date: 'Date', receipt: 'Receipt', status: 'Status', none: 'No transactions', reason: 'Reject reason',
     by_admin: 'admin', by_system: 'SMS system', src_site: 'Website', src_bot: 'Bot',
+    type_col: 'Type', src_col: 'Source',
+    type_new: 'New purchase', type_renew: 'Renewal', type_addon_volume: 'Add-on volume',
     not_delivered: 'Payment approved but service not delivered — auto-retrying',
     details: 'Details',
     account: 'Account', plan: 'Plan', usage: 'Usage', expiry: 'Expiry', conn: 'Connection',
@@ -76,7 +80,7 @@ const T = {
 
 const FILTERS = ['', 'pending', 'approved', 'rejected']
 const ST_TONE = { pending: 'warning', approved: 'success', rejected: 'danger' }
-const SVC_TONE = { active: 'success', on_hold: 'warning', pending: 'warning', limited: 'warning', expired: 'danger', disabled: 'danger' }
+const SVC_TONE = { active: 'success', on_hold: 'warning', pending: 'warning', limited: 'danger', expired: 'danger', disabled: 'danger' }
 
 const groupCard = (raw) => {
   const s = String(raw || '').replace(/\D/g, '')
@@ -150,7 +154,8 @@ function TxTable({ s, t, lang }) {
           <table className="tx-table">
             <thead>
               <tr>
-                <th>{s.amount}</th><th>{s.user}</th><th>{s.method}</th><th>{s.card}</th>
+                <th>{s.amount}</th><th>{s.user}</th><th>{s.type_col}</th><th>{s.src_col}</th>
+                <th>{s.method}</th><th>{s.card}</th>
                 <th>{s.confirmer}</th><th>{s.date}</th><th>{s.status}</th>
                 <th className="tx-c">{s.receipt}</th><th className="tx-c" aria-label="actions" />
               </tr>
@@ -166,10 +171,10 @@ function TxTable({ s, t, lang }) {
                       <td className="tx-amt" data-label={s.amount}>{toman(r.amount, lang)}</td>
                       <td data-label={s.user}>
                         <span className="tx-user">{r.user}</span>
-                        <span className="tx-sub">
-                          {r.order_source === 'bot' ? s.src_bot : s.src_site}{r.plan_name ? ` · ${r.plan_name}` : ''}
-                        </span>
+                        {r.plan_name && <span className="tx-sub">{r.plan_name}</span>}
                       </td>
+                      <td data-label={s.type_col}>{s['type_' + r.order_type] || r.order_type || '—'}</td>
+                      <td data-label={s.src_col}>{r.order_source === 'bot' ? s.src_bot : s.src_site}</td>
                       <td data-label={s.method}>{r.method ? enumLabel(t, 'm_', r.method) : '—'}</td>
                       <td dir="ltr" className="tx-mono" data-label={s.card}>{groupCard(r.card)}</td>
                       <td data-label={s.confirmer}>{confirmer(r)}</td>
@@ -189,7 +194,7 @@ function TxTable({ s, t, lang }) {
                     </tr>
                     {note && (
                       <tr className="tx-note-row">
-                        <td colSpan={9}><span className={r.status === 'rejected' ? 'tx-note-bad' : 'tx-note-warn'}>{note}</span></td>
+                        <td colSpan={11}><span className={r.status === 'rejected' ? 'tx-note-bad' : 'tx-note-warn'}>{note}</span></td>
                       </tr>
                     )}
                   </Fragment>

@@ -136,6 +136,11 @@ class PasarGuardClient:
     def reset_user_usage(self, username: str) -> dict:
         return self._request("POST", f"/api/user/{username}/reset")
 
+    def revoke_subscription(self, username: str) -> dict:
+        """Invalidates the account's current subscription link and issues a new
+        one — every device using the old link is disconnected."""
+        return self._request("POST", f"/api/user/{username}/revoke_sub")
+
     def set_user_disabled(self, username: str, disabled: bool) -> dict:
         return self._request("PUT", f"/api/user/{username}/disabled", json={"disabled": disabled})
 

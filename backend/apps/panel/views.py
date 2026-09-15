@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from .exceptions import PanelError
 from .models import Service
 from .serializers import ServiceSerializer
-from .services import refresh_watchable_services, sync_service
+from .services import refresh_watchable_services, revoke_subscription, sync_service
 
 log = logging.getLogger("caspintunel")
 
@@ -45,6 +45,18 @@ class ServiceViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.
         service = self.get_object()
         try:
             sync_service(service.id)
+        except PanelError as exc:
+            return Response({"detail": str(exc)}, status=502)
+        service.refresh_from_db()
+        return Response(self.get_serializer(service).data)
+
+    @action(detail=True, methods=["post"], url_path="revoke")
+    def revoke(self, request, pk=None):
+        """Regenerate the subscription link — disconnects every device using
+        the old one. The frontend shows a confirmation warning before calling this."""
+        service = self.get_object()
+        try:
+            revoke_subscription(service.id)
         except PanelError as exc:
             return Response({"detail": str(exc)}, status=502)
         service.refresh_from_db()

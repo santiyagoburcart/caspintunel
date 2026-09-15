@@ -157,3 +157,19 @@ def sync_service(service_id: int) -> Service:
     service.last_synced_at = timezone.now()
     service.save(update_fields=sorted(set(changed) | {"last_synced_at", "updated_at"}))
     return service
+
+
+@transaction.atomic
+def revoke_subscription(service_id: int) -> Service:
+    """Issues a new subscription link for the service's panel account,
+    invalidating the old one — every device on the previous link is
+    disconnected until it's reconfigured with the new one."""
+    service = Service.objects.select_for_update().select_related("panel").get(pk=service_id)
+    client = client_for(service.panel)
+    client.revoke_subscription(service.panel_username)
+    api_user = client.get_user(service.panel_username)
+    changed = apply_user_to_service(service, api_user, service.panel)
+    service.last_synced_at = timezone.now()
+    service.save(update_fields=sorted(set(changed) | {"last_synced_at", "updated_at"}))
+    write_audit(action="service.subscription_revoked", target=service, detail={})
+    return service

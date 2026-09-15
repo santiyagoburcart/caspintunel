@@ -46,7 +46,7 @@ function StatusPill({ t, status }) {
   )
 }
 
-const ST_TONE = { active: 'success', on_hold: 'warning', pending: 'warning', limited: 'warning', expired: 'danger', disabled: 'danger' }
+const ST_TONE = { active: 'success', on_hold: 'warning', pending: 'warning', limited: 'danger', expired: 'danger', disabled: 'danger' }
 
 export default function Dashboard() {
   const { t, lang } = useI18n()

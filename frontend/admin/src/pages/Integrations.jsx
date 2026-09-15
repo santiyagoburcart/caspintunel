@@ -221,6 +221,7 @@ const T = {
     sales_bot: 'ربات فروش اصلی', backup_bot: 'ربات پشتیبان‌گیری دیتابیس و کانفیگ‌ها', active: 'فعال',
     sales_bot_sub: 'پردازش خرید اشتراک و تحویل فوری کانفیگ',
     backup_bot_sub: 'ارسال خودکار فایل‌های پشتیبان و لاگ‌های سرور',
+    backup_interval: 'فاصله پشتیبان‌گیری (دقیقه)',
     bot_token: 'توکن ربات (BotFather Token)', proxy: 'آدرس پروکسی اختصاصی (Socks5)',
     chat_id: 'شناسهٔ چت بک‌آپ (Target Chat ID)',
     token_badge_set: 'ذخیره‌شده', token_badge_none: 'تنظیم‌نشده',
@@ -296,6 +297,7 @@ const T = {
     sales_bot: 'Main sales bot', backup_bot: 'Database & config backup bot', active: 'Active',
     sales_bot_sub: 'Handles subscription purchases and instant config delivery',
     backup_bot_sub: 'Sends automatic backup files and server logs',
+    backup_interval: 'Backup interval (minutes)',
     bot_token: 'Bot token (BotFather)', proxy: 'Dedicated proxy address (Socks5)',
     chat_id: 'Backup target chat ID',
     token_badge_set: 'stored', token_badge_none: 'not set',
@@ -810,6 +812,7 @@ export function Bots() {
   const [msg, setMsg] = useState(null)
   const [err, setErr] = useState('')
   const [testingBackup, setTestingBackup] = useState(false)
+  const [backupInterval, setBackupInterval] = useState('')
 
   const hydrate = (row) => ({
     token: '',
@@ -825,6 +828,12 @@ export function Bots() {
       setBackup(hydrate(r.data.backup))
     }).catch(() => setData({ error: true }))
     api.get('/admin/bots/stats/').then((r) => setStats(r.data)).catch(() => setStats({}))
+    // backup_interval_minutes lives in the generic settings table, not on the
+    // TelegramConfig row — fetched separately, saved alongside the bot config
+    api.get('/admin/settings/').then((r) => {
+      const v = r.data.settings.find((x) => x.key === 'backup_interval_minutes')?.value
+      if (v != null) setBackupInterval(String(v))
+    }).catch(() => {})
   }
 
   useEffect(() => { load() }, [])
@@ -852,6 +861,9 @@ export function Bots() {
         sales: clean(sales, false),
         backup: clean(backup, true),
       })
+      if (backupInterval !== '') {
+        await api.put('/admin/settings/', { backup_interval_minutes: Number(backupInterval) })
+      }
       setMsg({ kind: 'success', text: s.bots_saved })
       load()
     } catch (e2) { setErr(apiError(e2)) }
@@ -908,6 +920,7 @@ export function Bots() {
             <BotCard title={s.backup_bot} subtitle={s.backup_bot_sub} icon={ICONS.backup}
               row={data.backup} value={backup} onChange={setBackup} s={s} showChatId
               onTestSend={testBackup} testing={testingBackup}
+              intervalValue={backupInterval} onIntervalChange={setBackupInterval}
               footer={
                 <div className="int-bot-foot">
                   <span className="text-xs text-muted">
@@ -1131,7 +1144,8 @@ function RequiredChannels({ s }) {
   )
 }
 
-function BotCard({ title, subtitle, icon, row, value, onChange, s, showChatId, footer, onTestSend, testing }) {
+function BotCard({ title, subtitle, icon, row, value, onChange, s, showChatId, footer, onTestSend, testing,
+  intervalValue, onIntervalChange }) {
   const set = (k, v) => onChange({ ...value, [k]: v })
   return (
     <div className="card int-bot-card flex flex-col gap-4">
@@ -1186,6 +1200,13 @@ function BotCard({ title, subtitle, icon, row, value, onChange, s, showChatId, f
           </div>
           <span className="mt-1 block text-xs text-muted">{s.chat_hint}</span>
         </div>
+      )}
+
+      {onIntervalChange && (
+        <Field label={s.backup_interval}>
+          <input className="input" dir="ltr" type="number" min={5} max={43200}
+            value={intervalValue} onChange={(e) => onIntervalChange(e.target.value)} />
+        </Field>
       )}
 
       {footer && <div className="int-bot-card-foot">{footer}</div>}
