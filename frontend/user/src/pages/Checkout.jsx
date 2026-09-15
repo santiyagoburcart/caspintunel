@@ -113,9 +113,12 @@ export default function Checkout() {
 
   if (!order) {
     const planName = plan ? ((lang === 'fa' ? plan.name_fa : plan.name_en) || plan.name_fa) : ''
+    const renewingService = renewId ? services.find((sv) => String(sv.id) === String(renewId)) : null
     return (
       <form onSubmit={createOrder} className="card mx-auto max-w-lg space-y-4">
-        <h1 className="text-lg font-bold">{renewId ? t('renew') : t('buy')}</h1>
+        <h1 className="text-lg font-bold">
+          {renewId ? t('renew_service_title', { id: renewingService?.id ?? renewId }) : t('buy')}
+        </h1>
         <Alert>{err}</Alert>
 
         {renewId || !plan ? (

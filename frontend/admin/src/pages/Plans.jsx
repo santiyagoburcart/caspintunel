@@ -28,6 +28,10 @@ const T = {
     copy_link: 'کپی لینک مستقیم خرید', link_copied: 'لینک خرید کپی شد',
     edit: 'ویرایش', del: 'حذف', del_confirm: 'این پلن حذف شود؟',
     saved_ok: 'پلن ذخیره شد',
+    renewal_mode_label: 'حالت تمدید', renewal_a: 'ریست کامل (حالت A)', renewal_b: 'انتقال باقی‌مانده (حالت B)',
+    renewal_a_hint: 'پلن جدید به‌طور کامل جایگزین پلن قبلی می‌شود؛ زمان و حجم باقی‌مانده از دور قبل نادیده گرفته می‌شود.',
+    renewal_b_hint: 'زمان و/یا حجم باقی‌مانده از دور قبل به پلن جدید اضافه می‌شود.',
+    carry_what: 'چه چیزی منتقل شود؟', carry_time: 'زمان', carry_volume: 'حجم',
   },
   en: {
     title: 'Plans',
@@ -49,6 +53,10 @@ const T = {
     copy_link: 'Copy direct purchase link', link_copied: 'Purchase link copied',
     edit: 'Edit', del: 'Delete', del_confirm: 'Delete this plan?',
     saved_ok: 'Plan saved',
+    renewal_mode_label: 'Renewal mode', renewal_a: 'Full reset (mode A)', renewal_b: 'Carry over remaining (mode B)',
+    renewal_a_hint: 'The new plan fully replaces the old one; any remaining time/volume from the previous cycle is discarded.',
+    renewal_b_hint: "The remaining time and/or volume from the previous cycle is added on top of the new plan.",
+    carry_what: 'What should carry over?', carry_time: 'Time', carry_volume: 'Volume',
   },
 }
 
@@ -92,7 +100,7 @@ const blank = {
   category_fa: '', category_en: '',
   panel: '', price: 0, discount_percent: 0, data_limit_gb: '', duration_days: '',
   device_limit: '', min_gb: '', max_gb: '', price_per_gb: '', is_active: true,
-  group_ids: [],
+  group_ids: [], renewal_mode: 'reset', carry_over_data: null,
 }
 
 function toForm(r) {
@@ -108,6 +116,8 @@ function toForm(r) {
     max_gb: r.max_gb ?? '',
     price_per_gb: r.price_per_gb ?? '',
     group_ids: Array.isArray(r.group_ids) ? r.group_ids : [],
+    renewal_mode: r.renewal_mode || 'reset',
+    carry_over_data: r.carry_over_data ?? null,
   }
 }
 
@@ -174,6 +184,8 @@ export default function Plans() {
       min_gb: isVolume ? numOrNull(edit.min_gb) : null,
       max_gb: isVolume ? numOrNull(edit.max_gb) : null,
       price_per_gb: isVolume ? numOrNull(edit.price_per_gb) : null,
+      renewal_mode: edit.renewal_mode,
+      carry_over_data: edit.renewal_mode === 'carry_over' ? (edit.carry_over_data || 'both') : null,
     }
     toast.loading(t('action_in_progress'))
     try {
@@ -356,6 +368,52 @@ export default function Plans() {
             {lang === 'fa' ? 'فعال' : 'Active'}
           </label>
 
+          <div className="sm:col-span-2 pl-renewal">
+            <span className="label">{s.renewal_mode_label}</span>
+            <div className="pl-renewal-opts">
+              <label className={'pl-renewal-opt' + (edit.renewal_mode === 'reset' ? ' on' : '')}>
+                <input type="radio" name="renewal_mode" checked={edit.renewal_mode === 'reset'}
+                  onChange={() => setEdit({ ...edit, renewal_mode: 'reset', carry_over_data: null })} />
+                <span>
+                  <b>{s.renewal_a}</b>
+                  <span className="text-xs text-muted block mt-0.5">{s.renewal_a_hint}</span>
+                </span>
+              </label>
+              <label className={'pl-renewal-opt' + (edit.renewal_mode === 'carry_over' ? ' on' : '')}>
+                <input type="radio" name="renewal_mode" checked={edit.renewal_mode === 'carry_over'}
+                  onChange={() => setEdit({ ...edit, renewal_mode: 'carry_over', carry_over_data: edit.carry_over_data || 'both' })} />
+                <span>
+                  <b>{s.renewal_b}</b>
+                  <span className="text-xs text-muted block mt-0.5">{s.renewal_b_hint}</span>
+                </span>
+              </label>
+            </div>
+
+            {edit.renewal_mode === 'carry_over' && (() => {
+              const timeOn = edit.carry_over_data === 'both' || edit.carry_over_data === 'time_only'
+              const volOn = edit.carry_over_data === 'both' || edit.carry_over_data === 'volume_only'
+              const setCarry = (time, vol) => {
+                if (!time && !vol) return // keep at least one selected
+                setEdit({ ...edit, carry_over_data: time && vol ? 'both' : time ? 'time_only' : 'volume_only' })
+              }
+              return (
+                <div className="pl-carry">
+                  <span className="text-xs font-semibold block mb-1.5">{s.carry_what}</span>
+                  <div className="flex flex-wrap gap-4">
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={timeOn} onChange={(e) => setCarry(e.target.checked, volOn)} />
+                      {s.carry_time}
+                    </label>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={volOn} onChange={(e) => setCarry(timeOn, e.target.checked)} />
+                      {s.carry_volume}
+                    </label>
+                  </div>
+                </div>
+              )
+            })()}
+          </div>
+
           <div className="sm:col-span-2 pl-groups">
             <span className="label">
               {lang === 'fa' ? 'گروه‌های پنل' : 'Panel groups'}{selectedPanel ? ` — ${selectedPanel.name}` : ''}
@@ -515,6 +573,16 @@ const CSS = `
 .pl-stat-ico { width: 46px; height: 46px; border-radius: 13px; display: grid; place-items: center; flex-shrink: 0; }
 
 .pl-form .pl-groups { border-top: 1px solid var(--c-border); padding-top: 14px; }
+.pl-renewal { border-top: 1px solid var(--c-border); padding-top: 14px; }
+.pl-renewal-opts { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 8px; }
+@media (min-width: 560px) { .pl-renewal-opts { grid-template-columns: 1fr 1fr; } }
+.pl-renewal-opt {
+  display: flex; align-items: flex-start; gap: 8px; padding: 12px; border-radius: 12px;
+  border: 1px solid var(--c-border); cursor: pointer; transition: .15s;
+}
+.pl-renewal-opt.on { border-color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 10%, transparent); }
+.pl-renewal-opt input { margin-top: 3px; flex-shrink: 0; }
+.pl-carry { margin-top: 12px; padding: 12px; border-radius: 12px; background: color-mix(in srgb, var(--c-text-muted) 6%, transparent); }
 .pl-typeopt { border-radius: 12px; border: 1px solid var(--c-border); padding: 12px; text-align: start; transition: .15s; background: transparent; }
 .pl-typeopt[data-on="1"] { border-color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 12%, transparent); }
 .pl-group-chip { border-radius: 999px; border: 1px solid var(--c-border); padding: 4px 12px; font-size: 13px; transition: .15s; }

@@ -5,6 +5,7 @@ pipeline. Every function is idempotent / retry-safe.
 from __future__ import annotations
 
 import logging
+from datetime import timedelta
 
 from django.db import transaction
 from django.utils import timezone
@@ -156,6 +157,95 @@ def sync_service(service_id: int) -> Service:
     changed = apply_user_to_service(service, api_user, service.panel)
     service.last_synced_at = timezone.now()
     service.save(update_fields=sorted(set(changed) | {"last_synced_at", "updated_at"}))
+    return service
+
+
+@transaction.atomic
+def apply_scheduled_renewal(scheduled_renewal_id: int) -> Service:
+    """Applies a previously-paid renewal once the service actually reached the
+    end of its cycle (see apps.panel.tasks.apply_due_scheduled_renewals) —
+    mode A (reset) just delegates to the existing renew_service; mode B
+    (carry_over) folds in whatever time/volume was left first."""
+    from apps.orders.models import ScheduledRenewal
+    from apps.plans.models import RenewalMode
+
+    renewal = (
+        ScheduledRenewal.objects.select_for_update()
+        .select_related("service", "service__panel", "service__user", "plan")
+        .get(pk=scheduled_renewal_id)
+    )
+    if renewal.applied_at is not None:
+        return renewal.service  # already applied — never double-apply
+
+    service = renewal.service
+    if renewal.renewal_mode == RenewalMode.CARRY_OVER:
+        _apply_carry_over_renewal(service, renewal.plan, renewal.carry_over_data)
+    else:
+        renew_service(service.id, renewal.plan)
+
+    renewal.applied_at = timezone.now()
+    renewal.save(update_fields=["applied_at", "updated_at"])
+
+    try:
+        from apps.notifications.dispatch import notify_user
+
+        notify_user(
+            service.user,
+            title="سرویس شما تمدید شد 🎉",
+            body=f"سرویس {service.panel_username} با موفقیت تمدید شد و اکنون فعال است.",
+            via_site=True, via_bot=True, via_email=True,
+        )
+    except Exception as exc:  # noqa: BLE001 - notification must not fail the renewal
+        log.warning("renewal notification for service %s failed: %s", service.id, exc)
+
+    return service
+
+
+def _apply_carry_over_renewal(service: Service, plan, carry_over_data: str) -> Service:
+    """Mode B: fold whatever time/volume the service had left into the new
+    plan's amounts, instead of discarding it. Which dimension gets carried is
+    whichever the customer actually still had when the cycle ended — a
+    time-expired service may still have unused volume (carry that), while a
+    volume-exhausted one may still have time left (carry that instead)."""
+    now = timezone.now()
+    extra_bytes = 0
+    if carry_over_data in ("both", "volume_only") and service.data_limit:
+        extra_bytes = max(0, service.data_limit - service.data_used)
+    extra_seconds = 0
+    if carry_over_data in ("both", "time_only") and service.expire_at and service.expire_at > now:
+        extra_seconds = int((service.expire_at - now).total_seconds())
+
+    new_data_limit = int(plan.data_limit or 0)
+    if new_data_limit and extra_bytes:
+        new_data_limit += extra_bytes
+    # if the plan itself is unlimited (0), it stays unlimited regardless
+
+    payload = {"data_limit": new_data_limit, "status": "active"}
+    if plan.duration_days:
+        total_seconds = int(plan.duration_days) * 86400 + extra_seconds
+        payload["expire"] = (now + timedelta(seconds=total_seconds)).isoformat()
+    else:
+        payload["expire"] = None
+
+    client = client_for(service.panel)
+    client.update_user(service.panel_username, payload)
+    try:
+        client.reset_user_usage(service.panel_username)
+    except PanelNotFound:
+        pass
+    api_user = client.get_user(service.panel_username)
+
+    service.current_plan = plan
+    service.alert_vol_sent = False
+    service.alert_exp_sent = False
+    apply_user_to_service(service, api_user, service.panel)
+    service.status = ServiceStatus.ACTIVE
+    service.save()
+    write_audit(
+        action="service.renewed_carry_over", target=service,
+        detail={"plan": plan.id, "carry_over_data": carry_over_data,
+                "extra_bytes": extra_bytes, "extra_seconds": extra_seconds},
+    )
     return service
 
 

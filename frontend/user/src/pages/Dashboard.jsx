@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { api, apiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 import { useTheme } from '../theme/ThemeProvider'
@@ -57,10 +57,88 @@ function useServices(t) {
   return { items, flash, err, refreshOne, revokeOne }
 }
 
+/* shared تمدید gate — checks the plan is still buyable before sending the
+ * user to checkout, since it may have been deleted/deactivated since */
+function useRenewFlow() {
+  const navigate = useNavigate()
+  const toast = useToast()
+  const [modal, setModal] = useState(null) // { checking } | { canRenew: bool, ... }
+
+  const startRenew = async (serviceId) => {
+    setModal({ checking: true })
+    try {
+      const { data } = await api.get(`/services/${serviceId}/renew-info/`)
+      setModal(data.can_renew
+        ? { checking: false, canRenew: true, plan: data.plan, serviceId }
+        : { checking: false, canRenew: false, message: data.message })
+    } catch (e) {
+      setModal(null)
+      toast.error(apiError(e))
+    }
+  }
+  const close = () => setModal(null)
+  const proceed = () => {
+    if (modal?.canRenew) navigate(`/checkout?plan=${modal.plan.id}&renew=${modal.serviceId}`)
+  }
+  return { modal, startRenew, close, proceed }
+}
+
+function RenewModal({ modal, t, lang, onClose, onProceed }) {
+  if (!modal) return null
+  return (
+    <div className="csp-qr-overlay" onClick={onClose}>
+      <div className="csp-qr-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 380 }}>
+        <div className="csp-qr-head">
+          <h2 className="csp-headline">{t('renew')}</h2>
+          <button type="button" className="csp-qr-x" onClick={onClose} aria-label={t('close')}><DI d={D.x} w={18} /></button>
+        </div>
+
+        {modal.checking ? (
+          <div className="grid place-items-center py-8"><Spinner /></div>
+        ) : !modal.canRenew ? (
+          <>
+            <p className="text-sm" style={{ color: 'var(--c-text-muted)', lineHeight: 1.9 }}>
+              {t('plan_gone_message')}
+            </p>
+            <div className="csp-qr-btns">
+              <button type="button" className="csp-qr-btn" onClick={onClose}>{t('cancel')}</button>
+              <Link to="/store" className="csp-qr-btn csp-qr-btn--primary">{t('buy')}</Link>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="csp-svc-box" style={{ marginBottom: 0 }}>
+              <div className="csp-svc-row">
+                <span>{t('select_plan')}</span>
+                <b>{(lang === 'fa' ? modal.plan.name_fa : modal.plan.name_en) || modal.plan.name_fa}</b>
+              </div>
+              <div className="csp-svc-row csp-svc-row--sub">
+                <span>{t('amount')}</span>
+                <span>{fnum(Number(modal.plan.final_price ?? modal.plan.price), lang)} {lang === 'fa' ? 'تومان' : 'T'}</span>
+              </div>
+              <div className="csp-svc-row csp-svc-row--sub">
+                <span>{t('duration')}</span>
+                <span>{modal.plan.duration_days ? `${fnum(modal.plan.duration_days, lang)} ${t('days')}` : t('no_expiry')}</span>
+              </div>
+            </div>
+            <div className="csp-qr-btns">
+              <button type="button" className="csp-qr-btn" onClick={onClose}>{t('cancel')}</button>
+              <button type="button" className="csp-qr-btn csp-qr-btn--primary" onClick={onProceed}>
+                {t('continue_pay')}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 /* ================= Legacy (Aurora / Frost) — unchanged ================= */
 function LegacyDashboard() {
   const { t, lang } = useI18n()
   const { items, flash, err, refreshOne } = useServices(t)
+  const renewFlow = useRenewFlow()
   return (
     <div className="space-y-4">
       {flash && <Alert kind="success">{flash}</Alert>}
@@ -72,13 +150,17 @@ function LegacyDashboard() {
       {items === null ? <div className="grid place-items-center py-16"><Spinner /></div>
         : items.length === 0 ? <div className="card text-center text-muted">{t('no_services')}</div>
         : <div className="grid gap-4 sm:grid-cols-2">
-            {items.map((s) => <LegacyServiceCard key={s.id} s={s} t={t} lang={lang} onRefresh={refreshOne} />)}
+            {items.map((s) => (
+              <LegacyServiceCard key={s.id} s={s} t={t} lang={lang} onRefresh={refreshOne}
+                onRenewClick={() => renewFlow.startRenew(s.id)} />
+            ))}
           </div>}
+      <RenewModal modal={renewFlow.modal} t={t} lang={lang} onClose={renewFlow.close} onProceed={renewFlow.proceed} />
     </div>
   )
 }
 
-function LegacyServiceCard({ s, t, lang, onRefresh }) {
+function LegacyServiceCard({ s, t, lang, onRefresh, onRenewClick }) {
   const [showQr, setShowQr] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
@@ -147,7 +229,7 @@ function LegacyServiceCard({ s, t, lang, onRefresh }) {
       )}
       <Alert>{err}</Alert>
       <div className="flex flex-wrap gap-2">
-        <Link className="btn-primary text-sm" to={`/checkout?renew=${s.id}`}>{t('renew')}</Link>
+        <button type="button" className="btn-primary text-sm" onClick={onRenewClick}>{t('renew')}</button>
       </div>
     </div>
   )
@@ -191,6 +273,7 @@ const FILTERS = [
 function CaspianDashboard() {
   const { t, lang } = useI18n()
   const { items, flash, err, revokeOne } = useServices(t)
+  const renewFlow = useRenewFlow()
   const [filter, setFilter] = useState('all')
   const [q, setQ] = useState('')
 
@@ -276,7 +359,10 @@ function CaspianDashboard() {
         <div className="csp-card csp-dash-empty"><p>{t('no_match')}</p></div>
       ) : (
         <div className="csp-dash-grid">
-          {shown.map((s) => <SvcCard key={s.id} s={s} t={t} lang={lang} onRevoke={revokeOne} />)}
+          {shown.map((s) => (
+            <SvcCard key={s.id} s={s} t={t} lang={lang} onRevoke={revokeOne}
+              onRenewClick={() => renewFlow.startRenew(s.id)} />
+          ))}
         </div>
       )}
 
@@ -289,6 +375,8 @@ function CaspianDashboard() {
         </div>
         <span className="csp-dash-guide-cta">{t('watch_tutorials')} <DI d={D.arrow} w={15} /></span>
       </Link>
+
+      <RenewModal modal={renewFlow.modal} t={t} lang={lang} onClose={renewFlow.close} onProceed={renewFlow.proceed} />
     </div>
   )
 }
@@ -305,7 +393,7 @@ function Stat({ icon, label, value, sub }) {
   )
 }
 
-function SvcCard({ s, t, lang, onRevoke }) {
+function SvcCard({ s, t, lang, onRevoke, onRenewClick }) {
   const toast = useToast()
   const [qrOpen, setQrOpen] = useState(false)
   const [revokeOpen, setRevokeOpen] = useState(false)
@@ -382,9 +470,9 @@ function SvcCard({ s, t, lang, onRevoke }) {
             <DI d={D.link} w={16} />{t('change_sub_link')}
           </button>
         )}
-        <Link to={`/checkout?renew=${s.id}`} className="csp-svc-btn csp-svc-btn--primary">
+        <button type="button" className="csp-svc-btn csp-svc-btn--primary" onClick={onRenewClick}>
           <DI d={D.renew} w={16} />{t('renew')}
-        </Link>
+        </button>
       </div>
 
       {qrOpen && <QrModal s={s} t={t} lang={lang} onClose={() => setQrOpen(false)} />}

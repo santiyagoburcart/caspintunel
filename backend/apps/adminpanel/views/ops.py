@@ -22,7 +22,7 @@ class ServiceListViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, views
     serializer_class = AdminServiceSerializer
 
     def get_queryset(self):
-        qs = Service.objects.select_related("user", "current_plan").order_by("-created_at")
+        qs = Service.objects.select_related("user", "current_plan", "scheduled_renewal").order_by("-created_at")
         kind = self.request.query_params.get("filter")
         if kind == "expired":
             qs = qs.filter(status=ServiceStatus.EXPIRED)

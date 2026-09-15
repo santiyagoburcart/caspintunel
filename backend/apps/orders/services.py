@@ -147,3 +147,26 @@ def mark_paid_and_fulfill(order: Order) -> None:
     order.sync_unique_lock()  # PAID still holds the lock until provisioning completes
     order.save(update_fields=["status", "amount_unique_lock", "updated_at"])
     transaction.on_commit(lambda: fulfill_order.delay(order.id))
+
+
+def schedule_renewal(order: Order) -> ScheduledRenewal:
+    """A paid 'renew' order doesn't touch the panel right away — it just
+    records what to apply once the service actually reaches the end of its
+    current cycle (see apps.panel.tasks.apply_due_scheduled_renewals).
+    renewal_mode/carry_over_data are copied from the plan at this moment so a
+    later plan edit can never change how an already-paid renewal is applied."""
+    from .models import ScheduledRenewal
+
+    plan = order.plan
+    renewal, _created = ScheduledRenewal.objects.update_or_create(
+        service_id=order.service_id,
+        defaults={
+            "plan": plan,
+            "order": order,
+            "renewal_mode": plan.renewal_mode,
+            "carry_over_data": plan.carry_over_data,
+            "applied_at": None,
+        },
+    )
+    write_audit(action="renewal.scheduled", target=order, detail={"plan": plan.id})
+    return renewal

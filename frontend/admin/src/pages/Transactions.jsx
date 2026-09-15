@@ -56,6 +56,7 @@ const T = {
     by_admin: 'ادمین', by_system: 'سیستم پیامک', src_site: 'سایت', src_bot: 'ربات',
     type_col: 'نوع', src_col: 'منبع',
     type_new: 'خرید جدید', type_renew: 'تمدید', type_addon_volume: 'افزودن حجم',
+    scheduled_renewal: 'تمدید زمان‌بندی‌شده',
     not_delivered: 'پرداخت تأییدشده ولی سرویس تحویل نشده — به‌صورت خودکار تلاش مجدد می‌شود',
     details: 'جزئیات',
     account: 'نام کاربری', plan: 'پلن', usage: 'مصرف', expiry: 'انقضا', conn: 'اتصال',
@@ -70,6 +71,7 @@ const T = {
     by_admin: 'admin', by_system: 'SMS system', src_site: 'Website', src_bot: 'Bot',
     type_col: 'Type', src_col: 'Source',
     type_new: 'New purchase', type_renew: 'Renewal', type_addon_volume: 'Add-on volume',
+    scheduled_renewal: 'Scheduled renewal',
     not_delivered: 'Payment approved but service not delivered — auto-retrying',
     details: 'Details',
     account: 'Account', plan: 'Plan', usage: 'Usage', expiry: 'Expiry', conn: 'Connection',
@@ -255,7 +257,10 @@ function ServicesTable({ s, t, lang }) {
                     <span className="tx-user">{r.user}</span>
                     {r.user_name ? <span className="tx-sub">{r.user_name}</span> : null}
                   </td>
-                  <td data-label={s.plan}>{(lang === 'fa' ? r.plan : r.plan_en) || r.plan || '—'}</td>
+                  <td data-label={s.plan}>
+                    {(lang === 'fa' ? r.plan : r.plan_en) || r.plan || '—'}
+                    {r.has_scheduled_renewal && <span className="tx-renewal-badge">{s.scheduled_renewal}</span>}
+                  </td>
                   <td data-label={s.status}><Pill tone={SVC_TONE[r.status]}>{enumLabel(t, 'st_', r.status)}</Pill></td>
                   <td data-label={s.conn}>
                     <span className={'tx-conn ' + (r.is_online ? 'on' : 'off')}>
@@ -282,6 +287,11 @@ function ServicesTable({ s, t, lang }) {
 }
 
 const CSS = `
+.tx-renewal-badge {
+  display: inline-block; margin-inline-start: 6px; padding: 1px 8px; border-radius: 999px;
+  font-size: 10px; font-weight: 700; white-space: nowrap;
+  color: var(--c-secondary); background: color-mix(in srgb, var(--c-secondary) 16%, transparent);
+}
 .tx-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 4px; }
 @media (min-width: 900px) { .tx-stats { grid-template-columns: repeat(4, 1fr); } }
 .tx-stat { position: relative; overflow: hidden; padding: 14px 16px; }

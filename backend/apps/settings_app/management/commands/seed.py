@@ -302,6 +302,15 @@ class Command(BaseCommand):
                 "enabled": True,
             },
         )
+        PeriodicTask.objects.update_or_create(
+            name="panel: apply due scheduled renewals",
+            defaults={
+                "task": "apps.panel.tasks.apply_due_scheduled_renewals",
+                "interval": every_5,
+                "kwargs": _json.dumps({}),
+                "enabled": True,
+            },
+        )
         every_10, _ = IntervalSchedule.objects.get_or_create(
             every=10, period=IntervalSchedule.MINUTES
         )

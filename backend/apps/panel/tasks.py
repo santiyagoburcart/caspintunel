@@ -8,7 +8,13 @@ from apps.common.models import write_audit
 
 from .exceptions import PanelError, PanelUnavailable
 from .models import Service, ServiceStatus
-from .services import get_active_panel, provision_service, renew_service, sync_service
+from .services import (
+    apply_scheduled_renewal,
+    get_active_panel,
+    provision_service,
+    renew_service,
+    sync_service,
+)
 
 log = logging.getLogger("caspintunel")
 
@@ -81,6 +87,36 @@ def sync_all_services():
     for sid in ids:
         sync_service_task.delay(sid)
     return {"dispatched": len(ids), "at": timezone.now().isoformat()}
+
+
+@shared_task(bind=True, **_RETRY)
+def apply_scheduled_renewal_task(self, scheduled_renewal_id: int):
+    try:
+        apply_scheduled_renewal(scheduled_renewal_id)
+    except PanelUnavailable:
+        raise
+    except PanelError as exc:
+        log.error("apply_scheduled_renewal_task(%s) failed: %s", scheduled_renewal_id, exc)
+        raise
+
+
+@shared_task
+def apply_due_scheduled_renewals():
+    """Celery-beat, every 5 minutes: apply any paid renewal whose service has
+    already reached the end of its cycle — either time-expired or out of
+    volume (ServiceStatus.LIMITED) — while sitting on an unapplied
+    ScheduledRenewal."""
+    from apps.orders.models import ScheduledRenewal
+
+    due_ids = list(
+        ScheduledRenewal.objects.filter(
+            applied_at__isnull=True,
+            service__status__in=(ServiceStatus.EXPIRED, ServiceStatus.LIMITED),
+        ).values_list("id", flat=True)
+    )
+    for rid in due_ids:
+        apply_scheduled_renewal_task.delay(rid)
+    return {"dispatched": len(due_ids), "at": timezone.now().isoformat()}
 
 
 def _flag_provision_failure(service_id: int, detail: str) -> None:

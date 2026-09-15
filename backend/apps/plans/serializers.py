@@ -59,6 +59,7 @@ class PlanWriteSerializer(PlanPanelDefaultMixin, serializers.ModelSerializer):
             "data_limit", "duration_days", "device_limit",
             "price", "discount_percent", "is_active", "sort_order",
             "min_gb", "max_gb", "price_per_gb", "group_ids",
+            "renewal_mode", "carry_over_data",
         )
         extra_kwargs = {"panel": {"required": False}}
 

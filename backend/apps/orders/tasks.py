@@ -50,12 +50,14 @@ def retry_unfulfilled_orders():
 
 @shared_task(bind=True, **_RETRY)
 def fulfill_order(self, order_id: int):
-    """Provision / renew / top-up the service for a paid order (flowchart 1.2 & 1.5)."""
-    from apps.panel.services import (
-        add_service_data_limit,
-        provision_service,
-        renew_service,
-    )
+    """Provision / schedule-renew / top-up the service for a paid order
+    (flowchart 1.2 & 1.5). A 'renew' order no longer touches the panel here —
+    it's deferred to apply_due_scheduled_renewals once the service actually
+    reaches the end of its current cycle, so an early renewal doesn't discard
+    time/volume the customer already paid for."""
+    from apps.panel.services import add_service_data_limit, provision_service
+
+    from .services import schedule_renewal
 
     order = Order.objects.select_related("plan", "plan__panel", "service").get(pk=order_id)
     if order.status == OrderStatus.COMPLETED:
@@ -67,7 +69,7 @@ def fulfill_order(self, order_id: int):
             service = _ensure_service(order, order.plan.panel)
             provision_service(service.id, plan=order.plan)
         elif order.type == OrderType.RENEW:
-            renew_service(order.service_id, order.plan)
+            schedule_renewal(order)
         elif order.type == OrderType.ADDON_VOLUME:
             add_service_data_limit(order.service_id, int(order.plan.data_limit or 0))
         else:  # pragma: no cover
@@ -84,7 +86,10 @@ def fulfill_order(self, order_id: int):
     order.sync_unique_lock()  # releases the amount lock
     order.save(update_fields=["status", "amount_unique_lock", "service", "updated_at"])
     write_audit(action="order.completed", target=order)
-    _notify_delivered(order)
+    # a renewal isn't "delivered" yet — apply_scheduled_renewal notifies the
+    # user itself once it actually applies the new plan
+    if order.type != OrderType.RENEW:
+        _notify_delivered(order)
     return {"order": order_id, "status": "completed"}
 
 

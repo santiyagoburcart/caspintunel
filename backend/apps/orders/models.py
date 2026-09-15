@@ -64,3 +64,30 @@ class Order(TimeStampedModel):
     def sync_unique_lock(self):
         """Keep amount_unique_lock in step with status; call before save in logic layer."""
         self.amount_unique_lock = self.amount_unique if self.status in ACTIVE_UNIQUE_STATUSES else None
+
+
+class ScheduledRenewal(TimeStampedModel):
+    """A paid renewal waiting for its service to actually reach the end of its
+    current cycle (expired or out of volume) before the new plan is applied —
+    see apps.panel.services.apply_scheduled_renewal and the periodic task in
+    apps.panel.tasks.apply_due_scheduled_renewals."""
+
+    service = models.OneToOneField(
+        "panel.Service", on_delete=models.CASCADE, related_name="scheduled_renewal"
+    )
+    plan = models.ForeignKey("plans.Plan", on_delete=models.PROTECT, related_name="scheduled_renewals")
+    order = models.ForeignKey(Order, on_delete=models.PROTECT, related_name="scheduled_renewals")
+
+    # copied from the plan at purchase time so a later plan edit never changes
+    # how an already-paid renewal gets applied
+    renewal_mode = models.CharField(max_length=10)
+    carry_over_data = models.CharField(max_length=11, null=True, blank=True)
+
+    applied_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "scheduled_renewal"
+        ordering = ("-created_at",)
+
+    def __str__(self) -> str:
+        return f"scheduled_renewal#{self.pk} for service#{self.service_id}"

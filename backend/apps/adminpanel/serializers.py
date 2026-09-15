@@ -442,12 +442,18 @@ class AdminServiceSerializer(serializers.ModelSerializer):
     plan = serializers.CharField(source="current_plan.name_fa", read_only=True, default=None)
     plan_en = serializers.CharField(source="current_plan.name_en", read_only=True, default=None)
     is_online = serializers.SerializerMethodField()
+    has_scheduled_renewal = serializers.SerializerMethodField()
 
     class Meta:
         model = Service
         fields = ("id", "panel_username", "user", "user_name", "plan", "plan_en", "status",
                   "expire_strategy", "data_limit", "data_used", "expire_at", "online_at",
-                  "is_online", "last_synced_at", "subscription_url", "created_at")
+                  "is_online", "last_synced_at", "subscription_url", "created_at",
+                  "has_scheduled_renewal")
+
+    def get_has_scheduled_renewal(self, obj) -> bool:
+        renewal = getattr(obj, "scheduled_renewal", None)
+        return bool(renewal and renewal.applied_at is None)
 
     def get_is_online(self, obj) -> bool:
         if not obj.online_at:

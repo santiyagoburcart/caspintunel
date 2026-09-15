@@ -8,6 +8,17 @@ class PlanType(models.TextChoices):
     CUSTOM_VOLUME = "custom_volume", "Custom volume"
 
 
+class RenewalMode(models.TextChoices):
+    RESET = "reset", "Reset (mode A)"
+    CARRY_OVER = "carry_over", "Carry over (mode B)"
+
+
+class CarryOverData(models.TextChoices):
+    BOTH = "both", "Time + volume"
+    TIME_ONLY = "time_only", "Time only"
+    VOLUME_ONLY = "volume_only", "Volume only"
+
+
 class Plan(TimeStampedModel):
     """Sales plan — independent of panel user_templates (data-model · Module 3)."""
 
@@ -39,6 +50,14 @@ class Plan(TimeStampedModel):
 
     is_active = models.BooleanField(default=True)
     sort_order = models.IntegerField(default=0)
+
+    # what happens to a service's leftover time/volume when this plan renews it —
+    # see apps.panel.services.apply_scheduled_renewal for the actual application
+    renewal_mode = models.CharField(max_length=10, choices=RenewalMode.choices, default=RenewalMode.RESET)
+    carry_over_data = models.CharField(
+        max_length=11, choices=CarryOverData.choices, null=True, blank=True,
+        help_text="only meaningful when renewal_mode=carry_over",
+    )
 
     # Panel groups this plan's service attaches to — scoped to `self.panel`.
     # Empty (the default) -> fall back to that panel's default_group_ids, so
