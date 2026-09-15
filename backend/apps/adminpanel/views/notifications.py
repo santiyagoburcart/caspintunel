@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.db.models import Count
 from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, viewsets
+from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from apps.notifications.models import Notification, NotificationType
@@ -30,6 +31,15 @@ class NotificationViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
     @extend_schema(request=BroadcastSerializer, responses=NotificationSerializer,
                    summary="Create a broadcast / targeted notification (site/bot/email)")
     def create(self, request, *args, **kwargs):
+        return self._send(request)
+
+    @extend_schema(request=BroadcastSerializer, responses=NotificationSerializer,
+                   summary="Alias of create() — POST /admin/notifications/broadcast/")
+    @action(detail=False, methods=["post"])
+    def broadcast(self, request):
+        return self._send(request)
+
+    def _send(self, request):
         ser = BroadcastSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         data = ser.validated_data
@@ -37,9 +47,11 @@ class NotificationViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
         target_id = data.get("target_user")
         staff = request.user if hasattr(request.user, "role") else None
         note = Notification.objects.create(
-            type=NotificationType.EVENT if target_id else NotificationType.BROADCAST,
+            type=NotificationType.ADMIN_BROADCAST,
             title=data["title"],
             body=data["body"],
+            title_en=data.get("title_en", ""),
+            body_en=data.get("body_en", ""),
             target_user_id=target_id,
             via_site=data["via_site"],
             via_bot=data["via_bot"],

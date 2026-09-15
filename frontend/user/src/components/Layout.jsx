@@ -5,6 +5,7 @@ import { useI18n } from '../lib/i18n'
 import { useTheme } from '../theme/ThemeProvider'
 import { isTelegramMiniApp } from '../lib/telegram'
 import { CaspianBrand } from './caspian'
+import NotificationBell from './NotificationBell'
 
 const links = [
   ['/', 'dashboard'],
@@ -61,6 +62,7 @@ function LegacyLayout() {
         </nav>
 
         <div className="ms-auto flex items-center gap-2">
+          <NotificationBell />
           {!locked && (
             <button className="btn-ghost text-sm" onClick={toggle}>{mode === 'dark' ? '☀️' : '🌙'}</button>
           )}
@@ -145,6 +147,7 @@ function CaspianLayout() {
           </div>
 
           <div className="csp-topbar-r">
+            <NotificationBell />
             {!locked && (
               <button className="csp-icon-btn" onClick={toggle} aria-label={t('theme')}>
                 <LIco d={mode === 'dark' ? SUN_ICON : MOON_ICON} />

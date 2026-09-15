@@ -142,7 +142,7 @@ def test_broadcast_creates_notification(boss):
     r = boss.post("/api/v1/admin/notifications/",
                   {"title": "سلام", "body": "متن", "via_site": True, "via_bot": True}, format="json")
     assert r.status_code == 201
-    assert r.data["type"] == "broadcast"
+    assert r.data["type"] == "admin_broadcast"
     assert r.data["audience"] >= 2
 
 

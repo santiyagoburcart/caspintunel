@@ -7,6 +7,7 @@ from django.utils import timezone
 
 from apps.common.jalali import to_jalali_str
 from apps.notifications.dispatch import notify_user
+from apps.notifications.models import NotificationType
 from apps.panel.models import Service, ServiceStatus
 from apps.settings_app.utils import get_setting
 
@@ -55,6 +56,10 @@ def _send_volume_alert(svc, used_pct):
         title="هشدار اتمام حجم سرویس",
         body=(f"سرویس «{svc.panel_username}» حدود {used_pct:.0f}٪ از {gb:.0f} گیگابایت حجم را "
               "مصرف کرده است. برای جلوگیری از قطعی، سرویس را تمدید کنید."),
+        title_en="Service volume warning",
+        body_en=(f"Service \"{svc.panel_username}\" has used about {used_pct:.0f}% of its {gb:.0f}GB "
+                 "quota. Renew it to avoid an interruption."),
+        ntype=NotificationType.VOLUME_WARNING,
         via_site=True, via_bot=True, via_email=True,
     )
 
@@ -66,5 +71,9 @@ def _send_expiry_alert(svc, days_left):
         title="هشدار انقضای سرویس",
         body=(f"سرویس «{svc.panel_username}» تا {days_left} روز دیگر (‌{when}‌) منقضی می‌شود. "
               "برای ادامهٔ استفاده آن را تمدید کنید."),
+        title_en="Service expiry warning",
+        body_en=(f"Service \"{svc.panel_username}\" expires in {days_left} day(s) ({when}). "
+                 "Renew it to keep using it."),
+        ntype=NotificationType.EXPIRY_WARNING,
         via_site=True, via_bot=True, via_email=True,
     )

@@ -16,6 +16,25 @@ services:
       - media_data:/app/media
       - static_data:/app/staticfiles
 
+  # gunicorn (sync workers) can't serve WebSockets, so the /ws/ notification
+  # feed is proxied to this separate ASGI (Daphne) process instead. Dev needs
+  # no equivalent: Channels auto-patches `runserver` to serve HTTP+WS together.
+  daphne:
+    image: caspintunel-backend
+    restart: unless-stopped
+    env_file: [.env]
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      RUN_MIGRATIONS: "0"
+    command: daphne -b 0.0.0.0 -p 8001 config.asgi:application
+    volumes:
+      - ./VERSION:/app/VERSION:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
   celery_worker:
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.prod

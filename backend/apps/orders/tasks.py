@@ -97,13 +97,18 @@ def _notify_delivered(order):
     """Flowchart 1.2: notify the buyer their invoice was approved / service is ready."""
     try:
         from apps.notifications.dispatch import notify_user
+        from apps.notifications.models import NotificationType
 
         svc = order.service
         link = f"\n\nلینک اشتراک:\n{svc.subscription_url}" if svc and svc.subscription_url else ""
+        link_en = f"\n\nSubscription link:\n{svc.subscription_url}" if svc and svc.subscription_url else ""
         notify_user(
             order.user,
             title="سرویس شما آماده شد",
             body=f"پرداخت سفارش #{order.id} تأیید و سرویس فعال شد.{link}",
+            title_en="Your service is ready",
+            body_en=f"Order #{order.id} was approved and your service is now active.{link_en}",
+            ntype=NotificationType.SERVICE_READY,
             via_site=True, via_bot=True, via_email=True,
         )
     except Exception as exc:  # noqa: BLE001 - notification must not fail fulfillment

@@ -14,6 +14,7 @@ import Cards from './pages/Cards'
 import Monitoring from './pages/Monitoring'
 import Branding from './pages/Branding'
 import Settings from './pages/Settings'
+import Notifications from './pages/Notifications'
 import { PanelConnection, Bots } from './pages/Integrations'
 import { Pages, Roles, Themes } from './pages/Simple'
 
@@ -42,6 +43,7 @@ export default function App() {
         <Route path="/bots" element={<Bots />} />
         <Route path="/branding" element={<Branding />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/notifications" element={<Notifications />} />
         <Route path="/pages" element={<Pages />} />
         <Route path="/themes" element={<Themes />} />
         <Route path="/roles" element={<Roles />} />

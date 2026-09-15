@@ -2,16 +2,25 @@ from django.db import models
 
 
 class NotificationType(models.TextChoices):
-    BROADCAST = "broadcast", "Broadcast"
-    EVENT = "event", "Event"
+    BROADCAST = "broadcast", "Broadcast"  # kept for existing rows / apps.notifications.dispatch.broadcast()
+    EVENT = "event", "Event"  # kept as the generic default for existing call sites
+    ORDER_CONFIRMED = "order_confirmed", "Order confirmed"
+    SERVICE_READY = "service_ready", "Service ready"
+    VOLUME_WARNING = "volume_warning", "Volume warning"
+    EXPIRY_WARNING = "expiry_warning", "Expiry warning"
+    ADMIN_BROADCAST = "admin_broadcast", "Admin broadcast"
 
 
 class Notification(models.Model):
     """data-model · Module 6 · `notification`."""
 
-    type = models.CharField(max_length=10, choices=NotificationType.choices)
+    type = models.CharField(max_length=20, choices=NotificationType.choices)
+    # `title`/`body` are the Persian (default) content — kept unrenamed so every
+    # existing notify_user(title=..., body=...) call site keeps working as-is.
     title = models.CharField(max_length=200)
     body = models.TextField()
+    title_en = models.CharField(max_length=200, blank=True)
+    body_en = models.TextField(blank=True)
     target_user = models.ForeignKey(
         "accounts.User", null=True, blank=True, on_delete=models.CASCADE,
         related_name="notifications", help_text="null = broadcast",

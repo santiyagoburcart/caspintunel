@@ -7,6 +7,8 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.common.models import write_audit
+from apps.notifications.dispatch import notify_user
+from apps.notifications.models import NotificationType
 from apps.orders.models import Order, OrderStatus
 from apps.orders.services import mark_paid_and_fulfill
 
@@ -82,6 +84,15 @@ def approve_payment(payment_id: int, *, actor=None, bank_card=None) -> Payment:
     payment.save(update_fields=["status", "confirmed_by", "confirmed_at", "bank_card", "updated_at"])
 
     mark_paid_and_fulfill(payment.order)
+    notify_user(
+        payment.order.user,
+        title="سفارش شما تأیید شد",
+        body=f"پرداخت سفارش #{payment.order_id} تأیید شد و سرویس شما در حال آماده‌سازی است.",
+        title_en="Your order was confirmed",
+        body_en=f"Payment for order #{payment.order_id} was approved and your service is being prepared.",
+        ntype=NotificationType.ORDER_CONFIRMED,
+        via_site=True, via_bot=True, via_email=True,
+    )
     write_audit(action="payment.approved", target=payment, staff=actor,
                 detail={"order": payment.order_id})
     return payment

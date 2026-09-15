@@ -45,6 +45,9 @@ VERSION = _read_version()
 # Applications
 # ---------------------------------------------------------------------------
 DJANGO_APPS = [
+    # must come before staticfiles: auto-patches `runserver` to serve ASGI
+    # (HTTP + WebSocket) on one port in dev — see config/asgi.py
+    "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -61,6 +64,7 @@ THIRD_PARTY_APPS = [
     "corsheaders",
     "drf_spectacular",
     "django_celery_beat",
+    "channels",
 ]
 
 LOCAL_APPS = [
@@ -263,6 +267,19 @@ CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
         "LOCATION": env("REDIS_URL", default="redis://redis:6379/0"),
+    }
+}
+
+# ---------------------------------------------------------------------------
+# Channels (WebSocket notifications) — Redis db 3 (0=cache, 1=celery broker,
+# 2=celery result backend are already in use).
+# ---------------------------------------------------------------------------
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [env("CHANNELS_REDIS_URL", default="redis://redis:6379/3")],
+        },
     }
 }
 

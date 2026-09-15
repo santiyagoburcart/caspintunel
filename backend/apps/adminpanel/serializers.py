@@ -382,6 +382,8 @@ class AdminPendingPaymentSerializer(serializers.ModelSerializer):
 class BroadcastSerializer(serializers.Serializer):
     title = serializers.CharField(max_length=200)
     body = serializers.CharField()
+    title_en = serializers.CharField(max_length=200, required=False, allow_blank=True, default="")
+    body_en = serializers.CharField(required=False, allow_blank=True, default="")
     target_user = serializers.IntegerField(required=False, allow_null=True)
     via_site = serializers.BooleanField(default=True)
     via_bot = serializers.BooleanField(default=False)
@@ -390,11 +392,15 @@ class BroadcastSerializer(serializers.Serializer):
 
 class NotificationSerializer(serializers.ModelSerializer):
     delivery_count = serializers.IntegerField(read_only=True, required=False)
+    sent_by = serializers.SerializerMethodField()
 
     class Meta:
         model = Notification
-        fields = ("id", "type", "title", "body", "target_user", "via_site",
-                  "via_bot", "via_email", "delivery_count", "created_at")
+        fields = ("id", "type", "title", "body", "title_en", "body_en", "target_user", "via_site",
+                  "via_bot", "via_email", "delivery_count", "sent_by", "created_at")
+
+    def get_sent_by(self, obj) -> str | None:
+        return obj.created_by_staff.username if obj.created_by_staff_id else None
 
 
 # --- branding -------------------------------------------------
