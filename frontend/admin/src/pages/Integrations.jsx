@@ -661,7 +661,7 @@ function PanelCard({ s, panel, isNew = false, onSaved, onDeleted, onCancel }) {
             {groupRows.map((g) => (
               <label key={g.id} className="flex items-center gap-2 rounded-xl border px-3 py-2 text-sm"
                 style={{ borderColor: 'var(--c-border)' }}>
-                <input type="checkbox" checked={selected.includes(g.id)} onChange={() => toggleGroup(g.id)} />
+                <Toggle checked={selected.includes(g.id)} onChange={() => toggleGroup(g.id)} label={g.name} />
                 <span className="truncate">{g.name}</span>
                 <span dir="ltr" className="ms-auto shrink-0 text-xs text-muted">#{g.id}</span>
               </label>

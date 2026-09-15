@@ -81,7 +81,7 @@ export function Toggle({ checked, onChange, disabled, label }) {
 }
 
 const BADGE_COLOR = {
-  active: 'success', on_hold: 'warning', expired: 'danger', limited: 'danger',
+  active: 'success', on_hold: 'warning', expired: 'danger', limited: 'warning',
   disabled: 'muted', pending: 'secondary', pending_payment: 'warning',
   paid: 'secondary', completed: 'success', rejected: 'danger',
 }

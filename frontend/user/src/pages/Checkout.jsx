@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api, apiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
-import { toman } from '../lib/format'
+import { toman, gb } from '../lib/format'
 import { Alert, Copyable, Field, Spinner, StatusBadge } from '../components/ui'
 import { AuthImage } from '../components/AuthImage'
 import { useToast } from '../components/Toast'
@@ -28,6 +28,7 @@ export default function Checkout() {
   const [selectedCard, setSelectedCard] = useState(null)
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
+  const [changingPlan, setChangingPlan] = useState(false)
 
   useEffect(() => {
     api.get('/plans/').then((r) => setPlans(r.data.results))
@@ -112,28 +113,58 @@ export default function Checkout() {
   }
 
   if (!order) {
-    const planName = plan ? ((lang === 'fa' ? plan.name_fa : plan.name_en) || plan.name_fa) : ''
     const renewingService = renewId ? services.find((sv) => String(sv.id) === String(renewId)) : null
+    const showPicker = !plan || changingPlan
+    const volumeText = plan?.type === 'custom_volume' ? t('selectable')
+      : plan?.data_limit ? `${gb(plan.data_limit)} GB` : t('unlimited')
+    const durationText = plan?.duration_days ? `${plan.duration_days} ${t('days')}` : t('no_expiry')
+
     return (
       <form onSubmit={createOrder} className="card mx-auto max-w-lg space-y-4">
-        <h1 className="text-lg font-bold">
-          {renewId ? t('renew_service_title', { id: renewingService?.id ?? renewId }) : t('buy')}
-        </h1>
+        <style>{CHECKOUT_CSS}</style>
+
+        {renewId && (
+          <div className="ckt-renew-banner">
+            <span className="ckt-renew-ico" aria-hidden="true">↻</span>
+            <span>{t('renew_service_title', { id: renewingService?.id ?? renewId })}</span>
+          </div>
+        )}
+
+        <h1 className="text-lg font-bold">{t('buy')}</h1>
         <Alert>{err}</Alert>
 
-        {renewId || !plan ? (
+        {showPicker ? (
           <Field label={t('store')}>
-            <select className="input" value={chosenPlan} onChange={(e) => setChosenPlan(e.target.value)}>
+            <select className="input" value={chosenPlan}
+              onChange={(e) => { setChosenPlan(e.target.value); setChangingPlan(false) }}>
               <option value="">—</option>
               {plans.map((p) => <option key={p.id} value={p.id}>{(lang === 'fa' ? p.name_fa : p.name_en) || p.name_fa}</option>)}
             </select>
           </Field>
         ) : (
-          <div className="rounded-xl p-3" style={{ background: 'color-mix(in srgb, var(--c-primary) 8%, transparent)' }}>
-            <div className="text-xs text-muted">{t('select_plan')}</div>
-            <div className="flex items-center justify-between gap-2">
-              <span className="font-bold" style={{ color: 'var(--c-ink)' }}>{planName}</span>
-              <Link to="/store" className="shrink-0 text-xs text-primary hover:underline">{t('change_plan')}</Link>
+          <div className="ckt-plan-card">
+            <div className="ckt-plan-head">
+              <div className="min-w-0">
+                <div className="ckt-plan-name-en" dir="ltr">{plan.name_en || plan.name_fa}</div>
+                {plan.name_en && plan.name_fa && <div className="ckt-plan-name-fa">{plan.name_fa}</div>}
+              </div>
+              <button type="button" className="ckt-plan-change" onClick={() => setChangingPlan(true)}>{t('change_plan')}</button>
+            </div>
+            <div className="ckt-plan-details">
+              <div className="ckt-plan-detail">
+                <span className="ckt-plan-detail-label">{t('volume')}</span>
+                <span className="ckt-plan-detail-val">{volumeText}</span>
+              </div>
+              <div className="ckt-plan-detail">
+                <span className="ckt-plan-detail-label">{t('duration')}</span>
+                <span className="ckt-plan-detail-val">{durationText}</span>
+              </div>
+              {plan.type !== 'custom_volume' && (
+                <div className="ckt-plan-detail ckt-plan-detail--price">
+                  <span className="ckt-plan-detail-label">{t('amount')}</span>
+                  <span className="ckt-plan-detail-val ckt-plan-price">{toman(plan.final_price, lang)}</span>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -370,3 +401,26 @@ function CountdownRing({ deadline }) {
     </div>
   )
 }
+
+const CHECKOUT_CSS = `
+.ckt-renew-banner {
+  display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 12px;
+  background: color-mix(in srgb, var(--c-warning) 14%, transparent);
+  color: var(--c-warning); font-size: 13px; font-weight: 700;
+}
+.ckt-renew-ico { flex-shrink: 0; font-size: 15px; line-height: 1; }
+.ckt-plan-card {
+  border-radius: 16px; padding: 14px 16px; border: 1px solid var(--c-border);
+  background: color-mix(in srgb, var(--c-primary) 5%, transparent);
+}
+.ckt-plan-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.ckt-plan-name-en { font-size: 17px; font-weight: 800; color: var(--c-ink); line-height: 1.3; }
+.ckt-plan-name-fa { margin-top: 2px; font-size: 12.5px; color: var(--c-text-muted); opacity: .75; }
+.ckt-plan-change { flex-shrink: 0; font-size: 11.5px; font-weight: 600; color: var(--c-primary); background: none; border: 0; cursor: pointer; white-space: nowrap; }
+.ckt-plan-change:hover { text-decoration: underline; }
+.ckt-plan-details { margin-top: 12px; display: flex; flex-direction: column; gap: 7px; padding-top: 12px; border-top: 1px solid var(--c-border); }
+.ckt-plan-detail { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; }
+.ckt-plan-detail-label { color: var(--c-text-muted); opacity: .7; }
+.ckt-plan-detail-val { font-weight: 700; color: var(--c-ink); }
+.ckt-plan-detail--price .ckt-plan-price { color: var(--c-primary); font-size: 15px; font-weight: 800; }
+`

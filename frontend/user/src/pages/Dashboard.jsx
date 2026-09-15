@@ -208,7 +208,7 @@ function LegacyServiceCard({ s, t, lang, onRefresh, onRenewClick }) {
         </div>
       )}
       {(s.status === 'limited' || s.status === 'expired') && (
-        <div className="text-xs" style={{ color: 'var(--c-danger)' }}>
+        <div className="text-xs" style={{ color: s.status === 'limited' ? 'var(--c-warning)' : 'var(--c-danger)' }}>
           {s.status === 'limited' ? t('st_limited_note') : t('st_expired_note')}
         </div>
       )}
@@ -408,7 +408,8 @@ function SvcCard({ s, t, lang, onRevoke, onRenewClick }) {
     : (s.days_left != null && s.days_left <= 30 ? Math.max(3, Math.round((s.days_left / 30) * 100)) : 100)
 
   const st = waiting ? 'pending' : s.status
-  const badgeTone = st === 'active' ? 'success' : (st === 'pending' || st === 'on_hold') ? 'warning' : 'danger'
+  const badgeTone = st === 'active' ? 'success'
+    : (st === 'pending' || st === 'on_hold' || st === 'limited') ? 'warning' : 'danger'
 
   return (
     <div className="csp-svc">
@@ -421,7 +422,7 @@ function SvcCard({ s, t, lang, onRevoke, onRenewClick }) {
           </div>
         </div>
         <span className="csp-svc-badge" data-tone={badgeTone}>
-          <i className={badgeTone === 'warning' ? 'spin' : ''} />
+          <i className={(st === 'pending' || st === 'on_hold') ? 'spin' : ''} />
           {waiting ? t('f_pending') : (t('st_' + s.status) === ('st_' + s.status) ? s.status : t('st_' + s.status))}
         </span>
       </div>
@@ -444,7 +445,9 @@ function SvcCard({ s, t, lang, onRevoke, onRenewClick }) {
           </div>
           {gbTotal != null && <div className="csp-bar"><i style={{ width: `${pct}%`, background: pct > 85 ? 'var(--c-danger)' : undefined }} /></div>}
           {(s.status === 'limited' || s.status === 'expired') && (
-            <div className="csp-svc-warn">{s.status === 'limited' ? t('st_limited_note') : t('st_expired_note')}</div>
+            <div className="csp-svc-warn" data-tone={s.status === 'limited' ? 'warning' : 'danger'}>
+              {s.status === 'limited' ? t('st_limited_note') : t('st_expired_note')}
+            </div>
           )}
         </div>
       )}
@@ -551,7 +554,8 @@ function QrModal({ s, t, lang, onClose }) {
     document.body.appendChild(a); a.click(); a.remove()
   }
   const waiting = s.status === 'on_hold' && !s.expire_at
-  const tone = waiting ? 'warning' : s.status === 'active' ? 'success' : 'danger'
+  const tone = waiting ? 'warning' : s.status === 'active' ? 'success'
+    : s.status === 'limited' ? 'warning' : 'danger'
   const daysTxt = s.expire_at ? t('days_remaining', { n: fnum(s.days_left, lang) })
     : waiting ? t('waiting_connect') : t('unlimited_time')
   const steps = [['1', 'step_install'], ['2', 'step_scan'], ['3', 'step_connect']]
@@ -728,6 +732,7 @@ const CSS = `
 .csp-svc-row--sub span { color: var(--c-text-muted); }
 .csp-svc-unl { color: var(--c-success) !important; font-weight: 600; }
 .csp-svc-warn { font-size: 11px; color: var(--c-danger); font-weight: 600; }
+.csp-svc-warn[data-tone="warning"] { color: var(--c-warning); }
 .csp-bar { height: 6px; border-radius: 999px; overflow: hidden; background: color-mix(in srgb, var(--c-text-muted) 18%, transparent); }
 .csp-bar > i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--c-primary), var(--c-secondary)); }
 

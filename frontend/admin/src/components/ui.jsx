@@ -36,7 +36,7 @@ export function Toggle({ checked, onChange, disabled, label }) {
 export function StatusBadge({ status }) {
   const map = {
     active: ['success', 'فعال'], on_hold: ['warning', 'در انتظار اتصال'],
-    expired: ['danger', 'منقضی'], limited: ['danger', 'اتمام حجم'],
+    expired: ['danger', 'منقضی'], limited: ['warning', 'اتمام حجم'],
     disabled: ['muted', 'غیرفعال'], pending: ['secondary', 'در حال ساخت'],
     pending_payment: ['warning', 'در انتظار پرداخت'], paid: ['secondary', 'پرداخت شد'],
     completed: ['success', 'تکمیل شد'], rejected: ['danger', 'رد شد'],

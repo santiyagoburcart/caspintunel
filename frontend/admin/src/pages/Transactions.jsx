@@ -82,7 +82,7 @@ const T = {
 
 const FILTERS = ['', 'pending', 'approved', 'rejected']
 const ST_TONE = { pending: 'warning', approved: 'success', rejected: 'danger' }
-const SVC_TONE = { active: 'success', on_hold: 'warning', pending: 'warning', limited: 'danger', expired: 'danger', disabled: 'danger' }
+const SVC_TONE = { active: 'success', on_hold: 'warning', pending: 'warning', limited: 'warning', expired: 'danger', disabled: 'danger' }
 
 const groupCard = (raw) => {
   const s = String(raw || '').replace(/\D/g, '')
