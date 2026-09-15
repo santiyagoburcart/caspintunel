@@ -232,14 +232,10 @@ export default function Checkout() {
 
       {order.status === 'pending_payment' && (
         <>
-          <div className="rounded-xl p-3 text-center" style={{ background: 'color-mix(in srgb, var(--c-primary) 12%, transparent)' }}>
-            <div className="text-sm text-muted">{t('amount')}</div>
-            <div className="text-2xl font-bold" style={{ color: 'var(--c-primary)' }}>{toman(order.amount_unique ?? instructions?.amount_to_pay, lang)}</div>
-            <div className="text-xs text-muted">{t('pay_exact')}</div>
-          </div>
-
+          {/* 1. countdown timer */}
           {instructions?.reserved_until && <CountdownRing deadline={instructions.reserved_until} />}
 
+          {/* 2. card number — bold/prominent, the thing the customer actually needs to act on */}
           {(instructions?.cards || []).length > 1 ? (
             <div className="space-y-2">
               <div className="text-xs text-muted">{t('choose_card')}</div>
@@ -247,7 +243,7 @@ export default function Checkout() {
                 const isSel = selectedCard === c.id
                 return (
                   <div key={c.id} role="radio" aria-checked={isSel} tabIndex={0}
-                    className="flex cursor-pointer items-center justify-between gap-2 rounded-xl border-2 px-3 py-2 transition outline-none"
+                    className="flex cursor-pointer items-center justify-between gap-2 rounded-xl border-2 px-3 py-3 transition outline-none"
                     style={{
                       borderColor: isSel ? 'var(--c-primary)' : 'var(--c-border)',
                       background: isSel ? 'color-mix(in srgb, var(--c-primary) 7%, transparent)' : undefined,
@@ -258,7 +254,10 @@ export default function Checkout() {
                       <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
                         style={{ background: isSel ? 'var(--c-primary)' : 'transparent', border: `2px solid ${isSel ? 'var(--c-primary)' : 'var(--c-border)'}` }}
                         aria-hidden="true">{isSel ? '✓' : ''}</span>
-                      <div><div className="font-mono">{c.card_number}</div><div className="text-xs text-muted">{c.holder_name}</div></div>
+                      <div>
+                        <div dir="ltr" className="font-mono text-lg font-extrabold tracking-wide" style={{ color: 'var(--c-ink)' }}>{c.card_number}</div>
+                        <div className="text-xs text-muted">{c.holder_name}</div>
+                      </div>
                     </div>
                     <Copyable text={c.card_number} />
                   </div>
@@ -268,8 +267,11 @@ export default function Checkout() {
           ) : (instructions?.cards || []).length === 1 ? (
             <div className="space-y-2">
               {instructions.cards.map((c) => (
-                <div key={c.id} className="flex items-center justify-between rounded-xl border px-3 py-2" style={{ borderColor: 'var(--c-border)' }}>
-                  <div><div className="font-mono">{c.card_number}</div><div className="text-xs text-muted">{c.holder_name}</div></div>
+                <div key={c.id} className="flex items-center justify-between rounded-xl border-2 px-3 py-3" style={{ borderColor: 'var(--c-primary)' }}>
+                  <div>
+                    <div dir="ltr" className="font-mono text-lg font-extrabold tracking-wide" style={{ color: 'var(--c-ink)' }}>{c.card_number}</div>
+                    <div className="text-xs text-muted">{c.holder_name}</div>
+                  </div>
                   <Copyable text={c.card_number} />
                 </div>
               ))}
@@ -277,6 +279,13 @@ export default function Checkout() {
           ) : (
             <Alert kind="warning">{t('no_cards')}</Alert>
           )}
+
+          {/* 3. amount */}
+          <div className="rounded-xl p-3 text-center" style={{ background: 'color-mix(in srgb, var(--c-primary) 12%, transparent)' }}>
+            <div className="text-sm text-muted">{t('amount')}</div>
+            <div className="text-2xl font-bold" style={{ color: 'var(--c-primary)' }}>{toman(order.amount_unique ?? instructions?.amount_to_pay, lang)}</div>
+            <div className="text-xs text-muted">{t('pay_exact')}</div>
+          </div>
 
           {/* --- receipt status --- */}
           {payStatus === 'pending' && <Alert kind="success">{t('pay_pending')}</Alert>}
@@ -287,6 +296,7 @@ export default function Checkout() {
             </Alert>
           )}
 
+          {/* 4. receipt upload */}
           {needsReceipt && (() => {
             const needsCardChoice = (instructions?.cards || []).length > 1 && !selectedCard
             return (

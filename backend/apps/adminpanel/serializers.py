@@ -4,6 +4,7 @@ from rest_framework import serializers
 from apps.accounts.models import Permission, Role, Staff
 from apps.notifications.models import Notification
 from apps.ops.models import BackupLog, HealthCheck, ResourceStat
+from apps.orders.models import Order
 from apps.panel.models import Panel, Service
 from apps.payments_sms.models import BankCard, Payment, SmsAppDevice, SmsSource
 from apps.plans.models import Plan
@@ -346,6 +347,39 @@ class TransactionSerializer(serializers.ModelSerializer):
         if obj.confirmed_by_staff_id:
             return obj.confirmed_by_staff.username
         if obj.confirmed_by == "admin":
+            return "admin"
+        return None
+
+
+class AdminUserOrderSerializer(serializers.ModelSerializer):
+    """One order in a user's purchase history (/admin/users/<id>/orders/).
+    Base is Order (not Payment) so orders with no payment yet still show up."""
+
+    plan_name = serializers.CharField(source="plan.name_fa", read_only=True, default=None)
+    plan_name_en = serializers.CharField(source="plan.name_en", read_only=True, default="")
+    payment_id = serializers.IntegerField(source="payment.id", read_only=True, default=None)
+    payment_method = serializers.CharField(source="payment.method", read_only=True, default=None)
+    payment_status = serializers.CharField(source="payment.status", read_only=True, default=None)
+    confirmer = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Order
+        fields = (
+            "id", "type", "status", "requested_account_name",
+            "amount_unique", "plan_name", "plan_name_en",
+            "payment_id", "payment_method", "payment_status", "confirmer",
+            "created_at",
+        )
+
+    def get_confirmer(self, obj) -> str | None:
+        payment = getattr(obj, "payment", None)
+        if not payment:
+            return None
+        if payment.confirmed_by == "system":
+            return "SMS system"
+        if payment.confirmed_by_staff_id:
+            return payment.confirmed_by_staff.username
+        if payment.confirmed_by == "admin":
             return "admin"
         return None
 

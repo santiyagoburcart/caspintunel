@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { api, apiError } from '../lib/api'
 import { useI18n, enumLabel } from '../lib/i18n'
 import { jalali, digits, faDigits } from '../lib/format'
@@ -34,6 +35,7 @@ const T = {
     ph_fullname: 'مثال: علی احمدی', ph_username: 'user_identifier',
     saving: 'در حال ثبت...', created_ok: 'کاربر جدید ساخته شد', updated_ok: 'تغییرات ذخیره شد',
     lang_fa: 'فارسی', lang_en: 'انگلیسی',
+    purchase_history: 'سوابق خرید',
   },
   en: {
     subtitle: 'View, filter and manage every user registered from Telegram and the website',
@@ -64,6 +66,7 @@ const T = {
     ph_fullname: 'e.g. Ali Ahmadi', ph_username: 'user_identifier',
     saving: 'Saving…', created_ok: 'New user created', updated_ok: 'Changes saved',
     lang_fa: 'Persian', lang_en: 'English',
+    purchase_history: 'Purchase history',
   },
 }
 
@@ -101,6 +104,7 @@ const I = {
   close: <path d="M18 6L6 18M6 6l12 12" />,
   eye: <><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" /><circle cx="12" cy="12" r="3" /></>,
   eyeOff: <><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" /><path d="M1 1l22 22" /></>,
+  bag: <><path d="M6 2l1.5 5M18 2l-1.5 5M3.5 7h17l-1.2 12.2a2 2 0 01-2 1.8H6.7a2 2 0 01-2-1.8L3.5 7z" /><path d="M8 11a4 4 0 008 0" /></>,
 }
 
 const GROWTH = {
@@ -434,9 +438,14 @@ export default function Users() {
                   <td data-label={s.col_joined} className="usr-mono usr-date">{jalali(r.created_at, false, lang)}</td>
                   <td data-label={t('active')} className="usr-c"><Toggle checked={r.is_active} onChange={() => toggle(r)} label={t('active')} /></td>
                   <td data-label={s.col_actions} className="usr-c">
-                    <button type="button" className="usr-edit-btn" onClick={() => setModal({ row: r })}>
-                      <Ico d={I.edit} w={14} /> {t('edit')}
-                    </button>
+                    <div className="usr-actions">
+                      <button type="button" className="usr-edit-btn" onClick={() => setModal({ row: r })}>
+                        <Ico d={I.edit} w={14} /> {t('edit')}
+                      </button>
+                      <Link to={`/users/${r.id}/orders`} className="usr-hist-btn" title={s.purchase_history}>
+                        <Ico d={I.bag} w={14} /> {s.purchase_history}
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -494,7 +503,7 @@ const CSS = `
 .usr-icon-btn:disabled { opacity: .4; cursor: not-allowed; }
 
 .usr-wrap { overflow-x: auto; }
-.usr-table { width: 100%; min-width: 820px; border-collapse: collapse; font-size: 13px; }
+.usr-table { width: 100%; min-width: 900px; border-collapse: collapse; font-size: 13px; }
 .usr-table thead th {
   text-align: start; font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: .03em;
   color: var(--c-text-muted); padding: 13px 16px; white-space: nowrap; border-bottom: 1px solid var(--c-border);
@@ -528,6 +537,13 @@ const CSS = `
   background: color-mix(in srgb, var(--c-primary) 8%, transparent); transition: background .15s;
 }
 .usr-edit-btn:hover { background: color-mix(in srgb, var(--c-primary) 16%, transparent); }
+.usr-actions { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.usr-hist-btn {
+  display: inline-flex; align-items: center; gap: 5px; padding: 5px 11px; border-radius: 9px;
+  font-size: 12px; font-weight: 600; white-space: nowrap;
+  color: var(--c-text-muted); border: 1px solid var(--c-border); background: transparent; transition: .15s;
+}
+.usr-hist-btn:hover { color: var(--c-primary); border-color: var(--c-primary); }
 
 .usr-foot { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; padding: 13px 16px; border-top: 1px solid var(--c-border); }
 .usr-pager { display: flex; align-items: center; gap: 8px; }

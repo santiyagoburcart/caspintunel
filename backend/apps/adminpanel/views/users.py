@@ -10,8 +10,9 @@ from rest_framework.response import Response
 
 from apps.accounts.services import import_legacy_users
 from apps.common.models import write_audit
+from apps.orders.models import Order
 
-from ..serializers import AdminUserCreateSerializer, AdminUserSerializer, SetPasswordSerializer
+from ..serializers import AdminUserCreateSerializer, AdminUserOrderSerializer, AdminUserSerializer, SetPasswordSerializer
 from .base import AdminViewSet
 
 User = get_user_model()
@@ -88,6 +89,18 @@ class UserAdminViewSet(AdminViewSet):
         user.save(update_fields=["is_active", "updated_at"])
         write_audit(action=f"user.{'enabled' if active else 'disabled'}", target=user, staff=request.user)
         return Response({"id": user.id, "is_active": user.is_active})
+
+    @action(detail=True, methods=["get"])
+    def orders(self, request, pk=None):
+        """A user's full order history for the admin purchase-history page —
+        based on Order (not Payment) so orders with no payment yet still show."""
+        user = self.get_object()
+        qs = (
+            Order.objects.filter(user=user)
+            .select_related("plan", "payment", "payment__confirmed_by_staff")
+            .order_by("-created_at")
+        )
+        return Response(AdminUserOrderSerializer(qs, many=True).data)
 
     @action(detail=False, methods=["post"], url_path="legacy-import")
     def legacy_import(self, request):
