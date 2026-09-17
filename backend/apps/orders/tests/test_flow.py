@@ -94,7 +94,8 @@ def test_order_api_create_returns_payment_instructions(user, fixed_plan):
     client = APIClient()
     client.force_authenticate(user)
     r = client.post("/api/v1/orders/", {"plan": fixed_plan.id, "type": "new",
-                                        "requested_account_name": "web-1"}, format="json")
+                                        "requested_account_name": "web-1",
+                                        "terms_accepted": True}, format="json")
     assert r.status_code == 201, r.data
     pi = r.data["payment_instructions"]
     assert pi["amount_to_pay"] == r.data["order"]["amount_unique"]
@@ -108,8 +109,22 @@ def test_order_api_rejects_taken_account_name(user, fixed_plan):
 
     client = APIClient()
     client.force_authenticate(user)
-    r = client.post("/api/v1/orders/", {"plan": fixed_plan.id, "requested_account_name": "taken"}, format="json")
+    r = client.post("/api/v1/orders/", {"plan": fixed_plan.id, "requested_account_name": "taken",
+                                        "terms_accepted": True}, format="json")
     assert r.status_code == 400
+
+
+def test_order_api_rejects_without_terms_accepted(user, fixed_plan):
+    client = APIClient()
+    client.force_authenticate(user)
+    r = client.post("/api/v1/orders/", {"plan": fixed_plan.id, "requested_account_name": "no-terms"}, format="json")
+    assert r.status_code == 400
+    assert "terms_accepted" in r.data
+
+    r2 = client.post("/api/v1/orders/", {"plan": fixed_plan.id, "requested_account_name": "no-terms",
+                                         "terms_accepted": False}, format="json")
+    assert r2.status_code == 400
+    assert "terms_accepted" in r2.data
 
 
 def test_new_order_rejects_a_taken_account_name(user, fixed_plan):

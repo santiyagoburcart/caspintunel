@@ -49,12 +49,18 @@ class OrderCreateSerializer(serializers.Serializer):
     requested_account_name = serializers.RegexField(r"^[A-Za-z0-9_.\-]{2,64}$", required=False, allow_blank=True)
     custom_volume_gb = serializers.IntegerField(required=False, min_value=1)
     service = serializers.IntegerField(required=False)
+    terms_accepted = serializers.BooleanField(write_only=True)
 
     def validate_requested_account_name(self, value):
         from apps.panel.models import Service
 
         if value and Service.objects.filter(panel_username__iexact=value).exists():
             raise serializers.ValidationError("that account name is taken")
+        return value
+
+    def validate_terms_accepted(self, value):
+        if not value:
+            raise serializers.ValidationError("you must accept the terms of service to place an order")
         return value
 
     def create(self, validated):

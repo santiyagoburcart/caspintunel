@@ -50,6 +50,16 @@ const HUB = {
   },
 }
 
+// icon tint by section category — network/panels blue, bots violet,
+// security/roles orange, appearance pink, everything else neutral gray
+const HUB_COLOR = {
+  panel: '#1464BA', monitoring: '#1464BA',
+  bots: '#7C3AED',
+  roles: '#D97706',
+  branding: '#DB2777', themes: '#DB2777',
+  pages: '#64748B',
+}
+
 function SettingsHub() {
   const { lang } = useI18n()
   const { logout, can } = useAuth()
@@ -72,16 +82,21 @@ function SettingsHub() {
         <p className="text-xs text-muted mt-0.5">{h.sub}</p>
       </div>
       <div className="card p-0 st-hub-list">
-        {items.map(([to, key]) => (
-          <Link key={to} to={to} className="st-hub-item">
-            <span className="st-hub-ico"><HubIco d={HUB_ICONS[key]} /></span>
-            <span className="min-w-0 flex-1">
-              <span className="block font-semibold text-sm">{h[key].t}</span>
-              <span className="block text-xs text-muted mt-0.5 truncate">{h[key].d}</span>
-            </span>
-            <HubIco d={HUB_ICONS.chevron} w={16} />
-          </Link>
-        ))}
+        {items.map(([to, key]) => {
+          const c = HUB_COLOR[key] || '#64748B'
+          return (
+            <Link key={to} to={to} className="st-hub-item">
+              <span className="st-hub-ico" style={{ background: `color-mix(in srgb, ${c} 14%, transparent)`, color: c }}>
+                <HubIco d={HUB_ICONS[key]} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-semibold text-sm">{h[key].t}</span>
+                <span className="block text-xs text-muted mt-0.5 truncate">{h[key].d}</span>
+              </span>
+              <HubIco d={HUB_ICONS.chevron} w={16} />
+            </Link>
+          )
+        })}
         <button type="button" className="st-hub-item st-hub-item--danger" onClick={() => { logout(); go('/login') }}>
           <span className="st-hub-ico st-hub-ico--danger"><HubIco d={HUB_ICONS.logout} /></span>
           <span className="min-w-0 flex-1"><span className="block font-semibold text-sm">{h.logout}</span></span>
@@ -95,17 +110,17 @@ const T = {
   fa: {
     h1: 'تنظیمات عمومی',
     sub: 'پیکربندی پارامترهای پشتیبان‌گیری، قیمت‌گذاری، هشدارها و الزامات عضویت',
-    card_h: 'کارت‌به‌کارت و مبلغ یکتا', card_sub: 'زمان رزرو فاکتور و بازهٔ مبلغ افزودهٔ خودکار برای تأیید پرداخت',
-    alerts_h: 'هشدارهای مصرف و انقضا', alerts_sub: 'آستانهٔ هشدار حجم و تعداد روزهای باقی‌مانده تا انقضا',
-    toggles_h: 'الزامات و محدودیت‌ها', toggles_sub: 'قوانین ثبت‌نام و ورود کاربران به سایت و ربات',
-    display_h: 'زبان و نحوهٔ نمایش', display_sub: 'زبان پیش‌فرض سامانه و شیوهٔ نمایش محصولات به خریداران',
+    card_h: 'پرداخت و کارت‌به‌کارت', card_sub: 'زمان رزرو فاکتور و بازهٔ مبلغ افزودهٔ خودکار برای تأیید پرداخت',
+    alerts_h: 'هشدارها', alerts_sub: 'آستانهٔ هشدار حجم و تعداد روزهای باقی‌مانده تا انقضا',
+    toggles_h: 'الزامات', toggles_sub: 'قوانین ثبت‌نام و ورود کاربران به سایت و ربات',
+    display_h: 'نمایش', display_sub: 'زبان پیش‌فرض سامانه و شیوهٔ نمایش محصولات به خریداران',
     reset: 'بازنشانی مقادیر', save: 'ذخیرهٔ تغییرات',
     note: 'تغییر فاصلهٔ پشتیبان‌گیری بلافاصله زمان‌بند را به‌روز می‌کند.',
     info_h: 'راهنمای مبلغ تصادفی یکتا',
     info: 'مبلغ افزوده به قیمت، به‌صورت تصادفی بین حداقل و حداکثر به فاکتورهای کارت‌به‌کارت اضافه می‌شود تا سیستم بتواند بدون تداخل، پرداخت هر کاربر را از روی شناسهٔ مبلغ به‌صورت خودکار تأیید کند.',
     lang_fa: 'فارسی', lang_en: 'English',
 
-    src_h: 'شماره‌های بانکی مجاز', src_sub: 'شماره‌های فرستندهٔ پیامک واریزی بانک — فقط پیامک از این شماره‌ها برای تأیید خودکار بررسی می‌شود',
+    src_h: 'شماره‌های بانکی', src_sub: 'شماره‌های فرستندهٔ پیامک واریزی بانک — فقط پیامک از این شماره‌ها برای تأیید خودکار بررسی می‌شود',
     src_info: 'این‌ها شماره‌هایی هستند که بانک با آن‌ها پیامک واریز وجه ارسال می‌کند (مثلاً ۱۰۰۰۸۵۵۶ برای بانک ملت). فقط پیامک‌های دریافتی از این شماره‌ها برای تأیید خودکار پرداخت بررسی می‌شوند؛ پیامک از شماره‌های دیگر ذخیره می‌شود ولی نادیده گرفته می‌شود.',
     src_add: 'افزودن شماره', src_none: 'هنوز شماره‌ای ثبت نشده است — تا زمانی که شماره‌ای اضافه نشود، پیامک همهٔ فرستنده‌ها پذیرفته می‌شود.',
     src_col_phone: 'شماره', src_col_desc: 'توضیحات', src_col_active: 'وضعیت', src_col_created: 'تاریخ ایجاد', src_col_actions: 'عملیات',
@@ -131,17 +146,17 @@ const T = {
   en: {
     h1: 'General settings',
     sub: 'Configure backup, pricing, alerts and membership requirement parameters',
-    card_h: 'Card-to-card & unique amount', card_sub: 'Invoice reservation window and the auto-added amount range used to confirm payments',
-    alerts_h: 'Usage & expiry alerts', alerts_sub: 'Volume warning threshold and days-before-expiry notice',
-    toggles_h: 'Requirements & restrictions', toggles_sub: 'Rules for how users register and sign in on the site and the bot',
-    display_h: 'Language & display', display_sub: 'Default system language and how products are shown to buyers',
+    card_h: 'Payment & card-to-card', card_sub: 'Invoice reservation window and the auto-added amount range used to confirm payments',
+    alerts_h: 'Alerts', alerts_sub: 'Volume warning threshold and days-before-expiry notice',
+    toggles_h: 'Requirements', toggles_sub: 'Rules for how users register and sign in on the site and the bot',
+    display_h: 'Display', display_sub: 'Default system language and how products are shown to buyers',
     reset: 'Reset values', save: 'Save changes',
     note: 'Changing the backup interval reschedules the backup task immediately.',
     info_h: 'About the unique random amount',
     info: 'A random amount between the min and max is added to each card-to-card invoice so the system can auto-verify every payment by its unique amount without clashing with other users’ bank transactions.',
     lang_fa: 'Persian', lang_en: 'English',
 
-    src_h: 'Allowed SMS Sources', src_sub: 'Sender numbers the bank uses for deposit SMS — only messages from these numbers are checked for auto-confirmation',
+    src_h: 'Bank Numbers', src_sub: 'Sender numbers the bank uses for deposit SMS — only messages from these numbers are checked for auto-confirmation',
     src_info: 'These are the phone numbers the bank sends deposit SMS from (e.g. 10008556 for Bank Mellat). Only incoming SMS from these numbers are checked for auto-confirming a payment; SMS from any other number is stored but ignored.',
     src_add: 'Add number', src_none: 'No numbers registered yet — until one is added, SMS from any sender is accepted.',
     src_col_phone: 'Number', src_col_desc: 'Description', src_col_active: 'Status', src_col_created: 'Created', src_col_actions: 'Actions',
@@ -578,6 +593,12 @@ export default function Settings() {
   const amountNums = nums.filter((x) => AMOUNT_KEYS.includes(x.key))
   const alertNums = nums.filter((x) => !AMOUNT_KEYS.includes(x.key))
 
+  const SectionSave = () => (
+    <button type="submit" form="settings-form" className="btn-primary text-xs st-card-save" disabled={busy}>
+      {busy ? '…' : s.save}
+    </button>
+  )
+
   const NumField = (x) => (
     <label key={x.key} className="st-fld">
       <span className="st-fld-top">
@@ -615,8 +636,11 @@ export default function Settings() {
         {amountNums.length > 0 && (
           <div className="card st-card">
             <div className="st-card-head">
-              <h3 className="font-bold text-sm">{s.card_h}</h3>
-              <p className="text-xs text-muted mt-0.5">{s.card_sub}</p>
+              <div>
+                <h3 className="font-bold text-sm">{s.card_h}</h3>
+                <p className="text-xs text-muted mt-0.5">{s.card_sub}</p>
+              </div>
+              <SectionSave />
             </div>
             <div className="st-fields">{amountNums.map(NumField)}</div>
           </div>
@@ -625,8 +649,11 @@ export default function Settings() {
         {alertNums.length > 0 && (
           <div className="card st-card">
             <div className="st-card-head">
-              <h3 className="font-bold text-sm">{s.alerts_h}</h3>
-              <p className="text-xs text-muted mt-0.5">{s.alerts_sub}</p>
+              <div>
+                <h3 className="font-bold text-sm">{s.alerts_h}</h3>
+                <p className="text-xs text-muted mt-0.5">{s.alerts_sub}</p>
+              </div>
+              <SectionSave />
             </div>
             <div className="st-fields">{alertNums.map(NumField)}</div>
           </div>
@@ -635,8 +662,11 @@ export default function Settings() {
         {bools.length > 0 && (
           <div className="card st-card">
             <div className="st-card-head">
-              <h3 className="font-bold text-sm">{s.toggles_h}</h3>
-              <p className="text-xs text-muted mt-0.5">{s.toggles_sub}</p>
+              <div>
+                <h3 className="font-bold text-sm">{s.toggles_h}</h3>
+                <p className="text-xs text-muted mt-0.5">{s.toggles_sub}</p>
+              </div>
+              <SectionSave />
             </div>
             <div className="st-toggles">
               {bools.map((x, i) => (
@@ -652,8 +682,11 @@ export default function Settings() {
         {strs.length > 0 && (
           <div className="card st-card">
             <div className="st-card-head">
-              <h3 className="font-bold text-sm">{s.display_h}</h3>
-              <p className="text-xs text-muted mt-0.5">{s.display_sub}</p>
+              <div>
+                <h3 className="font-bold text-sm">{s.display_h}</h3>
+                <p className="text-xs text-muted mt-0.5">{s.display_sub}</p>
+              </div>
+              <SectionSave />
             </div>
             <div className="st-selects">
               {strs.map((x) => (
@@ -720,7 +753,9 @@ const CSS = `
   .st-foot .btn-primary { width: 100%; }
 }
 .st-card { padding: 0; overflow: hidden; }
-.st-card-head { padding: 18px 20px; border-bottom: 1px solid var(--c-border); }
+.st-card-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 10px;
+  padding: 18px 20px; border-bottom: 1px solid var(--c-border); }
+.st-card-save { flex-shrink: 0; }
 .st-fields { padding: 20px; display: grid; grid-template-columns: 1fr; gap: 16px; }
 @media (min-width: 640px) { .st-fields { grid-template-columns: 1fr 1fr; } }
 .st-fld { display: flex; flex-direction: column; gap: 6px; }

@@ -185,12 +185,14 @@ def test_role_crud_with_permission_codes(boss, perms):
 
 # --- pages / themes -------------------------------------
 def test_page_crud_and_public(boss, api):
-    Page.objects.create(slug="rules", title_fa="قوانین", is_active=True, body_fa="متن قوانین")
-    assert api.get("/api/v1/pages/rules/").data["body_fa"] == "متن قوانین"
+    # a distinct slug — "rules" itself is now seeded with real content by
+    # settings_app migration 0007 and shouldn't be clobbered by this test
+    Page.objects.create(slug="test-page", title_fa="صفحه تست", is_active=True, body_fa="متن قوانین")
+    assert api.get("/api/v1/pages/test-page/").data["body_fa"] == "متن قوانین"
 
-    pid = Page.objects.get(slug="rules").id
+    pid = Page.objects.get(slug="test-page").id
     boss.patch(f"/api/v1/admin/pages/{pid}/", {"body_fa": "به‌روزشد"}, format="json")
-    assert api.get("/api/v1/pages/rules/").data["body_fa"] == "به‌روزشد"
+    assert api.get("/api/v1/pages/test-page/").data["body_fa"] == "به‌روزشد"
 
 
 def test_theme_activate_and_public(boss, api):

@@ -29,6 +29,7 @@ export default function Checkout() {
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   const [changingPlan, setChangingPlan] = useState(false)
+  const [agreed, setAgreed] = useState(false)
 
   useEffect(() => {
     api.get('/plans/').then((r) => setPlans(r.data.results))
@@ -75,9 +76,9 @@ export default function Checkout() {
     toast.loading(t('action_in_progress'))
     try {
       const body = renewId
-        ? { plan: Number(chosenPlan), type: 'renew', service: Number(renewId) }
+        ? { plan: Number(chosenPlan), type: 'renew', service: Number(renewId), terms_accepted: agreed }
         : { plan: Number(chosenPlan), type: 'new', requested_account_name: accountName || undefined,
-            custom_volume_gb: customGb ? Number(customGb) : undefined }
+            custom_volume_gb: customGb ? Number(customGb) : undefined, terms_accepted: agreed }
       const { data } = await api.post('/orders/', body)
       setOrder(data.order)
       setInstructions(data.payment_instructions)
@@ -180,8 +181,17 @@ export default function Checkout() {
           <CustomVolumePicker plan={plan} value={customGb} onChange={setCustomGb} t={t} lang={lang} />
         )}
 
+        <label className="ckt-terms">
+          <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
+          <span>
+            {t('agree_prefix')}
+            <Link to="/rules" target="_blank" rel="noreferrer" className="ckt-terms-link">{t('terms_of_service')}</Link>
+            {t('agree_suffix')}
+          </span>
+        </label>
+
         <button className="btn-primary w-full"
-          disabled={busy || !chosenPlan || (!renewId && !accountName.trim())
+          disabled={busy || !agreed || !chosenPlan || (!renewId && !accountName.trim())
             || (plan?.type === 'custom_volume' && !customGb)}>
           {busy ? <Spinner /> : t('submit')}
         </button>
@@ -413,6 +423,10 @@ function CountdownRing({ deadline }) {
 }
 
 const CHECKOUT_CSS = `
+.ckt-terms { display: flex; align-items: flex-start; gap: 8px; font-size: 12.5px; color: var(--c-text-muted); cursor: pointer; }
+.ckt-terms input { margin-top: 3px; flex-shrink: 0; width: 16px; height: 16px; accent-color: var(--c-primary); cursor: pointer; }
+.ckt-terms-link { color: var(--c-primary); font-weight: 600; }
+.ckt-terms-link:hover { text-decoration: underline; }
 .ckt-renew-banner {
   display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 12px;
   background: color-mix(in srgb, var(--c-warning) 14%, transparent);
