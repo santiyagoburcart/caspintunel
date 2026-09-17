@@ -57,7 +57,6 @@ const CASPIAN_GROUPS = [
 // echo the reference's Material Symbols intent.
 const NAV_ICONS = {
   brand: 'M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z',
-  menu: 'M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5',
   sun: 'M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z',
   moon: 'M21.752 15.002A9.72 9.72 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z',
   dashboard: 'M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6zM13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z',
@@ -153,7 +152,7 @@ function LegacyLayout() {
           <button className="btn-ghost shrink-0 md:hidden" onClick={() => setOpen(true)} aria-label="menu">☰</button>
           {/* the active theme can lock the whole site to one mode (e.g. Royal Frost is light-only) */}
           {!locked && (
-            <button className="btn-ghost shrink-0" onClick={toggle}>{mode === 'dark' ? '☀️' : '🌙'}</button>
+            <button className="btn-ghost shrink-0 hidden md:inline-flex" onClick={toggle}>{mode === 'dark' ? '☀️' : '🌙'}</button>
           )}
           <button className="btn-ghost shrink-0" onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')}>{lang === 'fa' ? 'EN' : 'فا'}</button>
           <span className="ms-auto truncate text-muted">
@@ -198,11 +197,11 @@ function CaspianNav({ groups, t, brand, logo, onNavigate }) {
   )
 }
 
-// mobile bottom-nav — 5 route tabs, matches Stitch f10ea6b9 (DOM order; RTL
-// flips it to Settings · Roles · Cards · Users · Dashboard, right→left) —
-// plus a trailing "More" tab (not a route) that opens the full drawer.
-// There is no hamburger anywhere in the mobile header; the drawer is only
-// reachable from this tab.
+// mobile bottom-nav — exactly these 5 route tabs, matches Stitch f10ea6b9
+// (DOM order; RTL flips it to Settings · Roles · Cards · Users · Dashboard,
+// right→left). Any other route (panel, bots, monitoring, branding, themes,
+// pages, notifications) is desktop-sidebar-only — there is no mobile drawer
+// or "More" tab to reach them from a phone.
 const CASPIAN_BOTNAV = [
   ['/', 'dashboard', null, 'dashboard'],
   ['/users', 'users', 'users.view', 'users'],
@@ -216,7 +215,6 @@ function CaspianLayout() {
   const { t, lang, setLang } = useI18n()
   const { mode, toggle, locked, config } = useTheme()
   const go = useNavigate()
-  const [open, setOpen] = useState(false)
 
   const groups = CASPIAN_GROUPS.map(([g, items]) => [g, items.filter(([, , p]) => !p || can(p))])
   const botnav = CASPIAN_BOTNAV.filter(([, , p]) => !p || can(p))
@@ -232,31 +230,16 @@ function CaspianLayout() {
         <CaspianNav groups={groups} t={t} brand={brand} logo={config?.logo} />
       </aside>
 
-      {/* mobile drawer — slides in from the same start side */}
-      <div className={'csp-drawer-wrap' + (open ? ' open' : '')} onClick={() => setOpen(false)}>
-        <div className="csp-drawer-bg" />
-        <aside className="csp-drawer" onClick={(e) => e.stopPropagation()}>
-          <CaspianNav groups={groups} t={t} brand={brand} logo={config?.logo} onNavigate={() => setOpen(false)} />
-          <div className="csp-drawer-foot">
-            {!locked && (
-              <button className="csp-df-btn" onClick={toggle}>
-                <SideIcon name={mode === 'dark' ? 'sun' : 'moon'} />
-                {mode === 'dark' ? (lang === 'fa' ? 'روشن' : 'Light') : (lang === 'fa' ? 'تیره' : 'Dark')}
-              </button>
-            )}
-            <button className="csp-df-btn" onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')}>
-              {lang === 'fa' ? 'English' : 'فارسی'}
-            </button>
-            <button className="csp-df-btn csp-df-out" onClick={() => { logout(); go('/login') }}>{t('logout')}</button>
-          </div>
-        </aside>
-      </div>
-
       <div className="csp-main">
-        {/* mobile top bar (≤767px) — no hamburger here: the drawer only opens
-            from the "More" tab in the bottom nav below. */}
+        {/* mobile top bar (≤767px) — no hamburger, no theme toggle (mobile
+            is fixed to whichever mode the active theme defaults to); only a
+            language switch, since that's not reachable anywhere else on
+            mobile once the bottom nav is exactly these 5 tabs. */}
         <header className="csp-mtop">
           <div className="csp-mtop-end">
+            <button type="button" className="csp-mtop-lang" onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')}>
+              {lang === 'fa' ? 'EN' : 'فا'}
+            </button>
             <span className="csp-mtop-avatar">{(staff?.username || '?').charAt(0).toUpperCase()}</span>
             <span className="csp-mtop-online"><i />{lang === 'fa' ? 'آنلاین' : 'Online'}</span>
           </div>
@@ -290,11 +273,9 @@ function CaspianLayout() {
         <main className="csp-content mx-auto max-w-6xl p-3"><Outlet /></main>
       </div>
 
-      {/* mobile bottom nav (≤767px) — Stitch f10ea6b9: 5 route tabs, active =
-          dot above the icon + primary colour + bolder stroke (no pill) —
-          plus a trailing "More" tab that opens the full drawer (the only
-          way to reach it on mobile; there is no hamburger). */}
-      <nav className="csp-botnav" style={{ '--csp-bn-n': botnav.length + 1 }}>
+      {/* mobile bottom nav (≤767px) — Stitch f10ea6b9: exactly 5 tabs, active =
+          dot above the icon + primary colour + bolder stroke (no pill). */}
+      <nav className="csp-botnav" style={{ '--csp-bn-n': botnav.length }}>
         {botnav.map(([to, key, , icon]) => (
           <NavLink key={to} to={to} end
             className={({ isActive }) => 'csp-bn-item' + (isActive ? ' on' : '')}>
@@ -303,11 +284,6 @@ function CaspianLayout() {
             <span className="csp-bn-t">{t(key)}</span>
           </NavLink>
         ))}
-        <button type="button" className={'csp-bn-item' + (open ? ' on' : '')} onClick={() => setOpen(true)}>
-          <span className="csp-bn-dot" />
-          <SideIcon name="menu" />
-          <span className="csp-bn-t">{t('more_menu')}</span>
-        </button>
       </nav>
     </div>
   )
@@ -404,22 +380,6 @@ const CASPIAN_CSS = `
 }
 .dark .csp-link.csp-active svg { color: #ffffff; }
 
-/* ---- mobile drawer ---- */
-.csp-drawer-wrap { position: fixed; inset: 0; z-index: 60; visibility: hidden; }
-.csp-drawer-wrap.open { visibility: visible; }
-@media (min-width: 768px) { .csp-drawer-wrap { display: none; } }
-.csp-drawer-bg { position: absolute; inset: 0; background: rgba(0,0,0,0.45); opacity: 0; transition: opacity .2s; }
-.csp-drawer-wrap.open .csp-drawer-bg { opacity: 1; }
-.csp-drawer {
-  position: absolute; inset-block: 0; inset-inline-start: 0;
-  width: 17rem; max-width: 82vw;
-  display: flex; flex-direction: column;
-  transform: translateX(-100%); transition: transform .25s ease;
-}
-.csp-drawer .csp-side { height: auto; flex: 1 1 auto; min-height: 0; }
-[dir="rtl"] .csp-drawer { transform: translateX(100%); }
-.csp-drawer-wrap.open .csp-drawer { transform: translateX(0); }
-
 /* ---- desktop slim top bar (>=768px) ---- */
 .csp-topbar {
   display: flex; align-items: center; gap: 8px; padding: 12px 16px; font-size: 13px;
@@ -442,19 +402,6 @@ const CASPIAN_CSS = `
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .dark .csp-tb-user { color: #87929a; }
-
-/* ---- drawer footer (theme / lang / logout — mobile only) ---- */
-.csp-drawer-foot { padding: 12px; display: flex; flex-wrap: wrap; gap: 8px; border-top: 1px solid var(--c-border); background: #ffffff; }
-.dark .csp-drawer-foot { border-top-color: rgba(255,255,255,0.06); background: rgba(10,14,22,0.94); }
-.csp-df-btn {
-  display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 10px; font-size: 13px; font-weight: 600;
-  border: 1px solid var(--c-border); background: transparent; color: #3f4850; cursor: pointer;
-}
-.csp-df-btn svg { width: 16px; height: 16px; }
-.csp-df-btn:hover { border-color: var(--c-primary); color: var(--c-primary); }
-.dark .csp-df-btn { color: #bdc8d1; border-color: rgba(255,255,255,0.08); }
-.csp-df-out { color: var(--c-danger); border-color: color-mix(in srgb, var(--c-danger) 30%, transparent); margin-inline-start: auto; }
-.csp-df-out:hover { border-color: var(--c-danger); color: var(--c-danger); background: color-mix(in srgb, var(--c-danger) 10%, transparent); }
 
 /* ================================================================= *
  *  MOBILE ADMIN SHELL (<=767px) — Stitch f10ea6b9 / 0197c0c0        *
@@ -490,6 +437,11 @@ const CASPIAN_CSS = `
   }
 
   .csp-mtop-end { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .csp-mtop-lang {
+    font-size: 11px; font-weight: 700; padding: 5px 9px; border-radius: 8px;
+    border: 1px solid var(--c-border); background: transparent; color: var(--c-text-muted);
+  }
+  .csp-mtop-lang:active { background: color-mix(in srgb, var(--c-primary) 10%, transparent); color: var(--c-primary); }
   .csp-mtop-online {
     display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
     font-size: 10.5px; font-weight: 600; padding: 3px 8px; border-radius: 999px;

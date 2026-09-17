@@ -10,38 +10,84 @@ export default function Profile() {
   return styleKey === 'caspian' ? <CaspianProfile /> : <LegacyProfile />
 }
 
-/* ================= Legacy (Aurora / Frost) — unchanged ================= */
+/* ================= Legacy (Aurora / Frost) ================= */
 function LegacyProfile() {
   const { t, lang, setLang } = useI18n()
   const { mode, toggle, locked } = useTheme()
-  const { user } = useAuth()
-  const [pw, setPw] = useState({ current_password: '', new_password: '' })
+  const { user, refreshMe } = useAuth()
+
+  const [f, setF] = useState({ name: user?.name || '', phone: user?.phone || '', email: user?.email || '' })
+  const [infoBusy, setInfoBusy] = useState(false)
+  const [infoMsg, setInfoMsg] = useState(''); const [infoErr, setInfoErr] = useState('')
+  const dirty = f.name !== (user?.name || '') || f.phone !== (user?.phone || '') || f.email !== (user?.email || '')
+
+  const [pw, setPw] = useState({ current_password: '', new_password: '', confirm: '' })
   const [msg, setMsg] = useState(''); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false)
 
+  const inviteLink = user?.referral_code ? `${window.location.origin}/register?ref=${user.referral_code}` : ''
+  const st = strength(pw.new_password)
+  const stLabel = [t('pw_weak'), t('pw_weak'), t('pw_fair'), t('pw_strong')][st]
+
+  const saveInfo = async (e) => {
+    e.preventDefault(); setInfoBusy(true); setInfoErr(''); setInfoMsg('')
+    try {
+      await api.patch('/auth/me/', { name: f.name, phone: f.phone, email: f.email || null })
+      await refreshMe()
+      setInfoMsg(t('saved_ok'))
+    } catch (e2) { setInfoErr(apiError(e2)) } finally { setInfoBusy(false) }
+  }
   const changePw = async (e) => {
-    e.preventDefault(); setBusy(true); setErr(''); setMsg('')
-    try { await api.post('/auth/password/change/', pw); setMsg(t('pw_changed')); setPw({ current_password: '', new_password: '' }) }
-    catch (e2) { setErr(apiError(e2)) } finally { setBusy(false) }
+    e.preventDefault(); setErr(''); setMsg('')
+    if (pw.new_password !== pw.confirm) { setErr(t('pw_mismatch')); return }
+    setBusy(true)
+    try {
+      await api.post('/auth/password/change/', { current_password: pw.current_password, new_password: pw.new_password })
+      setMsg(t('pw_changed')); setPw({ current_password: '', new_password: '', confirm: '' })
+    } catch (e2) { setErr(apiError(e2)) } finally { setBusy(false) }
   }
   const resend = async () => {
-    try { await api.post('/auth/email/verify/resend/'); setMsg(t('verify_sent')) }
-    catch (e2) { setErr(apiError(e2)) }
+    try { await api.post('/auth/email/verify/resend/'); setInfoMsg(t('verify_sent')) }
+    catch (e2) { setInfoErr(apiError(e2)) }
   }
 
   return (
     <div className="space-y-4">
       <h1 className="text-lg font-bold">{t('profile')}</h1>
+
+      <form onSubmit={saveInfo} className="card space-y-3">
+        <h2 className="font-bold">{t('account_info')}</h2>
+        <Alert>{infoErr}</Alert>
+        <Alert kind="success">{infoMsg}</Alert>
+        <div className="flex items-center justify-between">
+          <span className="text-muted">{t('username')}</span>
+          <span className="flex items-center gap-2"><code dir="ltr">{user?.username}</code><Copyable text={user?.username || ''} /></span>
+        </div>
+        <Field label={t('name')}><input className="input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
+        <Field label={t('phone')}><input className="input" dir="ltr" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></Field>
+        <Field label={t('email')}>
+          <input className="input" type="email" dir="ltr" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />
+          {user?.email && !user?.email_verified && <button type="button" className="btn-ghost text-xs mt-1" onClick={resend}>{t('verify_email')}</button>}
+        </Field>
+        <button className="btn-primary" disabled={infoBusy || !dirty}>{infoBusy ? <Spinner /> : t('save_changes')}</button>
+      </form>
+
       <div className="card space-y-2">
-        <div className="flex justify-between"><span className="text-muted">{t('username')}</span><span>{user?.username}</span></div>
-        <div className="flex justify-between"><span className="text-muted">{t('email')}</span>
-          <span>{user?.email || '—'} {user?.email && !user?.email_verified && <button className="btn-ghost text-xs" onClick={resend}>{t('verify_email')}</button>}</span></div>
-        <div className="flex items-center justify-between"><span className="text-muted">{t('referral')}</span>
-          <span className="flex items-center gap-2"><code>{user?.referral_code}</code><Copyable text={user?.referral_code || ''} /></span></div>
+        <h2 className="font-bold">{t('referral')}</h2>
+        <div className="flex items-center justify-between">
+          <span className="text-muted">{t('referral')}</span>
+          <span className="flex items-center gap-2"><code>{user?.referral_code}</code><Copyable text={user?.referral_code || ''} /></span>
+        </div>
         <div className="flex justify-between"><span className="text-muted">{t('referral_count')}</span><span>{user?.referral_count}</span></div>
+        {inviteLink && (
+          <button type="button" className="btn-ghost w-full text-sm" onClick={() => navigator.clipboard?.writeText(inviteLink)}>
+            {t('copy_invite')}
+          </button>
+        )}
       </div>
+
       <div className="card">
         {!locked && (
-          <div className="toggle-row">
+          <div className="toggle-row hidden md:flex">
             <span>{t('theme')}: {mode === 'dark' ? t('dark') : t('light')}</span>
             <Toggle checked={mode === 'dark'} onChange={toggle} label={t('theme')} />
           </div>
@@ -51,14 +97,20 @@ function LegacyProfile() {
           <Toggle checked={lang === 'en'} onChange={(v) => setLang(v ? 'en' : 'fa')} label={t('language')} />
         </div>
       </div>
+
       <form onSubmit={changePw} className="card space-y-3">
         <h2 className="font-bold">{t('change_password')}</h2>
         <Alert>{err}</Alert>
         <Alert kind="success">{msg}</Alert>
         <PasswordField label={t('current_password')} value={pw.current_password} autoComplete="current-password"
           onChange={(e) => setPw({ ...pw, current_password: e.target.value })} />
-        <PasswordField label={t('new_password')} value={pw.new_password} autoComplete="new-password"
-          onChange={(e) => setPw({ ...pw, new_password: e.target.value })} />
+        <div>
+          <PasswordField label={t('new_password')} value={pw.new_password} autoComplete="new-password"
+            onChange={(e) => setPw({ ...pw, new_password: e.target.value })} />
+          {pw.new_password && <p className="text-xs text-muted mt-1">{t('pw_strength')}: {stLabel}</p>}
+        </div>
+        <PasswordField label={t('confirm_password')} value={pw.confirm} autoComplete="new-password"
+          onChange={(e) => setPw({ ...pw, confirm: e.target.value })} />
         <button className="btn-primary" disabled={busy}>{busy ? <Spinner /> : t('save')}</button>
       </form>
     </div>
@@ -132,8 +184,8 @@ function CaspianProfile() {
   const { t, lang, setLang } = useI18n()
   const { mode, toggle, locked, config } = useTheme()
   const { user, refreshMe } = useAuth()
-  const inviteLink = config?.support_telegram
-    ? `https://t.me/${String(config.support_telegram).replace(/^@/, '')}?start=ref_${user?.referral_code || ''}`
+  const inviteLink = user?.referral_code
+    ? `${window.location.origin}/register?ref=${user.referral_code}`
     : ''
 
   const [f, setF] = useState({ name: user?.name || '', phone: user?.phone || '', email: user?.email || '' })
@@ -209,6 +261,7 @@ function CaspianProfile() {
               <div className="csp-pf-account-id">
                 <div className="csp-pf-account-name">
                   <b dir="ltr">{user?.username}</b>
+                  <Copyable text={user?.username || ''} />
                   {user?.telegram_username && <span className="csp-pf-tg">{t('tg_account')}</span>}
                 </div>
                 <span className="csp-pf-account-sub">{t('account_info')}</span>
@@ -307,7 +360,7 @@ function CaspianProfile() {
             <div className="csp-pf-card-h"><span className="csp-pf-card-h-ico"><PI d={P.gear} w={18} /></span><h2 className="csp-headline">{t('preferences')}</h2></div>
             <div className="csp-pf-prefs">
               {!locked && (
-                <div className="csp-pf-pref">
+                <div className="csp-pf-pref csp-pf-pref--theme">
                   <span className="csp-pf-pref-ico"><PI d={mode === 'dark' ? P.moon : P.sun} w={17} /></span>
                   <div className="csp-pf-pref-txt">
                     <span>{t('theme')}</span>
@@ -432,6 +485,7 @@ const CSS = `
 .csp-pf-prefs { display: flex; flex-direction: column; }
 .csp-pf-pref { display: flex; align-items: center; gap: 11px; padding: 12px 0; border-bottom: 1px solid var(--c-border); }
 .csp-pf-pref:last-child { border-bottom: 0; }
+@media (max-width: 767px) { .csp-pf-pref--theme { display: none; } }
 .csp-pf-pref-ico { width: 32px; height: 32px; flex-shrink: 0; display: grid; place-items: center; border-radius: 9px; background: color-mix(in srgb, var(--c-text-muted) 10%, transparent); color: var(--c-text); }
 .csp-pf-pref-txt { flex: 1; display: flex; flex-direction: column; }
 .csp-pf-pref-txt span { font-size: 13px; font-weight: 600; }

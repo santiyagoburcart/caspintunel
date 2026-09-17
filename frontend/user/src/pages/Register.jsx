@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { useI18n } from '../lib/i18n'
 import { apiError } from '../lib/api'
@@ -10,7 +10,11 @@ export default function Register() {
   const { t } = useI18n()
   const { register } = useAuth()
   const nav = useNavigate()
-  const [f, setF] = useState({ username: '', password: '', email: '', name: '', phone: '', referral_code: '' })
+  const [params] = useSearchParams()
+  const [f, setF] = useState({
+    username: '', password: '', email: '', name: '', phone: '',
+    referral_code: (params.get('ref') || '').toUpperCase(),
+  })
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
 

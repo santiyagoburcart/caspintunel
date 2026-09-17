@@ -64,7 +64,7 @@ function LegacyLayout() {
         <div className="ms-auto flex items-center gap-2">
           <NotificationBell />
           {!locked && (
-            <button className="btn-ghost text-sm" onClick={toggle}>{mode === 'dark' ? '☀️' : '🌙'}</button>
+            <button className="btn-ghost text-sm hidden md:inline-flex" onClick={toggle}>{mode === 'dark' ? '☀️' : '🌙'}</button>
           )}
           <button className="btn-ghost text-sm" onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')}>
             {lang === 'fa' ? 'EN' : 'فا'}
@@ -149,7 +149,7 @@ function CaspianLayout() {
           <div className="csp-topbar-r">
             <NotificationBell />
             {!locked && (
-              <button className="csp-icon-btn" onClick={toggle} aria-label={t('theme')}>
+              <button className="csp-icon-btn csp-theme-btn" onClick={toggle} aria-label={t('theme')}>
                 <LIco d={mode === 'dark' ? SUN_ICON : MOON_ICON} />
               </button>
             )}
@@ -261,6 +261,7 @@ const CSP_LAYOUT_CSS = `
 }
 .csp-logout { width: 30px; height: 30px; background: transparent; }
 .csp-logout:hover { color: var(--c-danger); background: color-mix(in srgb, var(--c-danger) 12%, transparent); }
+@media (max-width: 767px) { .csp-theme-btn { display: none; } }
 
 /* mobile drawer */
 .csp-drawer-wrap { position: fixed; inset: 0; z-index: 60; }

@@ -95,8 +95,10 @@ const T = {
   fa: {
     h1: 'تنظیمات عمومی',
     sub: 'پیکربندی پارامترهای پشتیبان‌گیری، قیمت‌گذاری، هشدارها و الزامات عضویت',
-    card_h: 'مقادیر پایه', card_sub: 'تنظیم بازه‌های زمانی، آستانه‌ها و گزینه‌های ارتباطی',
-    toggles_h: 'الزامات و محدودیت‌ها',
+    card_h: 'کارت‌به‌کارت و مبلغ یکتا', card_sub: 'زمان رزرو فاکتور و بازهٔ مبلغ افزودهٔ خودکار برای تأیید پرداخت',
+    alerts_h: 'هشدارهای مصرف و انقضا', alerts_sub: 'آستانهٔ هشدار حجم و تعداد روزهای باقی‌مانده تا انقضا',
+    toggles_h: 'الزامات و محدودیت‌ها', toggles_sub: 'قوانین ثبت‌نام و ورود کاربران به سایت و ربات',
+    display_h: 'زبان و نحوهٔ نمایش', display_sub: 'زبان پیش‌فرض سامانه و شیوهٔ نمایش محصولات به خریداران',
     reset: 'بازنشانی مقادیر', save: 'ذخیرهٔ تغییرات',
     note: 'تغییر فاصلهٔ پشتیبان‌گیری بلافاصله زمان‌بند را به‌روز می‌کند.',
     info_h: 'راهنمای مبلغ تصادفی یکتا',
@@ -129,8 +131,10 @@ const T = {
   en: {
     h1: 'General settings',
     sub: 'Configure backup, pricing, alerts and membership requirement parameters',
-    card_h: 'Base values', card_sub: 'Set the intervals, thresholds and communication options',
-    toggles_h: 'Requirements & restrictions',
+    card_h: 'Card-to-card & unique amount', card_sub: 'Invoice reservation window and the auto-added amount range used to confirm payments',
+    alerts_h: 'Usage & expiry alerts', alerts_sub: 'Volume warning threshold and days-before-expiry notice',
+    toggles_h: 'Requirements & restrictions', toggles_sub: 'Rules for how users register and sign in on the site and the bot',
+    display_h: 'Language & display', display_sub: 'Default system language and how products are shown to buyers',
     reset: 'Reset values', save: 'Save changes',
     note: 'Changing the backup interval reschedules the backup task immediately.',
     info_h: 'About the unique random amount',
@@ -568,6 +572,23 @@ export default function Settings() {
   const nums = rows.filter((x) => x.type === 'int' && !MOVED_TO_BOTS.includes(x.key))
   const bools = rows.filter((x) => x.type === 'bool' && !MOVED_TO_BOTS.includes(x.key))
   const strs = rows.filter((x) => x.type === 'str')
+  // two clearly separate int groups — the reservation/amount fields belong
+  // together, the alert thresholds are a different concern
+  const AMOUNT_KEYS = ['unique_amount_reservation_minutes', 'unique_amount_min', 'unique_amount_max']
+  const amountNums = nums.filter((x) => AMOUNT_KEYS.includes(x.key))
+  const alertNums = nums.filter((x) => !AMOUNT_KEYS.includes(x.key))
+
+  const NumField = (x) => (
+    <label key={x.key} className="st-fld">
+      <span className="st-fld-top">
+        <span className="label">{t('set_' + x.key)}</span>
+        {h[x.key] && <span className="st-hint">{h[x.key]}</span>}
+      </span>
+      <input className="input" dir="ltr" type="number"
+        min={RANGE[x.key]?.[0]} max={RANGE[x.key]?.[1]}
+        value={form[x.key] ?? ''} onChange={(e) => setForm({ ...form, [x.key]: e.target.value })} />
+    </label>
+  )
 
   return (
     <div className="st space-y-5">
@@ -590,57 +611,71 @@ export default function Settings() {
 
       <Alert>{err}</Alert>
 
-      <form id="settings-form" onSubmit={save} className="card st-card">
-        <div className="st-card-head">
-          <h3 className="font-bold text-sm">{s.card_h}</h3>
-          <p className="text-xs text-muted mt-0.5">{s.card_sub}</p>
-        </div>
-
-        <div className="st-fields">
-          {nums.map((x) => (
-            <label key={x.key} className="st-fld">
-              <span className="st-fld-top">
-                <span className="label">{t('set_' + x.key)}</span>
-                {h[x.key] && <span className="st-hint">{h[x.key]}</span>}
-              </span>
-              <input className="input" dir="ltr" type="number"
-                min={RANGE[x.key]?.[0]} max={RANGE[x.key]?.[1]}
-                value={form[x.key] ?? ''} onChange={(e) => setForm({ ...form, [x.key]: e.target.value })} />
-            </label>
-          ))}
-        </div>
-
-        {bools.length > 0 && (
-          <div className="st-toggles">
-            <span className="label st-toggles-h">{s.toggles_h}</span>
-            {bools.map((x, i) => (
-              <div key={x.key} className={'st-toggle-row' + (i ? ' st-div' : '')}>
-                <span className="text-sm">{t('set_' + x.key)}</span>
-                <Toggle checked={!!form[x.key]} onChange={(v) => setForm({ ...form, [x.key]: v })} label={t('set_' + x.key)} />
-              </div>
-            ))}
+      <form id="settings-form" onSubmit={save} className="space-y-4">
+        {amountNums.length > 0 && (
+          <div className="card st-card">
+            <div className="st-card-head">
+              <h3 className="font-bold text-sm">{s.card_h}</h3>
+              <p className="text-xs text-muted mt-0.5">{s.card_sub}</p>
+            </div>
+            <div className="st-fields">{amountNums.map(NumField)}</div>
           </div>
         )}
 
-        <div className="st-selects">
-          {strs.map((x) => (
-            <label key={x.key} className="st-fld">
-              <span className="label">{t('set_' + x.key)}</span>
-              <select className="input" value={form[x.key] ?? ''} onChange={(e) => setForm({ ...form, [x.key]: e.target.value })}>
-                {x.key === 'default_language' && <>
-                  <option value="fa">{s.lang_fa}</option>
-                  <option value="en">{s.lang_en}</option>
-                </>}
-                {x.key === 'product_display_mode' && <>
-                  <option value="grouped">{t('display_grouped')}</option>
-                  <option value="flat">{t('display_flat')}</option>
-                </>}
-              </select>
-            </label>
-          ))}
-        </div>
+        {alertNums.length > 0 && (
+          <div className="card st-card">
+            <div className="st-card-head">
+              <h3 className="font-bold text-sm">{s.alerts_h}</h3>
+              <p className="text-xs text-muted mt-0.5">{s.alerts_sub}</p>
+            </div>
+            <div className="st-fields">{alertNums.map(NumField)}</div>
+          </div>
+        )}
 
-        <div className="st-foot">
+        {bools.length > 0 && (
+          <div className="card st-card">
+            <div className="st-card-head">
+              <h3 className="font-bold text-sm">{s.toggles_h}</h3>
+              <p className="text-xs text-muted mt-0.5">{s.toggles_sub}</p>
+            </div>
+            <div className="st-toggles">
+              {bools.map((x, i) => (
+                <div key={x.key} className={'st-toggle-row' + (i ? ' st-div' : '')}>
+                  <span className="text-sm">{t('set_' + x.key)}</span>
+                  <Toggle checked={!!form[x.key]} onChange={(v) => setForm({ ...form, [x.key]: v })} label={t('set_' + x.key)} />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {strs.length > 0 && (
+          <div className="card st-card">
+            <div className="st-card-head">
+              <h3 className="font-bold text-sm">{s.display_h}</h3>
+              <p className="text-xs text-muted mt-0.5">{s.display_sub}</p>
+            </div>
+            <div className="st-selects">
+              {strs.map((x) => (
+                <label key={x.key} className="st-fld">
+                  <span className="label">{t('set_' + x.key)}</span>
+                  <select className="input" value={form[x.key] ?? ''} onChange={(e) => setForm({ ...form, [x.key]: e.target.value })}>
+                    {x.key === 'default_language' && <>
+                      <option value="fa">{s.lang_fa}</option>
+                      <option value="en">{s.lang_en}</option>
+                    </>}
+                    {x.key === 'product_display_mode' && <>
+                      <option value="grouped">{t('display_grouped')}</option>
+                      <option value="flat">{t('display_flat')}</option>
+                    </>}
+                  </select>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="card st-foot">
           <button className="btn-primary text-sm" disabled={busy}>{busy ? '…' : t('save')}</button>
           <p className="text-xs text-muted">{s.note}</p>
         </div>
@@ -693,15 +728,14 @@ const CSS = `
 .st-fld-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .st-hint { font-size: 11px; color: var(--c-text-muted); }
 
-.st-toggles { padding: 4px 20px 20px; }
-.st-toggles-h { display: block; margin-bottom: 4px; }
+.st-toggles { padding: 16px 20px 8px; }
 .st-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 0; }
 .st-div { border-top: 1px solid var(--c-border); }
 
-.st-selects { padding: 0 20px 20px; display: grid; grid-template-columns: 1fr; gap: 16px; }
+.st-selects { padding: 16px 20px 20px; display: grid; grid-template-columns: 1fr; gap: 16px; }
 @media (min-width: 640px) { .st-selects { grid-template-columns: 1fr 1fr; } }
 
-.st-foot { padding: 16px 20px; border-top: 1px solid var(--c-border); display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.st-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 
 .st-info { display: flex; gap: 14px; align-items: flex-start; }
 .st-info-ico { width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0; display: grid; place-items: center;
