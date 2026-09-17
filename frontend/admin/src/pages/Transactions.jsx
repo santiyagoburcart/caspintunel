@@ -5,12 +5,19 @@ import { useI18n, enumLabel } from '../lib/i18n'
 import { jalali, toman, gb, digits } from '../lib/format'
 import { Alert, Spinner } from '../components/ui'
 import { ReceiptThumb } from '../components/ReceiptThumb'
+import { DateRangeModal, DRP_CSS } from '../components/DateRangePicker'
+import { BankFilterSheet, BFS_CSS } from '../components/BankFilterSheet'
 
 const TXS = {
   fa: { month: 'واریزی‌های این ماه', today: 'واریزی‌های امروز', queue: 'در صف بررسی', rejected: 'رد شده',
     tx_n: '{n} تراکنش', pending_n: '{n} مورد نیازمند تأیید', rej_n: '{n} مورد' },
   en: { month: "This month's deposits", today: "Today's deposits", queue: 'In review queue', rejected: 'Rejected',
     tx_n: '{n} transactions', pending_n: '{n} awaiting approval', rej_n: '{n} items' },
+}
+
+const TF = {
+  fa: { filter_dates: 'بازهٔ تاریخ', filter_banks: 'بانک‌ها و روش‌ها' },
+  en: { filter_dates: 'Date range', filter_banks: 'Banks & methods' },
 }
 
 function TxStat({ label, value, sub, tone, lang }) {
@@ -103,7 +110,7 @@ export default function Transactions() {
 
   return (
     <div className="tx space-y-3">
-      <style>{CSS}</style>
+      <style>{DRP_CSS}{BFS_CSS}{CSS}</style>
       <div className="tx-tabs">
         <button type="button" className={tab === 'tx' ? 'on' : ''} onClick={() => setTab('tx')}>{s.title}</button>
         <button type="button" className={tab === 'services' ? 'on' : ''} onClick={() => setTab('services')}>{s.services_tab}</button>
@@ -115,17 +122,26 @@ export default function Transactions() {
 
 function TxTable({ s, t, lang }) {
   const navigate = useNavigate()
+  const f = TF[lang] || TF.fa
   const [rows, setRows] = useState(null)
   const [status, setStatus] = useState('')
+  const [range, setRange] = useState({ from: '', to: '' })
+  const [dateOpen, setDateOpen] = useState(false)
+  const [bankOpen, setBankOpen] = useState(false)
+  const [bankFilter, setBankFilter] = useState({ banks: [], methods: [] })
   const [err, setErr] = useState('')
 
   const load = () => {
     setRows(null); setErr('')
-    api.get(`/admin/transactions/${status ? `?status=${status}` : ''}`)
+    const p = new URLSearchParams()
+    if (status) p.set('status', status)
+    if (range.from) p.set('from', range.from)
+    if (range.to) p.set('to', range.to)
+    api.get(`/admin/transactions/?${p}`)
       .then((r) => setRows(r.data.results ?? r.data))
       .catch(() => { setRows([]); setErr(lang === 'fa' ? 'خطا در دریافت' : 'Failed to load') })
   }
-  useEffect(load, [status])
+  useEffect(load, [status, range.from, range.to])
 
   const confirmer = (r) => {
     if (!r.confirmer) return '—'
@@ -134,22 +150,41 @@ function TxTable({ s, t, lang }) {
     return r.confirmer
   }
 
+  const bankActive = bankFilter.banks.length + bankFilter.methods.length
+  const filtered = (rows || []).filter((r) => (
+    (bankFilter.banks.length === 0 || bankFilter.banks.includes(r.card_bank))
+    && (bankFilter.methods.length === 0 || bankFilter.methods.includes(r.method))
+  ))
+
   return (
     <>
       <TxStats lang={lang} />
       <Alert>{err}</Alert>
-      <div className="flex flex-wrap gap-2">
-        {FILTERS.map((f) => (
-          <button key={f || 'all'} type="button" onClick={() => setStatus(f)}
-            className={`btn-ghost text-sm ${status === f ? 'tx-filter-on' : ''}`}>
-            {f ? s[f] : s.all}
+      <div className="tx-filter-row">
+        <div className="flex flex-wrap gap-2">
+          {FILTERS.map((ft) => (
+            <button key={ft || 'all'} type="button" onClick={() => setStatus(ft)}
+              className={`btn-ghost text-sm ${status === ft ? 'tx-filter-on' : ''}`}>
+              {ft ? s[ft] : s.all}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="tx-tool-btn" onClick={() => setDateOpen(true)}>
+            {f.filter_dates}{range.from && <span className="acc-tool-badge" dir="ltr">{range.from}→{range.to}</span>}
           </button>
-        ))}
+          <button type="button" className="tx-tool-btn" onClick={() => setBankOpen(true)}>
+            {f.filter_banks}{bankActive > 0 && <span className="bfs-count-badge">{digits(bankActive, lang)}</span>}
+          </button>
+        </div>
       </div>
+
+      <DateRangeModal open={dateOpen} onClose={() => setDateOpen(false)} onApply={setRange} />
+      <BankFilterSheet open={bankOpen} onClose={() => setBankOpen(false)} value={bankFilter} onApply={setBankFilter} />
 
       {rows === null ? (
         <div className="grid place-items-center py-16"><Spinner /></div>
-      ) : rows.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div className="card text-center text-muted">{s.none}</div>
       ) : (
         <div className="card p-0 tx-wrap">
@@ -163,7 +198,7 @@ function TxTable({ s, t, lang }) {
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => {
+              {filtered.map((r) => {
                 const note = r.status === 'rejected' && r.reject_reason
                   ? `${s.reason}: ${r.reject_reason}`
                   : (r.status === 'approved' && r.order_status === 'paid' ? `⚠ ${s.not_delivered}` : null)
@@ -287,6 +322,12 @@ function ServicesTable({ s, t, lang }) {
 }
 
 const CSS = `
+.tx-filter-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.tx-tool-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 10px; font-size: 12.5px; font-weight: 600;
+  border: 1px solid var(--c-border); background: transparent; color: var(--c-text-muted); }
+.tx-tool-btn:hover { color: var(--c-primary); border-color: var(--c-primary); }
+.acc-tool-badge { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--c-primary); }
+
 .tx-renewal-badge {
   display: inline-block; margin-inline-start: 6px; padding: 1px 8px; border-radius: 999px;
   font-size: 10px; font-weight: 700; white-space: nowrap;

@@ -115,9 +115,26 @@ const SHARED_CSS = `
 .sm-pw-eye:hover { color: var(--c-text); }
 .sm-toggle-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
 
-/* mobile: tables -> stacked cards + no page overflow */
+/* mobile: dedicated role/staff cards replace the table entirely (Stitch roles_desktop) */
+.sm-mobile-only { display: none; }
+.sm-role-cards, .sm-staff-cards { display: flex; flex-direction: column; gap: 10px; }
+.sm-role-card { border: 1px solid var(--c-border); border-radius: 14px; padding: 14px; background: var(--c-surface);
+  border-inline-start: 3px solid var(--dot, var(--c-primary)); }
+.sm-role-card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.sm-role-card-desc { font-size: 12.5px; color: var(--c-text-muted); margin-top: 6px; }
+.sm-role-card-acts { display: flex; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--c-border); }
+.sm-role-card-acts .sm-btn { flex: 1; text-align: center; }
+.sm-staff-card { display: flex; align-items: flex-start; gap: 12px; border: 1px solid var(--c-border); border-radius: 14px;
+  padding: 12px 14px; background: var(--c-surface); flex-wrap: wrap; }
+.sm-staff-card--off { opacity: .6; }
+.sm-staff-card .sm-acts { width: 100%; justify-content: flex-end; }
+
+/* mobile: tables -> stacked cards + no page overflow (Pages table + any
+   .sm-table that doesn't opt into the dedicated .sm-mobile-only cards above) */
 @media (max-width: 767px) {
   .sm-kpis { grid-template-columns: 1fr; }
+  .sm-desktop-only { display: none; }
+  .sm-mobile-only { display: block; }
   .sm-wrap { overflow-x: visible; }
   .sm-table, .sm-table tbody, .sm-table tr, .sm-table td { display: block; width: 100%; }
   .sm-table { min-width: 0; }
@@ -695,26 +712,43 @@ export function Roles() {
         {roles.rows.length === 0 ? (
           <div className="card text-center text-muted">{s.none_roles}</div>
         ) : (
-          <div className="card p-0 sm-wrap">
-            <table className="sm-table">
-              <thead><tr><th>{s.c_name}</th><th>{s.c_desc}</th><th className="sm-c">{s.c_perms}</th><th className="sm-c">{s.c_actions}</th></tr></thead>
-              <tbody>
-                {roles.rows.map((r, i) => (
-                  <tr key={r.id} className="sm-row">
-                    <td data-label={s.c_name}><span className="sm-name-dot"><span className="sm-dot" style={{ background: DOT[i % DOT.length] }} /><b>{r.name}</b></span></td>
-                    <td data-label={s.c_desc} className="text-muted">{r.description || '—'}</td>
-                    <td data-label={s.c_perms} className="sm-c"><span className="sm-cnt-pill">{digits((r.permission_codes || []).length, lang)}</span></td>
-                    <td data-label={s.c_actions} className="sm-c">
-                      <div className="sm-acts">
-                        <button className="sm-btn" onClick={() => setRoleModal({ row: r })}>{t('edit')}</button>
-                        <button className="sm-btn sm-btn--del" onClick={() => delRole(r)}>{t('delete')}</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <>
+            <div className="card p-0 sm-wrap sm-desktop-only">
+              <table className="sm-table">
+                <thead><tr><th>{s.c_name}</th><th>{s.c_desc}</th><th className="sm-c">{s.c_perms}</th><th className="sm-c">{s.c_actions}</th></tr></thead>
+                <tbody>
+                  {roles.rows.map((r, i) => (
+                    <tr key={r.id} className="sm-row">
+                      <td data-label={s.c_name}><span className="sm-name-dot"><span className="sm-dot" style={{ background: DOT[i % DOT.length] }} /><b>{r.name}</b></span></td>
+                      <td data-label={s.c_desc} className="text-muted">{r.description || '—'}</td>
+                      <td data-label={s.c_perms} className="sm-c"><span className="sm-cnt-pill">{digits((r.permission_codes || []).length, lang)}</span></td>
+                      <td data-label={s.c_actions} className="sm-c">
+                        <div className="sm-acts">
+                          <button className="sm-btn" onClick={() => setRoleModal({ row: r })}>{t('edit')}</button>
+                          <button className="sm-btn sm-btn--del" onClick={() => delRole(r)}>{t('delete')}</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="sm-mobile-only sm-role-cards">
+              {roles.rows.map((r, i) => (
+                <div key={r.id} className="sm-role-card" style={{ '--dot': DOT[i % DOT.length] }}>
+                  <div className="sm-role-card-top">
+                    <span className="sm-name-dot"><span className="sm-dot" style={{ background: DOT[i % DOT.length] }} /><b>{r.name}</b></span>
+                    <span className="sm-cnt-pill">{digits((r.permission_codes || []).length, lang)} {s.c_perms}</span>
+                  </div>
+                  {r.description && <p className="sm-role-card-desc">{r.description}</p>}
+                  <div className="sm-role-card-acts">
+                    <button className="sm-btn" onClick={() => setRoleModal({ row: r })}>{t('edit')}</button>
+                    <button className="sm-btn sm-btn--del" onClick={() => delRole(r)}>{t('delete')}</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </section>
 
@@ -729,35 +763,59 @@ export function Roles() {
         {staff.rows.length === 0 ? (
           <div className="card text-center text-muted">{s.none_staff}</div>
         ) : (
-          <div className="card p-0 sm-wrap">
-            <table className="sm-table">
-              <thead><tr><th>{s.c_username}</th><th className="sm-c">{s.c_role}</th><th className="sm-c">{s.c_active}</th><th className="sm-c">{s.c_actions}</th></tr></thead>
-              <tbody>
-                {staff.rows.map((r) => (
-                  <tr key={r.id} className="sm-row">
-                    <td data-label={s.c_username}>
-                      <span className="sm-uname">
-                        <span className="sm-av">{initials(r.username)}</span>
-                        <b className="sm-mono" dir="ltr">{r.username}</b>
-                      </span>
-                    </td>
-                    <td data-label={s.c_role} className="sm-c">
+          <>
+            <div className="card p-0 sm-wrap sm-desktop-only">
+              <table className="sm-table">
+                <thead><tr><th>{s.c_username}</th><th className="sm-c">{s.c_role}</th><th className="sm-c">{s.c_active}</th><th className="sm-c">{s.c_actions}</th></tr></thead>
+                <tbody>
+                  {staff.rows.map((r) => (
+                    <tr key={r.id} className="sm-row">
+                      <td data-label={s.c_username}>
+                        <span className="sm-uname">
+                          <span className="sm-av">{initials(r.username)}</span>
+                          <b className="sm-mono" dir="ltr">{r.username}</b>
+                        </span>
+                      </td>
+                      <td data-label={s.c_role} className="sm-c">
+                        {r.is_superadmin
+                          ? <span className="sm-role-badge super">★ {s.super}</span>
+                          : <span className="sm-role-badge">{r.role_name || '—'}</span>}
+                      </td>
+                      <td data-label={s.c_active} className="sm-c">{r.is_active ? <span className="sm-ok"><Ico d={I.check} w={14} /></span> : <span className="sm-off">—</span>}</td>
+                      <td data-label={s.c_actions} className="sm-c">
+                        <div className="sm-acts">
+                          <button className="sm-btn" onClick={() => setStaffModal({ row: r })}>{t('edit')}</button>
+                          <button className="sm-btn sm-btn--del" onClick={() => delStaff(r)}>{t('delete')}</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="sm-mobile-only sm-staff-cards">
+              {staff.rows.map((r) => (
+                <div key={r.id} className={'sm-staff-card' + (r.is_active ? '' : ' sm-staff-card--off')}>
+                  <span className="sm-av">{initials(r.username)}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <b className="sm-mono" dir="ltr">{r.username}</b>
+                      {r.is_active ? <span className="sm-ok"><Ico d={I.check} w={13} /></span> : <span className="sm-off">—</span>}
+                    </div>
+                    <div className="mt-1">
                       {r.is_superadmin
                         ? <span className="sm-role-badge super">★ {s.super}</span>
                         : <span className="sm-role-badge">{r.role_name || '—'}</span>}
-                    </td>
-                    <td data-label={s.c_active} className="sm-c">{r.is_active ? <span className="sm-ok"><Ico d={I.check} w={14} /></span> : <span className="sm-off">—</span>}</td>
-                    <td data-label={s.c_actions} className="sm-c">
-                      <div className="sm-acts">
-                        <button className="sm-btn" onClick={() => setStaffModal({ row: r })}>{t('edit')}</button>
-                        <button className="sm-btn sm-btn--del" onClick={() => delStaff(r)}>{t('delete')}</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </div>
+                  </div>
+                  <div className="sm-acts">
+                    <button className="sm-btn" onClick={() => setStaffModal({ row: r })}>{t('edit')}</button>
+                    <button className="sm-btn sm-btn--del" onClick={() => delStaff(r)}>{t('delete')}</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </section>
 

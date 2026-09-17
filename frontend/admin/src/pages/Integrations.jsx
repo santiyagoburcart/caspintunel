@@ -185,6 +185,19 @@ const INT_CSS = `
 .pl-rbtn--del { color: var(--c-danger); border-color: color-mix(in srgb, var(--c-danger) 28%, transparent); }
 .pl-rbtn--del:hover { background: color-mix(in srgb, var(--c-danger) 12%, transparent); border-color: var(--c-danger); }
 .pl-row-acts .pl-rbtn--del { margin-inline-start: auto; }
+
+/* ---- mobile-only connection status banner (Bots page) ---- */
+.int-mobile-only { display: none; }
+.int-status-banner { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 12px; font-size: 12.5px; line-height: 1.6; }
+.int-status-banner.ok { background: color-mix(in srgb, var(--c-success) 12%, transparent); color: var(--c-success); }
+.int-status-banner.warn { background: color-mix(in srgb, var(--c-warning) 12%, transparent); color: var(--c-warning); }
+.int-status-banner.bad { background: color-mix(in srgb, var(--c-text-muted) 14%, transparent); color: var(--c-text-muted); }
+@media (max-width: 767px) {
+  .int-mobile-only { display: flex; }
+  .int-bots-foot .btn-primary, .int-bots-foot { flex-direction: column; align-items: stretch; }
+  .int-bots-foot .btn-primary { width: 100%; }
+  .pl-row-acts .pl-rbtn { flex: 1; justify-content: center; }
+}
 `
 
 const T = {
@@ -211,6 +224,7 @@ const T = {
     pl_usage: '{p} پلن فعال / {s} سرویس',
     pl_node_groups: 'گروه‌های نود:', pl_no_groups: 'گروه پیش‌فرضی ندارد',
     pl_edit: 'ویرایش و تنظیمات', pl_none: 'هنوز پنلی اضافه نشده است.',
+    pl_health_check: 'بررسی سلامت همه', pl_health_result: '{ok} از {n} پنل با موفقیت پاسخ دادند.',
     groups: 'گروه‌های پیش‌فرض این پنل', fetch_groups: 'دریافت گروه‌ها از پنل',
     fetching: 'در حال دریافت…',
     groups_hint: 'وقتی یک پلن روی این پنل گروهی تعیین نکند، این گروه‌ها استفاده می‌شوند.',
@@ -263,6 +277,10 @@ const T = {
     force_join: 'عضویت اجباری در کانال‌ها',
     force_phone: 'اشتراک‌گذاری اجباری شمارهٔ تلفن',
     ch_admin_hint: 'مهم: ربات باید «ادمین» هر کانال باشد و دسترسی «مشاهدهٔ اعضا» داشته باشد؛ در غیر این صورت تأیید خودکار جوین کاربر کار نمی‌کند. پس از افزودن، ربات را ادمین کنید و «تست دسترسی» را بزنید.',
+    status_both_ok: 'هر دو ربات فروش و بک‌آپ با موفقیت به تلگرام متصل هستند.',
+    status_sales_only: 'ربات فروش متصل است؛ ربات بک‌آپ هنوز پیکربندی یا فعال نشده.',
+    status_backup_only: 'ربات بک‌آپ متصل است؛ ربات فروش هنوز پیکربندی یا فعال نشده.',
+    status_none: 'هیچ رباتی هنوز متصل نیست — توکن‌ها را زیر تنظیم کنید.',
   },
   en: {
     panel_intro: 'Manage your Pasargad / PasarGuard panels here. Every plan is bound to one panel. Passwords are stored encrypted and never shown again.',
@@ -287,6 +305,7 @@ const T = {
     pl_usage: '{p} plans / {s} services',
     pl_node_groups: 'Node groups:', pl_no_groups: 'no default groups',
     pl_edit: 'Edit & settings', pl_none: 'No panels added yet.',
+    pl_health_check: 'Check all health', pl_health_result: '{ok} of {n} panels responded successfully.',
     groups: "This panel's default groups", fetch_groups: 'Fetch groups from panel',
     fetching: 'Fetching…',
     groups_hint: 'Used whenever a plan on this panel does not set its own groups.',
@@ -339,6 +358,10 @@ const T = {
     force_join: 'Force channel join',
     force_phone: 'Force real phone-number share',
     ch_admin_hint: 'Important: the bot must be an ADMIN of each channel with “view members” permission, otherwise auto-verifying a user’s join will not work. After adding, make the bot an admin and click “Test access”.',
+    status_both_ok: 'Both the sales bot and the backup bot are connected to Telegram.',
+    status_sales_only: 'The sales bot is connected; the backup bot is not configured or inactive yet.',
+    status_backup_only: 'The backup bot is connected; the sales bot is not configured or inactive yet.',
+    status_none: 'No bot is connected yet — set the tokens below.',
   },
 }
 
@@ -435,6 +458,8 @@ export function PanelConnection() {
   const [panels, setPanels] = useState(null)
   const [editId, setEditId] = useState(null) // panel id | 'new' | null
   const [err, setErr] = useState('')
+  const [healthMsg, setHealthMsg] = useState(null)
+  const [checking, setChecking] = useState(false)
 
   const load = () =>
     api.get('/admin/panels/')
@@ -442,6 +467,17 @@ export function PanelConnection() {
       .catch((e) => { setPanels([]); setErr(apiError(e)) })
 
   useEffect(() => { load() }, [])
+
+  const checkAllHealth = async () => {
+    setChecking(true); setHealthMsg(null)
+    const list = panels || []
+    let ok = 0
+    for (const p of list) {
+      try { const r = await api.post(`/admin/panels/${p.id}/test/`); if (r.data.ok) ok += 1 } catch { /* counted as failed */ }
+    }
+    setHealthMsg({ kind: ok === list.length ? 'success' : 'warning', text: s.pl_health_result.replace('{ok}', digits(ok, lang)).replace('{n}', digits(list.length, lang)) })
+    setChecking(false)
+  }
 
   const stats = useMemo(() => {
     const ps = panels || []
@@ -467,13 +503,19 @@ export function PanelConnection() {
           </div>
         </div>
         {editId == null && (
-          <button className="btn-primary shrink-0 text-sm inline-flex items-center gap-1.5" onClick={() => setEditId('new')}>
-            <Ico d={ICONS.plus} w={14} /> {s.add_panel}
-          </button>
+          <div className="flex flex-wrap gap-2 shrink-0">
+            <button type="button" className="pl-rbtn int-mobile-only" onClick={checkAllHealth} disabled={checking || !panels.length}>
+              <Ico d={PL_ICONS.sync} w={14} />{checking ? s.fetching : s.pl_health_check}
+            </button>
+            <button className="btn-primary text-sm inline-flex items-center gap-1.5" onClick={() => setEditId('new')}>
+              <Ico d={ICONS.plus} w={14} /> {s.add_panel}
+            </button>
+          </div>
         )}
       </div>
 
       <Alert>{err}</Alert>
+      {healthMsg && <Alert kind={healthMsg.kind}>{healthMsg.text}</Alert>}
 
       {editId == null && panels.length > 0 && (
         <div className="pl-stats">
@@ -893,6 +935,11 @@ export function Bots() {
             <Ico d={ICONS.dot} w={9} />{backupOn ? s.pill_backup_on : s.pill_backup_off}
           </span>
         </div>
+      </div>
+
+      <div className={'int-status-banner int-mobile-only' + (salesOn && backupOn ? ' ok' : salesOn || backupOn ? ' warn' : ' bad')}>
+        <Ico d={salesOn && backupOn ? ICONS.check : ICONS.dot} w={16} />
+        <span>{salesOn && backupOn ? s.status_both_ok : salesOn ? s.status_sales_only : backupOn ? s.status_backup_only : s.status_none}</span>
       </div>
 
       <BotMetrics s={s} lang={lang} />

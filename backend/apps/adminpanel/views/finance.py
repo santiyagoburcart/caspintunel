@@ -38,6 +38,12 @@ class TransactionViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, views
         src = self.request.query_params.get("source")
         if src:
             qs = qs.filter(order__source=src)
+        frm = _parse_any_date(self.request.query_params.get("from"))
+        to = _parse_any_date(self.request.query_params.get("to"), end_of_day=True)
+        if frm:
+            qs = qs.filter(created_at__gte=frm)
+        if to:
+            qs = qs.filter(created_at__lte=to)
         return qs.order_by("-created_at")
 
     @extend_schema(request=dict, responses=TransactionSerializer,

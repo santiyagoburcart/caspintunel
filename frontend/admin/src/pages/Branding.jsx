@@ -157,6 +157,13 @@ export default function Branding() {
 
 const CSS = `
 .br-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between; }
+@media (max-width: 640px) {
+  .br-head { position: sticky; top: 0; z-index: 20; margin: -12px -12px 4px; padding: 12px; background: color-mix(in srgb, var(--c-bg) 92%, transparent); backdrop-filter: blur(8px); }
+  .br-head .btn-primary { width: 100%; }
+  .br-upload { flex-direction: column; align-items: flex-start; }
+  .br-foot { flex-direction: column; align-items: stretch; }
+  .br-foot .btn-primary { width: 100%; }
+}
 .br-card { padding: 0; overflow: hidden; }
 .br-card-head { padding: 18px 20px; border-bottom: 1px solid var(--c-border); display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
 .br-domain-badge { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 999px; white-space: nowrap;
