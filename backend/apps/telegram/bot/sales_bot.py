@@ -13,23 +13,30 @@ import logging
 import qrcode
 import telebot
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import close_old_connections
 from telebot import types
 
 from apps.orders.models import Order
+from apps.panel.exceptions import PanelError
 from apps.panel.models import Service
+from apps.panel.services import revoke_subscription
 from apps.plans.models import Plan, PlanType
 from apps.settings_app.models import SiteConfig
 
-from ..accounts import ensure_bot_user, link_phone
+from ..accounts import change_password_via_bot, ensure_bot_user, link_phone
 from ..config import get_bot_config
 from ..gate import check_access
 from ..models import BotType
 from ..shop import (
+    ORDER_STATUS_FA,
+    account_summary_text,
     active_plans,
     buy_new,
     delivery_message,
     order_awaiting_receipt,
+    order_history,
+    order_history_text,
     payment_instructions,
     plan_label,
     renew,
@@ -178,6 +185,15 @@ def _register(bot: telebot.TeleBot):
                 site = SiteConfig.load()
                 bot.send_message(c.message.chat.id,
                                  f"پشتیبانی: {site.support_telegram or 'به‌زودی'}")
+            elif data == "m:acc":
+                bot.send_message(c.message.chat.id, account_summary_text(user), reply_markup=kb.back_to_menu())
+            elif data == "m:history":
+                bot.send_message(c.message.chat.id, order_history_text(order_history(user)),
+                                 reply_markup=kb.back_to_menu())
+            elif data == "m:pwd":
+                m = bot.send_message(c.message.chat.id,
+                                     "رمز عبور جدید را ارسال کنید (حداقل ۸ کاراکتر):")
+                bot.register_next_step_handler(m, _got_new_password)
             elif data.startswith("p:"):
                 _start_purchase(bot, c.message.chat.id, user, int(data.split(":")[1]))
             elif data.startswith("rn:"):
@@ -188,6 +204,16 @@ def _register(bot: telebot.TeleBot):
             elif data.startswith("s:") and data.endswith(":rn"):
                 bot.send_message(c.message.chat.id, "پلن تمدید را انتخاب کنید:",
                                  reply_markup=kb.plan_list(active_plans(), svc_id=int(data.split(":")[1])))
+            elif data.startswith("s:") and data.endswith(":revoke:yes"):
+                _do_revoke(bot, c.message.chat.id, user, int(data.split(":")[1]))
+            elif data.startswith("s:") and data.endswith(":revoke"):
+                sid = int(data.split(":")[1])
+                bot.send_message(
+                    c.message.chat.id,
+                    "⚠️ با تغییر لینک ساب، همهٔ دستگاه‌های متصل با لینک فعلی قطع می‌شوند "
+                    "و باید دوباره با لینک جدید وصل شوند. ادامه می‌دهید؟",
+                    reply_markup=kb.confirm_revoke(sid),
+                )
             elif data.startswith("s:"):
                 _send_service_detail(bot, c.message.chat.id, user, int(data.split(":")[1]))
             elif data.startswith("o:") and data.endswith(":st"):
@@ -222,6 +248,22 @@ def _register(bot: telebot.TeleBot):
         qrcode.make(svc.subscription_url).save(buf, format="PNG")
         bot.send_photo(chat_id, buf.getvalue(), caption=svc.subscription_url)
 
+    def _do_revoke(bot, chat_id, user, sid):
+        svc = user.services.filter(pk=sid).first()
+        if not svc:
+            return
+        try:
+            svc = revoke_subscription(svc.id)
+        except PanelError as exc:
+            bot.send_message(chat_id, f"تغییر لینک ناموفق بود: {exc}")
+            return
+        bot.send_message(
+            chat_id,
+            "لینک ساب تغییر کرد ✅\n\n"
+            f"لینک جدید:\n<code>{svc.subscription_url}</code>",
+            reply_markup=kb.service_detail(svc),
+        )
+
     def _start_purchase(bot, chat_id, user, plan_id):
         plan = Plan.objects.filter(pk=plan_id, is_active=True).first()
         if not plan:
@@ -247,6 +289,22 @@ def _register(bot: telebot.TeleBot):
             return
         m = bot.send_message(msg.chat.id, "یک نام دلخواه برای اکانت وارد کنید (حروف/اعداد انگلیسی):")
         bot.register_next_step_handler(m, _got_account_name, plan_id, gb)
+
+    def _got_new_password(msg):
+        close_old_connections()
+        user, *_ = _user(msg.from_user)
+        new_password = (msg.text or "").strip()
+        try:
+            change_password_via_bot(user, new_password)
+        except ValidationError as exc:
+            bot.send_message(msg.chat.id, "رمز عبور نامعتبر: " + "؛ ".join(exc.messages))
+            return
+        # best-effort: remove the plaintext password from the chat history
+        try:
+            bot.delete_message(msg.chat.id, msg.message_id)
+        except Exception:  # noqa: BLE001
+            pass
+        bot.send_message(msg.chat.id, "رمز عبور با موفقیت تغییر کرد ✅", reply_markup=kb.back_to_menu())
 
     def _got_account_name(msg, plan_id, custom_gb):
         close_old_connections()
@@ -276,11 +334,7 @@ def _register(bot: telebot.TeleBot):
                  .select_related("service", "payment").first())
         if not order:
             return
-        status_fa = {
-            "pending_payment": "در انتظار پرداخت", "paid": "پرداخت‌شده، در حال ساخت سرویس",
-            "completed": "تکمیل شد", "rejected": "رد شد", "failed": "ناموفق",
-            "expired": "مهلت پرداخت تمام شد",
-        }.get(order.status, order.status)
+        status_fa = ORDER_STATUS_FA.get(order.status, order.status)
         msg = f"وضعیت سفارش: {status_fa}"
         pay = getattr(order, "payment", None)
         if order.status == "pending_payment" and pay:

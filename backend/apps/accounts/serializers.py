@@ -56,6 +56,16 @@ class RegisterSerializer(serializers.Serializer):
             raise serializers.ValidationError("invalid referral code")
         return value
 
+    def validate(self, attrs):
+        if not attrs.get("referral_code"):
+            from apps.settings_app.utils import get_setting
+
+            if get_setting("referral_required", False):
+                raise serializers.ValidationError(
+                    {"referral_code": "a referral code is required to register"}
+                )
+        return attrs
+
     def create(self, validated):
         referrer = None
         code = validated.get("referral_code")

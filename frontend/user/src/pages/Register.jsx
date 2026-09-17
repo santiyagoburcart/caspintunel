@@ -27,7 +27,7 @@ export default function Register() {
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
 
   return (
-    <AuthShell title={t('register')}>
+    <AuthShell title={t('register')} hideAdminLink>
       <form onSubmit={submit} className="space-y-3">
         <Alert>{err}</Alert>
         <Field label={t('username')}><input className="input" value={f.username} onChange={set('username')} /></Field>

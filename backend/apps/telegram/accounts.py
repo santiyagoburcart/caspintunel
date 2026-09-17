@@ -4,6 +4,7 @@ from __future__ import annotations
 import secrets
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
 from django.db import IntegrityError, transaction
 
 from apps.accounts.models import Source
@@ -74,3 +75,19 @@ def link_phone(user, phone: str) -> None:
     if phone and not user.phone:
         user.phone = phone
         user.save(update_fields=["phone", "updated_at"])
+
+
+def change_password_via_bot(user, new_password: str) -> None:
+    """Set a new password from the sales bot.
+
+    Unlike the website's change-password flow, this does not ask for the
+    current password: the user's identity is already proven by chatting
+    from their own linked Telegram account (the same trust level the
+    website's "forgot password" email link relies on), so it mirrors that
+    reset path rather than the in-session change-password one.
+    Raises django.core.exceptions.ValidationError if the password is weak.
+    """
+    validate_password(new_password, user)
+    user.set_password(new_password)
+    user.save(update_fields=["password", "updated_at"])
+    write_audit(action="password.changed_via_bot", target=user)

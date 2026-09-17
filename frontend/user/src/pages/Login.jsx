@@ -9,11 +9,11 @@ import { CaspianBrand, CaspianAuthShell } from '../components/caspian'
 
 /* Shared auth wrapper — used by Register / ResetPassword / VerifyEmail too.
    Caspian gets its own shell; Aurora + Royal Frost keep the original. */
-function AuthShell({ title, children }) {
+function AuthShell({ title, children, hideAdminLink = false }) {
   const { styleKey } = useTheme()
   const { lang, setLang } = useI18n()
   if (styleKey === 'caspian') {
-    return <CaspianAuthShell title={title}>{children}</CaspianAuthShell>
+    return <CaspianAuthShell title={title} hideAdminLink={hideAdminLink}>{children}</CaspianAuthShell>
   }
   return (
     <div className="min-h-full aurora grid place-items-center p-4">
@@ -152,12 +152,11 @@ function CaspianLogin() {
               <Alert>{err}</Alert>
 
               <label className="csp-fld">
-                <span className="csp-fld-label">{t('username_or_tg')}</span>
+                <span className="csp-fld-label">{t('username_field_label')}</span>
                 <span className="csp-fld-wrap">
                   <Ico d={ICONS.user} />
                   <input className="csp-fld-input" dir="ltr" autoFocus value={f.username}
-                    onChange={(e) => setF({ ...f, username: e.target.value })}
-                    placeholder="tg_91539e2b" />
+                    onChange={(e) => setF({ ...f, username: e.target.value })} />
                 </span>
               </label>
 
@@ -285,7 +284,7 @@ const CSS = `
   position: sticky; top: 0; z-index: 10;
 }
 .csp-auth-brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.csp-auth-brand-name { font-size: 15px; font-weight: 800; letter-spacing: -.01em; }
+.csp-auth-brand-name { font-size: 15px; font-weight: 800; letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .csp-auth-brand-sub { font-size: 11px; color: var(--c-text-muted); margin-top: 1px; }
 .csp-auth-top-actions { display: flex; align-items: center; gap: 8px; }
 .csp-lang {

@@ -13,6 +13,12 @@ from apps.plans.models import Plan, PlanType
 
 _GB = 1024**3
 
+ORDER_STATUS_FA = {
+    "pending_payment": "در انتظار پرداخت", "paid": "پرداخت‌شده، در حال ساخت سرویس",
+    "completed": "تکمیل شد", "rejected": "رد شد", "failed": "ناموفق",
+    "expired": "مهلت پرداخت تمام شد",
+}
+
 
 def active_plans():
     return Plan.objects.filter(is_active=True).order_by("sort_order", "id")
@@ -185,6 +191,40 @@ def submit_bot_receipt(user, order, image_bytes: bytes):
         image=ContentFile(image_bytes, name=f"receipt.{ext}"),
         bank_card=None,
         user=user,
+    )
+
+
+def order_history(user, limit: int = 10):
+    """The user's most recent orders, any status — for the "سوابق خرید" button."""
+    return (
+        Order.objects.filter(user=user)
+        .select_related("plan")
+        .order_by("-created_at")[:limit]
+    )
+
+
+def order_history_text(orders) -> str:
+    orders = list(orders)
+    if not orders:
+        return "📜 <b>سوابق خرید</b>\n\nهنوز خریدی ثبت نشده است."
+    lines = [f"📜 <b>سوابق خرید</b> ({len(orders)} مورد اخیر)", ""]
+    for o in orders:
+        status_fa = ORDER_STATUS_FA.get(o.status, o.status)
+        lines.append(
+            f"• {o.plan.name_fa} — <b>{int(o.amount):,} تومان</b>\n"
+            f"  {status_fa} · {to_jalali_str(o.created_at, '%Y/%m/%d %H:%M')}"
+        )
+    return "\n".join(lines)
+
+
+def account_summary_text(user) -> str:
+    """Username, referral code and referral count — for the "حساب من" button."""
+    return (
+        "👤 <b>حساب من</b>\n\n"
+        f"نام کاربری: <code>{user.username}</code>\n"
+        f"کد معرف شما: <code>{user.referral_code}</code>\n"
+        f"تعداد زیرمجموعه با این کد: {user.referral_count}\n\n"
+        "این کد را با دوستان‌تان به اشتراک بگذارید."
     )
 
 

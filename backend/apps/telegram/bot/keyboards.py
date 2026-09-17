@@ -19,7 +19,16 @@ def main_menu():
             "🌐 باز کردن اپ", web_app=types.WebAppInfo(url=MINIAPP_URL)))
     kb.add(types.InlineKeyboardButton("🛒 خرید سرویس", callback_data="m:buy"))
     kb.add(types.InlineKeyboardButton("📦 سرویس‌های من", callback_data="m:svcs"))
+    kb.add(types.InlineKeyboardButton("👤 حساب من", callback_data="m:acc"))
+    kb.add(types.InlineKeyboardButton("📜 سوابق خرید", callback_data="m:history"))
+    kb.add(types.InlineKeyboardButton("🔑 تغییر رمز عبور", callback_data="m:pwd"))
     kb.add(types.InlineKeyboardButton("☎️ پشتیبانی", callback_data="m:help"))
+    return kb
+
+
+def back_to_menu():
+    kb = types.InlineKeyboardMarkup()
+    kb.add(types.InlineKeyboardButton("« منو", callback_data="m:home"))
     return kb
 
 
@@ -60,7 +69,15 @@ def service_detail(svc):
     if svc.subscription_url:
         kb.add(types.InlineKeyboardButton("📱 دریافت QR", callback_data=f"s:{svc.id}:qr"))
     kb.add(types.InlineKeyboardButton("🔄 تمدید", callback_data=f"s:{svc.id}:rn"))
+    kb.add(types.InlineKeyboardButton("♻️ تغییر لینک ساب", callback_data=f"s:{svc.id}:revoke"))
     kb.add(types.InlineKeyboardButton("« سرویس‌ها", callback_data="m:svcs"))
+    return kb
+
+
+def confirm_revoke(svc_id):
+    kb = types.InlineKeyboardMarkup()
+    kb.add(types.InlineKeyboardButton("✅ بله، لینک تغییر کند", callback_data=f"s:{svc_id}:revoke:yes"))
+    kb.add(types.InlineKeyboardButton("« انصراف", callback_data=f"s:{svc_id}"))
     return kb
 
 

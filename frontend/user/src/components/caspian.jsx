@@ -32,7 +32,7 @@ export function CaspianBrand({ logo, size = 36 }) {
 
 /** Centered auth card shell for the Caspian theme (Register / Reset /
  *  VerifyEmail). Login has its own richer split-card layout. */
-export function CaspianAuthShell({ title, children }) {
+export function CaspianAuthShell({ title, children, hideAdminLink = false }) {
   const { lang, setLang, t } = useI18n()
   return (
     <div className="csp-authshell">
@@ -45,9 +45,11 @@ export function CaspianAuthShell({ title, children }) {
           </button>
         </div>
         {children}
-        <div className="csp-authshell-back">
-          <a href="/panel/" className="csp-link">{t('foot_admin')}</a>
-        </div>
+        {!hideAdminLink && (
+          <div className="csp-authshell-back">
+            <a href="/panel/" className="csp-link">{t('foot_admin')}</a>
+          </div>
+        )}
       </div>
     </div>
   )

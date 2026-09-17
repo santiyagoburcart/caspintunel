@@ -289,6 +289,10 @@ const TH_CSS = `
 .th-swatches span { width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--c-border); }
 .th-activate { margin-top: 4px; align-self: flex-start; }
 .th-active-note { margin-top: 4px; font-size: 12px; font-weight: 600; color: var(--c-success); }
+@media (max-width: 639px) {
+  .th-activate { align-self: stretch; text-align: center; }
+  .th-preview { height: 84px; }
+}
 `
 
 /* ================================ Pages — full CRUD ================================ */

@@ -198,9 +198,11 @@ function CaspianNav({ groups, t, brand, logo, onNavigate }) {
   )
 }
 
-// mobile bottom-nav — 5 tabs, matches Stitch f10ea6b9 (DOM order; RTL flips it
-// to Settings · Roles · Cards · Users · Dashboard, right→left). Every other
-// route stays reachable through the hamburger drawer in the mobile header.
+// mobile bottom-nav — 5 route tabs, matches Stitch f10ea6b9 (DOM order; RTL
+// flips it to Settings · Roles · Cards · Users · Dashboard, right→left) —
+// plus a trailing "More" tab (not a route) that opens the full drawer.
+// There is no hamburger anywhere in the mobile header; the drawer is only
+// reachable from this tab.
 const CASPIAN_BOTNAV = [
   ['/', 'dashboard', null, 'dashboard'],
   ['/users', 'users', 'users.view', 'users'],
@@ -251,8 +253,8 @@ function CaspianLayout() {
       </div>
 
       <div className="csp-main">
-        {/* mobile top bar (≤767px) — Stitch f10ea6b9: RTL renders as
-            [online + avatar : RIGHT] · [brand : CENTER] · [hamburger : LEFT] */}
+        {/* mobile top bar (≤767px) — no hamburger here: the drawer only opens
+            from the "More" tab in the bottom nav below. */}
         <header className="csp-mtop">
           <div className="csp-mtop-end">
             <span className="csp-mtop-avatar">{(staff?.username || '?').charAt(0).toUpperCase()}</span>
@@ -267,9 +269,6 @@ function CaspianLayout() {
               {config?.logo ? <img src={config.logo} alt="" /> : <b>C</b>}
             </span>
           </div>
-          <button className="csp-mtop-burger" onClick={() => setOpen(true)} aria-label="menu">
-            <SideIcon name="menu" />
-          </button>
         </header>
 
         {/* desktop top bar (≥768px) */}
@@ -291,9 +290,11 @@ function CaspianLayout() {
         <main className="csp-content mx-auto max-w-6xl p-3"><Outlet /></main>
       </div>
 
-      {/* mobile bottom nav (≤767px) — Stitch f10ea6b9: 5 tabs, active = dot
-          above the icon + primary colour + bolder stroke (no pill) */}
-      <nav className="csp-botnav" style={{ '--csp-bn-n': botnav.length }}>
+      {/* mobile bottom nav (≤767px) — Stitch f10ea6b9: 5 route tabs, active =
+          dot above the icon + primary colour + bolder stroke (no pill) —
+          plus a trailing "More" tab that opens the full drawer (the only
+          way to reach it on mobile; there is no hamburger). */}
+      <nav className="csp-botnav" style={{ '--csp-bn-n': botnav.length + 1 }}>
         {botnav.map(([to, key, , icon]) => (
           <NavLink key={to} to={to} end
             className={({ isActive }) => 'csp-bn-item' + (isActive ? ' on' : '')}>
@@ -302,6 +303,11 @@ function CaspianLayout() {
             <span className="csp-bn-t">{t(key)}</span>
           </NavLink>
         ))}
+        <button type="button" className={'csp-bn-item' + (open ? ' on' : '')} onClick={() => setOpen(true)}>
+          <span className="csp-bn-dot" />
+          <SideIcon name="menu" />
+          <span className="csp-bn-t">{t('more_menu')}</span>
+        </button>
       </nav>
     </div>
   )
@@ -467,13 +473,6 @@ const CASPIAN_CSS = `
     border-bottom: 1px solid var(--c-border);
   }
   .dark .csp-mtop { border-bottom-color: rgba(255,255,255,0.06); }
-
-  .csp-mtop-burger {
-    width: 38px; height: 38px; flex-shrink: 0; border-radius: 11px; cursor: pointer;
-    display: grid; place-items: center; background: transparent; border: 0; color: var(--c-text);
-  }
-  .csp-mtop-burger svg { width: 22px; height: 22px; }
-  .csp-mtop-burger:active { background: color-mix(in srgb, var(--c-primary) 10%, transparent); }
 
   .csp-mtop-brand { display: flex; align-items: center; gap: 8px; min-width: 0; }
   .csp-mtop-logo {

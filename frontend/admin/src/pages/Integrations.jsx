@@ -192,11 +192,18 @@ const INT_CSS = `
 .int-status-banner.ok { background: color-mix(in srgb, var(--c-success) 12%, transparent); color: var(--c-success); }
 .int-status-banner.warn { background: color-mix(in srgb, var(--c-warning) 12%, transparent); color: var(--c-warning); }
 .int-status-banner.bad { background: color-mix(in srgb, var(--c-text-muted) 14%, transparent); color: var(--c-text-muted); }
+
+/* ---- panel add/edit form: toggle rows + action bar ---- */
+.int-toggle-fld { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; }
+.int-panel-acts { display: flex; flex-wrap: wrap; gap: 8px; }
+
 @media (max-width: 767px) {
   .int-mobile-only { display: flex; }
   .int-bots-foot .btn-primary, .int-bots-foot { flex-direction: column; align-items: stretch; }
   .int-bots-foot .btn-primary { width: 100%; }
   .pl-row-acts .pl-rbtn { flex: 1; justify-content: center; }
+  .int-panel-acts { flex-direction: column; align-items: stretch; }
+  .int-panel-acts > .ms-auto { margin-inline-start: 0; }
 }
 `
 
@@ -672,9 +679,9 @@ function PanelCard({ s, panel, isNew = false, onSaved, onDeleted, onCancel }) {
           value={form.subscription_base_url} onChange={(e) => set('subscription_base_url', e.target.value)} />
       </Field>
 
-      <label className="flex items-center gap-2 self-end text-sm">
+      <label className="int-toggle-fld self-end">
+        <span className="text-sm">{s.verify_ssl}</span>
         <Toggle checked={form.verify_ssl} onChange={(v) => set('verify_ssl', v)} label={s.verify_ssl} />
-        {s.verify_ssl}
       </label>
 
       {/* ---- this panel's default groups ---- */}
@@ -713,12 +720,12 @@ function PanelCard({ s, panel, isNew = false, onSaved, onDeleted, onCancel }) {
         )}
       </div>
 
-      <label className="flex items-center gap-2 text-sm sm:col-span-2">
+      <label className="int-toggle-fld sm:col-span-2">
+        <span className="text-sm">{s.panel_active}</span>
         <Toggle checked={form.is_active} onChange={(v) => set('is_active', v)} label={s.panel_active} />
-        {s.panel_active}
       </label>
 
-      <div className="flex flex-wrap gap-2 sm:col-span-2">
+      <div className="int-panel-acts sm:col-span-2">
         <button className="btn-primary text-sm" disabled={saving}>{saving ? '…' : s.save}</button>
         {!isNew && (
           <button type="button" className="btn-ghost text-sm" onClick={test} disabled={testing}>
