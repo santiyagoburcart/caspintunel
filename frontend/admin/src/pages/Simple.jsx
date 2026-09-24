@@ -78,8 +78,8 @@ const SHARED_CSS = `
 .sm-kpi-ico { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; flex-shrink: 0; }
 
 /* modal */
-.sm-backdrop { position: fixed; inset: 0; z-index: 60; background: color-mix(in srgb, #0b1220 62%, transparent); backdrop-filter: blur(3px); display: flex; align-items: flex-start; justify-content: center; padding: 24px 16px; overflow-y: auto; }
-.sm-modal { width: 100%; max-width: 720px; padding: 0; overflow: hidden; }
+.sm-backdrop { position: fixed; inset: 0; z-index: 60; background: color-mix(in srgb, #0b1220 62%, transparent); backdrop-filter: blur(3px); display: flex; align-items: flex-start; justify-content: center; padding: 24px 16px; overflow-y: auto; box-sizing: border-box; }
+.sm-modal { width: 100%; max-width: 720px; min-width: 0; padding: 0; overflow: hidden; box-sizing: border-box; }
 .sm-modal--sm { max-width: 560px; }
 .sm-modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 18px 20px; border-bottom: 1px solid var(--c-border); }
 .sm-modal-head h2 { display: flex; align-items: center; gap: 8px; }
@@ -88,9 +88,9 @@ const SHARED_CSS = `
 .sm-modal-foot .btn-primary { display: inline-flex; align-items: center; gap: 6px; }
 .sm-icon-btn { padding: 6px; border-radius: 9px; color: var(--c-text-muted); }
 .sm-icon-btn:hover { color: var(--c-text); background: color-mix(in srgb, var(--c-text-muted) 12%, transparent); }
-.sm-grid2 { display: grid; grid-template-columns: 1fr; gap: 14px; }
+.sm-grid2 { display: grid; grid-template-columns: 1fr; gap: 14px; min-width: 0; }
 @media (min-width: 560px) { .sm-grid2 { grid-template-columns: 1fr 1fr; } }
-.sm-fld { display: flex; flex-direction: column; gap: 6px; }
+.sm-fld { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .sm-fld .label { font-size: 12px; }
 .sm-hint { font-size: 11px; color: var(--c-text-muted); }
 
@@ -104,10 +104,11 @@ const SHARED_CSS = `
 .sm-status-box { display: flex; align-items: center; gap: 10px; }
 .sm-status-box .label { margin: 0; font-size: 12px; }
 
-.sm-perm-grid { display: grid; grid-template-columns: 1fr; gap: 8px; padding: 14px; border-radius: 12px; border: 1px solid var(--c-border); background: color-mix(in srgb, var(--c-text-muted) 5%, transparent); max-height: 320px; overflow-y: auto; }
-@media (min-width: 560px) { .sm-perm-grid { grid-template-columns: 1fr 1fr; } }
-.sm-perm { display: flex; align-items: flex-start; gap: 8px; font-size: 12.5px; cursor: pointer; }
-.sm-perm code { font-size: 10.5px; color: var(--c-text-muted); }
+.sm-perm-grid { display: grid; grid-template-columns: 1fr; gap: 8px; padding: 14px; border-radius: 12px; border: 1px solid var(--c-border); background: color-mix(in srgb, var(--c-text-muted) 5%, transparent); max-height: 320px; overflow-y: auto; min-width: 0; box-sizing: border-box; }
+@media (min-width: 768px) { .sm-perm-grid { grid-template-columns: 1fr 1fr; } }
+.sm-perm { display: flex; align-items: flex-start; gap: 8px; font-size: 12.5px; cursor: pointer; min-width: 0; }
+.sm-perm > span { min-width: 0; overflow-wrap: anywhere; }
+.sm-perm code { font-size: 10.5px; color: var(--c-text-muted); overflow-wrap: anywhere; word-break: break-word; }
 
 .sm-pw { position: relative; }
 .sm-pw .input { width: 100%; padding-inline-end: 40px; }
@@ -117,17 +118,20 @@ const SHARED_CSS = `
 
 /* mobile: dedicated role/staff cards replace the table entirely (Stitch roles_desktop) */
 .sm-mobile-only { display: none; }
-.sm-role-cards, .sm-staff-cards { display: flex; flex-direction: column; gap: 10px; }
-.sm-role-card { border: 1px solid var(--c-border); border-radius: 14px; padding: 14px; background: var(--c-surface);
+.sm-role-cards, .sm-staff-cards { display: flex; flex-direction: column; gap: 10px; width: 100%; min-width: 0; }
+.sm-role-card { width: 100%; max-width: 100%; box-sizing: border-box; min-width: 0; border: 1px solid var(--c-border); border-radius: 14px; padding: 14px; background: var(--c-surface);
   border-inline-start: 3px solid var(--dot, var(--c-primary)); }
-.sm-role-card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-.sm-role-card-desc { font-size: 12.5px; color: var(--c-text-muted); margin-top: 6px; }
+.sm-role-card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; min-width: 0; }
+.sm-role-card-desc { font-size: 12.5px; color: var(--c-text-muted); margin-top: 6px; overflow-wrap: anywhere; }
 .sm-role-card-acts { display: flex; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--c-border); }
 .sm-role-card-acts .sm-btn { flex: 1; text-align: center; }
-.sm-staff-card { display: flex; align-items: flex-start; gap: 12px; border: 1px solid var(--c-border); border-radius: 14px;
+.sm-staff-card { width: 100%; max-width: 100%; box-sizing: border-box; display: flex; align-items: flex-start; gap: 12px; border: 1px solid var(--c-border); border-radius: 14px;
   padding: 12px 14px; background: var(--c-surface); flex-wrap: wrap; }
 .sm-staff-card--off { opacity: .6; }
 .sm-staff-card .sm-acts { width: 100%; justify-content: flex-end; }
+.sm-name-dot { min-width: 0; }
+.sm-name-dot b { overflow-wrap: anywhere; }
+.sm-mono { overflow-wrap: anywhere; }
 
 /* mobile: tables -> stacked cards + no page overflow (Pages table + any
    .sm-table that doesn't opt into the dedicated .sm-mobile-only cards above) */

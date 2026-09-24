@@ -25,6 +25,7 @@ const HUB_ICONS = {
   alerts: <><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></>,
   unique_amount: <><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" /></>,
   requirements: <><path d="M5 11h14v10H5z" /><path d="M8 11V7a4 4 0 018 0v4" /></>,
+  backup: <><path d="M21 12a9 9 0 11-3-6.7" /><path d="M21 3v5h-5" /></>,
   chevron: <polyline points="9 18 15 12 9 6" />,
   logout: <><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></>,
 }
@@ -40,6 +41,7 @@ const HUB = {
     alerts: { t: 'هشدارها', d: 'آستانهٔ هشدار حجم و انقضا' },
     unique_amount: { t: 'مبلغ تصادفی', d: 'بازهٔ مبلغ افزودهٔ خودکار کارت‌به‌کارت' },
     requirements: { t: 'الزامات', d: 'تأیید ایمیل، کد معرف و عضویت اجباری' },
+    backup: { t: 'بک‌آپ و پشتیبان‌گیری', d: 'فاصلهٔ زمانی پشتیبان‌گیری خودکار' },
     branding: { t: 'برندینگ', d: 'لوگو، فاویکون، نام و دامنهٔ سامانه' },
     roles: { t: 'نقش‌ها', d: 'تعریف سطوح دسترسی و حساب‌های ادمین' },
     pages: { t: 'صفحات', d: 'سوالات متداول و شرایط استفاده' },
@@ -55,6 +57,7 @@ const HUB = {
     alerts: { t: 'Alerts', d: 'Volume and expiry warning thresholds' },
     unique_amount: { t: 'Unique amount', d: 'Auto-added card-to-card amount range' },
     requirements: { t: 'Requirements', d: 'Email verification, referral, forced join' },
+    backup: { t: 'Backup & scheduling', d: 'Automatic backup interval' },
     branding: { t: 'Branding', d: 'Logo, favicon, name and domain' },
     roles: { t: 'Roles', d: 'Define access levels and admin accounts' },
     pages: { t: 'Pages', d: 'FAQ and terms of use' },
@@ -71,6 +74,7 @@ const HUB_COLOR = {
   sms_devices: '#11AB53', sms_sources: '#11AB53', unique_amount: '#11AB53',
   alerts: 'var(--c-warning)',
   requirements: '#D97706', roles: '#D97706',
+  backup: '#1464BA',
   pages: '#64748B',
 }
 
@@ -84,6 +88,7 @@ const HUB_ITEMS = [
   ['/settings#alerts', 'alerts', 'settings.manage'],
   ['/settings#unique-amount', 'unique_amount', 'settings.manage'],
   ['/settings#requirements', 'requirements', 'settings.manage'],
+  ['/settings#backup', 'backup', 'settings.manage'],
   ['/branding', 'branding', 'settings.manage'],
   ['/roles', 'roles', 'roles.manage'],
   ['/pages', 'pages', 'pages.manage'],
@@ -134,6 +139,7 @@ const T = {
     card_h: 'پرداخت و کارت‌به‌کارت', card_sub: 'زمان رزرو فاکتور و بازهٔ مبلغ افزودهٔ خودکار برای تأیید پرداخت',
     alerts_h: 'هشدارها', alerts_sub: 'آستانهٔ هشدار حجم و تعداد روزهای باقی‌مانده تا انقضا',
     sync_h: 'همگام‌سازی سرویس‌ها', sync_sub: 'فاصلهٔ خواندن خودکار وضعیت سرویس‌ها از پنل‌های پاسارگارد',
+    backup_h: 'بک‌آپ و پشتیبان‌گیری', backup_sub: 'فاصلهٔ زمانی پشتیبان‌گیری خودکار از پایگاه‌داده — همچنین در صفحهٔ ربات‌های تلگرام قابل تنظیم است',
     toggles_h: 'الزامات', toggles_sub: 'قوانین ثبت‌نام و ورود کاربران به سایت و ربات',
     display_h: 'نمایش', display_sub: 'زبان پیش‌فرض سامانه و شیوهٔ نمایش محصولات به خریداران',
     reset: 'بازنشانی مقادیر', save: 'ذخیرهٔ تغییرات',
@@ -171,6 +177,7 @@ const T = {
     card_h: 'Payment & card-to-card', card_sub: 'Invoice reservation window and the auto-added amount range used to confirm payments',
     alerts_h: 'Alerts', alerts_sub: 'Volume warning threshold and days-before-expiry notice',
     sync_h: 'Service sync', sync_sub: 'How often service status is auto-read from the Pasargad panels',
+    backup_h: 'Backup & scheduling', backup_sub: 'How often the database is auto-backed up — also editable on the Telegram Bots page',
     toggles_h: 'Requirements', toggles_sub: 'Rules for how users register and sign in on the site and the bot',
     display_h: 'Display', display_sub: 'Default system language and how products are shown to buyers',
     reset: 'Reset values', save: 'Save changes',
@@ -595,13 +602,18 @@ export default function Settings() {
       .catch(() => { setRows([]); setErr(t('load_error')) })
   useEffect(() => { load() }, [])
 
-  // the mobile hub links to /settings#section — once the (desktop-only)
-  // form has actually rendered, jump to the matching card if there is one
+  // the mobile hub links to /settings#section — the form itself is normally
+  // hidden below 768px (mobile only shows the hub), so a hash target forces
+  // it visible too (see .st-force-show below) before we scroll to it
+  const ANCHOR_IDS = ['sms-devices', 'sms-sources', 'alerts', 'unique-amount', 'requirements', 'backup']
+  const hashId = location.hash ? location.hash.slice(1) : ''
+  const hasAnchor = ANCHOR_IDS.includes(hashId)
+
   useEffect(() => {
-    if (!rows || !location.hash) return
-    const el = document.getElementById(location.hash.slice(1))
+    if (!rows || !hashId) return
+    const el = document.getElementById(hashId)
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }, [rows, location.hash])
+  }, [rows, hashId])
 
   const save = async (e) => {
     e.preventDefault(); setBusy(true); setErr('')
@@ -617,18 +629,22 @@ export default function Settings() {
   if (!rows) return <div className="grid place-items-center py-16"><Spinner /></div>
 
   // moved to the Telegram Bots page (they're bot-specific, not general system
-  // settings) — keep them out of this generic list so they don't show twice
-  const MOVED_TO_BOTS = ['force_channel_join', 'force_share_phone', 'backup_interval_minutes']
+  // settings) — keep them out of this generic list so they don't show twice.
+  // backup_interval_minutes stays editable there too, but also gets its own
+  // card here (id="backup") so the mobile hub shortcut has somewhere to land.
+  const MOVED_TO_BOTS = ['force_channel_join', 'force_share_phone']
   const nums = rows.filter((x) => x.type === 'int' && !MOVED_TO_BOTS.includes(x.key))
   const bools = rows.filter((x) => x.type === 'bool' && !MOVED_TO_BOTS.includes(x.key))
   const strs = rows.filter((x) => x.type === 'str')
-  // two clearly separate int groups — the reservation/amount fields belong
-  // together, the alert thresholds are a different concern
+  // clearly separate int groups — the reservation/amount fields belong
+  // together, alert thresholds and the sync/backup intervals are distinct concerns
   const AMOUNT_KEYS = ['unique_amount_reservation_minutes', 'unique_amount_min', 'unique_amount_max']
   const SYNC_KEYS = ['service_sync_interval_minutes']
+  const BACKUP_KEYS = ['backup_interval_minutes']
   const amountNums = nums.filter((x) => AMOUNT_KEYS.includes(x.key))
-  const alertNums = nums.filter((x) => !AMOUNT_KEYS.includes(x.key) && !SYNC_KEYS.includes(x.key))
+  const alertNums = nums.filter((x) => !AMOUNT_KEYS.includes(x.key) && !SYNC_KEYS.includes(x.key) && !BACKUP_KEYS.includes(x.key))
   const syncNums = nums.filter((x) => SYNC_KEYS.includes(x.key))
+  const backupNums = nums.filter((x) => BACKUP_KEYS.includes(x.key))
 
   const SectionSave = () => (
     <button type="submit" form="settings-form" className="btn-primary text-xs st-card-save" disabled={busy}>
@@ -654,7 +670,7 @@ export default function Settings() {
 
       <SettingsHub />
 
-      <div className="st-desktop-only space-y-5">
+      <div className={'st-desktop-only space-y-5' + (hasAnchor ? ' st-force-show' : '')}>
       <div className="st-head">
         <div>
           <h1 className="text-lg font-bold">{s.h1}</h1>
@@ -707,6 +723,19 @@ export default function Settings() {
               <SectionSave />
             </div>
             <div className="st-fields">{syncNums.map(NumField)}</div>
+          </div>
+        )}
+
+        {backupNums.length > 0 && (
+          <div id="backup" className="card st-card">
+            <div className="st-card-head">
+              <div>
+                <h3 className="font-bold text-sm">{s.backup_h}</h3>
+                <p className="text-xs text-muted mt-0.5">{s.backup_sub}</p>
+              </div>
+              <SectionSave />
+            </div>
+            <div className="st-fields">{backupNums.map(NumField)}</div>
           </div>
         )}
 
@@ -786,7 +815,10 @@ export default function Settings() {
 
 const CSS = `
 .set-mobile-only { display: none; }
-@media (max-width: 767px) { .st-desktop-only { display: none; } }
+/* the full form is desktop-only by default, but a hub shortcut that points
+   at a specific card (e.g. /settings#alerts) forces it visible on mobile
+   too — see the .st-force-show class toggled from location.hash */
+@media (max-width: 767px) { .st-desktop-only:not(.st-force-show) { display: none; } }
 .st-hub-list { overflow: hidden; }
 .st-hub-item { display: flex; align-items: center; gap: 12px; padding: 13px 16px; border-bottom: 1px solid var(--c-border); color: inherit; text-decoration: none; width: 100%; text-align: start; }
 .st-hub-item:last-child { border-bottom: 0; }
