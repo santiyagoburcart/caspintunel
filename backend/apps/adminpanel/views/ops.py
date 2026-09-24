@@ -12,6 +12,7 @@ from apps.panel.models import Service, ServiceStatus
 from apps.panel.services import (
     client_for,
     create_manual_service,
+    delete_service,
     reset_service_usage,
     revoke_subscription,
     set_service_status,
@@ -32,13 +33,16 @@ ONLINE_WINDOW_MIN = 5
 
 
 class ServiceListViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
-                         mixins.CreateModelMixin, viewsets.GenericViewSet):
+                         mixins.CreateModelMixin, mixins.DestroyModelMixin, viewsets.GenericViewSet):
     """/admin/services/ — the standalone "sold services" admin page: list +
-    search/filter, manual creation, and per-row status/reset/revoke/details."""
+    search/filter, manual creation, and per-row status/reset/revoke/delete/details."""
 
     authentication_classes = _AUTH
     permission_classes = [StaffPermission]
-    perms_map = {"GET": ["monitoring.view"], "POST": ["services.manage"], "PATCH": ["services.manage"]}
+    perms_map = {
+        "GET": ["monitoring.view"], "POST": ["services.manage"],
+        "PATCH": ["services.manage"], "DELETE": ["services.delete"],
+    }
     queryset = Service.objects.none()
     serializer_class = AdminServiceSerializer
 
@@ -120,6 +124,14 @@ class ServiceListViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
         except PanelError as exc:
             return Response({"detail": str(exc)}, status=502)
         return Response(AdminServiceSerializer(service).data)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        try:
+            delete_service(instance.id, staff=request.user)
+        except PanelError as exc:
+            return Response({"detail": str(exc)}, status=502)
+        return Response(status=204)
 
     @action(detail=True, methods=["get"], url_path="panel-detail")
     def panel_detail(self, request, pk=None):

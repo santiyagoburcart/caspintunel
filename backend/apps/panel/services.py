@@ -327,6 +327,22 @@ def create_manual_service(*, user, plan, panel: Panel | None = None, group_ids=N
 
 
 @transaction.atomic
+def delete_service(service_id: int, *, staff=None) -> None:
+    """Admin action: permanently remove a service — deletes the panel account
+    (best-effort; already-gone on the panel is not an error) then our row.
+    Orders that reference it keep their audit trail (service FK is SET_NULL)."""
+    service = Service.objects.select_for_update().select_related("panel").get(pk=service_id)
+    client = client_for(service.panel)
+    try:
+        client.delete_user(service.panel_username)
+    except PanelNotFound:
+        pass
+    write_audit(action="service.deleted", staff=staff, target=service,
+                detail={"panel_username": service.panel_username, "panel": service.panel_id})
+    service.delete()
+
+
+@transaction.atomic
 def revoke_subscription(service_id: int) -> Service:
     """Issues a new subscription link for the service's panel account,
     invalidating the old one — every device on the previous link is

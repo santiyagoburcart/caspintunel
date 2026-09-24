@@ -236,7 +236,7 @@ const RANGE = {
   backup_interval_minutes: [5, 43200], unique_amount_reservation_minutes: [5, 720],
   unique_amount_min: [1, 100000], unique_amount_max: [1, 100000],
   alert_volume_percent: [1, 100], alert_expire_days: [1, 60],
-  service_sync_interval_minutes: [5, 1440],
+  service_sync_interval_minutes: [1, 1440],
 }
 
 const SRC_MODAL_TITLE = { add: 'src_add_title', edit: 'src_edit_title' }

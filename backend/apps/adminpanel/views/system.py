@@ -18,7 +18,7 @@ log = logging.getLogger("caspintunel")
 EDITABLE_SETTINGS = [
     # key, type, default, min, max  (min/max advisory, enforced for ints)
     ("backup_interval_minutes", "int", 1440, 5, 43200),
-    ("service_sync_interval_minutes", "int", 60, 5, 1440),
+    ("service_sync_interval_minutes", "int", 60, 1, 1440),
     ("unique_amount_reservation_minutes", "int", 30, 5, 720),
     ("unique_amount_min", "int", 200, 1, 100000),
     ("unique_amount_max", "int", 1500, 1, 100000),
