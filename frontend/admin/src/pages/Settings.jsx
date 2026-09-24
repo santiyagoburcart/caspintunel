@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { api, apiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 import { useAuth } from '../lib/auth'
@@ -16,11 +16,15 @@ function HubIco({ d, w = 18 }) {
 const HUB_ICONS = {
   panel: <><path d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" /></>,
   bots: <><rect x="3" y="11" width="18" height="10" rx="2" /><circle cx="12" cy="5" r="2" /><path d="M12 7v4M8 16h.01M16 16h.01" /></>,
-  monitoring: <><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></>,
   roles: <path d="M9 12.75L11.25 15 15 9.75M21 12c0 5.591-3.824 10.29-9 11.622C6.824 22.29 3 17.591 3 12c0-1.933.204-3.44.596-4.996A11.943 11.943 0 0112 3c2.998 0 5.74 1.1 7.843 2.918A11.94 11.94 0 0121 12z" />,
   branding: <path d="M4.098 19.902a3.75 3.75 0 005.304 0l6.401-6.402M6.75 21A3.75 3.75 0 013 17.25V4.125C3 3.504 3.504 3 4.125 3h5.25c.621 0 1.125.504 1.125 1.125v4.072M6.75 21a3.75 3.75 0 003.75-3.75V8.197M6.75 21h13.125c.621 0 1.125-.504 1.125-1.125v-5.25c0-.621-.504-1.125-1.125-1.125h-4.072M10.5 8.197l2.88-2.88c.438-.439 1.15-.439 1.59 0l3.712 3.713c.44.44.44 1.152 0 1.59l-2.879 2.88M6.75 17.25h.008v.008H6.75v-.008z" />,
   themes: <path d="M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128zm0 0a15.998 15.998 0 003.388-1.62m-5.043-.025a15.994 15.994 0 011.622-3.395m3.42 3.42a15.995 15.995 0 004.764-4.648l3.876-5.814a1.151 1.151 0 00-1.597-1.597L14.146 6.32a15.996 15.996 0 00-4.649 4.763m3.42 3.42a6.776 6.776 0 00-3.42-3.42" />,
   pages: <path d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />,
+  sms_devices: <><path d="M7 4h10a1 1 0 011 1v14a1 1 0 01-1 1H7a1 1 0 01-1-1V5a1 1 0 011-1z" /><line x1="11" y1="18" x2="13" y2="18" /></>,
+  sms_sources: <><path d="M3 21h18M4 10h16M6 21V10M18 21V10M12 3l9 5H3l9-5z" /></>,
+  alerts: <><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></>,
+  unique_amount: <><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" /></>,
+  requirements: <><path d="M5 11h14v10H5z" /><path d="M8 11V7a4 4 0 018 0v4" /></>,
   chevron: <polyline points="9 18 15 12 9 6" />,
   logout: <><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></>,
 }
@@ -28,52 +32,69 @@ const HUB_ICONS = {
 const HUB = {
   fa: {
     h: 'مرکز تنظیمات و دسترسی‌ها', sub: 'میانبر سریع به بخش‌های پیکربندی سامانه',
-    panel: { t: 'اتصال پنل‌های پاسارگاد', d: 'مدیریت سرورها و گروه‌های نود' },
-    bots: { t: 'مدیریت ربات‌های تلگرام', d: 'ربات فروش، بک‌آپ و عضویت اجباری' },
-    monitoring: { t: 'مانیتورینگ سرورها', d: 'وضعیت لحظه‌ای منابع و اتصالات' },
-    roles: { t: 'نقش‌ها و دسترسی کارکنان', d: 'تعریف سطوح دسترسی و حساب‌های ادمین' },
-    branding: { t: 'برندینگ و هویت بصری', d: 'لوگو، فاویکون، نام و دامنهٔ سامانه' },
-    themes: { t: 'پوسته‌ها و استایل', d: 'انتخاب پوستهٔ رنگی فعال سامانه' },
-    pages: { t: 'مدیریت صفحات و قوانین', d: 'سوالات متداول و شرایط استفاده' },
+    themes: { t: 'پوسته و استایل', d: 'انتخاب پوستهٔ رنگی فعال سامانه' },
+    panel: { t: 'اتصال پنل پاسارگارد', d: 'مدیریت سرورها و گروه‌های نود' },
+    bots: { t: 'ربات‌های تلگرام', d: 'ربات فروش، بک‌آپ و عضویت اجباری' },
+    sms_devices: { t: 'دستگاه‌های SMS', d: 'دستگاه‌های مجاز ارسال پیامک واریزی' },
+    sms_sources: { t: 'شماره‌های بانکی', d: 'شماره‌های فرستندهٔ مجاز پیامک بانک' },
+    alerts: { t: 'هشدارها', d: 'آستانهٔ هشدار حجم و انقضا' },
+    unique_amount: { t: 'مبلغ تصادفی', d: 'بازهٔ مبلغ افزودهٔ خودکار کارت‌به‌کارت' },
+    requirements: { t: 'الزامات', d: 'تأیید ایمیل، کد معرف و عضویت اجباری' },
+    branding: { t: 'برندینگ', d: 'لوگو، فاویکون، نام و دامنهٔ سامانه' },
+    roles: { t: 'نقش‌ها', d: 'تعریف سطوح دسترسی و حساب‌های ادمین' },
+    pages: { t: 'صفحات', d: 'سوالات متداول و شرایط استفاده' },
     logout: 'خروج از حساب مدیریت',
   },
   en: {
     h: 'Settings & access hub', sub: 'Quick shortcuts to every configuration area',
-    panel: { t: 'Pasargad panel connections', d: 'Manage servers and node groups' },
+    themes: { t: 'Theme & style', d: "Pick the system's active colour theme" },
+    panel: { t: 'Pasargad panel connection', d: 'Manage servers and node groups' },
     bots: { t: 'Telegram bots', d: 'Sales bot, backup bot, forced join' },
-    monitoring: { t: 'Server monitoring', d: 'Live resource and connection status' },
-    roles: { t: 'Roles & staff access', d: 'Define access levels and admin accounts' },
-    branding: { t: 'Branding & identity', d: 'Logo, favicon, name and domain' },
-    themes: { t: 'Themes & appearance', d: "Pick the system's active colour theme" },
-    pages: { t: 'Pages & policies', d: 'FAQ and terms of use' },
+    sms_devices: { t: 'SMS devices', d: 'Devices authorized to forward deposit SMS' },
+    sms_sources: { t: 'Bank numbers', d: 'Authorized sender numbers for bank SMS' },
+    alerts: { t: 'Alerts', d: 'Volume and expiry warning thresholds' },
+    unique_amount: { t: 'Unique amount', d: 'Auto-added card-to-card amount range' },
+    requirements: { t: 'Requirements', d: 'Email verification, referral, forced join' },
+    branding: { t: 'Branding', d: 'Logo, favicon, name and domain' },
+    roles: { t: 'Roles', d: 'Define access levels and admin accounts' },
+    pages: { t: 'Pages', d: 'FAQ and terms of use' },
     logout: 'Log out of the admin account',
   },
 }
 
-// icon tint by section category — network/panels blue, bots violet,
-// security/roles orange, appearance pink, everything else neutral gray
+// icon tint by section category — network blue, bots violet, finance green,
+// security orange, appearance pink, everything else neutral gray
 const HUB_COLOR = {
-  panel: '#1464BA', monitoring: '#1464BA',
+  themes: '#DB2777', branding: '#DB2777',
+  panel: '#1464BA',
   bots: '#7C3AED',
-  roles: '#D97706',
-  branding: '#DB2777', themes: '#DB2777',
+  sms_devices: '#11AB53', sms_sources: '#11AB53', unique_amount: '#11AB53',
+  alerts: 'var(--c-warning)',
+  requirements: '#D97706', roles: '#D97706',
   pages: '#64748B',
 }
+
+// [route-or-hash, i18n-key, permission]
+const HUB_ITEMS = [
+  ['/themes', 'themes', 'themes.manage'],
+  ['/panel-link', 'panel', 'settings.manage'],
+  ['/bots', 'bots', 'bots.manage'],
+  ['/settings#sms-devices', 'sms_devices', 'settings.manage'],
+  ['/settings#sms-sources', 'sms_sources', 'settings.manage'],
+  ['/settings#alerts', 'alerts', 'settings.manage'],
+  ['/settings#unique-amount', 'unique_amount', 'settings.manage'],
+  ['/settings#requirements', 'requirements', 'settings.manage'],
+  ['/branding', 'branding', 'settings.manage'],
+  ['/roles', 'roles', 'roles.manage'],
+  ['/pages', 'pages', 'pages.manage'],
+]
 
 function SettingsHub() {
   const { lang } = useI18n()
   const { logout, can } = useAuth()
   const go = useNavigate()
   const h = HUB[lang] || HUB.fa
-  const items = [
-    ['/panel-link', 'panel', 'settings.manage'],
-    ['/bots', 'bots', 'bots.manage'],
-    ['/monitoring', 'monitoring', 'monitoring.view'],
-    ['/roles', 'roles', 'roles.manage'],
-    ['/branding', 'branding', 'settings.manage'],
-    ['/themes', 'themes', 'themes.manage'],
-    ['/pages', 'pages', 'pages.manage'],
-  ].filter(([, , p]) => !p || can(p))
+  const items = HUB_ITEMS.filter(([, , p]) => !p || can(p))
 
   return (
     <div className="st-hub set-mobile-only">
@@ -288,7 +309,7 @@ function SmsSourcesSection({ t, s, lang }) {
   }
 
   return (
-    <div className="card sms-dev-card">
+    <div id="sms-sources" className="card sms-dev-card">
       <div className="sms-dev-head">
         <div>
           <h3 className="font-bold text-sm">{s.src_h}</h3>
@@ -479,7 +500,7 @@ function SmsDevicesSection({ t, s, lang }) {
   }
 
   return (
-    <div className="card sms-dev-card">
+    <div id="sms-devices" className="card sms-dev-card">
       <div className="sms-dev-head">
         <div>
           <h3 className="font-bold text-sm">{s.dev_h}</h3>
@@ -563,6 +584,7 @@ export default function Settings() {
   const [initial, setInitial] = useState({})
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
+  const location = useLocation()
 
   const load = () =>
     api.get('/admin/settings/')
@@ -572,6 +594,14 @@ export default function Settings() {
       })
       .catch(() => { setRows([]); setErr(t('load_error')) })
   useEffect(() => { load() }, [])
+
+  // the mobile hub links to /settings#section — once the (desktop-only)
+  // form has actually rendered, jump to the matching card if there is one
+  useEffect(() => {
+    if (!rows || !location.hash) return
+    const el = document.getElementById(location.hash.slice(1))
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [rows, location.hash])
 
   const save = async (e) => {
     e.preventDefault(); setBusy(true); setErr('')
@@ -624,6 +654,7 @@ export default function Settings() {
 
       <SettingsHub />
 
+      <div className="st-desktop-only space-y-5">
       <div className="st-head">
         <div>
           <h1 className="text-lg font-bold">{s.h1}</h1>
@@ -641,7 +672,7 @@ export default function Settings() {
 
       <form id="settings-form" onSubmit={save} className="space-y-4">
         {amountNums.length > 0 && (
-          <div className="card st-card">
+          <div id="unique-amount" className="card st-card">
             <div className="st-card-head">
               <div>
                 <h3 className="font-bold text-sm">{s.card_h}</h3>
@@ -654,7 +685,7 @@ export default function Settings() {
         )}
 
         {alertNums.length > 0 && (
-          <div className="card st-card">
+          <div id="alerts" className="card st-card">
             <div className="st-card-head">
               <div>
                 <h3 className="font-bold text-sm">{s.alerts_h}</h3>
@@ -680,7 +711,7 @@ export default function Settings() {
         )}
 
         {bools.length > 0 && (
-          <div className="card st-card">
+          <div id="requirements" className="card st-card">
             <div className="st-card-head">
               <div>
                 <h3 className="font-bold text-sm">{s.toggles_h}</h3>
@@ -748,12 +779,14 @@ export default function Settings() {
 
       <SmsSourcesSection t={t} s={s} lang={lang} />
       <SmsDevicesSection t={t} s={s} lang={lang} />
+      </div>
     </div>
   )
 }
 
 const CSS = `
 .set-mobile-only { display: none; }
+@media (max-width: 767px) { .st-desktop-only { display: none; } }
 .st-hub-list { overflow: hidden; }
 .st-hub-item { display: flex; align-items: center; gap: 12px; padding: 13px 16px; border-bottom: 1px solid var(--c-border); color: inherit; text-decoration: none; width: 100%; text-align: start; }
 .st-hub-item:last-child { border-bottom: 0; }
