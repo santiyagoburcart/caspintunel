@@ -10,9 +10,11 @@ def perms(db):
         "users.view", "users.manage", "plans.manage", "payment.view", "payment.approve",
         "accounting.view", "broadcast.send", "settings.manage", "roles.manage",
         "pages.manage", "themes.manage", "monitoring.view", "audit.view", "sms.manage",
-        "bots.manage",
+        "bots.manage", "services.manage",
     ]
-    return {c: Permission.objects.create(code=c, name=c) for c in codes}
+    # get_or_create: "services.manage" (and any future perm seeded by a data
+    # migration) may already exist in the test DB by the time this fixture runs
+    return {c: Permission.objects.get_or_create(code=c, defaults={"name": c})[0] for c in codes}
 
 
 @pytest.fixture

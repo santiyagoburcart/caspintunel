@@ -17,3 +17,10 @@ def on_setting_saved(sender, instance: Setting, **kwargs):
             reconcile_backup_schedule()
         except Exception as exc:  # noqa: BLE001 - never break a settings save
             log.warning("could not reconcile backup schedule: %s", exc)
+    elif instance.key == "service_sync_interval_minutes":
+        try:
+            from apps.ops.schedule import reconcile_sync_schedule
+
+            reconcile_sync_schedule()
+        except Exception as exc:  # noqa: BLE001 - never break a settings save
+            log.warning("could not reconcile service sync schedule: %s", exc)

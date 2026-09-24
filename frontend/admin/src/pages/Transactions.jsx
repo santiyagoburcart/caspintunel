@@ -2,7 +2,7 @@ import { Fragment, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useI18n, enumLabel } from '../lib/i18n'
-import { jalali, toman, gb, digits } from '../lib/format'
+import { jalali, toman, digits } from '../lib/format'
 import { Alert, Spinner } from '../components/ui'
 import { ReceiptThumb } from '../components/ReceiptThumb'
 import { DateRangeModal, DRP_CSS } from '../components/DateRangePicker'
@@ -56,40 +56,31 @@ function TxStats({ lang }) {
 
 const T = {
   fa: {
-    title: 'تراکنش‌ها', services_tab: 'سرویس‌های فروخته‌شده',
+    title: 'تراکنش‌ها',
     all: 'همه', pending: 'در انتظار', approved: 'تأییدشده', rejected: 'ردشده',
     amount: 'مبلغ', user: 'کاربر', method: 'روش', card: 'کارت', confirmer: 'تأییدکننده',
     date: 'تاریخ', receipt: 'رسید', status: 'وضعیت', none: 'تراکنشی نیست', reason: 'دلیل رد',
     by_admin: 'ادمین', by_system: 'سیستم پیامک', src_site: 'سایت', src_bot: 'ربات',
     type_col: 'نوع', src_col: 'منبع',
     type_new: 'خرید جدید', type_renew: 'تمدید', type_addon_volume: 'افزودن حجم',
-    scheduled_renewal: 'تمدید زمان‌بندی‌شده',
     not_delivered: 'پرداخت تأییدشده ولی سرویس تحویل نشده — به‌صورت خودکار تلاش مجدد می‌شود',
     details: 'جزئیات',
-    account: 'نام کاربری', plan: 'پلن', usage: 'مصرف', expiry: 'انقضا', conn: 'اتصال',
-    online: 'آنلاین', offline: 'آفلاین', unlimited: 'نامحدود', no_services: 'سرویسی فروخته نشده',
-    on_first_conn: 'با اولین اتصال', timeless: 'بدون انقضا',
   },
   en: {
-    title: 'Transactions', services_tab: 'Purchased services',
+    title: 'Transactions',
     all: 'All', pending: 'Pending', approved: 'Approved', rejected: 'Rejected',
     amount: 'Amount', user: 'User', method: 'Method', card: 'Card', confirmer: 'Confirmed by',
     date: 'Date', receipt: 'Receipt', status: 'Status', none: 'No transactions', reason: 'Reject reason',
     by_admin: 'admin', by_system: 'SMS system', src_site: 'Website', src_bot: 'Bot',
     type_col: 'Type', src_col: 'Source',
     type_new: 'New purchase', type_renew: 'Renewal', type_addon_volume: 'Add-on volume',
-    scheduled_renewal: 'Scheduled renewal',
     not_delivered: 'Payment approved but service not delivered — auto-retrying',
     details: 'Details',
-    account: 'Account', plan: 'Plan', usage: 'Usage', expiry: 'Expiry', conn: 'Connection',
-    online: 'Online', offline: 'Offline', unlimited: 'unlimited', no_services: 'No services sold yet',
-    on_first_conn: 'on first connection', timeless: 'no expiry',
   },
 }
 
 const FILTERS = ['', 'pending', 'approved', 'rejected']
 const ST_TONE = { pending: 'warning', approved: 'success', rejected: 'danger' }
-const SVC_TONE = { active: 'success', on_hold: 'warning', pending: 'warning', limited: 'warning', expired: 'danger', disabled: 'danger' }
 
 const groupCard = (raw) => {
   const s = String(raw || '').replace(/\D/g, '')
@@ -106,16 +97,12 @@ function Pill({ tone, children }) {
 export default function Transactions() {
   const { lang, t } = useI18n()
   const s = T[lang] || T.fa
-  const [tab, setTab] = useState('tx')
 
   return (
     <div className="tx space-y-3">
       <style>{DRP_CSS}{BFS_CSS}{CSS}</style>
-      <div className="tx-tabs">
-        <button type="button" className={tab === 'tx' ? 'on' : ''} onClick={() => setTab('tx')}>{s.title}</button>
-        <button type="button" className={tab === 'services' ? 'on' : ''} onClick={() => setTab('services')}>{s.services_tab}</button>
-      </div>
-      {tab === 'tx' ? <TxTable s={s} t={t} lang={lang} /> : <ServicesTable s={s} t={t} lang={lang} />}
+      <h1 className="text-lg font-bold">{s.title}</h1>
+      <TxTable s={s} t={t} lang={lang} />
     </div>
   )
 }
@@ -245,81 +232,6 @@ function TxTable({ s, t, lang }) {
   )
 }
 
-const fmtData = (used, limit, s, lang) => {
-  const u = `${digits(gb(used), lang)}`
-  if (!limit) return `${u} / ${s.unlimited}`
-  return `${u} / ${digits(gb(limit), lang)} GB`
-}
-const dataPct = (used, limit) => (limit ? Math.min(100, Math.round((used / limit) * 100)) : 0)
-
-function ServicesTable({ s, t, lang }) {
-  const [rows, setRows] = useState(null)
-  const [err, setErr] = useState('')
-
-  useEffect(() => {
-    api.get('/admin/services/')
-      .then((r) => setRows(r.data.results ?? r.data))
-      .catch(() => { setRows([]); setErr(lang === 'fa' ? 'خطا در دریافت' : 'Failed to load') })
-  }, [])
-
-  const expiry = (r) => {
-    if (r.expire_strategy === 'never') return s.timeless
-    if (r.status === 'on_hold' || !r.expire_at) return r.status === 'on_hold' ? s.on_first_conn : '—'
-    return jalali(r.expire_at, false, lang)
-  }
-
-  return (
-    <>
-      <Alert>{err}</Alert>
-      {rows === null ? (
-        <div className="grid place-items-center py-16"><Spinner /></div>
-      ) : rows.length === 0 ? (
-        <div className="card text-center text-muted">{s.no_services}</div>
-      ) : (
-        <div className="card p-0 tx-wrap">
-          <table className="tx-table">
-            <thead>
-              <tr>
-                <th>{s.account}</th><th>{s.user}</th><th>{s.plan}</th><th>{s.status}</th>
-                <th>{s.conn}</th><th>{s.usage}</th><th>{s.expiry}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr className="tx-row" key={r.id}>
-                  <td dir="ltr" className="tx-mono" data-label={s.account}>{r.panel_username}</td>
-                  <td data-label={s.user}>
-                    <span className="tx-user">{r.user}</span>
-                    {r.user_name ? <span className="tx-sub">{r.user_name}</span> : null}
-                  </td>
-                  <td data-label={s.plan}>
-                    {(lang === 'fa' ? r.plan : r.plan_en) || r.plan || '—'}
-                    {r.has_scheduled_renewal && <span className="tx-renewal-badge">{s.scheduled_renewal}</span>}
-                  </td>
-                  <td data-label={s.status}><Pill tone={SVC_TONE[r.status]}>{enumLabel(t, 'st_', r.status)}</Pill></td>
-                  <td data-label={s.conn}>
-                    <span className={'tx-conn ' + (r.is_online ? 'on' : 'off')}>
-                      <i />{r.is_online ? s.online : s.offline}
-                    </span>
-                  </td>
-                  <td data-label={s.usage}>
-                    <div className="tx-usage">
-                      <span className="tx-mono">{fmtData(r.data_used, r.data_limit, s, lang)}</span>
-                      {r.data_limit ? (
-                        <div className="tx-usage-bar"><i style={{ width: `${dataPct(r.data_used, r.data_limit)}%` }} /></div>
-                      ) : null}
-                    </div>
-                  </td>
-                  <td className="tx-mono tx-date" data-label={s.expiry}>{expiry(r)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </>
-  )
-}
 
 const CSS = `
 .tx-filter-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
@@ -328,11 +240,6 @@ const CSS = `
 .tx-tool-btn:hover { color: var(--c-primary); border-color: var(--c-primary); }
 .acc-tool-badge { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--c-primary); }
 
-.tx-renewal-badge {
-  display: inline-block; margin-inline-start: 6px; padding: 1px 8px; border-radius: 999px;
-  font-size: 10px; font-weight: 700; white-space: nowrap;
-  color: var(--c-secondary); background: color-mix(in srgb, var(--c-secondary) 16%, transparent);
-}
 .tx-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 4px; }
 @media (min-width: 900px) { .tx-stats { grid-template-columns: repeat(4, 1fr); } }
 .tx-stat { position: relative; overflow: hidden; padding: 14px 16px; }
@@ -340,10 +247,6 @@ const CSS = `
 .tx-stat-val { font-size: 19px; font-weight: 800; margin-top: 5px; letter-spacing: -.01em; }
 .tx-stat-sub { font-size: 11px; color: var(--c-text-muted); margin-top: 4px; }
 .tx-stat-accent { position: absolute; inset-inline: 0; bottom: 0; height: 3px; opacity: .85; }
-
-.tx-tabs { display: inline-flex; gap: 4px; padding: 4px; border-radius: 12px; background: color-mix(in srgb, var(--c-text-muted) 12%, transparent); }
-.tx-tabs button { padding: 7px 16px; border-radius: 9px; font-size: 13px; font-weight: 600; color: var(--c-text-muted); }
-.tx-tabs button.on { background: var(--c-primary); color: #fff; }
 
 .tx-filter-on { color: var(--c-primary); border-color: var(--c-primary); }
 .tx-wrap { overflow-x: auto; }
@@ -377,16 +280,6 @@ const CSS = `
 .tx-note-warn { color: var(--c-warning); }
 .tx-note-bad { color: var(--c-danger); }
 
-
-.tx-conn { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
-.tx-conn i { width: 7px; height: 7px; border-radius: 50%; }
-.tx-conn.on { color: var(--c-success); } .tx-conn.on i { background: var(--c-success); }
-.tx-conn.off { color: var(--c-text-muted); } .tx-conn.off i { background: var(--c-text-muted); }
-
-.tx-usage { display: flex; flex-direction: column; gap: 4px; min-width: 120px; }
-.tx-usage-bar { height: 5px; border-radius: 999px; overflow: hidden; background: color-mix(in srgb, var(--c-text-muted) 20%, transparent); }
-.tx-usage-bar > i { display: block; height: 100%; background: var(--c-primary); border-radius: 999px; }
-
 /* mobile: table -> stacked cards */
 @media (max-width: 767px) {
   .tx-wrap { overflow-x: visible; }
@@ -403,8 +296,6 @@ const CSS = `
   .tx-table tr.tx-note-row { margin: -6px 12px 12px; border: 0; padding: 0; }
   .tx-table tr.tx-note-row > td { display: block; padding: 0 14px 8px !important; border: 0 !important; }
   .tx-table tr.tx-note-row > td::before { display: none; }
-  .tx-usage { min-width: 0; align-items: flex-end; }
-  .tx-usage-bar { width: 100%; }
   .tx-detail-btn { width: 100%; justify-content: center; }
 }
 `

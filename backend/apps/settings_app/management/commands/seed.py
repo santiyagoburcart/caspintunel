@@ -32,6 +32,7 @@ PERMISSIONS = [
     ("monitoring.view", "View monitoring & resources"),
     ("audit.view", "View audit log"),
     ("themes.manage", "Manage themes"),
+    ("services.manage", "Manage sold services (status, reset, revoke, create)"),
 ]
 
 SUPPORT_PERMS = {"users.view", "payment.view", "payment.approve", "accounting.view", "monitoring.view"}

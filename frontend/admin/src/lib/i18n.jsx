@@ -4,7 +4,7 @@ const dict = {
   fa: {
     login: 'ورود', logout: 'خروج', username: 'نام کاربری', password: 'رمز عبور',
     full_menu: 'منوی کامل',
-    dashboard: 'داشبورد', users: 'کاربران', plans: 'پلن‌ها', payments: 'پرداخت‌ها',
+    dashboard: 'داشبورد', users: 'کاربران', services: 'سرویس‌ها', plans: 'پلن‌ها', payments: 'پرداخت‌ها',
     accounting: 'حسابداری', cards: 'کارت‌ها', monitoring: 'مانیتورینگ', branding: 'برندینگ',
     pages: 'صفحات', themes: 'پوسته‌ها', roles: 'نقش‌ها', staff: 'کارکنان', telegram: 'تلگرام',
     notifications: 'اطلاعیه‌ها',
@@ -29,6 +29,7 @@ const dict = {
     cancel: 'انصراف', unlimited: 'نامحدود', test_connection: 'تست اتصال',
     settings: 'تنظیمات',
     set_backup_interval_minutes: 'فاصلهٔ پشتیبان‌گیری (دقیقه)',
+    set_service_sync_interval_minutes: 'فاصلهٔ همگام‌سازی سرویس‌ها (دقیقه)',
     set_unique_amount_reservation_minutes: 'مهلت رزرو مبلغ یکتا (دقیقه)',
     set_unique_amount_min: 'حداقل مبلغ افزوده به قیمت (تومان)',
     set_unique_amount_max: 'حداکثر مبلغ افزوده به قیمت (تومان)',
@@ -137,7 +138,7 @@ const dict = {
   en: {
     login: 'Login', logout: 'Logout', username: 'Username', password: 'Password',
     full_menu: 'More',
-    dashboard: 'Dashboard', users: 'Users', plans: 'Plans', payments: 'Payments',
+    dashboard: 'Dashboard', users: 'Users', services: 'Services', plans: 'Plans', payments: 'Payments',
     accounting: 'Accounting', cards: 'Cards', monitoring: 'Monitoring', branding: 'Branding',
     pages: 'Pages', themes: 'Themes', roles: 'Roles', staff: 'Staff', telegram: 'Telegram',
     notifications: 'Notifications',
@@ -162,6 +163,7 @@ const dict = {
     cancel: 'Cancel', unlimited: 'unlimited', test_connection: 'Test connection',
     settings: 'Settings',
     set_backup_interval_minutes: 'Backup interval (minutes)',
+    set_service_sync_interval_minutes: 'Service sync interval (minutes)',
     set_unique_amount_reservation_minutes: 'Unique-amount reservation (minutes)',
     set_unique_amount_min: 'Min amount added to the price (toman)',
     set_unique_amount_max: 'Max amount added to the price (toman)',

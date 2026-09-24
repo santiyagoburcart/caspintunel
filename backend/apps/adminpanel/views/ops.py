@@ -1,37 +1,145 @@
-from django.db.models import Count
+import logging
+
+from django.db.models import Count, Max, Q
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, viewsets
+from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from apps.panel.exceptions import PanelError
 from apps.panel.models import Service, ServiceStatus
+from apps.panel.services import (
+    client_for,
+    create_manual_service,
+    reset_service_usage,
+    revoke_subscription,
+    set_service_status,
+)
 from apps.telegram.models import RequiredChannel, TelegramStats
 
 from ..permissions import StaffPermission
-from ..serializers import AdminServiceSerializer
+from ..serializers import (
+    AdminServiceCreateSerializer,
+    AdminServiceRawSerializer,
+    AdminServiceSerializer,
+    AdminServiceStatusSerializer,
+)
 from .base import AdminAPIView, _AUTH
 
+log = logging.getLogger("caspintunel")
 ONLINE_WINDOW_MIN = 5
 
 
-class ServiceListViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
+class ServiceListViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
+                         mixins.CreateModelMixin, viewsets.GenericViewSet):
+    """/admin/services/ — the standalone "sold services" admin page: list +
+    search/filter, manual creation, and per-row status/reset/revoke/details."""
+
     authentication_classes = _AUTH
     permission_classes = [StaffPermission]
-    perms_map = {"GET": ["monitoring.view"]}
+    perms_map = {"GET": ["monitoring.view"], "POST": ["services.manage"], "PATCH": ["services.manage"]}
     queryset = Service.objects.none()
     serializer_class = AdminServiceSerializer
 
     def get_queryset(self):
-        qs = Service.objects.select_related("user", "current_plan", "scheduled_renewal").order_by("-created_at")
+        qs = Service.objects.select_related("user", "current_plan", "panel", "scheduled_renewal").order_by("-created_at")
         kind = self.request.query_params.get("filter")
-        if kind == "expired":
-            qs = qs.filter(status=ServiceStatus.EXPIRED)
+        if kind == "active":
+            qs = qs.filter(status=ServiceStatus.ACTIVE)
         elif kind == "on_hold":
             qs = qs.filter(status=ServiceStatus.ON_HOLD)
+        elif kind == "disabled":
+            qs = qs.filter(status=ServiceStatus.DISABLED)
+        elif kind == "expired":
+            qs = qs.filter(status=ServiceStatus.EXPIRED)
         elif kind == "online":
             since = timezone.now() - timezone.timedelta(minutes=ONLINE_WINDOW_MIN)
             qs = qs.filter(online_at__gte=since)
+
+        q = (self.request.query_params.get("search") or "").strip()
+        if q:
+            qs = qs.filter(
+                Q(panel_username__icontains=q) | Q(user__username__icontains=q)
+                | Q(user__name__icontains=q) | Q(user__telegram_username__icontains=q)
+            )
         return qs
+
+    def get_serializer_class(self):
+        return AdminServiceCreateSerializer if self.action == "create" else AdminServiceSerializer
+
+    def list(self, request, *args, **kwargs):
+        resp = super().list(request, *args, **kwargs)
+        resp.data["last_synced_at"] = Service.objects.aggregate(m=Max("last_synced_at"))["m"]
+        by_status = dict(Service.objects.values_list("status").annotate(n=Count("id")).values_list("status", "n"))
+        resp.data["stats"] = {
+            "total": sum(by_status.values()),
+            "active": by_status.get(ServiceStatus.ACTIVE, 0),
+            "on_hold": by_status.get(ServiceStatus.ON_HOLD, 0),
+            "disabled": by_status.get(ServiceStatus.DISABLED, 0),
+        }
+        return resp
+
+    def create(self, request, *args, **kwargs):
+        """Manual service creation (فاز ۲) — no payment, real panel account."""
+        ser = self.get_serializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        v = ser.validated_data
+        try:
+            service = create_manual_service(
+                user=v["user"], plan=v["plan"], panel=v.get("panel"),
+                group_ids=v.get("group_ids"), account_name=v.get("account_name"),
+                staff=request.user,
+            )
+        except PanelError as exc:
+            return Response({"detail": str(exc)}, status=502)
+        return Response(AdminServiceSerializer(service).data, status=201)
+
+    @action(detail=True, methods=["post"], url_path="status")
+    def change_status(self, request, pk=None):
+        ser = AdminServiceStatusSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        try:
+            service = set_service_status(int(pk), ser.validated_data["status"], staff=request.user)
+        except PanelError as exc:
+            return Response({"detail": str(exc)}, status=502)
+        return Response(AdminServiceSerializer(service).data)
+
+    @action(detail=True, methods=["post"], url_path="reset")
+    def reset_usage(self, request, pk=None):
+        try:
+            service = reset_service_usage(int(pk))
+        except PanelError as exc:
+            return Response({"detail": str(exc)}, status=502)
+        return Response(AdminServiceSerializer(service).data)
+
+    @action(detail=True, methods=["post"], url_path="revoke")
+    def revoke(self, request, pk=None):
+        try:
+            service = revoke_subscription(int(pk))
+        except PanelError as exc:
+            return Response({"detail": str(exc)}, status=502)
+        return Response(AdminServiceSerializer(service).data)
+
+    @action(detail=True, methods=["get"], url_path="panel-detail")
+    def panel_detail(self, request, pk=None):
+        """Everything PasarGuard returns for this account, live — the
+        "جزئیات" modal (raw + our formatted fields in one response)."""
+        service = self.get_object()
+        raw = None
+        try:
+            raw = client_for(service.panel).get_user(service.panel_username)
+        except PanelError as exc:
+            log.info("panel-detail live fetch failed for service %s: %s", service.id, exc)
+        data = AdminServiceRawSerializer(service, context={"panel_raw": raw}).data
+        return Response(data)
+
+    @action(detail=False, methods=["post"], url_path="sync-now")
+    def sync_now(self, request):
+        from apps.panel.tasks import sync_all_services
+
+        result = sync_all_services.delay()
+        return Response({"detail": "sync dispatched", "task_id": result.id}, status=202)
 
 
 class DashboardView(AdminAPIView):

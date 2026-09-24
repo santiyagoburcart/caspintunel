@@ -5,6 +5,7 @@ pipeline. Every function is idempotent / retry-safe.
 from __future__ import annotations
 
 import logging
+import secrets
 from datetime import timedelta
 
 from django.db import transaction
@@ -246,6 +247,82 @@ def _apply_carry_over_renewal(service: Service, plan, carry_over_data: str) -> S
         detail={"plan": plan.id, "carry_over_data": carry_over_data,
                 "extra_bytes": extra_bytes, "extra_seconds": extra_seconds},
     )
+    return service
+
+
+@transaction.atomic
+def set_service_status(service_id: int, status: str, *, staff=None) -> Service:
+    """Admin action: flip a service between active / on_hold / disabled on
+    the panel, then mirror the result back onto our row."""
+    if status not in (ServiceStatus.ACTIVE, ServiceStatus.ON_HOLD, ServiceStatus.DISABLED):
+        raise ValueError(f"unsupported status: {status}")
+    service = Service.objects.select_for_update().select_related("panel").get(pk=service_id)
+    client = client_for(service.panel)
+    client.update_user(service.panel_username, {"status": status})
+    api_user = client.get_user(service.panel_username)
+    changed = apply_user_to_service(service, api_user, service.panel)
+    service.last_synced_at = timezone.now()
+    service.save(update_fields=sorted(set(changed) | {"last_synced_at", "updated_at"}))
+    write_audit(action="service.status_changed", staff=staff, target=service, detail={"status": status})
+    return service
+
+
+def _auto_account_name(panel: Panel) -> str:
+    for _ in range(20):
+        candidate = f"m_{secrets.token_hex(4)}"
+        if not Service.objects.filter(panel=panel, panel_username=candidate).exists():
+            return candidate
+    raise PanelError("could not allocate a unique account name, please retry")
+
+
+@transaction.atomic
+def create_manual_service(*, user, plan, panel: Panel | None = None, group_ids=None,
+                          account_name: str | None = None, staff=None) -> Service:
+    """Admin manual creation (فاز ۲): no payment — a completed `Order`
+    (type=manual) is recorded for the audit trail, then the real panel
+    account + our Service row."""
+    from apps.orders.models import Order, OrderStatus, OrderType
+
+    panel = panel or plan.panel
+    if plan.panel_id != panel.id:
+        raise PanelError(f"plan {plan.id} belongs to panel {plan.panel_id}, not panel {panel.id}")
+
+    name = (account_name or "").strip() or _auto_account_name(panel)
+    if Service.objects.filter(panel=panel, panel_username__iexact=name).exists():
+        raise PanelError("that account name is already taken on this panel")
+
+    order = Order(
+        user=user, plan=plan, type=OrderType.MANUAL,
+        requested_account_name=name, amount=0, amount_unique=0,
+        unique_expire_at=timezone.now(), status=OrderStatus.COMPLETED, source="admin",
+    )
+    order.sync_unique_lock()
+    order.save()
+
+    service = Service.objects.create(
+        user=user, panel=panel, panel_username=name, current_plan=plan, source="admin",
+    )
+    order.service = service
+    order.save(update_fields=["service", "updated_at"])
+
+    client = client_for(panel)
+    payload = build_create_payload(service, plan, panel)
+    if group_ids:
+        payload["group_ids"] = list(group_ids)
+    try:
+        api_user = client.create_user(payload)
+    except PanelConflict:
+        log.warning("manual create: panel user %s already exists — adopting", name)
+        api_user = client.get_user(name)
+
+    apply_user_to_service(service, api_user, panel)
+    if service.status == ServiceStatus.PENDING:
+        service.status = ServiceStatus.ON_HOLD if plan.duration_days else ServiceStatus.ACTIVE
+    service.last_synced_at = timezone.now()
+    service.save()
+
+    write_audit(action="service.created_manually", staff=staff, target=service,
+                detail={"plan": plan.id, "order": order.id})
     return service
 
 

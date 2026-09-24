@@ -8,6 +8,7 @@ import { useTheme } from '../theme/ThemeProvider'
 const nav = [
   ['/', 'dashboard', null],
   ['/users', 'users', 'users.view'],
+  ['/services', 'services', 'monitoring.view'],
   ['/plans', 'plans', 'plans.manage'],
   ['/payments', 'payments', 'payment.view'],
   ['/transactions', 'transactions', 'payment.view'],
@@ -24,7 +25,7 @@ const nav = [
   ['/roles', 'roles', 'roles.manage'],
 ]
 
-// Caspian — the same 15 real routes, arranged into the Stitch reference's
+// Caspian — the same 16 real routes, arranged into the Stitch reference's
 // grouped sections ([route, i18n-key, permission, icon]).
 const CASPIAN_GROUPS = [
   ['nav_group_core', [
@@ -34,6 +35,7 @@ const CASPIAN_GROUPS = [
   ]],
   ['nav_group_users', [
     ['/users', 'users', 'users.view', 'users'],
+    ['/services', 'services', 'monitoring.view', 'services'],
     ['/plans', 'plans', 'plans.manage', 'plans'],
   ]],
   ['nav_group_finance', [
@@ -69,6 +71,7 @@ const NAV_ICONS = {
   transactions: 'M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5',
   accounting: 'M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z',
   cards: 'M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z',
+  services: 'M4 6h16M4 6a2 2 0 012-2h12a2 2 0 012 2M4 6v12a2 2 0 002 2h12a2 2 0 002-2V6M8 11h8M8 15h5',
   branding: 'M4.098 19.902a3.75 3.75 0 005.304 0l6.401-6.402M6.75 21A3.75 3.75 0 013 17.25V4.125C3 3.504 3.504 3 4.125 3h5.25c.621 0 1.125.504 1.125 1.125v4.072M6.75 21a3.75 3.75 0 003.75-3.75V8.197M6.75 21h13.125c.621 0 1.125-.504 1.125-1.125v-5.25c0-.621-.504-1.125-1.125-1.125h-4.072M10.5 8.197l2.88-2.88c.438-.439 1.15-.439 1.59 0l3.712 3.713c.44.44.44 1.152 0 1.59l-2.879 2.88M6.75 17.25h.008v.008H6.75v-.008z',
   settings: 'M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75',
   pages: 'M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z',

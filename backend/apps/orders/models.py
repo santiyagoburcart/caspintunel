@@ -7,6 +7,7 @@ class OrderType(models.TextChoices):
     NEW = "new", "New service"
     RENEW = "renew", "Renew"
     ADDON_VOLUME = "addon_volume", "Add-on volume"
+    MANUAL = "manual", "Manual (admin-created)"
 
 
 class OrderStatus(models.TextChoices):

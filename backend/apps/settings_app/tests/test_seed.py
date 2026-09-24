@@ -2,6 +2,7 @@ import pytest
 from django.core.management import call_command
 
 from apps.accounts.models import Permission, Role
+from apps.settings_app.management.commands.seed import PERMISSIONS
 from apps.settings_app.models import Page, Setting, SiteConfig, Theme
 from apps.telegram.models import TelegramConfig
 
@@ -12,9 +13,9 @@ def test_seed_is_idempotent_and_complete():
     call_command("seed")
     call_command("seed")  # second run must not blow up or duplicate
 
-    assert Permission.objects.count() == 15
+    assert Permission.objects.count() == len(PERMISSIONS)
     assert Role.objects.filter(name="Super Admin").exists()
-    assert Role.objects.get(name="Super Admin").permissions.count() == 15
+    assert Role.objects.get(name="Super Admin").permissions.count() == len(PERMISSIONS)
 
     theme = Theme.objects.get(name="Midnight Aurora")
     assert theme.is_active

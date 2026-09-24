@@ -112,6 +112,7 @@ const T = {
     sub: 'پیکربندی پارامترهای پشتیبان‌گیری، قیمت‌گذاری، هشدارها و الزامات عضویت',
     card_h: 'پرداخت و کارت‌به‌کارت', card_sub: 'زمان رزرو فاکتور و بازهٔ مبلغ افزودهٔ خودکار برای تأیید پرداخت',
     alerts_h: 'هشدارها', alerts_sub: 'آستانهٔ هشدار حجم و تعداد روزهای باقی‌مانده تا انقضا',
+    sync_h: 'همگام‌سازی سرویس‌ها', sync_sub: 'فاصلهٔ خواندن خودکار وضعیت سرویس‌ها از پنل‌های پاسارگارد',
     toggles_h: 'الزامات', toggles_sub: 'قوانین ثبت‌نام و ورود کاربران به سایت و ربات',
     display_h: 'نمایش', display_sub: 'زبان پیش‌فرض سامانه و شیوهٔ نمایش محصولات به خریداران',
     reset: 'بازنشانی مقادیر', save: 'ذخیرهٔ تغییرات',
@@ -148,6 +149,7 @@ const T = {
     sub: 'Configure backup, pricing, alerts and membership requirement parameters',
     card_h: 'Payment & card-to-card', card_sub: 'Invoice reservation window and the auto-added amount range used to confirm payments',
     alerts_h: 'Alerts', alerts_sub: 'Volume warning threshold and days-before-expiry notice',
+    sync_h: 'Service sync', sync_sub: 'How often service status is auto-read from the Pasargad panels',
     toggles_h: 'Requirements', toggles_sub: 'Rules for how users register and sign in on the site and the bot',
     display_h: 'Display', display_sub: 'Default system language and how products are shown to buyers',
     reset: 'Reset values', save: 'Save changes',
@@ -190,6 +192,7 @@ const HINT = {
     unique_amount_max: 'سقف مبلغ افزوده — تومان',
     alert_volume_percent: 'مثلاً ۸۰٪ مصرف',
     alert_expire_days: 'ارسال نوتیفیکیشن پیش از اتمام مهلت',
+    service_sync_interval_minutes: 'پیش‌فرض: ۶۰ — هر چند دقیقه وضعیت سرویس‌ها از پنل‌ها خوانده شود',
   },
   en: {
     backup_interval_minutes: 'default: 1440 (24h)',
@@ -198,12 +201,14 @@ const HINT = {
     unique_amount_max: 'ceiling of the added amount — toman',
     alert_volume_percent: 'e.g. at 80% usage',
     alert_expire_days: 'notify this many days before expiry',
+    service_sync_interval_minutes: 'default: 60 — how often services are re-read from the panels',
   },
 }
 const RANGE = {
   backup_interval_minutes: [5, 43200], unique_amount_reservation_minutes: [5, 720],
   unique_amount_min: [1, 100000], unique_amount_max: [1, 100000],
   alert_volume_percent: [1, 100], alert_expire_days: [1, 60],
+  service_sync_interval_minutes: [5, 1440],
 }
 
 const SRC_MODAL_TITLE = { add: 'src_add_title', edit: 'src_edit_title' }
@@ -590,8 +595,10 @@ export default function Settings() {
   // two clearly separate int groups — the reservation/amount fields belong
   // together, the alert thresholds are a different concern
   const AMOUNT_KEYS = ['unique_amount_reservation_minutes', 'unique_amount_min', 'unique_amount_max']
+  const SYNC_KEYS = ['service_sync_interval_minutes']
   const amountNums = nums.filter((x) => AMOUNT_KEYS.includes(x.key))
-  const alertNums = nums.filter((x) => !AMOUNT_KEYS.includes(x.key))
+  const alertNums = nums.filter((x) => !AMOUNT_KEYS.includes(x.key) && !SYNC_KEYS.includes(x.key))
+  const syncNums = nums.filter((x) => SYNC_KEYS.includes(x.key))
 
   const SectionSave = () => (
     <button type="submit" form="settings-form" className="btn-primary text-xs st-card-save" disabled={busy}>
@@ -656,6 +663,19 @@ export default function Settings() {
               <SectionSave />
             </div>
             <div className="st-fields">{alertNums.map(NumField)}</div>
+          </div>
+        )}
+
+        {syncNums.length > 0 && (
+          <div className="card st-card">
+            <div className="st-card-head">
+              <div>
+                <h3 className="font-bold text-sm">{s.sync_h}</h3>
+                <p className="text-xs text-muted mt-0.5">{s.sync_sub}</p>
+              </div>
+              <SectionSave />
+            </div>
+            <div className="st-fields">{syncNums.map(NumField)}</div>
           </div>
         )}
 

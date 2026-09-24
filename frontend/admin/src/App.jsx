@@ -13,6 +13,7 @@ import TransactionDetail from './pages/TransactionDetail'
 import Accounting from './pages/Accounting'
 import Cards from './pages/Cards'
 import Monitoring from './pages/Monitoring'
+import Services from './pages/Services'
 import Branding from './pages/Branding'
 import Settings from './pages/Settings'
 import Notifications from './pages/Notifications'
@@ -41,6 +42,7 @@ export default function App() {
         <Route path="/accounting" element={<Accounting />} />
         <Route path="/cards" element={<Cards />} />
         <Route path="/monitoring" element={<Monitoring />} />
+        <Route path="/services" element={<Services />} />
         <Route path="/panel-link" element={<PanelConnection />} />
         <Route path="/bots" element={<Bots />} />
         <Route path="/branding" element={<Branding />} />

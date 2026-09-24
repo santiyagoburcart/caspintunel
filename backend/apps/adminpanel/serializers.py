@@ -479,14 +479,19 @@ class BackupLogSerializer(serializers.ModelSerializer):
 class AdminServiceSerializer(serializers.ModelSerializer):
     user = serializers.CharField(source="user.username", read_only=True)
     user_name = serializers.CharField(source="user.name", read_only=True, default="")
+    user_telegram = serializers.CharField(source="user.telegram_username", read_only=True, default="")
+    user_id = serializers.IntegerField(read_only=True)
     plan = serializers.CharField(source="current_plan.name_fa", read_only=True, default=None)
     plan_en = serializers.CharField(source="current_plan.name_en", read_only=True, default=None)
+    panel_id = serializers.IntegerField(read_only=True)
+    panel_name = serializers.CharField(source="panel.name", read_only=True, default=None)
     is_online = serializers.SerializerMethodField()
     has_scheduled_renewal = serializers.SerializerMethodField()
 
     class Meta:
         model = Service
-        fields = ("id", "panel_username", "user", "user_name", "plan", "plan_en", "status",
+        fields = ("id", "panel_username", "user", "user_id", "user_name", "user_telegram",
+                  "plan", "plan_en", "panel_id", "panel_name", "status",
                   "expire_strategy", "data_limit", "data_used", "expire_at", "online_at",
                   "is_online", "last_synced_at", "subscription_url", "created_at",
                   "has_scheduled_renewal")
@@ -500,3 +505,27 @@ class AdminServiceSerializer(serializers.ModelSerializer):
             return False
         from django.utils import timezone
         return obj.online_at >= timezone.now() - timezone.timedelta(minutes=5)
+
+
+class AdminServiceRawSerializer(AdminServiceSerializer):
+    """Same fields + whatever PasarGuard returned last time we synced this
+    service — for the admin "details" modal (raw + formatted in one call)."""
+    panel_raw = serializers.SerializerMethodField()
+
+    class Meta(AdminServiceSerializer.Meta):
+        fields = AdminServiceSerializer.Meta.fields + ("panel_raw",)
+
+    def get_panel_raw(self, obj):
+        return self.context.get("panel_raw")
+
+
+class AdminServiceStatusSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(choices=["active", "on_hold", "disabled"])
+
+
+class AdminServiceCreateSerializer(serializers.Serializer):
+    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    plan = serializers.PrimaryKeyRelatedField(queryset=Plan.objects.filter(is_active=True))
+    panel = serializers.PrimaryKeyRelatedField(queryset=Panel.objects.filter(is_active=True), required=False)
+    group_ids = serializers.ListField(child=serializers.IntegerField(), required=False)
+    account_name = serializers.RegexField(r"^[A-Za-z0-9_.\-]{2,64}$", required=False, allow_blank=True)
