@@ -211,7 +211,7 @@ def order_history_text(orders) -> str:
     for o in orders:
         status_fa = ORDER_STATUS_FA.get(o.status, o.status)
         lines.append(
-            f"• {o.plan.name_fa} — <b>{int(o.amount):,} تومان</b>\n"
+            f"• {o.plan.name_fa if o.plan else (o.requested_account_name or 'سرویس')} — <b>{int(o.amount):,} تومان</b>\n"
             f"  {status_fa} · {to_jalali_str(o.created_at, '%Y/%m/%d %H:%M')}"
         )
     return "\n".join(lines)

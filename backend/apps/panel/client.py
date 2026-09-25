@@ -144,6 +144,17 @@ class PasarGuardClient:
     def set_user_disabled(self, username: str, disabled: bool) -> dict:
         return self._request("PUT", f"/api/user/{username}/disabled", json={"disabled": disabled})
 
+    def list_users(self, *, search: str = "", limit: int = 20, offset: int = 0) -> tuple[list[dict], int]:
+        """Page of panel users, optionally filtered by a username substring.
+        Returns (users, total)."""
+        params = {"limit": int(limit), "offset": int(offset)}
+        if search:
+            params["search"] = search
+        data = self._request("GET", "/api/users", params=params)
+        users = _unwrap(data, "users")
+        total = data.get("total", len(users)) if isinstance(data, dict) else len(users)
+        return users, int(total or 0)
+
     def get_user_usage(self, username: str) -> dict:
         return self._request("GET", f"/api/user/{username}/usage")
 

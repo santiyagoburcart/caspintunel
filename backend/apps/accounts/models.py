@@ -43,6 +43,14 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False, help_text="Django admin access")
 
+    # soft delete (admin "delete user"): the row stays so orders / payments keep
+    # their owner and accounting never changes; see apps.accounts.deletion
+    deleted_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    deleted_by = models.ForeignKey(
+        "accounts.Staff", null=True, blank=True, on_delete=models.SET_NULL, related_name="deleted_users"
+    )
+    delete_reason = models.TextField(blank=True, default="")
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -74,6 +82,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     @property
     def referral_count(self) -> int:
         return self.referrals.count()
+
+    @property
+    def is_deleted(self) -> bool:
+        return self.deleted_at is not None
 
 
 # ---------------------------------------------------------------------------
@@ -150,3 +162,44 @@ class Staff(TimeStampedModel):
         if not self.role_id:
             return False
         return self.role.permissions.filter(code=code).exists()
+
+
+class DeletedUserArchive(models.Model):
+    """Full snapshot of a user taken right before an admin soft-deleted them
+    (profile, orders + payments, services, notification count, admin note).
+    The live row's unique fields are freed afterwards; the originals live here
+    and are what a restore puts back."""
+
+    user = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL, related_name="deletion_archives"
+    )
+    original_username = models.CharField(max_length=64, db_index=True)
+    original_name = models.CharField(max_length=120, blank=True)
+    original_phone = models.CharField(max_length=20, blank=True, db_index=True)
+    original_email = models.CharField(max_length=255, blank=True)
+    original_telegram_id = models.BigIntegerField(null=True, blank=True)
+    original_telegram_username = models.CharField(max_length=64, blank=True)
+
+    deleted_at = models.DateTimeField(default=timezone.now, db_index=True)
+    deleted_by = models.ForeignKey(
+        Staff, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    deleted_by_label = models.CharField(max_length=150, blank=True)
+    reason = models.TextField()
+
+    orders_count = models.IntegerField(default=0)
+    total_paid = models.DecimalField(max_digits=14, decimal_places=0, default=0)
+    snapshot = models.JSONField(default=dict)
+
+    restored_at = models.DateTimeField(null=True, blank=True)
+    restored_by = models.ForeignKey(
+        Staff, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    restored_by_label = models.CharField(max_length=150, blank=True)
+
+    class Meta:
+        db_table = "deleted_user_archive"
+        ordering = ("-deleted_at", "-id")
+
+    def __str__(self) -> str:
+        return f"archive#{self.pk} {self.original_username}"

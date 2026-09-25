@@ -7,12 +7,15 @@ from rest_framework import mixins, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from apps.panel.exceptions import PanelError
-from apps.panel.models import Service, ServiceStatus
+from apps.panel.exceptions import PanelError, PanelNotFound
+from apps.panel.models import Panel, Service, ServiceStatus
 from apps.panel.services import (
+    ServiceAlreadyLinked,
     client_for,
     create_manual_service,
     delete_service,
+    link_existing_service,
+    search_panel_users,
     reset_service_usage,
     revoke_subscription,
     set_service_status,
@@ -23,6 +26,7 @@ from apps.telegram.models import RequiredChannel, TelegramStats
 from ..permissions import StaffPermission
 from ..serializers import (
     AdminServiceCreateSerializer,
+    AdminServiceLinkSerializer,
     AdminServiceRawSerializer,
     AdminServiceSerializer,
     AdminServiceStatusSerializer,
@@ -45,6 +49,7 @@ class ServiceListViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
         "GET": ["monitoring.view"], "POST": ["services.manage"],
         "PATCH": ["services.manage"], "DELETE": ["services.delete"],
     }
+    action_perms = {"panel_users": ["services.manage"]}
     queryset = Service.objects.none()
     serializer_class = AdminServiceSerializer
 
@@ -149,6 +154,8 @@ class ServiceListViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
         for key in ("on_hold_days", "group_ids", "note"):
             if key in v:
                 kw[key] = v[key]
+        if "hwid_limit" in v:
+            kw["hwid_limit"] = v["hwid_limit"] or 0
         try:
             service, raw = update_service(service.id, staff=request.user, **kw)
         except ValueError as exc:
@@ -177,6 +184,40 @@ class ServiceListViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
             log.info("panel-detail live fetch failed for service %s: %s", service.id, exc)
         data = AdminServiceRawSerializer(service, context={"panel_raw": raw}).data
         return Response(data)
+
+    @action(detail=False, methods=["get"], url_path="panel-users")
+    def panel_users(self, request):
+        """Live search of a panel's accounts (?panel=<id>&search=<username>) for
+        "link an existing panel account" — each row says if it's already linked."""
+        panel = Panel.objects.filter(pk=request.query_params.get("panel") or 0, is_active=True).first()
+        if panel is None:
+            return Response({"detail": "unknown or inactive panel"}, status=400)
+        try:
+            rows = search_panel_users(panel, request.query_params.get("search") or "", limit=20)
+        except PanelError as exc:
+            return Response({"detail": str(exc)}, status=502)
+        return Response({"results": rows})
+
+    @action(detail=False, methods=["post"], url_path="link")
+    def link_existing(self, request):
+        """Adopt an existing panel account: our Service (synced from the panel) +
+        an `imported` Order with no payment. Nothing changes on the panel."""
+        ser = AdminServiceLinkSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        v = ser.validated_data
+        try:
+            service = link_existing_service(user=v["user"], panel=v["panel"], panel_username=v["panel_username"],
+                                            plan=v.get("plan"), staff=request.user)
+        except ServiceAlreadyLinked as exc:
+            return Response({"detail": str(exc), "service_id": exc.service.id,
+                             "user_id": exc.service.user_id, "username": exc.service.user.username}, status=409)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        except PanelNotFound:
+            return Response({"detail": "no such account on the panel"}, status=404)
+        except PanelError as exc:
+            return Response({"detail": str(exc)}, status=502)
+        return Response(AdminServiceSerializer(service).data, status=201)
 
     @action(detail=False, methods=["post"], url_path="sync-now")
     def sync_now(self, request):

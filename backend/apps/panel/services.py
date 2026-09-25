@@ -9,6 +9,7 @@ import secrets
 from datetime import timedelta
 
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from apps.common.models import write_audit
@@ -366,7 +367,7 @@ _EDITABLE_STATUSES = (ServiceStatus.ACTIVE, ServiceStatus.ON_HOLD, ServiceStatus
 
 @transaction.atomic
 def update_service(service_id: int, *, status=None, data_limit=None, expire_at=_UNSET,
-                   on_hold_days=None, group_ids=None, note=None, staff=None) -> tuple[Service, dict]:
+                   on_hold_days=None, group_ids=None, note=None, hwid_limit=None, staff=None) -> tuple[Service, dict]:
     """Admin "full edit": write the changes to PasarGuard first, then read the
     account back and mirror it onto our row (so our DB only ever reflects what
     the panel accepted). Only the arguments that are passed are sent.
@@ -377,6 +378,7 @@ def update_service(service_id: int, *, status=None, data_limit=None, expire_at=_
     - on_hold_days: on_hold only — the timer that starts on first connection
     - group_ids: list of panel group ids
     - note: the panel-side note
+    - hwid_limit: device (HWID) limit, 0 = unlimited
 
     Returns (service, live panel user)."""
     service = Service.objects.select_for_update().select_related("panel").get(pk=service_id)
@@ -401,8 +403,10 @@ def update_service(service_id: int, *, status=None, data_limit=None, expire_at=_
         payload["group_ids"] = [int(g) for g in group_ids]
     if note is not None:
         payload["note"] = note
+    if hwid_limit is not None:
+        payload["hwid_limit"] = max(0, int(hwid_limit))
 
-    before = {"status": service.status, "data_limit": service.data_limit,
+    before = {"status": service.status, "data_limit": service.data_limit, "device_limit": service.device_limit,
               "expire_at": service.expire_at.isoformat() if service.expire_at else None}
     client = client_for(service.panel)
     if payload:
@@ -422,3 +426,99 @@ def update_service(service_id: int, *, status=None, data_limit=None, expire_at=_
         "before": before,
     })
     return service, api_user
+
+
+def search_panel_users(panel: Panel, search: str = "", *, limit: int = 20) -> list[dict]:
+    """Live search of a panel's accounts (by username) for the admin "link an
+    existing panel account" flow. Each row says whether it is already linked
+    to one of our users."""
+    users, _total = client_for(panel).list_users(search=search.strip(), limit=limit)
+    names = [u["username"] for u in users if u.get("username")]
+    match = Q(pk__in=[])
+    for n in names:
+        match |= Q(panel_username__iexact=n)
+    linked = {s.panel_username.lower(): s
+              for s in Service.objects.filter(match, panel=panel).select_related("user")}
+    out = []
+    for u in users:
+        name = u.get("username") or ""
+        svc = linked.get(name.lower())
+        out.append({
+            "username": name,
+            "status": u.get("status"),
+            "used_traffic": int(u.get("used_traffic") or 0),
+            "data_limit": int(u.get("data_limit") or 0),
+            "expire": u.get("expire"),
+            "online_at": u.get("online_at"),
+            "on_hold_expire_duration": u.get("on_hold_expire_duration"),
+            "linked": ({"service_id": svc.id, "user_id": svc.user_id, "username": svc.user.username,
+                        "user_deleted": svc.user.deleted_at is not None} if svc else None),
+        })
+    return out
+
+
+@transaction.atomic
+def link_existing_service(*, user, panel: Panel, panel_username: str, plan=None, staff=None) -> Service:
+    """Adopt an account that already exists on the panel: create our Service
+    (mirrored from the live panel data) + a completed `imported` Order with no
+    payment. Nothing is changed on the panel."""
+    from apps.orders.models import Order, OrderStatus, OrderType
+
+    name = (panel_username or "").strip()
+    if not name:
+        raise ValueError("panel_username is required")
+    if plan is not None and plan.panel_id != panel.id:
+        raise ValueError(f"plan {plan.id} belongs to panel {plan.panel_id}, not panel {panel.id}")
+    existing = Service.objects.filter(panel=panel, panel_username__iexact=name).select_related("user").first()
+    if existing is not None:
+        raise ServiceAlreadyLinked(existing)
+
+    api_user = client_for(panel).get_user(name)          # PanelNotFound -> caller
+    name = api_user.get("username") or name               # the panel's exact spelling
+
+    service = Service(user=user, panel=panel, panel_username=name, current_plan=plan, source="import")
+    apply_user_to_service(service, api_user, panel)
+    service.last_synced_at = timezone.now()
+    service.save()
+
+    order = Order(
+        user=user, plan=plan, service=service, type=OrderType.IMPORTED,
+        requested_account_name=name, amount=0, amount_unique=0,
+        unique_expire_at=timezone.now(), status=OrderStatus.COMPLETED, source="admin",
+    )
+    order.sync_unique_lock()
+    order.save()
+
+    write_audit(action="service.linked_existing", staff=staff, target=service, detail={
+        "panel": panel.id, "panel_username": name, "user": user.id,
+        "plan": plan.id if plan else None, "order": order.id,
+    })
+    return service
+
+
+class ServiceAlreadyLinked(Exception):
+    def __init__(self, service: Service):
+        self.service = service
+        super().__init__(
+            f"panel account {service.panel_username} is already linked to user "
+            f"{service.user.username} (service #{service.id})"
+        )
+
+
+def disable_service_on_panel(service: Service) -> str:
+    """Disable one service on its panel and mirror the result (used when a user
+    is deleted). Returns "disabled" or "missing" (already gone from the panel);
+    raises PanelError on any other failure. Never deletes anything."""
+    client = client_for(service.panel)
+    try:
+        client.update_user(service.panel_username, {"status": ServiceStatus.DISABLED})
+        api_user = client.get_user(service.panel_username)
+    except PanelNotFound:
+        result = "missing"
+    else:
+        apply_user_to_service(service, api_user, service.panel)
+        result = "disabled"
+    service.status = ServiceStatus.DISABLED
+    service.last_synced_at = timezone.now()
+    service.save()
+    return result

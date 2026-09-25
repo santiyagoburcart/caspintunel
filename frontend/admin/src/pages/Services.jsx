@@ -44,10 +44,18 @@ const T = {
     f_user: 'کاربر', f_user_ph: 'جستجوی نام کاربری، نام یا تلگرام…', f_user_none: 'کاربری یافت نشد',
     f_panel: 'پنل', f_plan: 'پلن', f_plan_none: 'این پنل پلنی ندارد',
     f_groups: 'گروه‌های پنل', f_groups_hint: 'خالی = گروه‌های پیش‌فرض پلن/پنل', f_groups_fetch: 'دریافت گروه‌ها',
-    f_account_name: 'نام اکانت (اختیاری)', f_account_name_hint: 'خالی بگذارید تا خودکار ساخته شود',
+    f_account_name: 'نام کاربری سرویس در پنل (اختیاری)', f_account_name_hint: 'خالی بگذارید تا خودکار ساخته شود',
     submit: 'ایجاد سرویس', cancel: 'انصراف', created_ok: 'سرویس با موفقیت ایجاد شد',
     change_user: 'تغییر کاربر', select_plan_ph: '— انتخاب پلن —', select_panel_ph: '— انتخاب پنل —',
     group_word: 'گروه',
+    tab_create: 'ساخت سرویس جدید', tab_link: 'اتصال سرویس موجود پنل',
+    link_sub: 'اکانتی که از قبل روی پنل وجود دارد به یکی از کاربران ما وصل می‌شود — روی پنل چیزی تغییر نمی‌کند',
+    l_search: 'جستجوی اکانت در پنل', l_search_ph: 'نام کاربری سرویس در پنل…', l_pick_panel: 'ابتدا پنل را انتخاب کنید',
+    l_searching: 'در حال جستجو در پنل…', l_none: 'اکانتی با این نام روی پنل یافت نشد', l_change: 'تغییر اکانت',
+    l_linked: 'قبلاً به کاربر {u} متصل است', l_deleted: 'کاربر حذف‌شده',
+    l_plan: 'پلن برای تمدیدهای بعدی (اختیاری)', l_no_plan: '— بدون پلن —', l_plan_hint: 'فقط برای تمدید؛ روی اکانت فعلی اعمال نمی‌شود',
+    l_note: 'یک سفارش «اتصال سرویس موجود» بدون پرداخت ثبت می‌شود و مشخصات سرویس از پنل همگام‌سازی می‌شود.',
+    l_submit: 'اتصال', linked_ok: 'سرویس موجود با موفقیت متصل شد', user_deleted: 'حذف‌شده',
   },
   en: {
     h1: 'Sold services', sub: "Manage and sync users' services on the panels",
@@ -64,10 +72,18 @@ const T = {
     f_user: 'User', f_user_ph: 'Search username, name or Telegram…', f_user_none: 'No user found',
     f_panel: 'Panel', f_plan: 'Plan', f_plan_none: 'This panel has no plans',
     f_groups: 'Panel groups', f_groups_hint: 'Empty = the plan/panel default groups', f_groups_fetch: 'Fetch groups',
-    f_account_name: 'Account name (optional)', f_account_name_hint: 'Leave empty to auto-generate',
+    f_account_name: 'Panel service username (optional)', f_account_name_hint: 'Leave empty to auto-generate',
     submit: 'Create service', cancel: 'Cancel', created_ok: 'Service created successfully',
     change_user: 'Change user', select_plan_ph: '— select a plan —', select_panel_ph: '— select a panel —',
     group_word: 'group',
+    tab_create: 'Create new service', tab_link: 'Link existing panel service',
+    link_sub: 'Attach an account that already exists on the panel to one of our users — nothing changes on the panel',
+    l_search: 'Find the account on the panel', l_search_ph: 'Panel service username…', l_pick_panel: 'Select a panel first',
+    l_searching: 'Searching the panel…', l_none: 'No account with that name on the panel', l_change: 'Change account',
+    l_linked: 'Already linked to user {u}', l_deleted: 'deleted user',
+    l_plan: 'Plan for future renewals (optional)', l_no_plan: '— no plan —', l_plan_hint: 'Only used for renewals; not applied to the account now',
+    l_note: 'A no-payment "linked existing" order is recorded and the service details are synced from the panel.',
+    l_submit: 'Link', linked_ok: 'Existing service linked', user_deleted: 'deleted',
   },
 }
 
@@ -202,7 +218,7 @@ export default function Services() {
                 <tr key={r.id} className="svc-row">
                   <td data-label={s.col_account} dir="ltr" className="svc-mono">{r.panel_username}</td>
                   <td data-label={s.col_user}>
-                    <span className="svc-user">{r.user}</span>
+                    <span className="svc-user">{r.user}{r.user_deleted && <span className="svc-deleted-tag">{s.user_deleted}</span>}</span>
                     {r.user_telegram ? <span className="svc-sub" dir="ltr">@{r.user_telegram}</span> : (r.user_name ? <span className="svc-sub">{r.user_name}</span> : null)}
                   </td>
                   <td data-label={s.col_plan}>{(lang === 'fa' ? r.plan : r.plan_en) || r.plan || '—'}</td>
@@ -254,15 +270,84 @@ export default function Services() {
       {createOpen && (
         <ManualCreateModal s={s} t={t} lang={lang}
           onClose={() => setCreateOpen(false)}
-          onCreated={() => { setCreateOpen(false); toast.success(s.created_ok); load() }} />
+          onCreated={(msg) => { setCreateOpen(false); toast.success(msg || s.created_ok); load() }} />
       )}
     </div>
   )
 }
 
+function UserPicker({ s, user, setUser }) {
+  const [q, setQ] = useState('')
+  const [results, setResults] = useState([])
+  useEffect(() => {
+    if (!q.trim()) { setResults([]); return undefined }
+    const id = setTimeout(() => {
+      api.get(`/admin/users/?search=${encodeURIComponent(q)}&limit=8`)
+        .then((r) => setResults(r.data.results ?? r.data))
+        .catch(() => setResults([]))
+    }, 300)
+    return () => clearTimeout(id)
+  }, [q])
+
+  return (
+    <div className="svc-fld">
+      <span className="label">{s.f_user}</span>
+      {user ? (
+        <div className="svc-user-picked">
+          <span className="svc-user-picked-ico"><Ico d={ICONS.user} w={14} /></span>
+          <span className="min-w-0 flex-1">
+            <b>{user.username}</b>{user.name ? <span className="svc-sub"> · {user.name}</span> : null}
+          </span>
+          <button type="button" className="btn-ghost text-xs" onClick={() => { setUser(null); setQ('') }}>{s.change_user}</button>
+        </div>
+      ) : (
+        <>
+          <input className="input" value={q} onChange={(e) => setQ(e.target.value)} placeholder={s.f_user_ph} />
+          {q.trim() && (
+            <div className="svc-user-results">
+              {results.length === 0 ? (
+                <div className="svc-user-empty">{s.f_user_none}</div>
+              ) : results.map((u) => (
+                <button type="button" key={u.id} className="svc-user-result" onClick={() => { setUser(u); setResults([]) }}>
+                  <b>{u.username}</b>{u.name ? <span className="svc-sub"> · {u.name}</span> : null}
+                  {u.telegram_username ? <span className="svc-sub" dir="ltr"> · @{u.telegram_username}</span> : null}
+                </button>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+const LINK_TONE = { active: 'success', on_hold: 'warning', disabled: 'danger', expired: 'danger', limited: 'warning' }
+
+function PanelAccountRow({ a, s, t, lang, picked, onPick }) {
+  const tone = `var(--c-${LINK_TONE[a.status] || 'text-muted'})`
+  const exp = a.expire ? jalali(a.expire, false, lang) : (a.status === 'on_hold' ? s.on_first_conn : s.no_expiry)
+  return (
+    <button type="button" className={'svc-acc' + (picked ? ' on' : '') + (a.linked ? ' linked' : '')}
+      disabled={!!a.linked} onClick={() => onPick(a)} aria-pressed={picked}>
+      <span className="svc-acc-top">
+        <b dir="ltr" className="svc-mono">{a.username}</b>
+        <span className="svc-pill" style={{ color: tone, background: `color-mix(in srgb, ${tone} 14%, transparent)` }}>
+          {enumLabel(t, 'st_', a.status)}
+        </span>
+      </span>
+      <span className="svc-acc-meta">
+        <span dir="ltr" className="svc-mono">{fmtData(a.used_traffic, a.data_limit, s, lang)}</span>
+        <span>· {s.col_expire}: {exp}</span>
+      </span>
+      {a.linked && (
+        <span className="svc-acc-linked">{s.l_linked.replace('{u}', a.linked.username)}{a.linked.user_deleted ? ` (${s.l_deleted})` : ''}</span>
+      )}
+    </button>
+  )
+}
+
 function ManualCreateModal({ s, t, lang, onClose, onCreated }) {
-  const [userQuery, setUserQuery] = useState('')
-  const [userResults, setUserResults] = useState([])
+  const [mode, setMode] = useState('create') // 'create' | 'link'
   const [user, setUser] = useState(null)
   const [panels, setPanels] = useState([])
   const [panelId, setPanelId] = useState('')
@@ -272,6 +357,12 @@ function ManualCreateModal({ s, t, lang, onClose, onCreated }) {
   const [fetchingGroups, setFetchingGroups] = useState(false)
   const [selectedGroups, setSelectedGroups] = useState([])
   const [accountName, setAccountName] = useState('')
+  // link mode
+  const [accQuery, setAccQuery] = useState('')
+  const [accResults, setAccResults] = useState(null) // null = not searched yet
+  const [accLoading, setAccLoading] = useState(false)
+  const [accErr, setAccErr] = useState('')
+  const [picked, setPicked] = useState(null)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
 
@@ -280,15 +371,18 @@ function ManualCreateModal({ s, t, lang, onClose, onCreated }) {
     api.get('/admin/plans/?limit=200').then((r) => setPlans(r.data.results || r.data || [])).catch(() => setPlans([]))
   }, [])
 
+  // live, debounced search of the selected panel's accounts
   useEffect(() => {
-    if (!userQuery.trim()) { setUserResults([]); return }
+    if (mode !== 'link' || !panelId) { setAccResults(null); return undefined }
+    setAccLoading(true); setAccErr('')
     const id = setTimeout(() => {
-      api.get(`/admin/users/?search=${encodeURIComponent(userQuery)}&limit=8`)
-        .then((r) => setUserResults(r.data.results ?? r.data))
-        .catch(() => setUserResults([]))
-    }, 300)
+      api.get(`/admin/services/panel-users/?panel=${panelId}&search=${encodeURIComponent(accQuery.trim())}`)
+        .then((r) => setAccResults(r.data.results || []))
+        .catch((e) => { setAccResults([]); setAccErr(apiError(e)) })
+        .finally(() => setAccLoading(false))
+    }, 350)
     return () => clearTimeout(id)
-  }, [userQuery])
+  }, [mode, panelId, accQuery])
 
   const panelPlans = useMemo(() => plans.filter((p) => String(p.panel) === String(panelId) && p.is_active), [plans, panelId])
 
@@ -302,18 +396,33 @@ function ManualCreateModal({ s, t, lang, onClose, onCreated }) {
   }
 
   const toggleGroup = (id) => setSelectedGroups((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]))
+  const switchMode = (m) => { setMode(m); setErr(''); setPlanId(''); setPicked(null) }
+  const changePanel = (v) => { setPanelId(v); setPlanId(''); setGroups(null); setSelectedGroups([]); setPicked(null); setAccQuery('') }
 
   const submit = async (e) => {
     e.preventDefault(); setErr(''); setBusy(true)
     try {
-      await api.post('/admin/services/', {
-        user: user.id, plan: Number(planId), panel: panelId ? Number(panelId) : undefined,
-        group_ids: selectedGroups.length ? selectedGroups : undefined,
-        account_name: accountName.trim() || undefined,
-      })
-      onCreated()
-    } catch (e2) { setErr(apiError(e2)) } finally { setBusy(false) }
+      if (mode === 'link') {
+        await api.post('/admin/services/link/', {
+          panel: Number(panelId), panel_username: picked.username, user: user.id,
+          plan: planId ? Number(planId) : null,
+        })
+        onCreated(s.linked_ok)
+      } else {
+        await api.post('/admin/services/', {
+          user: user.id, plan: Number(planId), panel: panelId ? Number(panelId) : undefined,
+          group_ids: selectedGroups.length ? selectedGroups : undefined,
+          account_name: accountName.trim() || undefined,
+        })
+        onCreated(s.created_ok)
+      }
+    } catch (e2) {
+      const d = e2?.response?.data
+      setErr(e2?.response?.status === 409 && d?.username ? s.l_linked.replace('{u}', d.username) : apiError(e2))
+    } finally { setBusy(false) }
   }
+
+  const canSubmit = mode === 'link' ? !!(user && panelId && picked) : !!(user && planId)
 
   return (
     <div className="svc-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -321,65 +430,48 @@ function ManualCreateModal({ s, t, lang, onClose, onCreated }) {
         <div className="svc-modal-head">
           <div>
             <h2 className="font-bold">{s.create_title}</h2>
-            <p className="text-xs text-muted mt-0.5">{s.create_sub}</p>
+            <p className="text-xs text-muted mt-0.5">{mode === 'link' ? s.link_sub : s.create_sub}</p>
           </div>
-          <button type="button" className="svc-icon-btn" onClick={onClose}><Ico d={ICONS.close} w={16} /></button>
+          <button type="button" className="svc-icon-btn" onClick={onClose} aria-label={s.cancel}><Ico d={ICONS.close} w={16} /></button>
+        </div>
+        <div className="svc-mode-tabs" role="tablist">
+          {[['create', s.tab_create, ICONS.plus], ['link', s.tab_link, ICONS.revoke]].map(([m, label, icon]) => (
+            <button key={m} type="button" role="tab" aria-selected={mode === m}
+              className={'svc-mode-tab' + (mode === m ? ' on' : '')} onClick={() => switchMode(m)}>
+              <Ico d={icon} w={14} />{label}
+            </button>
+          ))}
         </div>
         <div className="svc-modal-body">
           <Alert>{err}</Alert>
 
-          <div className="svc-fld">
-            <span className="label">{s.f_user}</span>
-            {user ? (
-              <div className="svc-user-picked">
-                <span className="svc-user-picked-ico"><Ico d={ICONS.user} w={14} /></span>
-                <span className="min-w-0 flex-1">
-                  <b>{user.username}</b>{user.name ? <span className="svc-sub"> · {user.name}</span> : null}
-                </span>
-                <button type="button" className="btn-ghost text-xs" onClick={() => { setUser(null); setUserQuery('') }}>{s.change_user}</button>
-              </div>
-            ) : (
-              <>
-                <input className="input" value={userQuery} onChange={(e) => setUserQuery(e.target.value)} placeholder={s.f_user_ph} autoFocus />
-                {userQuery.trim() && (
-                  <div className="svc-user-results">
-                    {userResults.length === 0 ? (
-                      <div className="svc-user-empty">{s.f_user_none}</div>
-                    ) : userResults.map((u) => (
-                      <button type="button" key={u.id} className="svc-user-result" onClick={() => { setUser(u); setUserResults([]) }}>
-                        <b>{u.username}</b>{u.name ? <span className="svc-sub"> · {u.name}</span> : null}
-                        {u.telegram_username ? <span className="svc-sub" dir="ltr"> · @{u.telegram_username}</span> : null}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+          {mode === 'create' && <UserPicker s={s} user={user} setUser={setUser} />}
 
-          <div className="svc-grid2">
+          <div className={mode === 'create' ? 'svc-grid2' : ''}>
             <label className="svc-fld">
               <span className="label">{s.f_panel}</span>
-              <select className="input" value={panelId} onChange={(e) => { setPanelId(e.target.value); setPlanId(''); setGroups(null); setSelectedGroups([]) }}>
+              <select className="input" value={panelId} onChange={(e) => changePanel(e.target.value)}>
                 <option value="">{s.select_panel_ph}</option>
                 {panels.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </label>
-            <label className="svc-fld">
-              <span className="label">{s.f_plan}</span>
-              <select className="input" value={planId} required disabled={!panelId}
-                onChange={(e) => {
-                  setPlanId(e.target.value)
-                  const p = panelPlans.find((x) => String(x.id) === e.target.value)
-                  if (p?.group_ids?.length) setSelectedGroups(p.group_ids)
-                }}>
-                <option value="">{panelId ? (panelPlans.length ? s.select_plan_ph : s.f_plan_none) : s.select_plan_ph}</option>
-                {panelPlans.map((p) => <option key={p.id} value={p.id}>{lang === 'fa' ? p.name_fa : (p.name_en || p.name_fa)}</option>)}
-              </select>
-            </label>
+            {mode === 'create' && (
+              <label className="svc-fld">
+                <span className="label">{s.f_plan}</span>
+                <select className="input" value={planId} required disabled={!panelId}
+                  onChange={(e) => {
+                    setPlanId(e.target.value)
+                    const p = panelPlans.find((x) => String(x.id) === e.target.value)
+                    if (p?.group_ids?.length) setSelectedGroups(p.group_ids)
+                  }}>
+                  <option value="">{panelId ? (panelPlans.length ? s.select_plan_ph : s.f_plan_none) : s.select_plan_ph}</option>
+                  {panelPlans.map((p) => <option key={p.id} value={p.id}>{lang === 'fa' ? p.name_fa : (p.name_en || p.name_fa)}</option>)}
+                </select>
+              </label>
+            )}
           </div>
 
-          {panelId && (
+          {mode === 'create' && panelId && (
             <div className="svc-fld">
               <div className="svc-groups-head">
                 <span className="label mb-0">{s.f_groups}</span>
@@ -402,16 +494,71 @@ function ManualCreateModal({ s, t, lang, onClose, onCreated }) {
             </div>
           )}
 
-          <label className="svc-fld">
-            <span className="label">{s.f_account_name}</span>
-            <input className="input" dir="ltr" value={accountName} onChange={(e) => setAccountName(e.target.value)} />
-            <span className="svc-hint">{s.f_account_name_hint}</span>
-          </label>
+          {mode === 'create' && (
+            <label className="svc-fld">
+              <span className="label">{s.f_account_name}</span>
+              <input className="input" dir="ltr" value={accountName} onChange={(e) => setAccountName(e.target.value)} />
+              <span className="svc-hint">{s.f_account_name_hint}</span>
+            </label>
+          )}
+
+          {mode === 'link' && (
+            <>
+              <div className="svc-fld">
+                <span className="label">{s.l_search}</span>
+                {picked ? (
+                  <div className="svc-user-picked">
+                    <span className="svc-user-picked-ico"><Ico d={ICONS.revoke} w={14} /></span>
+                    <span className="min-w-0 flex-1">
+                      <b dir="ltr" className="svc-mono">{picked.username}</b>
+                      <span className="svc-sub" dir="ltr">{fmtData(picked.used_traffic, picked.data_limit, s, lang)} · {enumLabel(t, 'st_', picked.status)}</span>
+                    </span>
+                    <button type="button" className="btn-ghost text-xs" onClick={() => setPicked(null)}>{s.l_change}</button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="svc-search svc-search--full">
+                      <Ico d={ICONS.search} w={14} />
+                      <input className="input" dir="ltr" value={accQuery} disabled={!panelId}
+                        onChange={(e) => setAccQuery(e.target.value)}
+                        placeholder={panelId ? s.l_search_ph : s.l_pick_panel} />
+                    </div>
+                    {panelId && (
+                      <div className="svc-acc-list" aria-busy={accLoading}>
+                        {accLoading && accResults === null ? (
+                          <div className="svc-user-empty">{s.l_searching}</div>
+                        ) : accErr ? (
+                          <div className="svc-user-empty svc-err">{accErr}</div>
+                        ) : (accResults || []).length === 0 ? (
+                          <div className="svc-user-empty">{s.l_none}</div>
+                        ) : accResults.map((a) => (
+                          <PanelAccountRow key={a.username} a={a} s={s} t={t} lang={lang}
+                            picked={picked?.username === a.username} onPick={setPicked} />
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              <UserPicker s={s} user={user} setUser={setUser} />
+
+              <label className="svc-fld">
+                <span className="label">{s.l_plan}</span>
+                <select className="input" value={planId} disabled={!panelId} onChange={(e) => setPlanId(e.target.value)}>
+                  <option value="">{s.l_no_plan}</option>
+                  {panelPlans.map((p) => <option key={p.id} value={p.id}>{lang === 'fa' ? p.name_fa : (p.name_en || p.name_fa)}</option>)}
+                </select>
+                <span className="svc-hint">{s.l_plan_hint}</span>
+              </label>
+              <p className="svc-hint svc-link-note">{s.l_note}</p>
+            </>
+          )}
         </div>
         <div className="svc-modal-foot">
           <button type="button" className="btn-ghost text-sm" onClick={onClose}>{s.cancel}</button>
-          <button type="submit" className="btn-primary text-sm" disabled={busy || !user || !planId}>
-            {busy ? '…' : s.submit}
+          <button type="submit" className="btn-primary text-sm" disabled={busy || !canSubmit}>
+            {busy ? '…' : (mode === 'link' ? s.l_submit : s.submit)}
           </button>
         </div>
       </form>
@@ -496,6 +643,24 @@ const CSS = `
 .svc-user-result:hover { background: color-mix(in srgb, var(--c-primary) 6%, transparent); }
 .svc-user-empty { padding: 10px 12px; font-size: 12px; color: var(--c-text-muted); }
 
+.svc-mode-tabs { display: flex; gap: 4px; margin: 14px 20px 0; padding: 4px; border-radius: 12px; background: color-mix(in srgb, var(--c-text-muted) 12%, transparent); }
+.svc-mode-tab { flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 10px; border-radius: 9px;
+  font-size: 12.5px; font-weight: 700; color: var(--c-text-muted); text-align: center; }
+.svc-mode-tab.on { background: var(--c-primary); color: #fff; }
+.svc-search--full { max-width: none; min-width: 0; }
+.svc-acc-list { border: 1px solid var(--c-border); border-radius: 10px; max-height: 260px; overflow-y: auto; }
+.svc-acc { display: flex; flex-direction: column; gap: 4px; width: 100%; text-align: start; padding: 9px 12px; font-size: 12.5px; border-bottom: 1px solid var(--c-border); }
+.svc-acc:last-child { border-bottom: 0; }
+.svc-acc:hover:not(:disabled) { background: color-mix(in srgb, var(--c-primary) 6%, transparent); }
+.svc-acc.on { background: color-mix(in srgb, var(--c-primary) 12%, transparent); }
+.svc-acc.linked { opacity: .65; cursor: not-allowed; }
+.svc-acc-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.svc-acc-meta { display: flex; flex-wrap: wrap; gap: 6px; font-size: 11.5px; color: var(--c-text-muted); }
+.svc-acc-linked { font-size: 11px; font-weight: 700; color: var(--c-danger); }
+.svc-err { color: var(--c-danger); }
+.svc-link-note { padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--c-primary) 7%, transparent); line-height: 1.7; }
+.svc-deleted-tag { margin-inline-start: 6px; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 5px; color: var(--c-danger);
+  background: color-mix(in srgb, var(--c-danger) 13%, transparent); }
 .svc-groups-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .svc-groups-grid { display: grid; grid-template-columns: 1fr; gap: 6px; }
 @media (min-width: 480px) { .svc-groups-grid { grid-template-columns: 1fr 1fr; } }

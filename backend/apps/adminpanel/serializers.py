@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from apps.accounts.models import Permission, Role, Staff
+from apps.accounts.models import DeletedUserArchive, Permission, Role, Staff
 from apps.accounts.phone import PhoneError, clean_site_phone
 from apps.notifications.models import Notification
 from apps.ops.models import BackupLog, HealthCheck, ResourceStat
@@ -28,8 +28,10 @@ class AdminUserSerializer(serializers.ModelSerializer):
             "telegram_id", "telegram_username", "referral_code", "referred_by",
             "referral_count", "service_count", "source", "language",
             "is_legacy", "is_active", "is_staff", "admin_note", "created_at",
+            "deleted_at", "delete_reason",
         )
-        read_only_fields = ("id", "referral_code", "referral_count", "service_count", "created_at")
+        read_only_fields = ("id", "referral_code", "referral_count", "service_count", "created_at",
+                            "deleted_at", "delete_reason")
 
     def validate_phone(self, value):
         return _admin_phone(value, getattr(self.instance, "pk", None))
@@ -64,6 +66,37 @@ class AdminUserCreateSerializer(serializers.ModelSerializer):
 
 class SetPasswordSerializer(serializers.Serializer):
     password = serializers.CharField(min_length=8, trim_whitespace=False)
+
+
+class UserDeleteSerializer(serializers.Serializer):
+    reason = serializers.CharField(max_length=1000)
+
+
+class DeletedUserArchiveListSerializer(serializers.ModelSerializer):
+    deleted_by = serializers.SerializerMethodField()
+    restored_by = serializers.SerializerMethodField()
+    user_is_deleted = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DeletedUserArchive
+        fields = ("id", "user", "original_username", "original_name", "original_phone",
+                  "original_email", "original_telegram_id", "original_telegram_username",
+                  "deleted_at", "deleted_by", "reason", "orders_count", "total_paid",
+                  "restored_at", "restored_by", "user_is_deleted")
+
+    def get_deleted_by(self, obj) -> str:
+        return obj.deleted_by.username if obj.deleted_by_id else obj.deleted_by_label
+
+    def get_restored_by(self, obj) -> str:
+        return obj.restored_by.username if obj.restored_by_id else obj.restored_by_label
+
+    def get_user_is_deleted(self, obj) -> bool:
+        return bool(obj.user_id and obj.user.deleted_at is not None)
+
+
+class DeletedUserArchiveDetailSerializer(DeletedUserArchiveListSerializer):
+    class Meta(DeletedUserArchiveListSerializer.Meta):
+        fields = DeletedUserArchiveListSerializer.Meta.fields + ("snapshot",)
 
 
 # --- integrations: pasargad panel + telegram bots ----------------
@@ -503,14 +536,18 @@ class AdminServiceSerializer(serializers.ModelSerializer):
     panel_name = serializers.CharField(source="panel.name", read_only=True, default=None)
     is_online = serializers.SerializerMethodField()
     has_scheduled_renewal = serializers.SerializerMethodField()
+    user_deleted = serializers.SerializerMethodField()
 
     class Meta:
         model = Service
-        fields = ("id", "panel_username", "user", "user_id", "user_name", "user_telegram",
+        fields = ("id", "panel_username", "user", "user_id", "user_name", "user_telegram", "user_deleted",
                   "plan", "plan_en", "panel_id", "panel_name", "status",
                   "expire_strategy", "data_limit", "data_used", "expire_at", "online_at",
                   "is_online", "last_synced_at", "subscription_url", "created_at",
                   "has_scheduled_renewal")
+
+    def get_user_deleted(self, obj) -> bool:
+        return obj.user.deleted_at is not None
 
     def get_has_scheduled_renewal(self, obj) -> bool:
         renewal = getattr(obj, "scheduled_renewal", None)
@@ -555,11 +592,21 @@ class AdminServiceUpdateSerializer(serializers.Serializer):
     on_hold_days = serializers.IntegerField(min_value=1, max_value=3650, required=False)
     group_ids = serializers.ListField(child=serializers.IntegerField(min_value=1), required=False)
     note = serializers.CharField(max_length=500, required=False, allow_blank=True)
+    hwid_limit = serializers.IntegerField(min_value=0, max_value=1000, required=False, allow_null=True,
+                                         help_text="device (HWID) limit; 0 / null = unlimited")
 
 
 class AdminServiceCreateSerializer(serializers.Serializer):
-    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.filter(deleted_at__isnull=True))
     plan = serializers.PrimaryKeyRelatedField(queryset=Plan.objects.filter(is_active=True))
     panel = serializers.PrimaryKeyRelatedField(queryset=Panel.objects.filter(is_active=True), required=False)
     group_ids = serializers.ListField(child=serializers.IntegerField(), required=False)
     account_name = serializers.RegexField(r"^[A-Za-z0-9_.\-]{2,64}$", required=False, allow_blank=True)
+
+
+class AdminServiceLinkSerializer(serializers.Serializer):
+    """POST /admin/services/link/ — adopt an existing panel account."""
+    panel = serializers.PrimaryKeyRelatedField(queryset=Panel.objects.filter(is_active=True))
+    panel_username = serializers.CharField(max_length=64)
+    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.filter(deleted_at__isnull=True))
+    plan = serializers.PrimaryKeyRelatedField(queryset=Plan.objects.all(), required=False, allow_null=True)

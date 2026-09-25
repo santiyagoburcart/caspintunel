@@ -8,6 +8,7 @@ class OrderType(models.TextChoices):
     RENEW = "renew", "Renew"
     ADDON_VOLUME = "addon_volume", "Add-on volume"
     MANUAL = "manual", "Manual (admin-created)"
+    IMPORTED = "imported", "Imported (existing panel account linked)"
 
 
 class OrderStatus(models.TextChoices):
@@ -30,7 +31,11 @@ class Order(TimeStampedModel):
     service = models.ForeignKey(
         "panel.Service", null=True, blank=True, on_delete=models.SET_NULL, related_name="orders"
     )
-    plan = models.ForeignKey("plans.Plan", on_delete=models.PROTECT, related_name="orders")
+    # null only for `imported` orders — an existing panel account linked by an
+    # admin without choosing a plan
+    plan = models.ForeignKey(
+        "plans.Plan", null=True, blank=True, on_delete=models.PROTECT, related_name="orders"
+    )
 
     type = models.CharField(max_length=12, choices=OrderType.choices, default=OrderType.NEW)
     requested_account_name = models.CharField(max_length=64, null=True, blank=True)

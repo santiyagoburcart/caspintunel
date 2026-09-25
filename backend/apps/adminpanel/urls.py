@@ -35,10 +35,11 @@ from .views.monitoring import BackupViewSet, HealthView, MonitoringView, Resourc
 from .views.notifications import NotificationViewSet
 from .views.ops import DashboardView, ServiceListViewSet, TelegramStatsView
 from .views.system import SettingsView, SystemView
-from .views.users import UserAdminViewSet
+from .views.users import DeletedUserArchiveViewSet, UserAdminViewSet
 
 router = SimpleRouter()
 router.register("users", UserAdminViewSet, basename="admin-users")
+router.register("deleted-users", DeletedUserArchiveViewSet, basename="admin-deleted-users")
 router.register("plans", PlanAdminViewSet, basename="admin-plans")
 router.register("cards", BankCardViewSet, basename="admin-cards")
 router.register("pages", PageViewSet, basename="admin-pages")
