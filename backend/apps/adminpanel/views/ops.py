@@ -16,6 +16,7 @@ from apps.panel.services import (
     reset_service_usage,
     revoke_subscription,
     set_service_status,
+    update_service,
 )
 from apps.telegram.models import RequiredChannel, TelegramStats
 
@@ -25,6 +26,7 @@ from ..serializers import (
     AdminServiceRawSerializer,
     AdminServiceSerializer,
     AdminServiceStatusSerializer,
+    AdminServiceUpdateSerializer,
 )
 from .base import AdminAPIView, _AUTH
 
@@ -112,7 +114,7 @@ class ServiceListViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
     @action(detail=True, methods=["post"], url_path="reset")
     def reset_usage(self, request, pk=None):
         try:
-            service = reset_service_usage(int(pk))
+            service = reset_service_usage(int(pk), staff=request.user)
         except PanelError as exc:
             return Response({"detail": str(exc)}, status=502)
         return Response(AdminServiceSerializer(service).data)
@@ -120,10 +122,40 @@ class ServiceListViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
     @action(detail=True, methods=["post"], url_path="revoke")
     def revoke(self, request, pk=None):
         try:
-            service = revoke_subscription(int(pk))
+            service = revoke_subscription(int(pk), staff=request.user)
         except PanelError as exc:
             return Response({"detail": str(exc)}, status=502)
         return Response(AdminServiceSerializer(service).data)
+
+    @extend_schema(request=AdminServiceUpdateSerializer, responses=AdminServiceRawSerializer,
+                   summary="Edit a service on the panel (status, volume, expiry, groups, note)")
+    def partial_update(self, request, pk=None):
+        from datetime import datetime, time
+        from zoneinfo import ZoneInfo
+
+        service = self.get_object()
+        ser = AdminServiceUpdateSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        v = ser.validated_data
+        kw = {}
+        if "status" in v:
+            kw["status"] = v["status"]
+        if "data_limit_gb" in v:
+            kw["data_limit"] = int(v["data_limit_gb"] * 1024 ** 3)
+        if "expire_date" in v:
+            d = v["expire_date"]
+            kw["expire_at"] = (datetime.combine(d, time(23, 59, 59), tzinfo=ZoneInfo("Asia/Tehran"))
+                               if d else None)
+        for key in ("on_hold_days", "group_ids", "note"):
+            if key in v:
+                kw[key] = v[key]
+        try:
+            service, raw = update_service(service.id, staff=request.user, **kw)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        except PanelError as exc:
+            return Response({"detail": str(exc)}, status=502)
+        return Response(AdminServiceRawSerializer(service, context={"panel_raw": raw}).data)
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()

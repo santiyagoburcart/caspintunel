@@ -6,19 +6,19 @@ import { useMemo, useState } from 'react'
 import { useI18n } from '../lib/i18n'
 import { digits } from '../lib/format'
 import {
-  WEEKDAYS, addMonths, cmpDay, monthMatrix, monthName, presetRanges, toISO, todayCell,
+  WEEKDAYS, addMonths, cellFromISO, cmpDay, monthMatrix, monthName, presetRanges, toISO, todayCell,
 } from '../lib/jalaliCalendar'
 
 const T = {
   fa: {
     title: 'انتخاب بازهٔ تاریخ', quick: 'انتخاب سریع بازه:',
     from: 'شروع', to: 'پایان', apply: 'اعمال فیلتر', cancel: 'انصراف', clear: 'پاک‌سازی',
-    range_label: 'بازهٔ انتخابی',
+    range_label: 'بازهٔ انتخابی', single_title: 'انتخاب تاریخ', picked: 'تاریخ انتخابی', apply_single: 'تأیید تاریخ',
   },
   en: {
     title: 'Select a date range', quick: 'Quick select:',
     from: 'Start', to: 'End', apply: 'Apply filter', cancel: 'Cancel', clear: 'Clear',
-    range_label: 'Selected range',
+    range_label: 'Selected range', single_title: 'Pick a date', picked: 'Selected date', apply_single: 'Use this date',
   },
 }
 
@@ -51,18 +51,21 @@ function Grid({ jy, jm, from, to, onPick, lang }) {
   )
 }
 
-/** value: { from: 'YYYY-MM-DD' | '', to: 'YYYY-MM-DD' | '' } (ISO, ready for the API). */
-export function DateRangeModal({ open, onClose, onApply, extra }) {
+/** value: { from: 'YYYY-MM-DD' | '', to: 'YYYY-MM-DD' | '' } (ISO, ready for the API).
+ * `single`: pick one day (from === to); `initial` (ISO) preselects it;
+ * "clear" then means "no date". */
+export function DateRangeModal({ open, onClose, onApply, extra, single = false, initial = '', title, clearLabel }) {
   const { lang } = useI18n()
   const s = T[lang] || T.fa
-  const start = todayCell()
-  const [cursor, setCursor] = useState(start)
-  const [pick, setPick] = useState({ from: null, to: null })
+  const init = initial ? cellFromISO(initial) : null
+  const [cursor, setCursor] = useState(init || todayCell())
+  const [pick, setPick] = useState({ from: init, to: null })
   if (!open) return null
 
   const presets = presetRanges(lang)
 
   const handlePick = (c) => {
+    if (single) { setPick({ from: c, to: null }); return }
     setPick((p) => {
       if (!p.from || p.to) return { from: c, to: null }
       return cmpDay(c, p.from) < 0 ? { from: c, to: p.from } : { from: p.from, to: c }
@@ -89,12 +92,12 @@ export function DateRangeModal({ open, onClose, onApply, extra }) {
       <div className="drp-sheet card" role="dialog" aria-modal="true">
         <div className="drp-handle" />
         <div className="drp-head">
-          <h2 className="font-bold text-sm">{s.title}</h2>
+          <h2 className="font-bold text-sm">{title || (single ? s.single_title : s.title)}</h2>
           <button type="button" className="drp-icon-btn" onClick={onClose} aria-label={s.cancel}>✕</button>
         </div>
 
         <div className="drp-body">
-          <div className="drp-presets">
+          {!single && <div className="drp-presets">
             <span className="drp-presets-label">{s.quick}</span>
             <div className="drp-preset-row">
               {presets.map((pr) => (
@@ -103,15 +106,21 @@ export function DateRangeModal({ open, onClose, onApply, extra }) {
                 </button>
               ))}
             </div>
-          </div>
+          </div>}
 
           <div className="drp-summary">
-            <span className="drp-summary-item">
-              <i className="drp-dot drp-dot--from" />{s.from}: <b>{pick.from ? dayLabel(pick.from) : '—'}</b>
-            </span>
-            <span className="drp-summary-item">
-              <i className="drp-dot drp-dot--to" />{s.to}: <b>{pick.to ? dayLabel(pick.to) : (pick.from ? dayLabel(pick.from) : '—')}</b>
-            </span>
+            {single ? (
+              <span className="drp-summary-item">
+                <i className="drp-dot drp-dot--from" />{s.picked}: <b>{pick.from ? dayLabel(pick.from) : '—'}</b>
+              </span>
+            ) : (<>
+              <span className="drp-summary-item">
+                <i className="drp-dot drp-dot--from" />{s.from}: <b>{pick.from ? dayLabel(pick.from) : '—'}</b>
+              </span>
+              <span className="drp-summary-item">
+                <i className="drp-dot drp-dot--to" />{s.to}: <b>{pick.to ? dayLabel(pick.to) : (pick.from ? dayLabel(pick.from) : '—')}</b>
+              </span>
+            </>)}
           </div>
 
           <div className="drp-nav">
@@ -126,9 +135,9 @@ export function DateRangeModal({ open, onClose, onApply, extra }) {
         </div>
 
         <div className="drp-foot">
-          <button type="button" className="btn-ghost text-sm" onClick={clear}>{s.clear}</button>
+          <button type="button" className="btn-ghost text-sm" onClick={clear}>{clearLabel || s.clear}</button>
           <button type="button" className="btn-ghost text-sm" onClick={onClose}>{s.cancel}</button>
-          <button type="button" className="btn-primary text-sm" disabled={!pick.from} onClick={apply}>{s.apply}</button>
+          <button type="button" className="btn-primary text-sm" disabled={!pick.from} onClick={apply}>{single ? s.apply_single : s.apply}</button>
         </div>
       </div>
     </div>

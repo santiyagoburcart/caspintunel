@@ -3,6 +3,7 @@ import { api, apiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 import { digits, relTime } from '../lib/format'
 import { Alert, Field, Spinner, Toggle } from '../components/ui'
+import { useDeleteConfirm } from '../lib/confirmDelete'
 
 function Ico({ d, w = 15 }) {
   return (
@@ -383,6 +384,7 @@ const PL_ICONS = {
 }
 
 function PanelRow({ s, panel, onEdit, onDeleted }) {
+  const { lang } = useI18n()
   const [msg, setMsg] = useState(null)
   const [testing, setTesting] = useState(false)
   const groups = panel.default_group_ids || []
@@ -396,10 +398,11 @@ function PanelRow({ s, panel, onEdit, onDeleted }) {
     } catch (e) { setMsg({ kind: 'danger', text: apiError(e) }) }
     finally { setTesting(false) }
   }
+  const askDelete = useDeleteConfirm()
   const del = async () => {
-    if (!confirm(s.confirm_del)) return
-    try { await api.delete(`/admin/panels/${panel.id}/`); onDeleted?.() }
-    catch (e) { setMsg({ kind: 'danger', text: apiError(e) }) }
+    const ok = await askDelete({ what: (lang === 'en' ? 'panel' : 'پنل'), name: panel.name, id: panel.id,
+      action: () => api.delete(`/admin/panels/${panel.id}/`) })
+    if (ok) onDeleted?.()
   }
 
   return (
@@ -567,7 +570,7 @@ export function PanelConnection() {
 }
 
 function PanelCard({ s, panel, isNew = false, onSaved, onDeleted, onCancel }) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const blank = {
     name: '', base_url: '', admin_username: '', admin_password: '',
     subscription_base_url: '', verify_ssl: true, is_active: true,
@@ -630,10 +633,11 @@ function PanelCard({ s, panel, isNew = false, onSaved, onDeleted, onCancel }) {
     finally { setSaving(false) }
   }
 
+  const askDelete = useDeleteConfirm()
   const del = async () => {
-    if (!confirm(s.confirm_del)) return
-    try { await api.delete(`/admin/panels/${panel.id}/`); onDeleted?.() }
-    catch (e) { setMsg({ kind: 'danger', text: apiError(e) }) }
+    const ok = await askDelete({ what: (lang === 'en' ? 'panel' : 'پنل'), name: panel.name, id: panel.id,
+      action: () => api.delete(`/admin/panels/${panel.id}/`) })
+    if (ok) onDeleted?.()
   }
 
   const inUse = !isNew && (panel.plan_count > 0 || panel.service_count > 0)
@@ -1040,10 +1044,11 @@ function RequiredChannels({ s }) {
     } catch (e2) { setMsg({ kind: 'danger', text: apiError(e2) }) }
   }
 
-  const del = async (id) => {
-    if (!confirm(s.ch_confirm_del)) return
-    try { await api.delete(`/admin/channels/${id}/`); load() }
-    catch (e) { setMsg({ kind: 'danger', text: apiError(e) }) }
+  const askDelete = useDeleteConfirm()
+  const del = async (c) => {
+    const ok = await askDelete({ what: (lang === 'en' ? 'channel' : 'کانال'), name: c.title || c.channel_id, id: c.id,
+      action: () => api.delete(`/admin/channels/${c.id}/`) })
+    if (ok) load()
   }
 
   const test = async (id) => {
@@ -1143,7 +1148,7 @@ function RequiredChannels({ s }) {
                         {testing === c.id ? '…' : <Ico d={ICONS.refresh} w={15} />}
                       </button>
                       <button className="int-icon-btn" title={s.save} onClick={() => { setEdit({ ...c }); setAdding(false) }}><Ico d={ICONS.edit} w={15} /></button>
-                      <button className="int-icon-btn int-icon-btn--del" onClick={() => del(c.id)}><Ico d={ICONS.trash} w={15} /></button>
+                      <button className="int-icon-btn int-icon-btn--del" onClick={() => del(c)}><Ico d={ICONS.trash} w={15} /></button>
                     </div>
                   </td>
                 </tr>

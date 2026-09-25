@@ -6,6 +6,7 @@ import { AuthProvider } from './lib/auth'
 import { I18nProvider } from './lib/i18n'
 import { ThemeProvider } from './theme/ThemeProvider'
 import { ToastProvider } from './components/Toast'
+import { ConfirmProvider } from './components/ConfirmDialog'
 import '@fontsource/vazirmatn/400.css'
 import '@fontsource/vazirmatn/500.css'
 import '@fontsource/vazirmatn/700.css'
@@ -32,9 +33,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <I18nProvider>
         <ThemeProvider>
           <ToastProvider>
+            <ConfirmProvider>
             <AuthProvider>
               <App />
             </AuthProvider>
+            </ConfirmProvider>
           </ToastProvider>
         </ThemeProvider>
       </I18nProvider>

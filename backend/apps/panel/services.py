@@ -106,11 +106,13 @@ def add_service_data_limit(service_id: int, extra_bytes: int) -> Service:
     return service
 
 
-def reset_service_usage(service_id: int) -> Service:
+def reset_service_usage(service_id: int, *, staff=None) -> Service:
     service = Service.objects.select_related("panel").get(pk=service_id)
     client = client_for(service.panel)
     client.reset_user_usage(service.panel_username)
-    service.alert_vol_sent = False
+    Service.objects.filter(pk=service_id).update(alert_vol_sent=False)
+    if staff is not None:
+        write_audit(action="service.usage_reset", staff=staff, target=service, detail={})
     return sync_service(service_id)
 
 
@@ -343,7 +345,7 @@ def delete_service(service_id: int, *, staff=None) -> None:
 
 
 @transaction.atomic
-def revoke_subscription(service_id: int) -> Service:
+def revoke_subscription(service_id: int, *, staff=None) -> Service:
     """Issues a new subscription link for the service's panel account,
     invalidating the old one — every device on the previous link is
     disconnected until it's reconfigured with the new one."""
@@ -354,5 +356,69 @@ def revoke_subscription(service_id: int) -> Service:
     changed = apply_user_to_service(service, api_user, service.panel)
     service.last_synced_at = timezone.now()
     service.save(update_fields=sorted(set(changed) | {"last_synced_at", "updated_at"}))
-    write_audit(action="service.subscription_revoked", target=service, detail={})
+    write_audit(action="service.subscription_revoked", staff=staff, target=service, detail={})
     return service
+
+
+_UNSET = object()
+_EDITABLE_STATUSES = (ServiceStatus.ACTIVE, ServiceStatus.ON_HOLD, ServiceStatus.DISABLED)
+
+
+@transaction.atomic
+def update_service(service_id: int, *, status=None, data_limit=None, expire_at=_UNSET,
+                   on_hold_days=None, group_ids=None, note=None, staff=None) -> tuple[Service, dict]:
+    """Admin "full edit": write the changes to PasarGuard first, then read the
+    account back and mirror it onto our row (so our DB only ever reflects what
+    the panel accepted). Only the arguments that are passed are sent.
+
+    - status: active / on_hold / disabled
+    - data_limit: bytes, 0 = unlimited
+    - expire_at: aware datetime, or None = no expiry (ignored for on_hold)
+    - on_hold_days: on_hold only — the timer that starts on first connection
+    - group_ids: list of panel group ids
+    - note: the panel-side note
+
+    Returns (service, live panel user)."""
+    service = Service.objects.select_for_update().select_related("panel").get(pk=service_id)
+    payload: dict = {}
+    if status is not None:
+        if status not in _EDITABLE_STATUSES:
+            raise ValueError(f"unsupported status: {status}")
+        payload["status"] = status
+    if data_limit is not None:
+        payload["data_limit"] = max(0, int(data_limit))
+    target_status = status or service.status
+    if target_status == ServiceStatus.ON_HOLD:
+        days = on_hold_days or (service.on_hold_duration // 86400 if service.on_hold_duration else None)
+        if status == ServiceStatus.ON_HOLD or on_hold_days is not None:
+            if not days:
+                raise ValueError("on_hold needs a duration (on_hold_days)")
+            payload["on_hold_expire_duration"] = int(days) * 86400
+            payload["expire"] = None
+    elif expire_at is not _UNSET:
+        payload["expire"] = expire_at.isoformat() if expire_at else None
+    if group_ids is not None:
+        payload["group_ids"] = [int(g) for g in group_ids]
+    if note is not None:
+        payload["note"] = note
+
+    before = {"status": service.status, "data_limit": service.data_limit,
+              "expire_at": service.expire_at.isoformat() if service.expire_at else None}
+    client = client_for(service.panel)
+    if payload:
+        client.update_user(service.panel_username, payload)       # panel first…
+    api_user = client.get_user(service.panel_username)            # …then mirror what it accepted
+    changed = apply_user_to_service(service, api_user, service.panel)
+    if "data_limit" in payload:
+        service.alert_vol_sent = False
+        changed.append("alert_vol_sent")
+    if "expire" in payload or "on_hold_expire_duration" in payload:
+        service.alert_exp_sent = False
+        changed.append("alert_exp_sent")
+    service.last_synced_at = timezone.now()
+    service.save(update_fields=sorted(set(changed) | {"last_synced_at", "updated_at"}))
+    write_audit(action="service.edited", staff=staff, target=service, detail={
+        "sent": {k: v for k, v in payload.items() if k != "note"} | ({"note": "…"} if "note" in payload else {}),
+        "before": before,
+    })
+    return service, api_user

@@ -126,23 +126,6 @@ body {
   .toggle-row { @apply flex items-center justify-between gap-3 py-3; border-bottom: 1px solid var(--c-border); }
   .toggle-row:last-child { border-bottom: none; }
 
-  /* ===== shared destructive-action confirmation dialog (ConfirmModal) ===== */
-  .cfm-backdrop { position: fixed; inset: 0; z-index: 70; background: color-mix(in srgb, #0b1220 62%, transparent);
-    backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; padding: 20px; overflow-y: auto; }
-  .cfm-modal { width: 100%; max-width: 380px; display: flex; flex-direction: column; align-items: center;
-    text-align: center; gap: 12px; padding: 26px 22px 20px; }
-  .cfm-ico { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; }
-  .cfm-ico--danger { background: color-mix(in srgb, var(--c-danger) 15%, transparent); color: var(--c-danger); }
-  .cfm-ico--success { background: color-mix(in srgb, var(--c-success) 15%, transparent); color: var(--c-success); }
-  .cfm-body { display: flex; flex-direction: column; gap: 6px; }
-  .cfm-title { font-size: 15px; font-weight: 700; }
-  .cfm-msg { font-size: 13px; line-height: 1.7; color: var(--c-text-muted); }
-  .cfm-acts { display: flex; gap: 10px; width: 100%; margin-top: 6px; }
-  .cfm-acts .btn-ghost, .cfm-acts .cfm-confirm { flex: 1; }
-  .cfm-confirm--danger { background: var(--c-danger); border-color: var(--c-danger); }
-  .cfm-confirm--danger:hover { background: color-mix(in srgb, var(--c-danger) 85%, black); }
-  .cfm-confirm--success { background: var(--c-success); border-color: var(--c-success); }
-  .cfm-confirm--success:hover { background: color-mix(in srgb, var(--c-success) 85%, black); }
 
   /* range slider (e.g. custom-volume picker) — shared across both themes;
      set the CSS var --pct (0%..100%) on the element to fill the track */

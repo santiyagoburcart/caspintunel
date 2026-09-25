@@ -528,8 +528,14 @@ class AdminServiceRawSerializer(AdminServiceSerializer):
     service — for the admin "details" modal (raw + formatted in one call)."""
     panel_raw = serializers.SerializerMethodField()
 
+    user_phone = serializers.CharField(source="user.phone", read_only=True, default="")
+    plan_id = serializers.IntegerField(source="current_plan_id", read_only=True)
+
     class Meta(AdminServiceSerializer.Meta):
-        fields = AdminServiceSerializer.Meta.fields + ("panel_raw",)
+        fields = AdminServiceSerializer.Meta.fields + (
+            "panel_raw", "user_phone", "plan_id", "on_hold_duration", "on_hold_timeout",
+            "device_limit", "source",
+        )
 
     def get_panel_raw(self, obj):
         return self.context.get("panel_raw")
@@ -537,6 +543,18 @@ class AdminServiceRawSerializer(AdminServiceSerializer):
 
 class AdminServiceStatusSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=["active", "on_hold", "disabled"])
+
+
+class AdminServiceUpdateSerializer(serializers.Serializer):
+    """PATCH /admin/services/<id>/ — every field optional; only what is sent changes."""
+    status = serializers.ChoiceField(choices=["active", "on_hold", "disabled"], required=False)
+    data_limit_gb = serializers.DecimalField(max_digits=10, decimal_places=2, min_value=0, required=False,
+                                             help_text="0 = unlimited")
+    expire_date = serializers.DateField(required=False, allow_null=True,
+                                        help_text="Gregorian YYYY-MM-DD (end of that day, Tehran); null = no expiry")
+    on_hold_days = serializers.IntegerField(min_value=1, max_value=3650, required=False)
+    group_ids = serializers.ListField(child=serializers.IntegerField(min_value=1), required=False)
+    note = serializers.CharField(max_length=500, required=False, allow_blank=True)
 
 
 class AdminServiceCreateSerializer(serializers.Serializer):

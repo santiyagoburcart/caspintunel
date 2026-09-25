@@ -7,6 +7,7 @@ import { jalali, gb } from '../lib/format'
 import { Alert, Copyable, Spinner, StatusBadge } from '../components/ui'
 import { AuthImage } from '../components/AuthImage'
 import { useToast } from '../components/Toast'
+import { ConfirmDialog, useConfirm } from '../components/ConfirmDialog'
 import { copyToClipboard } from '../lib/clipboard'
 
 export default function Dashboard() {
@@ -84,54 +85,35 @@ function useRenewFlow() {
   return { modal, startRenew, close, proceed }
 }
 
+/** Renew gate in the shared ConfirmDialog: checking → plan summary → pay,
+ * or, when the plan is gone, a pointer to the store. */
 function RenewModal({ modal, t, lang, onClose, onProceed }) {
+  const navigate = useNavigate()
   if (!modal) return null
+  const cur = lang === 'fa' ? 'تومان' : 'T'
+  if (modal.checking || modal.canRenew) {
+    const p = modal.plan
+    return (
+      <ConfirmDialog open tone="primary" icon="refresh" title={t('renew')}
+        message={modal.checking ? t('checking') : null}
+        details={p ? {
+          rows: [
+            [t('select_plan'), (lang === 'fa' ? p.name_fa : p.name_en) || p.name_fa],
+            [t('amount'), `${fnum(Number(p.final_price ?? p.price), lang)} ${cur}`],
+            [t('duration'), p.duration_days ? `${fnum(p.duration_days, lang)} ${t('days')}` : t('no_expiry')],
+          ],
+        } : null}
+        confirmLabel={t('continue_pay')} cancelLabel={t('cancel')}
+        confirmDisabled={modal.checking} onConfirm={onProceed} onCancel={onClose}
+      >
+        {modal.checking && <div className="grid place-items-center py-2"><Spinner /></div>}
+      </ConfirmDialog>
+    )
+  }
   return (
-    <div className="csp-qr-overlay" onClick={onClose}>
-      <div className="csp-qr-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 380 }}>
-        <div className="csp-qr-head">
-          <h2 className="csp-headline">{t('renew')}</h2>
-          <button type="button" className="csp-qr-x" onClick={onClose} aria-label={t('close')}><DI d={D.x} w={18} /></button>
-        </div>
-
-        {modal.checking ? (
-          <div className="grid place-items-center py-8"><Spinner /></div>
-        ) : !modal.canRenew ? (
-          <>
-            <p className="text-sm" style={{ color: 'var(--c-text-muted)', lineHeight: 1.9 }}>
-              {t('plan_gone_message')}
-            </p>
-            <div className="csp-qr-btns">
-              <button type="button" className="csp-qr-btn" onClick={onClose}>{t('cancel')}</button>
-              <Link to="/store" className="csp-qr-btn csp-qr-btn--primary">{t('buy')}</Link>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="csp-svc-box" style={{ marginBottom: 0 }}>
-              <div className="csp-svc-row">
-                <span>{t('select_plan')}</span>
-                <b>{(lang === 'fa' ? modal.plan.name_fa : modal.plan.name_en) || modal.plan.name_fa}</b>
-              </div>
-              <div className="csp-svc-row csp-svc-row--sub">
-                <span>{t('amount')}</span>
-                <span>{fnum(Number(modal.plan.final_price ?? modal.plan.price), lang)} {lang === 'fa' ? 'تومان' : 'T'}</span>
-              </div>
-              <div className="csp-svc-row csp-svc-row--sub">
-                <span>{t('duration')}</span>
-                <span>{modal.plan.duration_days ? `${fnum(modal.plan.duration_days, lang)} ${t('days')}` : t('no_expiry')}</span>
-              </div>
-            </div>
-            <div className="csp-qr-btns">
-              <button type="button" className="csp-qr-btn" onClick={onClose}>{t('cancel')}</button>
-              <button type="button" className="csp-qr-btn csp-qr-btn--primary" onClick={onProceed}>
-                {t('continue_pay')}
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
+    <ConfirmDialog open tone="warning" icon="cart" title={t('renew')} message={t('plan_gone_message')}
+      confirmLabel={t('buy')} cancelLabel={t('cancel')}
+      onConfirm={() => { onClose(); navigate('/store') }} onCancel={onClose} />
   )
 }
 
@@ -397,7 +379,17 @@ function Stat({ icon, label, value, sub }) {
 function SvcCard({ s, t, lang, onRevoke, onRenewClick }) {
   const toast = useToast()
   const [qrOpen, setQrOpen] = useState(false)
-  const [revokeOpen, setRevokeOpen] = useState(false)
+  const confirm = useConfirm()
+  // every device on the old link disconnects, so this is deliberately not one-click
+  const askRevoke = async () => {
+    const ok = await confirm({
+      tone: 'warning', icon: 'link', title: t('change_sub_link'), message: t('revoke_warning'),
+      targetLabel: t('service_label'), targetId: s.panel_username,
+      confirmLabel: t('change_sub_link'), cancelLabel: t('cancel'),
+      action: () => onRevoke(s.id),
+    })
+    if (ok) toast.success(t('sub_link_changed'))
+  }
   // timer hasn't started yet whenever the panel hasn't given us an expiry —
   // covers the just-connected moment too, before the next sync flips status/expire_at
   const waiting = s.status === 'on_hold' && !s.expire_at
@@ -470,7 +462,7 @@ function SvcCard({ s, t, lang, onRevoke, onRenewClick }) {
           </button>
         )}
         {s.subscription_url && (
-          <button type="button" className="csp-svc-btn" onClick={() => setRevokeOpen(true)}>
+          <button type="button" className="csp-svc-btn" onClick={askRevoke}>
             <DI d={D.link} w={16} />{t('change_sub_link')}
           </button>
         )}
@@ -480,51 +472,6 @@ function SvcCard({ s, t, lang, onRevoke, onRenewClick }) {
       </div>
 
       {qrOpen && <QrModal s={s} t={t} lang={lang} onClose={() => setQrOpen(false)} />}
-      {revokeOpen && (
-        <RevokeSubModal
-          s={s} t={t}
-          onClose={() => setRevokeOpen(false)}
-          onConfirm={async () => {
-            toast.loading(t('action_in_progress'))
-            try {
-              await onRevoke(s.id)
-              toast.success(t('sub_link_changed'))
-              setRevokeOpen(false)
-            } catch (e) { toast.error(apiError(e)) }
-          }}
-        />
-      )}
-    </div>
-  )
-}
-
-/** Confirmation gate before revoking the subscription link — every device
- * on the old link disconnects, so this is deliberately not a one-click action. */
-function RevokeSubModal({ s, t, onClose, onConfirm }) {
-  const [busy, setBusy] = useState(false)
-  const confirm = async () => {
-    setBusy(true)
-    try { await onConfirm() } finally { setBusy(false) }
-  }
-  return (
-    <div className="csp-qr-overlay" onClick={onClose}>
-      <div className="csp-qr-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 380 }}>
-        <div className="csp-qr-head">
-          <div className="flex items-center gap-2">
-            <span style={{ color: 'var(--c-warning)' }}><DI d={D.warn} w={22} /></span>
-            <h2 className="csp-headline">{t('change_sub_link')}</h2>
-          </div>
-          <button type="button" className="csp-qr-x" onClick={onClose} aria-label={t('close')}><DI d={D.x} w={18} /></button>
-        </div>
-        <p className="text-sm" style={{ color: 'var(--c-text-muted)', lineHeight: 1.9 }}>{t('revoke_warning')}</p>
-        <div className="csp-qr-btns">
-          <button type="button" className="csp-qr-btn" onClick={onClose} disabled={busy}>{t('cancel')}</button>
-          <button type="button" className="csp-qr-btn csp-qr-btn--primary" onClick={confirm} disabled={busy}
-            style={{ background: 'var(--c-danger)', borderColor: 'var(--c-danger)' }}>
-            {busy ? '…' : t('confirm')}
-          </button>
-        </div>
-      </div>
     </div>
   )
 }

@@ -6,6 +6,7 @@ import { jalali, toman } from '../lib/format'
 import { Alert, Spinner } from '../components/ui'
 import { ReceiptThumb } from '../components/ReceiptThumb'
 import { useToast } from '../components/Toast'
+import { useConfirm } from '../components/ConfirmDialog'
 import { useLivePayments, usePaymentsEvents } from '../lib/livePayments'
 
 const T = {
@@ -13,7 +14,10 @@ const T = {
     title: 'صف تأیید پرداخت', none: 'موردی برای بررسی نیست', refresh: '↻ تازه‌سازی',
     subtitle: 'تراکنش‌های کارت‌به‌کارت و فیش‌های نیازمند تطبیق و تأیید دستی',
     user: 'کاربر', order: 'سفارش', plan: 'پلن', account: 'نام اکانت', receipt: 'رسید',
-    no_receipt: 'رسیدی پیوست نشده', reject_reason: 'دلیل رد؟', unspecified: 'نامشخص',
+    no_receipt: 'رسیدی پیوست نشده', reject_reason: 'دلیل رد (برای کاربر نمایش داده می‌شود)',
+    reject_title: 'رد پرداخت', reject_btn: 'بله، پرداخت را رد کن', reject_ph: 'مثلاً: مبلغ واریزی با فاکتور مغایرت دارد',
+    reject_msg_a: 'پرداخت', reject_msg_b: 'کاربر', reject_msg_c: 'رد می‌شود؛ سفارش در انتظار پرداخت می‌ماند و کاربر می‌تواند رسید جدید ارسال کند.',
+    audit: 'این عملیات با نام کاربری شما در گزارش ممیزی ثبت می‌شود.', unspecified: 'نامشخص',
     load_fail: 'دریافت فهرست ناموفق بود', src_site: 'سایت', src_bot: 'ربات',
     deposit_card: 'واریز به کارت', customer_card: 'کارت اعلام‌شده توسط کاربر',
     tab_all: 'همه', tab_receipt: 'دارای فیش', tab_active: 'در انتظار', tab_expired: 'منقضی',
@@ -26,7 +30,10 @@ const T = {
     title: 'Payment approval queue', none: 'Nothing to review', refresh: '↻ Refresh',
     subtitle: 'Card-to-card transactions and receipts that need manual matching and approval',
     user: 'User', order: 'Order', plan: 'Plan', account: 'Account', receipt: 'Receipt',
-    no_receipt: 'No receipt attached', reject_reason: 'Rejection reason?', unspecified: 'unspecified',
+    no_receipt: 'No receipt attached', reject_reason: 'Rejection reason (shown to the customer)',
+    reject_title: 'Reject payment', reject_btn: 'Yes, reject payment', reject_ph: 'e.g. the transferred amount does not match the invoice',
+    reject_msg_a: 'The payment of', reject_msg_b: 'by', reject_msg_c: 'will be rejected; the order stays awaiting payment and the customer can upload a new receipt.',
+    audit: 'This action is recorded under your username in the audit log.', unspecified: 'unspecified',
     load_fail: 'Failed to load the queue', src_site: 'Website', src_bot: 'Bot',
     deposit_card: 'Deposited to card', customer_card: 'Card the customer selected',
     tab_all: 'All', tab_receipt: 'Has receipt', tab_active: 'Waiting', tab_expired: 'Expired',
@@ -42,6 +49,7 @@ const TABS = ['all', 'receipt', 'active', 'expired']
 export default function Payments() {
   const { t, lang } = useI18n()
   const toast = useToast()
+  const confirm = useConfirm()
   const navigate = useNavigate()
   const s = T[lang] || T.fa
   const [rows, setRows] = useState(null)
@@ -108,19 +116,26 @@ export default function Payments() {
 
   const act = async (id, kind) => {
     setErr('')
-    let reason
     if (kind === 'reject') {
-      reason = prompt(s.reject_reason)
-      if (reason === null) return
+      const p = rows.find((r) => r.id === id)
+      // the reason is shown to the customer (site + bot), so ask for it in the shared dialog
+      const ok = await confirm({
+        tone: 'danger', icon: 'ban', badge: 'payment.approve',
+        title: s.reject_title, targetLabel: s.order, targetId: `#${p?.order_id ?? id}`,
+        message: <>{s.reject_msg_a} <strong>{toman(p?.amount, lang)}</strong> {s.reject_msg_b} <strong>{p?.user}</strong> {s.reject_msg_c}</>,
+        reason: { label: s.reject_reason, placeholder: s.reject_ph },
+        confirmLabel: s.reject_btn, footnote: s.audit,
+        action: (reason) => api.post(`/admin/payments/${id}/reject/`, { reason: reason || s.unspecified }),
+      })
+      if (ok) { toast.success(t('reject')); await load() }
+      return
     }
     setBusyId(id)
-    const body = kind === 'reject'
-      ? { reason: reason || s.unspecified }
-      : { bank_card: cardById[id] ?? rows.find((r) => r.id === id)?.bank_card ?? cards[0]?.id ?? null }
+    const body = { bank_card: cardById[id] ?? rows.find((r) => r.id === id)?.bank_card ?? cards[0]?.id ?? null }
     toast.loading(t('action_in_progress'))
     try {
       await api.post(`/admin/payments/${id}/${kind}/`, body)
-      toast.success(kind === 'reject' ? t('reject') : t('approve'))
+      toast.success(t('approve'))
       await load()
     } catch (e) { toast.error(apiError(e)); setErr(apiError(e)) } finally { setBusyId(null) }
   }

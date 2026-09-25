@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { api, apiError } from '../lib/api'
 import { useI18n, enumLabel } from '../lib/i18n'
 import { jalali, relTime, digits, gb } from '../lib/format'
-import { Alert, ConfirmModal, Spinner, Toggle } from '../components/ui'
+import { Alert, Spinner, Toggle } from '../components/ui'
+import { useServiceActions } from '../lib/serviceActions'
 import { useToast } from '../components/Toast'
 
 function Ico({ d, w = 16 }) {
@@ -17,6 +19,7 @@ const ICONS = {
   reset: <><path d="M1 4v6h6" /><path d="M3.51 15a9 9 0 102.13-9.36L1 10" /></>,
   revoke: <><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" /></>,
   detail: <><circle cx="12" cy="12" r="10" /><path d="M12 16v-4M12 8h.01" /></>,
+  edit: <><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></>,
   trash: <><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /></>,
   close: <path d="M18 6L6 18M6 6l12 12" />,
   search: <><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></>,
@@ -35,18 +38,8 @@ const T = {
     col_account: 'نام اکانت', col_user: 'کاربر', col_plan: 'پلن', col_panel: 'پنل',
     col_status: 'وضعیت', col_usage: 'مصرف', col_expire: 'انقضا', col_online: 'اتصال', col_actions: 'عملیات',
     online: 'آنلاین', offline: 'آفلاین', unlimited: 'نامحدود', no_expiry: 'بدون انقضا', on_first_conn: 'با اولین اتصال',
-    none_found: 'سرویسی یافت نشد',
-    act_reset: 'ریست حجم', act_revoke: 'تغییر لینک ساب', act_delete: 'حذف سرویس', act_details: 'جزئیات',
-    confirm_disable: 'این سرویس غیرفعال شود؟ کاربر دیگر نمی‌تواند متصل شود.',
-    confirm_reset_title: 'ریست حجم مصرفی', confirm_reset: 'آیا مطمئنید؟ حجم این سرویس ریست خواهد شد.',
-    confirm_revoke_title: 'تغییر لینک اشتراک', confirm_revoke: 'آیا مطمئنید؟ لینک اشتراک تغییر می‌کند و همه دستگاه‌های متصل قطع خواهند شد.',
-    confirm_delete_title: 'حذف سرویس', confirm_delete: 'آیا مطمئنید؟ این سرویس و اکانت آن روی پنل برای همیشه حذف خواهد شد.',
-    status_changed: 'وضعیت سرویس بروزرسانی شد', reset_done: 'حجم مصرفی ریست شد',
-    revoked_done: 'لینک ساب تغییر کرد', deleted_done: 'سرویس حذف شد', sync_dispatched: 'درخواست همگام‌سازی ارسال شد',
-    detail_title: 'جزئیات سرویس', formatted_h: 'اطلاعات فرمت‌شده', raw_h: 'پاسخ خام پنل (PasarGuard)',
-    close: 'بستن', loading_detail: 'در حال دریافت از پنل…', no_raw: 'پاسخی از پنل دریافت نشد',
-    f_status: 'وضعیت', f_data_limit: 'سقف حجم', f_data_used: 'مصرف‌شده', f_expire: 'انقضا',
-    f_sub_url: 'لینک اشتراک', f_last_sync: 'آخرین همگام‌سازی ما', f_online_at: 'آخرین اتصال',
+    none_found: 'سرویسی یافت نشد', sync_dispatched: 'درخواست همگام‌سازی ارسال شد',
+    act_reset: 'ریست حجم', act_revoke: 'تغییر لینک ساب', act_delete: 'حذف سرویس', act_details: 'جزئیات / ویرایش',
     create_title: 'ایجاد سرویس دستی', create_sub: 'بدون پرداخت — مستقیماً روی پنل ساخته می‌شود',
     f_user: 'کاربر', f_user_ph: 'جستجوی نام کاربری، نام یا تلگرام…', f_user_none: 'کاربری یافت نشد',
     f_panel: 'پنل', f_plan: 'پلن', f_plan_none: 'این پنل پلنی ندارد',
@@ -65,18 +58,8 @@ const T = {
     col_account: 'Account', col_user: 'User', col_plan: 'Plan', col_panel: 'Panel',
     col_status: 'Status', col_usage: 'Usage', col_expire: 'Expiry', col_online: 'Online', col_actions: 'Actions',
     online: 'Online', offline: 'Offline', unlimited: 'unlimited', no_expiry: 'No expiry', on_first_conn: 'on first connection',
-    none_found: 'No services found',
-    act_reset: 'Reset usage', act_revoke: 'Revoke subscription', act_delete: 'Delete service', act_details: 'Details',
-    confirm_disable: 'Disable this service? The user will no longer be able to connect.',
-    confirm_reset_title: 'Reset usage', confirm_reset: 'Are you sure? This service\'s used data will be reset.',
-    confirm_revoke_title: 'Revoke subscription link', confirm_revoke: 'Are you sure? The subscription link will change and every connected device will be disconnected.',
-    confirm_delete_title: 'Delete service', confirm_delete: 'Are you sure? This service and its account on the panel will be permanently deleted.',
-    status_changed: 'Service status updated', reset_done: 'Usage was reset',
-    revoked_done: 'Subscription link revoked', deleted_done: 'Service deleted', sync_dispatched: 'Sync request dispatched',
-    detail_title: 'Service details', formatted_h: 'Formatted', raw_h: 'Raw panel response (PasarGuard)',
-    close: 'Close', loading_detail: 'Fetching from panel…', no_raw: 'No response received from the panel',
-    f_status: 'Status', f_data_limit: 'Data limit', f_data_used: 'Used', f_expire: 'Expiry',
-    f_sub_url: 'Subscription link', f_last_sync: 'Our last sync', f_online_at: 'Last seen',
+    none_found: 'No services found', sync_dispatched: 'Sync request dispatched',
+    act_reset: 'Reset usage', act_revoke: 'Revoke subscription', act_delete: 'Delete service', act_details: 'Details / edit',
     create_title: 'Create a manual service', create_sub: 'No payment — provisioned directly on the panel',
     f_user: 'User', f_user_ph: 'Search username, name or Telegram…', f_user_none: 'No user found',
     f_panel: 'Panel', f_plan: 'Plan', f_plan_none: 'This panel has no plans',
@@ -89,13 +72,6 @@ const T = {
 }
 
 const FILTERS = ['', 'active', 'on_hold', 'disabled']
-const STATUS_TONE = { active: 'success', on_hold: 'warning', disabled: 'danger', expired: 'danger', limited: 'warning', pending: 'text-muted' }
-
-function StatusPill({ status, s }) {
-  const tone = STATUS_TONE[status] || 'text-muted'
-  const label = s[status] || status
-  return <span className="svc-pill" style={{ background: `color-mix(in srgb, var(--c-${tone}) 16%, transparent)`, color: `var(--c-${tone})` }}>{label}</span>
-}
 
 function fmtData(used, limit, s, lang) {
   const u = digits(gb(used), lang)
@@ -117,9 +93,9 @@ export default function Services() {
   const [err, setErr] = useState('')
   const [syncing, setSyncing] = useState(false)
   const [busyId, setBusyId] = useState(null)
-  const [detailId, setDetailId] = useState(null)
   const [createOpen, setCreateOpen] = useState(false)
-  const [confirmAction, setConfirmAction] = useState(null) // { kind: 'reset'|'revoke'|'delete', row }
+  const navigate = useNavigate()
+  const actions = useServiceActions()
 
   const load = () => {
     setErr('')
@@ -142,54 +118,19 @@ export default function Services() {
     } catch (e) { toast.error(apiError(e)) } finally { setSyncing(false) }
   }
 
-  const changeStatus = async (row, status) => {
-    if (status === row.status) return
-    if (status === 'disabled' && !confirm(s.confirm_disable)) return
+  const merge = (row, data) => { if (data && data !== true) setRows((cur) => cur.map((r) => (r.id === row.id ? { ...r, ...data } : r))) }
+  // every action goes through the shared ConfirmDialog (lib/serviceActions)
+  const guarded = (row, fn) => async (...args) => {
     setBusyId(row.id)
-    try {
-      const { data } = await api.post(`/admin/services/${row.id}/status/`, { status })
-      setRows((cur) => cur.map((r) => (r.id === row.id ? { ...r, ...data } : r)))
-      toast.success(s.status_changed)
-    } catch (e) { toast.error(apiError(e)) } finally { setBusyId(null) }
+    try { return await fn(...args) } catch (e) { toast.error(apiError(e)) } finally { setBusyId(null) }
   }
-
-  const resetUsage = async (row) => {
-    setBusyId(row.id)
-    try {
-      const { data } = await api.post(`/admin/services/${row.id}/reset/`)
-      setRows((cur) => cur.map((r) => (r.id === row.id ? { ...r, ...data } : r)))
-      toast.success(s.reset_done)
-    } catch (e) { toast.error(apiError(e)) } finally { setBusyId(null) }
-  }
-
-  const revoke = async (row) => {
-    setBusyId(row.id)
-    try {
-      const { data } = await api.post(`/admin/services/${row.id}/revoke/`)
-      setRows((cur) => cur.map((r) => (r.id === row.id ? { ...r, ...data } : r)))
-      toast.success(s.revoked_done)
-    } catch (e) { toast.error(apiError(e)) } finally { setBusyId(null) }
-  }
-
-  const deleteService = async (row) => {
-    setBusyId(row.id)
-    try {
-      await api.delete(`/admin/services/${row.id}/`)
-      setRows((cur) => cur.filter((r) => r.id !== row.id))
-      toast.success(s.deleted_done)
-    } catch (e) { toast.error(apiError(e)) } finally { setBusyId(null) }
-  }
-
-  const CONFIRM_CFG = {
-    reset: { title: s.confirm_reset_title, message: s.confirm_reset, tone: 'success', label: s.act_reset, run: resetUsage },
-    revoke: { title: s.confirm_revoke_title, message: s.confirm_revoke, tone: 'danger', label: s.act_revoke, run: revoke },
-    delete: { title: s.confirm_delete_title, message: s.confirm_delete, tone: 'danger', label: s.act_delete, run: deleteService },
-  }
-  const runConfirmedAction = async () => {
-    if (!confirmAction) return
-    await CONFIRM_CFG[confirmAction.kind].run(confirmAction.row)
-    setConfirmAction(null)
-  }
+  const changeStatus = (row, status) => (status === row.status ? null
+    : guarded(row, async () => merge(row, await actions.setStatus(row, status)))())
+  const resetUsage = (row) => guarded(row, async () => merge(row, await actions.reset(row)))()
+  const revoke = (row) => guarded(row, async () => merge(row, await actions.revoke(row)))()
+  const deleteService = (row) => guarded(row, async () => {
+    if (await actions.remove(row)) setRows((cur) => cur.filter((r) => r.id !== row.id))
+  })()
 
   const expiry = (r) => {
     if (r.expire_strategy === 'never') return s.no_expiry
@@ -289,16 +230,16 @@ export default function Services() {
                   </td>
                   <td data-label={s.col_actions} className="svc-c">
                     <div className="svc-acts">
-                      <button type="button" className="svc-icon-btn" title={s.act_reset} disabled={busyId === r.id} onClick={() => setConfirmAction({ kind: 'reset', row: r })}>
+                      <button type="button" className="svc-icon-btn" title={s.act_reset} disabled={busyId === r.id} onClick={() => resetUsage(r)}>
                         <Ico d={ICONS.reset} w={15} />
                       </button>
-                      <button type="button" className="svc-icon-btn" title={s.act_revoke} disabled={busyId === r.id} onClick={() => setConfirmAction({ kind: 'revoke', row: r })}>
+                      <button type="button" className="svc-icon-btn" title={s.act_revoke} disabled={busyId === r.id} onClick={() => revoke(r)}>
                         <Ico d={ICONS.revoke} w={15} />
                       </button>
-                      <button type="button" className="svc-icon-btn" title={s.act_details} onClick={() => setDetailId(r.id)}>
-                        <Ico d={ICONS.detail} w={15} />
+                      <button type="button" className="svc-icon-btn svc-icon-btn--edit" title={s.act_details} onClick={() => navigate(`/services/${r.id}`)}>
+                        <Ico d={ICONS.edit} w={15} />
                       </button>
-                      <button type="button" className="svc-icon-btn svc-icon-btn--del" title={s.act_delete} disabled={busyId === r.id} onClick={() => setConfirmAction({ kind: 'delete', row: r })}>
+                      <button type="button" className="svc-icon-btn svc-icon-btn--del" title={s.act_delete} disabled={busyId === r.id} onClick={() => deleteService(r)}>
                         <Ico d={ICONS.trash} w={15} />
                       </button>
                     </div>
@@ -310,87 +251,11 @@ export default function Services() {
         </div>
       )}
 
-      {detailId != null && <ServiceDetailModal id={detailId} s={s} lang={lang} onClose={() => setDetailId(null)} />}
       {createOpen && (
         <ManualCreateModal s={s} t={t} lang={lang}
           onClose={() => setCreateOpen(false)}
           onCreated={() => { setCreateOpen(false); toast.success(s.created_ok); load() }} />
       )}
-      {confirmAction && (
-        <ConfirmModal
-          open
-          title={CONFIRM_CFG[confirmAction.kind].title}
-          message={CONFIRM_CFG[confirmAction.kind].message}
-          tone={CONFIRM_CFG[confirmAction.kind].tone}
-          confirmLabel={CONFIRM_CFG[confirmAction.kind].label}
-          cancelLabel={t('cancel')}
-          busy={busyId === confirmAction.row.id}
-          onConfirm={runConfirmedAction}
-          onCancel={() => setConfirmAction(null)}
-        />
-      )}
-    </div>
-  )
-}
-
-function ServiceDetailModal({ id, s, lang, onClose }) {
-  const [data, setData] = useState(null)
-  const [err, setErr] = useState('')
-
-  useEffect(() => {
-    api.get(`/admin/services/${id}/panel-detail/`)
-      .then((r) => setData(r.data))
-      .catch((e) => setErr(apiError(e)))
-  }, [id])
-
-  return (
-    <div className="svc-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="svc-modal card" role="dialog" aria-modal="true">
-        <div className="svc-modal-head">
-          <h2 className="font-bold">{s.detail_title}</h2>
-          <button type="button" className="svc-icon-btn" onClick={onClose}><Ico d={ICONS.close} w={16} /></button>
-        </div>
-        <div className="svc-modal-body">
-          <Alert>{err}</Alert>
-          {!data ? (
-            <div className="grid place-items-center py-10"><Spinner /></div>
-          ) : (
-            <>
-              <div>
-                <div className="svc-detail-h">{s.formatted_h}</div>
-                <div className="svc-kv-grid">
-                  <div className="svc-kv"><span>{s.col_account}</span><b dir="ltr">{data.panel_username}</b></div>
-                  <div className="svc-kv"><span>{s.col_user}</span><b>{data.user}</b></div>
-                  <div className="svc-kv"><span>{s.col_panel}</span><b>{data.panel_name || '—'}</b></div>
-                  <div className="svc-kv"><span>{s.f_status}</span><b><StatusPill status={data.status} s={s} /></b></div>
-                  <div className="svc-kv"><span>{s.f_data_used}</span><b className="svc-mono">{digits(gb(data.data_used), lang)} GB</b></div>
-                  <div className="svc-kv"><span>{s.f_data_limit}</span><b className="svc-mono">{data.data_limit ? `${digits(gb(data.data_limit), lang)} GB` : s.unlimited}</b></div>
-                  <div className="svc-kv"><span>{s.f_expire}</span><b>{data.expire_at ? jalali(data.expire_at, true, lang) : s.no_expiry}</b></div>
-                  <div className="svc-kv"><span>{s.f_online_at}</span><b>{data.online_at ? relTime(data.online_at, lang) : '—'}</b></div>
-                  <div className="svc-kv"><span>{s.f_last_sync}</span><b>{data.last_synced_at ? relTime(data.last_synced_at, lang) : '—'}</b></div>
-                </div>
-                {data.subscription_url && (
-                  <div className="svc-sub-url">
-                    <span>{s.f_sub_url}</span>
-                    <code dir="ltr">{data.subscription_url}</code>
-                  </div>
-                )}
-              </div>
-              <div>
-                <div className="svc-detail-h">{s.raw_h}</div>
-                {data.panel_raw ? (
-                  <pre className="svc-raw">{JSON.stringify(data.panel_raw, null, 2)}</pre>
-                ) : (
-                  <p className="text-xs text-muted">{s.no_raw}</p>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-        <div className="svc-modal-foot">
-          <button type="button" className="btn-ghost text-sm" onClick={onClose}>{s.close}</button>
-        </div>
-      </div>
     </div>
   )
 }

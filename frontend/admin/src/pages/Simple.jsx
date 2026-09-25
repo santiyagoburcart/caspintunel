@@ -3,6 +3,7 @@ import { api, apiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 import { digits } from '../lib/format'
 import { Alert, Spinner, Toggle } from '../components/ui'
+import { useDeleteConfirm } from '../lib/confirmDelete'
 
 function useList(url) {
   const [rows, setRows] = useState(null)
@@ -433,10 +434,12 @@ export function Pages() {
   const [modal, setModal] = useState(null) // { row } | { row:null }
   const [e2, setE2] = useState('')
   const [toast, setToast] = useState('')
+  const askDelete = useDeleteConfirm()
 
   const del = async (r) => {
-    if (!confirm(t('delete_confirm'))) return
-    try { await api.delete(`/admin/pages/${r.id}/`); load() } catch (e) { setE2(apiError(e)) }
+    const ok = await askDelete({ what: (lang === 'en' ? 'page' : 'صفحه'), name: (lang === 'en' ? r.title_en : r.title_fa) || r.slug, id: r.id,
+      action: () => api.delete(`/admin/pages/${r.id}/`) })
+    if (ok) load()
   }
   const onSaved = () => { setModal(null); load(); setToast(t('saved')); setTimeout(() => setToast(''), 2000) }
   const activeCount = useMemo(() => (rows || []).filter((r) => r.is_active).length, [rows])
@@ -684,13 +687,16 @@ export function Roles() {
   const [toast, setToast] = useState('')
 
   const flash = () => { setToast(t('saved')); setTimeout(() => setToast(''), 2000) }
+  const askDelete = useDeleteConfirm()
   const delRole = async (r) => {
-    if (!confirm(t('delete_confirm'))) return
-    try { await api.delete(`/admin/roles/${r.id}/`); roles.load() } catch (e) { setErr(apiError(e)) }
+    const ok = await askDelete({ what: (lang === 'en' ? 'role' : 'نقش'), name: r.name, id: r.id,
+      action: () => api.delete(`/admin/roles/${r.id}/`) })
+    if (ok) roles.load()
   }
   const delStaff = async (r) => {
-    if (!confirm(t('delete_confirm'))) return
-    try { await api.delete(`/admin/staff/${r.id}/`); staff.load() } catch (e) { setErr(apiError(e)) }
+    const ok = await askDelete({ what: (lang === 'en' ? 'admin user' : 'کاربر ادمین'), name: r.username, id: r.id,
+      action: () => api.delete(`/admin/staff/${r.id}/`) })
+    if (ok) staff.load()
   }
 
   if (!roles.rows || !staff.rows || !perms.rows) return <div className="grid place-items-center py-16"><Spinner /></div>

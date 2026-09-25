@@ -34,6 +34,14 @@ function mkCell(jy, jm, jd, inMonth) {
   return { jy, jm, jd, inMonth, iso: toISO(jy, jm, jd), key: `${jy}-${jm}-${jd}`, isFriday: dow === 5 }
 }
 
+/** 'YYYY-MM-DD' (or any Date-parsable ISO) -> a day cell */
+export function cellFromISO(iso) {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return null
+  const j = jalaali.toJalaali(d)
+  return mkCell(j.jy, j.jm, j.jd, true)
+}
+
 export function todayCell() {
   const t = jalaali.toJalaali(new Date())
   return mkCell(t.jy, t.jm, t.jd, true)

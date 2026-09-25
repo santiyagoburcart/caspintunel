@@ -5,6 +5,7 @@ import { toman, digits } from '../lib/format'
 import { Alert, Field, Spinner, Toggle } from '../components/ui'
 import { useToast } from '../components/Toast'
 import { copyToClipboard } from '../lib/clipboard'
+import { useDeleteConfirm } from '../lib/confirmDelete'
 
 const GB = 1024 ** 3
 
@@ -196,11 +197,11 @@ export default function Plans() {
       toast.success(s.saved_ok)
     } catch (e2) { setErr(apiError(e2)); toast.error(apiError(e2)) }
   }
-  const del = async (id) => {
-    if (!confirm(s.del_confirm)) return
-    toast.loading(t('action_in_progress'))
-    try { await api.delete(`/admin/plans/${id}/`); load(); toast.success(t('deleted')) }
-    catch (e2) { toast.error(apiError(e2)) }
+  const askDelete = useDeleteConfirm()
+  const del = async (r) => {
+    const ok = await askDelete({ what: (lang === 'en' ? 'plan' : 'پلن'), name: (lang === 'en' ? r.name_en : r.name_fa) || r.name_fa, id: r.id,
+      action: () => api.delete(`/admin/plans/${r.id}/`) })
+    if (ok) { load(); toast.success(t('deleted')) }
   }
   const quickToggleActive = async (r) => {
     setRows((cur) => cur.map((x) => (x.id === r.id ? { ...x, is_active: !r.is_active } : x)))
@@ -536,7 +537,7 @@ export default function Plans() {
                       <div className="pl-acts">
                         <button type="button" className="pl-act" title={s.edit} aria-label={s.edit} onClick={() => setEdit(toForm(r))}><Ico d={I.edit} w={15} /></button>
                         <button type="button" className="pl-act" title={s.copy_link} aria-label={s.copy_link} onClick={() => copyLink(r)}><Ico d={I.link} w={15} /></button>
-                        <button type="button" className="pl-act pl-act--del" title={s.del} aria-label={s.del} onClick={() => del(r.id)}><Ico d={I.trash} w={15} /></button>
+                        <button type="button" className="pl-act pl-act--del" title={s.del} aria-label={s.del} onClick={() => del(r)}><Ico d={I.trash} w={15} /></button>
                       </div>
                     </td>
                   </tr>

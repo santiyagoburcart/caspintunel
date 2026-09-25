@@ -4,6 +4,7 @@ import { api, apiError } from '../lib/api'
 import { useI18n, enumLabel } from '../lib/i18n'
 import { jalali, toman } from '../lib/format'
 import { Alert, Spinner } from '../components/ui'
+import { useConfirm } from '../components/ConfirmDialog'
 
 /* ------------------------------------------------------------------ *
  *  Transaction Detail — direct port of the Stitch screens
@@ -88,6 +89,7 @@ function useReceiptBlob(url) {
 export default function TransactionDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const confirm = useConfirm()
   const { lang, t } = useI18n()
 
   const [r, setR] = useState(null)
@@ -95,8 +97,6 @@ export default function TransactionDetail() {
   const [notFound, setNotFound] = useState(false)
   const [busy, setBusy] = useState(false)
   const [sel, setSel] = useState(null)          // status picked in the switcher
-  const [showReject, setShowReject] = useState(false)
-  const [reason, setReason] = useState('')
   const [lightbox, setLightbox] = useState(false)
 
   const load = useCallback(async () => {
@@ -118,13 +118,26 @@ export default function TransactionDetail() {
     setBusy(true); setErr('')
     try {
       await api.post(`/admin/transactions/${id}/status/`, { status, reason: why || '' })
-      setShowReject(false); setReason('')
       await load()
     } catch (e) { setErr(apiError(e)) } finally { setBusy(false) }
   }
   const onSave = () => {
     if (sel === r.status) return
-    if (sel === 'rejected') { setShowReject(true); return }
+    if (sel === 'rejected') {
+      // the reason is shown to the customer — asked for in the shared ConfirmDialog
+      confirm({
+        tone: 'danger', icon: 'ban', badge: 'payment.approve',
+        title: t('txd_reject_modal_title'), message: t('txd_reject_modal_desc'),
+        targetLabel: t('txd_id_label'), targetId: `#${r.id}`,
+        reason: { label: t('txd_reject_reason_label'), placeholder: t('txd_reject_placeholder') },
+        confirmLabel: t('txd_reject_confirm'),
+        action: async (why) => {
+          await api.post(`/admin/transactions/${id}/status/`, { status: 'rejected', reason: why || '' })
+          await load()
+        },
+      }).then((ok) => { if (!ok) setSel(r.status) })
+      return
+    }
     commit(sel)
   }
 
@@ -286,11 +299,6 @@ export default function TransactionDetail() {
         </section>
       </div>
 
-      {showReject && (
-        <RejectModal t={t} reason={reason} setReason={setReason} busy={busy}
-          onClose={() => { setShowReject(false); setSel(r.status) }}
-          onConfirm={() => commit('rejected', reason.trim() || undefined)} />
-      )}
       {lightbox && (
         <Lightbox t={t} src={receiptSrc} txId={r.order_id || id}
           onDownload={download} onClose={() => setLightbox(false)} />
@@ -326,41 +334,6 @@ function StatusPill({ status, t, sm }) {
         borderColor: `color-mix(in srgb, ${c} 32%, transparent)` }}>
       <Ico name={ST_PILL_ICON[status] || 'clock'} w={sm ? 11 : 13} />{label}
     </span>
-  )
-}
-
-function RejectModal({ t, reason, setReason, busy, onClose, onConfirm }) {
-  useEffect(() => {
-    const h = (e) => e.key === 'Escape' && onClose()
-    window.addEventListener('keydown', h)
-    return () => window.removeEventListener('keydown', h)
-  }, [onClose])
-  return (
-    <div className="txd-overlay txd-overlay--sheet" onClick={onClose}>
-      <div className="txd-sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="txd-sheet-grip" />
-        <div className="txd-sheet-head txd-sheet-head--danger">
-          <span className="txd-sheet-ico"><Ico name="xCircle" w={20} /></span>
-          <div>
-            <h3>{t('txd_reject_modal_title')}</h3>
-            <p>{t('txd_reject_modal_desc')}</p>
-          </div>
-          <button type="button" className="txd-sheet-x" onClick={onClose} aria-label={t('txd_close')}>
-            <Ico name="close" w={18} />
-          </button>
-        </div>
-        <div className="txd-sheet-body">
-          <textarea className="txd-textarea" rows={3} autoFocus value={reason}
-            placeholder={t('txd_reject_placeholder')} onChange={(e) => setReason(e.target.value)} />
-        </div>
-        <div className="txd-sheet-foot">
-          <button type="button" className="txd-btn txd-btn-ghost" onClick={onClose}>{t('cancel')}</button>
-          <button type="button" className="txd-btn txd-btn-danger" disabled={busy} onClick={onConfirm}>
-            <Ico name="xCircle" w={15} /> {busy ? '…' : t('txd_reject_confirm')}
-          </button>
-        </div>
-      </div>
-    </div>
   )
 }
 
@@ -571,48 +544,6 @@ const CSS = `
 .txd-audit-grid span { font-size: 10.5px; color: var(--c-text-muted); }
 .txd-audit-reason span { font-size: 10.5px; color: var(--c-text-muted); }
 .txd-audit-reason p { font-size: 12px; margin-top: 3px; line-height: 1.7; }
-
-/* ---- overlay + reject sheet ---- */
-.txd-overlay {
-  position: fixed; inset: 0; z-index: 60; display: flex; justify-content: center;
-  background: rgba(15, 23, 42, .55); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
-  padding: 16px;
-}
-.txd-overlay--sheet { align-items: flex-end; }
-@media (min-width: 560px) { .txd-overlay--sheet { align-items: center; } }
-.txd-sheet {
-  width: 100%; max-width: 460px; background: var(--c-surface); color: var(--c-text);
-  border: 1px solid var(--c-border); border-radius: 22px 22px 0 0; overflow: hidden;
-  display: flex; flex-direction: column; box-shadow: 0 24px 60px -12px rgba(0,0,0,.4);
-  animation: txd-in .18s ease-out;
-}
-@media (min-width: 560px) { .txd-sheet { border-radius: 22px; } }
-@keyframes txd-in { from { opacity: 0; transform: translateY(12px) scale(.98); } }
-.txd-sheet-grip { width: 44px; height: 5px; border-radius: 999px; background: var(--c-border); margin: 9px auto 0; }
-@media (min-width: 560px) { .txd-sheet-grip { display: none; } }
-.txd-sheet-head {
-  display: flex; align-items: flex-start; gap: 11px; padding: 14px 16px;
-  border-bottom: 1px solid var(--c-border);
-}
-.txd-sheet-head--danger { background: color-mix(in srgb, var(--c-danger) 8%, transparent); }
-.txd-sheet-ico {
-  flex-shrink: 0; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px;
-  background: color-mix(in srgb, var(--c-danger) 15%, transparent); color: var(--c-danger);
-}
-.txd-sheet-head h3 { font-size: 14px; font-weight: 700; }
-.txd-sheet-head p { font-size: 11.5px; color: var(--c-text-muted); margin-top: 3px; line-height: 1.6; }
-.txd-sheet-x { flex-shrink: 0; color: var(--c-text-muted); padding: 3px; margin-inline-start: auto; }
-.txd-sheet-body { padding: 16px; }
-.txd-textarea {
-  width: 100%; resize: vertical; border-radius: 12px; border: 1px solid var(--c-border);
-  background: color-mix(in srgb, var(--c-text-muted) 6%, transparent); color: var(--c-text);
-  padding: 10px 12px; font: inherit; font-size: 13px; line-height: 1.7;
-}
-.txd-textarea:focus { outline: none; border-color: var(--c-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-primary) 18%, transparent); }
-.txd-sheet-foot {
-  display: flex; justify-content: space-between; gap: 10px; padding: 13px 16px;
-  border-top: 1px solid var(--c-border);
-}
 
 /* ---- lightbox ---- */
 .txd-lb {

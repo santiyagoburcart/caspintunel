@@ -5,6 +5,7 @@ import { useI18n } from '../lib/i18n'
 import { toman, digits } from '../lib/format'
 import { Alert, Field, Spinner, Toggle } from '../components/ui'
 import { useToast } from '../components/Toast'
+import { useDeleteConfirm } from '../lib/confirmDelete'
 
 const blank = { card_number: '', holder_name: '', bank_name: '', sort_order: 0, is_active: true }
 
@@ -236,11 +237,11 @@ export default function Cards() {
       setD((p) => ({ ...p, cards: p.cards.map((x) => (x.id === c.id ? { ...x, is_active: !x.is_active } : x)) }))
     } catch (e2) { setErr(apiError(e2)); toast.error(apiError(e2)) }
   }
+  const askDelete = useDeleteConfirm()
   const del = async (c) => {
-    if (!confirm(t('delete_card_confirm'))) return
-    toast.loading(t('action_in_progress'))
-    try { await api.delete(`/admin/cards/${c.id}/`); load(); toast.success(t('deleted')) }
-    catch (e2) { setErr(apiError(e2)); toast.error(apiError(e2)) }
+    const ok = await askDelete({ what: (lang === 'en' ? 'bank card' : 'کارت بانکی'), name: c.card_number, id: c.id,
+      note: c.holder_name || undefined, action: () => api.delete(`/admin/cards/${c.id}/`) })
+    if (ok) { load(); toast.success(t('deleted')) }
   }
   const onSaved = () => { setModal(null); load() }
 

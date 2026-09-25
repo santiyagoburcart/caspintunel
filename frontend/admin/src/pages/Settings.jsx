@@ -7,6 +7,7 @@ import { jalali, relTime } from '../lib/format'
 import { Alert, Field, Spinner, Toggle } from '../components/ui'
 import { useToast } from '../components/Toast'
 import { copyToClipboard } from '../lib/clipboard'
+import { useDeleteConfirm } from '../lib/confirmDelete'
 
 function HubIco({ d, w = 18 }) {
   return (
@@ -294,6 +295,7 @@ function SmsSourceModal({ mode, source, s, t, onClose, onSaved }) {
 }
 
 function SmsSourcesSection({ t, s, lang }) {
+  const askDelete = useDeleteConfirm()
   const [sources, setSources] = useState(null)
   const [err, setErr] = useState('')
   const [modal, setModal] = useState(null) // { mode: 'add' } | { mode: 'edit', source }
@@ -312,8 +314,9 @@ function SmsSourcesSection({ t, s, lang }) {
     } catch (e2) { setErr(apiError(e2)) }
   }
   const del = async (src) => {
-    if (!confirm(s.src_delete_confirm)) return
-    try { await api.delete(`/admin/sms-sources/${src.id}/`); load() } catch (e2) { setErr(apiError(e2)) }
+    const ok = await askDelete({ what: (lang === 'en' ? 'SMS source number' : 'شمارهٔ منبع پیامک'), name: src.phone_number, id: src.id,
+      note: s.src_delete_confirm, action: () => api.delete(`/admin/sms-sources/${src.id}/`) })
+    if (ok) load()
   }
 
   return (
@@ -485,6 +488,7 @@ function SmsDeviceModal({ mode, device, s, t, onClose, onCreated }) {
 }
 
 function SmsDevicesSection({ t, s, lang }) {
+  const askDelete = useDeleteConfirm()
   const [devices, setDevices] = useState(null)
   const [err, setErr] = useState('')
   const [modal, setModal] = useState(null) // { mode: 'add' } | { mode: 'reveal', device }
@@ -503,8 +507,9 @@ function SmsDevicesSection({ t, s, lang }) {
     } catch (e2) { setErr(apiError(e2)) }
   }
   const del = async (d) => {
-    if (!confirm(s.dev_delete_confirm)) return
-    try { await api.delete(`/admin/sms-devices/${d.id}/`); load() } catch (e2) { setErr(apiError(e2)) }
+    const ok = await askDelete({ what: (lang === 'en' ? 'SMS device' : 'دستگاه پیامک'), name: d.name, id: d.id,
+      note: s.dev_delete_confirm, action: () => api.delete(`/admin/sms-devices/${d.id}/`) })
+    if (ok) load()
   }
 
   return (
