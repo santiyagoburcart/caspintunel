@@ -11,7 +11,7 @@ import { useLivePayments, usePaymentsEvents } from '../lib/livePayments'
 
 const T = {
   fa: {
-    title: 'صف تأیید پرداخت', none: 'موردی برای بررسی نیست', refresh: '↻ تازه‌سازی',
+    title: 'صف تأیید پرداخت', none: 'موردی برای بررسی نیست',
     subtitle: 'تراکنش‌های کارت‌به‌کارت و فیش‌های نیازمند تطبیق و تأیید دستی',
     user: 'کاربر', order: 'سفارش', plan: 'پلن', account: 'نام اکانت', receipt: 'رسید',
     no_receipt: 'رسیدی پیوست نشده', reject_reason: 'دلیل رد (برای کاربر نمایش داده می‌شود)',
@@ -23,11 +23,11 @@ const T = {
     tab_all: 'همه', tab_receipt: 'دارای فیش', tab_active: 'در انتظار', tab_expired: 'منقضی',
     expired_note: 'مهلت رزرو مبلغ یکتا به پایان رسیده است.',
     none_tab: 'موردی در این دسته نیست',
-    live_on: 'به‌روزرسانی زنده', live_off: 'اتصال زنده قطع است — از «تازه‌سازی» استفاده کنید',
+    live_on: 'به‌روزرسانی زنده', live_off: 'اتصال زنده قطع است — تا وصل شدن دوباره، صف هر ۱۵ ثانیه خودکار به‌روز می‌شود',
     live_short_off: 'آفلاین',
   },
   en: {
-    title: 'Payment approval queue', none: 'Nothing to review', refresh: '↻ Refresh',
+    title: 'Payment approval queue', none: 'Nothing to review',
     subtitle: 'Card-to-card transactions and receipts that need manual matching and approval',
     user: 'User', order: 'Order', plan: 'Plan', account: 'Account', receipt: 'Receipt',
     no_receipt: 'No receipt attached', reject_reason: 'Rejection reason (shown to the customer)',
@@ -39,7 +39,7 @@ const T = {
     tab_all: 'All', tab_receipt: 'Has receipt', tab_active: 'Waiting', tab_expired: 'Expired',
     expired_note: 'The unique-amount reservation window has elapsed.',
     none_tab: 'Nothing in this tab',
-    live_on: 'Live updates', live_off: 'Live connection lost — use Refresh',
+    live_on: 'Live updates', live_off: 'Live connection lost — the queue auto-refreshes every 15 s until it reconnects',
     live_short_off: 'Offline',
   },
 }
@@ -87,7 +87,12 @@ export default function Payments() {
     reloadTimer.current = setTimeout(load, 250)
   })
   useEffect(() => () => clearTimeout(reloadTimer.current), [])
-  const manualRefresh = () => { load(); refreshCount() }
+  // fallback only while the live socket is down: poll quietly, never a manual button
+  useEffect(() => {
+    if (connected) return undefined
+    const id = setInterval(() => { load(); refreshCount() }, 15000)
+    return () => clearInterval(id)
+  }, [connected])
 
   useEffect(() => {
     load()
@@ -154,7 +159,6 @@ export default function Payments() {
           <span className={'pq-live' + (connected ? ' on' : '')} title={connected ? s.live_on : s.live_off}>
             <i />{connected ? s.live_on : s.live_short_off}
           </span>
-          <button className="btn-ghost text-sm" onClick={manualRefresh}>{s.refresh}</button>
         </div>
       </div>
       <Alert>{err}</Alert>

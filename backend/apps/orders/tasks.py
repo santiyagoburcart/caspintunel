@@ -94,7 +94,9 @@ def fulfill_order(self, order_id: int):
 
 
 def _notify_delivered(order):
-    """Flowchart 1.2: notify the buyer their invoice was approved / service is ready."""
+    """Flowchart 1.2: notify the buyer their invoice was approved / service is ready.
+    Site + email get the text; the bot gets the service card instead — QR code
+    with the subscription link as tap-to-copy monospace."""
     try:
         from apps.notifications.dispatch import notify_user
         from apps.notifications.models import NotificationType
@@ -109,10 +111,31 @@ def _notify_delivered(order):
             title_en="Your service is ready",
             body_en=f"Order #{order.id} was approved and your service is now active.{link_en}",
             ntype=NotificationType.SERVICE_READY,
-            via_site=True, via_bot=True, via_email=True,
+            via_site=True, via_bot=not (svc and svc.subscription_url), via_email=True,
         )
+        if svc and svc.subscription_url:
+            _send_bot_service_card(order.user, svc, order)
     except Exception as exc:  # noqa: BLE001 - notification must not fail fulfillment
         log.warning("delivery notification for order %s failed: %s", order.id, exc)
+
+
+def _send_bot_service_card(user, svc, order) -> bool:
+    if not user.telegram_id:
+        return False
+    try:
+        from apps.telegram.config import sales_client
+        from apps.telegram.shop import qr_png, service_caption
+
+        client = sales_client()
+        if client is None:
+            return False
+        caption = service_caption(svc, title="سرویس شما آماده شد 🎉",
+                                  summary=f"پرداخت سفارش #{order.id} تأیید و سرویس <b>{svc.panel_username}</b> فعال شد.")
+        client.send_photo(user.telegram_id, qr_png(svc.subscription_url), caption=caption, parse_mode="HTML")
+        return True
+    except Exception as exc:  # noqa: BLE001
+        log.warning("bot service card to %s failed: %s", user.telegram_id, exc)
+        return False
 
 
 def _ensure_service(order: Order, panel: Panel | None) -> Service:

@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
+from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
@@ -34,6 +35,12 @@ class RegisterSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=120, required=False, allow_blank=True)
     phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
     referral_code = serializers.CharField(max_length=6, required=False, allow_blank=True)
+    terms_accepted = serializers.BooleanField(write_only=True, default=False)
+
+    def validate_terms_accepted(self, value):
+        if not value:
+            raise serializers.ValidationError("you must accept the terms of service to register")
+        return value
 
     def validate_username(self, value):
         if User.objects.filter(username__iexact=value).exists():
@@ -92,6 +99,7 @@ class RegisterSerializer(serializers.Serializer):
             phone=validated.get("phone", ""),
             referred_by=referrer,
             source=self.context.get("source", Source.SITE),
+            terms_accepted_at=timezone.now(),
         )
         return user
 

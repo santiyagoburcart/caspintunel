@@ -50,6 +50,14 @@ function TelegramStart() {
   return null
 }
 
+function PublicTerms() {
+  return (
+    <div className="mx-auto w-full max-w-3xl p-4 sm:p-6">
+      <Rules />
+    </div>
+  )
+}
+
 export default function App() {
   return (
     <Routes>
@@ -57,6 +65,8 @@ export default function App() {
       <Route path="/register" element={<Register />} />
       <Route path="/reset" element={<ResetPassword />} />
       <Route path="/verify-email" element={<VerifyEmail />} />
+      {/* public copy of the rules — the sign-up checkbox links here (/rules needs a login) */}
+      <Route path="/terms" element={<PublicTerms />} />
       <Route element={<Private><><TelegramStart /><Layout /></></Private>}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/store" element={<Store />} />

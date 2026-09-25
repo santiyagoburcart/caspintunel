@@ -39,6 +39,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     language = models.CharField(max_length=2, choices=Language.choices, default=Language.FA)
     is_legacy = models.BooleanField(default=False)
     admin_note = models.TextField(blank=True, default="", help_text="Internal staff-only note; never shown to the user")
+    terms_accepted_at = models.DateTimeField(
+        null=True, blank=True, help_text="when the user accepted the terms of service (at sign-up)"
+    )
 
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False, help_text="Django admin access")

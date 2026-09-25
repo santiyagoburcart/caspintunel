@@ -38,7 +38,7 @@ def test_normalize_phone_keeps_foreign_numbers_international():
 
 
 def _register(**over):
-    payload = {"username": "alice", "password": "Str0ngPass!", "phone": "۰۹۱۲ ۱۲۳ ۴۵۶۷"}
+    payload = {"username": "alice", "password": "Str0ngPass!", "phone": "۰۹۱۲ ۱۲۳ ۴۵۶۷", "terms_accepted": True}
     payload.update(over)
     return APIClient().post("/api/v1/auth/register/", payload, format="json")
 
@@ -54,7 +54,7 @@ def test_register_normalizes_persian_digits():
 def test_register_requires_phone_when_iran_only():
     r = _register(phone="")
     assert r.status_code == 400 and "phone" in r.data
-    r = APIClient().post("/api/v1/auth/register/", {"username": "bob", "password": "Str0ngPass!"}, format="json")
+    r = APIClient().post("/api/v1/auth/register/", {"username": "bob", "password": "Str0ngPass!", "terms_accepted": True}, format="json")
     assert r.status_code == 400 and "phone" in r.data
 
 

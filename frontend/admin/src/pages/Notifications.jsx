@@ -89,7 +89,7 @@ export default function Notifications() {
 
   const load = () =>
     api.get('/admin/notifications/').then((r) => setRows(r.data.results || r.data)).catch(() => setRows([]))
-  useEffect(load, [])
+  useEffect(() => { load() }, [])
 
   const submit = async (e) => {
     e.preventDefault(); setErr('')
@@ -175,8 +175,8 @@ export default function Notifications() {
         ) : rows.length === 0 ? (
           <div className="text-center text-muted py-10 text-sm">{s.none_found}</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto rtable-wrap">
+            <table className="w-full text-sm rtable">
               <thead>
                 <tr className="text-start text-xs text-muted border-b" style={{ borderColor: 'var(--c-border)' }}>
                   <th className="p-3 text-start">{s.col_title}</th>
@@ -190,14 +190,14 @@ export default function Notifications() {
               <tbody>
                 {rows.map((n) => (
                   <tr key={n.id} className="border-b last:border-0" style={{ borderColor: 'var(--c-border)' }}>
-                    <td className="p-3 font-semibold">{n.title}</td>
-                    <td className="p-3 text-muted">{n.sent_by || '—'}</td>
-                    <td className="p-3">{n.target_user ? `#${n.target_user}` : s.target_all}</td>
-                    <td className="p-3 text-xs text-muted">
+                    <td data-label={s.col_title} className="p-3 font-semibold">{n.title}</td>
+                    <td data-label={s.col_sent_by} className="p-3 text-muted">{n.sent_by || '—'}</td>
+                    <td data-label={s.col_target} className="p-3">{n.target_user ? `#${n.target_user}` : s.target_all}</td>
+                    <td data-label={s.col_channels} className="p-3 text-xs text-muted">
                       {[n.via_site && s.ch_site, n.via_bot && s.ch_bot, n.via_email && s.ch_email].filter(Boolean).join(', ')}
                     </td>
-                    <td className="p-3 text-xs text-muted mono-num">{jalali(n.created_at, true, lang)}</td>
-                    <td className="p-3 mono-num">{digits(n.delivery_count ?? 0, lang)}</td>
+                    <td data-label={s.col_sent_at} className="p-3 text-xs text-muted mono-num">{jalali(n.created_at, true, lang)}</td>
+                    <td data-label={s.col_recipients} className="p-3 mono-num">{digits(n.delivery_count ?? 0, lang)}</td>
                   </tr>
                 ))}
               </tbody>

@@ -55,7 +55,6 @@ export default function Checkout() {
   const [busy, setBusy] = useState(false)
   const [restoring, setRestoring] = useState(false)
   const [changingPlan, setChangingPlan] = useState(false)
-  const [agreed, setAgreed] = useState(false)
   const [now, setNow] = useState(Date.now())
   const orderIdRef = useRef(null)
   orderIdRef.current = order?.id ?? null
@@ -168,9 +167,9 @@ export default function Checkout() {
     toast.loading(t('action_in_progress'))
     try {
       const body = renewId
-        ? { plan: Number(chosenPlan), type: 'renew', service: Number(renewId), terms_accepted: agreed }
+        ? { plan: Number(chosenPlan), type: 'renew', service: Number(renewId) }
         : { plan: Number(chosenPlan), type: 'new', requested_account_name: accountName || undefined,
-            custom_volume_gb: customGb ? Number(customGb) : undefined, terms_accepted: agreed }
+            custom_volume_gb: customGb ? Number(customGb) : undefined }
       const { data } = await api.post('/orders/', body)
       showOrder(data)
       if (data.reused) toast.success(t('order_resumed'))
@@ -290,17 +289,9 @@ export default function Checkout() {
           <CustomVolumePicker plan={plan} value={customGb} onChange={setCustomGb} t={t} lang={lang} />
         )}
 
-        <label className="ckt-terms">
-          <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
-          <span>
-            {t('agree_prefix')}
-            <Link to="/rules" target="_blank" rel="noreferrer" className="ckt-terms-link">{t('terms_of_service')}</Link>
-            {t('agree_suffix')}
-          </span>
-        </label>
 
         <button className="btn-primary w-full"
-          disabled={busy || !agreed || !chosenPlan || (!renewId && !accountName.trim())
+          disabled={busy || !chosenPlan || (!renewId && !accountName.trim())
             || (plan?.type === 'custom_volume' && !customGb)}>
           {busy ? <Spinner /> : t('submit')}
         </button>

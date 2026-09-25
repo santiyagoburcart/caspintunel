@@ -1,6 +1,9 @@
 """Bot-side buy / renew / status helpers (thin wrappers over apps.orders)."""
 from __future__ import annotations
 
+import html
+import io
+
 from django.core.files.base import ContentFile
 from django.utils import timezone
 
@@ -228,9 +231,24 @@ def account_summary_text(user) -> str:
     )
 
 
-def delivery_message(service) -> str:
-    return (
-        "سرویس شما آماده است 🎉\n\n"
-        f"لینک اشتراک:\n<code>{service.subscription_url}</code>\n\n"
-        "برای دریافت QR دکمهٔ زیر را بزنید."
-    )
+def sub_link_block(service) -> str:
+    """The subscription link as Telegram monospace (<code>): one tap copies it."""
+    if not service.subscription_url:
+        return ""
+    return ("🔗 لینک اشتراک (برای کپی روی لینک بزنید):\n"
+            f"<code>{html.escape(service.subscription_url)}</code>")
+
+
+def service_caption(service, *, title: str = "", summary: str = "") -> str:
+    """Caption for the QR photo: optional title + summary + the tap-to-copy link."""
+    parts = [p for p in (f"<b>{html.escape(title)}</b>" if title else "", summary, sub_link_block(service)) if p]
+    return "\n\n".join(parts)[:1024]   # Telegram caption limit
+
+
+def qr_png(url: str) -> bytes:
+    import qrcode
+
+    buf = io.BytesIO()
+    qrcode.make(url).save(buf, format="PNG")
+    return buf.getvalue()
+
