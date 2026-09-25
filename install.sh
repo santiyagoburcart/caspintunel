@@ -166,6 +166,7 @@ do_install() {
   echo "==> waiting for the database"; sleep 10
   py migrate --noinput
   py seed
+  py collectstatic --noinput >/dev/null || true   # web no longer does this on boot
   set +e; py createsuperuser --noinput 2>/dev/null; set -e
 
   # --- TLS ---
@@ -203,17 +204,16 @@ do_update() {
   if ! installed; then echo "$(c '1;31' 'not installed')  — run Install first."; return; fi
 
   echo "current version: $(deployed_version)"
-  if [ "$OFFLINE" = 1 ]; then
-    echo "offline — load the new image bundle first (scripts/load-images.sh), then continue."
-    yes_no "continue?" || return
-  elif [ -d .git ]; then
-    echo "==> git pull"; git fetch --all --quiet && git reset --hard '@{upstream}'
+  if [ "$OFFLINE" != 1 ]; then
+    # online: the real deploy (DB dump + :rollback tags + zero-downtime rollout)
+    "$ROOT/update.sh"; return
   fi
-
-  [ "$OFFLINE" = 1 ] || { echo "==> build"; compose build; }
+  echo "offline — load the new image bundle first (scripts/load-images.sh), then continue."
+  yes_no "continue?" || return
+  echo "==> migrate + seed + collectstatic (one-off container, new image)"
+  compose run --rm --no-deps -T web sh -c \
+    'python manage.py migrate --noinput && python manage.py seed && python manage.py collectstatic --noinput >/dev/null'
   echo "==> up";        compose up -d --remove-orphans
-  echo "==> migrate + seed"; py migrate --noinput; py seed
-  echo "==> collectstatic"; py collectstatic --noinput || true
   rm -f "$ROOT/backups/.update-requested" 2>/dev/null || true
   hr; echo "$(c '1;32' 'Updated.')  now on version $(deployed_version)"
 }

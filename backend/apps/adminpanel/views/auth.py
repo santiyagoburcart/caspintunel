@@ -9,7 +9,7 @@ from rest_framework.views import APIView
 from apps.accounts.models import Staff
 
 from ..permissions import StaffJWTAuthentication
-from ..tokens import decode, issue_tokens, revoke_refresh
+from ..tokens import decode, issue_tokens, revoke_refresh, staff_for_payload
 
 
 class StaffLoginSerializer(serializers.Serializer):
@@ -59,12 +59,15 @@ class StaffRefreshView(APIView):
             return Response({"detail": "refresh token expired", "code": "token_expired"}, status=401)
         except jwt.InvalidTokenError:
             return Response({"detail": "invalid refresh token", "code": "token_invalid"}, status=401)
-        staff = Staff.objects.filter(pk=payload["staff_id"], is_active=True).first()
+        staff = staff_for_payload(payload)
         if not staff:
             return Response(
-                {"detail": "staff account not found or disabled", "code": "account_disabled"}, status=401
+                {"detail": "session ended or staff account disabled — log in again", "code": "token_revoked"},
+                status=401,
             )
-        revoke_refresh(payload)  # rotation — the presented refresh token is now spent
+        # rotation — the presented refresh token is now spent (single use)
+        if not revoke_refresh(payload):
+            return Response({"detail": "invalid refresh token", "code": "token_invalid"}, status=401)
         return Response(issue_tokens(staff))
 
 

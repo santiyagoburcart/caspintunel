@@ -2,11 +2,16 @@
 
 ## Why you need this
 
-The stack runs its own mail server (`mailserver` container: Postfix + Dovecot +
-OpenDKIM). It can **receive** mail for `@<your-domain>` and it signs everything
-with DKIM — but **outbound port 25 is blocked by almost every cloud provider**
+The stack runs its own mail server (`mailserver` container, docker-mailserver in
+`SMTP_ONLY` mode: Postfix only, no mailboxes/Dovecot — the app only sends). The
+app hands mail to it on port 25 inside the Docker network — but **outbound port
+25 is blocked by almost every cloud provider**
 (Vultr, DigitalOcean, Hetzner, AWS, …). So mail addressed to Gmail / Outlook /
 Yahoo / etc. just sits in the Postfix queue and never leaves.
+
+Verified on the aicaspin.ir server (2026-09-25): connections to Gmail/Outlook MX
+on port 25 time out (the message stays deferred in the queue), while outbound
+587 works — so a relay on 587 is required there.
 
 The fix is an **SMTP relay**: the mail server authenticates to a third-party
 provider on port 587 and hands them every outgoing message. They do the actual

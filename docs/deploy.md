@@ -144,8 +144,18 @@ watcher runs the rollout:
 ```
 
 `watch-update.sh` → `update.sh --prod` (prod is also the default without a flag):
-DB dump to `backups/pre-update-*.sql.gz` + running images tagged `:rollback` →
-`git reset --hard @{upstream}` → build → `up -d` → `migrate` + `seed` →
-`collectstatic`. Undo with `./update.sh --rollback` (images; restore the dump for
-schema changes). `GET /api/v1/admin/system/`
+1. DB dump to `backups/pre-update-*.sql.gz` + running images tagged `:rollback`;
+2. `git reset --hard @{upstream}` → build;
+3. `migrate` + `seed` + `collectstatic` **once**, in a one-off container of the new
+   image, while the old containers keep serving (so migrations must be backward
+   compatible with the previous release: add first, drop a release later);
+4. **rolling update** of `web`, `daphne`, `frontend_user`, `frontend_admin`: the new
+   container starts next to the old one, the old one is stopped gracefully only
+   once the new one's healthcheck passes (if it never does, the old one stays and
+   the update aborts). nginx re-resolves the names every 2 s and retries a failed
+   connect on the other container, so requests don't fail during the handover;
+5. plain `up -d` for everything else (celery, bots, mail — they must not run
+   twice), `nginx -s reload` for config edits.
+
+Undo with `./update.sh --rollback` (images; restore the dump for schema changes). `GET /api/v1/admin/system/`
 reports the deployed `VERSION` vs the `VERSION` on the repo's `main` branch.

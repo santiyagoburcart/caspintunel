@@ -44,14 +44,13 @@ def _staff_from_token(token: str):
     for them — decode it here and require the payments permission."""
     import jwt
 
-    from apps.accounts.models import Staff
-    from apps.adminpanel.tokens import decode
+    from apps.adminpanel.tokens import decode, staff_for_payload
 
     try:
         payload = decode(token, "staff_access")
     except jwt.InvalidTokenError:
         return None
-    staff = Staff.objects.filter(pk=payload.get("staff_id"), is_active=True).select_related("role").first()
+    staff = staff_for_payload(payload)
     if staff is None or not staff.has_perm("payment.view"):
         return None
     return staff

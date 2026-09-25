@@ -3,7 +3,7 @@ from rest_framework import authentication, exceptions, permissions
 
 from apps.accounts.models import Staff
 
-from .tokens import decode
+from .tokens import decode, staff_for_payload
 
 
 class StaffJWTAuthentication(authentication.BaseAuthentication):
@@ -19,10 +19,10 @@ class StaffJWTAuthentication(authentication.BaseAuthentication):
             raise exceptions.AuthenticationFailed({"detail": "token expired", "code": "token_expired"})
         except jwt.InvalidTokenError:
             return None  # not a staff token — let other authenticators try
-        staff = Staff.objects.filter(pk=payload["staff_id"], is_active=True).select_related("role").first()
+        staff = staff_for_payload(payload)
         if not staff:
             raise exceptions.AuthenticationFailed(
-                {"detail": "staff account not found or disabled", "code": "account_disabled"}
+                {"detail": "session ended or staff account disabled — log in again", "code": "token_revoked"}
             )
         return (staff, payload)
 

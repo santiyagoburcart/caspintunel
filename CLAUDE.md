@@ -12,15 +12,17 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
 - **This server runs PROD** (`docker-compose.yml` + `docker-compose.prod.yml`; `.env` sets `COMPOSE_FILE`
   so plain `docker compose …` means prod): nginx → built SPAs, gunicorn (`web`), daphne (`/ws/`), celery
   worker/beat, both bots. Code is **baked into images** — a backend/frontend change is live only after
-  `./update.sh` (backup → pull → build → up). Prod uses `volumes: !override` / `!reset` so none of the dev
+  `./update.sh` (backup → pull → build → one-off migrate/seed/collectstatic → **rolling** swap of web,
+  daphne, both SPAs behind healthchecks → plain up for the rest). Migrations run while the previous release
+  still serves: keep them backward compatible (add now, drop next release). Prod uses `volumes: !override` / `!reset` so none of the dev
   bind mounts leak in. The dev compose alone (`docker compose -f docker-compose.yml`, `./update.sh --dev`)
   is for development machines only (runserver + Vite, `./backend` bind-mounted).
 - `./update.sh` first dumps the DB to `backups/pre-update-<ver>-<ts>.sql.gz` and tags the running app images
   `:rollback`, then pulls/builds/ups. **Rollback: `./update.sh --rollback`** (images only; restore the dump
   if a migration must be undone). Build images only through `update.sh`: with the containerd image store a
   manual `docker compose build` drops the previous image, so there is nothing left to tag.
-- `web` runs migrations + `seed` on start (`RUN_MIGRATIONS=1`); `seed` must stay idempotent and must never
-  overwrite admin-panel values (panels, bots, sync interval, theme).
+- Prod `web` does NOT migrate/collectstatic on boot (`RUN_MIGRATIONS=0`, dev still does); `update.sh` and
+  `install.sh` run them. `seed` must stay idempotent and must never overwrite admin-panel values.
 - Tests (the prod `web` image has no tests mounted): one-off container with the source bind-mounted —
   `docker run --rm --network caspintunel_default --env-file .env -v $PWD/backend:/app -v $PWD/mobile_shortcut:/app/mobile_shortcut:ro -v $PWD/mobile_sms/release:/app/app_releases:ro --entrypoint sh caspintunel-backend -c 'python -m pytest -p no:warnings'`
   (`--entrypoint sh` skips migrate/seed on the live DB; `pytest.ini` forces `config.settings.test` = own test
@@ -40,6 +42,10 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
 - Phones: always through `apps/accounts/phone.py` (`normalize_ir_phone` → `09xxxxxxxxx`); uniqueness is
   app-level. A Telegram contact that matches a site account merges the bot account into it
   (`telegram/accounts.py::link_telegram_phone`) and invalidates the unverified site password.
+- Staff JWTs carry `tv` = `Staff.token_version`; always resolve the staff with
+  `adminpanel.tokens.staff_for_payload()` (never a bare `Staff.objects.get(pk=payload[...])`). Password change or
+  `manage.py revoke_staff_sessions [--username X]` ends staff sessions (customers untouched). Spent refresh
+  jtis live in the DB (`StaffRevokedToken`), never only in Redis.
 - JWT: `CHECK_REVOKE_TOKEN` + tolerant `apps.accounts.authentication.JWTAuthentication` (claim-less old
   tokens still accepted; unusable-password accounts rejected). Password change returns a fresh pair.
 - Live updates: WebSocket `/ws/notifications/` (customer JWT) and `/ws/admin/payments/` (staff JWT +
@@ -90,6 +96,8 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   + changelog in `mobile_shortcut/README.md`.** Keep the two action UUIDs the backend looks for.
 
 ## Secrets / .env
+- Mail: `mailserver` is `SMTP_ONLY` (send-only). This server blocks outbound 25 → real delivery needs
+  `SMTP_RELAY_*` (see `docs/email-relay.md`).
 - Nothing secret in git: `.env` (gitignored, backups `.env.bak*` too), device tokens, panel/bot credentials
   live in the DB (encrypted fields where sensitive). Grep the diff for tokens before every commit.
 - `.env` = infrastructure + secrets only; `.env.example` documents every variable. Panels, bot tokens, sync

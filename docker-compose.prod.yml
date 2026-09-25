@@ -11,9 +11,19 @@ services:
   web:
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.prod
-      RUN_MIGRATIONS: "1"
-      COLLECT_STATIC: "1"
-    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 60 --access-logfile -
+      # migrate / seed / collectstatic run ONCE per deploy in a one-off
+      # container (update.sh) before the new web starts — not on every boot,
+      # so web is ready in seconds and old + new can overlap (rolling deploy).
+      RUN_MIGRATIONS: "0"
+      COLLECT_STATIC: "0"
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 60 --graceful-timeout 30 --access-logfile -
+    # update.sh waits for "healthy" before retiring the old container
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "-H", "Host: ${DOMAIN:-aicaspin.ir}", "-H", "X-Forwarded-Proto: https", "http://127.0.0.1:8000/api/v1/health/"]
+      interval: 5s
+      timeout: 4s
+      retries: 3
+      start_period: 60s
     volumes: !override
       - ./VERSION:/app/VERSION:ro
       - ./backups:/app/backups
@@ -35,6 +45,12 @@ services:
       DJANGO_SETTINGS_MODULE: config.settings.prod
       RUN_MIGRATIONS: "0"
     command: daphne -b 0.0.0.0 -p 8001 config.asgi:application
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1', 8001), 2)"]
+      interval: 5s
+      timeout: 4s
+      retries: 3
+      start_period: 60s
     volumes:
       - ./VERSION:/app/VERSION:ro
     depends_on:
@@ -83,6 +99,12 @@ services:
     environment: !reset {}
     volumes: !reset []
     ports: !reset []
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 5s
+      timeout: 4s
+      retries: 3
+      start_period: 20s
 
   frontend_admin:
     image: caspintunel-frontend-admin
@@ -92,6 +114,12 @@ services:
     environment: !reset {}
     volumes: !reset []
     ports: !reset []
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 5s
+      timeout: 4s
+      retries: 3
+      start_period: 20s
 
   nginx:
     depends_on: !override

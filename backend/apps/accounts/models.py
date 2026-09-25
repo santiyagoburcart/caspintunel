@@ -136,6 +136,9 @@ class Staff(TimeStampedModel):
         default=False, help_text="bypasses permission checks"
     )
     last_login = models.DateTimeField(null=True, blank=True)
+    # Every staff JWT carries this as "tv"; a token whose tv differs is dead.
+    # Bumped on password change and by `manage.py revoke_staff_sessions`.
+    token_version = models.PositiveIntegerField(default=1)
 
     class Meta:
         db_table = "staff"
@@ -150,7 +153,10 @@ class Staff(TimeStampedModel):
         return self.username
 
     def set_password(self, raw: str) -> None:
+        """Also ends every session of this account (tokens carry token_version);
+        the caller saves."""
         self.password_hash = make_password(raw)
+        self.token_version = (self.token_version or 0) + 1
 
     def check_password(self, raw: str) -> bool:
         return check_password(raw, self.password_hash)
@@ -165,6 +171,19 @@ class Staff(TimeStampedModel):
         if not self.role_id:
             return False
         return self.role.permissions.filter(code=code).exists()
+
+
+class StaffRevokedToken(models.Model):
+    """Spent / revoked staff refresh tokens (by jti), kept until the token
+    would have expired anyway. Durable on purpose: it used to live only in the
+    Redis cache, where a flush silently re-enabled used tokens."""
+
+    jti = models.CharField(max_length=64, unique=True)
+    expires_at = models.DateTimeField(db_index=True)
+    revoked_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "staff_revoked_token"
 
 
 class DeletedUserArchive(models.Model):

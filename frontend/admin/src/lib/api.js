@@ -67,7 +67,7 @@ export function apiError(e, fallback = 'خطایی رخ داد') {
   if (!d) return fallback
   // a stale/expired token slipping past the interceptor must never show its
   // technical detail — fall back to whatever generic message the caller gave
-  if (d.code === 'token_not_valid' || d.code === 'token_expired') return fallback
+  if (['token_not_valid', 'token_expired', 'token_revoked'].includes(d.code)) return fallback
   if (typeof d === 'string') return d
   if (d.detail) return d.detail
   const first = Object.values(d)[0]

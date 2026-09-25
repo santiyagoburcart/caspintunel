@@ -176,6 +176,9 @@ services:
     environment:
       OVERRIDE_HOSTNAME: mail.${DOMAIN:-aicaspin.ir}
       POSTMASTER_ADDRESS: postmaster@${DOMAIN:-aicaspin.ir}
+      # the app only SENDS mail: no mailboxes / Dovecot. Without this DMS waits
+      # 120 s for a mail account, shuts down and restarts forever.
+      SMTP_ONLY: 1
       ENABLE_OPENDKIM: 1
       ENABLE_OPENDMARC: 1
       ENABLE_POLICYD_SPF: 1
@@ -207,7 +210,7 @@ services:
       - /etc/localtime:/etc/localtime:ro
     cap_add: [NET_ADMIN]
     healthcheck:
-      test: ["CMD-SHELL", "ss -lnt | grep -q ':587' || exit 1"]
+      test: ["CMD-SHELL", "ss -lnt | grep -q ':25 ' || exit 1"]   # the app submits on 25
       interval: 30s
       timeout: 5s
       retries: 5
