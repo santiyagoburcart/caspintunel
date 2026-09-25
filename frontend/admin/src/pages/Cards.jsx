@@ -292,7 +292,7 @@ export default function Cards() {
               .replace('{min}', range ? digits(range.min, lang) : '—')
               .replace('{max}', range ? digits(range.max, lang) : '—')}
           </p>
-          <Link to="/settings" className="cd-fraud-link">{s.fraud_edit} →</Link>
+          <Link to="/settings/unique-amount" className="cd-fraud-link">{s.fraud_edit} →</Link>
         </div>
       </div>
 

@@ -8,28 +8,21 @@ import { I18nProvider } from './lib/i18n'
 import { ThemeProvider } from './theme/ThemeProvider'
 import { ToastProvider } from './components/Toast'
 import { ConfirmProvider } from './components/ConfirmDialog'
+// Fonts are bundled at build time (@fontsource) — nothing is fetched from a
+// CDN, so the site works on an offline / Iran-only server. Persian UI uses
+// Vazirmatn everywhere, English uses Inter; JetBrains Mono only for code/links.
 import '@fontsource/vazirmatn/400.css'
 import '@fontsource/vazirmatn/500.css'
+import '@fontsource/vazirmatn/600.css'
 import '@fontsource/vazirmatn/700.css'
-// Caspian theme fonts (self-hosted via @fontsource, no external CDN)
-import '@fontsource/plus-jakarta-sans/400.css'
-import '@fontsource/plus-jakarta-sans/500.css'
-import '@fontsource/plus-jakarta-sans/600.css'
-import '@fontsource/plus-jakarta-sans/700.css'
-import '@fontsource/plus-jakarta-sans/800.css'
 import '@fontsource/vazirmatn/800.css'
-import '@fontsource/space-grotesk/500.css'
-import '@fontsource/space-grotesk/600.css'
-import '@fontsource/space-grotesk/700.css'
 import '@fontsource/inter/400.css'
 import '@fontsource/inter/500.css'
 import '@fontsource/inter/600.css'
 import '@fontsource/inter/700.css'
+import '@fontsource/inter/800.css'
 import '@fontsource/jetbrains-mono/400.css'
-import '@fontsource/jetbrains-mono/500.css'
 import '@fontsource/jetbrains-mono/600.css'
-import '@fontsource/jetbrains-mono/700.css'
-import '@fontsource/jetbrains-mono/800.css'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(

@@ -3,8 +3,10 @@
 For a server with **no internet access** (e.g. behind national filtering). The
 codebase is already offline-friendly:
 
-- **Fonts** (Vazirmatn) and all JS/CSS are bundled at build time — nothing is
-  fetched from a CDN at runtime.
+- **Fonts** (Vazirmatn for Persian, Inter for English, JetBrains Mono for code)
+  and all JS/CSS are bundled at build time — nothing is fetched from a CDN at runtime.
+- The **Android SMS app / iPhone shortcut** are downloaded from the server itself
+  (panel → Apps & tools), not from an app store.
 - **Images** can be built on an online machine and carried over.
 - **TLS** can be a manually-uploaded cert instead of Let's Encrypt.
 - The installer has an **offline mode** that skips every internet step.

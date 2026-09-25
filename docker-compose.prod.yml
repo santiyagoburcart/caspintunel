@@ -15,6 +15,7 @@ services:
       - /proc:/hostproc:ro             # monitoring: host net stats via /hostproc/1/net
       - media_data:/app/media
       - static_data:/app/staticfiles
+      - ./mobile_sms/release:/app/app_releases:ro   # admin "Apps" page: bundled Android APK
 
   # gunicorn (sync workers) can't serve WebSockets, so the /ws/ notification
   # feed is proxied to this separate ASGI (Daphne) process instead. Dev needs

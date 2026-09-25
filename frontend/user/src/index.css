@@ -524,3 +524,16 @@ body {
 @keyframes gtoast-spin { to { transform: rotate(360deg); } }
 @keyframes gtoast-pop { from { transform: scale(.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 @keyframes gtoast-fade { from { opacity: 0; } to { opacity: 1; } }
+
+
+/* ---- one font per language (overrides every per-theme / per-page font) ----
+   Persian → Vazirmatn everywhere; English → Inter (Vazirmatn as the fallback
+   for any Persian text shown in the English UI). Only real code — links,
+   tokens, keys in <code>/<pre>/<kbd> — keeps a monospace face. */
+html[lang="fa"] body, html[lang="fa"] body *:not(code):not(pre):not(kbd):not(samp) {
+  font-family: 'Vazirmatn', ui-sans-serif, system-ui, sans-serif !important;
+}
+html[lang="en"] body, html[lang="en"] body *:not(code):not(pre):not(kbd):not(samp) {
+  font-family: 'Inter', 'Vazirmatn', ui-sans-serif, system-ui, sans-serif !important;
+}
+code, pre, kbd, samp { font-family: 'JetBrains Mono', ui-monospace, monospace !important; }

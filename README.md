@@ -24,7 +24,9 @@ See **[docs/](docs/)** — [install](docs/install.md) · [offline](docs/offline.
 - Orders with **atomic unique-amount reservation**; **card-to-card** (receipt + admin approval) and **SMS auto-confirm**
 - Panel provisioning — On-Hold for timed plans, renewal keeps the same subscription link, retry-safe
 - Telegram sales bot (buy/renew/custom/status/QR, forced channels + phone, first-time → random site account) · separate backup bot
-- Admin panel — users, plans, payments queue, **Jalali accounting**, per-card deposit report, broadcast, dynamic branding, roles/RBAC, CMS pages, themes
+- Admin panel — users (soft delete + deleted-users archive / restore), services (full edit incl. HWID limit, manual create, link an existing panel account), plans, **live payments queue** (WebSocket), **Jalali accounting**, per-card deposit report, broadcast, dynamic branding, roles/RBAC, CMS pages, themes, **Apps & tools** (Android SMS app + iPhone shortcut downloaded from the server)
+- Fully responsive admin on phones — bottom nav with the payment queue in the centre, every desktop page reachable from the Settings index
+- Offline-safe frontends — all fonts (Vazirmatn / Inter) and assets bundled, no CDN
 - Monitoring — 9 health targets, CPU/RAM/disk, automatic backups, service usage/expiry alerts
 - Menu-driven `install.sh` (install / update / uninstall) + in-panel **Update** button + `VERSION`; **offline / air-gapped** install path; domain changeable with no rebuild
 - Cloudflare DNS automation (A/MX/SPF/DKIM/DMARC); self-hosted mail (Postfix + Dovecot + DKIM); Let's Encrypt **or** manual-upload TLS

@@ -111,3 +111,32 @@ class Page(models.Model):
 
     def __str__(self) -> str:
         return self.slug
+
+
+class AppPlatform(models.TextChoices):
+    ANDROID = "android", "Android SMS bridge app"
+    IOS = "ios", "iPhone shortcut"
+
+
+class AppRelease(models.Model):
+    """The operator tools an admin hands to the phone that receives the bank
+    SMS: the Android "SMS Bridge" APK and the iPhone Shortcut. Files live in
+    private media (never a public URL) and are downloaded from our own server
+    through the admin API — works on an offline / Iran-only server. The
+    Android row falls back to the APK bundled in the repo
+    (mobile_sms/release, mounted at APP_RELEASES_DIR) when nothing was uploaded."""
+
+    platform = models.CharField(max_length=10, choices=AppPlatform.choices, unique=True)
+    file = models.FileField(upload_to="apps/", blank=True)
+    version = models.CharField(max_length=40, blank=True)
+    link = models.URLField(blank=True, help_text="optional external link (e.g. the iCloud shortcut link)")
+    notes = models.TextField(blank=True, help_text="release notes / extra instructions shown to admins")
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.CharField(max_length=150, blank=True)
+
+    class Meta:
+        db_table = "app_release"
+        ordering = ("platform",)
+
+    def __str__(self) -> str:
+        return f"{self.platform} {self.version}".strip()

@@ -6,7 +6,10 @@ one to the CaspinTunel backend so payments can be auto-confirmed.
 
 A pre-built debug APK is committed at
 [`release/CaspinTunelSmsBridge-debug.apk`](release/CaspinTunelSmsBridge-debug.apk)
-— install it directly on the operator's phone, no build step required.
+— install it directly on the operator's phone, no build step required. The same
+file is served from your own server in the admin panel → **Apps & tools**
+(`release/` is mounted into the web container), so it can be downloaded on an
+offline / Iran-only host; a newer APK can be uploaded there too.
 
 ## What it does
 
@@ -52,27 +55,22 @@ be rejected with 401.
 
 ## Creating a device token
 
-There is currently no admin-panel UI for this — it's managed through Django
-admin:
-
-1. Log in to `/admin/` (Django admin, not `/panel/`) with a superuser account.
-2. Go to **Payments_sms → Sms app devices → Add**.
-3. Give it a `name` (e.g. the phone's owner or model) and leave `is_active`
-   checked. Save — the `api_token` is generated automatically.
-4. Copy the generated `api_token` value.
-5. In the app's Settings screen, enter:
+1. Admin panel → **Settings → SMS devices** (mobile: Settings → SMS devices) → **Add device**.
+2. Give it a name (e.g. the phone's owner or model) and save — the token is
+   generated and shown once; copy it (to rotate it, delete the device and add a new one).
+3. In the app's Settings screen, enter:
    - **Server URL**: the base URL of the backend, e.g. `https://panel.example.com`
      (no trailing path — the app appends `/api/v1/payments/sms/...` itself)
-   - **Device token**: the `api_token` you copied
-6. Tap "Save and test connection" — it should report the device name back.
+   - **Device token**: the token you copied
+4. Tap "Save and test connection" — it should report the device name back.
 
-To revoke a device, uncheck `is_active` (or delete the row) in Django admin;
+To revoke a device, disable or delete it in the same list;
 `SmsDeviceAuthentication` rejects inactive/unknown tokens immediately.
 
 ## Configuring allowed sender numbers
 
-The admin panel's Settings page (`/panel/settings`, "شماره‌های بانکی مجاز /
-Allowed SMS Sources" section) manages the `SmsSource` rows the app filters
+The admin panel's Settings page (`/panel/settings/sms-sources`, "شماره‌های بانکی /
+Bank numbers") manages the `SmsSource` rows the app filters
 against — add the bank's deposit-SMS sender number there (e.g. `10008556`
 for Bank Mellat) and it shows up on the phone (main screen, and via
 `GET /api/v1/payments/sms/sources/`) within 30 minutes, or immediately after
