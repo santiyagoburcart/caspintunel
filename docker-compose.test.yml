@@ -1,0 +1,51 @@
+# Isolated test stack — the ONLY way to run the backend test suite.
+# Own project (caspintunel-test), own network, throw-away MySQL + Redis on tmpfs:
+# nothing here can reach the live `db` / `redis` containers.
+#   ./scripts/test.sh [pytest args]
+# config/settings/test.py refuses to start unless the DB host is `test-db`.
+
+services:
+  test-db:
+    image: mysql:8.0
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    environment:
+      MYSQL_ROOT_PASSWORD: test-only-root
+      MYSQL_DATABASE: caspintunel
+    tmpfs: [/var/lib/mysql]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-ptest-only-root"]
+      interval: 2s
+      timeout: 3s
+      retries: 60
+
+  test-redis:
+    image: redis:7-alpine
+    tmpfs: [/data]
+
+  tests:
+    image: caspintunel-backend
+    depends_on:
+      test-db:
+        condition: service_healthy
+      test-redis:
+        condition: service_started
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.test
+      RUN_MIGRATIONS: "0"
+      DB_HOST: test-db
+      DB_PORT: "3306"
+      DB_NAME: caspintunel
+      DB_USER: root
+      DB_PASSWORD: test-only-root
+      REDIS_URL: redis://test-redis:6379/0
+      CELERY_BROKER_URL: redis://test-redis:6379/1
+      CELERY_RESULT_BACKEND: redis://test-redis:6379/2
+      CHANNELS_REDIS_URL: redis://test-redis:6379/3
+      # SECRET_KEY / FIELD_ENCRYPTION_KEY: generated per run by scripts/test.sh
+      SECRET_KEY: ${TEST_SECRET_KEY:?run via scripts/test.sh}
+      FIELD_ENCRYPTION_KEY: ${TEST_FIELD_ENCRYPTION_KEY:?run via scripts/test.sh}
+    volumes:
+      - ./backend:/app
+      - ./mobile_shortcut:/app/mobile_shortcut:ro
+      - ./mobile_sms/release:/app/app_releases:ro
+    command: ["python", "-m", "pytest", "-p", "no:warnings"]

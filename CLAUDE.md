@@ -23,12 +23,25 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   manual `docker compose build` drops the previous image, so there is nothing left to tag.
 - Prod `web` does NOT migrate/collectstatic on boot (`RUN_MIGRATIONS=0`, dev still does); `update.sh` and
   `install.sh` run them. `seed` must stay idempotent and must never overwrite admin-panel values.
-- Tests (the prod `web` image has no tests mounted): one-off container with the source bind-mounted —
-  `docker run --rm --network caspintunel_default --env-file .env -v $PWD/backend:/app -v $PWD/mobile_shortcut:/app/mobile_shortcut:ro -v $PWD/mobile_sms/release:/app/app_releases:ro --entrypoint sh caspintunel-backend -c 'python -m pytest -p no:warnings'`
-  (`--entrypoint sh` skips migrate/seed on the live DB; `pytest.ini` forces `config.settings.test` = own test
-  DB + locmem cache — **never override `addopts`**, that drops `--ds` and runs on prod settings/Redis).
+- Tests: **only** `./scripts/test.sh [pytest args]` — isolated stack (`docker-compose.test.yml`, project
+  `caspintunel-test`, own network, throw-away MySQL + Redis on tmpfs, per-run keys, nothing from `.env`).
   Browser checks: Playwright image `mcr.microsoft.com/playwright:v1.49.1-noble` against the live site with
   writes blocked in-browser (never create fake data in the prod DB).
+
+## Safety (hard rules — live site with real users)
+- **Never run tests, scripts or verification commands against the live database or live Redis.** All tests
+  use the isolated test stack above. `config/settings/test.py` refuses to start unless the DB host is
+  `test-db` and Redis hosts are `test-redis`; production names/addresses are refused even if allow-listed.
+  Never bypass or weaken that guard.
+- **Ask first, in chat, and wait for an explicit "yes"** before any command that could flush, delete,
+  truncate or overwrite live data: Redis `FLUSHDB`/`FLUSHALL`/`DEL` on live keys, SQL `DROP`/`TRUNCATE`/
+  `DELETE` or `UPDATE` without a `WHERE`, `docker volume rm` / `docker compose down -v`, `rm -rf` on data
+  dirs (`backups/`, `mail/`, `nginx/letsencrypt/`, `/data/`), restoring a DB dump, `git clean` in the repo.
+  Don't put such a command in a script "for later" or behind an echo — if unsure, don't run it.
+- Read-only inspection of live state (SELECTs, `redis-cli --scan`, logs, `docker inspect`) is fine. Live
+  verification may only issue read requests or writes that are blocked in-browser.
+- Before running a one-off container on the live network (`caspintunel_default`), remember the image
+  entrypoint migrates the DB unless `RUN_MIGRATIONS=0` / `--entrypoint` is set.
 
 ## Conventions
 - API-first under `/api/v1/`; admin API `/api/v1/admin/…` uses the **separate `Staff` model** + staff JWT +
