@@ -53,6 +53,13 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
 - A `position: fixed` child of a `backdrop-filter` element is positioned relative to that element — render
   overlays/sheets through a portal to `<body>`.
 - `--c-surface` is translucent in dark themes; solid panels need `var(--c-bg)` underneath.
+- CSS grids: an implicit/`1fr` column grows to its longest item (e.g. a subscription URL) and overflows
+  phones. Use `grid-cols-1` / `minmax(0,1fr)` / `repeat(auto-fit, minmax(min(100%,Npx),1fr))` + `min-w-0`.
+- Media: only `/media/branding/` is public (served by Django on the dev-compose server, `DEBUG=False`);
+  receipts and operator apps are private and only reachable through auth-checked API views.
+- UI audits against the live server: the anonymous throttle is 60/min per IP (`/config/`, `/pages/`), and
+  the SPAs are Vite dev servers — heavy parallel loads make both fail. Snapshot public endpoints and keep
+  concurrency low; never switch the live active theme (intercept `/api/v1/theme/` instead).
 - Tests that call `transaction.on_commit` work need `@pytest.mark.django_db(transaction=True)` and a stubbed
   `fulfill_order.delay` (no panel in tests). Bot handler tests must stub `close_old_connections`.
 

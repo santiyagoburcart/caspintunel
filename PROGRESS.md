@@ -245,6 +245,11 @@ pending), `telegram_stats` population, a few secondary admin screens.
     but is only reached for paid orders.
   - Telegram bot / Mini App users never pass sign-up → `terms_accepted_at` stays null.
   - Bundled Android APK is a **debug** build.
+  - **Audit 2026-09-25 open items** (need a product decision): user-site mobile has no bottom tab bar
+    (Stitch has one); admin mobile KPI cards stack full-width (Stitch: compact 2-col); fa pages mix Latin
+    and Persian digits (Caspian "Latin numbers" choice vs `digits()` elsewhere); anonymous API throttle
+    60/min/IP may hit users behind carrier NAT; production runs the dev compose (Vite dev servers +
+    runserver); bank card #1 has 14 digits (check the number customers pay to).
   - iPhone Shortcut: iOS imports only signed files (`shortcuts sign --mode anyone` on a Mac, or an iCloud
     link) — cannot be signed on this Linux server. The Message-automation binding (`Shortcut Input`,
     `Sender`) is checked structurally in tests, not on a real iPhone.
@@ -252,6 +257,16 @@ pending), `telegram_stats` population, a few secondary admin screens.
 ---
 
 ## Session log
+- 2026-09-25 — **Full UI audit + v1.4.0.** Real app (read-only page views, live data; only `/theme/` and the
+  static public endpoints intercepted): 43 routes × Caspian light/dark, Aurora dark/light, Frost × fa/en ×
+  360/390/768/1440 = 1,720 renders + functional checks (bottom nav, all 22 settings-hub links, live sockets,
+  error/empty states) + 45 Stitch side-by-sides. **Fixed**: logo/favicon 404 on the live site (Django now serves
+  only `/media/branding/`); Aurora/Frost user dashboard card overflow on phones (≈460 px) and header overflow at
+  768 px (nav from `lg`); admin Cards/Accounting KPI grids overflow at 768 px; duplicate back button on
+  transaction detail (Caspian mobile); admin notifications history ignored `title_en`; bank card numbers
+  normalized to ASCII digits (+ 12–19 digit check). Stale browser suites updated for sign-up terms. Toggles
+  verified ON #11AB53 / OFF dark on every page and theme; no Gregorian dates in fa; no window dialogs; one copy
+  helper. Backend **363 passed**, browser suites **119/119**, functional **36/36**.
 - 2026-09-25 — **Memory + iPhone Shortcut + migration repair.** The phases 4–6 review brief
   (`docs/review-phases-4-6.md`) was folded into `CLAUDE.md` (new: conventions, gotchas, secrets) and the
   "Current state & open items" section above, then deleted. **Production schema bug fixed**: an unmerged

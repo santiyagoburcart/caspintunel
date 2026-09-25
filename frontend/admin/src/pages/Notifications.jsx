@@ -190,7 +190,7 @@ export default function Notifications() {
               <tbody>
                 {rows.map((n) => (
                   <tr key={n.id} className="border-b last:border-0" style={{ borderColor: 'var(--c-border)' }}>
-                    <td data-label={s.col_title} className="p-3 font-semibold">{n.title}</td>
+                    <td data-label={s.col_title} className="p-3 font-semibold">{(lang === 'en' && n.title_en) || n.title}</td>
                     <td data-label={s.col_sent_by} className="p-3 text-muted">{n.sent_by || '—'}</td>
                     <td data-label={s.col_target} className="p-3">{n.target_user ? `#${n.target_user}` : s.target_all}</td>
                     <td data-label={s.col_channels} className="p-3 text-xs text-muted">

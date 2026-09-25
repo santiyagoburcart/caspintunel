@@ -210,3 +210,9 @@ def test_theme_activate_and_public(boss, api):
     t1.refresh_from_db()
     assert t1.is_active is False
     assert api.get("/api/v1/theme/").data["name"] == "Sunset"
+
+
+def test_bank_card_number_is_normalized(boss):
+    r = boss.post("/api/v1/admin/cards/", {"card_number": "۶۰۳۷-۹۹۱۲ ۳۴۵۶ ۷۸۹۰", "holder_name": "H"}, format="json")
+    assert r.status_code == 201 and r.data["card_number"] == "6037991234567890"
+    assert boss.post("/api/v1/admin/cards/", {"card_number": "12ab", "holder_name": "H"}, format="json").status_code == 400

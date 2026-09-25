@@ -257,6 +257,16 @@ class AdminBankCardSerializer(serializers.ModelSerializer):
     def get_deposit_total(self, obj) -> int | None:
         return getattr(obj, "deposit_total", None)
 
+    def validate_card_number(self, value):
+        # store ASCII digits only ("۶۰۳۷-۹۹…" / "6037 99…" -> "603799…") so display
+        # grouping and comparisons behave the same for every card
+        from apps.payments_sms.parsing import normalize_digits
+
+        digits = "".join(ch for ch in normalize_digits(value or "") if ch.isdigit())
+        if not 12 <= len(digits) <= 19:
+            raise serializers.ValidationError("card number must have 12–19 digits (Iranian cards have 16)")
+        return digits
+
     def get_deposit_count(self, obj) -> int | None:
         return getattr(obj, "deposit_count", None)
 

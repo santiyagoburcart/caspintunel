@@ -414,6 +414,8 @@ const CSS = `
 }
 .txd-back:hover { background: color-mix(in srgb, var(--c-primary) 8%, transparent); }
 [dir="rtl"] .txd-back .txd-ico { transform: scaleX(-1); }
+/* Caspian phones: the mobile top bar already has a back button */
+@media (max-width: 767px) { [data-theme-style="caspian"] .txd-back { display: none; } }
 .txd-header-txt { min-width: 0; }
 .txd-header-t { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .txd-header-t h1 { font-size: 17px; font-weight: 700; line-height: 1.3; }

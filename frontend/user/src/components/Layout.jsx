@@ -43,7 +43,7 @@ function LegacyLayout() {
   return (
     <div className="min-h-full aurora">
       <header className="glass sticky top-0 z-20 m-3 flex items-center gap-2 px-3 py-3 sm:gap-3 sm:px-4">
-        <button className="btn-ghost text-sm md:hidden" onClick={() => setOpen(true)} aria-label="menu">☰</button>
+        <button className="btn-ghost text-sm lg:hidden" onClick={() => setOpen(true)} aria-label="menu">☰</button>
 
         <div className="flex min-w-0 items-center gap-2 font-bold">
           {config?.logo
@@ -52,7 +52,7 @@ function LegacyLayout() {
           <span className="truncate">{lang === 'fa' ? config?.site_name_fa || 'کسپین تانل' : config?.site_name_en || 'caspintunel'}</span>
         </div>
 
-        <nav className="hidden gap-1 md:flex">
+        <nav className="hidden gap-1 lg:flex">
           {links.map(([to, key]) => (
             <NavLink key={to} to={to} end
               className={({ isActive }) => `btn-ghost text-sm ${isActive ? 'text-primary' : ''}`}>
@@ -69,7 +69,7 @@ function LegacyLayout() {
           <button className="btn-ghost text-sm" onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')}>
             {lang === 'fa' ? 'EN' : 'فا'}
           </button>
-          <span className="hidden text-sm text-muted sm:inline">{user?.name || user?.username}</span>
+          <span className="hidden text-sm text-muted lg:inline">{user?.name || user?.username}</span>
           {!inTelegram && (
             <button className="btn-ghost text-sm" onClick={() => logout().then(() => nav('/login'))}>{t('logout')}</button>
           )}
@@ -77,7 +77,7 @@ function LegacyLayout() {
       </header>
 
       {open && (
-        <div className="fixed inset-0 z-30 md:hidden" onClick={() => setOpen(false)}>
+        <div className="fixed inset-0 z-30 lg:hidden" onClick={() => setOpen(false)}>
           <div className="absolute inset-0 bg-black/40" />
           <nav
             className="glass absolute inset-y-0 start-0 flex w-64 flex-col gap-1 overflow-y-auto p-3"

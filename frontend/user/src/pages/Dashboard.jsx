@@ -132,7 +132,7 @@ function LegacyDashboard() {
       </div>
       {items === null ? <div className="grid place-items-center py-16"><Spinner /></div>
         : items.length === 0 ? <div className="card text-center text-muted">{t('no_services')}</div>
-        : <div className="grid gap-4 sm:grid-cols-2">
+        : <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {items.map((s) => (
               <LegacyServiceCard key={s.id} s={s} t={t} lang={lang} onRefresh={refreshOne}
                 onRenewClick={() => renewFlow.startRenew(s.id)} />
@@ -158,9 +158,9 @@ function LegacyServiceCard({ s, t, lang, onRefresh, onRenewClick }) {
     try { await onRefresh(s.id) } catch (e) { setErr(apiError(e)) } finally { setBusy(false) }
   }
   return (
-    <div className="card space-y-3">
+    <div className="card min-w-0 space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <span dir="ltr" className="truncate font-bold">{s.panel_username}</span>
+        <span dir="ltr" className="min-w-0 truncate font-bold">{s.panel_username}</span>
         <div className="flex shrink-0 items-center gap-1">
           {waiting && (
             <button className="btn-ghost px-1.5 py-0.5 text-sm leading-none" onClick={refresh} disabled={busy}

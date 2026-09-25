@@ -341,11 +341,10 @@ const CSS = `
 .cd-add { flex-shrink: 0; }
 .cd-badge { font-size: 11px; font-weight: 700; padding: 2px 10px; border-radius: 999px; background: color-mix(in srgb, var(--c-primary) 14%, transparent); color: var(--c-primary); white-space: nowrap; }
 
-.cd-metrics { display: grid; grid-template-columns: 1fr; gap: 14px; }
-@media (min-width: 768px) { .cd-metrics { grid-template-columns: repeat(3, 1fr); } }
-.cd-metric { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.cd-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 14px; }
+.cd-metric { min-width: 0; display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
 .cd-metric-label { font-size: 12px; font-weight: 600; color: var(--c-text-muted); }
-.cd-metric-val { font-size: 20px; font-weight: 800; letter-spacing: -.01em; margin-top: 5px; }
+.cd-metric-val { overflow-wrap: anywhere; font-size: 20px; font-weight: 800; letter-spacing: -.01em; margin-top: 5px; }
 .cd-metric-unit { font-size: 11px; font-weight: 500; color: var(--c-text-muted); }
 .cd-metric-sub { font-size: 11px; color: var(--c-text-muted); margin-top: 4px; }
 .cd-metric-ico { width: 46px; height: 46px; border-radius: 13px; display: grid; place-items: center; flex-shrink: 0; }

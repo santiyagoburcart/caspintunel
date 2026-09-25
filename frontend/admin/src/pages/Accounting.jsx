@@ -303,14 +303,13 @@ const CSS = `
 .acc-tool-btn:hover { color: var(--c-primary); border-color: var(--c-primary); }
 .acc-tool-badge { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--c-primary); }
 
-.acc-kpis { display: grid; grid-template-columns: 1fr; gap: 14px; }
-@media (min-width: 720px) { .acc-kpis { grid-template-columns: repeat(3, 1fr); } }
-.acc-kpi { display: flex; flex-direction: column; gap: 6px; }
+.acc-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 14px; }
+.acc-kpi { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .acc-kpi--main { border-color: color-mix(in srgb, #1464BA 30%, var(--c-border)); }
 .acc-kpi-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
 .acc-kpi-label { font-size: 12px; font-weight: 600; color: var(--c-text-muted); }
 .acc-kpi-ico { width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; flex-shrink: 0; }
-.acc-kpi-val { font-size: 22px; font-weight: 800; letter-spacing: -.01em; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.acc-kpi-val { overflow-wrap: anywhere; font-size: 22px; font-weight: 800; letter-spacing: -.01em; font-family: 'JetBrains Mono', ui-monospace, monospace; }
 .acc-kpi-val--sm { font-size: 13px; font-weight: 700; }
 .acc-kpi-sub { font-size: 11.5px; color: var(--c-text-muted); display: flex; align-items: center; gap: 4px; }
 .acc-kpi-sub.up { color: var(--c-success); } .acc-kpi-sub.down { color: var(--c-danger); }
