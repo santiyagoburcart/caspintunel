@@ -260,3 +260,13 @@ def boss(superadmin, staff_client):
 def _outbox_isolation():
     mail.outbox = []
     yield
+
+
+def test_login_required_is_not_reported_as_sender_problem(boss, smtp):
+    """Brevo without credentials answers MAIL FROM with 502 5.7.0 "Please
+    authenticate first" (smtplib raises SMTPSenderRefused) — seen live."""
+    relay(username="", password="")
+    smtp.fail_on, smtp.exc = "sender", smtplib.SMTPSenderRefused(502, b"5.7.0 Please authenticate first", "no-reply@aicaspin.ir")
+    r = boss.post(URL + "test/", {"to": "probe@example.com"}, format="json")
+    assert r.data["code"] == "auth_required" and "requires login" in r.data["en"]
+    assert "authenticate first" in r.data["raw"]

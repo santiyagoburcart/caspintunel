@@ -126,7 +126,17 @@ def mail_configured() -> bool:
 def describe_smtp_error(exc: BaseException) -> dict:
     """Map an SMTP/socket exception to a short code + readable fa/en text."""
     raw = str(exc) or exc.__class__.__name__
-    if isinstance(exc, smtplib.SMTPAuthenticationError):
+    low = raw.lower()
+    # servers that need a login often reject MAIL FROM (smtplib then raises
+    # SMTPSenderRefused) — the reply text says what's really wrong
+    auth_required = isinstance(exc, smtplib.SMTPResponseException) and not isinstance(
+        exc, smtplib.SMTPAuthenticationError) and any(
+        k in low for k in ("authenticate first", "authentication required", "auth required", "must authenticate",
+                           "not authenticated", "relay access denied", "5.7.0 authentication"))
+    if auth_required:
+        code, fa, en = ("auth_required", "سرور ورود (نام کاربری و رمز SMTP) می‌خواهد — نام کاربری و رمز را وارد و ذخیره کنید.",
+                        "The server requires login — enter the SMTP username and password and save.")
+    elif isinstance(exc, smtplib.SMTPAuthenticationError):
         code, fa, en = ("auth_failed", "احراز هویت ناموفق — نام کاربری یا رمز SMTP را سرویس‌دهنده رد کرد.",
                         "Authentication failed — the provider rejected the SMTP username or password.")
     elif isinstance(exc, smtplib.SMTPSenderRefused):
