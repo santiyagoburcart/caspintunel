@@ -21,6 +21,7 @@ import Settings from './pages/Settings'
 import Notifications from './pages/Notifications'
 import Apps from './pages/Apps'
 import { PanelConnection, Bots } from './pages/Integrations'
+import EmailSettings from './pages/EmailSettings'
 import { Pages, Roles, Themes } from './pages/Simple'
 
 function Private({ children }) {
@@ -53,6 +54,7 @@ export default function App() {
         <Route path="/bots" element={<Bots />} />
         <Route path="/branding" element={<Branding />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/settings/email" element={<EmailSettings />} />
         <Route path="/settings/:section" element={<Settings />} />
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/apps" element={<Apps />} />

@@ -15,6 +15,7 @@ from .views.catalog import (
     StaffViewSet,
     ThemeViewSet,
 )
+from .views.email import EmailSettingsView, EmailTestView
 from .views.finance import (
     AccountingView,
     PaymentDecisionView,
@@ -24,7 +25,6 @@ from .views.finance import (
 from .views.integrations import (
     BackupTestView,
     BotStatsView,
-    EmailStatusView,
     PanelAdminViewSet,
     PanelConfigView,
     PanelGroupsView,
@@ -78,7 +78,8 @@ urlpatterns = [
     path("integrations/telegram/", TelegramConfigView.as_view(), name="admin-telegram-config"),
     path("bots/stats/", BotStatsView.as_view(), name="admin-bots-stats"),
     path("bots/backup-test/", BackupTestView.as_view(), name="admin-bots-backup-test"),
-    path("integrations/email/", EmailStatusView.as_view(), name="admin-email-status"),
+    path("email/", EmailSettingsView.as_view(), name="admin-email-settings"),
+    path("email/test/", EmailTestView.as_view(), name="admin-email-test"),
     path("apps/", AppReleaseListView.as_view(), name="admin-apps"),
     path("apps/<str:platform>/", AppReleaseDetailView.as_view(), name="admin-app-release"),
     path("apps/<str:platform>/download/", AppReleaseDownloadView.as_view(), name="admin-app-download"),

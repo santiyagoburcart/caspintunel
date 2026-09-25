@@ -3,8 +3,8 @@ Send a test email through whatever mail path is currently configured.
 
     docker compose exec web python manage.py send_test_email you@example.com
 
-Use it after setting SMTP_RELAY_* (and restarting the mailserver) to confirm
-that mail actually leaves the box and reaches an external inbox.
+Uses the same path as every app email (apps.common.mail): admin-panel relay →
+.env EMAIL_* → local mailserver.
 """
 from django.conf import settings
 from django.core.mail import get_connection, send_mail
@@ -18,19 +18,18 @@ class Command(BaseCommand):
         parser.add_argument("to", help="destination address")
 
     def handle(self, *args, **opts):
+        from apps.common.mail import describe_smtp_error, resolve_mail_config
+
         to = opts["to"]
-        host = settings.EMAIL_HOST or "(not set)"
+        cfg = resolve_mail_config()
         self.stdout.write(
-            f"backend  : {settings.EMAIL_BACKEND}\n"
-            f"host:port : {host}:{settings.EMAIL_PORT}  (TLS={settings.EMAIL_USE_TLS})\n"
-            f"from      : {settings.DEFAULT_FROM_EMAIL}\n"
+            f"source    : {cfg.source}  (admin-panel relay → .env EMAIL_* → local mailserver)\n"
+            f"host:port : {cfg.host or '(not set)'}:{cfg.port}  (STARTTLS={cfg.use_tls} SSL={cfg.use_ssl})\n"
+            f"from      : {cfg.from_email or settings.DEFAULT_FROM_EMAIL}\n"
             f"to        : {to}\n"
         )
-        if not settings.EMAIL_HOST and "smtp" in settings.EMAIL_BACKEND:
-            raise CommandError(
-                "EMAIL_HOST is empty — mail is disabled. Set EMAIL_HOST (and, for "
-                "external delivery, SMTP_RELAY_* on the mailserver)."
-            )
+        if not cfg.configured:
+            raise CommandError("No SMTP configured — set the relay in the admin panel (Settings → Email).")
         try:
             sent = send_mail(
                 subject=f"{settings.PROJECT_NAME} — test email",
@@ -45,12 +44,10 @@ class Command(BaseCommand):
                 fail_silently=False,
             )
         except Exception as exc:  # noqa: BLE001 - surface the real error to the operator
-            raise CommandError(f"send failed: {exc!r}") from exc
+            d = describe_smtp_error(exc)
+            raise CommandError(f"send failed [{d['code']}]: {d['en']} — {d['raw']}") from exc
 
         if sent:
-            self.stdout.write(self.style.SUCCESS(
-                "handed to the mail server. Check the inbox; if it never arrives, "
-                "check `docker compose logs mailserver` for a relay/auth error."
-            ))
+            self.stdout.write(self.style.SUCCESS("accepted by the SMTP server. Check the inbox."))
         else:
             raise CommandError("send_mail returned 0 — not sent.")

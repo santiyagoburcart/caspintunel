@@ -3,6 +3,8 @@ import json
 from django.core.exceptions import ValidationError
 from django.db import models
 
+from apps.common.fields import EncryptedTextField
+
 
 class ValueType(models.TextChoices):
     STR = "str", "String"
@@ -140,3 +142,45 @@ class AppRelease(models.Model):
 
     def __str__(self) -> str:
         return f"{self.platform} {self.version}".strip()
+
+
+class EmailSecurity(models.TextChoices):
+    STARTTLS = "starttls", "STARTTLS"
+    SSL = "ssl", "SSL/TLS"
+    NONE = "none", "None"
+
+
+class EmailSettings(models.Model):
+    """Outgoing-mail relay, edited in the admin panel (single row).
+
+    Django talks to the relay DIRECTLY (apps.common.mail.DynamicEmailBackend),
+    so a change applies on the next send — no container restart, and the web
+    app never touches the mailserver container. Fallback when `enabled` is off:
+    .env SMTP settings → local mailserver (see CLAUDE.md)."""
+
+    enabled = models.BooleanField(default=False)
+    host = models.CharField(max_length=255, blank=True)
+    port = models.PositiveIntegerField(default=587)
+    security = models.CharField(max_length=10, choices=EmailSecurity.choices, default=EmailSecurity.STARTTLS)
+    username = models.CharField(max_length=255, blank=True)
+    password = EncryptedTextField(blank=True, help_text="stored encrypted at rest; never returned by the API")
+    from_email = models.EmailField(blank=True)
+    from_name = models.CharField(max_length=120, blank=True)
+    # delivery status, written by the backend on every app email
+    last_success_at = models.DateTimeField(null=True, blank=True)
+    last_error = models.TextField(blank=True)
+    last_error_at = models.DateTimeField(null=True, blank=True)
+    last_source = models.CharField(max_length=10, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "email_settings"
+        verbose_name_plural = "email settings"
+
+    def __str__(self) -> str:
+        return f"email relay {'on' if self.enabled else 'off'} ({self.host or '-'})"
+
+    @classmethod
+    def load(cls) -> "EmailSettings":
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj

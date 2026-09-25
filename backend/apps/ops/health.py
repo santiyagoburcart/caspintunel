@@ -129,14 +129,10 @@ def _run_panel_checks():
 
 
 def _check_mail():
-    if not settings.EMAIL_HOST:
-        return False, "SMTP not configured"
-    from django.core.mail import get_connection
+    # the server the app would use right now: admin-panel relay → .env → local
+    from apps.common.mail import probe_connection
 
-    conn = get_connection(fail_silently=False)
-    conn.open()
-    conn.close()
-    return True, "SMTP reachable"
+    return probe_connection()
 
 
 _PROBES = {

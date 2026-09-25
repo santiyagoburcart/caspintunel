@@ -46,3 +46,19 @@ def _connect_public_cache():
 
 
 _connect_public_cache()
+
+
+def _email_settings_saved(sender, **kwargs):
+    # every process (gunicorn, celery, bots) reloads the relay on its next send
+    from apps.common.mail import bump_email_settings_version
+
+    bump_email_settings_version()
+
+
+def _connect_email_settings():
+    from .models import EmailSettings
+
+    post_save.connect(_email_settings_saved, sender=EmailSettings, dispatch_uid="email-settings-save")
+
+
+_connect_email_settings()

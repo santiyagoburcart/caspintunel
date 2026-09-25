@@ -24,6 +24,7 @@ const HUB_ICONS = {
   pages: <path d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />,
   sms_devices: <><path d="M7 4h10a1 1 0 011 1v14a1 1 0 01-1 1H7a1 1 0 01-1-1V5a1 1 0 011-1z" /><line x1="11" y1="18" x2="13" y2="18" /></>,
   sms_sources: <><path d="M3 21h18M4 10h16M6 21V10M18 21V10M12 3l9 5H3l9-5z" /></>,
+  email: <path d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />,
   alerts: <><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></>,
   unique_amount: <><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" /></>,
   requirements: <><path d="M5 11h14v10H5z" /><path d="M8 11V7a4 4 0 018 0v4" /></>,
@@ -48,6 +49,7 @@ const HUB = {
     themes: { t: 'پوسته و استایل', d: 'انتخاب پوستهٔ رنگی فعال سامانه' },
     panel: { t: 'اتصال پنل پاسارگارد', d: 'مدیریت سرورها و گروه‌های نود' },
     bots: { t: 'ربات‌های تلگرام', d: 'ربات فروش، بک‌آپ و عضویت اجباری' },
+    email: { t: 'تنظیمات ایمیل', d: 'سرور SMTP، فرستنده و ایمیل آزمایشی' },
     sms_devices: { t: 'دستگاه‌های SMS', d: 'دستگاه‌های مجاز ارسال پیامک واریزی' },
     sms_sources: { t: 'شماره‌های بانکی', d: 'شماره‌های فرستندهٔ مجاز پیامک بانک' },
     alerts: { t: 'هشدارها', d: 'آستانهٔ هشدار حجم و انقضا' },
@@ -75,6 +77,7 @@ const HUB = {
     themes: { t: 'Theme & style', d: "Pick the system's active colour theme" },
     panel: { t: 'Pasargad panel connection', d: 'Manage servers and node groups' },
     bots: { t: 'Telegram bots', d: 'Sales bot, backup bot, forced join' },
+    email: { t: 'Email settings', d: 'SMTP relay, sender and test email' },
     sms_devices: { t: 'SMS devices', d: 'Devices authorized to forward deposit SMS' },
     sms_sources: { t: 'Bank numbers', d: 'Authorized sender numbers for bank SMS' },
     alerts: { t: 'Alerts', d: 'Volume and expiry warning thresholds' },
@@ -104,7 +107,7 @@ const HUB = {
 const HUB_COLOR = {
   themes: '#DB2777', branding: '#DB2777',
   panel: '#1464BA',
-  bots: '#7C3AED',
+  bots: '#7C3AED', email: '#0891B2',
   sms_devices: '#11AB53', sms_sources: '#11AB53', unique_amount: '#11AB53',
   alerts: 'var(--c-warning)',
   requirements: '#D97706', roles: '#D97706',
@@ -132,6 +135,7 @@ const HUB_GROUPS = [
     ['/monitoring', 'monitoring', 'monitoring.view'],
     ['/panel-link', 'panel', 'settings.manage'],
     ['/bots', 'bots', 'bots.manage'],
+    ['/settings/email', 'email', 'settings.email'],
     ['/apps', 'apps', 'settings.manage'],
     ['/branding', 'branding', 'settings.manage'],
     ['/themes', 'themes', 'themes.manage'],
@@ -658,6 +662,7 @@ function SmsDevicesSection({ t, s, lang }) {
 
 export default function Settings() {
   const { t, lang } = useI18n()
+  const { can } = useAuth()
   const toast = useToast()
   const s = T[lang] || T.fa
   const h = HINT[lang] || HINT.fa
@@ -770,6 +775,19 @@ export default function Settings() {
       </div>
 
       <Alert>{err}</Alert>
+
+      {!hasAnchor && can('settings.email') && (
+        <Link to="/settings/email" className="card st-card flex items-center gap-3" style={{ textDecoration: 'none', color: 'inherit' }}>
+          <span className="st-hub-ico" style={{ background: 'color-mix(in srgb, #0891B2 14%, transparent)', color: '#0891B2' }}>
+            <HubIco d={HUB_ICONS.email} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-bold text-sm">{(HUB[lang] || HUB.fa).email.t}</span>
+            <span className="block text-xs text-muted mt-0.5">{(HUB[lang] || HUB.fa).email.d}</span>
+          </span>
+          <span className="st-hub-chev"><HubIco d={HUB_ICONS.chevron} w={16} /></span>
+        </Link>
+      )}
 
       <form id="settings-form" onSubmit={save} className="space-y-4">
         {amountNums.length > 0 && (

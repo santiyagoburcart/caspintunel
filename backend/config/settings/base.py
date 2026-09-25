@@ -304,7 +304,10 @@ CHANNEL_LAYERS = {
 # ---------------------------------------------------------------------------
 # Email — graceful during outages (see apps.notifications later)
 # ---------------------------------------------------------------------------
-EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.smtp.EmailBackend")
+# Every app email goes through DynamicEmailBackend: it picks the SMTP server
+# at send time — admin-panel relay (DB) → the EMAIL_* values below (.env) →
+# the local mailserver. See apps/common/mail.py.
+EMAIL_BACKEND = "apps.common.mail.DynamicEmailBackend"
 EMAIL_HOST = env("EMAIL_HOST", default="")
 EMAIL_PORT = env.int("EMAIL_PORT", default=587)
 EMAIL_HOST_USER = env("EMAIL_USER", default="")

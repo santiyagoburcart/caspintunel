@@ -15,7 +15,10 @@ log = logging.getLogger("caspintunel")
 
 
 def smtp_configured() -> bool:
-    return bool(settings.EMAIL_HOST)
+    """Admin-panel relay, .env SMTP or the local mailserver (apps.common.mail)."""
+    from apps.common.mail import mail_configured
+
+    return mail_configured()
 
 
 def _safe_send(subject: str, body: str, to: str) -> bool:

@@ -9,7 +9,7 @@ def perms(db):
     codes = [
         "users.view", "users.manage", "plans.manage", "payment.view", "payment.approve",
         "accounting.view", "broadcast.send", "settings.manage", "roles.manage",
-        "pages.manage", "themes.manage", "monitoring.view", "audit.view", "sms.manage",
+        "pages.manage", "themes.manage", "monitoring.view", "audit.view", "sms.manage", "settings.email",
         "bots.manage", "services.manage",
     ]
     # get_or_create: "services.manage" (and any future perm seeded by a data

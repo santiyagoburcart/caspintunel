@@ -109,8 +109,13 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   + changelog in `mobile_shortcut/README.md`.** Keep the two action UUIDs the backend looks for.
 
 ## Secrets / .env
-- Mail: `mailserver` is `SMTP_ONLY` (send-only). This server blocks outbound 25 → real delivery needs
-  `SMTP_RELAY_*` (see `docs/email-relay.md`).
+- Mail: every app email uses `EMAIL_BACKEND = apps.common.mail.DynamicEmailBackend`, which picks the server
+  at send time: **admin-panel relay (`EmailSettings`, enabled) → `.env` `EMAIL_*` (external host) → local
+  `mailserver`** (`SMTP_ONLY`; needs `SMTP_RELAY_*` since this server blocks outbound 25). The web app never
+  touches the mailserver container. Settings are cached 30 s per process + a version key bumped on save
+  (password never in Redis). Status (`last_success_at`/`last_error`) is written on every send. Always send
+  through `send_mail`/`EmailMessage` (never `smtplib` directly); UI: `/panel/settings/email`,
+  permission `settings.email`.
 - Nothing secret in git: `.env` (gitignored, backups `.env.bak*` too), device tokens, panel/bot credentials
   live in the DB (encrypted fields where sensitive). Grep the diff for tokens before every commit.
 - `.env` = infrastructure + secrets only; `.env.example` documents every variable. Panels, bot tokens, sync

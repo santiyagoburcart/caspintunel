@@ -276,33 +276,4 @@ def test_channels_require_bots_manage(staff_client, perms):
     assert ok.get("/api/v1/admin/channels/").status_code == 200
 
 
-# --- email status -------------------------------------------------
-def test_email_status_reports_relay_state(boss, settings):
-    settings.EMAIL_HOST = "mailserver"
-    settings.EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-    settings.SMTP_RELAY_HOST = ""
-    r = boss.get("/api/v1/admin/integrations/email/")
-    assert r.status_code == 200
-    assert r.data["configured"] is True
-    assert r.data["relay_configured"] is False
-    assert r.data["external_delivery_ready"] is False
-
-    settings.SMTP_RELAY_HOST = "smtp.mailgun.org"
-    r = boss.get("/api/v1/admin/integrations/email/")
-    assert r.data["relay_configured"] is True
-    assert r.data["external_delivery_ready"] is True
-
-
-def test_email_test_send_uses_locmem_backend(boss, settings):
-    settings.EMAIL_HOST = "mailserver"
-    settings.EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
-    from django.core import mail
-    mail.outbox = []
-    r = boss.post("/api/v1/admin/integrations/email/", {"to": "ops@example.com"}, format="json")
-    assert r.status_code == 200 and r.data["ok"] is True
-    assert len(mail.outbox) == 1 and mail.outbox[0].to == ["ops@example.com"]
-
-
-def test_email_status_requires_settings_manage(staff_client, perms):
-    weak = staff_client(make_staff("weak3", ["monitoring.view"], perms))
-    assert weak.get("/api/v1/admin/integrations/email/").status_code == 403
+# email settings + test send: see test_email_settings.py

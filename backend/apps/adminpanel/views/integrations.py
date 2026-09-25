@@ -5,12 +5,9 @@ after install: the Pasargad panel connection and the two Telegram bots.
 Secrets (panel password, bot tokens) are write-only — a GET never returns them,
 only a boolean saying whether one is stored.
 """
-from django.conf import settings
-from django.core.mail import get_connection, send_mail
 from django.db import transaction
 from django.db.models import ProtectedError
 from drf_spectacular.utils import extend_schema
-from rest_framework import serializers
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
@@ -419,73 +416,3 @@ class RequiredChannelViewSet(AdminViewSet):
             "ok": bot_is_admin, "bot_is_admin": bot_is_admin,
             "title": title, "member_count": member_count, "detail": detail,
         })
-
-
-class _EmailTestSerializer(serializers.Serializer):
-    to = serializers.EmailField()
-
-
-class EmailStatusView(AdminAPIView):
-    """Read-only view of the outbound-mail configuration + a 'send test' action.
-
-    Relay credentials themselves live in `.env` (SMTP_RELAY_*) because they are
-    consumed by the mailserver container at start-up, not by Django — this screen
-    only reports the resulting state and lets the operator send a probe."""
-
-    perms_map = {"GET": ["settings.manage"], "POST": ["settings.manage"]}
-    serializer_class = _EmailTestSerializer
-
-    @extend_schema(responses=dict, summary="Outbound email configuration status")
-    def get(self, request):
-        host = settings.EMAIL_HOST or ""
-        backend = settings.EMAIL_BACKEND
-        inert = ("dummy" in backend) or ("console" in backend)
-        via_local_mailserver = host in ("mailserver", "mail", "localhost", "127.0.0.1")
-        relay = bool(getattr(settings, "SMTP_RELAY_HOST", ""))
-        return Response({
-            "configured": bool(host) and not inert,
-            "backend": backend.rsplit(".", 2)[-2] if "." in backend else backend,
-            "host": host,
-            "port": settings.EMAIL_PORT,
-            "use_tls": settings.EMAIL_USE_TLS,
-            "from_address": settings.DEFAULT_FROM_EMAIL,
-            "via_local_mailserver": via_local_mailserver,
-            "relay_configured": relay,
-            "relay_host": getattr(settings, "SMTP_RELAY_HOST", "") or "",
-            # external delivery needs EITHER a direct provider host OR a relay
-            "external_delivery_ready": bool(host) and not inert and (relay or not via_local_mailserver),
-            "verification_required": _verification_required(),
-        })
-
-    @extend_schema(request=_EmailTestSerializer, responses=dict,
-                   summary="Send a test email to the given address")
-    def post(self, request):
-        ser = _EmailTestSerializer(data=request.data)
-        ser.is_valid(raise_exception=True)
-        to = ser.validated_data["to"]
-        if not settings.EMAIL_HOST:
-            return Response({"ok": False, "detail": "EMAIL_HOST پیکربندی نشده است."}, status=400)
-        try:
-            sent = send_mail(
-                subject=f"{settings.PROJECT_NAME} — test email",
-                message="This is a test message from your caspintunel admin panel.\n",
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[to],
-                connection=get_connection(fail_silently=False),
-                fail_silently=False,
-            )
-        except Exception as exc:  # noqa: BLE001 - report the SMTP error verbatim
-            return Response({"ok": False, "detail": str(exc)})
-        write_audit(action="email.test_sent", staff=request.user, detail={"to": to})
-        if not sent:
-            return Response({"ok": False, "detail": "ارسال انجام نشد (0 پیام)."})
-        return Response({
-            "ok": True,
-            "detail": "به میل‌سرور تحویل شد. اگر به صندوق ورودی نرسید، لاگ mailserver را بررسی کنید.",
-        })
-
-
-def _verification_required() -> bool:
-    from apps.settings_app.utils import get_setting
-
-    return bool(get_setting("email_verification_required", False))

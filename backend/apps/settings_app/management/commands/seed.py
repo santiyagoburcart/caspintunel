@@ -27,6 +27,7 @@ PERMISSIONS = [
     ("sms.manage", "Manage SMS numbers & devices"),
     ("roles.manage", "Manage roles & permissions"),
     ("settings.manage", "Manage settings & branding"),
+    ("settings.email", "Manage outgoing email (SMTP relay)"),
     ("bots.manage", "Manage bots & channels"),
     ("pages.manage", "Manage content pages"),
     ("monitoring.view", "View monitoring & resources"),

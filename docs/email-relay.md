@@ -13,9 +13,19 @@ Verified on the aicaspin.ir server (2026-09-25): connections to Gmail/Outlook MX
 on port 25 time out (the message stays deferred in the queue), while outbound
 587 works — so a relay on 587 is required there.
 
-The fix is an **SMTP relay**: the mail server authenticates to a third-party
-provider on port 587 and hands them every outgoing message. They do the actual
-delivery (and reputation management) for you.
+The fix is an **SMTP relay**: authenticate to a third-party provider on port 587
+and hand them every outgoing message. They do the actual delivery (and
+reputation management) for you.
+
+> **Recommended (since v1.6.3): set it in the admin panel — Settings → Email.**
+> Django then sends directly to the provider (no container restart, changes
+> apply to the next email), the password is stored encrypted, and the page has
+> provider presets, a "send test email" button that shows the real SMTP error,
+> and the last success / last error. Steps 1–3 below (provider, domain
+> verification, credentials) still apply; skip Step 4 (`.env`) in that case.
+>
+> Order the app uses: **admin-panel relay (if enabled) → `EMAIL_*` in `.env` →
+> local `mailserver` container** (which only delivers with `SMTP_RELAY_*`, Step 4).
 
 Email is always optional. With no relay configured the app still runs fine —
 verification / reset / notification emails are simply skipped, never a crash, and

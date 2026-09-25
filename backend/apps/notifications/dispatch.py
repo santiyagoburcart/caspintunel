@@ -22,7 +22,9 @@ log = logging.getLogger("caspintunel")
 
 
 def _deliver_email(user, title, body) -> tuple[str, str]:
-    if not user.email or not settings.EMAIL_HOST:
+    from apps.common.mail import mail_configured
+
+    if not user.email or not mail_configured():
         return DeliveryStatus.FAILED, "no email / SMTP not configured"
     try:
         send_mail(title, body, settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=False)
