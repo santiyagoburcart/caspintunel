@@ -478,7 +478,7 @@ class EmailStatusView(AdminAPIView):
             return Response({"ok": False, "detail": str(exc)})
         write_audit(action="email.test_sent", staff=request.user, detail={"to": to})
         if not sent:
-            return Response({"ok": False, "detail": "ارسال انجام نشد (۰ پیام)."})
+            return Response({"ok": False, "detail": "ارسال انجام نشد (0 پیام)."})
         return Response({
             "ok": True,
             "detail": "به میل‌سرور تحویل شد. اگر به صندوق ورودی نرسید، لاگ mailserver را بررسی کنید.",

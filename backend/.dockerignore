@@ -7,3 +7,10 @@ staticfiles/
 media/
 *.sqlite3
 .env
+# never bake secrets / host-only data into the image
+mail-keys/
+backups/
+app_releases/
+mobile_shortcut/
+real.png
+.pytest_cache/

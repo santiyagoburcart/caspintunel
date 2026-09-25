@@ -62,7 +62,9 @@ def test_register_requires_phone_when_iran_only():
 def test_register_rejects_foreign_phone_with_clear_message():
     r = _register(phone="+14155552671")
     assert r.status_code == 400
-    assert "۰۹" in str(r.data["phone"][0]) and "09121234567" in str(r.data["phone"][0])
+    msg = str(r.data["phone"][0])
+    assert "با 09 شروع" in msg and "09121234567" in msg
+    assert not any("\u06f0" <= ch <= "\u06f9" for ch in msg)  # Latin digits only
 
 
 @pytest.mark.django_db

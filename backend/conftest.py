@@ -31,3 +31,17 @@ def _plan_gets_a_panel(db):
     pre_save.connect(_fill, sender=Plan, dispatch_uid="test_plan_default_panel")
     yield
     pre_save.disconnect(sender=Plan, dispatch_uid="test_plan_default_panel")
+
+
+@pytest.fixture(autouse=True)
+def _fresh_cache():
+    """Public endpoints are cached (apps.common.public_cache) and DB rollbacks
+    between tests don't bump its version — start every test with an empty cache."""
+    from django.conf import settings
+    from django.core.cache import cache
+
+    # only ever wipe the test suite's own in-process cache — never a shared
+    # Redis (e.g. if the suite is started with the wrong settings module)
+    if settings.CACHES["default"]["BACKEND"].endswith("LocMemCache"):
+        cache.clear()
+    yield

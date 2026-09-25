@@ -256,12 +256,17 @@ class Command(BaseCommand):
         # --- periodic tasks (celery beat / DatabaseScheduler) ---
         self._seed_periodic_tasks()
 
-        # --- panel row from env (password encrypted by the field) ---
+        # --- panel row: one-time bootstrap from env (fresh install only) ---
+        # Panels are managed in the admin panel (Panel link page). This only runs
+        # when no panel exists yet, so an update can never overwrite or duplicate
+        # a panel configured there.
+        from apps.panel.models import Panel
+
         base_url = getattr(dj_settings, "PANEL_BASE_URL", "")
         pw = getattr(dj_settings, "PANEL_ADMIN_PASSWORD", "")
-        if base_url and pw:
-            from apps.panel.models import Panel
-
+        if Panel.objects.exists():
+            self.stdout.write("panel(s) already configured in the admin panel — env panel settings ignored")
+        elif base_url and pw:
             Panel.objects.update_or_create(
                 name="Pasargad",
                 defaults={
@@ -280,19 +285,11 @@ class Command(BaseCommand):
     def _seed_periodic_tasks(self):
         from django_celery_beat.models import IntervalSchedule, PeriodicTask
 
-        sync_minutes = getattr(dj_settings, "PANEL_SYNC_INTERVAL_MINUTES", 15)
-        schedule, _ = IntervalSchedule.objects.get_or_create(
-            every=sync_minutes, period=IntervalSchedule.MINUTES
-        )
-        PeriodicTask.objects.update_or_create(
-            name="panel: sync all services",
-            defaults={
-                "task": "apps.panel.tasks.sync_all_services",
-                "interval": schedule,
-                "kwargs": _json.dumps({}),
-                "enabled": True,
-            },
-        )
+        # the sync interval is the admin setting service_sync_interval_minutes
+        # (Settings page) — never reset it from .env on an update
+        from apps.ops.schedule import reconcile_sync_schedule
+
+        reconcile_sync_schedule()
 
         every_5, _ = IntervalSchedule.objects.get_or_create(
             every=5, period=IntervalSchedule.MINUTES
@@ -380,3 +377,8 @@ class Command(BaseCommand):
         from apps.ops.schedule import reconcile_backup_schedule
 
         reconcile_backup_schedule()
+
+        # seed rewrites theme palettes with queryset.update (no signals)
+        from apps.common.public_cache import bump_public_cache
+
+        transaction.on_commit(bump_public_cache)

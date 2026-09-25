@@ -12,7 +12,10 @@ Post-1.0 follow-up (2026-09) resolved items 1–5 below — see **Resolved** sec
   refresh, rotation + blacklist), staff JWT (HS256, `type=staff_access` claim),
   SMS device token (`secrets.token_urlsafe(32)`, `is_active`, rotatable).
 - **Rate limiting** — `auth` 10/min (login/register/reset/verify), `receipt`
-  20/hour, `sms_ingest` 240/min; anon 60/min, user 600/min.
+  20/hour, `sms_ingest` 240/min; anon 180/min, user 600/min; public reads
+  (`/config/ /theme/ /pages/ /plans/`, cached 60 s) `public_read` 600/min.
+  Keyed on one trusted client IP: nginx overwrites `X-Forwarded-For` with
+  `$client_ip` and DRF `NUM_PROXIES = 1` (a spoofed header can't pick a bucket).
 - **Prod hardening** (`config/settings/prod.py`) — `DEBUG=False`, refuses to boot
   without a real `SECRET_KEY`/`FIELD_ENCRYPTION_KEY`, HSTS, `nosniff`,
   `X-Frame-Options: DENY`, secure cookies, SSL redirect, proxy SSL header.

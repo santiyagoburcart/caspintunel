@@ -17,7 +17,6 @@ from telebot import types
 
 from apps.orders.models import Order
 from apps.panel.exceptions import PanelError
-from apps.panel.models import Service
 from apps.panel.services import revoke_subscription
 from apps.plans.models import Plan, PlanType
 from apps.settings_app.models import SiteConfig
@@ -37,7 +36,6 @@ from ..shop import (
     order_history,
     order_history_text,
     payment_instructions,
-    plan_label,
     renew,
     service_summary,
     submit_bot_receipt,
@@ -248,7 +246,7 @@ def _register(bot: telebot.TeleBot):
                                  reply_markup=kb.back_to_menu())
             elif data == "m:pwd":
                 m = bot.send_message(c.message.chat.id,
-                                     "رمز عبور جدید را ارسال کنید (حداقل ۸ کاراکتر):")
+                                     "رمز عبور جدید را ارسال کنید (حداقل 8 کاراکتر):")
                 bot.register_next_step_handler(m, _got_new_password)
             elif data.startswith("p:"):
                 _start_purchase(bot, c.message.chat.id, user, int(data.split(":")[1]))

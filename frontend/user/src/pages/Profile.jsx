@@ -159,7 +159,9 @@ function PI({ d, w = 18 }) {
     </svg>
   )
 }
-const fnum = (n, lang) => (lang === 'fa' ? String(n).replace(/\d/g, (x) => '۰۱۲۳۴۵۶۷۸۹'[x]) : String(n))
+// numbers are always shown with Latin digits (both languages)
+// eslint-disable-next-line no-unused-vars
+const fnum = (n, lang) => String(n)
 
 function EyeInput({ label, value, onChange, placeholder, autoComplete }) {
   const [show, setShow] = useState(false)

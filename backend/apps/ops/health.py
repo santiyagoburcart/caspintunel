@@ -31,7 +31,14 @@ def _timed(fn):
 
 
 def _check_site():
-    r = requests.get(settings.HEALTHCHECK_SITE_URL, timeout=5)
+    # The probe talks to the app server directly (http://web:8000/...) — present
+    # it the way nginx does (public Host + TLS already terminated), otherwise the
+    # prod settings answer 400 (unknown host) / 301 (SSL redirect) and a healthy
+    # site reports as down.
+    r = requests.get(
+        settings.HEALTHCHECK_SITE_URL, timeout=5, allow_redirects=False,
+        headers={"Host": settings.DOMAIN, "X-Forwarded-Proto": "https"},
+    )
     return r.status_code == 200, f"HTTP {r.status_code}"
 
 

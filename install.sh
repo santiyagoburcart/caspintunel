@@ -72,7 +72,7 @@ do_install() {
       echo "!! image ${PROJECT}-backend not found. Run: ./scripts/load-images.sh <bundle.tar.gz>"; return; }
   fi
 
-  local DOMAIN SU_USER SU_PASS SU_PASS2 SU_EMAIL DB_PASS DB_ROOT TZ PMA
+  local DOMAIN SU_USER SU_PASS SU_PASS2 SU_EMAIL DB_PASS DB_ROOT PMA
   DOMAIN=$(ask "Domain (e.g. example.com)")
   [ -n "$DOMAIN" ] || { echo "!! domain is required"; return; }
 
@@ -90,8 +90,7 @@ do_install() {
   DB_PASS=$(asks "  app DB password")
   DB_ROOT=$(asks "  DB root password")
 
-  echo; TZ=$(ask "Timezone" "Asia/Tehran")
-  PMA=$(ask "phpMyAdmin localhost port (opt-in tool, blank = default 8080)" "")
+  echo; PMA=$(ask "phpMyAdmin localhost port (opt-in tool, blank = default 8080)" "")
 
   echo; echo "TLS / HTTPS:"
   echo "  1) auto  — Let's Encrypt (needs inbound port 80 reachable from the internet)"
@@ -111,7 +110,6 @@ do_install() {
   set_env CORS_ALLOWED_ORIGINS "https://$DOMAIN,https://www.$DOMAIN"
   set_env CSRF_TRUSTED_ORIGINS "https://$DOMAIN,https://www.$DOMAIN"
   set_env PUBLIC_BASE_URL     "https://$DOMAIN"
-  set_env TIME_ZONE           "$TZ"
   set_env SECRET_KEY          "$(gen_secret)"
   set_env FIELD_ENCRYPTION_KEY "$(gen_fernet)"
   set_env DB_NAME             "$PROJECT"
@@ -148,10 +146,13 @@ do_install() {
     set_env SMTP_RELAY_PASSWORD ""
   fi
   [ -n "$PMA" ] && set_env PMA_PORT "$PMA"
-  # panel credentials are intentionally NOT collected here
-  set_env PANEL_BASE_URL      ""
-  set_env PANEL_ADMIN_USERNAME ""
-  set_env PANEL_ADMIN_PASSWORD ""
+  # panels + bot tokens are added in the admin panel (/panel/), not here.
+  # plain `docker compose` on this server = the production setup
+  if [ "$OFFLINE" = 1 ]; then
+    set_env COMPOSE_FILE "docker-compose.yml:docker-compose.prod.yml:docker-compose.offline.yml"
+  else
+    set_env COMPOSE_FILE "docker-compose.yml:docker-compose.prod.yml"
+  fi
   chmod 600 "$ENV_FILE"
   echo "   .env written (chmod 600, git-ignored)"
 

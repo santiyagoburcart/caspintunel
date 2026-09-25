@@ -9,13 +9,24 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
 - Panel = **PasarGuard v5.3.0 over HTTP only** (`apps/panel/client.py`), never vendored.
   Verified live: `GET /api/users?search=&limit=` → `{"users":[…],"total":n}`; user objects carry
   `hwid_limit` (null = unlimited), `group_ids`, `note`, `on_hold_expire_duration`, `admin`.
-- This server runs the **dev compose** (`docker-compose.yml`: runserver + Vite dev servers, `./backend`
-  bind-mounted, so backend edits are live). Prod overrides: `docker-compose.prod.yml` (gunicorn + daphne for `/ws/`).
-- `web` runs migrations on start (`RUN_MIGRATIONS=1`). **New bind mounts need `docker compose up -d web`**;
-  a plain `restart` keeps the old mounts.
-- Tests: `docker compose exec -T web python -m pytest -p no:warnings` (settings `config.settings.test`,
-  **real MySQL** in the container). Browser checks: Playwright image `mcr.microsoft.com/playwright:v1.49.1-noble`
-  against built SPAs with a mocked API (never create fake data in the prod DB).
+- **This server runs PROD** (`docker-compose.yml` + `docker-compose.prod.yml`; `.env` sets `COMPOSE_FILE`
+  so plain `docker compose …` means prod): nginx → built SPAs, gunicorn (`web`), daphne (`/ws/`), celery
+  worker/beat, both bots. Code is **baked into images** — a backend/frontend change is live only after
+  `./update.sh` (backup → pull → build → up). Prod uses `volumes: !override` / `!reset` so none of the dev
+  bind mounts leak in. The dev compose alone (`docker compose -f docker-compose.yml`, `./update.sh --dev`)
+  is for development machines only (runserver + Vite, `./backend` bind-mounted).
+- `./update.sh` first dumps the DB to `backups/pre-update-<ver>-<ts>.sql.gz` and tags the running app images
+  `:rollback`, then pulls/builds/ups. **Rollback: `./update.sh --rollback`** (images only; restore the dump
+  if a migration must be undone). Build images only through `update.sh`: with the containerd image store a
+  manual `docker compose build` drops the previous image, so there is nothing left to tag.
+- `web` runs migrations + `seed` on start (`RUN_MIGRATIONS=1`); `seed` must stay idempotent and must never
+  overwrite admin-panel values (panels, bots, sync interval, theme).
+- Tests (the prod `web` image has no tests mounted): one-off container with the source bind-mounted —
+  `docker run --rm --network caspintunel_default --env-file .env -v $PWD/backend:/app -v $PWD/mobile_shortcut:/app/mobile_shortcut:ro -v $PWD/mobile_sms/release:/app/app_releases:ro --entrypoint sh caspintunel-backend -c 'python -m pytest -p no:warnings'`
+  (`--entrypoint sh` skips migrate/seed on the live DB; `pytest.ini` forces `config.settings.test` = own test
+  DB + locmem cache — **never override `addopts`**, that drops `--ds` and runs on prod settings/Redis).
+  Browser checks: Playwright image `mcr.microsoft.com/playwright:v1.49.1-noble` against the live site with
+  writes blocked in-browser (never create fake data in the prod DB).
 
 ## Conventions
 - API-first under `/api/v1/`; admin API `/api/v1/admin/…` uses the **separate `Staff` model** + staff JWT +
@@ -33,8 +44,10 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   tokens still accepted; unusable-password accounts rejected). Password change returns a fresh pair.
 - Live updates: WebSocket `/ws/notifications/` (customer JWT) and `/ws/admin/payments/` (staff JWT +
   `payment.view`) via `apps/notifications/live.py::push_payments_event` (sent on commit).
-- Frontend: fa/en for every string (per-page `T = {fa, en}` or `lib/i18n.jsx`), Jalali via `lib/format.js`,
-  Persian digits via `digits()`. Themes: Caspian (light/dark), Midnight Aurora, Royal Frost. Colours come from
+- Frontend: fa/en for every string (per-page `T = {fa, en}` or `lib/i18n.jsx`), Jalali via `lib/format.js`.
+  **Digits are always Latin 0-9** in both languages (amounts, dates `1405/07/03`, badges, %, bot text);
+  every `fa` Intl formatter needs `-u-nu-latn`. Persian/Arabic digits are only normalized on INPUT
+  (`user/src/lib/phone.js`, `accounts/phone.py`, `payments_sms/parsing.py`). Themes: Caspian (light/dark), Midnight Aurora, Royal Frost. Colours come from
   `var(--c-*)` except these **fixed** tokens: toggles `--toggle-on #11AB53` / `--toggle-off` dark gray;
   ConfirmDialog tone colours (danger red, success #11AB53, primary #1464BA, warning amber).
 - **One popup for everything**: `components/ConfirmDialog.jsx` (identical in both SPAs) + `useConfirm()`.
@@ -55,11 +68,16 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
 - `--c-surface` is translucent in dark themes; solid panels need `var(--c-bg)` underneath.
 - CSS grids: an implicit/`1fr` column grows to its longest item (e.g. a subscription URL) and overflows
   phones. Use `grid-cols-1` / `minmax(0,1fr)` / `repeat(auto-fit, minmax(min(100%,Npx),1fr))` + `min-w-0`.
-- Media: only `/media/branding/` is public (served by Django on the dev-compose server, `DEBUG=False`);
-  receipts and operator apps are private and only reachable through auth-checked API views.
-- UI audits against the live server: the anonymous throttle is 60/min per IP (`/config/`, `/pages/`), and
-  the SPAs are Vite dev servers — heavy parallel loads make both fail. Snapshot public endpoints and keep
-  concurrency low; never switch the live active theme (intercept `/api/v1/theme/` instead).
+- Media: nginx serves `/media/` from the volume except `/media/receipts/` + `/media/apps/` (404); receipts go
+  through the auth-checked API → `X-Accel-Redirect` to internal `/_protected_media/` (private, no-store).
+- Client IP: nginx gives Django exactly one trusted address (`$client_ip` map; XFF overwritten) and DRF
+  has `NUM_PROXIES = 1`. Don't switch back to `$proxy_add_x_forwarded_for` — a spoofed header would pick
+  its own throttle bucket. Same rule for `X-Forwarded-Proto` (`$fwd_proto`, trusted only from 127.0.0.1).
+- Throttles: anon 180/min, user 600/min, `public_read` 600/min (`/config/ /theme/ /pages/ /plans/`, also
+  cached 60s in Redis via `apps/common/public_cache.py`, bumped by save/delete signals), strict `auth`
+  10/min and `receipt` 20/hour. A new model feeding a public endpoint must be added to the signal list.
+- UI audits against the live server: keep concurrency low; never switch the live active theme
+  (intercept `/api/v1/theme/` instead).
 - Tests that call `transaction.on_commit` work need `@pytest.mark.django_db(transaction=True)` and a stubbed
   `fulfill_order.delay` (no panel in tests). Bot handler tests must stub `close_old_connections`.
 
@@ -71,6 +89,9 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   **Shortcut change = update the repo file + panel download (automatic) + bump `mobile_shortcut/VERSION`
   + changelog in `mobile_shortcut/README.md`.** Keep the two action UUIDs the backend looks for.
 
-## Secrets
-- Nothing secret in git: `.env` (gitignored), device tokens, panel/bot credentials live in the DB
-  (encrypted fields where sensitive). Grep the diff for tokens before every commit.
+## Secrets / .env
+- Nothing secret in git: `.env` (gitignored, backups `.env.bak*` too), device tokens, panel/bot credentials
+  live in the DB (encrypted fields where sensitive). Grep the diff for tokens before every commit.
+- `.env` = infrastructure + secrets only; `.env.example` documents every variable. Panels, bot tokens, sync
+  and backup intervals are **admin-panel (DB) values**; `PANEL_*` / `BOT_*_TOKEN` / `DJANGO_SUPERUSER_*`
+  are seed-only (empty install) and ignored afterwards.

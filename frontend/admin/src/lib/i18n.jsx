@@ -38,7 +38,7 @@ const dict = {
     set_email_verification_required: 'تأیید ایمیل الزامی است',
     set_referral_required: 'ثبت‌نام فقط با کد معرف مجاز است',
     set_iran_phone_only: 'فقط شماره موبایل ایرانی (سایت و ربات)',
-    hint_iran_phone_only: 'شماره در ثبت‌نام و پروفایل الزامی می‌شود و باید با ۰۹ شروع شود؛ ربات شماره‌های غیر ‎+98‎ را رد می‌کند. فقط قالب شماره بررسی می‌شود — تشخیص شمارهٔ مجازی ممکن نیست.',
+    hint_iran_phone_only: 'شماره در ثبت‌نام و پروفایل الزامی می‌شود و باید با 09 شروع شود؛ ربات شماره‌های غیر ‎+98‎ را رد می‌کند. فقط قالب شماره بررسی می‌شود — تشخیص شمارهٔ مجازی ممکن نیست.',
     set_force_channel_join: 'عضویت اجباری در کانال (ربات)',
     set_force_share_phone: 'اشتراک‌گذاری اجباری شماره (ربات)',
     set_default_language: 'زبان پیش‌فرض',
@@ -53,7 +53,7 @@ const dict = {
     action_in_progress: 'در حال انجام...', action_failed: 'خطا در انجام عملیات', deleted: 'حذف شد',
     none_found: 'موردی یافت نشد', load_error: 'خطا در دریافت اطلاعات', count: 'تعداد',
     // dashboard
-    online_now: 'آنلاین', services_total: 'کل سرویس‌ها', last_30d: '۳۰ روز اخیر',
+    online_now: 'آنلاین', services_total: 'کل سرویس‌ها', last_30d: '30 روز اخیر',
     services_by_status: 'سرویس‌ها بر اساس وضعیت',
     live_sync: 'همگام‌سازی لحظه‌ای با هسته',
     gateway_core_status: 'وضعیت اتصال درگاه و هسته',
@@ -64,7 +64,7 @@ const dict = {
     // accounting
     daily: 'روزانه', weekly: 'هفتگی', monthly: 'ماهانه', daily_trend: 'روند روزانه',
     by_method: 'بر اساس روش', by_source: 'بر اساس منبع', by_card: 'بر اساس کارت',
-    by_panel: 'بر اساس پنل', date_hint: 'مثال: ۱۴۰۳/۰۱/۰۱',
+    by_panel: 'بر اساس پنل', date_hint: 'مثال: 1403/01/01',
     // cards
     card_number: 'شماره کارت', holder: 'صاحب کارت', bank: 'بانک',
     deposit_count: 'تعداد واریز', deposit_total: 'جمع واریز',

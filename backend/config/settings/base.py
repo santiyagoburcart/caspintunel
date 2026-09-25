@@ -201,13 +201,21 @@ REST_FRAMEWORK = {
         "rest_framework.throttling.UserRateThrottle",
         "rest_framework.throttling.ScopedRateThrottle",
     ),
+    # Per client IP (anon) / per account (user). Many Iranian mobile users share
+    # one carrier NAT address, so the general limits are generous; the
+    # abuse-prone endpoints keep their own strict scopes.
     "DEFAULT_THROTTLE_RATES": {
-        "anon": "60/min",
+        "anon": "180/min",
         "user": "600/min",
-        "auth": "10/min",        # login / register / password-reset
-        "receipt": "20/hour",    # receipt upload
-        "sms_ingest": "240/min", # android SMS app
+        "public_read": "600/min",  # /config/ /theme/ /pages/ /plans/ (cached 60s)
+        "auth": "10/min",          # login / register / password-reset / OTP
+        "receipt": "20/hour",      # receipt upload
+        "sms_ingest": "240/min",   # SMS bridge app / iPhone shortcut
     },
+    # nginx hands Django exactly one trusted client address in X-Forwarded-For
+    # (see nginx/prod.conf $client_ip); without this DRF keyed throttles on the
+    # raw header, so a client could dodge every limit by varying it.
+    "NUM_PROXIES": 1,
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.LimitOffsetPagination",
     "PAGE_SIZE": 20,
 }
@@ -312,7 +320,9 @@ SMTP_RELAY_HOST = env("SMTP_RELAY_HOST", default="")
 SMTP_RELAY_PORT = env.int("SMTP_RELAY_PORT", default=587)
 
 # ---------------------------------------------------------------------------
-# External services (also overridable from panel settings later)
+# PasarGuard client tuning. Panels themselves live in the DB (admin panel);
+# PANEL_BASE_URL/ADMIN_* are seed-only (first panel on an empty install).
+# The sync interval is SiteSettings (admin panel → Settings → Sync).
 # ---------------------------------------------------------------------------
 PANEL_BASE_URL = env("PANEL_BASE_URL", default="")
 PANEL_ADMIN_USERNAME = env("PANEL_ADMIN_USERNAME", default="")
@@ -320,7 +330,6 @@ PANEL_ADMIN_PASSWORD = env("PANEL_ADMIN_PASSWORD", default="")
 PANEL_HTTP_TIMEOUT = env.int("PANEL_HTTP_TIMEOUT", default=15)
 PANEL_TOKEN_TTL_SECONDS = env.int("PANEL_TOKEN_TTL_SECONDS", default=60 * 60 * 23)
 PANEL_SYNC_ENABLED = env.bool("PANEL_SYNC_ENABLED", default=True)
-PANEL_SYNC_INTERVAL_MINUTES = env.int("PANEL_SYNC_INTERVAL_MINUTES", default=15)
 
 # ---------------------------------------------------------------------------
 # Monitoring

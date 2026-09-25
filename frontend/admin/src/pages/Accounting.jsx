@@ -170,7 +170,7 @@ export default function Accounting() {
               <div className="acc-kpi-val">{toman(d.revenue, lang)}</div>
               {growthPct != null && (
                 <div className={'acc-kpi-sub' + (growthPct >= 0 ? ' up' : ' down')}>
-                  <Ico d={ICONS.trendUp} w={12} />{growthPct >= 0 ? '+' : ''}{digits(growthPct, lang)}٪ {s.growth}
+                  <Ico d={ICONS.trendUp} w={12} />{growthPct >= 0 ? '+' : ''}{digits(growthPct, lang)}% {s.growth}
                 </div>
               )}
             </div>
@@ -276,7 +276,7 @@ function Breakdown({ title, icon, tone, rows, keyName, prefix, total, t, lang, e
           <div key={i} className="acc-bd-row">
             <div className="acc-bd-row-top">
               <span className="text-sm truncate">{enumLabel(t, prefix, r[keyName])}</span>
-              <span className="acc-bd-row-val">{digits(pct, lang)}٪</span>
+              <span className="acc-bd-row-val">{digits(pct, lang)}%</span>
             </div>
             <div className="acc-bd-bar"><i style={{ width: `${(rev / max) * 100}%`, background: tone }} /></div>
             <div className="acc-bd-row-sub">{toman(rev, lang)} ({digits(r.count, lang)}) · {ofTotal}</div>

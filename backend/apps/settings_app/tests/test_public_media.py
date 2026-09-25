@@ -27,3 +27,21 @@ def test_branding_is_served(media):
 ])
 def test_private_media_is_not_served(media, path):
     assert Client().get(path).status_code == 404
+
+
+@pytest.mark.django_db
+def test_latin_digits_migration_rewrites_only_digits():
+    import importlib
+
+    from django.apps import apps as real_apps
+
+    from apps.plans.models import Plan
+    from apps.settings_app.models import Page
+
+    mig = importlib.import_module("apps.settings_app.migrations.0011_latin_digits_in_content")
+    plan = Plan.objects.create(name_fa="بسته ۵۰ گیگ ٪۱۰", data_limit=1, duration_days=30, price=1000)
+    page = Page.objects.create(slug="d1", title_fa="قوانین", body_fa="۱. حریم خصوصی ۲۴ ساعته")
+    mig.forwards(real_apps, None)
+    plan.refresh_from_db(); page.refresh_from_db()
+    assert plan.name_fa == "بسته 50 گیگ %10"
+    assert page.body_fa == "1. حریم خصوصی 24 ساعته" and page.title_fa == "قوانین"

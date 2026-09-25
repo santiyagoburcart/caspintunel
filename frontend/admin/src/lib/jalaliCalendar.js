@@ -99,8 +99,8 @@ export function presetRanges(lang = 'fa') {
   const L = {
     today: { fa: 'امروز', en: 'Today' },
     yesterday: { fa: 'دیروز', en: 'Yesterday' },
-    d7: { fa: '۷ روز اخیر', en: 'Last 7 days' },
-    d30: { fa: '۳۰ روز اخیر', en: 'Last 30 days' },
+    d7: { fa: '7 روز اخیر', en: 'Last 7 days' },
+    d30: { fa: '30 روز اخیر', en: 'Last 30 days' },
     month: { fa: 'ماه جاری', en: 'This month' },
     prevMonth: { fa: 'ماه گذشته', en: 'Last month' },
   }

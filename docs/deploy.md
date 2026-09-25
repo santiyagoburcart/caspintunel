@@ -143,6 +143,9 @@ watcher runs the rollout:
 */2 * * * * /opt/caspintunel/scripts/watch-update.sh --prod >> /var/log/caspintunel-update.log 2>&1
 ```
 
-`watch-update.sh` → `update.sh --prod`: `git reset --hard @{upstream}` → build →
-`up -d` → `migrate` + `seed` → `collectstatic`. `GET /api/v1/admin/system/`
+`watch-update.sh` → `update.sh --prod` (prod is also the default without a flag):
+DB dump to `backups/pre-update-*.sql.gz` + running images tagged `:rollback` →
+`git reset --hard @{upstream}` → build → `up -d` → `migrate` + `seed` →
+`collectstatic`. Undo with `./update.sh --rollback` (images; restore the dump for
+schema changes). `GET /api/v1/admin/system/`
 reports the deployed `VERSION` vs the `VERSION` on the repo's `main` branch.

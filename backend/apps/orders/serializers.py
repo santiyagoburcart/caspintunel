@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from apps.plans.models import Plan, PlanType
+from apps.plans.models import Plan
 
 from .models import Order, OrderType
 from .services import OrderError, create_order

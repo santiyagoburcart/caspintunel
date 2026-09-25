@@ -164,7 +164,9 @@ function SI({ d, w = 20 }) {
     </svg>
   )
 }
-const faNum = (n, lang) => (lang === 'fa' ? String(n).replace(/\d/g, (x) => '۰۱۲۳۴۵۶۷۸۹'[x]) : String(n))
+// numbers are always shown with Latin digits (both languages)
+// eslint-disable-next-line no-unused-vars
+const faNum = (n, lang) => String(n)
 
 function CaspianStore() {
   const { t, lang } = useI18n()

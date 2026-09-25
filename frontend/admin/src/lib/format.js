@@ -29,20 +29,17 @@ export function gb(bytes) {
   return Math.round((bytes / GB) * 10) / 10
 }
 
-// Latin digits -> Persian digits, for any string/number.
-export function faDigits(value) {
+// Display a number/string as-is. The UI always shows Latin digits (0-9) in
+// both languages; Persian/Arabic digits are only normalized on INPUT.
+// (`lang` is accepted for call-site compatibility and ignored.)
+// eslint-disable-next-line no-unused-vars
+export function digits(value, lang) {
   if (value == null) return '—'
-  return String(value).replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[d])
-}
-
-// Locale-aware digits: Persian digits for fa, plain Latin for en.
-export function digits(value, lang = 'fa') {
-  if (value == null) return '—'
-  return lang === 'fa' ? faDigits(value) : String(value)
+  return String(value)
 }
 
 const rtf = {
-  fa: new Intl.RelativeTimeFormat('fa', { numeric: 'auto' }),
+  fa: new Intl.RelativeTimeFormat('fa-u-nu-latn', { numeric: 'auto' }),
   en: new Intl.RelativeTimeFormat('en', { numeric: 'auto' }),
 }
 const STEPS = [
@@ -53,7 +50,7 @@ const STEPS = [
   ['minute', 60],
   ['second', 1],
 ]
-// Relative time from an ISO timestamp — "۳ ساعت پیش" / "3 hours ago".
+// Relative time from an ISO timestamp — "3 ساعت پیش" / "3 hours ago".
 export function relTime(value, lang = 'fa') {
   if (!value) return '—'
   const diff = (new Date(value).getTime() - Date.now()) / 1000
@@ -66,7 +63,7 @@ export function relTime(value, lang = 'fa') {
   return '—'
 }
 
-// Human bytes/sec -> "۴۲ KB/s" / "42 KB/s".
+// Human bytes/sec -> "42 KB/s".
 export function bps(n, lang = 'fa') {
   const u = ['B', 'KB', 'MB', 'GB']
   if (!n || n < 1) return digits(0, lang) + ' B/s'

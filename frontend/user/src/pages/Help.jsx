@@ -124,7 +124,7 @@ function CaspianHelp() {
         <div className="csp-help-steps">
           {STEPS.map(([key, n]) => (
             <div key={n} className="csp-help-step">
-              <span className="csp-help-step-n mono-num">{lang === 'fa' ? '۰۱۲۳۴۵۶۷۸۹'[+n] : n}</span>
+              <span className="csp-help-step-n mono-num">{n}</span>
               <div>
                 <div className="csp-help-step-t">{t(key + '_t')}</div>
                 <div className="csp-help-step-d">{t(key + '_d')}</div>

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, apiError } from '../lib/api'
 import { useI18n, enumLabel } from '../lib/i18n'
-import { jalali, digits, faDigits } from '../lib/format'
+import { jalali, digits } from '../lib/format'
 import { Alert, Spinner, Toggle } from '../components/ui'
 import { useAuth } from '../lib/auth'
 import { useUserActions } from '../lib/userActions'
@@ -123,7 +123,7 @@ function GrowthBadge({ stat, s, lang }) {
   if (!stat || stat.growth_direction == null) return null
   const g = GROWTH[stat.growth_direction] || GROWTH.flat
   const pct = Math.abs(stat.growth_percent ?? 0)
-  const pctStr = (lang === 'fa' ? faDigits(pct) + '٪' : pct + '%')
+  const pctStr = `${pct}%`
   return (
     <span className="usr-growth" style={{ background: `color-mix(in srgb, ${g.tone} 14%, transparent)`, color: g.tone }}>
       {g.arrow} {pctStr} {s.this_week}

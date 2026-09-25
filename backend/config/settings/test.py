@@ -7,7 +7,13 @@ ALLOWED_HOSTS = ["*"]
 CORS_ALLOW_ALL_ORIGINS = True
 
 # Disable DRF throttling so rapid successive test requests don't hit 429.
-REST_FRAMEWORK = {**REST_FRAMEWORK, "DEFAULT_THROTTLE_CLASSES": [], "DEFAULT_THROTTLE_RATES": {}}
+# Views that pin their own throttle_classes (public reads) still need a rate
+# per scope, so keep every scope but make it unreachable.
+REST_FRAMEWORK = {
+    **REST_FRAMEWORK,
+    "DEFAULT_THROTTLE_CLASSES": [],
+    "DEFAULT_THROTTLE_RATES": {k: "100000/min" for k in REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]},
+}
 
 CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
 

@@ -348,7 +348,7 @@ function CaspianLayout() {
               <span className="csp-bn-dot" />
               <span className="csp-bn-ico">
                 <SideIcon name={icon} />
-                {badge != null && <span className="csp-bn-badge">{badge > 99 ? '99+' : (lang === 'fa' ? String(badge).replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[d]) : badge)}</span>}
+                {badge != null && <span className="csp-bn-badge">{badge > 99 ? '99+' : badge}</span>}
               </span>
               <span className="csp-bn-t">{t(key)}</span>
             </NavLink>

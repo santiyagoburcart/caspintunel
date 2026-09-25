@@ -18,7 +18,7 @@ _DIGITS = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890
 _SEPARATORS = re.compile(r"[\s ‌‏‎\-‐‑–—.()/]")
 _IR_MOBILE = re.compile(r"^09\d{9}$")
 
-IR_PHONE_ERROR_FA = "شماره موبایل باید ایرانی و با ۰۹ شروع شود (مثال: 09121234567)"
+IR_PHONE_ERROR_FA = "شماره موبایل باید ایرانی و با 09 شروع شود (مثال: 09121234567)"
 IR_PHONE_ERROR_EN = "The mobile number must be Iranian and start with 09 (e.g. 09121234567)"
 IR_PHONE_ERROR = f"{IR_PHONE_ERROR_FA} / {IR_PHONE_ERROR_EN}"
 

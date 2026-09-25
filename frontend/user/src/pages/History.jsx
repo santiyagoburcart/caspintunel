@@ -83,7 +83,9 @@ function HI({ d, w = 15 }) {
     </svg>
   )
 }
-const fnum = (n, lang) => (lang === 'fa' ? String(n).replace(/\d/g, (x) => '۰۱۲۳۴۵۶۷۸۹'[x]) : String(n))
+// numbers are always shown with Latin digits (both languages)
+// eslint-disable-next-line no-unused-vars
+const fnum = (n, lang) => String(n)
 const methodLabel = (t, m) => (m === 'card_manual' ? t('m_card') : m === 'sms_auto' ? t('m_sms') : m === 'gateway' ? t('m_gateway') : '—')
 
 const FILTERS = [

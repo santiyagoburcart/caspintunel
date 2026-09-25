@@ -5,6 +5,8 @@ refs/
 # ---- secrets ----
 .env
 *.env
+.env.bak*
+.env.*.bak
 !.env.example
 *.pem
 *.key

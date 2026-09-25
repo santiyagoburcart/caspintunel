@@ -54,7 +54,7 @@ def _send_volume_alert(svc, used_pct):
     notify_user(
         svc.user,
         title="هشدار اتمام حجم سرویس",
-        body=(f"سرویس «{svc.panel_username}» حدود {used_pct:.0f}٪ از {gb:.0f} گیگابایت حجم را "
+        body=(f"سرویس «{svc.panel_username}» حدود {used_pct:.0f}% از {gb:.0f} گیگابایت حجم را "
               "مصرف کرده است. برای جلوگیری از قطعی، سرویس را تمدید کنید."),
         title_en="Service volume warning",
         body_en=(f"Service \"{svc.panel_username}\" has used about {used_pct:.0f}% of its {gb:.0f}GB "

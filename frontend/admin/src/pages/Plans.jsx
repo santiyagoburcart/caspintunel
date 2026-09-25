@@ -26,7 +26,7 @@ const T = {
     fixed: 'ثابت', volume: 'حجمی',
     per_gb: 'تومان / هر گیگ', user_enters: 'ورود توسط کاربر', no_expiry: 'بدون انقضا',
     days_valid: '{n} روز اعتبار', devices_n: '{n} دستگاه', unlimited_short: 'نامحدود',
-    discount_off: '{n}٪ تخفیف', none: 'پلنی یافت نشد',
+    discount_off: '{n}% تخفیف', none: 'پلنی یافت نشد',
     copy_link: 'کپی لینک مستقیم خرید', link_copied: 'لینک خرید کپی شد',
     edit: 'ویرایش', del: 'حذف', del_confirm: 'این پلن حذف شود؟',
     saved_ok: 'پلن ذخیره شد',
@@ -358,7 +358,7 @@ export default function Plans() {
             <input className="input" dir="ltr" type="number" min="0"
               value={edit.price} onChange={(e) => setEdit({ ...edit, price: e.target.value })} />
           </Field>
-          <Field label={lang === 'fa' ? 'تخفیف (٪)' : 'Discount (%)'}>
+          <Field label={lang === 'fa' ? 'تخفیف (%)' : 'Discount (%)'}>
             <input className="input" dir="ltr" type="number" min="0" max="100"
               value={edit.discount_percent} onChange={(e) => setEdit({ ...edit, discount_percent: e.target.value })} />
           </Field>
@@ -528,7 +528,7 @@ export default function Plans() {
                     <td data-label={s.c_discount}>
                       {r.discount_percent > 0
                         ? <span className="pl-discount">{s.discount_off.replace('{n}', digits(r.discount_percent, lang))}</span>
-                        : <span className="pl-muted">{digits(0, lang)}{lang === 'fa' ? '٪' : '%'}</span>}
+                        : <span className="pl-muted">{digits(0, lang)}%</span>}
                     </td>
                     <td data-label={s.c_status} className="pl-c">
                       <Toggle checked={r.is_active} onChange={() => quickToggleActive(r)} label={s.c_status} />

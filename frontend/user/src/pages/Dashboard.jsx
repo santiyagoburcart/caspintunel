@@ -245,7 +245,9 @@ function DI({ d, w = 18, className }) {
     </svg>
   )
 }
-const fnum = (n, lang) => (lang === 'fa' ? String(n).replace(/\d/g, (x) => '۰۱۲۳۴۵۶۷۸۹'[x]) : String(n))
+// numbers are always shown with Latin digits (both languages)
+// eslint-disable-next-line no-unused-vars
+const fnum = (n, lang) => String(n)
 const FILTERS = [
   ['all', 'f_all', () => true],
   ['active', 'f_active', (s) => s.status === 'active'],
