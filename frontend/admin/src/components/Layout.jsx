@@ -18,6 +18,7 @@ const nav = [
   ['/monitoring', 'monitoring', 'monitoring.view'],
   ['/panel-link', 'panel_link', 'settings.manage'],
   ['/bots', 'bots', 'bots.manage'],
+  ['/apps', 'apps', 'settings.manage'],
   ['/branding', 'branding', 'settings.manage'],
   ['/settings', 'settings', 'settings.manage'],
   ['/notifications', 'notifications', 'broadcast.send'],
@@ -49,6 +50,7 @@ const CASPIAN_GROUPS = [
     ['/branding', 'branding', 'settings.manage', 'branding'],
     ['/settings', 'settings', 'settings.manage', 'settings'],
     ['/bots', 'bots', 'bots.manage', 'bots'],
+    ['/apps', 'apps', 'settings.manage', 'apps'],
     ['/notifications', 'notifications', 'broadcast.send', 'notifications'],
     ['/pages', 'pages', 'pages.manage', 'pages'],
     ['/themes', 'themes', 'themes.manage', 'themes'],
@@ -63,6 +65,7 @@ const NAV_ICONS = {
   sun: 'M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z',
   moon: 'M21.752 15.002A9.72 9.72 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z',
   back: 'M8.25 4.5l7.5 7.5-7.5 7.5',
+  apps: 'M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3',
   dashboard: 'M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6zM13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z',
   monitoring: 'M9.348 14.652a3.75 3.75 0 010-5.304m5.304 0a3.75 3.75 0 010 5.304m-7.425 2.121a6.75 6.75 0 010-9.546m9.546 0a6.75 6.75 0 010 9.546M5.106 18.894c-3.808-3.807-3.808-9.98 0-13.788m13.788 0c3.808 3.807 3.808 9.98 0 13.788M12 12h.008v.008H12V12z',
   users: 'M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z',
@@ -232,7 +235,7 @@ const MOBILE_TITLES = [
   ['/users/deleted', 'deleted_users'], ['/users', 'users'], ['/services', 'services'], ['/plans', 'plans'],
   ['/payments', 'nav_pay_queue'], ['/transactions', 'transactions'], ['/accounting', 'accounting'],
   ['/cards', 'cards'], ['/monitoring', 'monitoring'], ['/panel-link', 'panel_link'], ['/bots', 'bots'],
-  ['/branding', 'branding'], ['/settings', 'settings'], ['/notifications', 'notifications'],
+  ['/branding', 'branding'], ['/apps', 'apps'], ['/settings', 'settings'], ['/notifications', 'notifications'],
   ['/pages', 'pages'], ['/themes', 'themes'], ['/roles', 'roles'],
 ]
 const TAB_ROOTS = new Set(['/', '/users', '/payments', '/services', '/settings'])
@@ -252,7 +255,7 @@ function CaspianLayout() {
   const { mode, toggle, locked, config } = useTheme()
   const { pendingCount } = useLivePayments()
   const go = useNavigate()
-  const { pathname, hash } = useLocation()
+  const { pathname } = useLocation()
 
   const groups = CASPIAN_GROUPS.map(([g, items]) => [g, items.filter(([, , p]) => !p || can(p))])
   const botnav = CASPIAN_BOTNAV.filter(([, , p]) => !p || can(p))
@@ -260,8 +263,10 @@ function CaspianLayout() {
     || (lang === 'fa' ? 'کسپین تانل' : 'Caspian Tunnel')
   const tab = activeTab(pathname)
   // inner page (anything that isn't a bottom-tab root, or a settings section) → back + title
-  const inner = !TAB_ROOTS.has(pathname) || (pathname === '/settings' && !!hash)
-  const titleKey = (MOBILE_TITLES.find(([pre]) => pathname === pre || pathname.startsWith(pre + '/')) || [])[1]
+  const inner = !TAB_ROOTS.has(pathname)
+  const settingsSection = pathname.startsWith('/settings/') ? pathname.slice(10) : ''
+  const titleKey = settingsSection ? `sec_${settingsSection.replace(/-/g, '_')}`
+    : (MOBILE_TITLES.find(([pre]) => pathname === pre || pathname.startsWith(pre + '/')) || [])[1]
   const back = () => {
     if (window.history.state?.idx > 0) go(-1)
     else go(tab === '/settings' && pathname !== '/settings' ? '/settings' : tab)

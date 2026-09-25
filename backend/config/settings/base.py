@@ -173,6 +173,9 @@ MEDIA_ROOT = BASE_DIR / "media"
 # When True, protected media (receipts) is handed to nginx via X-Accel-Redirect
 # instead of streamed by Django. prod.py turns this on.
 SERVE_MEDIA_VIA_XACCEL = env.bool("SERVE_MEDIA_VIA_XACCEL", default=False)
+# Pre-built operator apps shipped in the repo (mobile_sms/release), mounted
+# read-only into the web container — the admin "Apps" page serves them.
+APP_RELEASES_DIR = env("APP_RELEASES_DIR", default=str(BASE_DIR / "app_releases"))
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},

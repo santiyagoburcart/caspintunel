@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { api, apiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 import { useAuth } from '../lib/auth'
@@ -29,6 +29,7 @@ const HUB_ICONS = {
   requirements: <><path d="M5 11h14v10H5z" /><path d="M8 11V7a4 4 0 018 0v4" /></>,
   backup: <><path d="M21 12a9 9 0 11-3-6.7" /><path d="M21 3v5h-5" /></>,
   chevron: <polyline points="9 18 15 12 9 6" />,
+  apps: <><rect x="6" y="2" width="12" height="20" rx="3" /><path d="M11 18h2" /></>,
   transactions: <path d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />,
   accounting: <path d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z" />,
   cards: <><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20M6 15h4" /></>,
@@ -56,6 +57,7 @@ const HUB = {
     branding: { t: 'برندینگ', d: 'لوگو، فاویکون، نام و دامنهٔ سامانه' },
     roles: { t: 'نقش‌ها', d: 'تعریف سطوح دسترسی و حساب‌های ادمین' },
     pages: { t: 'صفحات', d: 'سوالات متداول و شرایط استفاده' },
+    apps: { t: 'اپلیکیشن‌ها و ابزارها', d: 'دانلود اپ اندروید و شورتکات آیفون از سرور' },
     transactions: { t: 'تراکنش‌ها', d: 'همهٔ پرداخت‌ها با فیلتر وضعیت، تاریخ و بانک' },
     accounting: { t: 'حسابداری', d: 'درآمد روزانه، هفتگی، ماهانه و بازهٔ دلخواه' },
     cards: { t: 'کارت‌های بانکی', d: 'افزودن و مدیریت کارت‌های دریافت وجه' },
@@ -82,6 +84,7 @@ const HUB = {
     branding: { t: 'Branding', d: 'Logo, favicon, name and domain' },
     roles: { t: 'Roles', d: 'Define access levels and admin accounts' },
     pages: { t: 'Pages', d: 'FAQ and terms of use' },
+    apps: { t: 'Apps & tools', d: 'Download the Android app and iPhone shortcut from the server' },
     transactions: { t: 'Transactions', d: 'Every payment, filtered by status, date and bank' },
     accounting: { t: 'Accounting', d: 'Daily, weekly, monthly and custom revenue' },
     cards: { t: 'Bank cards', d: 'Add and manage the receiving cards' },
@@ -108,7 +111,7 @@ const HUB_COLOR = {
   backup: '#1464BA',
   pages: '#64748B',
   transactions: '#11AB53', accounting: '#11AB53', cards: '#11AB53',
-  plans: '#1464BA', deleted: 'var(--c-danger)', notifications: '#7C3AED',
+  apps: '#0891B2', plans: '#1464BA', deleted: 'var(--c-danger)', notifications: '#7C3AED',
   monitoring: '#0891B2', sync: '#1464BA', display: '#64748B',
 }
 
@@ -129,20 +132,21 @@ const HUB_GROUPS = [
     ['/monitoring', 'monitoring', 'monitoring.view'],
     ['/panel-link', 'panel', 'settings.manage'],
     ['/bots', 'bots', 'bots.manage'],
+    ['/apps', 'apps', 'settings.manage'],
     ['/branding', 'branding', 'settings.manage'],
     ['/themes', 'themes', 'themes.manage'],
     ['/pages', 'pages', 'pages.manage'],
     ['/roles', 'roles', 'roles.manage'],
   ]],
   ['g_config', [
-    ['/settings#sms-devices', 'sms_devices', 'settings.manage'],
-    ['/settings#sms-sources', 'sms_sources', 'settings.manage'],
-    ['/settings#unique-amount', 'unique_amount', 'settings.manage'],
-    ['/settings#alerts', 'alerts', 'settings.manage'],
-    ['/settings#sync', 'sync', 'settings.manage'],
-    ['/settings#backup', 'backup', 'settings.manage'],
-    ['/settings#requirements', 'requirements', 'settings.manage'],
-    ['/settings#display', 'display', 'settings.manage'],
+    ['/settings/sms-devices', 'sms_devices', 'settings.manage'],
+    ['/settings/sms-sources', 'sms_sources', 'settings.manage'],
+    ['/settings/unique-amount', 'unique_amount', 'settings.manage'],
+    ['/settings/alerts', 'alerts', 'settings.manage'],
+    ['/settings/sync', 'sync', 'settings.manage'],
+    ['/settings/backup', 'backup', 'settings.manage'],
+    ['/settings/requirements', 'requirements', 'settings.manage'],
+    ['/settings/display', 'display', 'settings.manage'],
   ]],
 ]
 
@@ -673,14 +677,18 @@ export default function Settings() {
       .catch(() => { setRows([]); setErr(t('load_error')) })
   useEffect(() => { load() }, [])
 
-  // the mobile hub links to /settings#section — the form itself is normally
-  // hidden below 768px (mobile only shows the hub), so a hash target forces
-  // it visible too (see .st-force-show below) before we scroll to it
-  // mobile: /settings#<section> opens that one section on its own (the hub
-  // and every other card are hidden, save sits in a sticky bottom bar);
-  // desktop: the hash just scrolls to the card
-  const hashId = location.hash ? location.hash.slice(1) : ''
+  // Every section has its own route (/settings/alerts …): on mobile it opens
+  // alone (hub + other cards hidden, save in a sticky bottom bar); on desktop
+  // the full form stays and we scroll to that card. Old #hash links redirect.
+  const { section } = useParams()
+  const navigate = useNavigate()
+  const legacyHash = location.hash ? location.hash.slice(1) : ''
+  useEffect(() => {
+    if (!section && SOLO_SECTIONS.includes(legacyHash)) navigate(`/settings/${legacyHash}`, { replace: true })
+  }, [section, legacyHash])
+  const hashId = section || ''
   const hasAnchor = SOLO_SECTIONS.includes(hashId)
+
   const soloForm = FORM_SECTIONS.includes(hashId)
   const dirty = JSON.stringify(form) !== JSON.stringify(initial)
 
@@ -907,7 +915,7 @@ export default function Settings() {
 const CSS = `
 .set-mobile-only { display: none; }
 /* the full form is desktop-only by default, but a hub shortcut that points
-   at a specific card (e.g. /settings#alerts) forces it visible on mobile
+   at a specific card (e.g. /settings/alerts) forces it visible on mobile
    too — see the .st-force-show class toggled from location.hash */
 @media (max-width: 767px) { .st-desktop-only:not(.st-force-show) { display: none; } }
 .st-solo-bar { display: none; }

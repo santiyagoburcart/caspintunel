@@ -31,9 +31,13 @@ node status, and the group ids to put in `Plan.group_ids` / `Panel.default_group
 | Task | How |
 |---|---|
 | add a plan | panel → Plans (pick panel groups via checkboxes) |
-| add a bank card | panel → (Django admin `bank_card`) or API |
-| register an SMS device | Django admin → `sms_app_device` → copy `api_token` into the Android app; "Regenerate token" action to rotate |
-| add a forced channel | Django admin → `required_channel`; make the sales bot an admin of the channel |
+| add a bank card | panel → Cards (mobile: Settings → Bank cards) |
+| register an SMS device | panel → Settings → SMS devices → "Add device" → copy the token into the Android app / iPhone shortcut |
+| get the Android app / iPhone shortcut | panel → **Apps & tools** — downloaded from this server (the bundled APK comes from `mobile_sms/release/`; admins can upload a newer APK or the `.shortcut` file) |
+| add a forced channel | panel → Telegram bots → required channels; make the sales bot an admin of the channel |
+| delete a user | panel → Users → "Delete user" (reason required, perm `users.delete`): services are **disabled** on the panel, a full snapshot is archived, username/phone/email are freed, sessions revoked, Telegram unlinked; orders/payments stay (accounting unchanged) |
+| restore a deleted user | panel → Users → Deleted users → entry → Restore (blocked if the original username/phone/email is taken again; services stay disabled until re-enabled) |
+| attach an existing panel account to a user | panel → Services → Create manual service → "Link existing panel service" (live panel search; nothing changes on the panel) |
 | rotate a leaked secret | edit `.env`, `docker compose up -d` the affected service (no rebuild); rotate `FIELD_ENCRYPTION_KEY` requires re-encrypting rows |
 | change alert thresholds / toggles | panel settings (`setting` table) |
 

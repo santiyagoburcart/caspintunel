@@ -1,6 +1,7 @@
 from django.urls import include, path
 from rest_framework.routers import SimpleRouter
 
+from .views.apps import AppReleaseDetailView, AppReleaseDownloadView, AppReleaseListView
 from .views.auth import StaffLoginView, StaffMeView, StaffRefreshView
 from .views.branding import SiteConfigView
 from .views.catalog import (
@@ -78,5 +79,8 @@ urlpatterns = [
     path("bots/stats/", BotStatsView.as_view(), name="admin-bots-stats"),
     path("bots/backup-test/", BackupTestView.as_view(), name="admin-bots-backup-test"),
     path("integrations/email/", EmailStatusView.as_view(), name="admin-email-status"),
+    path("apps/", AppReleaseListView.as_view(), name="admin-apps"),
+    path("apps/<str:platform>/", AppReleaseDetailView.as_view(), name="admin-app-release"),
+    path("apps/<str:platform>/download/", AppReleaseDownloadView.as_view(), name="admin-app-download"),
     path("", include(router.urls)),
 ]
