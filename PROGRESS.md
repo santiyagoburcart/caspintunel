@@ -228,7 +228,7 @@ pending), `telegram_stats` population, a few secondary admin screens.
 - Stack up on HTTP (11 + certbot containers), 153/153 tests, no drift, deploy check clean.
 
 ## Current state & open items (keep this list current)
-- **Version** `VERSION` (tagged releases `v<version>`); iPhone Shortcut has its own `mobile_shortcut/VERSION`.
+- **Version** `VERSION` = 1.5.0 (tagged releases `v<version>`; v1.4.0/v1.4.1 were tagged before the file was bumped); iPhone Shortcut has its own `mobile_shortcut/VERSION`.
 - **Post-1.0 phases 1–6 done** (see session log 2026-09-25): checkout resume, phone rules + bot↔site merge,
   shared ConfirmDialog + service edit page, delete/restore users + link existing panel account + HWID,
   admin mobile parity + bot QR card + sign-up terms, Apps & tools page + settings routes + fonts.
