@@ -114,17 +114,12 @@ def test_order_api_rejects_taken_account_name(user, fixed_plan):
     assert r.status_code == 400
 
 
-def test_order_api_rejects_without_terms_accepted(user, fixed_plan):
+def test_order_no_longer_asks_for_terms(user, fixed_plan):
+    """Terms are accepted once, at sign-up — checkout doesn't ask again."""
     client = APIClient()
     client.force_authenticate(user)
     r = client.post("/api/v1/orders/", {"plan": fixed_plan.id, "requested_account_name": "no-terms"}, format="json")
-    assert r.status_code == 400
-    assert "terms_accepted" in r.data
-
-    r2 = client.post("/api/v1/orders/", {"plan": fixed_plan.id, "requested_account_name": "no-terms",
-                                         "terms_accepted": False}, format="json")
-    assert r2.status_code == 400
-    assert "terms_accepted" in r2.data
+    assert r.status_code == 201, r.data
 
 
 def test_new_order_rejects_a_taken_account_name(user, fixed_plan):

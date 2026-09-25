@@ -19,7 +19,7 @@ def test_auth_scope_is_rate_limited():
         codes = [
             client.post(
                 "/api/v1/auth/register/",
-                {"username": f"user{i}", "password": "Str0ngPass!", "phone": f"0912000000{i}"},
+                {"username": f"user{i}", "password": "Str0ngPass!", "phone": f"0912000000{i}", "terms_accepted": True},
                 format="json",
             ).status_code
             for i in range(6)

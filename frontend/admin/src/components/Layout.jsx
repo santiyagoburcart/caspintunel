@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { useLivePayments } from '../lib/livePayments'
 import { useI18n } from '../lib/i18n'
@@ -62,6 +62,7 @@ const NAV_ICONS = {
   brand: 'M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z',
   sun: 'M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z',
   moon: 'M21.752 15.002A9.72 9.72 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z',
+  back: 'M8.25 4.5l7.5 7.5-7.5 7.5',
   dashboard: 'M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6zM13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z',
   monitoring: 'M9.348 14.652a3.75 3.75 0 010-5.304m5.304 0a3.75 3.75 0 010 5.304m-7.425 2.121a6.75 6.75 0 010-9.546m9.546 0a6.75 6.75 0 010 9.546M5.106 18.894c-3.808-3.807-3.808-9.98 0-13.788m13.788 0c3.808 3.807 3.808 9.98 0 13.788M12 12h.008v.008H12V12z',
   users: 'M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z',
@@ -215,24 +216,56 @@ function CaspianNav({ groups, t, brand, logo, onNavigate }) {
 // right→left). Any other route (panel, bots, monitoring, branding, themes,
 // pages, notifications) is desktop-sidebar-only — there is no mobile drawer
 // or "More" tab to reach them from a phone.
+// mobile bottom nav — exactly 5 tabs; the payments queue is the raised centre
+// button with a live pending badge. Everything else lives in the Settings
+// index (pages/Settings.jsx → SettingsHub). [route, i18n-key, permission, icon, centre?]
 const CASPIAN_BOTNAV = [
   ['/', 'dashboard', null, 'dashboard'],
   ['/users', 'users', 'users.view', 'users'],
-  ['/cards', 'cards', 'payment.view', 'cards'],
-  ['/roles', 'roles', 'roles.manage', 'roles'],
-  ['/settings', 'settings', 'settings.manage', 'settings'],
+  ['/payments', 'nav_pay_queue', 'payment.view', 'payments', true],
+  ['/services', 'services', 'monitoring.view', 'services'],
+  ['/settings', 'settings', null, 'settings'],
 ]
+
+// inner-page titles for the mobile top bar (longest prefix wins)
+const MOBILE_TITLES = [
+  ['/users/deleted', 'deleted_users'], ['/users', 'users'], ['/services', 'services'], ['/plans', 'plans'],
+  ['/payments', 'nav_pay_queue'], ['/transactions', 'transactions'], ['/accounting', 'accounting'],
+  ['/cards', 'cards'], ['/monitoring', 'monitoring'], ['/panel-link', 'panel_link'], ['/bots', 'bots'],
+  ['/branding', 'branding'], ['/settings', 'settings'], ['/notifications', 'notifications'],
+  ['/pages', 'pages'], ['/themes', 'themes'], ['/roles', 'roles'],
+]
+const TAB_ROOTS = new Set(['/', '/users', '/payments', '/services', '/settings'])
+
+/** which bottom tab a path belongs to — pages reached from the Settings index light up Settings */
+function activeTab(path) {
+  if (path === '/') return '/'
+  for (const root of ['/users', '/payments', '/services']) {
+    if (path === root || path.startsWith(root + '/')) return root
+  }
+  return '/settings'
+}
 
 function CaspianLayout() {
   const { staff, logout, can } = useAuth()
   const { t, lang, setLang } = useI18n()
   const { mode, toggle, locked, config } = useTheme()
+  const { pendingCount } = useLivePayments()
   const go = useNavigate()
+  const { pathname, hash } = useLocation()
 
   const groups = CASPIAN_GROUPS.map(([g, items]) => [g, items.filter(([, , p]) => !p || can(p))])
   const botnav = CASPIAN_BOTNAV.filter(([, , p]) => !p || can(p))
   const brand = (lang === 'fa' ? config?.site_name_fa : config?.site_name_en)
     || (lang === 'fa' ? 'کسپین تانل' : 'Caspian Tunnel')
+  const tab = activeTab(pathname)
+  // inner page (anything that isn't a bottom-tab root, or a settings section) → back + title
+  const inner = !TAB_ROOTS.has(pathname) || (pathname === '/settings' && !!hash)
+  const titleKey = (MOBILE_TITLES.find(([pre]) => pathname === pre || pathname.startsWith(pre + '/')) || [])[1]
+  const back = () => {
+    if (window.history.state?.idx > 0) go(-1)
+    else go(tab === '/settings' && pathname !== '/settings' ? '/settings' : tab)
+  }
 
   return (
     <div className="csp-shell">
@@ -244,27 +277,39 @@ function CaspianLayout() {
       </aside>
 
       <div className="csp-main">
-        {/* mobile top bar (≤767px) — no hamburger, no theme toggle (mobile
-            is fixed to whichever mode the active theme defaults to); only a
-            language switch, since that's not reachable anywhere else on
-            mobile once the bottom nav is exactly these 5 tabs. */}
+        {/* mobile top bar (≤767px): brand on tab roots, back + page title on
+            inner pages; language + dark/light toggle always reachable */}
         <header className="csp-mtop">
           <div className="csp-mtop-end">
+            {!locked && (
+              <button type="button" className="csp-mtop-lang csp-mtop-ico" onClick={toggle}
+                aria-label={mode === 'dark' ? t('light_mode') : t('dark_mode')}>
+                <SideIcon name={mode === 'dark' ? 'sun' : 'moon'} />
+              </button>
+            )}
             <button type="button" className="csp-mtop-lang" onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')}>
               {lang === 'fa' ? 'EN' : 'فا'}
             </button>
-            <span className="csp-mtop-avatar">{(staff?.username || '?').charAt(0).toUpperCase()}</span>
-            <span className="csp-mtop-online"><i />{lang === 'fa' ? 'آنلاین' : 'Online'}</span>
+            {!inner && <span className="csp-mtop-avatar">{(staff?.username || '?').charAt(0).toUpperCase()}</span>}
           </div>
-          <div className="csp-mtop-brand">
-            <div className="csp-mtop-txt">
-              <b>{brand}</b>
-              <span>ADMIN CONTROL</span>
+          {inner ? (
+            <div className="csp-mtop-brand csp-mtop-inner">
+              <b className="csp-mtop-title">{titleKey ? t(titleKey) : brand}</b>
+              <button type="button" className="csp-mtop-back" onClick={back} aria-label={t('back')}>
+                <SideIcon name="back" />
+              </button>
             </div>
-            <span className="csp-mtop-logo">
-              {config?.logo ? <img src={config.logo} alt="" /> : <b>C</b>}
-            </span>
-          </div>
+          ) : (
+            <Link to="/" className="csp-mtop-brand">
+              <div className="csp-mtop-txt">
+                <b>{brand}</b>
+                <span>ADMIN CONTROL</span>
+              </div>
+              <span className="csp-mtop-logo">
+                {config?.logo ? <img src={config.logo} alt="" /> : <b>C</b>}
+              </span>
+            </Link>
+          )}
         </header>
 
         {/* desktop top bar (≥768px) */}
@@ -286,17 +331,24 @@ function CaspianLayout() {
         <main className="csp-content mx-auto max-w-6xl p-3"><Outlet /></main>
       </div>
 
-      {/* mobile bottom nav (≤767px) — Stitch f10ea6b9: exactly 5 tabs, active =
-          dot above the icon + primary colour + bolder stroke (no pill). */}
+      {/* mobile bottom nav (≤767px) — 5 tabs, the payments queue is the raised
+          centre button with the live pending count */}
       <nav className="csp-botnav" style={{ '--csp-bn-n': botnav.length }}>
-        {botnav.map(([to, key, , icon]) => (
-          <NavLink key={to} to={to} end
-            className={({ isActive }) => 'csp-bn-item' + (isActive ? ' on' : '')}>
-            <span className="csp-bn-dot" />
-            <SideIcon name={icon} />
-            <span className="csp-bn-t">{t(key)}</span>
-          </NavLink>
-        ))}
+        {botnav.map(([to, key, , icon, centre]) => {
+          const on = tab === to
+          const badge = to === '/payments' && pendingCount > 0 ? pendingCount : null
+          return (
+            <NavLink key={to} to={to} end={to === '/'} aria-current={on ? 'page' : undefined}
+              className={'csp-bn-item' + (on ? ' on' : '') + (centre ? ' csp-bn-centre' : '')}>
+              <span className="csp-bn-dot" />
+              <span className="csp-bn-ico">
+                <SideIcon name={icon} />
+                {badge != null && <span className="csp-bn-badge">{badge > 99 ? '99+' : (lang === 'fa' ? String(badge).replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[d]) : badge)}</span>}
+              </span>
+              <span className="csp-bn-t">{t(key)}</span>
+            </NavLink>
+          )
+        })}
       </nav>
     </div>
   )
@@ -454,6 +506,15 @@ const CASPIAN_CSS = `
     font-size: 11px; font-weight: 700; padding: 5px 9px; border-radius: 8px;
     border: 1px solid var(--c-border); background: transparent; color: var(--c-text-muted);
   }
+  .csp-mtop-ico { display: grid; place-items: center; padding: 5px; width: 30px; height: 28px; }
+  .csp-mtop-ico svg { width: 16px; height: 16px; }
+  .csp-mtop-brand { text-decoration: none; }
+  .csp-mtop-inner { gap: 6px; }
+  .csp-mtop-title { font-size: 15px; font-weight: 800; color: var(--c-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .csp-mtop-back { width: 36px; height: 36px; flex-shrink: 0; display: grid; place-items: center; border-radius: 11px;
+    border: 1px solid var(--c-border); background: transparent; color: var(--c-text); }
+  .csp-mtop-back svg { width: 18px; height: 18px; }
+  [dir="ltr"] .csp-mtop-back svg { transform: scaleX(-1); }
   .csp-mtop-lang:active { background: color-mix(in srgb, var(--c-primary) 10%, transparent); color: var(--c-primary); }
   .csp-mtop-online {
     display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
@@ -498,6 +559,18 @@ const CASPIAN_CSS = `
   width: 6px; height: 6px; border-radius: 999px; background: var(--c-primary);
   opacity: 0; transition: opacity .15s;
 }
+.csp-bn-ico { position: relative; display: grid; place-items: center; }
+.csp-bn-badge { position: absolute; top: -6px; inset-inline-end: -10px; min-width: 18px; height: 18px; padding: 0 5px;
+  border-radius: 999px; background: var(--c-danger); color: #fff; font-size: 10px; font-weight: 800; line-height: 18px;
+  text-align: center; box-shadow: 0 0 0 2px var(--c-surface); }
+/* raised centre tab (payments queue) */
+.csp-bn-centre .csp-bn-ico { width: 50px; height: 50px; margin-top: -26px; border-radius: 999px; color: #fff;
+  background: linear-gradient(135deg, var(--c-primary), color-mix(in srgb, var(--c-primary) 60%, #7cc6ff));
+  box-shadow: 0 8px 18px -6px color-mix(in srgb, var(--c-primary) 60%, transparent), 0 0 0 4px var(--c-surface); }
+.csp-bn-centre .csp-bn-ico svg { width: 24px; height: 24px; }
+.csp-bn-centre .csp-bn-dot { display: none; }
+.csp-bn-centre.on .csp-bn-ico { box-shadow: 0 8px 18px -6px color-mix(in srgb, var(--c-primary) 70%, transparent), 0 0 0 4px var(--c-surface), 0 0 0 6px color-mix(in srgb, var(--c-primary) 35%, transparent); }
+.csp-bn-centre .csp-bn-badge { top: -4px; inset-inline-end: -4px; }
 .csp-bn-item.on { color: var(--c-primary); }
 .csp-bn-item.on svg { stroke-width: 2.2; }
 .csp-bn-item.on .csp-bn-t { font-weight: 800; }

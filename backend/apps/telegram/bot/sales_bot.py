@@ -7,10 +7,8 @@ Not unit-tested (needs Telegram); the logic it calls is covered by tests.
 """
 from __future__ import annotations
 
-import io
 import logging
 
-import qrcode
 import telebot
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -33,7 +31,8 @@ from ..shop import (
     account_summary_text,
     active_plans,
     buy_new,
-    delivery_message,
+    qr_png,
+    service_caption,
     order_awaiting_receipt,
     order_history,
     order_history_text,
@@ -295,15 +294,23 @@ def _register(bot: telebot.TeleBot):
         svc = user.services.filter(pk=sid).first()
         if not svc:
             return
-        bot.send_message(chat_id, service_summary(svc), reply_markup=kb.service_detail(svc))
+        _send_service_card(bot, chat_id, svc, summary=service_summary(svc))
+
+    def _send_service_card(bot, chat_id, svc, *, title="", summary=""):
+        """A service = its QR code with the details + tap-to-copy link as caption
+        (plain text message if it has no subscription link yet)."""
+        caption = service_caption(svc, title=title, summary=summary)
+        if not svc.subscription_url:
+            bot.send_message(chat_id, caption, reply_markup=kb.service_detail(svc))
+            return
+        bot.send_photo(chat_id, qr_png(svc.subscription_url), caption=caption,
+                       parse_mode="HTML", reply_markup=kb.service_detail(svc))
 
     def _send_qr(bot, chat_id, user, sid):
         svc = user.services.filter(pk=sid).first()
         if not svc or not svc.subscription_url:
             return
-        buf = io.BytesIO()
-        qrcode.make(svc.subscription_url).save(buf, format="PNG")
-        bot.send_photo(chat_id, buf.getvalue(), caption=svc.subscription_url)
+        _send_service_card(bot, chat_id, svc, summary=f"<b>{svc.panel_username}</b>")
 
     def _do_revoke(bot, chat_id, user, sid):
         svc = user.services.filter(pk=sid).first()
@@ -314,12 +321,8 @@ def _register(bot: telebot.TeleBot):
         except PanelError as exc:
             bot.send_message(chat_id, f"تغییر لینک ناموفق بود: {exc}")
             return
-        bot.send_message(
-            chat_id,
-            "لینک ساب تغییر کرد ✅\n\n"
-            f"لینک جدید:\n<code>{svc.subscription_url}</code>",
-            reply_markup=kb.service_detail(svc),
-        )
+        _send_service_card(bot, chat_id, svc, title="لینک ساب تغییر کرد ✅",
+                           summary=f"<b>{svc.panel_username}</b>")
 
     def _start_purchase(bot, chat_id, user, plan_id):
         plan = Plan.objects.filter(pk=plan_id, is_active=True).first()
@@ -410,8 +413,8 @@ def _register(bot: telebot.TeleBot):
             msg += "\nپس از واریز، عکس رسید را همین‌جا ارسال کنید."
         bot.send_message(chat_id, msg)
         if order.status == "completed" and order.service and order.service.subscription_url:
-            bot.send_message(chat_id, delivery_message(order.service),
-                             reply_markup=kb.service_detail(order.service))
+            _send_service_card(bot, chat_id, order.service, title="سرویس شما آماده است 🎉",
+                               summary=f"<b>{order.service.panel_username}</b>")
 
     # Registered last so the specific handlers above win. Any other message —
     # text, commands, stickers, voice… — lands here: users without a phone

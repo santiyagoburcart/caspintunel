@@ -138,6 +138,7 @@ def test_same_person_can_register_again(staff_client, superadmin, world):
         assert _delete(staff_client(superadmin), world["user"]).status_code == 200
     r = APIClient().post("/api/v1/auth/register/", {
         "username": "ali", "password": "An0therPass!", "email": "ali@example.com", "phone": "09121234567",
+        "terms_accepted": True,
     }, format="json")
     assert r.status_code == 201, r.data
     # the bot sees the telegram id as a brand-new user

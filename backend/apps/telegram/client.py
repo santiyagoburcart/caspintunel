@@ -58,9 +58,11 @@ class TelegramClient:
             params["reply_markup"] = json.dumps(reply_markup)
         return self._call("sendMessage", **params)
 
-    def send_photo(self, chat_id, photo_bytes: bytes, *, caption=None, filename="qr.png"):
-        return self._call("sendPhoto", files={"photo": (filename, photo_bytes, "image/png")},
-                          chat_id=chat_id, caption=caption or "")
+    def send_photo(self, chat_id, photo_bytes: bytes, *, caption=None, filename="qr.png", parse_mode=None):
+        params = dict(chat_id=chat_id, caption=caption or "")
+        if parse_mode:
+            params["parse_mode"] = parse_mode
+        return self._call("sendPhoto", files={"photo": (filename, photo_bytes, "image/png")}, **params)
 
     def send_document(self, chat_id, file_path: str, *, caption=None):
         with open(file_path, "rb") as fh:

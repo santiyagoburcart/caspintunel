@@ -16,7 +16,7 @@ def client():
 
 def _register(client, **over):
     payload = {"username": "alice", "password": "Str0ngPass!", "email": "alice@example.com",
-               "name": "Alice", "phone": "09120000000"}
+               "name": "Alice", "phone": "09120000000", "terms_accepted": True}
     payload.update(over)
     return client.post("/api/v1/auth/register/", payload, format="json")
 
@@ -187,3 +187,13 @@ def test_legacy_import_requires_admin(client):
     client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
     r = client.post("/api/v1/auth/legacy/import/", {"users": []}, format="json")
     assert r.status_code == 403
+
+
+@pytest.mark.django_db
+def test_register_requires_terms_and_records_acceptance(client):
+    r = _register(client, terms_accepted=False)
+    assert r.status_code == 400 and "terms_accepted" in r.data
+    r = _register(client)
+    assert r.status_code == 201
+    from apps.accounts.models import User
+    assert User.objects.get(username="alice").terms_accepted_at is not None

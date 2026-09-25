@@ -174,9 +174,8 @@ function CaspianLogin() {
             </form>
 
             <div className="csp-auth-foot">
-              <span>{t('need_account')}</span>
               <Link to="/register" className="csp-link csp-link-strong">
-                {t('buy_plan_cta')} <Ico d={ICONS.chevron} w={12} />
+                {t('need_account')} <Ico d={ICONS.chevron} w={12} />
               </Link>
             </div>
           </section>
@@ -205,7 +204,7 @@ function CaspianLogin() {
       </main>
 
       <footer className="csp-auth-footer">
-        <Link to="/rules" className="csp-auth-footer-l">{t('rules')}</Link>
+        <Link to="/terms" className="csp-auth-footer-l">{t('rules')}</Link>
         <span>·</span>
         <Link to="/help" className="csp-auth-footer-l">{t('pages')}</Link>
         <span>·</span>
@@ -368,7 +367,7 @@ const CSS = `
 
 .csp-auth-foot {
   margin-top: auto; padding-top: 20px; border-top: 1px solid var(--c-border);
-  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
   font-size: 12px; color: var(--c-text-muted);
 }
 

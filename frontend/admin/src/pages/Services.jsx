@@ -140,8 +140,6 @@ export default function Services() {
     setBusyId(row.id)
     try { return await fn(...args) } catch (e) { toast.error(apiError(e)) } finally { setBusyId(null) }
   }
-  const changeStatus = (row, status) => (status === row.status ? null
-    : guarded(row, async () => merge(row, await actions.setStatus(row, status)))())
   const resetUsage = (row) => guarded(row, async () => merge(row, await actions.reset(row)))()
   const revoke = (row) => guarded(row, async () => merge(row, await actions.revoke(row)))()
   const deleteService = (row) => guarded(row, async () => {
@@ -224,15 +222,7 @@ export default function Services() {
                   <td data-label={s.col_plan}>{(lang === 'fa' ? r.plan : r.plan_en) || r.plan || '—'}</td>
                   <td data-label={s.col_panel}>{r.panel_name || '—'}</td>
                   <td data-label={s.col_status}>
-                    <select className="svc-status-select" value={r.status} disabled={busyId === r.id}
-                      onChange={(e) => changeStatus(r, e.target.value)}>
-                      <option value="active">{s.active}</option>
-                      <option value="on_hold">{s.on_hold}</option>
-                      <option value="disabled">{s.disabled}</option>
-                      {!['active', 'on_hold', 'disabled'].includes(r.status) && (
-                        <option value={r.status} disabled>{enumLabel(t, 'st_', r.status)}</option>
-                      )}
-                    </select>
+                    <StatusPill status={r.status} t={t} />
                   </td>
                   <td data-label={s.col_usage}>
                     <div className="svc-usage">
@@ -273,6 +263,17 @@ export default function Services() {
           onCreated={(msg) => { setCreateOpen(false); toast.success(msg || s.created_ok); load() }} />
       )}
     </div>
+  )
+}
+
+const PILL_TONE = { active: 'success', on_hold: 'warning', disabled: 'danger', expired: 'danger', limited: 'warning', pending: 'text-muted' }
+
+function StatusPill({ status, t }) {
+  const c = `var(--c-${PILL_TONE[status] || 'text-muted'})`
+  return (
+    <span className="svc-pill svc-pill--st" style={{ color: c, background: `color-mix(in srgb, ${c} 14%, transparent)` }}>
+      <i style={{ background: c }} />{enumLabel(t, 'st_', status)}
+    </span>
   )
 }
 
@@ -594,7 +595,8 @@ const CSS = `
 .svc-date { white-space: nowrap; color: var(--c-text-muted); font-size: 12px; }
 
 .svc-pill { display: inline-block; border-radius: 999px; padding: 3px 10px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
-.svc-status-select { border: 1px solid var(--c-border); border-radius: 8px; padding: 4px 8px; font-size: 12px; background: transparent; color: var(--c-text); }
+.svc-pill--st { display: inline-flex; align-items: center; gap: 6px; }
+.svc-pill--st i { width: 6px; height: 6px; border-radius: 50%; }
 
 .svc-usage { display: flex; flex-direction: column; gap: 4px; min-width: 120px; }
 .svc-usage-bar { height: 5px; border-radius: 999px; overflow: hidden; background: color-mix(in srgb, var(--c-text-muted) 20%, transparent); }

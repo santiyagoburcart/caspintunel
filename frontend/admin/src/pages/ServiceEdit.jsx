@@ -744,7 +744,7 @@ const CSS = `
   .sed-mhead { display: flex; align-items: center; gap: 10px; margin: -12px -12px 0; padding: 12px;
     background: color-mix(in srgb, var(--c-bg) 92%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--c-border); }
-  .sed-mback { width: 38px; height: 38px; flex-shrink: 0; border-radius: 12px; display: grid; place-items: center; border: 1px solid var(--c-border); color: var(--c-text); }
+  .sed-mback { display: none !important; width: 38px; height: 38px; flex-shrink: 0; border-radius: 12px; display: grid; place-items: center; border: 1px solid var(--c-border); color: var(--c-text); }
   [dir="ltr"] .sed-flip { display: grid; transform: scaleX(-1); }
   .sed-flip { display: grid; }
   .sed-mhead-txt { min-width: 0; display: flex; flex-direction: column; gap: 2px; }

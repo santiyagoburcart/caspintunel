@@ -29,6 +29,15 @@ const HUB_ICONS = {
   requirements: <><path d="M5 11h14v10H5z" /><path d="M8 11V7a4 4 0 018 0v4" /></>,
   backup: <><path d="M21 12a9 9 0 11-3-6.7" /><path d="M21 3v5h-5" /></>,
   chevron: <polyline points="9 18 15 12 9 6" />,
+  transactions: <path d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />,
+  accounting: <path d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z" />,
+  cards: <><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20M6 15h4" /></>,
+  plans: <path d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3zM6 6h.008v.008H6V6z" />,
+  deleted: <><rect x="2" y="3" width="20" height="5" rx="1" /><path d="M4 8v11a2 2 0 002 2h12a2 2 0 002-2V8M10 12h4" /></>,
+  notifications: <><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 01-3.46 0" /></>,
+  monitoring: <><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></>,
+  sync: <><path d="M23 4v6h-6M1 20v-6h6" /><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" /></>,
+  display: <><rect x="3" y="4" width="18" height="12" rx="2" /><path d="M8 20h8M12 16v4" /></>,
   logout: <><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></>,
 }
 
@@ -47,6 +56,16 @@ const HUB = {
     branding: { t: 'برندینگ', d: 'لوگو، فاویکون، نام و دامنهٔ سامانه' },
     roles: { t: 'نقش‌ها', d: 'تعریف سطوح دسترسی و حساب‌های ادمین' },
     pages: { t: 'صفحات', d: 'سوالات متداول و شرایط استفاده' },
+    transactions: { t: 'تراکنش‌ها', d: 'همهٔ پرداخت‌ها با فیلتر وضعیت، تاریخ و بانک' },
+    accounting: { t: 'حسابداری', d: 'درآمد روزانه، هفتگی، ماهانه و بازهٔ دلخواه' },
+    cards: { t: 'کارت‌های بانکی', d: 'افزودن و مدیریت کارت‌های دریافت وجه' },
+    plans: { t: 'پلن‌ها', d: 'ساخت و ویرایش پلن‌های فروش' },
+    deleted: { t: 'کاربران حذف‌شده', d: 'بایگانی کاربران حذف‌شده و بازگردانی' },
+    notifications: { t: 'اطلاعیه‌ها', d: 'ارسال پیام همگانی به سایت، ربات و ایمیل' },
+    monitoring: { t: 'مانیتورینگ', d: 'سلامت سرویس‌ها، منابع سرور و بک‌آپ‌ها' },
+    sync: { t: 'همگام‌سازی سرویس‌ها', d: 'فاصلهٔ همگام‌سازی خودکار با پنل' },
+    display: { t: 'زبان و نمایش', d: 'زبان پیش‌فرض و نحوهٔ نمایش محصولات' },
+    g_finance: 'مالی', g_users: 'کاربران و فروش', g_system: 'سامانه و اتصال‌ها', g_config: 'تنظیمات عمومی', g_account: 'حساب',
     logout: 'خروج از حساب مدیریت',
   },
   en: {
@@ -63,6 +82,16 @@ const HUB = {
     branding: { t: 'Branding', d: 'Logo, favicon, name and domain' },
     roles: { t: 'Roles', d: 'Define access levels and admin accounts' },
     pages: { t: 'Pages', d: 'FAQ and terms of use' },
+    transactions: { t: 'Transactions', d: 'Every payment, filtered by status, date and bank' },
+    accounting: { t: 'Accounting', d: 'Daily, weekly, monthly and custom revenue' },
+    cards: { t: 'Bank cards', d: 'Add and manage the receiving cards' },
+    plans: { t: 'Plans', d: 'Create and edit the plans on sale' },
+    deleted: { t: 'Deleted users', d: 'Archive of deleted users and restore' },
+    notifications: { t: 'Notifications', d: 'Broadcast to site, bot and email' },
+    monitoring: { t: 'Monitoring', d: 'Service health, server resources and backups' },
+    sync: { t: 'Service sync', d: 'Automatic panel sync interval' },
+    display: { t: 'Language & display', d: 'Default language and product display mode' },
+    g_finance: 'Finance', g_users: 'Users & sales', g_system: 'System & connections', g_config: 'General settings', g_account: 'Account',
     logout: 'Log out of the admin account',
   },
 }
@@ -78,30 +107,56 @@ const HUB_COLOR = {
   requirements: '#D97706', roles: '#D97706',
   backup: '#1464BA',
   pages: '#64748B',
+  transactions: '#11AB53', accounting: '#11AB53', cards: '#11AB53',
+  plans: '#1464BA', deleted: 'var(--c-danger)', notifications: '#7C3AED',
+  monitoring: '#0891B2', sync: '#1464BA', display: '#64748B',
 }
 
-// [route-or-hash, i18n-key, permission]
-const HUB_ITEMS = [
-  ['/themes', 'themes', 'themes.manage'],
-  ['/panel-link', 'panel', 'settings.manage'],
-  ['/bots', 'bots', 'bots.manage'],
-  ['/settings#sms-devices', 'sms_devices', 'settings.manage'],
-  ['/settings#sms-sources', 'sms_sources', 'settings.manage'],
-  ['/settings#alerts', 'alerts', 'settings.manage'],
-  ['/settings#unique-amount', 'unique_amount', 'settings.manage'],
-  ['/settings#requirements', 'requirements', 'settings.manage'],
-  ['/settings#backup', 'backup', 'settings.manage'],
-  ['/branding', 'branding', 'settings.manage'],
-  ['/roles', 'roles', 'roles.manage'],
-  ['/pages', 'pages', 'pages.manage'],
+// the mobile index of every admin page that isn't a bottom-nav tab, grouped
+// like the desktop sidebar. [group, [[route-or-hash, i18n-key, permission]]]
+const HUB_GROUPS = [
+  ['g_finance', [
+    ['/transactions', 'transactions', 'payment.view'],
+    ['/accounting', 'accounting', 'accounting.view'],
+    ['/cards', 'cards', 'payment.view'],
+  ]],
+  ['g_users', [
+    ['/plans', 'plans', 'plans.manage'],
+    ['/users/deleted', 'deleted', 'users.view'],
+    ['/notifications', 'notifications', 'broadcast.send'],
+  ]],
+  ['g_system', [
+    ['/monitoring', 'monitoring', 'monitoring.view'],
+    ['/panel-link', 'panel', 'settings.manage'],
+    ['/bots', 'bots', 'bots.manage'],
+    ['/branding', 'branding', 'settings.manage'],
+    ['/themes', 'themes', 'themes.manage'],
+    ['/pages', 'pages', 'pages.manage'],
+    ['/roles', 'roles', 'roles.manage'],
+  ]],
+  ['g_config', [
+    ['/settings#sms-devices', 'sms_devices', 'settings.manage'],
+    ['/settings#sms-sources', 'sms_sources', 'settings.manage'],
+    ['/settings#unique-amount', 'unique_amount', 'settings.manage'],
+    ['/settings#alerts', 'alerts', 'settings.manage'],
+    ['/settings#sync', 'sync', 'settings.manage'],
+    ['/settings#backup', 'backup', 'settings.manage'],
+    ['/settings#requirements', 'requirements', 'settings.manage'],
+    ['/settings#display', 'display', 'settings.manage'],
+  ]],
 ]
+
+// sections of the settings <form> (saved with the sticky bar); the SMS
+// sections manage their own rows
+const FORM_SECTIONS = ['unique-amount', 'alerts', 'sync', 'backup', 'requirements', 'display']
+const SOLO_SECTIONS = [...FORM_SECTIONS, 'sms-devices', 'sms-sources']
 
 function SettingsHub() {
   const { lang } = useI18n()
   const { logout, can } = useAuth()
   const go = useNavigate()
   const h = HUB[lang] || HUB.fa
-  const items = HUB_ITEMS.filter(([, , p]) => !p || can(p))
+  const groups = HUB_GROUPS.map(([g, items]) => [g, items.filter(([, , p]) => !p || can(p))]).filter(([, items]) => items.length)
 
   return (
     <div className="st-hub set-mobile-only">
@@ -109,27 +164,37 @@ function SettingsHub() {
         <h2 className="font-bold text-sm">{h.h}</h2>
         <p className="text-xs text-muted mt-0.5">{h.sub}</p>
       </div>
-      <div className="card p-0 st-hub-list">
-        {items.map(([to, key]) => {
-          const c = HUB_COLOR[key] || '#64748B'
-          return (
-            <Link key={to} to={to} className="st-hub-item">
-              <span className="st-hub-ico" style={{ background: `color-mix(in srgb, ${c} 14%, transparent)`, color: c }}>
-                <HubIco d={HUB_ICONS[key]} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block font-semibold text-sm">{h[key].t}</span>
-                <span className="block text-xs text-muted mt-0.5 truncate">{h[key].d}</span>
-              </span>
-              <HubIco d={HUB_ICONS.chevron} w={16} />
-            </Link>
-          )
-        })}
-        <button type="button" className="st-hub-item st-hub-item--danger" onClick={() => { logout(); go('/login') }}>
-          <span className="st-hub-ico st-hub-ico--danger"><HubIco d={HUB_ICONS.logout} /></span>
-          <span className="min-w-0 flex-1"><span className="block font-semibold text-sm">{h.logout}</span></span>
-        </button>
-      </div>
+      {groups.map(([g, items]) => (
+        <section key={g} className="st-hub-group">
+          <h3 className="st-hub-gh">{h[g]}</h3>
+          <div className="card p-0 st-hub-list">
+            {items.map(([to, key]) => {
+              const c = HUB_COLOR[key] || '#64748B'
+              return (
+                <Link key={to} to={to} className="st-hub-item">
+                  <span className="st-hub-ico" style={{ background: `color-mix(in srgb, ${c} 14%, transparent)`, color: c }}>
+                    <HubIco d={HUB_ICONS[key]} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-semibold text-sm">{h[key].t}</span>
+                    <span className="block text-xs text-muted mt-0.5 truncate">{h[key].d}</span>
+                  </span>
+                  <span className="st-hub-chev"><HubIco d={HUB_ICONS.chevron} w={16} /></span>
+                </Link>
+              )
+            })}
+          </div>
+        </section>
+      ))}
+      <section className="st-hub-group">
+        <h3 className="st-hub-gh">{h.g_account}</h3>
+        <div className="card p-0 st-hub-list">
+          <button type="button" className="st-hub-item st-hub-item--danger" onClick={() => { logout(); go('/login') }}>
+            <span className="st-hub-ico st-hub-ico--danger"><HubIco d={HUB_ICONS.logout} /></span>
+            <span className="min-w-0 flex-1"><span className="block font-semibold text-sm">{h.logout}</span></span>
+          </button>
+        </div>
+      </section>
     </div>
   )
 }
@@ -611,12 +676,17 @@ export default function Settings() {
   // the mobile hub links to /settings#section — the form itself is normally
   // hidden below 768px (mobile only shows the hub), so a hash target forces
   // it visible too (see .st-force-show below) before we scroll to it
-  const ANCHOR_IDS = ['sms-devices', 'sms-sources', 'alerts', 'unique-amount', 'requirements', 'backup']
+  // mobile: /settings#<section> opens that one section on its own (the hub
+  // and every other card are hidden, save sits in a sticky bottom bar);
+  // desktop: the hash just scrolls to the card
   const hashId = location.hash ? location.hash.slice(1) : ''
-  const hasAnchor = ANCHOR_IDS.includes(hashId)
+  const hasAnchor = SOLO_SECTIONS.includes(hashId)
+  const soloForm = FORM_SECTIONS.includes(hashId)
+  const dirty = JSON.stringify(form) !== JSON.stringify(initial)
 
   useEffect(() => {
     if (!rows || !hashId) return
+    if (window.matchMedia('(max-width: 767px)').matches) { window.scrollTo(0, 0); return }
     const el = document.getElementById(hashId)
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [rows, hashId])
@@ -671,10 +741,11 @@ export default function Settings() {
   )
 
   return (
-    <div className="st space-y-5">
+    <div className={'st space-y-5' + (hasAnchor ? ' st-solo' : '')}>
       <style>{CSS}</style>
+      {hasAnchor && <style>{`@media (max-width: 767px) { .st-solo .st-card:not(#${hashId}), .st-solo .sms-dev-card:not(#${hashId}) { display: none; } }`}</style>}
 
-      <SettingsHub />
+      {!hasAnchor && <SettingsHub />}
 
       <div className={'st-desktop-only space-y-5' + (hasAnchor ? ' st-force-show' : '')}>
       <div className="st-head">
@@ -720,7 +791,7 @@ export default function Settings() {
         )}
 
         {syncNums.length > 0 && (
-          <div className="card st-card">
+          <div id="sync" className="card st-card">
             <div className="st-card-head">
               <div>
                 <h3 className="font-bold text-sm">{s.sync_h}</h3>
@@ -771,7 +842,7 @@ export default function Settings() {
         )}
 
         {strs.length > 0 && (
-          <div className="card st-card">
+          <div id="display" className="card st-card">
             <div className="st-card-head">
               <div>
                 <h3 className="font-bold text-sm">{s.display_h}</h3>
@@ -820,6 +891,15 @@ export default function Settings() {
       <SmsSourcesSection t={t} s={s} lang={lang} />
       <SmsDevicesSection t={t} s={s} lang={lang} />
       </div>
+
+      {soloForm && (
+        <div className="st-solo-bar">
+          <button type="button" className="btn-ghost text-sm" onClick={reset} disabled={!dirty || busy}>{s.reset}</button>
+          <button type="submit" form="settings-form" className="btn-primary text-sm" disabled={busy || !dirty}>
+            {busy ? '…' : s.save}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -830,15 +910,31 @@ const CSS = `
    at a specific card (e.g. /settings#alerts) forces it visible on mobile
    too — see the .st-force-show class toggled from location.hash */
 @media (max-width: 767px) { .st-desktop-only:not(.st-force-show) { display: none; } }
+.st-solo-bar { display: none; }
+@media (max-width: 767px) {
+  /* single-section screen: only the chosen card + a sticky save bar */
+  .st-solo .st-head, .st-solo .st-info, .st-solo .st-foot, .st-solo .st-card-save { display: none !important; }
+  .st-solo .st-card, .st-solo .sms-dev-card { border-radius: 16px; }
+  .st-solo-bar { display: flex; gap: 10px; position: fixed; inset-inline: 0; z-index: 50;
+    bottom: calc(66px + env(safe-area-inset-bottom, 0px)); padding: 10px 14px;
+    background: color-mix(in srgb, var(--c-surface) 96%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+    border-top: 1px solid var(--c-border); }
+  .st-solo-bar .btn-primary { flex: 2; min-height: 44px; } .st-solo-bar .btn-ghost { flex: 1; min-height: 44px; }
+  .st-solo { padding-bottom: 70px; }
+}
+.st-hub-gh { font-size: 11.5px; font-weight: 700; color: var(--c-text-muted); margin: 0 4px 6px; }
+.st-hub-chev { color: var(--c-text-muted); display: grid; }
+[dir="rtl"] .st-hub-chev { transform: scaleX(-1); }
+
 .st-hub-list { overflow: hidden; }
-.st-hub-item { display: flex; align-items: center; gap: 12px; padding: 13px 16px; border-bottom: 1px solid var(--c-border); color: inherit; text-decoration: none; width: 100%; text-align: start; }
+.st-hub-item { display: flex; align-items: center; gap: 12px; padding: 13px 16px; min-height: 60px; border-bottom: 1px solid var(--c-border); color: inherit; text-decoration: none; width: 100%; text-align: start; }
 .st-hub-item:last-child { border-bottom: 0; }
 .st-hub-item:hover { background: color-mix(in srgb, var(--c-primary) 5%, transparent); }
 .st-hub-ico { width: 36px; height: 36px; border-radius: 11px; flex-shrink: 0; display: grid; place-items: center;
   background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary); }
 .st-hub-ico--danger { background: color-mix(in srgb, var(--c-danger) 12%, transparent); color: var(--c-danger); }
 .st-hub-item--danger { color: var(--c-danger); }
-@media (max-width: 767px) { .set-mobile-only { display: block; } }
+@media (max-width: 767px) { .set-mobile-only { display: block; } .st-hub { display: flex; flex-direction: column; gap: 14px; } }
 
 .st-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between; }
 @media (max-width: 640px) {
