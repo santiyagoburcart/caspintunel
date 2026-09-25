@@ -104,7 +104,10 @@ def import_legacy_users(rows: list[dict], overwrite: bool = False, staff=None) -
         target = existing or User(username=username)
         target.email = row.get("email") or target.email or None
         target.name = row.get("name", "") or target.name
-        target.phone = row.get("phone", "") or target.phone
+        if row.get("phone"):
+            from .phone import normalize_ir_phone, normalize_phone
+
+            target.phone = normalize_ir_phone(row["phone"]) or normalize_phone(row["phone"]) or target.phone
         if row.get("telegram_id"):
             target.telegram_id = row["telegram_id"]
         target.is_legacy = True

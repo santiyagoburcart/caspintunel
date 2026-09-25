@@ -120,6 +120,7 @@ SETTINGS_DEFAULTS = [
     ("email_verification_required", "false", ValueType.BOOL),
     ("force_channel_join", "false", ValueType.BOOL),
     ("force_share_phone", "false", ValueType.BOOL),
+    ("iran_phone_only", "true", ValueType.BOOL),
     ("unique_amount_min", "200", ValueType.INT),
     ("unique_amount_max", "1500", ValueType.INT),
     ("unique_amount_reservation_minutes", "30", ValueType.INT),

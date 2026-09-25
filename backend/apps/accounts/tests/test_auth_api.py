@@ -33,7 +33,8 @@ def test_register_success_returns_tokens(client):
 def test_register_with_referral_links_referrer(client):
     _register(client)
     ref = User.objects.get(username="alice").referral_code
-    r = _register(client, username="bob", email="bob@example.com", referral_code=ref.lower())
+    r = _register(client, username="bob", email="bob@example.com", phone="09120000001",
+                  referral_code=ref.lower())
     assert r.status_code == 201
     assert User.objects.get(username="bob").referred_by.username == "alice"
     assert User.objects.get(username="alice").referral_count == 1

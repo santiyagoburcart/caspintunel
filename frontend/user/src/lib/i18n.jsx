@@ -3,7 +3,11 @@ import { createContext, useContext, useEffect, useState } from 'react'
 const dict = {
   fa: {
     login: 'ورود', register: 'ثبت‌نام', logout: 'خروج', email: 'ایمیل', username: 'نام کاربری',
-    password: 'رمز عبور', name: 'نام', phone: 'شماره تلفن', referral: 'کد معرف',
+    password: 'رمز عبور', name: 'نام', phone: 'شماره موبایل', referral: 'کد معرف',
+    phone_hint: 'مثال: 09121234567 — ارقام فارسی هم پذیرفته می‌شود',
+    phone_hint_any: 'اختیاری — مثال: 09121234567',
+    phone_err_ir: 'شماره موبایل باید ایرانی و با ۰۹ شروع شود (مثال: 09121234567)',
+    phone_err_required: 'شماره موبایل الزامی است',
     dashboard: 'داشبورد', store: 'فروشگاه', services: 'سرویس‌های من', history: 'تاریخچه',
     profile: 'پروفایل', pages: 'راهنما', rules: 'قوانین', notifications: 'اعلان‌ها',
     buy: 'خرید', renew: 'تمدید', qr: 'دریافت QR', status: 'وضعیت',
@@ -166,7 +170,11 @@ const dict = {
   },
   en: {
     login: 'Login', register: 'Register', logout: 'Logout', email: 'Email', username: 'Username',
-    password: 'Password', name: 'Name', phone: 'Phone', referral: 'Referral code',
+    password: 'Password', name: 'Name', phone: 'Mobile number', referral: 'Referral code',
+    phone_hint: 'e.g. 09121234567 — Persian digits are fine too',
+    phone_hint_any: 'Optional — e.g. 09121234567',
+    phone_err_ir: 'The mobile number must be Iranian and start with 09 (e.g. 09121234567)',
+    phone_err_required: 'A mobile number is required',
     dashboard: 'Dashboard', store: 'Store', services: 'My services', history: 'History',
     profile: 'Profile', pages: 'Help', rules: 'Rules', notifications: 'Notifications',
     buy: 'Buy', renew: 'Renew', qr: 'Get QR', status: 'Status',

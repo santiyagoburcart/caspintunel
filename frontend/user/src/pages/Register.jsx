@@ -3,11 +3,14 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { useI18n } from '../lib/i18n'
 import { apiError } from '../lib/api'
-import { Alert, Field, PasswordField, Spinner } from '../components/ui'
+import { Alert, Field, PasswordField, PhoneInput, Spinner, usePhoneRule } from '../components/ui'
+import { localizeError } from '../lib/phone'
 import { AuthShell } from './Login'
 
 export default function Register() {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
+  const phoneRule = usePhoneRule()
+  const [tried, setTried] = useState(false)
   const { register } = useAuth()
   const nav = useNavigate()
   const [params] = useSearchParams()
@@ -20,11 +23,14 @@ export default function Register() {
 
   const submit = async (e) => {
     e.preventDefault()
+    setTried(true)
+    const phoneErr = phoneRule.error(f.phone)
+    if (phoneErr) { setErr(phoneErr); return }
     setBusy(true); setErr('')
     try {
       const res = await register(f)
       nav('/', { state: { flash: res.detail } })
-    } catch (e2) { setErr(apiError(e2, t('register_failed'))) }
+    } catch (e2) { setErr(localizeError(apiError(e2, t('register_failed')), lang)) }
     finally { setBusy(false) }
   }
 
@@ -38,7 +44,9 @@ export default function Register() {
         <PasswordField label={t('password')} value={f.password} autoComplete="new-password" onChange={set('password')} />
         <Field label={t('email')}><input className="input" type="email" value={f.email} onChange={set('email')} /></Field>
         <Field label={t('name')}><input className="input" value={f.name} onChange={set('name')} /></Field>
-        <Field label={t('phone')}><input className="input" value={f.phone} onChange={set('phone')} /></Field>
+        <Field label={t('phone') + (phoneRule.required ? ' *' : '')}>
+          <PhoneInput value={f.phone} onChange={(v) => setF({ ...f, phone: v })} showError={tried} />
+        </Field>
         <Field label={t('referral')}><input className="input" value={f.referral_code} onChange={set('referral_code')} /></Field>
         <button className="btn-primary w-full" disabled={busy}>{busy ? <Spinner /> : t('register')}</button>
         <div className="text-sm text-muted"><Link to="/login" className="hover:text-primary">{t('login')}</Link></div>

@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { copyToClipboard } from '../lib/clipboard'
 import { useI18n } from '../lib/i18n'
+import { normalizeIrPhone } from '../lib/phone'
+import { useTheme } from '../theme/ThemeProvider'
 
 export function Spinner() {
   return <div className="h-6 w-6 animate-spin rounded-full border-2 border-muted border-t-primary" />
@@ -113,5 +115,40 @@ export function Copyable({ text }) {
     >
       {ok ? '✓' : '⧉'}
     </button>
+  )
+}
+
+/** Phone rules for site forms: with `iran_phone_only` (default on) a valid
+ * Iranian mobile is required. Returns { required, error(value) }. */
+export function usePhoneRule() {
+  const { t } = useI18n()
+  const { config } = useTheme()
+  const required = config?.iran_phone_only !== false
+  const error = (value) => {
+    const v = String(value || '').trim()
+    if (!v) return required ? t('phone_err_required') : ''
+    if (required && !normalizeIrPhone(v)) return t('phone_err_ir')
+    return ''
+  }
+  return { required, error }
+}
+
+/** Mobile-number input: LTR, numeric keypad, format hint + inline error
+ * (shown after the field is touched). Persian/Arabic digits are accepted. */
+export function PhoneInput({ value, onChange, className = 'input', hintClassName = 'mt-1 block text-xs text-muted', showError }) {
+  const { t } = useI18n()
+  const { required, error } = usePhoneRule()
+  const [touched, setTouched] = useState(false)
+  const err = (touched || showError) ? error(value) : ''
+  return (
+    <>
+      <input className={className} dir="ltr" type="tel" inputMode="tel" autoComplete="tel"
+        placeholder="09121234567" value={value} required={required} aria-invalid={!!err}
+        onBlur={() => setTouched(true)} onChange={(e) => onChange(e.target.value)}
+        style={err ? { borderColor: 'var(--c-danger)' } : undefined} />
+      {err
+        ? <span className={hintClassName} style={{ color: 'var(--c-danger)' }} role="alert">{err}</span>
+        : <span className={hintClassName}>{required ? t('phone_hint') : t('phone_hint_any')}</span>}
+    </>
   )
 }

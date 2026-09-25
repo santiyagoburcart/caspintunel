@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { api, apiError } from '../lib/api'
+import { api, apiError, tokens } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useI18n } from '../lib/i18n'
 import { useTheme } from '../theme/ThemeProvider'
-import { Alert, Copyable, PasswordField, Spinner, Toggle } from '../components/ui'
+import { Alert, Copyable, Field, PasswordField, PhoneInput, Spinner, Toggle, usePhoneRule } from '../components/ui'
+import { localizeError } from '../lib/phone'
 import { useToast } from '../components/Toast'
 import { copyToClipboard } from '../lib/clipboard'
 
@@ -37,20 +38,26 @@ function LegacyProfile() {
   const st = strength(pw.new_password)
   const stLabel = [t('pw_weak'), t('pw_weak'), t('pw_fair'), t('pw_strong')][st]
 
+  const phoneRule = usePhoneRule()
   const saveInfo = async (e) => {
-    e.preventDefault(); setInfoBusy(true); setInfoErr(''); setInfoMsg('')
+    e.preventDefault(); setInfoErr(''); setInfoMsg('')
+    const phoneErr = phoneRule.error(f.phone)
+    if (phoneErr) { setInfoErr(phoneErr); return }
+    setInfoBusy(true)
     try {
       await api.patch('/auth/me/', { name: f.name, phone: f.phone, email: f.email || null })
       await refreshMe()
       setInfoMsg(t('saved_ok'))
-    } catch (e2) { setInfoErr(apiError(e2)) } finally { setInfoBusy(false) }
+    } catch (e2) { setInfoErr(localizeError(apiError(e2), lang)) } finally { setInfoBusy(false) }
   }
   const changePw = async (e) => {
     e.preventDefault(); setErr(''); setMsg('')
     if (pw.new_password !== pw.confirm) { setErr(t('pw_mismatch')); return }
     setBusy(true)
     try {
-      await api.post('/auth/password/change/', { current_password: pw.current_password, new_password: pw.new_password })
+      const { data: pwRes } = await api.post('/auth/password/change/', { current_password: pw.current_password, new_password: pw.new_password })
+      // the new password revokes all old tokens — keep this session on the fresh pair
+      if (pwRes?.access) tokens.set(pwRes)
       setMsg(t('pw_changed')); setPw({ current_password: '', new_password: '', confirm: '' })
     } catch (e2) { setErr(apiError(e2)) } finally { setBusy(false) }
   }
@@ -72,7 +79,9 @@ function LegacyProfile() {
           <span className="flex items-center gap-2"><code dir="ltr">{user?.username}</code><Copyable text={user?.username || ''} /></span>
         </div>
         <Field label={t('name')}><input className="input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
-        <Field label={t('phone')}><input className="input" dir="ltr" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></Field>
+        <Field label={t('phone') + (phoneRule.required ? ' *' : '')}>
+          <PhoneInput value={f.phone} onChange={(v) => setF({ ...f, phone: v })} />
+        </Field>
         <Field label={t('email')}>
           <input className="input" type="email" dir="ltr" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />
           {user?.email && !user?.email_verified && <button type="button" className="btn-ghost text-xs mt-1" onClick={resend}>{t('verify_email')}</button>}
@@ -210,13 +219,17 @@ function CaspianProfile() {
 
   const dirty = f.name !== (user?.name || '') || f.phone !== (user?.phone || '') || f.email !== (user?.email || '')
 
+  const phoneRule = usePhoneRule()
   const saveInfo = async (e) => {
-    e.preventDefault(); setSavedBusy(true); setSavedErr(''); setSavedMsg('')
+    e.preventDefault(); setSavedErr(''); setSavedMsg('')
+    const phoneErr = phoneRule.error(f.phone)
+    if (phoneErr) { setSavedErr(phoneErr); return }
+    setSavedBusy(true)
     try {
       await api.patch('/auth/me/', { name: f.name, phone: f.phone, email: f.email || null })
       await refreshMe()
       setSavedMsg(t('saved_ok'))
-    } catch (e2) { setSavedErr(apiError(e2)) } finally { setSavedBusy(false) }
+    } catch (e2) { setSavedErr(localizeError(apiError(e2), lang)) } finally { setSavedBusy(false) }
   }
   const resend = async () => {
     setSavedErr(''); setSavedMsg('')
@@ -228,7 +241,9 @@ function CaspianProfile() {
     if (pw.new_password !== pw.confirm) { setPwErr(t('pw_mismatch')); return }
     setPwBusy(true)
     try {
-      await api.post('/auth/password/change/', { current_password: pw.current_password, new_password: pw.new_password })
+      const { data: pwRes } = await api.post('/auth/password/change/', { current_password: pw.current_password, new_password: pw.new_password })
+      // the new password revokes all old tokens — keep this session on the fresh pair
+      if (pwRes?.access) tokens.set(pwRes)
       setPwMsg(t('pw_changed')); setPw({ current_password: '', new_password: '', confirm: '' })
     } catch (e2) { setPwErr(apiError(e2)) } finally { setPwBusy(false) }
   }
@@ -287,8 +302,9 @@ function CaspianProfile() {
                 <input className="csp-pf-input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
               </label>
               <label className="csp-pf-fld">
-                <span className="csp-pf-fld-label">{t('phone')}</span>
-                <input className="csp-pf-input mono-num" dir="ltr" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} />
+                <span className="csp-pf-fld-label">{t('phone') + (phoneRule.required ? ' *' : '')}</span>
+                <PhoneInput className="csp-pf-input mono-num" hintClassName="csp-pf-fld-hint"
+                  value={f.phone} onChange={(v) => setF({ ...f, phone: v })} />
               </label>
               <label className="csp-pf-fld">
                 <span className="csp-pf-fld-label">
@@ -454,6 +470,7 @@ const CSS = `
 .csp-pf-fields { display: flex; flex-direction: column; gap: 12px; }
 .csp-pf-fld { display: flex; flex-direction: column; gap: 6px; }
 .csp-pf-fld-label { font-size: 12px; font-weight: 700; color: var(--csp-text-2, var(--c-text)); display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.csp-pf-fld-hint { font-size: 11.5px; line-height: 1.7; color: var(--c-text-muted); margin-top: -2px; }
 .csp-pf-fld-wrap { position: relative; display: flex; align-items: center; }
 .csp-pf-fld-wrap > svg { position: absolute; inset-inline-start: 12px; color: var(--c-text-muted); pointer-events: none; }
 .csp-pf-input {

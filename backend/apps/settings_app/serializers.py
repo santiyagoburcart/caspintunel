@@ -17,6 +17,7 @@ def rel_media(fieldfile) -> str | None:
 
 class PublicSiteConfigSerializer(serializers.ModelSerializer):
     product_display_mode = serializers.SerializerMethodField()
+    iran_phone_only = serializers.SerializerMethodField()
     logo = serializers.SerializerMethodField()
     favicon = serializers.SerializerMethodField()
 
@@ -24,13 +25,18 @@ class PublicSiteConfigSerializer(serializers.ModelSerializer):
         model = SiteConfig
         fields = ("site_name_fa", "site_name_en", "site_domain", "logo", "favicon",
                   "bot_description_fa", "bot_description_en", "support_telegram", "meta_description",
-                  "product_display_mode")
+                  "product_display_mode", "iran_phone_only")
 
     def get_logo(self, obj) -> str | None:
         return rel_media(obj.logo)
 
     def get_favicon(self, obj) -> str | None:
         return rel_media(obj.favicon)
+
+    def get_iran_phone_only(self, obj) -> bool:
+        from apps.accounts.phone import iran_phone_only
+
+        return iran_phone_only()
 
     def get_product_display_mode(self, obj) -> str:
         from apps.settings_app.utils import get_setting

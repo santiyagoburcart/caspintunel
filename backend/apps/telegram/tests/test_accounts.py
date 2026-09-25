@@ -26,11 +26,12 @@ def test_returning_user_is_synced_not_recreated():
     assert User.objects.filter(telegram_id=555).count() == 1
 
 
-def test_link_phone_only_sets_when_missing():
+def test_link_phone_normalizes_and_telegram_number_wins():
     user, *_ = ensure_bot_user(777)
-    link_phone(user, "09120001122")
+    link_phone(user, "+989120001122")
     user.refresh_from_db()
     assert user.phone == "09120001122"
-    link_phone(user, "09000000000")
+    # Telegram-verified: a later share replaces the stored value
+    link_phone(user, "989350001122")
     user.refresh_from_db()
-    assert user.phone == "09120001122"  # unchanged — already set
+    assert user.phone == "09350001122"

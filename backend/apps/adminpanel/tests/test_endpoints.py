@@ -43,9 +43,17 @@ def test_user_list_filter_and_actions(boss):
 
 def test_user_create(boss):
     r = boss.post("/api/v1/admin/users/", {"username": "created", "password": "Str0ngPass!",
-                                           "name": "C", "phone": "0912"}, format="json")
+                                           "name": "C", "phone": "+98 912 123-4567"}, format="json")
     assert r.status_code == 201
-    assert User.objects.get(username="created").check_password("Str0ngPass!")
+    created = User.objects.get(username="created")
+    assert created.check_password("Str0ngPass!")
+    assert created.phone == "09121234567"          # normalized
+
+
+def test_user_create_rejects_invalid_phone(boss):
+    r = boss.post("/api/v1/admin/users/", {"username": "created2", "password": "Str0ngPass!",
+                                           "phone": "0912"}, format="json")
+    assert r.status_code == 400 and "phone" in r.data
 
 
 # --- cards + per-card deposit report --------------------------

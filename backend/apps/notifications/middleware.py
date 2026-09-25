@@ -27,8 +27,13 @@ def _get_user(token: str):
     except (TokenError, KeyError):
         return AnonymousUser()
 
+    from apps.accounts.authentication import token_matches_password
+
     User = get_user_model()
-    return User.objects.filter(pk=user_id, is_active=True).first() or AnonymousUser()
+    user = User.objects.filter(pk=user_id, is_active=True).first()
+    if user is None or not token_matches_password(validated, user):
+        return AnonymousUser()
+    return user
 
 
 class JWTAuthMiddleware(BaseMiddleware):

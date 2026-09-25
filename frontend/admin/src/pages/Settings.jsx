@@ -752,7 +752,12 @@ export default function Settings() {
             <div className="st-toggles">
               {bools.map((x, i) => (
                 <div key={x.key} className={'st-toggle-row' + (i ? ' st-div' : '')}>
-                  <span className="text-sm">{t('set_' + x.key)}</span>
+                  <span className="min-w-0">
+                    <span className="block text-sm">{t('set_' + x.key)}</span>
+                    {t('hint_' + x.key) !== 'hint_' + x.key && (
+                      <span className="mt-0.5 block text-xs text-muted leading-relaxed">{t('hint_' + x.key)}</span>
+                    )}
+                  </span>
                   <Toggle checked={!!form[x.key]} onChange={(v) => setForm({ ...form, [x.key]: v })} label={t('set_' + x.key)} />
                 </div>
               ))}

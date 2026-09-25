@@ -22,7 +22,7 @@ const T = {
     modal_sub: 'مشخصات هویتی و تنظیمات دسترسی کاربر کاسپین تانل',
     fld_fullname: 'نام و نام خانوادگی', fld_username: 'نام کاربری (یوزرنیم)',
     fld_telegram: 'شناسه عددی تلگرام (Chat ID)', fld_tg_username: 'نام کاربری تلگرام',
-    fld_phone: 'شماره موبایل', fld_email: 'پست الکترونیک (ایمیل)', fld_language: 'زبان',
+    fld_phone: 'شماره موبایل', phone_hint: 'به ‎09xxxxxxxxx‎ تبدیل می‌شود؛ باید یکتا باشد', fld_email: 'پست الکترونیک (ایمیل)', fld_language: 'زبان',
     fld_password: 'رمز عبور', fld_password_new: 'رمز عبور جدید',
     fld_password_edit_hint: '(فقط برای تغییر وارد شود)',
     fld_status: 'وضعیت حساب کاربری',
@@ -53,7 +53,7 @@ const T = {
     modal_sub: 'Identity details and access settings for the Caspian Tunnel user',
     fld_fullname: 'Full name', fld_username: 'Username',
     fld_telegram: 'Telegram numeric ID (Chat ID)', fld_tg_username: 'Telegram username',
-    fld_phone: 'Mobile number', fld_email: 'Email address', fld_language: 'Language',
+    fld_phone: 'Mobile number', phone_hint: 'Stored as 09xxxxxxxxx; must be unique', fld_email: 'Email address', fld_language: 'Language',
     fld_password: 'Password', fld_password_new: 'New password',
     fld_password_edit_hint: '(fill only to change)',
     fld_status: 'Account status',
@@ -190,7 +190,12 @@ function UserModal({ row, s, t, lang, onClose, onSaved }) {
         })
       }
       onSaved(editing ? s.updated_ok : s.created_ok)
-    } catch (e2) { setErr(apiError(e2, t('load_error'))) } finally { setBusy(false) }
+    } catch (e2) {
+      // backend phone errors come as "fa / en" — show the UI language's half
+      const msg = apiError(e2, t('load_error'))
+      const parts = String(msg).split(' / ')
+      setErr(parts.length === 2 ? parts[lang === 'en' ? 1 : 0] : msg)
+    } finally { setBusy(false) }
   }
 
   return (
@@ -234,7 +239,8 @@ function UserModal({ row, s, t, lang, onClose, onSaved }) {
           <div className="usr-grid2">
             <label className="usr-fld">
               <span className="label">{s.fld_phone}</span>
-              <input className="input" dir="ltr" type="tel" value={f.phone} onChange={set('phone')} placeholder="0912xxxxxxx" />
+              <input className="input" dir="ltr" type="tel" inputMode="tel" value={f.phone} onChange={set('phone')} placeholder="09121234567" />
+              <span className="text-xs text-muted">{s.phone_hint}</span>
             </label>
             <label className="usr-fld">
               <span className="label">{s.fld_email}</span>

@@ -5,6 +5,7 @@ from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from .models import Source
+from .phone import PhoneError, clean_site_phone
 
 User = get_user_model()
 
@@ -48,6 +49,12 @@ class RegisterSerializer(serializers.Serializer):
         validate_password(value)
         return value
 
+    def validate_phone(self, value):
+        try:
+            return clean_site_phone(value)
+        except PhoneError as exc:
+            raise serializers.ValidationError(str(exc), code=exc.code)
+
     def validate_referral_code(self, value):
         if not value:
             return value
@@ -57,6 +64,12 @@ class RegisterSerializer(serializers.Serializer):
         return value
 
     def validate(self, attrs):
+        if "phone" not in attrs:
+            # field omitted entirely — still enforce "required" under iran_phone_only
+            try:
+                attrs["phone"] = clean_site_phone("")
+            except PhoneError as exc:
+                raise serializers.ValidationError({"phone": [str(exc)]}, code=exc.code)
         if not attrs.get("referral_code"):
             from apps.settings_app.utils import get_setting
 

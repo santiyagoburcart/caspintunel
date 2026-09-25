@@ -15,6 +15,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from apps.common.models import write_audit
 
 from . import services
+from .phone import PhoneError, clean_site_phone
 from .serializers import (
     ChangePasswordSerializer,
     EmailVerifyConfirmSerializer,
@@ -172,6 +173,11 @@ class MeView(GenericAPIView):
                 return Response({"email": ["email already registered"]}, status=400)
             user.email = new_email
             user.email_verified = False
+        if "phone" in data:
+            try:
+                data["phone"] = clean_site_phone(data["phone"], exclude_pk=user.pk)
+            except PhoneError as exc:
+                return Response({"phone": [str(exc)], "code": exc.code}, status=400)
         for k in editable - {"email"}:
             if k in data:
                 setattr(user, k, data[k])
@@ -192,7 +198,11 @@ class ChangePasswordView(GenericAPIView):
         request.user.set_password(ser.validated_data["new_password"])
         request.user.save(update_fields=["password", "updated_at"])
         write_audit(action="password.changed", target=request.user)
-        return Response({"detail": "password updated"})
+        # a new password revokes every existing token (CHECK_REVOKE_TOKEN) —
+        # hand this session fresh ones so only the *other* sessions end
+        refresh = RefreshToken.for_user(request.user)
+        return Response({"detail": "password updated",
+                         "access": str(refresh.access_token), "refresh": str(refresh)})
 
 
 class EmailVerifyResendView(GenericAPIView):

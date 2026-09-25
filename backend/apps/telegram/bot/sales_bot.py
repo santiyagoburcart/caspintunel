@@ -24,9 +24,9 @@ from apps.panel.services import revoke_subscription
 from apps.plans.models import Plan, PlanType
 from apps.settings_app.models import SiteConfig
 
-from ..accounts import change_password_via_bot, ensure_bot_user, link_phone
+from ..accounts import change_password_via_bot, ensure_bot_user, link_telegram_phone
 from ..config import get_bot_config
-from ..gate import check_access
+from ..gate import check_access, needs_phone
 from ..models import BotType
 from ..shop import (
     ORDER_STATUS_FA,
@@ -97,17 +97,61 @@ def _welcome_text(created, password, username):
     return text
 
 
+def _t(user, fa: str, en: str) -> str:
+    return en if getattr(user, "language", "fa") == "en" else fa
+
+
+MSG_SHARE_PHONE = (
+    "📱 برای ادامه، ابتدا شمارهٔ موبایل خود را با دکمهٔ «اشتراک‌گذاری شماره» در پایین صفحه ارسال کنید.",
+    "📱 To continue, please share your phone number using the “Share phone number” button below.",
+)
+MSG_NOT_IRANIAN = (
+    "❌ شمارهٔ این حساب تلگرام ایرانی نیست. فقط شماره‌های موبایل ایرانی (‎+98‎) پذیرفته می‌شوند.\n"
+    "لطفاً با حساب تلگرامی که شمارهٔ ایرانی دارد وارد شوید و دوباره شماره را ارسال کنید.",
+    "❌ This Telegram account's number is not Iranian. Only Iranian mobile numbers (+98) are accepted.\n"
+    "Please use a Telegram account with an Iranian number and share it again.",
+)
+MSG_NOT_OWN = (
+    "لطفاً شمارهٔ خودتان را فقط با دکمهٔ زیر ارسال کنید.",
+    "Please share your own number using the button below.",
+)
+MSG_CONFLICT = (
+    "⚠️ این شماره قبلاً به حساب تلگرام دیگری متصل شده است. لطفاً با پشتیبانی تماس بگیرید.",
+    "⚠️ This number is already linked to a different Telegram account. Please contact support.",
+)
+MSG_MERGED = (
+    "✅ حساب شما در سایت به ربات متصل شد. برای ورود به سایت، از دکمه «تغییر رمز عبور» در ربات یک رمز جدید تنظیم کنید.",
+    "✅ Your website account is now linked to the bot. To sign in on the website, set a new password "
+    "with the “Change password” button in the bot.",
+)
+MSG_PHONE_SAVED = ("شماره ثبت شد ✅", "Phone number saved ✅")
+
+
+def _ask_phone(bot, chat_id, user, reason=MSG_SHARE_PHONE):
+    bot.send_message(chat_id, _t(user, *reason), reply_markup=kb.share_phone())
+
+
 def _enforce_gate(bot, chat_id, user, tg_id) -> bool:
     result = check_access(user, tg_id)
     if result.ok:
         return True
+    if result.need_phone:
+        # the phone comes first: nothing else is reachable until it is shared
+        _ask_phone(bot, chat_id, user)
+        return False
     if result.missing_channels:
         bot.send_message(chat_id, "برای استفاده از ربات ابتدا در کانال‌های زیر عضو شوید:",
                          reply_markup=kb.join_channels(result.missing_channels))
-    if result.need_phone:
-        bot.send_message(chat_id, "لطفاً شمارهٔ تلفن خود را به اشتراک بگذارید:",
-                         reply_markup=kb.share_phone())
     return False
+
+
+def _phone_gate(bot, chat_id, user) -> bool:
+    """force_share_phone: block every interaction until a phone is on file
+    (users who already have one never see this)."""
+    if needs_phone(user):
+        _ask_phone(bot, chat_id, user)
+        return False
+    return True
 
 
 # --- handlers -------------------------------------------------------
@@ -125,6 +169,8 @@ def _register(bot: telebot.TeleBot):
     def receipt_photo(msg):
         close_old_connections()
         user, *_ = _user(msg.from_user)
+        if not _phone_gate(bot, msg.chat.id, user):
+            return
         order = order_awaiting_receipt(user)
         if not order:
             bot.send_message(msg.chat.id, "سفارشی در انتظار پرداخت ندارید. برای خرید /start را بزنید.")
@@ -156,12 +202,23 @@ def _register(bot: telebot.TeleBot):
     @bot.message_handler(content_types=["contact"])
     def contact(msg):
         close_old_connections()
-        if msg.contact and msg.contact.user_id == msg.from_user.id:
-            user, *_ = _user(msg.from_user)
-            link_phone(user, msg.contact.phone_number)
-            bot.send_message(msg.chat.id, "شماره ثبت شد ✅")
-            if _enforce_gate(bot, msg.chat.id, user, msg.from_user.id):
-                bot.send_message(msg.chat.id, "منو:", reply_markup=kb.main_menu())
+        user, *_ = _user(msg.from_user)
+        if not msg.contact or msg.contact.user_id != msg.from_user.id:
+            # a forwarded / someone else's contact card — only your own number counts
+            _ask_phone(bot, msg.chat.id, user, MSG_NOT_OWN)
+            return
+        res = link_telegram_phone(user, msg.contact.phone_number)
+        if res.status in ("not_iranian", "invalid"):
+            _ask_phone(bot, msg.chat.id, user, MSG_NOT_IRANIAN)
+            return
+        if res.status == "conflict":
+            bot.send_message(msg.chat.id, _t(user, *MSG_CONFLICT), reply_markup=types.ReplyKeyboardRemove())
+            return
+        user = res.user
+        done = MSG_MERGED if res.status == "merged" else MSG_PHONE_SAVED
+        bot.send_message(msg.chat.id, _t(user, *done), reply_markup=types.ReplyKeyboardRemove())
+        if _enforce_gate(bot, msg.chat.id, user, msg.from_user.id):
+            bot.send_message(msg.chat.id, "منو:", reply_markup=kb.main_menu())
 
     @bot.callback_query_handler(func=lambda c: True)
     def on_cb(c):
@@ -277,6 +334,9 @@ def _register(bot: telebot.TeleBot):
 
     def _got_custom_gb(msg, plan_id):
         close_old_connections()
+        user, *_ = _user(msg.from_user)
+        if not _phone_gate(bot, msg.chat.id, user):
+            return
         plan = Plan.objects.filter(pk=plan_id, is_active=True).first()
         try:
             gb = int((msg.text or "").strip())
@@ -293,6 +353,8 @@ def _register(bot: telebot.TeleBot):
     def _got_new_password(msg):
         close_old_connections()
         user, *_ = _user(msg.from_user)
+        if not _phone_gate(bot, msg.chat.id, user):
+            return
         new_password = (msg.text or "").strip()
         try:
             change_password_via_bot(user, new_password)
@@ -309,6 +371,8 @@ def _register(bot: telebot.TeleBot):
     def _got_account_name(msg, plan_id, custom_gb):
         close_old_connections()
         user, *_ = _user(msg.from_user)
+        if not _phone_gate(bot, msg.chat.id, user):
+            return
         plan = Plan.objects.filter(pk=plan_id, is_active=True).first()
         try:
             order = buy_new(user, plan, account_name=(msg.text or "").strip(), custom_gb=custom_gb)
@@ -348,3 +412,15 @@ def _register(bot: telebot.TeleBot):
         if order.status == "completed" and order.service and order.service.subscription_url:
             bot.send_message(chat_id, delivery_message(order.service),
                              reply_markup=kb.service_detail(order.service))
+
+    # Registered last so the specific handlers above win. Any other message —
+    # text, commands, stickers, voice… — lands here: users without a phone
+    # (force_share_phone) are asked for it first; everyone else gets the menu.
+    @bot.message_handler(func=lambda m: True, content_types=[
+        "text", "sticker", "voice", "audio", "video", "video_note", "location", "venue", "animation", "poll", "dice",
+    ])
+    def fallback(msg):
+        close_old_connections()
+        user, *_ = _user(msg.from_user)
+        if _enforce_gate(bot, msg.chat.id, user, msg.from_user.id):
+            bot.send_message(msg.chat.id, "یک گزینه را انتخاب کنید:", reply_markup=kb.main_menu())

@@ -1,7 +1,8 @@
 from rest_framework import viewsets
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.views import APIView
-from rest_framework_simplejwt.authentication import JWTAuthentication
+
+from apps.accounts.authentication import JWTAuthentication
 
 from ..permissions import StaffJWTAuthentication, StaffPermission
 

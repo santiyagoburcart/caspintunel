@@ -183,7 +183,7 @@ STORAGES = {
 # ---------------------------------------------------------------------------
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "apps.accounts.authentication.JWTAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
@@ -211,6 +211,9 @@ SIMPLE_JWT = {
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
     "UPDATE_LAST_LOGIN": True,
+    # tokens carry a hash of the password hash: a password change / account
+    # merge revokes every session (see apps.accounts.authentication)
+    "CHECK_REVOKE_TOKEN": True,
 }
 
 # Token lifetimes for signed links (email verify / password reset), in seconds.

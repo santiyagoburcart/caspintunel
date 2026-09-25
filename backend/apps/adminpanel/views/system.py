@@ -26,6 +26,7 @@ EDITABLE_SETTINGS = [
     ("alert_expire_days", "int", 3, 1, 60),
     ("email_verification_required", "bool", False, None, None),
     ("referral_required", "bool", False, None, None),
+    ("iran_phone_only", "bool", True, None, None),
     ("force_channel_join", "bool", False, None, None),
     ("force_share_phone", "bool", False, None, None),
     ("default_language", "str", "fa", None, None),

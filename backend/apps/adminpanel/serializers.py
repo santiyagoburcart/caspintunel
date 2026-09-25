@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from apps.accounts.models import Permission, Role, Staff
+from apps.accounts.phone import PhoneError, clean_site_phone
 from apps.notifications.models import Notification
 from apps.ops.models import BackupLog, HealthCheck, ResourceStat
 from apps.orders.models import Order
@@ -30,6 +31,18 @@ class AdminUserSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("id", "referral_code", "referral_count", "service_count", "created_at")
 
+    def validate_phone(self, value):
+        return _admin_phone(value, getattr(self.instance, "pk", None))
+
+
+def _admin_phone(value, exclude_pk):
+    # admins may leave it blank (e.g. bot-only customers), but anything they
+    # type is normalized, validated and kept unique like on the site
+    try:
+        return clean_site_phone(value, required=False, exclude_pk=exclude_pk)
+    except PhoneError as exc:
+        raise serializers.ValidationError(str(exc), code=exc.code)
+
 
 class AdminUserCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
@@ -37,6 +50,9 @@ class AdminUserCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ("id", "username", "password", "email", "name", "phone", "language", "is_active")
+
+    def validate_phone(self, value):
+        return _admin_phone(value, None)
 
     def create(self, validated):
         pwd = validated.pop("password")
