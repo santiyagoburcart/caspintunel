@@ -227,8 +227,37 @@ pending), `telegram_stats` population, a few secondary admin screens.
   **Cert not issued yet** — `aicaspin.ir` has no A record; run `init-letsencrypt.sh` after DNS propagates.
 - Stack up on HTTP (11 + certbot containers), 153/153 tests, no drift, deploy check clean.
 
+## Release v1.7.0 — stable (2026-09-25)
+Everything shipped since v1.6.0 (details in the session log):
+- **Production setup** — the live server runs `docker-compose.prod.yml` (nginx + built SPAs, gunicorn, daphne
+  `/ws/`, celery, bots); `COMPOSE_FILE` in `.env` makes plain `docker compose` = prod. Send-only mailserver
+  (`SMTP_ONLY`, no more restart loop).
+- **Zero-downtime deploys** — `./update.sh`: DB dump + `:rollback` tags → one-off migrate/seed/collectstatic →
+  rolling swap of web/daphne/SPAs behind healthchecks (measured: 0 failed requests). `./update.sh --rollback`.
+- **Staff session revocation** — `Staff.token_version` (`tv` claim) checked everywhere; password change /
+  `manage.py revoke_staff_sessions` end staff sessions only (customers untouched).
+- **DB token blacklist** — spent staff refresh tokens live in `StaffRevokedToken` (single-use, survives a
+  Redis flush).
+- **Rate-limit fix** — one trusted client IP from nginx + `NUM_PROXIES = 1` (spoofed `X-Forwarded-For` no
+  longer bypasses limits, incl. login); public reads cached 60 s with their own scope; anon 180/min.
+- **Latin digits** everywhere (both SPAs, bot/API text, data migrations); Persian/Arabic digits only
+  normalized on input.
+- **.env cleanup** — dead / seed-only variables removed, `.env.example` documents every variable.
+- **Isolated test stack + safety guard** — `./scripts/test.sh` (own network, tmpfs MySQL/Redis); test
+  settings refuse to start against production DB/Redis; CLAUDE.md "Safety" rules.
+- **Email settings in the admin panel** — `/panel/settings/email`: SMTP relay with encrypted write-only
+  password, presets, test email with the real error, status; one dynamic backend for all app mail
+  (admin-panel relay → `.env` → local mailserver).
+
+**Open items — on the owner:**
+- **Email relay credentials** — create a Brevo (or other) account, verify `aicaspin.ir` (SPF/DKIM), enter the
+  SMTP login in Settings → Email and send a test. Until then no email reaches real inboxes (port 25 blocked).
+- **Bank card check** — card #1 is `62861920585303` (14 digits; 16 expected): confirm the number customers pay to.
+- **Real-iPhone Shortcut test** — sign `CaspinSMS.shortcut` on a Mac, install it, and confirm a real bank SMS
+  auto-confirms a payment (only checked structurally so far).
+
 ## Current state & open items (keep this list current)
-- **Version** `VERSION` = 1.6.4 (tagged releases `v<version>`; v1.4.0/v1.4.1 were tagged before the file was bumped); iPhone Shortcut has its own `mobile_shortcut/VERSION`.
+- **Version** `VERSION` = 1.7.0 (tagged releases `v<version>`; v1.4.0/v1.4.1 were tagged before the file was bumped); iPhone Shortcut has its own `mobile_shortcut/VERSION`.
 - **Post-1.0 phases 1–6 done** (see session log 2026-09-25): checkout resume, phone rules + bot↔site merge,
   shared ConfirmDialog + service edit page, delete/restore users + link existing panel account + HWID,
   admin mobile parity + bot QR card + sign-up terms, Apps & tools page + settings routes + fonts.
@@ -325,3 +354,4 @@ pending), `telegram_stats` population, a few secondary admin screens.
 - 2026-09-25 — **Safety rules + isolated tests.** Two incidents today came from test/verification commands hitting live services (a pytest run with prod settings cleared the live Redis cache; a verification command ran `FLUSHDB` on live Redis db 0). Also found: the old test command used the live MySQL server (own `test_` DB) and the **live Redis channel layer** (tests could `group_send` to live admin sockets). Now: `./scripts/test.sh` runs the suite in `docker-compose.test.yml` (own network, tmpfs MySQL + Redis, per-run keys); test settings use in-memory cache/channels/Celery and **refuse to start** unless DB host = `test-db` and Redis hosts = `test-redis` (production names/IPs refused even if allow-listed). CLAUDE.md "Safety": no tests/scripts against live DB/Redis; destructive commands on live data only after an explicit "yes" in chat. 382 tests pass in the isolated stack.
 - 2026-09-25 — **v1.6.3: outgoing email configurable in the admin panel.** New `EmailSettings` singleton (`settings_app.0012`; password `EncryptedTextField`, write-only in the API) + `apps.common.mail.DynamicEmailBackend` as the global `EMAIL_BACKEND`: resolves at send time admin-panel relay → `.env` `EMAIL_*` → local mailserver, 30 s per-process cache + cache-version bump on save, records last success / last error on every send; readable SMTP errors (auth / timeout / sender refused / TLS …). Admin API `GET/PUT /admin/email/`, `POST /admin/email/test/` (permission `settings.email`, seeded; changes audit-logged without the password). Monitoring "mail" check now probes the effective server (connect + TLS + login). New page `/panel/settings/email` (sidebar, mobile hub, desktop Settings link card; presets Brevo/Mailgun/SendGrid/SES, test-email with the real error, status, help). Replaced the read-only `.env` email card + `/admin/integrations/email/`. Web app never touches the mailserver container.
 - 2026-09-25 — **v1.6.4**: live test of the email page against Brevo without credentials returned `502 5.7.0 Please authenticate first` on MAIL FROM (smtplib → `SMTPSenderRefused`), which 1.6.3 mislabelled "sender not verified"; replies that ask for authentication now map to `auth_required` ("server requires login"). Deploys of 1.6.3/1.6.4: 0 failed probe requests.
+- 2026-09-25 — **v1.7.0 — stable release** (summary above). No code changes vs 1.6.4 beyond VERSION/PROGRESS.
