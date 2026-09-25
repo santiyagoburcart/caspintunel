@@ -6,6 +6,7 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Users from './pages/Users'
 import UserOrders from './pages/UserOrders'
+import DeletedUsers from './pages/DeletedUsers'
 import Plans from './pages/Plans'
 import Payments from './pages/Payments'
 import Transactions from './pages/Transactions'
@@ -34,6 +35,8 @@ export default function App() {
       <Route element={<Private><Layout /></Private>}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/users" element={<Users />} />
+        <Route path="/users/deleted" element={<DeletedUsers />} />
+        <Route path="/users/deleted/:id" element={<DeletedUsers />} />
         <Route path="/users/:id/orders" element={<UserOrders />} />
         <Route path="/plans" element={<Plans />} />
         <Route path="/payments" element={<Payments />} />

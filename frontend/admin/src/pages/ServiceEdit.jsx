@@ -43,7 +43,7 @@ const T = {
     note: 'یادداشت پنل (Note)', note_hint: 'فقط برای ادمین‌ها روی پنل PasarGuard نمایش داده می‌شود',
     sub: 'لینک فعال سابسکریپشن کاربر (Subscription URL)', copy: 'کپی', copied: 'کپی شد',
     live_h: 'اطلاعات زندهٔ پنل', f_online: 'آخرین اتصال', f_created: 'ساخت روی پنل', f_edit: 'آخرین ویرایش روی پنل',
-    f_lifetime: 'مصرف کل عمر اکانت', f_reset: 'بازنشانی خودکار حجم', f_hwid: 'محدودیت دستگاه (HWID)', f_ours: 'ثبت در سیستم ما',
+    f_lifetime: 'مصرف کل عمر اکانت', f_reset: 'بازنشانی خودکار حجم', f_hwid: 'محدودیت دستگاه (HWID)', hwid_label: 'محدودیت تعداد دستگاه (HWID Device Limit)', hwid_hint: 'حداکثر دستگاه‌هایی که می‌توانند با این اکانت متصل شوند — خالی یا ۰ = نامحدود', devices: 'دستگاه', f_ours: 'ثبت در سیستم ما',
     f_source: 'منبع', none: '—',
     actions_h: 'عملیات سرویس', act_reset: 'ریست حجم مصرفی', act_revoke: 'تغییر لینک اشتراک', act_delete: 'حذف دائمی سرویس',
     raw_h: 'پاسخ خام پنل (PasarGuard)', foot: 'تمامی تغییرات ابتدا روی پنل PasarGuard اعمال و سپس در سیستم ما همگام‌سازی می‌شود.',
@@ -80,7 +80,7 @@ const T = {
     note: 'Panel note', note_hint: 'Only visible to admins on the PasarGuard panel',
     sub: 'Active subscription URL', copy: 'Copy', copied: 'Copied',
     live_h: 'Live panel data', f_online: 'Last seen', f_created: 'Created on panel', f_edit: 'Last edited on panel',
-    f_lifetime: 'Lifetime usage', f_reset: 'Data reset strategy', f_hwid: 'Device limit (HWID)', f_ours: 'Created in our system',
+    f_lifetime: 'Lifetime usage', f_reset: 'Data reset strategy', f_hwid: 'Device limit (HWID)', hwid_label: 'Device limit (HWID)', hwid_hint: 'Maximum devices that can connect with this account — empty or 0 = unlimited', devices: 'devices', f_ours: 'Created in our system',
     f_source: 'Source', none: '—',
     actions_h: 'Service actions', act_reset: 'Reset usage', act_revoke: 'Revoke subscription link', act_delete: 'Delete service permanently',
     raw_h: 'Raw panel response (PasarGuard)', foot: 'Every change is applied on the PasarGuard panel first, then synced into our system.',
@@ -143,6 +143,7 @@ function formFrom(d) {
     onHoldDays: hold ? String(Math.round(hold / DAY)) : '',
     groupIds: [...(raw.group_ids || [])].sort((a, b) => a - b),
     note: raw.note || '',
+    hwid: raw.hwid_limit ? String(raw.hwid_limit) : (!d.panel_raw && d.device_limit ? String(d.device_limit) : ''),
   }
 }
 
@@ -160,6 +161,8 @@ function diff(init, f) {
   }
   if (JSON.stringify(f.groupIds) !== JSON.stringify(init.groupIds)) out.group_ids = f.groupIds
   if (f.note !== init.note) out.note = f.note
+  const hw = Number(f.hwid || 0)
+  if (hw !== Number(init.hwid || 0)) out.hwid_limit = hw
   return out
 }
 
@@ -361,7 +364,7 @@ export default function ServiceEdit() {
     [s.f_edit, raw.edit_at ? jalali(raw.edit_at, true, lang) : s.none],
     [s.f_lifetime, raw.lifetime_used_traffic != null ? `${digits(gb(raw.lifetime_used_traffic), lang)} GB` : s.none],
     [s.f_reset, raw.data_limit_reset_strategy || s.none],
-    [s.f_hwid, raw.hwid_limit ?? s.unlimited],
+    [s.f_hwid, raw.hwid_limit ? digits(raw.hwid_limit, lang) : s.unlimited],
     [s.onhold_deadline, raw.on_hold_timeout ? jalali(raw.on_hold_timeout, true, lang) : s.none],
     [s.f_ours, `${jalali(d.created_at, true, lang)} · ${s[`src_${d.source}`] || d.source}`],
   ]
@@ -515,6 +518,18 @@ export default function ServiceEdit() {
             {Groups}
           </div>
 
+          {/* device (HWID) limit */}
+          <label className="sed-fld sed-hwid">
+            <span className="sed-lbl">{s.hwid_label}</span>
+            <div className="sed-row2">
+              <input className="input sed-mono" dir="ltr" type="number" min="0" max="1000" step="1" inputMode="numeric"
+                value={f.hwid} placeholder="∞" disabled={!canEdit}
+                onChange={(e) => set('hwid')(e.target.value.replace(/[^0-9]/g, ''))} aria-label={s.hwid_label} />
+              <span className="sed-chip">{Number(f.hwid) ? `${digits(f.hwid, lang)} ${s.devices}` : s.unlimited}</span>
+            </div>
+            <span className="sed-hint">{s.hwid_hint}</span>
+          </label>
+
           {/* note */}
           <label className="sed-fld">
             <span className="sed-lbl">{s.note}</span>
@@ -633,6 +648,8 @@ const CSS = `
 .sed-lock { margin-inline-start: auto; color: var(--c-text-muted); opacity: .7; display: grid; }
 .sed-ro-link { margin-inline-start: auto; flex-shrink: 0; font-size: 11.5px; font-weight: 700; color: var(--c-primary); }
 .sed-row2 { display: flex; gap: 8px; align-items: stretch; }
+.sed-hwid { max-width: 460px; }
+.sed-hwid .input { flex: 1; min-width: 0; }
 .sed-row2 > .input { flex: 1; min-width: 0; }
 .sed-date { display: flex; align-items: center; gap: 8px; text-align: start; cursor: pointer; }
 .sed-date:disabled { cursor: not-allowed; opacity: .7; }

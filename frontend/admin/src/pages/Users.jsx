@@ -4,6 +4,8 @@ import { api, apiError } from '../lib/api'
 import { useI18n, enumLabel } from '../lib/i18n'
 import { jalali, digits, faDigits } from '../lib/format'
 import { Alert, Spinner, Toggle } from '../components/ui'
+import { useAuth } from '../lib/auth'
+import { useUserActions } from '../lib/userActions'
 
 const T = {
   fa: {
@@ -36,6 +38,7 @@ const T = {
     saving: 'در حال ثبت...', created_ok: 'کاربر جدید ساخته شد', updated_ok: 'تغییرات ذخیره شد',
     lang_fa: 'فارسی', lang_en: 'انگلیسی',
     purchase_history: 'سوابق خرید',
+    deleted_users: 'کاربران حذف‌شده', delete_user: 'حذف کاربر',
   },
   en: {
     subtitle: 'View, filter and manage every user registered from Telegram and the website',
@@ -67,6 +70,7 @@ const T = {
     saving: 'Saving…', created_ok: 'New user created', updated_ok: 'Changes saved',
     lang_fa: 'Persian', lang_en: 'English',
     purchase_history: 'Purchase history',
+    deleted_users: 'Deleted users', delete_user: 'Delete user',
   },
 }
 
@@ -105,6 +109,8 @@ const I = {
   eye: <><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" /><circle cx="12" cy="12" r="3" /></>,
   eyeOff: <><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" /><path d="M1 1l22 22" /></>,
   bag: <><path d="M6 2l1.5 5M18 2l-1.5 5M3.5 7h17l-1.2 12.2a2 2 0 01-2 1.8H6.7a2 2 0 01-2-1.8L3.5 7z" /><path d="M8 11a4 4 0 008 0" /></>,
+  trash: <><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /></>,
+  archive: <><rect x="2" y="3" width="20" height="5" rx="1" /><path d="M4 8v11a2 2 0 002 2h12a2 2 0 002-2V8M10 12h4" /></>,
 }
 
 const GROWTH = {
@@ -317,6 +323,8 @@ export default function Users() {
   const [toast, setToast] = useState('')
   const [modal, setModal] = useState(null) // { row } | { row: null } | null
   const [stats, setStats] = useState({})
+  const { can } = useAuth()
+  const userActions = useUserActions()
 
   const params = useMemo(() => {
     const p = new URLSearchParams({ limit: PAGE, offset })
@@ -348,6 +356,10 @@ export default function Users() {
     } catch (e) { setErr(apiError(e)) }
   }
 
+  const removeUser = async (u) => {
+    if (await userActions.remove(u)) { load(); loadStats() }
+  }
+
   const doSearch = () => { setOffset(0); load() }
   const resetFilters = () => { setQ(''); setSource(''); setActive(''); setOffset(0) }
   const onSaved = (msg) => { setModal(null); setToast(msg); load(); loadStats(); setTimeout(() => setToast(''), 2500) }
@@ -366,9 +378,14 @@ export default function Users() {
           <h1 className="text-lg font-bold">{t('users')}</h1>
           <p className="text-sm text-muted mt-1">{s.subtitle}</p>
         </div>
-        <button type="button" className="btn-primary text-sm" onClick={() => setModal({ row: null })}>
-          <Ico d={I.plus} w={15} /> {s.add_user}
-        </button>
+        <div className="usr-head-acts">
+          <Link to="/users/deleted" className="usr-hist-btn usr-archive-link">
+            <Ico d={I.archive} w={15} /> {s.deleted_users}
+          </Link>
+          <button type="button" className="btn-primary text-sm" onClick={() => setModal({ row: null })}>
+            <Ico d={I.plus} w={15} /> {s.add_user}
+          </button>
+        </div>
       </div>
 
       <div className="usr-stats">
@@ -451,6 +468,11 @@ export default function Users() {
                       <Link to={`/users/${r.id}/orders`} className="usr-hist-btn" title={s.purchase_history}>
                         <Ico d={I.bag} w={14} /> {s.purchase_history}
                       </Link>
+                      {can('users.delete') && (
+                        <button type="button" className="usr-del-btn" onClick={() => removeUser(r)} title={s.delete_user}>
+                          <Ico d={I.trash} w={14} /> {s.delete_user}
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -480,6 +502,8 @@ export default function Users() {
 const CSS = `
 .usr-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between; }
 .usr-head .btn-primary { display: inline-flex; align-items: center; gap: 6px; }
+.usr-head-acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.usr-archive-link { padding: 8px 13px; border-radius: 10px; }
 
 .usr-stats { display: grid; grid-template-columns: repeat(1, 1fr); gap: 14px; }
 @media (min-width: 640px) { .usr-stats { grid-template-columns: repeat(2, 1fr); } }
@@ -550,6 +574,13 @@ const CSS = `
   color: var(--c-text-muted); border: 1px solid var(--c-border); background: transparent; transition: .15s;
 }
 .usr-hist-btn:hover { color: var(--c-primary); border-color: var(--c-primary); }
+.usr-del-btn {
+  display: inline-flex; align-items: center; gap: 5px; padding: 5px 11px; border-radius: 9px;
+  font-size: 12px; font-weight: 600; white-space: nowrap;
+  color: var(--c-danger); border: 1px solid color-mix(in srgb, var(--c-danger) 32%, transparent);
+  background: color-mix(in srgb, var(--c-danger) 7%, transparent); transition: background .15s;
+}
+.usr-del-btn:hover { background: color-mix(in srgb, var(--c-danger) 15%, transparent); }
 
 .usr-foot { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; padding: 13px 16px; border-top: 1px solid var(--c-border); }
 .usr-pager { display: flex; align-items: center; gap: 8px; }

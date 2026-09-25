@@ -34,6 +34,7 @@ PERMISSIONS = [
     ("themes.manage", "Manage themes"),
     ("services.manage", "Manage sold services (status, reset, revoke, create)"),
     ("services.delete", "Delete sold services"),
+    ("users.delete", "Delete / restore users"),
 ]
 
 SUPPORT_PERMS = {"users.view", "payment.view", "payment.approve", "accounting.view", "monitoring.view"}

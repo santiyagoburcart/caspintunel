@@ -37,7 +37,8 @@ class StaffPermission(permissions.BasePermission):
     normal customer JWT / session is also allowed — a bootstrap "break-glass".
 
     A view declares needs via `perms_map = {"GET": [...], "POST": [...]}` or a
-    flat `required_perms = [...]`.
+    flat `required_perms = [...]`; a viewset may override single actions with
+    `action_perms = {"<action>": [...]}`.
     """
 
     def has_permission(self, request, view):
@@ -50,6 +51,10 @@ class StaffPermission(permissions.BasePermission):
 
     @staticmethod
     def _needed(request, view):
+        # per-action override for viewset actions, e.g. {"destroy_user": ["users.delete"]}
+        by_action = getattr(view, "action_perms", None)
+        if by_action and getattr(view, "action", None) in by_action:
+            return by_action[view.action]
         mapping = getattr(view, "perms_map", None)
         if mapping:
             return mapping.get(request.method, mapping.get("*", []))

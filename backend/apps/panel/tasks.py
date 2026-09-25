@@ -112,6 +112,7 @@ def apply_due_scheduled_renewals():
         ScheduledRenewal.objects.filter(
             applied_at__isnull=True,
             service__status__in=(ServiceStatus.EXPIRED, ServiceStatus.LIMITED),
+            service__user__deleted_at__isnull=True,   # a deleted user's services stay off
         ).values_list("id", flat=True)
     )
     for rid in due_ids:

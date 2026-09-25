@@ -115,6 +115,10 @@ def apply_user_to_service(service, api_user: dict, panel) -> list[str]:
         _set("on_hold_duration", int(api_user["on_hold_expire_duration"]))
     _set("on_hold_timeout", _parse_dt(api_user.get("on_hold_timeout")))
 
+    if "hwid_limit" in api_user:
+        # device (HWID) limit: 0 / null = unlimited, stored as null on our side
+        _set("device_limit", int(api_user["hwid_limit"] or 0) or None)
+
     strategy = _derive_strategy(api_user)
     if strategy:
         _set("expire_strategy", strategy)
