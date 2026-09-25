@@ -152,3 +152,19 @@ def test_allowed_sender_matches(device, panel, order, django_capture_on_commit_c
             "/api/v1/payments/sms/inbound/", {"text": text, "sender": "50002 0002 8"}, format="json"
         )
     assert r.data["matched"] is True
+
+
+@pytest.mark.django_db
+def test_card_number_migration_latinizes_old_rows():
+    import importlib
+
+    from django.apps import apps as real_apps
+
+    from apps.payments_sms.models import BankCard
+
+    mig = importlib.import_module("apps.payments_sms.migrations.0004_latin_card_numbers")
+    old = BankCard.objects.create(card_number="۶۲۸۶-۱۹۲۰ ۵۸۵۳ ۰۳")
+    ok = BankCard.objects.create(card_number="6037991234567890")
+    mig.forwards(real_apps, None)
+    old.refresh_from_db(); ok.refresh_from_db()
+    assert old.card_number == "62861920585303" and ok.card_number == "6037991234567890"

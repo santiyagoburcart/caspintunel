@@ -44,9 +44,15 @@ if [ "${1:-}" != "--dev" ]; then
     cid=$($COMPOSE ps -q "$svc" 2>/dev/null || true)
     [ -n "$cid" ] || continue
     repo=$(docker inspect -f '{{.Config.Image}}' "$cid"); repo=${repo%%:*}
-    docker tag "$(docker inspect -f '{{.Image}}' "$cid")" "$repo:rollback" 2>/dev/null \
-      || docker tag "$repo:latest" "$repo:rollback" 2>/dev/null \
-      || echo "   !! could not tag $repo:rollback (rollback for $svc = rebuild the previous git tag)"
+    # tag exactly what is running. Never fall back to :latest — after a manual
+    # build it is already the NEW image. (containerd image store: a running
+    # image whose tag moved can't be tagged any more.)
+    if docker tag "$(docker inspect -f '{{.Image}}' "$cid")" "$repo:rollback" 2>/dev/null; then
+      echo "   $repo:rollback = running $svc"
+    else
+      docker rmi "$repo:rollback" >/dev/null 2>&1 || true
+      echo "   !! $svc: running image not taggable — rollback = rebuild previous tag (git worktree + docker build)"
+    fi
   done
 fi
 
