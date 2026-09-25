@@ -16,7 +16,7 @@ Bilingual fa/en.
 | `payments_sms` | `BankCard`, `Payment`, card-to-card flow; `SmsSource` / `SmsAppDevice` / `SmsMessage`, `SmsDeviceAuthentication`, rial-aware parser, auto-match engine |
 | `notifications` | `Notification` / `NotificationDelivery`, `dispatch.notify_user` (per-channel isolated: site / email / bot), Channels WebSockets: customer notifications + staff live payments queue |
 | `telegram` | `TelegramClient` (raw API, proxy), `ensure_bot_user`, forced-channel + phone gate (asked again on any message), sales bot (pyTelegramBotAPI; every service is sent as a QR photo with the subscription link as tap-to-copy `<code>`), Mini App login, backup bot, `run_database_backup` |
-| `settings_app` | `Setting` (typed KV), `SiteConfig` (branding singleton), `Theme`, `Page`, **`AppRelease`** (operator apps served from this server); public config/theme/pages endpoints; interval-reconcile signal |
+| `settings_app` | `Setting` (typed KV), `SiteConfig` (branding singleton), `Theme`, `Page`, **`AppRelease`** (operator apps served from this server), `shortcut.py` (builds the iPhone Shortcut from `mobile_shortcut/` at download time); public config/theme/pages endpoints; interval-reconcile signal |
 | `ops` | `HealthCheck` / `ResourceStat` / `BackupLog`, health probes, `psutil` sampling, service alerts, Cloudflare `configure_dns` |
 | `adminpanel` | the operator API under `/api/v1/admin/` — Staff JWT + `StaffPermission`, all management endpoints |
 

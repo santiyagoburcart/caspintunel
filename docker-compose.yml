@@ -46,6 +46,7 @@ services:
       - ./VERSION:/app/VERSION:ro
       - ./backups:/app/backups
       - ./mobile_sms/release:/app/app_releases:ro   # admin "Apps" page: bundled Android APK
+      - ./mobile_shortcut:/app/mobile_shortcut:ro     # admin "Apps" page: iPhone Shortcut template (single source)
       - /proc:/hostproc:ro             # monitoring: host net stats via /hostproc/1/net
       - media_data:/app/media
       - static_data:/app/staticfiles

@@ -227,9 +227,43 @@ pending), `telegram_stats` population, a few secondary admin screens.
   **Cert not issued yet** — `aicaspin.ir` has no A record; run `init-letsencrypt.sh` after DNS propagates.
 - Stack up on HTTP (11 + certbot containers), 153/153 tests, no drift, deploy check clean.
 
+## Current state & open items (keep this list current)
+- **Version** `VERSION` (tagged releases `v<version>`); iPhone Shortcut has its own `mobile_shortcut/VERSION`.
+- **Post-1.0 phases 1–6 done** (see session log 2026-09-25): checkout resume, phone rules + bot↔site merge,
+  shared ConfirmDialog + service edit page, delete/restore users + link existing panel account + HWID,
+  admin mobile parity + bot QR card + sign-up terms, Apps & tools page + settings routes + fonts.
+- **Deploy notes**: `git pull && docker compose up -d web` when mounts change (`mobile_sms/release`,
+  `mobile_shortcut`), otherwise `restart web frontend_user frontend_admin`; restart `nginx` for the
+  `/media/apps/` block rule, `bot_sales` when bot messages change, `celery_worker` when tasks change.
+- **Verified against the live panel** (2026-09-25): `GET /api/users?search=&limit=` → `{users,total}`;
+  user objects expose `hwid_limit` (null = unlimited).
+- Open items / accepted risks:
+  - Delete user: panel calls run before the DB transaction — a crash in between leaves services disabled
+    for a not-deleted user (retry is idempotent). After a restore, an access token issued before the delete
+    works again until it expires (≤ `JWT_ACCESS_MIN`).
+  - `Order.plan` is nullable only for `imported` orders; fulfilment code (`orders/tasks.py`) assumes a plan
+    but is only reached for paid orders.
+  - Telegram bot / Mini App users never pass sign-up → `terms_accepted_at` stays null.
+  - Bundled Android APK is a **debug** build.
+  - iPhone Shortcut: iOS imports only signed files (`shortcuts sign --mode anyone` on a Mac, or an iCloud
+    link) — cannot be signed on this Linux server. The Message-automation binding (`Shortcut Input`,
+    `Sender`) is checked structurally in tests, not on a real iPhone.
+
 ---
 
 ## Session log
+- 2026-09-25 — **Memory + iPhone Shortcut + migration repair.** The phases 4–6 review brief
+  (`docs/review-phases-4-6.md`) was folded into `CLAUDE.md` (new: conventions, gotchas, secrets) and the
+  "Current state & open items" section above, then deleted. **Production schema bug fixed**: an unmerged
+  draft of `accounts.0006_user_soft_delete` had been applied to the live DB under the same name, so
+  `deleted_user_archive` had `order_count`/`service_count` and 64-char labels instead of `orders_count` —
+  user delete and the archive would have crashed. New idempotent `accounts.0008_repair_deleted_user_archive`
+  (`atomic=False`, introspects and fixes only what differs). **iPhone Shortcut** now lives in the repo
+  (`mobile_shortcut/CaspinSMS.shortcut` v1.0.0 + README fa/en + changelog): no secrets (endpoint + token are
+  import questions); the panel download builds it from that file (`apps/settings_app/shortcut.py`), fills in
+  the endpoint and optionally a device token (`?device=`, needs `sms.manage`), never writes back; iOS upload
+  removed; `web` mounts `./mobile_shortcut` read-only (`SHORTCUT_SOURCE_DIR`). The shortcut only POSTs when
+  started by the Message automation (`text` = Shortcut Input, `sender` = its Sender). +5 tests.
 - 2026-09-08 — **Caspian Stitch theme — COMPLETE** (admin groups A–E + Step 2 sync + Step 3 mobile + drift fixes). The whole Stitch project "Frontend UI/UX Redesign" (`7294570078783993074`, 52 screens) is now ported into the Caspian theme, real-data-only, `#1464BA`/`#11AB53`, Vazirmatn + JetBrains Mono, bilingual fa/en, responsive; **Midnight Aurora + Royal Frost verified unbroken throughout** (token-driven pages adapt; the few dispatch pages keep verbatim legacy code). Pushed to `main`.
   · **Admin groups A–E** (`51ec344` A–C, `d26219a` D, `58d1c18` E): Login (dispatch `CaspianLogin`, security-themed) · Dashboard (+ live-sync, gateway card, avatar chips) · Users (rewrite: stat cards w/ **real week-over-week growth** via new `GET /admin/users/stats/`, filters, LimitOffset pager, add/edit modal, **`User.admin_note`** field + migration `accounts/0002`) · Plans (rewrite: 4 real stat cards, filters, SVG icon actions, copy-purchase-link) · Cards (metrics + kept `BankCard` visual) · Pages (editor modal w/ fa/en body tabs + preview) · Roles & Staff (3 KPI cards, permission-grid modal, staff modal w/ password eye) · Settings (grouped card, per-key hints, help card) · Branding (header tab + **live logo/favicon previews**) · Bots + Pasargad panels (`SecretInput` eye on every token/password, SVG icons).
   · **Step 2 sync** (`baf9fdf`): Cards → anti-fraud info card (real `unique_amount_min/max`) + **edit modal**; Pasargad panels → **compact list view** (`19bb…`) w/ 4 real stat cards + split-out edit; Bots → dual-column desktop; Themes → **preset picker** w/ live palette swatches (radius/glass/accent skipped — no backend); Transactions → 4 real stat cards (`/admin/accounting/` + counts); Payment queue → filter tabs (all / has-receipt / waiting / **expired** via `unique_amount_reservation_minutes`).

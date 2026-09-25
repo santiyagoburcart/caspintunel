@@ -16,6 +16,7 @@ services:
       - media_data:/app/media
       - static_data:/app/staticfiles
       - ./mobile_sms/release:/app/app_releases:ro   # admin "Apps" page: bundled Android APK
+      - ./mobile_shortcut:/app/mobile_shortcut:ro     # admin "Apps" page: iPhone Shortcut template (single source)
 
   # gunicorn (sync workers) can't serve WebSockets, so the /ws/ notification
   # feed is proxied to this separate ASGI (Daphne) process instead. Dev needs

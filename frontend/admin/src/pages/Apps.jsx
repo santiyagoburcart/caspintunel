@@ -8,6 +8,7 @@ import { useI18n } from '../lib/i18n'
 import { digits, jalali } from '../lib/format'
 import { copyToClipboard } from '../lib/clipboard'
 import { useToast } from '../components/Toast'
+import { useAuth } from '../lib/auth'
 import { Spinner } from '../components/ui'
 
 const T = {
@@ -20,7 +21,7 @@ const T = {
     a_f: ['فقط پیامک‌های شماره‌های بانکیِ تعریف‌شده ارسال می‌شود', 'اجرای دائمی در پس‌زمینه و شروع خودکار پس از روشن شدن گوشی', 'ارسال مجدد خودکار در صورت قطعی اینترنت (تا ۳ بار)', 'نمایش وضعیت اتصال و ۲۰ پیامک آخر در خود اپ'],
     a_s: ['فایل APK را دانلود و روی گوشی نصب کنید (اجازهٔ «نصب از منابع ناشناس» را بدهید).', 'در پنل: تنظیمات ← دستگاه‌های SMS ← «افزودن دستگاه» و توکن ساخته‌شده را کپی کنید.', 'در اپ آدرس سرور (پایین همین صفحه) و توکن را وارد و «تست اتصال» را بزنید.', 'مجوز دریافت پیامک را بدهید و بهینه‌سازی باتری را برای اپ خاموش کنید.', 'در تنظیمات ← شماره‌های بانکی، شمارهٔ فرستندهٔ پیامک بانک را اضافه کنید.'],
     i_f: ['اتوماسیون «وقتی پیامی از فرستندهٔ بانک رسید» روی خود آیفون', 'ارسال متن پیامک به سرور با توکن همان دستگاه', 'بدون نصب اپ و بدون نیاز به App Store'],
-    i_s: ['فایل شورتکات را دانلود کنید و در اپ Shortcuts باز و «Add Shortcut» را بزنید.', 'در پنل: تنظیمات ← دستگاه‌های SMS ← «افزودن دستگاه» و توکن را کپی کنید.', 'هنگام افزودن، آدرس سرور و توکن را در شورتکات وارد کنید.', 'در Shortcuts ← Automation یک اتوماسیون «Message» برای فرستندهٔ بانک بسازید که همین شورتکات را اجرا کند و «Run Immediately» را روشن کنید.'],
+    i_s: ['در پنل: تنظیمات ← دستگاه‌های SMS ← «افزودن دستگاه» برای این آیفون.', 'همین‌جا دستگاه را انتخاب و شورتکات را دانلود کنید — آدرس سرور و توکن داخل فایل قرار می‌گیرد (بدون انتخاب دستگاه، توکن هنگام افزودن پرسیده می‌شود).', 'آیفون فقط شورتکات امضاشده را می‌پذیرد: روی یک مک ‎shortcuts sign --mode anyone -i CaspinSMS.shortcut -o CaspinSMS-signed.shortcut‎ را اجرا کنید (یا از لینک iCloud استفاده کنید).', 'فایل امضاشده را روی آیفون باز و «Add Shortcut» را بزنید.', 'Shortcuts ← Automation ← «Message»: فرستندهٔ بانک ← اجرای همین شورتکات با «Shortcut Input» ← «Run Immediately» را روشن کنید.'],
     server: 'آدرس دریافت پیامک در سرور', header: 'هدر احراز هویت', body: 'بدنهٔ درخواست (JSON)',
     copy: 'کپی', copied: 'کپی شد', download: 'دانلود از سرور', downloading: 'در حال دانلود…',
     none_file: 'هنوز فایلی بارگذاری نشده است', version: 'نسخه', size: 'حجم', updated: 'به‌روزرسانی', by: 'توسط',
@@ -28,6 +29,8 @@ const T = {
     manage: 'بارگذاری نسخهٔ جدید', file: 'فایل', file_hint_android: 'فایل ‎.apk‎ — حداکثر ۶۰ مگابایت', file_hint_ios: 'فایل ‎.shortcut‎',
     link: 'لینک خارجی (اختیاری)', notes: 'یادداشت / توضیحات نسخه', save: 'ذخیره', saved: 'ذخیره شد', clear: 'حذف فایل بارگذاری‌شده',
     devices_link: 'مدیریت دستگاه‌های SMS', notes_h: 'یادداشت نسخه', mb: 'مگابایت',
+    src_repo: 'از مخزن کد (منبع واحد)', device: 'توکن کدام دستگاه داخل فایل قرار گیرد؟', device_none: 'هیچ — توکن هنگام افزودن پرسیده شود',
+    manage_ios: 'ویرایش لینک iCloud و یادداشت', ios_single: 'شورتکات همیشه از فایل مخزن ساخته می‌شود و بارگذاری نمی‌شود؛ تغییر آن = ویرایش ‎mobile_shortcut/‎ و افزایش نسخه.',
   },
   en: {
     h1: 'Apps & tools', sub: 'Tools for the phone that receives the bank SMS, for automatic payment confirmation — downloaded straight from your own server',
@@ -38,7 +41,7 @@ const T = {
     a_f: ['Only SMS from the configured bank numbers are forwarded', 'Runs permanently in the background and restarts after a reboot', 'Automatic retry when the connection drops (up to 3 times)', 'Shows the connection status and the last 20 SMS in the app'],
     a_s: ['Download the APK and install it on the phone (allow "install unknown apps").', 'In the panel: Settings → SMS devices → "Add device", copy the generated token.', 'In the app enter the server address (below) and the token, then tap "Test connection".', 'Grant the SMS permission and turn battery optimization off for the app.', 'In Settings → Bank numbers add the sender number of the bank SMS.'],
     i_f: ['A "when a message from the bank arrives" automation on the iPhone', 'Sends the SMS text to the server with that device\'s token', 'Nothing to install, no App Store needed'],
-    i_s: ['Download the shortcut file, open it in the Shortcuts app and tap "Add Shortcut".', 'In the panel: Settings → SMS devices → "Add device", copy the token.', 'Enter the server address and the token when adding the shortcut.', 'In Shortcuts → Automation create a "Message" automation for the bank sender that runs this shortcut, with "Run Immediately" on.'],
+    i_s: ['In the panel: Settings → SMS devices → "Add device" for this iPhone.', 'Pick that device here and download — the server address and token are filled into the file (without a device, the token is asked when adding the shortcut).', 'iOS only imports signed shortcuts: on a Mac run `shortcuts sign --mode anyone -i CaspinSMS.shortcut -o CaspinSMS-signed.shortcut` (or use the iCloud link).', 'Open the signed file on the iPhone and tap "Add Shortcut".', 'Shortcuts → Automation → "Message": the bank sender → run this shortcut with "Shortcut Input" → turn "Run Immediately" on.'],
     server: 'SMS endpoint on the server', header: 'Auth header', body: 'Request body (JSON)',
     copy: 'Copy', copied: 'Copied', download: 'Download from server', downloading: 'Downloading…',
     none_file: 'No file uploaded yet', version: 'Version', size: 'Size', updated: 'Updated', by: 'by',
@@ -46,6 +49,8 @@ const T = {
     manage: 'Upload a new version', file: 'File', file_hint_android: '.apk file — max 60 MB', file_hint_ios: '.shortcut file',
     link: 'External link (optional)', notes: 'Notes / release notes', save: 'Save', saved: 'Saved', clear: 'Remove uploaded file',
     devices_link: 'Manage SMS devices', notes_h: 'Release notes', mb: 'MB',
+    src_repo: 'From the repository (single source)', device: 'Put which device\'s token in the file?', device_none: 'None — ask for the token when adding',
+    manage_ios: 'Edit iCloud link & notes', ios_single: 'The shortcut is always built from the repository file and is never uploaded; changing it = edit mobile_shortcut/ and bump its version.',
   },
 }
 
@@ -91,11 +96,21 @@ function AppCard({ info, s, lang, onSaved }) {
   const [saving, setSaving] = useState(false)
   const tone = android ? '#11AB53' : '#1464BA'
   const hasFile = !!info.source
+  const { can } = useAuth()
+  const [devices, setDevices] = useState([])
+  const [deviceId, setDeviceId] = useState('')
+  useEffect(() => {
+    if (android || !can('sms.manage')) return
+    api.get('/admin/sms-devices/?limit=100')
+      .then((r) => setDevices((r.data.results || r.data || []).filter((d) => d.is_active !== false)))
+      .catch(() => setDevices([]))
+  }, [android])
 
   const download = async () => {
     setBusy(true)
     try {
-      const r = await api.get(`/admin/apps/${info.platform}/download/`, { responseType: 'blob' })
+      const q = !android && deviceId ? `?device=${deviceId}` : ''
+      const r = await api.get(`/admin/apps/${info.platform}/download/${q}`, { responseType: 'blob' })
       const url = URL.createObjectURL(r.data)
       const a = document.createElement('a')
       a.href = url; a.download = info.file_name || (android ? 'app.apk' : 'shortcut.shortcut')
@@ -109,7 +124,8 @@ function AppCard({ info, s, lang, onSaved }) {
     setSaving(true)
     try {
       const fd = new FormData()
-      fd.append('version', f.version); fd.append('notes', f.notes)
+      if (android) fd.append('version', f.version)
+      fd.append('notes', f.notes)
       if (!android) fd.append('link', f.link)
       if (f.file) fd.append('file', f.file)
       Object.entries(extra).forEach(([k, v]) => fd.append(k, v))
@@ -132,7 +148,7 @@ function AppCard({ info, s, lang, onSaved }) {
           <div className="ap-meta">
             {info.version && <span className="ap-chip">{s.version} {digits(info.version, lang)}</span>}
             {info.size != null && <span className="ap-chip">{s.size}: {digits(mb(info.size), lang)} {s.mb}</span>}
-            {info.source && <span className="ap-chip ap-chip--src">{info.source === 'bundled' ? s.src_bundled : s.src_upload}</span>}
+            {info.source && <span className="ap-chip ap-chip--src">{info.source === 'bundled' ? s.src_bundled : info.source === 'repo' ? s.src_repo : s.src_upload}</span>}
             {info.updated_at && <span className="ap-chip">{s.updated}: {jalali(info.updated_at, false, lang)}{info.updated_by ? ` · ${s.by} ${info.updated_by}` : ''}</span>}
           </div>
         </div>
@@ -153,6 +169,16 @@ function AppCard({ info, s, lang, onSaved }) {
 
       {info.notes && <div className="ap-notes"><b>{s.notes_h}</b><p>{info.notes}</p></div>}
 
+      {!android && devices.length > 0 && (
+        <label className="ap-fld">
+          <span className="label">{s.device}</span>
+          <select className="input" value={deviceId} onChange={(e) => setDeviceId(e.target.value)}>
+            <option value="">{s.device_none}</option>
+            {devices.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+          </select>
+        </label>
+      )}
+
       <div className="ap-actions">
         <button type="button" className="btn-primary ap-dl" onClick={download} disabled={!hasFile || busy}>
           {busy ? <><span className="ap-spin" />{s.downloading}</> : <><Ico d={I.download} />{s.download}</>}
@@ -165,19 +191,20 @@ function AppCard({ info, s, lang, onSaved }) {
       </div>
 
       <details className="ap-manage" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
-        <summary><Ico d={I.upload} w={16} />{s.manage}</summary>
+        <summary><Ico d={I.upload} w={16} />{android ? s.manage : s.manage_ios}</summary>
         <form className="ap-form" onSubmit={save}>
-          <label className="ap-fld">
+          {!android && <p className="text-xs text-muted leading-relaxed">{s.ios_single}</p>}
+          {android && <label className="ap-fld">
             <span className="label">{s.file}</span>
-            <input className="input" type="file" accept={android ? '.apk' : '.shortcut,.plist,.zip'}
+            <input className="input" type="file" accept=".apk"
               onChange={(e) => setF((p) => ({ ...p, file: e.target.files?.[0] || null }))} />
-            <span className="text-xs text-muted">{android ? s.file_hint_android : s.file_hint_ios}</span>
-          </label>
+            <span className="text-xs text-muted">{s.file_hint_android}</span>
+          </label>}
           <div className="ap-grid2">
-            <label className="ap-fld">
+            {android && <label className="ap-fld">
               <span className="label">{s.version}</span>
               <input className="input" dir="ltr" value={f.version} onChange={(e) => setF((p) => ({ ...p, version: e.target.value }))} placeholder="1.0.0" />
-            </label>
+            </label>}
             {!android && (
               <label className="ap-fld">
                 <span className="label">{s.link}</span>
@@ -230,7 +257,7 @@ export default function Apps() {
           <section className="card ap-conn">
             <CopyRow label={s.server} value={endpoint} s={s} />
             <CopyRow label={s.header} value="X-Device-Token: <token>" s={s} />
-            <CopyRow label={s.body} value={'{"sender": "…", "text": "…", "received_at": "ISO-8601"}'} s={s} />
+            <CopyRow label={s.body} value={'{"text": "…", "sender": "…", "received_at": "ISO-8601 (optional)"}'} s={s} />
           </section>
         </>
       )}

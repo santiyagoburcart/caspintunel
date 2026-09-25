@@ -46,5 +46,5 @@ WebSockets: `/ws/notifications/?token=<customer JWT>` (live site notifications) 
 | finance | `payments/pending/` · `payments/{id}/approve|reject/` · `transactions/` (+ `{id}/status/`) · `accounting/` (period or Jalali `from`/`to`) |
 | messaging | `notifications/` (+ `broadcast/`) · `channels/` (required channels) · `integrations/telegram/` · `bots/stats/` · `bots/backup-test/` · `integrations/email/` |
 | settings | `settings/` (typed settings) · `branding/` · `integrations/panel/` (+ `test/`, `groups/`) · `sms-devices/` · `sms-sources/` |
-| **apps** | `apps/` (Android SMS Bridge + iPhone shortcut info) · `apps/{android|ios}/` (POST multipart: file, version, link, notes, clear_file) · `apps/{android|ios}/download/` — served from this server (perm `settings.manage`) |
+| **apps** | `apps/` (Android SMS Bridge + iPhone shortcut info) · `apps/{android|ios}/` (POST multipart: file [android only — the iOS Shortcut is never uploaded], version, link, notes, clear_file) · `apps/{android|ios}/download/` — served from this server (perm `settings.manage`); **ios** is built from `mobile_shortcut/CaspinSMS.shortcut` with this server's endpoint, `?device=<id>` also injects that device's token (needs `sms.manage`) |
 | RBAC | `roles/` · `permissions/` · `staff/` |

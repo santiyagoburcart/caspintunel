@@ -23,25 +23,27 @@ def test_bundled_apk_is_listed_and_downloadable(staff_client, superadmin, _dirs)
     c = staff_client(superadmin)
     rows = {r["platform"]: r for r in c.get("/api/v1/admin/apps/").data["results"]}
     assert rows["android"]["source"] == "bundled" and rows["android"]["size"] == 7
-    assert rows["ios"]["source"] is None
+    assert rows["ios"]["source"] == "repo" and rows["ios"]["file_name"] == "CaspinSMS.shortcut"
     r = c.get("/api/v1/admin/apps/android/download/")
     assert r.status_code == 200 and b"".join(r.streaming_content) == b"PK\x03\x04apk"
     assert r["Content-Type"] == "application/vnd.android.package-archive"
     assert 'filename="CaspinTunelSmsBridge-debug.apk"' in r["Content-Disposition"]
-    assert c.get("/api/v1/admin/apps/ios/download/").status_code == 404
+    assert c.get("/api/v1/admin/apps/ios/download/").status_code == 200   # built from the repo template
 
 
-def test_upload_ios_shortcut_and_download(staff_client, superadmin):
+def test_ios_is_never_uploaded_but_link_and_notes_are_editable(staff_client, superadmin):
     c = staff_client(superadmin)
-    f = SimpleUploadedFile("Caspin SMS.shortcut", b"shortcut-bytes")
-    r = c.post("/api/v1/admin/apps/ios/", {"file": f, "version": "1.3", "link": "https://www.icloud.com/shortcuts/abc",
-                                          "notes": "iOS 17+"}, format="multipart")
-    assert r.status_code == 200, r.data
-    assert r.data["source"] == "upload" and r.data["version"] == "1.3" and r.data["file_name"] == "ios.shortcut"
-    d = c.get("/api/v1/admin/apps/ios/download/")
-    assert d.status_code == 200 and b"".join(d.streaming_content) == b"shortcut-bytes"
+    r = c.post("/api/v1/admin/apps/ios/", {"file": SimpleUploadedFile("x.shortcut", b"s")}, format="multipart")
+    assert r.status_code == 400 and "repository" in r.data["detail"]
+    r = c.post("/api/v1/admin/apps/ios/", {"link": "https://www.icloud.com/shortcuts/abc", "notes": "iOS 17+"},
+               format="multipart")
+    assert r.status_code == 200 and r.data["link"].startswith("https://www.icloud.com") and r.data["source"] == "repo"
     assert AuditLog.objects.filter(action="apps.release_updated").exists()
-    # an uploaded APK wins over the bundled one
+
+
+def test_uploaded_apk_wins_over_bundled(staff_client, superadmin, _dirs):
+    (_dirs / "CaspinTunelSmsBridge-debug.apk").write_bytes(b"PK\x03\x04apk")
+    c = staff_client(superadmin)
     c.post("/api/v1/admin/apps/android/", {"file": SimpleUploadedFile("bridge-2.0.apk", b"new")}, format="multipart")
     assert c.get("/api/v1/admin/apps/").data["results"][0]["source"] == "upload"
 

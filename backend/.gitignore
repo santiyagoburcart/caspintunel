@@ -1,3 +1,6 @@
 
 # mount point for mobile_sms/release (docker-compose), never committed here
 /app_releases/
+
+# mount point for mobile_shortcut (docker-compose), never committed here
+/mobile_shortcut/

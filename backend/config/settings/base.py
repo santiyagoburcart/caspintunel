@@ -176,6 +176,10 @@ SERVE_MEDIA_VIA_XACCEL = env.bool("SERVE_MEDIA_VIA_XACCEL", default=False)
 # Pre-built operator apps shipped in the repo (mobile_sms/release), mounted
 # read-only into the web container — the admin "Apps" page serves them.
 APP_RELEASES_DIR = env("APP_RELEASES_DIR", default=str(BASE_DIR / "app_releases"))
+# iPhone SMS Shortcut template — the repo's mobile_shortcut/ (mounted read-only
+# at /app/mobile_shortcut in the containers; repo path when run outside Docker).
+SHORTCUT_SOURCE_DIR = env("SHORTCUT_SOURCE_DIR", default=str(
+    BASE_DIR / "mobile_shortcut" if (BASE_DIR / "mobile_shortcut").is_dir() else BASE_DIR.parent / "mobile_shortcut"))
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},

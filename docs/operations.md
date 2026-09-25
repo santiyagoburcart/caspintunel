@@ -32,8 +32,8 @@ node status, and the group ids to put in `Plan.group_ids` / `Panel.default_group
 |---|---|
 | add a plan | panel → Plans (pick panel groups via checkboxes) |
 | add a bank card | panel → Cards (mobile: Settings → Bank cards) |
-| register an SMS device | panel → Settings → SMS devices → "Add device" → copy the token into the Android app / iPhone shortcut |
-| get the Android app / iPhone shortcut | panel → **Apps & tools** — downloaded from this server (the bundled APK comes from `mobile_sms/release/`; admins can upload a newer APK or the `.shortcut` file) |
+| register an SMS device | panel → Settings → SMS devices → "Add device" → copy the token into the Android app (the iPhone Shortcut download can fill it in for you) |
+| get the Android app / iPhone shortcut | panel → **Apps & tools** — downloaded from this server (the bundled APK comes from `mobile_sms/release/`, admins can upload a newer APK; the iPhone Shortcut is built from `mobile_shortcut/CaspinSMS.shortcut` on each download — pick an SMS device to fill in its token; sign it on a Mac with `shortcuts sign --mode anyone` or use an iCloud link) |
 | add a forced channel | panel → Telegram bots → required channels; make the sales bot an admin of the channel |
 | delete a user | panel → Users → "Delete user" (reason required, perm `users.delete`): services are **disabled** on the panel, a full snapshot is archived, username/phone/email are freed, sessions revoked, Telegram unlinked; orders/payments stay (accounting unchanged) |
 | restore a deleted user | panel → Users → Deleted users → entry → Restore (blocked if the original username/phone/email is taken again; services stay disabled until re-enabled) |
