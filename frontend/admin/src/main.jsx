@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import { AuthProvider } from './lib/auth'
+import { LivePaymentsProvider } from './lib/livePayments'
 import { I18nProvider } from './lib/i18n'
 import { ThemeProvider } from './theme/ThemeProvider'
 import { ToastProvider } from './components/Toast'
@@ -37,7 +38,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <ThemeProvider>
           <ToastProvider>
             <AuthProvider>
-              <App />
+              <LivePaymentsProvider>
+                <App />
+              </LivePaymentsProvider>
             </AuthProvider>
           </ToastProvider>
         </ThemeProvider>

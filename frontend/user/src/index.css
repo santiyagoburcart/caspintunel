@@ -8,6 +8,9 @@
   --c-primary: #6d48f0;
   --c-secondary: #0ea5b7;
   --c-success: #059669;
+  /* switch colors — fixed across every theme/palette (not overridable by --c-*) */
+  --toggle-on: #11AB53;
+  --toggle-off: #3f4450;
   --c-danger: #dc2626;
   --c-warning: #d97706;
   --c-text: #111827;
@@ -43,6 +46,7 @@
   --c-primary: #7c5cff;
   --c-secondary: #22d3ee;
   --c-success: #34d399;
+  --toggle-off: #2e323c;
   --c-danger: #f87171;
   --c-warning: #fbbf24;
   --c-text: #e6e8ec;
@@ -105,15 +109,15 @@ body {
   .toggle { position: relative; display: inline-flex; width: 44px; height: 24px; flex-shrink: 0; cursor: pointer; }
   .toggle input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
   .toggle .track {
-    position: absolute; inset: 0; border-radius: 999px; transition: background .2s;
-    background: color-mix(in srgb, var(--c-danger) 55%, transparent);
+    position: absolute; inset: 0; border-radius: 999px; transition: background .2s, box-shadow .2s;
+    background: var(--toggle-off); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06);
   }
   .toggle .track::before {
     content: ""; position: absolute; width: 18px; height: 18px; border-radius: 50%;
     background: #fff; top: 3px; inset-inline-start: 3px; transition: inset-inline-start .2s;
     box-shadow: 0 2px 6px rgba(0, 0, 0, .25);
   }
-  .toggle input:checked + .track { background: var(--c-success); }
+  .toggle input:checked + .track { background: var(--toggle-on); box-shadow: none; }
   .toggle input:checked + .track::before { inset-inline-start: calc(100% - 21px); }
   .toggle input:focus-visible + .track { outline: 2px solid var(--c-primary); outline-offset: 2px; }
   .toggle input:disabled + .track { opacity: .5; cursor: not-allowed; }
@@ -414,25 +418,12 @@ body {
 }
 [data-theme-style="caspian"] .label { color: var(--csp-text-2); font-weight: 600; }
 
-/* ---- neon toggle switch (extends the shared .toggle used app-wide) ---- */
-[data-theme-style="caspian"] .toggle .track { background: color-mix(in srgb, var(--c-danger) 45%, var(--c-border)); }
-[data-theme-style="caspian"] .toggle input:checked + .track { background: var(--c-success); }
-[data-theme-style="caspian"].dark .toggle .track {
-  background: var(--csp-well);
-  box-shadow: inset 3px 3px 6px rgba(0, 0, 0, .8), inset -2px -2px 5px rgba(255, 255, 255, .03),
-    inset 0 0 0 1px color-mix(in srgb, var(--c-danger) 45%, transparent);
-}
-[data-theme-style="caspian"].dark .toggle .track::before {
-  background: #7d84a0;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, .5);
-}
-[data-theme-style="caspian"].dark .toggle input:checked + .track {
-  background: var(--c-success);
-  box-shadow: inset 3px 3px 6px rgba(0, 0, 0, .35);
-}
+/* toggle colors are fixed app-wide (OFF dark gray, ON #11AB53) — see
+   --toggle-on/--toggle-off in :root; no per-theme override on purpose. */
+[data-theme-style="caspian"].dark .toggle .track { box-shadow: inset 2px 2px 5px rgba(0, 0, 0, .6); }
+[data-theme-style="caspian"].dark .toggle input:checked + .track { box-shadow: inset 2px 2px 5px rgba(0, 0, 0, .25); }
 [data-theme-style="caspian"].dark .toggle input:checked + .track::before {
-  background: #fff;
-  box-shadow: 0 0 8px 2px color-mix(in srgb, var(--c-success) 70%, transparent), 0 2px 6px rgba(0, 0, 0, .4);
+  box-shadow: 0 0 8px 2px color-mix(in srgb, var(--toggle-on) 60%, transparent), 0 2px 6px rgba(0, 0, 0, .4);
 }
 
 /* ---- pill tabs — dark gets a recessed well + raised active capsule ---- */

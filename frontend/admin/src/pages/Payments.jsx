@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, apiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
@@ -6,6 +6,7 @@ import { jalali, toman } from '../lib/format'
 import { Alert, Spinner } from '../components/ui'
 import { ReceiptThumb } from '../components/ReceiptThumb'
 import { useToast } from '../components/Toast'
+import { useLivePayments, usePaymentsEvents } from '../lib/livePayments'
 
 const T = {
   fa: {
@@ -18,6 +19,8 @@ const T = {
     tab_all: 'همه', tab_receipt: 'دارای فیش', tab_active: 'در انتظار', tab_expired: 'منقضی',
     expired_note: 'مهلت رزرو مبلغ یکتا به پایان رسیده است.',
     none_tab: 'موردی در این دسته نیست',
+    live_on: 'به‌روزرسانی زنده', live_off: 'اتصال زنده قطع است — از «تازه‌سازی» استفاده کنید',
+    live_short_off: 'آفلاین',
   },
   en: {
     title: 'Payment approval queue', none: 'Nothing to review', refresh: '↻ Refresh',
@@ -29,6 +32,8 @@ const T = {
     tab_all: 'All', tab_receipt: 'Has receipt', tab_active: 'Waiting', tab_expired: 'Expired',
     expired_note: 'The unique-amount reservation window has elapsed.',
     none_tab: 'Nothing in this tab',
+    live_on: 'Live updates', live_off: 'Live connection lost — use Refresh',
+    live_short_off: 'Offline',
   },
 }
 
@@ -47,10 +52,34 @@ export default function Payments() {
   const [tab, setTab] = useState('all')
   const [resMin, setResMin] = useState(30)
 
+  const { connected, refreshCount } = useLivePayments()
+  const knownIds = useRef(null)          // ids already on screen — to flash newcomers
+  const [freshIds, setFreshIds] = useState(() => new Set())
+  const reloadTimer = useRef(null)
+
   const load = () =>
     api.get('/admin/payments/pending/')
-      .then((r) => { setRows(r.data.results); setErr('') })
-      .catch(() => { setRows([]); setErr(s.load_fail) })
+      .then((r) => {
+        const list = r.data.results
+        if (knownIds.current) {
+          const fresh = list.filter((p) => !knownIds.current.has(p.id)).map((p) => p.id)
+          if (fresh.length) {
+            setFreshIds(new Set(fresh))
+            setTimeout(() => setFreshIds(new Set()), 4000)
+          }
+        }
+        knownIds.current = new Set(list.map((p) => p.id))
+        setRows(list); setErr('')
+      })
+      .catch(() => { setRows((cur) => cur || []); setErr(s.load_fail) })
+
+  // live: refetch on any queue change (debounced — several events can arrive together)
+  usePaymentsEvents(() => {
+    clearTimeout(reloadTimer.current)
+    reloadTimer.current = setTimeout(load, 250)
+  })
+  useEffect(() => () => clearTimeout(reloadTimer.current), [])
+  const manualRefresh = () => { load(); refreshCount() }
 
   useEffect(() => {
     load()
@@ -106,7 +135,12 @@ export default function Payments() {
           <h1 className="text-lg font-bold">{s.title}</h1>
           <p className="text-sm text-muted mt-1">{s.subtitle}</p>
         </div>
-        <button className="btn-ghost text-sm" onClick={load}>{s.refresh}</button>
+        <div className="flex items-center gap-2">
+          <span className={'pq-live' + (connected ? ' on' : '')} title={connected ? s.live_on : s.live_off}>
+            <i />{connected ? s.live_on : s.live_short_off}
+          </span>
+          <button className="btn-ghost text-sm" onClick={manualRefresh}>{s.refresh}</button>
+        </div>
       </div>
       <Alert>{err}</Alert>
 
@@ -130,7 +164,7 @@ export default function Payments() {
       )}
       <div className="grid gap-3 sm:grid-cols-2">
         {shown.map((p) => (
-          <div key={p.id} className={'card space-y-2' + (isExpired(p) ? ' pq-card--exp' : '')}>
+          <div key={p.id} className={'card space-y-2' + (isExpired(p) ? ' pq-card--exp' : '') + (freshIds.has(p.id) ? ' pq-card--new' : '')}>
             <div className="flex items-center justify-between gap-2">
               <span className="font-bold">{toman(p.amount, lang)}</span>
               <div className="flex items-center gap-1.5">
@@ -196,6 +230,14 @@ export default function Payments() {
 }
 
 const CSS = `
+.pq-live { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; color: var(--c-warning);
+  padding: 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--c-warning) 12%, transparent); }
+.pq-live i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.pq-live.on { color: var(--c-success); background: color-mix(in srgb, var(--c-success) 12%, transparent); }
+.pq-live.on i { animation: pq-blink 1.6s ease-in-out infinite; }
+@keyframes pq-blink { 50% { opacity: .3; } }
+.pq-card--new { animation: pq-new 4s ease-out; }
+@keyframes pq-new { 0%, 40% { box-shadow: 0 0 0 2px var(--c-success); } 100% { box-shadow: none; } }
 .pq-tabs { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; border-radius: 12px; background: color-mix(in srgb, var(--c-text-muted) 12%, transparent); }
 .pq-tab { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 9px; font-size: 13px; font-weight: 600; color: var(--c-text-muted); }
 .pq-tab.on { background: var(--c-primary); color: #fff; }

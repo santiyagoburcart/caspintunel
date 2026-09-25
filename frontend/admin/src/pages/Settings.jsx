@@ -6,6 +6,7 @@ import { useAuth } from '../lib/auth'
 import { jalali, relTime } from '../lib/format'
 import { Alert, Field, Spinner, Toggle } from '../components/ui'
 import { useToast } from '../components/Toast'
+import { copyToClipboard } from '../lib/clipboard'
 
 function HubIco({ d, w = 18 }) {
   return (
@@ -424,8 +425,8 @@ function SmsDeviceModal({ mode, device, s, t, onClose, onCreated }) {
     } catch (e2) { setErr(apiError(e2)) } finally { setBusy(false) }
   }
 
-  const copy = () => {
-    navigator.clipboard?.writeText(token || '')
+  const copy = async () => {
+    if (!(await copyToClipboard(token))) return
     setCopied(true); setTimeout(() => setCopied(false), 1500)
   }
 

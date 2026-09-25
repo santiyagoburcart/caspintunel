@@ -57,6 +57,9 @@ def expire_stale_reservations() -> int:
         count += 1
     if count:
         log.info("expired %s stale order reservation(s)", count)
+        from apps.notifications.live import push_payments_event
+
+        push_payments_event("orders_expired", count=count)
     return count
 
 
@@ -113,6 +116,18 @@ def create_order(
         custom_volume_gb = None
     amount = Decimal(amount)
 
+    # A customer who leaves the invoice (e.g. switches to the bank app) and
+    # submits the same purchase again must get the SAME order and unique
+    # amount back — a second reservation would leave them paying one amount
+    # while the SMS matcher approves another.
+    existing = _reusable_pending_order(
+        user=user, plan=plan, order_type=order_type, service=service,
+        requested_account_name=requested_account_name, custom_volume_gb=custom_volume_gb,
+    )
+    if existing is not None:
+        existing.reused = True
+        return existing
+
     order = Order(
         user=user, plan=plan, service=service, type=order_type,
         requested_account_name=requested_account_name if order_type == OrderType.NEW else None,
@@ -121,8 +136,24 @@ def create_order(
         unique_expire_at=_reservation_deadline(), source=source,
     )
     _assign_unique_amount(order, amount)
+    order.reused = False
     write_audit(action="order.created", target=order, detail={"amount": str(amount)})
+    from apps.notifications.live import push_payments_event
+
+    push_payments_event("order_created", order_id=order.id)
     return order
+
+
+def _reusable_pending_order(*, user, plan, order_type, service, requested_account_name, custom_volume_gb):
+    """The customer's still-reserved pending order for exactly this purchase, if any."""
+    qs = Order.objects.select_for_update().filter(
+        user=user, plan=plan, type=order_type, service=service,
+        status=OrderStatus.PENDING_PAYMENT, unique_expire_at__gt=timezone.now(),
+        custom_volume_gb=custom_volume_gb,
+    )
+    if order_type == OrderType.NEW:
+        qs = qs.filter(requested_account_name__iexact=requested_account_name)
+    return qs.order_by("-created_at").first()
 
 
 def _assign_unique_amount(order: Order, base: Decimal) -> None:

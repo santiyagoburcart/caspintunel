@@ -186,15 +186,6 @@ const INT_CSS = `
 .pl-rbtn--del:hover { background: color-mix(in srgb, var(--c-danger) 12%, transparent); border-color: var(--c-danger); }
 .pl-row-acts .pl-rbtn--del { margin-inline-start: auto; }
 
-/* group toggles are a multi-select, not on/off state — off should read as
-   neutral dark/gray, not danger red like a disable switch */
-.pl-group-toggles .toggle .track { background: color-mix(in srgb, var(--c-text-muted) 40%, var(--c-border)); }
-[data-theme-style="caspian"] .pl-group-toggles .toggle .track { background: color-mix(in srgb, var(--c-text-muted) 40%, var(--c-border)); }
-[data-theme-style="caspian"].dark .pl-group-toggles .toggle .track {
-  background: var(--csp-well); box-shadow: inset 3px 3px 6px rgba(0, 0, 0, .8), inset -2px -2px 5px rgba(255, 255, 255, .03),
-    inset 0 0 0 1px color-mix(in srgb, var(--c-text-muted) 30%, transparent);
-}
-
 /* ---- mobile-only connection status banner (Bots page) ---- */
 .int-mobile-only { display: none; }
 .int-status-banner { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 12px; font-size: 12.5px; line-height: 1.6; }

@@ -4,6 +4,7 @@ import { useI18n } from '../lib/i18n'
 import { toman, digits } from '../lib/format'
 import { Alert, Field, Spinner, Toggle } from '../components/ui'
 import { useToast } from '../components/Toast'
+import { copyToClipboard } from '../lib/clipboard'
 
 const GB = 1024 ** 3
 
@@ -207,8 +208,7 @@ export default function Plans() {
   }
   const copyLink = (r) => {
     const url = `${location.origin}/checkout?plan=${r.id}`
-    navigator.clipboard?.writeText(url)
-    toast.success(s.link_copied)
+    copyToClipboard(url).then((ok) => { if (ok) toast.success(s.link_copied) })
   }
 
   const stats = useMemo(() => {

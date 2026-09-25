@@ -7,13 +7,39 @@ import { Alert, Copyable, Field, Spinner, StatusBadge } from '../components/ui'
 import { AuthImage } from '../components/AuthImage'
 import { useToast } from '../components/Toast'
 
+// The pending order the customer is paying for survives reloads and tab
+// switches (e.g. leaving for the bank app): its id sits in the URL
+// (?order=<id>) and in localStorage, and the backend hands back the same
+// order + unique amount if the same purchase is submitted again.
+const ACTIVE_KEY = 'ct_checkout_active'
+const POLL_MS = 8000
+const FINAL = ['completed', 'rejected', 'failed', 'expired']
+
+function readActive() {
+  try { return JSON.parse(localStorage.getItem(ACTIVE_KEY) || 'null') } catch { return null }
+}
+function saveActive(order) {
+  try {
+    localStorage.setItem(ACTIVE_KEY, JSON.stringify({
+      id: order.id, plan: order.plan, renew: order.type === 'renew' ? order.service : null,
+      exp: order.unique_expire_at,
+    }))
+  } catch { /* private mode */ }
+}
+function clearActive(id) {
+  try {
+    const cur = readActive()
+    if (!id || !cur || String(cur.id) === String(id)) localStorage.removeItem(ACTIVE_KEY)
+  } catch { /* private mode */ }
+}
+
 export default function Checkout() {
   const { t, lang } = useI18n()
   const toast = useToast()
-  const [sp] = useSearchParams()
+  const [sp, setSp] = useSearchParams()
   const planId = sp.get('plan')
   const renewId = sp.get('renew')
-  const resumeId = sp.get('resume')
+  const urlOrderId = sp.get('order') || sp.get('resume')
   const preGb = sp.get('gb')
 
   const [plans, setPlans] = useState([])
@@ -23,32 +49,98 @@ export default function Checkout() {
   const [customGb, setCustomGb] = useState(preGb || '')
   const [order, setOrder] = useState(null)
   const [instructions, setInstructions] = useState(null)
-  const [payment, setPayment] = useState(null)
   const [service, setService] = useState(null)
   const [selectedCard, setSelectedCard] = useState(null)
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
+  const [restoring, setRestoring] = useState(false)
   const [changingPlan, setChangingPlan] = useState(false)
   const [agreed, setAgreed] = useState(false)
+  const [now, setNow] = useState(Date.now())
+  const orderIdRef = useRef(null)
+  orderIdRef.current = order?.id ?? null
+
+  const showOrder = (data) => {
+    setOrder(data.order)
+    setInstructions(data.payment_instructions)
+    setErr('')
+    // pin the invoice to the URL so a reload / return from the bank app restores it
+    if (String(sp.get('order')) !== String(data.order.id) || sp.get('resume')) {
+      setSp({ order: String(data.order.id) }, { replace: true })
+    }
+    if (data.order.status === 'pending_payment') saveActive(data.order)
+    else clearActive(data.order.id)
+  }
+
+  const restore = async (id, { quiet = false } = {}) => {
+    setRestoring(true)
+    try {
+      const { data } = await api.get(`/orders/${id}/checkout/`)
+      showOrder(data)
+      return true
+    } catch (e) {
+      clearActive(id)
+      if (!quiet) setErr(apiError(e, t('load_error')))
+      if (sp.get('order') || sp.get('resume')) {
+        const next = new URLSearchParams(sp); next.delete('order'); next.delete('resume')
+        setSp(next, { replace: true })
+      }
+      return false
+    } finally { setRestoring(false) }
+  }
 
   useEffect(() => {
     api.get('/plans/').then((r) => setPlans(r.data.results))
     if (renewId) api.get('/services/').then((r) => setServices(r.data.results))
-    // resume an existing pending order (from the History page)
-    if (resumeId) {
-      Promise.all([
-        api.get(`/orders/${resumeId}/`),
-        api.get('/payments/cards/').catch(() => ({ data: [] })),
-      ]).then(([o, c]) => {
-        setOrder(o.data)
-        setInstructions({
-          amount_to_pay: o.data.amount_unique,
-          reserved_until: o.data.unique_expire_at,
-          cards: c.data.results || c.data || [],
-        })
-      }).catch((e) => setErr(apiError(e)))
-    }
+    if (urlOrderId) { restore(urlOrderId); return }
+    // reopened /checkout for the same purchase while an order is still reserved -> resume it
+    const saved = readActive()
+    if (saved && new Date(saved.exp).getTime() > Date.now()
+      && (!planId || String(saved.plan) === String(planId))
+      && String(saved.renew || '') === String(renewId || '')) {
+      restore(saved.id, { quiet: true }).then((ok) => ok && toast.success(t('order_resumed')))
+    } else if (saved) clearActive()
   }, [])
+
+  // just the order row (cheap) — used by polling and on returning to the tab
+  const refreshOrder = async () => {
+    const id = orderIdRef.current
+    if (!id) return
+    try {
+      const { data } = await api.get(`/orders/${id}/`)
+      if (orderIdRef.current !== id) return
+      setOrder(data)
+      if (data.status !== 'pending_payment') clearActive(id)
+    } catch { /* keep what we have; the next tick retries */ }
+  }
+
+  const live = order && !FINAL.includes(order.status)
+
+  // when the customer comes back (bank app, SMS app...) re-check immediately:
+  // the SMS matcher may already have approved the payment in the meantime
+  useEffect(() => {
+    if (!order?.id) return
+    const onBack = () => { if (document.visibilityState === 'visible') refreshOrder() }
+    document.addEventListener('visibilitychange', onBack)
+    window.addEventListener('focus', onBack)
+    window.addEventListener('pageshow', onBack)
+    return () => {
+      document.removeEventListener('visibilitychange', onBack)
+      window.removeEventListener('focus', onBack)
+      window.removeEventListener('pageshow', onBack)
+    }
+  }, [order?.id])
+
+  // background poll while the order can still change and the tab is visible
+  useEffect(() => {
+    if (!live) return
+    const id = setInterval(() => {
+      if (document.visibilityState === 'visible') refreshOrder()
+      setNow(Date.now())
+    }, POLL_MS)
+    const tick = setInterval(() => setNow(Date.now()), 1000)
+    return () => { clearInterval(id); clearInterval(tick) }
+  }, [live, order?.id])
 
   const plan = useMemo(() => plans.find((p) => String(p.id) === String(chosenPlan)), [plans, chosenPlan])
 
@@ -80,9 +172,9 @@ export default function Checkout() {
         : { plan: Number(chosenPlan), type: 'new', requested_account_name: accountName || undefined,
             custom_volume_gb: customGb ? Number(customGb) : undefined, terms_accepted: agreed }
       const { data } = await api.post('/orders/', body)
-      setOrder(data.order)
-      setInstructions(data.payment_instructions)
-      toast.dismiss()
+      showOrder(data)
+      if (data.reused) toast.success(t('order_resumed'))
+      else toast.dismiss()
     } catch (e2) { const msg = apiError(e2, t('order_failed')); setErr(msg); toast.error(msg) }
     finally { setBusy(false) }
   }
@@ -95,22 +187,39 @@ export default function Checkout() {
       fd.append('order', order.id)
       fd.append('receipt_image', file)
       if (selectedCard) fd.append('bank_card', selectedCard)
-      const { data } = await api.post('/payments/receipt/', fd)
-      setPayment(data)
-      // refresh the order so payment_status reflects "pending"
-      const o = await api.get(`/orders/${order.id}/`)
-      setOrder(o.data)
+      await api.post('/payments/receipt/', fd)
+      await refreshOrder()   // payment_status -> "pending"
       toast.success(t('receipt_saved'))
-    } catch (e2) { const msg = apiError(e2); setErr(msg); toast.error(msg) }
-    finally { setBusy(false) }
+    } catch (e2) {
+      const msg = apiError(e2); setErr(msg); toast.error(msg)
+      refreshOrder()         // e.g. SMS already approved it — show the real state
+    } finally { setBusy(false) }
   }
 
   const checkStatus = async () => {
     setErr('')
-    try {
-      const { data } = await api.get(`/orders/${order.id}/`)
-      setOrder(data)
-    } catch (e2) { setErr(apiError(e2)) }
+    await refreshOrder()
+  }
+
+  // back to the order form (same plan) — the old reservation simply lapses
+  const startOver = () => {
+    const o = order
+    clearActive(o?.id)
+    setOrder(null); setInstructions(null); setService(null); setErr(''); setSelectedCard(null)
+    const next = new URLSearchParams()
+    if (o?.plan) next.set('plan', String(o.plan))
+    if (o?.type === 'renew' && o.service) next.set('renew', String(o.service))
+    setChosenPlan(o?.plan ? String(o.plan) : chosenPlan)
+    setSp(next, { replace: true })
+  }
+
+  if (restoring && !order) {
+    return (
+      <div className="card mx-auto grid max-w-md place-items-center gap-3 py-10 text-center">
+        <Spinner />
+        <div className="text-sm text-muted">{t('restoring_order')}</div>
+      </div>
+    )
   }
 
   if (!order) {
@@ -200,17 +309,36 @@ export default function Checkout() {
   }
 
   const payStatus = order.payment_status   // null | pending | approved | rejected
-  const needsReceipt = order.status === 'pending_payment' && (!payStatus || payStatus === 'rejected')
+  const deadlineMs = order.unique_expire_at ? new Date(order.unique_expire_at).getTime() : null
+  // the backend flips pending_payment -> expired on a timer; don't wait for it
+  // (an uploaded receipt keeps the order alive for admin review)
+  const expired = order.status === 'expired'
+    || (order.status === 'pending_payment' && payStatus !== 'pending' && payStatus !== 'approved'
+      && deadlineMs != null && deadlineMs <= now)
+  const confirmed = payStatus === 'approved' || order.status === 'paid'
+  const pending = order.status === 'pending_payment' && !expired && !confirmed
+  const needsReceipt = pending && (!payStatus || payStatus === 'rejected')
 
   return (
     <div className="card mx-auto max-w-md space-y-4">
       <style>{`
         .ctd-ring { position: relative; margin: 4px auto 0; display: grid; place-items: center; }
         .ctd-ring-label { position: absolute; font-size: 15px; font-weight: 800; }
+        .ckt-state { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 8px 0; text-align: center; }
+        .ckt-state-ico { width: 56px; height: 56px; border-radius: 18px; display: grid; place-items: center; font-size: 26px; color: #fff; }
+        .ckt-state h2 { font-size: 17px; font-weight: 800; line-height: 1.6; }
+        .ckt-state p { font-size: 13px; color: var(--c-text-muted); line-height: 1.8; max-width: 22rem; }
+        .ckt-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: 100%; }
+        .ckt-actions > * { flex: 1 1 10rem; text-align: center; }
+        .ckt-keep { font-size: 12px; line-height: 1.8; color: var(--c-text-muted); text-align: center; }
+        .ckt-linkbtn { display: block; margin: 0 auto; font-size: 12px; color: var(--c-text-muted); background: none; border: 0; cursor: pointer; text-decoration: underline; }
       `}</style>
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold">{order.status === 'completed' ? t('checkout') : t('pay')}</h1>
-        <StatusBadge status={order.status} />
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <h1 className="text-lg font-bold">{order.status === 'completed' || confirmed ? t('checkout') : t('pay')}</h1>
+          <div className="text-xs text-muted">{t('order_ref', { id: order.id })}{order.plan_name ? ` · ${(lang === 'en' && order.plan_name_en) || order.plan_name}` : ''}</div>
+        </div>
+        <StatusBadge status={expired ? 'expired' : order.status} />
       </div>
       <Alert>{err}</Alert>
 
@@ -219,6 +347,7 @@ export default function Checkout() {
           <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl text-2xl text-white"
             style={{ background: 'var(--c-success)' }}>✓</div>
           <div>
+            <div className="text-sm font-bold" style={{ color: 'var(--c-success)' }}>{t('pay_confirmed_title')}</div>
             <h2 className="text-lg font-bold" style={{ color: 'var(--c-success)' }}>{t('delivery_ready')}</h2>
             <p className="text-sm text-muted">{t('delivery_hint')}</p>
           </div>
@@ -236,14 +365,60 @@ export default function Checkout() {
               </div>
             </>
           )}
-          <Link to="/" className="btn-primary inline-block">{t('services')}</Link>
+          <Link to="/" className="btn-primary inline-block">{t('view_services')}</Link>
         </div>
       )}
 
-      {order.status === 'pending_payment' && (
+      {/* approved (receipt or SMS) but the service is still being provisioned */}
+      {order.status !== 'completed' && order.status !== 'failed' && confirmed && (
+        <div className="ckt-state">
+          <div className="ckt-state-ico" style={{ background: 'var(--c-success)' }}>✓</div>
+          <h2 style={{ color: 'var(--c-success)' }}>{t('pay_confirmed_title')}</h2>
+          <p>{t('pay_confirmed_preparing')}</p>
+          <Spinner />
+          <div className="ckt-actions">
+            <Link to="/" className="btn-primary">{t('go_dashboard')}</Link>
+          </div>
+        </div>
+      )}
+
+      {order.status === 'failed' && (
+        <div className="ckt-state">
+          <div className="ckt-state-ico" style={{ background: 'var(--c-warning)' }}>!</div>
+          <h2>{t('order_failed_title')}</h2>
+          <p>{t('order_failed_hint')}</p>
+          <div className="ckt-actions"><Link to="/" className="btn-primary">{t('go_dashboard')}</Link></div>
+        </div>
+      )}
+
+      {order.status === 'rejected' && (
+        <div className="ckt-state">
+          <div className="ckt-state-ico" style={{ background: 'var(--c-danger)' }}>✕</div>
+          <h2 style={{ color: 'var(--c-danger)' }}>{t('order_rejected_title')}</h2>
+          {order.reject_reason && <p>{order.reject_reason}</p>}
+          <div className="ckt-actions">
+            <button type="button" className="btn-primary" onClick={startOver}>{t('new_order')}</button>
+            <Link to="/" className="btn-ghost">{t('go_dashboard')}</Link>
+          </div>
+        </div>
+      )}
+
+      {expired && (
+        <div className="ckt-state">
+          <div className="ckt-state-ico" style={{ background: 'var(--c-warning)' }}>⏱</div>
+          <h2>{t('order_expired_title')}</h2>
+          <p>{t('order_expired_hint')}</p>
+          <div className="ckt-actions">
+            <button type="button" className="btn-primary" onClick={startOver}>{t('new_order')}</button>
+            <Link to="/" className="btn-ghost">{t('go_dashboard')}</Link>
+          </div>
+        </div>
+      )}
+
+      {pending && (
         <>
           {/* 1. countdown timer */}
-          {instructions?.reserved_until && <CountdownRing deadline={instructions.reserved_until} />}
+          {instructions?.reserved_until && payStatus !== 'pending' && <CountdownRing deadline={instructions.reserved_until} />}
 
           {/* 2. card number — bold/prominent, the thing the customer actually needs to act on */}
           {(instructions?.cards || []).length > 1 ? (
@@ -297,9 +472,10 @@ export default function Checkout() {
             <div className="text-xs text-muted">{t('pay_exact')}</div>
           </div>
 
+          {payStatus !== 'pending' && <div className="ckt-keep">{t('invoice_keep_hint')}</div>}
+
           {/* --- receipt status --- */}
           {payStatus === 'pending' && <Alert kind="success">{t('pay_pending')}</Alert>}
-          {payStatus === 'approved' && <Alert kind="success">{t('pay_approved')}</Alert>}
           {payStatus === 'rejected' && (
             <Alert kind="warning">
               {t('pay_rejected')}{order.reject_reason ? ` — ${order.reject_reason}` : ''}
@@ -325,8 +501,11 @@ export default function Checkout() {
         </>
       )}
 
-      {order.status !== 'completed' && (
+      {live && !expired && (
         <button className="btn-primary w-full" onClick={checkStatus}>{t('refresh_status')}</button>
+      )}
+      {pending && (
+        <button type="button" className="ckt-linkbtn" onClick={startOver}>{t('another_order')}</button>
       )}
     </div>
   )

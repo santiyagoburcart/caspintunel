@@ -42,14 +42,14 @@ function LegacyLayout() {
 
   return (
     <div className="min-h-full aurora">
-      <header className="glass sticky top-0 z-20 m-3 flex items-center gap-3 px-4 py-3">
+      <header className="glass sticky top-0 z-20 m-3 flex items-center gap-2 px-3 py-3 sm:gap-3 sm:px-4">
         <button className="btn-ghost text-sm md:hidden" onClick={() => setOpen(true)} aria-label="menu">☰</button>
 
-        <div className="flex items-center gap-2 font-bold">
+        <div className="flex min-w-0 items-center gap-2 font-bold">
           {config?.logo
             ? <img src={config.logo} alt="" className="h-7 w-7 rounded object-contain" />
             : <BrandMark />}
-          <span>{lang === 'fa' ? config?.site_name_fa || 'کسپین تانل' : config?.site_name_en || 'caspintunel'}</span>
+          <span className="truncate">{lang === 'fa' ? config?.site_name_fa || 'کسپین تانل' : config?.site_name_en || 'caspintunel'}</span>
         </div>
 
         <nav className="hidden gap-1 md:flex">
@@ -61,7 +61,7 @@ function LegacyLayout() {
           ))}
         </nav>
 
-        <div className="ms-auto flex items-center gap-2">
+        <div className="ms-auto flex shrink-0 items-center gap-1 sm:gap-2">
           <NotificationBell />
           {!locked && (
             <button className="btn-ghost text-sm" onClick={toggle}>{mode === 'dark' ? '☀️' : '🌙'}</button>

@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from apps.common.models import write_audit
 from apps.notifications.dispatch import notify_user
+from apps.notifications.live import push_payments_event
 from apps.notifications.models import NotificationType
 from apps.orders.models import Order, OrderStatus
 from apps.orders.services import mark_paid_and_fulfill
@@ -63,6 +64,7 @@ def submit_receipt(*, order: Order, image, bank_card=None, user) -> Payment:
         raise PaymentError("the receipt image could not be stored — please try again")
 
     write_audit(action="payment.receipt_uploaded", target=payment, staff=None)
+    push_payments_event("receipt_uploaded", order_id=order.id, payment_id=payment.id)
     return payment
 
 
@@ -95,6 +97,8 @@ def approve_payment(payment_id: int, *, actor=None, bank_card=None) -> Payment:
     )
     write_audit(action="payment.approved", target=payment, staff=actor,
                 detail={"order": payment.order_id})
+    push_payments_event("payment_approved", order_id=payment.order_id, payment_id=payment.id,
+                        by=getattr(actor, "username", None))
     return payment
 
 
@@ -108,4 +112,6 @@ def reject_payment(payment_id: int, *, reason: str, actor=None) -> Payment:
     payment.save(update_fields=["status", "reject_reason", "updated_at"])
     # order stays pending_payment so the customer can upload a new receipt
     write_audit(action="payment.rejected", target=payment, staff=actor, detail={"reason": reason})
+    push_payments_event("payment_rejected", order_id=payment.order_id, payment_id=payment.id,
+                        by=getattr(actor, "username", None))
     return payment

@@ -4,10 +4,18 @@ import { useAuth } from '../lib/auth'
 import { useI18n } from '../lib/i18n'
 import { useTheme } from '../theme/ThemeProvider'
 import { Alert, Copyable, PasswordField, Spinner, Toggle } from '../components/ui'
+import { useToast } from '../components/Toast'
+import { copyToClipboard } from '../lib/clipboard'
 
 export default function Profile() {
   const { styleKey } = useTheme()
   return styleKey === 'caspian' ? <CaspianProfile /> : <LegacyProfile />
+}
+
+/** Copy + toast only once the copy really happened (the helper itself opens a
+ * manual-copy sheet when every automatic method fails). */
+async function copyInvite(text, t, toast, key = 'invite_copied') {
+  if (await copyToClipboard(text)) toast.success(t(key))
 }
 
 /* ================= Legacy (Aurora / Frost) ================= */
@@ -15,6 +23,7 @@ function LegacyProfile() {
   const { t, lang, setLang } = useI18n()
   const { mode, toggle, locked } = useTheme()
   const { user, refreshMe } = useAuth()
+  const toast = useToast()
 
   const [f, setF] = useState({ name: user?.name || '', phone: user?.phone || '', email: user?.email || '' })
   const [infoBusy, setInfoBusy] = useState(false)
@@ -79,7 +88,7 @@ function LegacyProfile() {
         </div>
         <div className="flex justify-between"><span className="text-muted">{t('referral_count')}</span><span>{user?.referral_count}</span></div>
         {inviteLink && (
-          <button type="button" className="btn-ghost w-full text-sm" onClick={() => navigator.clipboard?.writeText(inviteLink)}>
+          <button type="button" className="btn-ghost w-full text-sm" onClick={() => copyInvite(inviteLink, t, toast)}>
             {t('copy_invite')}
           </button>
         )}
@@ -184,6 +193,7 @@ function CaspianProfile() {
   const { t, lang, setLang } = useI18n()
   const { mode, toggle, locked, config } = useTheme()
   const { user, refreshMe } = useAuth()
+  const toast = useToast()
   const inviteLink = user?.referral_code
     ? `${window.location.origin}/register?ref=${user.referral_code}`
     : ''
@@ -299,7 +309,7 @@ function CaspianProfile() {
                   <span className="csp-pf-kv-k">{t('referral')}</span>
                   <span className="csp-pf-kv-note">{t('ref_gift_note')}</span>
                 </div>
-                <button type="button" className="csp-pf-refcode" onClick={() => navigator.clipboard?.writeText(user?.referral_code || '')}>
+                <button type="button" className="csp-pf-refcode" onClick={() => copyInvite(user?.referral_code, t, toast, 'copied')}>
                   <PI d={P.copy} w={15} /><span className="mono-num">{user?.referral_code || '—'}</span>
                 </button>
               </div>
@@ -390,7 +400,7 @@ function CaspianProfile() {
             </div>
             {inviteLink && (
               <button type="button" className="csp-pf-refbanner-btn"
-                onClick={() => navigator.clipboard?.writeText(inviteLink)}>
+                onClick={() => copyInvite(inviteLink, t, toast)}>
                 <PI d={P.share} w={15} />{t('copy_invite')}
               </button>
             )}

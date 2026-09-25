@@ -120,5 +120,8 @@ def _auto_confirm(order: Order, msg: SmsMessage) -> Payment:
         target=payment,
         detail={"sms_message": msg.id, "order": order.id, "amount": str(order.amount_unique)},
     )
+    from apps.notifications.live import push_payments_event
+
+    push_payments_event("sms_approved", order_id=order.id, payment_id=payment.id)
     log.info("SMS %s auto-confirmed order %s (%s)", msg.id, order.id, order.amount_unique)
     return payment

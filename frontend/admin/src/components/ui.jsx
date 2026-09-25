@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { copyToClipboard } from '../lib/clipboard'
 
 export function Spinner() {
   return <div className="h-6 w-6 animate-spin rounded-full border-2 border-muted border-t-primary" />
@@ -85,7 +86,11 @@ export function Copyable({ text }) {
   return (
     <button
       className="btn-ghost text-xs"
-      onClick={() => { navigator.clipboard?.writeText(text); setOk(true); setTimeout(() => setOk(false), 1500) }}
+      type="button"
+      aria-label={ok ? 'copied' : 'copy'}
+      onClick={async () => {
+        if (await copyToClipboard(text)) { setOk(true); setTimeout(() => setOk(false), 1500) }
+      }}
     >
       {ok ? '✓' : '⧉'}
     </button>

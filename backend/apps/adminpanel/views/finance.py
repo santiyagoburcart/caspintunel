@@ -12,6 +12,7 @@ from rest_framework.response import Response
 
 from apps.common.jalali import to_jalali_str
 from apps.common.models import write_audit
+from apps.notifications.live import push_payments_event
 from apps.payments_sms.models import BankCard, ConfirmedBy, Payment, PaymentStatus
 from apps.payments_sms.services import PaymentError, approve_payment, reject_payment
 
@@ -80,6 +81,8 @@ class TransactionViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, views
                                             "reject_reason", "updated_at"])
                 write_audit(action="payment.status_override", target=payment, staff=request.user,
                             detail={"to": target, "reason": reason})
+                push_payments_event("payment_status_changed", order_id=payment.order_id,
+                                    payment_id=payment.id, by=getattr(request.user, "username", None))
         except PaymentError as exc:
             return Response({"detail": str(exc)}, status=400)
         return Response(TransactionSerializer(payment).data)

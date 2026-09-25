@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
+import { useLivePayments } from '../lib/livePayments'
 import { useI18n } from '../lib/i18n'
 import { useTheme } from '../theme/ThemeProvider'
 
@@ -90,14 +91,22 @@ function SideIcon({ name }) {
 }
 
 // ---- Aurora / Frost sidebar (unchanged) ----
+/** live pending-payments count on the Payments nav entry */
+function PendingBadge({ to }) {
+  const { pendingCount } = useLivePayments()
+  if (to !== '/payments' || !pendingCount) return null
+  return <span className="nav-pending-badge" aria-label={`${pendingCount}`}>{pendingCount > 99 ? '99+' : pendingCount}</span>
+}
+
 function NavLinks({ items, t, onNavigate }) {
   return (
     <nav className="flex flex-col gap-1">
       {items.map(([to, key]) => (
         <NavLink key={to} to={to} end onClick={onNavigate}
           className={({ isActive }) =>
-            `admin-nav-link btn-ghost whitespace-nowrap text-sm ${isActive ? 'active-nav text-primary' : ''}`}>
+            `admin-nav-link btn-ghost whitespace-nowrap text-sm flex items-center justify-between gap-2 ${isActive ? 'active-nav text-primary' : ''}`}>
           {t(key)}
+          <PendingBadge to={to} />
         </NavLink>
       ))}
     </nav>
@@ -191,6 +200,7 @@ function CaspianNav({ groups, t, brand, logo, onNavigate }) {
                 className={({ isActive }) => 'csp-link' + (isActive ? ' csp-active' : '')}>
                 <SideIcon name={icon} />
                 <span className="csp-link-t">{t(key)}</span>
+                <PendingBadge to={to} />
               </NavLink>
             ))}
           </div>

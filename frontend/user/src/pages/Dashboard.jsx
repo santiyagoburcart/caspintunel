@@ -7,6 +7,7 @@ import { jalali, gb } from '../lib/format'
 import { Alert, Copyable, Spinner, StatusBadge } from '../components/ui'
 import { AuthImage } from '../components/AuthImage'
 import { useToast } from '../components/Toast'
+import { copyToClipboard } from '../lib/clipboard'
 
 export default function Dashboard() {
   const { styleKey } = useTheme()
@@ -543,8 +544,8 @@ function QrModal({ s, t, lang, onClose }) {
     return () => { dead = true; window.removeEventListener('keydown', h); if (obj) URL.revokeObjectURL(obj) }
   }, [s.id, onClose])
 
-  const copy = () => {
-    navigator.clipboard?.writeText(s.subscription_url)
+  const copy = async () => {
+    if (!(await copyToClipboard(s.subscription_url))) return
     setCopied(true); setTimeout(() => setCopied(false), 1800)
   }
   const downloadQr = () => {
