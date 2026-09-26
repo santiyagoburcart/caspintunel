@@ -6,6 +6,7 @@ import { toman, digits } from '../lib/format'
 import { Alert, Field, Spinner, Toggle } from '../components/ui'
 import { useToast } from '../components/Toast'
 import { useDeleteConfirm } from '../lib/confirmDelete'
+import { EmptyState } from '../components/Art'
 
 const blank = { card_number: '', holder_name: '', bank_name: '', sort_order: 0, is_active: true }
 
@@ -154,7 +155,7 @@ function CardModal({ row, s, t, lang, onClose, onSaved }) {
         <div className="cd-modal-head">
           <div>
             <h2 className="font-bold flex items-center gap-2">
-              <span style={{ color: 'var(--c-primary)' }}><MIco d={MI.card} w={18} /></span>
+              <span style={{ color: 'var(--c-primary-fg)' }}><MIco d={MI.card} w={18} /></span>
               {editing ? s.modal_edit.replace('{n}', row.holder_name || groupNumber(row.card_number)) : s.modal_new}
             </h2>
             <p className="text-xs text-muted mt-0.5">{s.modal_sub}</p>
@@ -277,7 +278,7 @@ export default function Cards() {
         <Metric label={s.m_active} value={digits(metrics.activeCount, lang)} unit={s.m_active_u}
           sub={s.m_active_sub} tone="#11AB53" icon={<MIco d={MI.card} />} lang={lang} />
         <Metric label={s.m_count} value={digits(metrics.depositCount, lang)} unit={s.m_count_u}
-          sub={s.m_count_sub} tone="#7C3AED" icon={<MIco d={MI.layers} />} lang={lang} />
+          sub={s.m_count_sub} tone="#0891B2" icon={<MIco d={MI.layers} />} lang={lang} />
       </div>
 
       <Alert>{err}</Alert>
@@ -292,17 +293,17 @@ export default function Cards() {
               .replace('{min}', range ? digits(range.min, lang) : '—')
               .replace('{max}', range ? digits(range.max, lang) : '—')}
           </p>
-          <Link to="/settings/unique-amount" className="cd-fraud-link">{s.fraud_edit} →</Link>
+          <Link to="/settings/unique-amount" className="cd-fraud-link">{s.fraud_edit} <span className="dir-arrow" aria-hidden="true">→</span></Link>
         </div>
       </div>
 
       {cards.length === 0 ? (
-        <div className="card text-center text-muted">{t('none_found')}</div>
+        <div className="card"><EmptyState art="card" text={t('none_found')} compact /></div>
       ) : (
         <>
           <div className="cd-list-head">
             <h3 className="text-sm font-bold flex items-center gap-2">
-              <span style={{ color: 'var(--c-primary)' }}><MIco d={MI.layers} /></span>{s.list_title}
+              <span style={{ color: 'var(--c-primary-fg)' }}><MIco d={MI.layers} /></span>{s.list_title}
             </h3>
             <span className="text-xs text-muted">{s.list_hint}</span>
           </div>
@@ -339,22 +340,22 @@ export default function Cards() {
 const CSS = `
 .cd-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between; }
 .cd-add { flex-shrink: 0; }
-.cd-badge { font-size: 11px; font-weight: 700; padding: 2px 10px; border-radius: 999px; background: color-mix(in srgb, var(--c-primary) 14%, transparent); color: var(--c-primary); white-space: nowrap; }
+.cd-badge { font-size: 12px; font-weight: 700; padding: 2px 10px; border-radius: 999px; background: color-mix(in srgb, var(--c-primary) 14%, transparent); color: var(--c-primary-fg); white-space: nowrap; }
 
 .cd-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 14px; }
 .cd-metric { min-width: 0; display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
 .cd-metric-label { font-size: 12px; font-weight: 600; color: var(--c-text-muted); }
 .cd-metric-val { overflow-wrap: anywhere; font-size: 20px; font-weight: 800; letter-spacing: -.01em; margin-top: 5px; }
-.cd-metric-unit { font-size: 11px; font-weight: 500; color: var(--c-text-muted); }
-.cd-metric-sub { font-size: 11px; color: var(--c-text-muted); margin-top: 4px; }
+.cd-metric-unit { font-size: 12px; font-weight: 500; color: var(--c-text-muted); }
+.cd-metric-sub { font-size: 12px; color: var(--c-text-muted); margin-top: 4px; }
 .cd-metric-ico { width: 46px; height: 46px; border-radius: 13px; display: grid; place-items: center; flex-shrink: 0; }
 
 .cd-fraud { display: flex; gap: 14px; align-items: flex-start;
   border-color: color-mix(in srgb, var(--c-warning) 30%, var(--c-border));
   background: color-mix(in srgb, var(--c-warning) 6%, var(--c-surface)); }
 .cd-fraud-ico { width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0; display: grid; place-items: center;
-  background: color-mix(in srgb, var(--c-warning) 16%, transparent); color: var(--c-warning); }
-.cd-fraud-link { display: inline-block; margin-top: 8px; font-size: 12px; font-weight: 600; color: var(--c-primary); }
+  background: color-mix(in srgb, var(--c-warning) 16%, transparent); color: var(--c-warning-fg); }
+.cd-fraud-link { display: inline-block; margin-top: 8px; font-size: 12px; font-weight: 600; color: var(--c-primary-fg); }
 .cd-fraud-link:hover { text-decoration: underline; }
 
 .cd-list-head { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: space-between; }
@@ -362,7 +363,7 @@ const CSS = `
 .bankcards-grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
 .bankcard-cell { display: flex; flex-direction: column; gap: 10px; }
 .bankcard-preview { max-width: 320px; }
-.bankcard-order { font-size: 11px; color: var(--c-text-muted); white-space: nowrap; }
+.bankcard-order { font-size: 12px; color: var(--c-text-muted); white-space: nowrap; }
 .bankcard-order b { color: var(--c-text); }
 
 .bankcard {
@@ -386,7 +387,7 @@ const CSS = `
 .bankcard-foot { align-items: flex-end; }
 .bankcard-bank { font-weight: 700; font-size: 14px; text-shadow: 0 1px 2px rgba(0,0,0,.25); }
 .bankcard-state {
-  font-size: 9.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px;
+  font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px;
   text-transform: uppercase; letter-spacing: .04em; white-space: nowrap;
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.25);
 }
@@ -406,7 +407,7 @@ const CSS = `
 .bankcard-num { font-size: 19px; font-weight: 600; letter-spacing: 2px; text-shadow: 0 1px 3px rgba(0,0,0,.35); }
 @media (max-width: 360px) { .bankcard-num { font-size: 16px; letter-spacing: 1px; } }
 
-.bankcard-label { display: block; font-size: 8.5px; text-transform: uppercase; letter-spacing: .07em; opacity: .72; }
+.bankcard-label { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: .07em; opacity: .72; }
 .bankcard-name { font-size: 13px; font-weight: 600; }
 .bankcard-brand { font-size: 12px; font-weight: 800; font-style: italic; letter-spacing: .12em; opacity: .85; }
 
@@ -422,7 +423,7 @@ const CSS = `
 
 .bankcard-actions { display: flex; align-items: center; gap: 8px; padding: 0 2px; }
 .bankcard-actions-sp { margin-inline-start: auto; display: inline-flex; }
-.bankcard-del:hover { color: var(--c-danger); border-color: var(--c-danger); }
+.bankcard-del:hover { color: var(--c-danger-fg); border-color: var(--c-danger); }
 
 /* edit modal */
 .cd-backdrop { position: fixed; inset: 0; z-index: 60; background: color-mix(in srgb, #0b1220 62%, transparent); backdrop-filter: blur(3px); display: flex; align-items: flex-start; justify-content: center; padding: 24px 16px; overflow-y: auto; }

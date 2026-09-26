@@ -81,3 +81,6 @@ mail/
 !mobile_sms/app/src/main/java/com/caspintunel/smsbridge/data/*
 !mobile_sms/release/
 !mobile_sms/release/*
+
+# preview build only (scripts/preview.sh copies the backend palette file here)
+frontend/*/src/theme/preview-palettes.json

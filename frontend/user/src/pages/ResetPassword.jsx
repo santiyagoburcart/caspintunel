@@ -40,11 +40,11 @@ export default function ResetPassword() {
             onChange={(e) => setPw(e.target.value)} />
         ) : (
           <Field label={`${t('username')} / ${t('email')}`}>
-            <input className="input" value={identifier} onChange={(e) => setIdentifier(e.target.value)} />
+            <input className="input" dir="ltr" value={identifier} onChange={(e) => setIdentifier(e.target.value)} autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} />
           </Field>
         )}
         <button className="btn-primary w-full" disabled={busy}>{busy ? <Spinner /> : t('submit')}</button>
-        <div className="text-sm text-muted"><Link to="/login" className="hover:text-primary">{t('login')}</Link></div>
+        <div className="text-sm text-muted"><Link to="/login" className="auth-link hover:text-primary">{t('login')}</Link></div>
       </form>
     </AuthShell>
   )

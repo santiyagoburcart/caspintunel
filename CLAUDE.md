@@ -28,6 +28,10 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   Browser checks: Playwright image `mcr.microsoft.com/playwright:v1.49.1-noble` against the live site with
   writes blocked in-browser (never create fake data in the prod DB).
 
+- UI previews: `./scripts/preview.sh update|up|status|remove` serves a checkout at `/preview/` +
+  `/preview-panel/` (live API, orange banner) without touching `/` or `/panel/`. Work on a UI branch in a
+  separate worktree (`git worktree add ../caspintunel-ui <branch>`) — never switch the live checkout off `main`.
+
 ## Safety (hard rules — live site with real users)
 - **Never run tests, scripts or verification commands against the live database or live Redis.** All tests
   use the isolated test stack above. `config/settings/test.py` refuses to start unless the DB host is
@@ -66,9 +70,16 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
 - Frontend: fa/en for every string (per-page `T = {fa, en}` or `lib/i18n.jsx`), Jalali via `lib/format.js`.
   **Digits are always Latin 0-9** in both languages (amounts, dates `1405/07/03`, badges, %, bot text);
   every `fa` Intl formatter needs `-u-nu-latn`. Persian/Arabic digits are only normalized on INPUT
-  (`user/src/lib/phone.js`, `accounts/phone.py`, `payments_sms/parsing.py`). Themes: Caspian (light/dark), Midnight Aurora, Royal Frost. Colours come from
-  `var(--c-*)` except these **fixed** tokens: toggles `--toggle-on #11AB53` / `--toggle-off` dark gray;
-  ConfirmDialog tone colours (danger red, success #11AB53, primary #1464BA, warning amber).
+  (`user/src/lib/phone.js`, `accounts/phone.py`, `payments_sms/parsing.py`). Themes: Caspian (light/dark), Midnight Aurora, Royal Frost. **Design system: `docs/ui-design.md`**
+  (tokens, components, assets + licences). Colours come from `var(--c-*)`; **text in a role colour uses
+  the `-fg` token** (`--c-success-fg` …, ≥4.5:1) — brand fills (`--c-success` #11AB53 …) are for buttons,
+  dots, bars, toggles only; `lib/tone.js::fg()` for computed tones. Palettes: `backend/apps/settings_app/
+  theme_palettes.json` (seed → DB). Fixed: toggles `--toggle-on #11AB53` / `--toggle-off` dark gray;
+  ConfirmDialog tones keep their identity but the confirm button uses AA fills (danger #DC2626, success
+  #0A7F3F, primary #1464BA, warning #B45309). Purple only in chart tokens.
+- Icons: **Phosphor (`@phosphor-icons/react`) only**; 3D accents: `components/Art.jsx` (Fluent Emoji 3D,
+  MIT, bundled WebP) — decorative only. **No emoji as icons.** Min font 12px; 44px touch targets on
+  phones/touch (global floor in `index.css`); every input needs a label (`Field` = real `<label>`).
 - **One popup for everything**: `components/ConfirmDialog.jsx` (identical in both SPAs) + `useConfirm()`.
   Never use `window.confirm/alert/prompt`. **One copy helper**: `lib/clipboard.js::copyToClipboard`.
 - Fonts are bundled (`@fontsource`, no CDN): fa = Vazirmatn, en = Inter, `<code>` = JetBrains Mono.

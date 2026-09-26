@@ -3,6 +3,7 @@ import { api } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 import { useTheme } from '../theme/ThemeProvider'
 import { Spinner } from '../components/ui'
+import { Art } from '../components/Art'
 
 function usePages(t) {
   const [pages, setPages] = useState(null)
@@ -84,6 +85,7 @@ function CaspianHelp() {
 
       <header className="csp-help-hero">
         <span className="csp-help-hero-blob" />
+        <Art name="book" size={56} className="csp-help-hero-art" />
         <h1 className="csp-headline">{t('help_h1')}</h1>
         <p>{t('help_lead')}</p>
       </header>
@@ -146,7 +148,7 @@ function CaspianHelp() {
               const isOpen = open === p.slug
               return (
                 <div key={p.slug} className={'csp-help-acc-item' + (isOpen ? ' on' : '')}>
-                  <button type="button" className="csp-help-acc-q" onClick={() => setOpen(isOpen ? null : p.slug)}>
+                  <button type="button" className="csp-help-acc-q" onClick={() => setOpen(isOpen ? null : p.slug)} aria-expanded={isOpen}>
                     <span>{title}</span>
                     <HI d={isOpen ? 'M18 15l-6-6-6 6' : 'M6 9l6 6 6-6'} w={16} />
                   </button>
@@ -160,6 +162,7 @@ function CaspianHelp() {
 
       {/* support banner */}
       <div className="csp-help-support">
+        <Art name="chat" size={48} />
         <div className="csp-help-support-txt">
           <div className="csp-help-support-t">{t('help_support_t')}</div>
           <div className="csp-help-support-d">{t('help_support_d')}</div>
@@ -178,8 +181,9 @@ const CSS = `
 .csp-help { display: flex; flex-direction: column; gap: 20px; }
 .csp-help-hero {
   position: relative; overflow: hidden; border-radius: 22px; padding: clamp(20px, 3vw, 30px); color: #fff;
-  background: linear-gradient(135deg, var(--c-primary), color-mix(in srgb, var(--c-primary) 55%, #1a1350));
+  background: linear-gradient(135deg, var(--c-primary), #0B1B36);
 }
+.csp-help-hero-art { position: relative; margin-bottom: 10px; filter: drop-shadow(0 8px 14px rgba(0,0,0,.25)); }
 .csp-help-hero-blob { position: absolute; width: 260px; height: 260px; border-radius: 50%; top: -120px; inset-inline-end: -70px; background: rgba(255,255,255,.12); filter: blur(60px); }
 .csp-help-hero h1 { position: relative; font-size: clamp(20px, 3.5vw, 28px); font-weight: 800; }
 .csp-help-hero p { position: relative; font-size: 12.5px; opacity: .9; margin-top: 8px; line-height: 1.8; max-width: 520px; }
@@ -198,7 +202,7 @@ const CSS = `
 :root:not(.dark) .csp-help-os-card { background: #fff; }
 .csp-help-os-card:hover { border-color: color-mix(in srgb, var(--c-primary) 40%, var(--c-border)); }
 .csp-help-os-card.on { border-color: var(--c-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-primary) 16%, transparent); }
-.csp-help-os-ico { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary); }
+.csp-help-os-ico { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary-fg); }
 .csp-help-os-card.on .csp-help-os-ico { background: var(--c-primary); color: #fff; }
 
 .csp-help-apps { padding: 16px; border-radius: 16px; background: var(--c-surface); border: 1px solid var(--c-border); display: flex; flex-direction: column; gap: 12px; }
@@ -209,16 +213,16 @@ const CSS = `
 .csp-help-app-badge { width: 38px; height: 38px; flex-shrink: 0; display: grid; place-items: center; border-radius: 11px; background: var(--c-primary); color: #fff; font-size: 12px; font-weight: 800; }
 .csp-help-app-txt { display: flex; flex-direction: column; gap: 2px; }
 .csp-help-app-txt b { font-size: 13px; font-weight: 700; }
-.csp-help-app-link { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; color: var(--c-primary); }
+.csp-help-app-link { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: var(--c-primary-fg); }
 .csp-help-app-link:hover { text-decoration: underline; }
 
 .csp-help-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 @media (max-width: 720px) { .csp-help-steps { grid-template-columns: 1fr; } }
 .csp-help-step { display: flex; gap: 11px; padding: 15px; border-radius: 16px; background: var(--c-surface); border: 1px solid var(--c-border); }
 :root:not(.dark) .csp-help-step { background: #fff; }
-.csp-help-step-n { width: 30px; height: 30px; flex-shrink: 0; display: grid; place-items: center; border-radius: 10px; background: color-mix(in srgb, var(--c-primary) 14%, transparent); color: var(--c-primary); font-size: 13px; font-weight: 800; }
+.csp-help-step-n { width: 30px; height: 30px; flex-shrink: 0; display: grid; place-items: center; border-radius: 10px; background: color-mix(in srgb, var(--c-primary) 14%, transparent); color: var(--c-primary-fg); font-size: 13px; font-weight: 800; }
 .csp-help-step-t { font-size: 13px; font-weight: 700; }
-.csp-help-step-d { font-size: 11px; color: var(--c-text-muted); margin-top: 3px; line-height: 1.7; }
+.csp-help-step-d { font-size: 12px; color: var(--c-text-muted); margin-top: 3px; line-height: 1.7; }
 
 .csp-help-acc { display: flex; flex-direction: column; gap: 8px; }
 .csp-help-acc-item { border-radius: 14px; border: 1px solid var(--c-border); background: var(--c-surface); overflow: hidden; }
@@ -234,7 +238,7 @@ const CSS = `
   border: 1px solid color-mix(in srgb, var(--c-success) 24%, transparent);
 }
 .csp-help-support-t { font-size: 13.5px; font-weight: 800; }
-.csp-help-support-d { font-size: 11.5px; color: var(--c-text-muted); margin-top: 3px; }
+.csp-help-support-d { font-size: 12px; color: var(--c-text-muted); margin-top: 3px; }
 .csp-help-support-btn {
   display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; padding: 11px 18px; border-radius: 13px;
   font-size: 12.5px; font-weight: 700; color: #fff; background: var(--c-success);

@@ -6,6 +6,8 @@ import { jalali, relTime, digits, gb } from '../lib/format'
 import { Alert, Spinner, Toggle } from '../components/ui'
 import { useServiceActions } from '../lib/serviceActions'
 import { useToast } from '../components/Toast'
+import { fg } from '../lib/tone'
+import { EmptyState } from '../components/Art'
 
 function Ico({ d, w = 16 }) {
   return (
@@ -191,7 +193,7 @@ export default function Services() {
         </div>
         <div className="svc-search">
           <Ico d={ICONS.search} w={14} />
-          <input className="input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={s.search_ph} />
+          <input className="input" type="search" aria-label={s.search_ph} value={search} onChange={(e) => setSearch(e.target.value)} placeholder={s.search_ph} />
         </div>
       </div>
 
@@ -200,7 +202,7 @@ export default function Services() {
       {rows === null ? (
         <div className="grid place-items-center py-16"><Spinner /></div>
       ) : rows.length === 0 ? (
-        <div className="card text-center text-muted">{s.none_found}</div>
+        <div className="card"><EmptyState art="search" text={s.none_found} compact /></div>
       ) : (
         <div className="card p-0 svc-wrap">
           <table className="svc-table">
@@ -271,7 +273,7 @@ const PILL_TONE = { active: 'success', on_hold: 'warning', disabled: 'danger', e
 function StatusPill({ status, t }) {
   const c = `var(--c-${PILL_TONE[status] || 'text-muted'})`
   return (
-    <span className="svc-pill svc-pill--st" style={{ color: c, background: `color-mix(in srgb, ${c} 14%, transparent)` }}>
+    <span className="svc-pill svc-pill--st" style={{ color: fg(c), background: `color-mix(in srgb, ${c} 14%, transparent)` }}>
       <i style={{ background: c }} />{enumLabel(t, 'st_', status)}
     </span>
   )
@@ -303,7 +305,7 @@ function UserPicker({ s, user, setUser }) {
         </div>
       ) : (
         <>
-          <input className="input" value={q} onChange={(e) => setQ(e.target.value)} placeholder={s.f_user_ph} />
+          <input className="input" type="search" aria-label={s.f_user_ph} value={q} onChange={(e) => setQ(e.target.value)} placeholder={s.f_user_ph} />
           {q.trim() && (
             <div className="svc-user-results">
               {results.length === 0 ? (
@@ -332,7 +334,7 @@ function PanelAccountRow({ a, s, t, lang, picked, onPick }) {
       disabled={!!a.linked} onClick={() => onPick(a)} aria-pressed={picked}>
       <span className="svc-acc-top">
         <b dir="ltr" className="svc-mono">{a.username}</b>
-        <span className="svc-pill" style={{ color: tone, background: `color-mix(in srgb, ${tone} 14%, transparent)` }}>
+        <span className="svc-pill" style={{ color: fg(tone), background: `color-mix(in srgb, ${tone} 14%, transparent)` }}>
           {enumLabel(t, 'st_', a.status)}
         </span>
       </span>
@@ -570,7 +572,7 @@ function ManualCreateModal({ s, t, lang, onClose, onCreated }) {
 const CSS = `
 .svc-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between; }
 .svc-head-acts { display: flex; flex-wrap: wrap; gap: 8px; }
-.svc-sync-line { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--c-text-muted); flex-wrap: wrap; }
+.svc-sync-line { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--c-text-muted); flex-wrap: wrap; }
 .svc-stats-inline { white-space: nowrap; }
 
 .svc-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
@@ -583,7 +585,7 @@ const CSS = `
 
 .svc-wrap { overflow-x: auto; }
 .svc-table { width: 100%; min-width: 900px; border-collapse: collapse; font-size: 13px; }
-.svc-table thead th { text-align: start; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .03em;
+.svc-table thead th { text-align: start; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .03em;
   color: var(--c-text-muted); padding: 12px 14px; white-space: nowrap; border-bottom: 1px solid var(--c-border); }
 .svc-table td { padding: 10px 14px; vertical-align: middle; border-bottom: 1px solid var(--c-border); }
 .svc-table tr:last-child td { border-bottom: 0; }
@@ -591,10 +593,10 @@ const CSS = `
 .svc-c { text-align: center; }
 .svc-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
 .svc-user { display: block; font-weight: 600; }
-.svc-sub { display: block; font-size: 11px; color: var(--c-text-muted); margin-top: 1px; }
+.svc-sub { display: block; font-size: 12px; color: var(--c-text-muted); margin-top: 1px; }
 .svc-date { white-space: nowrap; color: var(--c-text-muted); font-size: 12px; }
 
-.svc-pill { display: inline-block; border-radius: 999px; padding: 3px 10px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+.svc-pill { display: inline-block; border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 600; white-space: nowrap; }
 .svc-pill--st { display: inline-flex; align-items: center; gap: 6px; }
 .svc-pill--st i { width: 6px; height: 6px; border-radius: 50%; }
 
@@ -604,14 +606,14 @@ const CSS = `
 
 .svc-conn { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; white-space: nowrap; }
 .svc-conn i { width: 7px; height: 7px; border-radius: 50%; }
-.svc-conn.on { color: var(--c-success); } .svc-conn.on i { background: var(--c-success); }
+.svc-conn.on { color: var(--c-success-fg); } .svc-conn.on i { background: var(--c-success); }
 .svc-conn.off { color: var(--c-text-muted); } .svc-conn.off i { background: var(--c-text-muted); }
 
 .svc-acts { display: inline-flex; gap: 4px; }
 .svc-icon-btn { padding: 6px; border-radius: 8px; color: var(--c-text-muted); }
-.svc-icon-btn:hover:not(:disabled) { color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 12%, transparent); }
+.svc-icon-btn:hover:not(:disabled) { color: var(--c-primary-fg); background: color-mix(in srgb, var(--c-primary) 12%, transparent); }
 .svc-icon-btn:disabled { opacity: .4; }
-.svc-icon-btn--del:hover:not(:disabled) { color: var(--c-danger); background: color-mix(in srgb, var(--c-danger) 12%, transparent); }
+.svc-icon-btn--del:hover:not(:disabled) { color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 12%, transparent); }
 
 /* modal */
 .svc-backdrop { position: fixed; inset: 0; z-index: 60; background: color-mix(in srgb, #0b1220 62%, transparent); backdrop-filter: blur(3px);
@@ -624,21 +626,21 @@ const CSS = `
 .svc-detail-h { font-weight: 700; font-size: 13px; margin-bottom: 8px; }
 .svc-kv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .svc-kv { display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; }
-.svc-kv span { color: var(--c-text-muted); font-size: 11px; }
-.svc-sub-url { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--c-text-muted) 6%, transparent); font-size: 11.5px; }
+.svc-kv span { color: var(--c-text-muted); font-size: 12px; }
+.svc-sub-url { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--c-text-muted) 6%, transparent); font-size: 12px; }
 .svc-sub-url span { display: block; color: var(--c-text-muted); margin-bottom: 3px; }
 .svc-sub-url code { word-break: break-all; }
-.svc-raw { max-height: 260px; overflow: auto; font-size: 11px; padding: 10px 12px; border-radius: 10px;
+.svc-raw { max-height: 260px; overflow: auto; font-size: 12px; padding: 10px 12px; border-radius: 10px;
   background: color-mix(in srgb, var(--c-text-muted) 6%, transparent); direction: ltr; text-align: left; }
 
 .svc-fld { display: flex; flex-direction: column; gap: 6px; position: relative; }
 .svc-grid2 { display: grid; grid-template-columns: 1fr; gap: 14px; }
 @media (min-width: 480px) { .svc-grid2 { grid-template-columns: 1fr 1fr; } }
-.svc-hint { font-size: 11px; color: var(--c-text-muted); }
+.svc-hint { font-size: 12px; color: var(--c-text-muted); }
 
 .svc-user-picked { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--c-border); }
 .svc-user-picked-ico { width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0; display: grid; place-items: center;
-  background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary); }
+  background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary-fg); }
 .svc-user-results { border: 1px solid var(--c-border); border-radius: 10px; max-height: 180px; overflow-y: auto; }
 .svc-user-result { display: block; width: 100%; text-align: start; padding: 8px 12px; font-size: 12.5px; border-bottom: 1px solid var(--c-border); }
 .svc-user-result:last-child { border-bottom: 0; }
@@ -657,11 +659,11 @@ const CSS = `
 .svc-acc.on { background: color-mix(in srgb, var(--c-primary) 12%, transparent); }
 .svc-acc.linked { opacity: .65; cursor: not-allowed; }
 .svc-acc-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.svc-acc-meta { display: flex; flex-wrap: wrap; gap: 6px; font-size: 11.5px; color: var(--c-text-muted); }
-.svc-acc-linked { font-size: 11px; font-weight: 700; color: var(--c-danger); }
-.svc-err { color: var(--c-danger); }
+.svc-acc-meta { display: flex; flex-wrap: wrap; gap: 6px; font-size: 12px; color: var(--c-text-muted); }
+.svc-acc-linked { font-size: 12px; font-weight: 700; color: var(--c-danger-fg); }
+.svc-err { color: var(--c-danger-fg); }
 .svc-link-note { padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--c-primary) 7%, transparent); line-height: 1.7; }
-.svc-deleted-tag { margin-inline-start: 6px; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 5px; color: var(--c-danger);
+.svc-deleted-tag { margin-inline-start: 6px; font-size: 12px; font-weight: 700; padding: 1px 6px; border-radius: 5px; color: var(--c-danger-fg);
   background: color-mix(in srgb, var(--c-danger) 13%, transparent); }
 .svc-groups-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .svc-groups-grid { display: grid; grid-template-columns: 1fr; gap: 6px; }
@@ -678,7 +680,7 @@ const CSS = `
   .svc-table tr.svc-row > td { border-bottom: 0; }
   .svc-table tr:hover td { background: none; }
   .svc-table td { padding: 8px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: end; }
-  .svc-table td::before { content: attr(data-label); font-size: 11px; font-weight: 600; color: var(--c-text-muted); text-align: start; white-space: nowrap; }
+  .svc-table td::before { content: attr(data-label); font-size: 12px; font-weight: 600; color: var(--c-text-muted); text-align: start; white-space: nowrap; }
   .svc-table td.svc-c { justify-content: space-between; }
 }
 `

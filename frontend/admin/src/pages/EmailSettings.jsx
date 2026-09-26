@@ -78,29 +78,29 @@ const CSS = `
 .em-row { display: grid; gap: .75rem; grid-template-columns: minmax(0, 1fr); }
 @media (min-width: 640px) { .em-row-2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .em-row-hp { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); } }
 .em-fld { display: grid; gap: .3rem; min-width: 0; }
-.em-hint { font-size: .72rem; color: var(--c-text-muted); line-height: 1.6; }
+.em-hint { font-size: 12px; color: var(--c-text-muted); line-height: 1.6; }
 .em-toggle { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .25rem 0 .9rem;
   border-bottom: 1px solid var(--c-border); margin-bottom: .9rem; }
 .em-presets { display: flex; flex-wrap: wrap; gap: .4rem; }
 .em-chip { border: 1px solid var(--c-border); background: var(--c-bg); color: var(--c-text); border-radius: 999px;
-  padding: .3rem .8rem; font-size: .78rem; cursor: pointer; }
-.em-chip:hover, .em-chip.on { border-color: var(--c-primary); color: var(--c-primary); }
+  padding: .3rem .8rem; font-size: 12.5px; cursor: pointer; }
+.em-chip:hover, .em-chip.on { border-color: var(--c-primary); color: var(--c-primary-fg); }
 .em-pw { position: relative; }
 .em-pw .input { padding-inline-end: 2.4rem; }
 .em-eye { position: absolute; inset-inline-end: .5rem; top: 50%; transform: translateY(-50%); background: none; border: 0;
   color: var(--c-text-muted); cursor: pointer; padding: .2rem; }
-.em-badge { display: inline-flex; align-items: center; gap: .25rem; font-size: .72rem; font-weight: 600; border-radius: 999px;
-  padding: .1rem .55rem; background: color-mix(in srgb, var(--c-success) 14%, transparent); color: var(--c-success); }
-.em-link { background: none; border: 0; padding: 0; color: var(--c-danger); font-size: .75rem; cursor: pointer; text-decoration: underline; }
+.em-badge { display: inline-flex; align-items: center; gap: .25rem; font-size: 12px; font-weight: 600; border-radius: 999px;
+  padding: .1rem .55rem; background: color-mix(in srgb, var(--c-success) 14%, transparent); color: var(--c-success-fg); }
+.em-link { background: none; border: 0; padding: 0; color: var(--c-danger-fg); font-size: 12px; cursor: pointer; text-decoration: underline; }
 .em-status { display: grid; gap: .6rem; font-size: .82rem; }
 .em-status-row { display: flex; align-items: flex-start; gap: .5rem; min-width: 0; }
 .em-dot { width: .55rem; height: .55rem; border-radius: 999px; flex-shrink: 0; margin-top: .4rem; }
-.em-code { display: block; margin-top: .3rem; font-size: .72rem; background: var(--c-bg); border: 1px solid var(--c-border);
+.em-code { display: block; margin-top: .3rem; font-size: 12px; background: var(--c-bg); border: 1px solid var(--c-border);
   border-radius: .5rem; padding: .45rem .6rem; white-space: pre-wrap; word-break: break-word; color: var(--c-text-muted); }
 .em-result { border-radius: .75rem; padding: .75rem .9rem; font-size: .84rem; border: 1px solid; }
 .em-result.ok { border-color: color-mix(in srgb, var(--c-success) 40%, transparent); background: color-mix(in srgb, var(--c-success) 10%, transparent); }
 .em-result.bad { border-color: color-mix(in srgb, var(--c-danger) 40%, transparent); background: color-mix(in srgb, var(--c-danger) 9%, transparent); }
-.em-help li { font-size: .78rem; color: var(--c-text-muted); line-height: 1.7; padding-inline-start: .9rem; position: relative; }
+.em-help li { font-size: 12.5px; color: var(--c-text-muted); line-height: 1.7; padding-inline-start: .9rem; position: relative; }
 .em-help li::before { content: ''; position: absolute; inset-inline-start: 0; top: .65rem; width: .3rem; height: .3rem; border-radius: 999px; background: var(--c-primary); }
 .em-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; justify-content: flex-end; }
 @media (max-width: 767px) {
@@ -261,7 +261,7 @@ export default function EmailSettings() {
                   {data.password_set && !clearPw && <span className="em-badge">{s.pw_saved}</span>}
                 </span>
                 <div className="em-pw" dir="ltr">
-                  <input className="input" dir="ltr" type={showPw ? 'text' : 'password'} autoComplete="new-password"
+                  <input className="input" dir="ltr" type={showPw ? 'text' : 'password'} autoComplete="new-password" aria-label={s.password}
                     placeholder={data.password_set ? '••••••••' : ''} value={pw}
                     onChange={(e) => { setPw(e.target.value); if (e.target.value) setClearPw(false) }} />
                   <button type="button" className="em-eye" onClick={() => setShowPw((v) => !v)} aria-label={s.password}>

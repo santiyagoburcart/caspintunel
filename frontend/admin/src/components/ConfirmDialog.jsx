@@ -257,16 +257,18 @@ export const CDLG_CSS = `
   --cdlg-cancel-border: rgba(255,255,255,.18); --cdlg-cancel-hover: rgba(255,255,255,.06); --cdlg-field: rgba(255,255,255,.04);
   background: rgba(2, 6, 17, .72);
 }
-.cdlg { --tone: #E11D48; --tone-hover: #BE123C;
+.cdlg { --tone: #E11D48; --tone-hover: #BE123C; --tone-btn: #DC2626; --tone-btn-hover: #B91C1C; --tone-fg: #C81E1E;
   position: relative; overflow: hidden; width: 100%; max-width: 448px; max-height: calc(100dvh - 32px); overflow-y: auto;
   display: flex; flex-direction: column; gap: 18px; padding: 24px; border-radius: 18px; outline: none;
   background: var(--cdlg-surface); color: var(--cdlg-text); border: 1px solid var(--cdlg-border);
   box-shadow: 0 25px 50px -12px rgba(0,0,0,.35); text-align: start; font-size: 14px;
   animation: cdlg-pop .2s ease-out;
 }
-.cdlg--success { --tone: #11AB53; --tone-hover: #0E9447; }
-.cdlg--primary { --tone: #1464BA; --tone-hover: #0F4E92; }
-.cdlg--warning { --tone: #D97706; --tone-hover: #B45309; }
+.cdlg--success { --tone: #11AB53; --tone-hover: #0E9447; --tone-btn: #0A7F3F; --tone-btn-hover: #086B35; --tone-fg: #0A7A3C; }
+.cdlg--primary { --tone: #1464BA; --tone-hover: #0F4E92; --tone-btn: #1464BA; --tone-btn-hover: #0F4E92; --tone-fg: #1464BA; }
+.cdlg--warning { --tone: #D97706; --tone-hover: #B45309; --tone-btn: #B45309; --tone-btn-hover: #92400E; --tone-fg: #9A4A00; }
+/* text-safe tone text in dark mode (the fill stays the same) */
+.dark .cdlg { --tone-fg: #FF8585; } .dark .cdlg--success { --tone-fg: #3DD37F; } .dark .cdlg--primary { --tone-fg: #6AA9EE; } .dark .cdlg--warning { --tone-fg: #FBBF24; }
 .cdlg-glow { position: absolute; top: -48px; inset-inline-end: -48px; width: 128px; height: 128px; border-radius: 50%;
   background: color-mix(in srgb, var(--tone) 18%, transparent); filter: blur(28px); pointer-events: none; }
 .cdlg > *:not(.cdlg-glow) { position: relative; }
@@ -289,21 +291,21 @@ export const CDLG_CSS = `
 .cdlg-head-txt { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 6px; padding-top: 2px; }
 .cdlg-title { margin: 0; font-size: 18px; font-weight: 800; line-height: 1.5; color: var(--cdlg-title); }
 .cdlg-target { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--cdlg-muted); font-weight: 500; }
-.cdlg-target b { font: 700 12px 'JetBrains Mono', ui-monospace, monospace; color: #1464BA; padding: 2px 8px; border-radius: 6px;
+.cdlg-target b { font: 700 12px 'JetBrains Mono', ui-monospace, monospace; color: var(--c-primary-fg); padding: 2px 8px; border-radius: 6px;
   background: color-mix(in srgb, #1464BA 9%, transparent); border: 1px solid color-mix(in srgb, #1464BA 22%, transparent); }
 .dark .cdlg-target b { color: #7fb3ec; }
 
 .cdlg-msg { font-size: 14px; line-height: 1.9; color: var(--cdlg-text); }
 .cdlg-msg strong, .cdlg-msg code { font-family: 'JetBrains Mono', ui-monospace, monospace; font-weight: 700; color: var(--cdlg-title);
   background: var(--cdlg-chip); border: 1px solid var(--cdlg-border); padding: 1px 6px; border-radius: 6px; }
-.cdlg-msg em { font-style: normal; font-weight: 700; color: var(--tone); text-decoration: underline; text-underline-offset: 4px; }
+.cdlg-msg em { font-style: normal; font-weight: 700; color: var(--tone-fg); text-decoration: underline; text-underline-offset: 4px; }
 
 .cdlg-box { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 12px; font-size: 12px;
   background: var(--cdlg-box); border: 1px solid var(--cdlg-border); }
 .cdlg-box-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .cdlg-box-t { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: var(--cdlg-title); }
 .cdlg-box-t svg { color: var(--tone); }
-.cdlg-box-tag { font-weight: 700; color: var(--tone); padding: 2px 8px; border-radius: 6px; white-space: nowrap;
+.cdlg-box-tag { font-weight: 700; color: var(--tone-fg); padding: 2px 8px; border-radius: 6px; white-space: nowrap;
   background: color-mix(in srgb, var(--tone) 10%, transparent); border: 1px solid color-mix(in srgb, var(--tone) 20%, transparent); }
 .cdlg-box-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 10px;
   border-top: 1px solid var(--cdlg-border); color: var(--cdlg-text); }
@@ -315,7 +317,7 @@ export const CDLG_CSS = `
 .cdlg-field textarea { width: 100%; resize: vertical; min-height: 76px; padding: 10px 12px; border-radius: 12px; font: inherit;
   font-weight: 400; font-size: 14px; color: var(--cdlg-title); background: var(--cdlg-field); border: 1px solid var(--cdlg-cancel-border); outline: none; }
 .cdlg-field textarea:focus { border-color: var(--tone); box-shadow: 0 0 0 3px color-mix(in srgb, var(--tone) 18%, transparent); }
-.cdlg-err { font-size: 13px; line-height: 1.7; padding: 10px 12px; border-radius: 10px; color: #E11D48;
+.cdlg-err { font-size: 13px; line-height: 1.7; padding: 10px 12px; border-radius: 10px; color: var(--c-danger-fg);
   background: color-mix(in srgb, #E11D48 9%, transparent); border: 1px solid color-mix(in srgb, #E11D48 22%, transparent); }
 .dark .cdlg-err { color: #fb7185; }
 
@@ -323,8 +325,8 @@ export const CDLG_CSS = `
 .cdlg-confirm, .cdlg-cancel { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   border-radius: 12px; font: inherit; font-size: 14px; cursor: pointer; transition: background .15s, box-shadow .15s, transform .1s; }
 .cdlg-confirm { min-height: 48px; padding: 12px 20px; border: 0; font-weight: 700; color: #ffffff !important;
-  background: var(--tone) !important; box-shadow: 0 6px 16px -4px color-mix(in srgb, var(--tone) 45%, transparent); }
-.cdlg-confirm:hover:not(:disabled) { background: var(--tone-hover) !important; }
+  background: var(--tone-btn) !important; box-shadow: 0 6px 16px -4px color-mix(in srgb, var(--tone) 45%, transparent); }
+.cdlg-confirm:hover:not(:disabled) { background: var(--tone-btn-hover) !important; }
 .cdlg-confirm:active:not(:disabled) { transform: scale(.99); }
 .cdlg-confirm:disabled { cursor: not-allowed; opacity: .75; }
 .cdlg-confirm:focus-visible, .cdlg-cancel:focus-visible, .cdlg-x:focus-visible {
@@ -337,7 +339,7 @@ export const CDLG_CSS = `
   animation: cdlg-spin .7s linear infinite; }
 
 .cdlg-foot { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: -6px;
-  font-size: 11px; color: var(--cdlg-muted); text-align: center; }
+  font-size: 12px; color: var(--cdlg-muted); text-align: center; }
 
 @keyframes cdlg-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes cdlg-pop { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }

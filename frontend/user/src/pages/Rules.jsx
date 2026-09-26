@@ -104,22 +104,22 @@ const CSS = `
 .csp-rules { display: flex; flex-direction: column; gap: 18px; max-width: 820px; margin: 0 auto; }
 .csp-rules-hero {
   position: relative; overflow: hidden; border-radius: 22px; padding: clamp(18px, 3vw, 26px); color: #fff;
-  background: linear-gradient(135deg, var(--c-primary), color-mix(in srgb, var(--c-primary) 55%, #1a1350));
+  background: linear-gradient(135deg, var(--c-primary), #0B1B36);
 }
 .csp-rules-hero-blob { position: absolute; width: 240px; height: 240px; border-radius: 50%; top: -110px; inset-inline-end: -60px; background: rgba(255,255,255,.12); filter: blur(55px); }
 .csp-rules-hero-in { position: relative; display: flex; align-items: center; gap: 12px; }
 .csp-rules-hero-ico { width: 40px; height: 40px; flex-shrink: 0; display: grid; place-items: center; border-radius: 12px; background: rgba(255,255,255,.18); }
 .csp-rules-hero-in h1 { font-size: clamp(18px, 3vw, 24px); font-weight: 800; }
-.csp-rules-updated { font-size: 11px; opacity: .85; }
+.csp-rules-updated { font-size: 12px; opacity: .85; }
 
 .csp-rules-warn {
   display: flex; align-items: flex-start; gap: 11px; padding: 14px 16px; border-radius: 16px;
   background: color-mix(in srgb, var(--c-warning) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--c-warning) 30%, transparent);
 }
-.csp-rules-warn-ico { flex-shrink: 0; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; background: color-mix(in srgb, var(--c-warning) 18%, transparent); color: var(--c-warning); }
-.csp-rules-warn-t { font-size: 12.5px; font-weight: 800; color: color-mix(in srgb, var(--c-warning) 82%, var(--c-text)); }
-.csp-rules-warn-d { font-size: 11px; color: var(--c-text-muted); margin-top: 3px; line-height: 1.7; }
+.csp-rules-warn-ico { flex-shrink: 0; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; background: color-mix(in srgb, var(--c-warning) 18%, transparent); color: var(--c-warning-fg); }
+.csp-rules-warn-t { font-size: 12.5px; font-weight: 800; color: var(--c-warning-fg); }
+.csp-rules-warn-d { font-size: 12px; color: var(--c-text-muted); margin-top: 3px; line-height: 1.7; }
 
 .csp-rules-body-wrap {
   border-radius: 18px; border: 1px solid var(--c-border); background: var(--c-surface); overflow: hidden;
@@ -127,7 +127,7 @@ const CSS = `
 :root:not(.dark) .csp-rules-body-wrap { background: #fff; }
 [data-theme-style="caspian"].dark .csp-rules-body-wrap { box-shadow: -6px -6px 14px rgba(255,255,255,.02), 6px 6px 18px rgba(0,0,0,.5); }
 .csp-rules-badges { display: flex; flex-wrap: wrap; gap: 8px; padding: 14px 18px; border-bottom: 1px solid var(--c-border); }
-.csp-rules-badges span { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; color: var(--c-primary); padding: 5px 11px; border-radius: 999px; background: color-mix(in srgb, var(--c-primary) 10%, transparent); }
+.csp-rules-badges span { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; color: var(--c-primary-fg); padding: 5px 11px; border-radius: 999px; background: color-mix(in srgb, var(--c-primary) 10%, transparent); }
 .csp-rules-body { padding: 20px; font-size: 13px; line-height: 2.1; color: var(--csp-text-2, var(--c-text)); white-space: pre-wrap; }
 
 .csp-rules-cta {
@@ -136,7 +136,7 @@ const CSS = `
 }
 :root:not(.dark) .csp-rules-cta { background: #fff; }
 .csp-rules-cta-t { font-size: 13px; font-weight: 800; }
-.csp-rules-cta-d { font-size: 11px; color: var(--c-text-muted); margin-top: 2px; }
+.csp-rules-cta-d { font-size: 12px; color: var(--c-text-muted); margin-top: 2px; }
 .csp-rules-cta-btn {
   display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; padding: 10px 16px; border-radius: 12px;
   font-size: 12px; font-weight: 700; color: #fff; background: var(--c-primary);

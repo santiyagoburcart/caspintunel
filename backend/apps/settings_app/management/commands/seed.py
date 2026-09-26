@@ -7,6 +7,7 @@ Safe to run repeatedly (get_or_create / update_or_create).
 """
 import json as _json
 import os
+from pathlib import Path
 
 from django.conf import settings as dj_settings
 from django.core.management.base import BaseCommand
@@ -40,43 +41,19 @@ PERMISSIONS = [
 
 SUPPORT_PERMS = {"users.view", "payment.view", "payment.approve", "accounting.view", "monitoring.view"}
 
-MIDNIGHT_AURORA = {
-    "dark": {
-        "background": "#0B0E14", "surface": "rgba(255,255,255,0.06)", "primary": "#7C5CFF",
-        "secondary": "#22D3EE", "success": "#34D399", "danger": "#F87171", "warning": "#FBBF24",
-        "text": "#E6E8EC", "text_muted": "#9AA3B2", "border": "rgba(255,255,255,0.1)",
-    },
-    "light": {
-        "background": "#F5F7FA", "surface": "rgba(255,255,255,0.7)", "primary": "#6D48F0",
-        "secondary": "#0EA5B7", "success": "#059669", "danger": "#DC2626", "warning": "#D97706",
-        "text": "#111827", "text_muted": "#6B7280", "border": "rgba(0,0,0,0.08)",
-    },
-}
+# Theme palettes live in one JSON file (apps/settings_app/theme_palettes.json):
+# seed writes them to the DB on every deploy, and the preview build of the
+# frontends (scripts/preview.sh) bundles the same file — one source of truth.
+THEME_PALETTES = _json.loads((Path(__file__).resolve().parents[2] / "theme_palettes.json").read_text("utf-8"))
+
+MIDNIGHT_AURORA = THEME_PALETTES["Midnight Aurora"]
 
 # A theme now carries more than colours: `base` locks the site to light/dark
 # (omit / "auto" to keep the user's dark-mode toggle, as Midnight Aurora does)
 # and `style` selects the component look (`aurora` = existing default,
 # `frost` = the new glass/light look). `vars` are extra raw CSS custom
 # properties applied alongside the 10 semantic colour tokens.
-ROYAL_FROST = {
-    "base": "light",
-    "style": "frost",
-    "light": {
-        "background": "#EEF3FB", "surface": "rgba(255,255,255,0.55)", "primary": "#2E56C8",
-        "secondary": "#5B8DEF", "success": "#16A34A", "danger": "#DC2626", "warning": "#D97706",
-        "text": "#1F2F55", "text_muted": "#6B7A9C", "border": "rgba(46,86,200,0.14)",
-    },
-    # frost is light-only (base="light" locks it) — kept identical to `light`
-    # so a stray dark-mode read (e.g. a cached ct_mode) never breaks
-    "dark": {
-        "background": "#EEF3FB", "surface": "rgba(255,255,255,0.55)", "primary": "#2E56C8",
-        "secondary": "#5B8DEF", "success": "#16A34A", "danger": "#DC2626", "warning": "#D97706",
-        "text": "#1F2F55", "text_muted": "#6B7A9C", "border": "rgba(46,86,200,0.14)",
-    },
-    "vars": {
-        "--c-primary-2": "#3B6FE0", "--c-ink": "#1E3A8A", "--c-glass-border": "rgba(255,255,255,0.85)",
-    },
-}
+ROYAL_FROST = THEME_PALETTES["Royal Frost"]
 
 # Third theme: "Caspian" — two user-switchable variants (dark "Caspian
 # Tunnel" / light "Azure Telemetry") sharing style="caspian". No `base` is
@@ -89,34 +66,7 @@ ROYAL_FROST = {
 # success green #11AB53 (every success / "up" / active-state green). #4C90D6 is
 # a lighter tint of the blue — the supporting/secondary accent (and the
 # readable-on-black tone in the dark variant).
-CASPIAN = {
-    "style": "caspian",
-    "light": {
-        "background": "#F8FAFC", "surface": "#FFFFFF", "primary": "#1464BA",
-        "secondary": "#4C90D6", "success": "#11AB53", "danger": "#F43F5E", "warning": "#F59E0B",
-        "text": "#0F172A", "text_muted": "#64748B", "border": "#E2E8F0",
-    },
-    "dark": {
-        "background": "#080B14", "surface": "#0D111F", "primary": "#1464BA",
-        "secondary": "#4C90D6", "success": "#11AB53", "danger": "#EF4444", "warning": "#F59E0B",
-        "text": "#E0E2EF", "text_muted": "#94A3B8", "border": "#1E2640",
-    },
-    "vars": {
-        "--csp-font-ui-light": "'Inter'", "--csp-font-ui-dark": "'Plus Jakarta Sans'",
-        "--csp-font-display-light": "'Space Grotesk'", "--csp-font-display-dark": "'Plus Jakarta Sans'",
-        "--csp-well-light": "#F8FAFC", "--csp-well-dark": "#060910",
-        "--csp-muted-bg-light": "#F1F5F9", "--csp-muted-bg-dark": "#181B25",
-        "--csp-text2-light": "#1E293B", "--csp-text2-dark": "#CBC3D7",
-        "--csp-text3-light": "#334155", "--csp-text3-dark": "#94A3B8",
-        "--csp-border-strong-light": "#CBD5E1", "--csp-border-strong-dark": "#494454",
-        "--csp-signal-light": "#4C90D6", "--csp-signal-dark": "#4C90D6",
-        "--csp-vibrant-light": "#0F4E92", "--csp-vibrant-dark": "#0F4E92",
-        "--csp-gauge-from-light": "#4C90D6", "--csp-gauge-from-dark": "#4C90D6",
-        "--csp-gauge-to-light": "#1464BA", "--csp-gauge-to-dark": "#1464BA",
-        "--csp-glow-light": "rgba(20,100,186,0.28)", "--csp-glow-dark": "rgba(76,144,214,0.45)",
-        "--csp-radius-card-light": "0.75rem", "--csp-radius-card-dark": "1rem",
-    },
-}
+CASPIAN = THEME_PALETTES["Caspian"]
 
 SETTINGS_DEFAULTS = [
     ("email_verification_required", "false", ValueType.BOOL),

@@ -6,6 +6,8 @@ import { toman, gb } from '../lib/format'
 import { Alert, Copyable, Field, Spinner, StatusBadge } from '../components/ui'
 import { AuthImage } from '../components/AuthImage'
 import { useToast } from '../components/Toast'
+import { Art } from '../components/Art'
+import { ArrowClockwise, Check } from '@phosphor-icons/react'
 
 // The pending order the customer is paying for survives reloads and tab
 // switches (e.g. leaving for the bank app): its id sits in the URL
@@ -234,7 +236,7 @@ export default function Checkout() {
 
         {renewId && (
           <div className="ckt-renew-banner">
-            <span className="ckt-renew-ico" aria-hidden="true">↻</span>
+            <span className="ckt-renew-ico" aria-hidden="true"><ArrowClockwise size={18} weight="bold" /></span>
             <span>{t('renew_service_title', { id: renewingService?.id ?? renewId })}</span>
           </div>
         )}
@@ -280,8 +282,8 @@ export default function Checkout() {
 
         {!renewId && (
           <Field label={t('account_name')}>
-            <input className="input" dir="ltr" value={accountName}
-              onChange={(e) => setAccountName(e.target.value)} />
+            <input className="input" dir="ltr" value={accountName} autoComplete="off" autoCapitalize="none"
+              autoCorrect="off" spellCheck={false} onChange={(e) => setAccountName(e.target.value)} />
           </Field>
         )}
 
@@ -290,11 +292,13 @@ export default function Checkout() {
         )}
 
 
-        <button className="btn-primary w-full"
-          disabled={busy || !chosenPlan || (!renewId && !accountName.trim())
-            || (plan?.type === 'custom_volume' && !customGb)}>
-          {busy ? <Spinner /> : t('submit')}
-        </button>
+        <div className="m-actionbar">
+          <button className="btn-primary w-full"
+            disabled={busy || !chosenPlan || (!renewId && !accountName.trim())
+              || (plan?.type === 'custom_volume' && !customGb)}>
+            {busy ? <span className="btn-spin" aria-hidden="true" /> : null}{t('submit')}
+          </button>
+        </div>
       </form>
     )
   }
@@ -321,8 +325,8 @@ export default function Checkout() {
         .ckt-state p { font-size: 13px; color: var(--c-text-muted); line-height: 1.8; max-width: 22rem; }
         .ckt-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: 100%; }
         .ckt-actions > * { flex: 1 1 10rem; text-align: center; }
-        .ckt-keep { font-size: 12px; line-height: 1.8; color: var(--c-text-muted); text-align: center; }
-        .ckt-linkbtn { display: block; margin: 0 auto; font-size: 12px; color: var(--c-text-muted); background: none; border: 0; cursor: pointer; text-decoration: underline; }
+        .ckt-keep { font-size: 13px; line-height: 1.8; color: var(--c-text-muted); text-align: center; }
+        .ckt-linkbtn { display: block; margin: 0 auto; min-height: 44px; padding: 0 12px; font-size: 13px; color: var(--c-text-muted); background: none; border: 0; cursor: pointer; text-decoration: underline; }
       `}</style>
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
@@ -335,11 +339,10 @@ export default function Checkout() {
 
       {order.status === 'completed' && (
         <div className="space-y-4 py-2 text-center">
-          <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl text-2xl text-white"
-            style={{ background: 'var(--c-success)' }}>✓</div>
+          <Art name="party" size={72} className="mx-auto" />
           <div>
-            <div className="text-sm font-bold" style={{ color: 'var(--c-success)' }}>{t('pay_confirmed_title')}</div>
-            <h2 className="text-lg font-bold" style={{ color: 'var(--c-success)' }}>{t('delivery_ready')}</h2>
+            <div className="text-sm font-bold" style={{ color: 'var(--c-success-fg)' }}>{t('pay_confirmed_title')}</div>
+            <h2 className="text-lg font-bold" style={{ color: 'var(--c-success-fg)' }}>{t('delivery_ready')}</h2>
             <p className="text-sm text-muted">{t('delivery_hint')}</p>
           </div>
           {service?.subscription_url && (
@@ -363,8 +366,8 @@ export default function Checkout() {
       {/* approved (receipt or SMS) but the service is still being provisioned */}
       {order.status !== 'completed' && order.status !== 'failed' && confirmed && (
         <div className="ckt-state">
-          <div className="ckt-state-ico" style={{ background: 'var(--c-success)' }}>✓</div>
-          <h2 style={{ color: 'var(--c-success)' }}>{t('pay_confirmed_title')}</h2>
+          <Art name="check" size={64} />
+          <h2 style={{ color: 'var(--c-success-fg)' }}>{t('pay_confirmed_title')}</h2>
           <p>{t('pay_confirmed_preparing')}</p>
           <Spinner />
           <div className="ckt-actions">
@@ -375,7 +378,7 @@ export default function Checkout() {
 
       {order.status === 'failed' && (
         <div className="ckt-state">
-          <div className="ckt-state-ico" style={{ background: 'var(--c-warning)' }}>!</div>
+          <Art name="warning" size={64} />
           <h2>{t('order_failed_title')}</h2>
           <p>{t('order_failed_hint')}</p>
           <div className="ckt-actions"><Link to="/" className="btn-primary">{t('go_dashboard')}</Link></div>
@@ -384,8 +387,8 @@ export default function Checkout() {
 
       {order.status === 'rejected' && (
         <div className="ckt-state">
-          <div className="ckt-state-ico" style={{ background: 'var(--c-danger)' }}>✕</div>
-          <h2 style={{ color: 'var(--c-danger)' }}>{t('order_rejected_title')}</h2>
+          <Art name="cross" size={64} />
+          <h2 style={{ color: 'var(--c-danger-fg)' }}>{t('order_rejected_title')}</h2>
           {order.reject_reason && <p>{order.reject_reason}</p>}
           <div className="ckt-actions">
             <button type="button" className="btn-primary" onClick={startOver}>{t('new_order')}</button>
@@ -396,7 +399,7 @@ export default function Checkout() {
 
       {expired && (
         <div className="ckt-state">
-          <div className="ckt-state-ico" style={{ background: 'var(--c-warning)' }}>⏱</div>
+          <Art name="hourglass" size={64} />
           <h2>{t('order_expired_title')}</h2>
           <p>{t('order_expired_hint')}</p>
           <div className="ckt-actions">
@@ -413,8 +416,8 @@ export default function Checkout() {
 
           {/* 2. card number — bold/prominent, the thing the customer actually needs to act on */}
           {(instructions?.cards || []).length > 1 ? (
-            <div className="space-y-2">
-              <div className="text-xs text-muted">{t('choose_card')}</div>
+            <div className="space-y-2" role="radiogroup" aria-label={t('choose_card')}>
+              <div className="text-sm text-muted">{t('choose_card')}</div>
               {instructions.cards.map((c) => {
                 const isSel = selectedCard === c.id
                 return (
@@ -427,12 +430,12 @@ export default function Checkout() {
                     onClick={() => setSelectedCard(c.id)}
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedCard(c.id) } }}>
                     <div className="flex items-center gap-2">
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
-                        style={{ background: isSel ? 'var(--c-primary)' : 'transparent', border: `2px solid ${isSel ? 'var(--c-primary)' : 'var(--c-border)'}` }}
-                        aria-hidden="true">{isSel ? '✓' : ''}</span>
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-white"
+                        style={{ background: isSel ? 'var(--c-primary)' : 'transparent', border: `2px solid ${isSel ? 'var(--c-primary)' : 'var(--c-input-border)'}` }}
+                        aria-hidden="true">{isSel ? <Check size={14} weight="bold" /> : null}</span>
                       <div>
                         <div dir="ltr" className="font-mono text-lg font-extrabold tracking-wide" style={{ color: 'var(--c-ink)' }}>{c.card_number}</div>
-                        <div className="text-xs text-muted">{c.holder_name}</div>
+                        <div className="text-sm text-muted">{c.holder_name}</div>
                       </div>
                     </div>
                     <Copyable text={c.card_number} />
@@ -446,7 +449,7 @@ export default function Checkout() {
                 <div key={c.id} className="flex items-center justify-between rounded-xl border-2 px-3 py-3" style={{ borderColor: 'var(--c-primary)' }}>
                   <div>
                     <div dir="ltr" className="font-mono text-lg font-extrabold tracking-wide" style={{ color: 'var(--c-ink)' }}>{c.card_number}</div>
-                    <div className="text-xs text-muted">{c.holder_name}</div>
+                    <div className="text-sm text-muted">{c.holder_name}</div>
                   </div>
                   <Copyable text={c.card_number} />
                 </div>
@@ -459,7 +462,7 @@ export default function Checkout() {
           {/* 3. amount */}
           <div className="rounded-xl p-3 text-center" style={{ background: 'color-mix(in srgb, var(--c-primary) 12%, transparent)' }}>
             <div className="text-sm text-muted">{t('amount')}</div>
-            <div className="text-2xl font-bold" style={{ color: 'var(--c-primary)' }}>{toman(order.amount_unique ?? instructions?.amount_to_pay, lang)}</div>
+            <div className="text-2xl font-bold" style={{ color: 'var(--c-primary-fg)' }}>{toman(order.amount_unique ?? instructions?.amount_to_pay, lang)}</div>
             <div className="text-xs text-muted">{t('pay_exact')}</div>
           </div>
 
@@ -479,11 +482,11 @@ export default function Checkout() {
             return (
               <label className={`block rounded-2xl border-2 border-dashed p-6 text-center transition ${busy || needsCardChoice ? 'pointer-events-none opacity-60' : 'cursor-pointer'}`}
                 style={{ borderColor: 'var(--c-border)' }}>
-                <div className="mb-1 text-3xl">📸</div>
+                <Art name="receipt" size={52} className="mx-auto mb-2" />
                 <div className="font-medium" style={{ color: 'var(--c-ink)' }}>
                   {busy ? t('uploading') : needsCardChoice ? t('choose_card_first') : (payStatus === 'rejected' ? t('pay_reupload') : t('uploadReceipt'))}
                 </div>
-                <div className="mt-1 text-xs text-muted">{t('receipt_drop_hint')}</div>
+                <div className="mt-1 text-sm text-muted">{t('receipt_drop_hint')}</div>
                 <input type="file" accept="image/*" hidden disabled={busy || needsCardChoice}
                   onChange={(e) => e.target.files[0] && uploadReceipt(e.target.files[0])} />
               </label>
@@ -528,8 +531,8 @@ function CustomVolumePicker({ plan, value, onChange, t, lang }) {
           <span className="text-sm font-medium text-muted">{t('gigabytes')}</span>
         </div>
         <div className="text-end">
-          <div className="text-lg font-extrabold" style={{ color: 'var(--c-primary)' }}>{toman(price, lang)}</div>
-          <div className="text-[11px] text-muted">{t('amount')}</div>
+          <div className="text-lg font-extrabold" style={{ color: 'var(--c-primary-fg)' }}>{toman(price, lang)}</div>
+          <div className="text-xs text-muted">{t('amount')}</div>
         </div>
       </div>
       {/* the slider stays LTR internally (min at the physical start) regardless of
@@ -595,12 +598,12 @@ function CountdownRing({ deadline }) {
 const CHECKOUT_CSS = `
 .ckt-terms { display: flex; align-items: flex-start; gap: 8px; font-size: 12.5px; color: var(--c-text-muted); cursor: pointer; }
 .ckt-terms input { margin-top: 3px; flex-shrink: 0; width: 16px; height: 16px; accent-color: var(--c-primary); cursor: pointer; }
-.ckt-terms-link { color: var(--c-primary); font-weight: 600; }
+.ckt-terms-link { color: var(--c-primary-fg); font-weight: 600; }
 .ckt-terms-link:hover { text-decoration: underline; }
 .ckt-renew-banner {
   display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 12px;
   background: color-mix(in srgb, var(--c-warning) 14%, transparent);
-  color: var(--c-warning); font-size: 13px; font-weight: 700;
+  color: var(--c-warning-fg); font-size: 13px; font-weight: 700;
 }
 .ckt-renew-ico { flex-shrink: 0; font-size: 15px; line-height: 1; }
 .ckt-plan-card {
@@ -610,11 +613,11 @@ const CHECKOUT_CSS = `
 .ckt-plan-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
 .ckt-plan-name-en { font-size: 17px; font-weight: 800; color: var(--c-ink); line-height: 1.3; }
 .ckt-plan-name-fa { margin-top: 2px; font-size: 12.5px; color: var(--c-text-muted); opacity: .75; }
-.ckt-plan-change { flex-shrink: 0; font-size: 11.5px; font-weight: 600; color: var(--c-primary); background: none; border: 0; cursor: pointer; white-space: nowrap; }
+.ckt-plan-change { flex-shrink: 0; font-size: 12px; font-weight: 600; color: var(--c-primary-fg); background: none; border: 0; cursor: pointer; white-space: nowrap; }
 .ckt-plan-change:hover { text-decoration: underline; }
 .ckt-plan-details { margin-top: 12px; display: flex; flex-direction: column; gap: 7px; padding-top: 12px; border-top: 1px solid var(--c-border); }
 .ckt-plan-detail { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; }
 .ckt-plan-detail-label { color: var(--c-text-muted); opacity: .7; }
 .ckt-plan-detail-val { font-weight: 700; color: var(--c-ink); }
-.ckt-plan-detail--price .ckt-plan-price { color: var(--c-primary); font-size: 15px; font-weight: 800; }
+.ckt-plan-detail--price .ckt-plan-price { color: var(--c-primary-fg); font-size: 15px; font-weight: 800; }
 `

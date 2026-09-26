@@ -1,5 +1,14 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { api } from '../lib/api'
+import { IS_PREVIEW } from '../lib/site'
+
+// Preview builds bundle the palettes of the branch being previewed (copied by
+// scripts/preview.sh from backend/apps/settings_app/theme_palettes.json — the
+// file `seed` writes to the DB on deploy). Absent in production builds, so
+// production always uses the palette the API returns.
+const PREVIEW_PALETTES = IS_PREVIEW
+  ? Object.values(import.meta.glob('./preview-palettes.json', { eager: true, import: 'default' }))[0] || null
+  : null
 
 const Ctx = createContext(null)
 
@@ -26,6 +35,8 @@ const VARS = {
   background: '--c-bg', surface: '--c-surface', primary: '--c-primary',
   secondary: '--c-secondary', success: '--c-success', danger: '--c-danger',
   warning: '--c-warning', text: '--c-text', text_muted: '--c-text-muted', border: '--c-border',
+  // text-safe variants of the role colours (≥4.5:1 on bg + surface)
+  primary_fg: '--c-primary-fg', success_fg: '--c-success-fg', danger_fg: '--c-danger-fg', warning_fg: '--c-warning-fg',
 }
 
 // A theme carries more than colours now: `base` ("light" | "dark" | "auto")
@@ -58,7 +69,7 @@ export function ThemeProvider({ children }) {
   }, [mode, userMode, locked, palette])
 
   useEffect(() => {
-    api.get('/theme/').then((r) => setPalette(r.data?.palette || null)).catch(() => {})
+    api.get('/theme/').then((r) => setPalette((PREVIEW_PALETTES && PREVIEW_PALETTES[r.data?.name]) || r.data?.palette || null)).catch(() => {})
     api.get('/config/').then((r) => {
       setConfig(r.data)
       if (r.data?.site_name_fa) document.title = r.data.site_name_fa

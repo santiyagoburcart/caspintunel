@@ -188,15 +188,16 @@ export default function NotificationBell({ className = '' }) {
 
 const NBELL_CSS = `
 .ct-nbell { position: relative; }
+@media (max-width: 999px), (pointer: coarse) { .ct-nbell-btn { width: 44px !important; height: 44px !important; } }
 .ct-nbell-btn {
-  position: relative; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 999px;
+  position: relative; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 999px;
   color: var(--c-text-muted); background: color-mix(in srgb, var(--c-text-muted) 10%, transparent);
   border: 0; cursor: pointer; transition: color .15s, background .15s;
 }
 .ct-nbell-btn:hover { color: var(--c-text); background: color-mix(in srgb, var(--c-text-muted) 16%, transparent); }
 .ct-nbell-badge {
   position: absolute; top: -2px; inset-inline-end: -2px; min-width: 16px; height: 16px; padding: 0 3px;
-  border-radius: 999px; background: var(--c-danger, #ef4444); color: #fff; font-size: 10px; font-weight: 800;
+  border-radius: 999px; background: var(--c-danger, #ef4444); color: #fff; font-size: 12px; font-weight: 800;
   display: grid; place-items: center; line-height: 1; border: 2px solid var(--c-surface);
 }
 .ct-nbell-panel {
@@ -215,7 +216,7 @@ const NBELL_CSS = `
   display: none; width: 34px; height: 34px; place-items: center; border-radius: 999px; border: 0; cursor: pointer;
   color: var(--c-text); background: color-mix(in srgb, var(--c-text-muted) 14%, transparent);
 }
-.ct-nbell-markall { font-size: 11px; color: var(--c-primary); background: none; border: 0; cursor: pointer; }
+.ct-nbell-markall { font-size: 12px; color: var(--c-primary-fg); background: none; border: 0; cursor: pointer; }
 .ct-nbell-markall:hover { text-decoration: underline; }
 .ct-nbell-list { overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 .ct-nbell-empty { padding: 24px 12px; text-align: center; font-size: 12px; color: var(--c-text-muted); }
@@ -226,11 +227,11 @@ const NBELL_CSS = `
 .ct-nbell-item:last-child { border-bottom: 0; }
 .ct-nbell-item:hover { background: color-mix(in srgb, var(--c-text-muted) 6%, transparent); }
 .ct-nbell-item.is-unread { background: color-mix(in srgb, var(--c-primary) 6%, transparent); }
-.ct-nbell-item-icon { flex-shrink: 0; margin-top: 2px; color: var(--c-primary); }
+.ct-nbell-item-icon { flex-shrink: 0; margin-top: 2px; color: var(--c-primary-fg); }
 .ct-nbell-item-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
 .ct-nbell-item-title { font-size: 12.5px; font-weight: 700; color: var(--c-text); }
 .ct-nbell-item-text { font-size: 12px; color: var(--c-text-muted); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-.ct-nbell-item-time { font-size: 10.5px; color: var(--c-text-muted); }
+.ct-nbell-item-time { font-size: 12px; color: var(--c-text-muted); }
 .ct-nbell-dot { flex-shrink: 0; width: 7px; height: 7px; border-radius: 999px; background: var(--c-primary); margin-top: 5px; }
 
 /* ---- phones (≤767px): full-width bottom sheet ---- */
@@ -251,7 +252,7 @@ const NBELL_CSS = `
 .ct-nbell-sheet .ct-nbell-item-icon { width: 20px; height: 20px; }
 .ct-nbell-sheet .ct-nbell-item-title { font-size: 14.5px; line-height: 1.6; }
 .ct-nbell-sheet .ct-nbell-item-text { font-size: 13.5px; line-height: 1.8; -webkit-line-clamp: unset; display: block; white-space: pre-line; word-break: break-word; }
-.ct-nbell-sheet .ct-nbell-item-time { font-size: 11.5px; }
+.ct-nbell-sheet .ct-nbell-item-time { font-size: 12px; }
 .ct-nbell-sheet .ct-nbell-empty { padding: 40px 16px; font-size: 14px; }
 @keyframes ct-nbell-up { from { transform: translateY(100%); } to { transform: none; } }
 @keyframes ct-nbell-fade { from { opacity: 0; } to { opacity: 1; } }

@@ -5,6 +5,7 @@ import { useI18n, enumLabel } from '../lib/i18n'
 import { jalali, toman } from '../lib/format'
 import { Alert, Spinner } from '../components/ui'
 import { useConfirm } from '../components/ConfirmDialog'
+import { fg } from '../lib/tone'
 
 /* ------------------------------------------------------------------ *
  *  Transaction Detail — direct port of the Stitch screens
@@ -330,7 +331,7 @@ function StatusPill({ status, t, sm }) {
   const c = `var(--c-${tone})`
   return (
     <span className={'txd-pill' + (sm ? ' txd-pill--sm' : '')}
-      style={{ background: `color-mix(in srgb, ${c} 15%, transparent)`, color: c,
+      style={{ background: `color-mix(in srgb, ${c} 15%, transparent)`, color: fg(c),
         borderColor: `color-mix(in srgb, ${c} 32%, transparent)` }}>
       <Ico name={ST_PILL_ICON[status] || 'clock'} w={sm ? 11 : 13} />{label}
     </span>
@@ -400,7 +401,7 @@ function Lightbox({ t, src, txId, onDownload, onClose }) {
 const CSS = `
 .txd { display: flex; flex-direction: column; gap: 18px; }
 .txd-loading, .txd-empty { display: grid; place-items: center; padding: 80px 0; color: var(--c-text-muted); }
-.txd-err { color: var(--c-danger); font-size: 14px; }
+.txd-err { color: var(--c-danger-fg); font-size: 14px; }
 .txd-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
 .txd-dim { color: var(--c-text-muted); }
 .txd-ico { flex-shrink: 0; }
@@ -427,7 +428,7 @@ const CSS = `
   border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap;
   border: 1px solid transparent;
 }
-.txd-pill--sm { font-size: 10.5px; padding: 2px 8px; gap: 3px; }
+.txd-pill--sm { font-size: 12px; padding: 2px 8px; gap: 3px; }
 
 /* ---- split layout ---- */
 .txd-split { display: grid; grid-template-columns: 5fr 7fr; gap: 20px; align-items: start; }
@@ -437,8 +438,8 @@ const CSS = `
 /* ---- receipt ---- */
 .txd-lbl-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12.5px; font-weight: 600; }
 .txd-link {
-  display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 600;
-  color: var(--c-primary);
+  display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600;
+  color: var(--c-primary-fg);
 }
 .txd-link:hover { text-decoration: underline; }
 .txd-receipt {
@@ -452,17 +453,17 @@ const CSS = `
 .txd-receipt-hint {
   position: absolute; inset-inline-start: 12px; bottom: 12px;
   display: inline-flex; align-items: center; gap: 5px;
-  background: rgba(0,0,0,.65); color: #fff; font-size: 10.5px; padding: 4px 9px; border-radius: 8px;
+  background: rgba(0,0,0,.65); color: #fff; font-size: 12px; padding: 4px 9px; border-radius: 8px;
   backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); pointer-events: none;
 }
 .txd-note {
   display: flex; align-items: flex-start; gap: 8px; padding: 11px 13px; border-radius: 12px;
-  font-size: 11.5px; line-height: 1.7;
+  font-size: 12px; line-height: 1.7;
   background: color-mix(in srgb, var(--c-primary) 9%, transparent);
   border: 1px solid color-mix(in srgb, var(--c-primary) 22%, transparent);
-  color: color-mix(in srgb, var(--c-primary) 82%, var(--c-text));
+  color: var(--c-primary-fg);
 }
-.txd-note .txd-ico { margin-top: 1px; color: var(--c-primary); }
+.txd-note .txd-ico { margin-top: 1px; color: var(--c-primary-fg); }
 
 /* ---- key/value ---- */
 .txd-kv {
@@ -474,11 +475,11 @@ const CSS = `
   padding: 11px 15px; border-bottom: 1px solid var(--c-border); font-size: 13px;
 }
 .txd-kv-row:last-child { border-bottom: 0; }
-.txd-kv-row dt { color: var(--c-text-muted); font-size: 11.5px; }
+.txd-kv-row dt { color: var(--c-text-muted); font-size: 12px; }
 .txd-kv-row dd { font-weight: 500; text-align: end; overflow-wrap: anywhere; }
 .txd-kv-row.is-big dd { font-size: 15px; }
 .txd-amt-v { font-weight: 800; }
-.txd-kv-sub { display: block; font-size: 10.5px; color: var(--c-text-muted); font-weight: 400; margin-top: 2px; }
+.txd-kv-sub { display: block; font-size: 12px; color: var(--c-text-muted); font-weight: 400; margin-top: 2px; }
 .txd-chip {
   display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 8px;
   background: color-mix(in srgb, var(--c-text-muted) 12%, transparent); font-size: 12px; font-weight: 600;
@@ -513,7 +514,7 @@ const CSS = `
 }
 .txd-opt:disabled { cursor: default; }
 .txd-opt b { font-size: 12px; font-weight: 700; }
-.txd-opt i { font-style: normal; font-size: 9.5px; font-weight: 500; color: var(--c-text-muted); }
+.txd-opt i { font-style: normal; font-size: 12px; font-weight: 500; color: var(--c-text-muted); }
 .txd-opt-badge {
   width: 26px; height: 26px; display: grid; place-items: center; border-radius: 999px;
   background: color-mix(in srgb, var(--c-text-muted) 15%, transparent); color: var(--c-text-muted);
@@ -523,13 +524,13 @@ const CSS = `
 .txd-opt.on { border-width: 2px; padding: 11px 7px; }
 .txd-opt--approved.on { border-color: var(--c-success); background: color-mix(in srgb, var(--c-success) 10%, transparent); }
 .txd-opt--approved.on .txd-opt-badge { background: var(--c-success); color: #fff; }
-.txd-opt--approved.on b { color: color-mix(in srgb, var(--c-success) 80%, var(--c-text)); }
+.txd-opt--approved.on b { color: var(--c-success-fg); }
 .txd-opt--pending.on { border-color: var(--c-warning); background: color-mix(in srgb, var(--c-warning) 10%, transparent); }
 .txd-opt--pending.on .txd-opt-badge { background: var(--c-warning); color: #fff; }
-.txd-opt--pending.on b { color: color-mix(in srgb, var(--c-warning) 80%, var(--c-text)); }
+.txd-opt--pending.on b { color: var(--c-warning-fg); }
 .txd-opt--rejected.on { border-color: var(--c-danger); background: color-mix(in srgb, var(--c-danger) 10%, transparent); }
 .txd-opt--rejected.on .txd-opt-badge { background: var(--c-danger); color: #fff; }
-.txd-opt--rejected.on b { color: color-mix(in srgb, var(--c-danger) 80%, var(--c-text)); }
+.txd-opt--rejected.on b { color: var(--c-danger-fg); }
 
 .txd-save { width: 100%; }
 .txd-save--approved { background: var(--c-success); color: #fff;
@@ -539,12 +540,12 @@ const CSS = `
 .txd-save:hover:not(:disabled) { filter: brightness(1.05); }
 
 .txd-audit { border-top: 1px solid var(--c-border); padding-top: 11px; display: flex; flex-direction: column; gap: 8px; }
-.txd-audit-h { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--c-text-muted); }
+.txd-audit-h { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--c-text-muted); }
 .txd-audit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 @media (max-width: 480px) { .txd-audit-grid { grid-template-columns: 1fr; } }
 .txd-audit-grid > div { display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; }
-.txd-audit-grid span { font-size: 10.5px; color: var(--c-text-muted); }
-.txd-audit-reason span { font-size: 10.5px; color: var(--c-text-muted); }
+.txd-audit-grid span { font-size: 12px; color: var(--c-text-muted); }
+.txd-audit-reason span { font-size: 12px; color: var(--c-text-muted); }
 .txd-audit-reason p { font-size: 12px; margin-top: 3px; line-height: 1.7; }
 
 /* ---- lightbox ---- */
@@ -559,7 +560,7 @@ const CSS = `
 }
 .txd-lb-meta { text-align: center; display: flex; flex-direction: column; gap: 2px; }
 .txd-lb-title { font-size: 12.5px; font-weight: 700; color: #fff; }
-.txd-lb-id { font-size: 10.5px; color: #94a3b8; }
+.txd-lb-id { font-size: 12px; color: #94a3b8; }
 .txd-lb-tools { display: flex; align-items: center; gap: 6px; }
 .txd-lb-btn {
   width: 36px; height: 36px; flex-shrink: 0; display: grid; place-items: center; border-radius: 999px;
@@ -571,7 +572,7 @@ const CSS = `
   position: absolute; top: 64px; left: 50%; transform: translateX(-50%); z-index: 2;
   display: inline-flex; align-items: center; gap: 5px;
   background: rgba(15,23,42,.8); border: 1px solid rgba(148,163,184,.35); color: #e2e8f0;
-  font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 999px;
+  font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px;
   font-family: 'JetBrains Mono', ui-monospace, monospace;
 }
 .txd-lb-stage {
@@ -587,6 +588,6 @@ const CSS = `
 .txd-lb-hint {
   display: inline-flex; align-items: center; gap: 6px; align-self: center;
   margin-bottom: 18px; padding: 5px 12px; border-radius: 999px;
-  background: rgba(0,0,0,.7); color: #cbd5e1; font-size: 11px;
+  background: rgba(0,0,0,.7); color: #cbd5e1; font-size: 12px;
 }
 `

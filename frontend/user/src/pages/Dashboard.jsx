@@ -9,6 +9,8 @@ import { AuthImage } from '../components/AuthImage'
 import { useToast } from '../components/Toast'
 import { ConfirmDialog, useConfirm } from '../components/ConfirmDialog'
 import { copyToClipboard } from '../lib/clipboard'
+import { Art, EmptyState } from '../components/Art'
+import { ArrowClockwise, CaretDown, CaretUp, Plus } from '@phosphor-icons/react'
 
 export default function Dashboard() {
   const { styleKey } = useTheme()
@@ -128,10 +130,16 @@ function LegacyDashboard() {
       {err && <Alert>{err}</Alert>}
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold">{t('services')}</h1>
-        <Link to="/store" className="btn-primary text-sm">{t('buy')}</Link>
+        <Link to="/store" className="btn-primary text-sm"><Plus size={18} weight="bold" aria-hidden="true" />{t('buy')}</Link>
       </div>
       {items === null ? <div className="grid place-items-center py-16"><Spinner /></div>
-        : items.length === 0 ? <div className="card text-center text-muted">{t('no_services')}</div>
+        : items.length === 0 ? (
+          <div className="card">
+            <EmptyState art="rocket" title={t('no_services')}>
+              <Link to="/store" className="btn-primary"><Plus size={18} weight="bold" aria-hidden="true" />{t('buy')}</Link>
+            </EmptyState>
+          </div>
+        )
         : <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {items.map((s) => (
               <LegacyServiceCard key={s.id} s={s} t={t} lang={lang} onRefresh={refreshOne}
@@ -163,16 +171,16 @@ function LegacyServiceCard({ s, t, lang, onRefresh, onRenewClick }) {
         <span dir="ltr" className="min-w-0 truncate font-bold">{s.panel_username}</span>
         <div className="flex shrink-0 items-center gap-1">
           {waiting && (
-            <button className="btn-ghost px-1.5 py-0.5 text-sm leading-none" onClick={refresh} disabled={busy}
+            <button className="icon-btn" onClick={refresh} disabled={busy}
               title={t('refresh_status')} aria-label={t('refresh_status')}>
-              <span className={busy ? 'inline-block animate-spin' : ''}>↻</span>
+              <ArrowClockwise size={18} className={busy ? 'animate-spin' : ''} aria-hidden="true" />
             </button>
           )}
           <StatusBadge status={s.status} />
         </div>
       </div>
       {waiting ? (
-        <div className="rounded-xl px-3 py-2 text-sm" style={{ background: 'color-mix(in srgb, var(--c-warning) 14%, transparent)', color: 'var(--c-warning)' }}>
+        <div className="rounded-xl px-3 py-2 text-sm" style={{ background: 'color-mix(in srgb, var(--c-warning) 14%, transparent)', color: 'var(--c-warning-fg)' }}>
           <div className="font-medium">{t('waiting_connect')}</div>
           <div className="text-xs opacity-90">{s.validity_days ? t('validity_after', { n: s.validity_days }) : t('unlimited_time')}</div>
         </div>
@@ -183,7 +191,7 @@ function LegacyServiceCard({ s, t, lang, onRefresh, onRenewClick }) {
       )}
       <div className="text-sm text-muted">
         {t('volume')}: {gbTotal != null ? t('used_of', { used: gbUsed, total: gbTotal }) : t('unlimited')}
-        {gbTotal != null && ` · ${Math.max(gbTotal - gbUsed, 0)} ${t('remaining')}`}
+        {gbTotal != null && ` · ${Math.round(Math.max(gbTotal - gbUsed, 0) * 10) / 10} ${t('remaining')}`}
       </div>
       {gbTotal != null && (
         <div className="h-2 rounded-full" style={{ background: 'var(--c-border)' }}>
@@ -191,7 +199,7 @@ function LegacyServiceCard({ s, t, lang, onRefresh, onRenewClick }) {
         </div>
       )}
       {(s.status === 'limited' || s.status === 'expired') && (
-        <div className="text-xs" style={{ color: s.status === 'limited' ? 'var(--c-warning)' : 'var(--c-danger)' }}>
+        <div className="text-xs" style={{ color: s.status === 'limited' ? 'var(--c-warning-fg)' : 'var(--c-danger-fg)' }}>
           {s.status === 'limited' ? t('st_limited_note') : t('st_expired_note')}
         </div>
       )}
@@ -202,7 +210,9 @@ function LegacyServiceCard({ s, t, lang, onRefresh, onRenewClick }) {
             <code dir="ltr" className="min-w-0 flex-1 truncate rounded bg-black/10 px-2 py-1 text-xs">{s.subscription_url}</code>
             <Copyable text={s.subscription_url} />
           </div>
-          <button className="btn-ghost w-full text-sm" onClick={() => setShowQr((v) => !v)}>{showQr ? '▲ QR' : '▼ QR'}</button>
+          <button className="btn-ghost w-full text-sm" onClick={() => setShowQr((v) => !v)} aria-expanded={showQr}>
+            {showQr ? <CaretUp size={16} aria-hidden="true" /> : <CaretDown size={16} aria-hidden="true" />} QR
+          </button>
           {showQr && (
             <div className="grid place-items-center rounded-xl bg-white p-3">
               <AuthImage path={`/services/${s.id}/qr/`} alt="QR" className="h-44 w-44" />
@@ -294,7 +304,7 @@ function CaspianDashboard() {
         <div className="csp-dash-hero-inner">
           <div className="csp-dash-hero-txt">
             <div className="csp-dash-hero-h">
-              <span className="csp-dash-hero-ico"><DI d={D.tune} w={20} /></span>
+              <Art name="rocket" size={40} className="csp-dash-hero-art" />
               <h1 className="csp-headline">{t('svc_hero_h1')}</h1>
             </div>
             <p className="csp-dash-hero-lead">{t('svc_hero_lead')}</p>
@@ -303,12 +313,12 @@ function CaspianDashboard() {
         </div>
 
         <div className="csp-dash-stats">
-          <Stat icon={D.key} label={t('stat_my_services')}
+          <Stat art="key" label={t('stat_my_services')}
             value={fnum(stats.count, lang)}
             sub={`${t('n_active_short', { n: fnum(stats.active, lang) })}${stats.waiting ? ` · ${t('n_new_short', { n: fnum(stats.waiting, lang) })}` : ''}`} />
-          <Stat icon={D.data} label={t('stat_total_used')}
+          <Stat art="chart-up" label={t('stat_total_used')}
             value={fnum(gb(stats.totalUsed), lang)} sub={t('gigabytes')} />
-          <Stat icon={D.clock} label={t('stat_next_renewal')}
+          <Stat art="hourglass" label={t('stat_next_renewal')}
             value={stats.next ? fnum(stats.next.days_left, lang) : '—'}
             sub={stats.next ? `${t('days_more', { n: '' }).trim()} · ${stats.next.panel_username}` : t('unlimited_time')} />
         </div>
@@ -327,7 +337,8 @@ function CaspianDashboard() {
           </div>
           <div className="csp-dash-search">
             <DI d={D.search} w={16} />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('search_service')} dir="auto" />
+            <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('search_service')}
+              aria-label={t('search_service')} dir="auto" enterKeyHint="search" />
           </div>
         </div>
       )}
@@ -336,12 +347,13 @@ function CaspianDashboard() {
       {items === null ? (
         <div className="grid place-items-center py-20"><Spinner /></div>
       ) : items.length === 0 ? (
-        <div className="csp-card csp-dash-empty">
-          <p>{t('no_services')}</p>
-          <Link to="/store" className="csp-dash-buy"><DI d={D.add} w={16} />{t('buy')}</Link>
+        <div className="csp-card">
+          <EmptyState art="rocket" title={t('no_services')}>
+            <Link to="/store" className="csp-dash-buy"><DI d={D.add} w={16} />{t('buy')}</Link>
+          </EmptyState>
         </div>
       ) : shown.length === 0 ? (
-        <div className="csp-card csp-dash-empty"><p>{t('no_match')}</p></div>
+        <div className="csp-card"><EmptyState art="search" title={t('no_match')} compact /></div>
       ) : (
         <div className="csp-dash-grid">
           {shown.map((s) => (
@@ -353,7 +365,7 @@ function CaspianDashboard() {
 
       {/* connection guide strip */}
       <Link to="/help" className="csp-dash-guide">
-        <span className="csp-dash-guide-ico"><DI d={D.spark} /></span>
+        <Art name="book" size={40} />
         <div className="csp-dash-guide-txt">
           <div className="csp-dash-guide-t">{t('connect_guide_t')}</div>
           <div className="csp-dash-guide-d">{t('connect_guide_d')}</div>
@@ -366,10 +378,10 @@ function CaspianDashboard() {
   )
 }
 
-function Stat({ icon, label, value, sub }) {
+function Stat({ art, label, value, sub }) {
   return (
     <div className="csp-stat">
-      <span className="csp-stat-ico"><DI d={icon} w={22} /></span>
+      <Art name={art} size={40} className="csp-stat-art" />
       <div className="csp-stat-txt">
         <span className="csp-stat-label">{label}</span>
         <div className="csp-stat-val"><b className="mono-num">{value}</b><span>{sub}</span></div>
@@ -452,7 +464,7 @@ function SvcCard({ s, t, lang, onRevoke, onRenewClick }) {
           <span className="csp-svc-sub-label">{t('sub_link_label')}</span>
           <div className="csp-svc-sub-row">
             <Copyable text={s.subscription_url} />
-            <input dir="ltr" readOnly value={s.subscription_url} className="mono-num" />
+            <input dir="ltr" readOnly value={s.subscription_url} className="mono-num" aria-label={t('qr_link')} />
           </div>
         </div>
       )}
@@ -552,7 +564,7 @@ function QrModal({ s, t, lang, onClose }) {
         <div className="csp-qr-link">
           <span className="csp-qr-link-label">{t('sub_url_label')}</span>
           <div className="csp-qr-link-row">
-            <input dir="ltr" readOnly value={s.subscription_url} className="mono-num" />
+            <input dir="ltr" readOnly value={s.subscription_url} className="mono-num" aria-label={t('qr_link')} />
             <button type="button" onClick={copy}>{copied ? t('link_copied') : t('copy_link')}</button>
           </div>
         </div>
@@ -591,19 +603,16 @@ const CSS = `
 }
 .csp-dash-hero-inner { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
 .csp-dash-hero-h { display: flex; align-items: center; gap: 10px; }
-.csp-dash-hero-ico {
-  width: 34px; height: 34px; flex-shrink: 0; display: grid; place-items: center; border-radius: 10px;
-  background: var(--c-primary); color: #fff;
-}
+.csp-dash-hero-art { filter: drop-shadow(0 6px 10px rgba(11, 18, 32, .15)); }
 .csp-dash-hero-h h1 { font-size: clamp(19px, 3vw, 25px); font-weight: 800; }
-.csp-dash-hero-lead { font-size: 12.5px; color: var(--c-text-muted); margin-top: 8px; line-height: 1.8; max-width: 560px; }
+.csp-dash-hero-lead { font-size: 13.5px; color: var(--c-text-muted); margin-top: 8px; line-height: 1.8; max-width: 560px; }
 .csp-dash-buy {
   display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
-  padding: 11px 18px; border-radius: 13px; font-size: 13px; font-weight: 700; color: #fff;
-  background: linear-gradient(135deg, var(--c-primary), color-mix(in srgb, var(--c-primary) 60%, #3f2bd0));
-  box-shadow: 0 8px 20px -6px color-mix(in srgb, var(--c-primary) 55%, transparent);
+  min-height: 44px; padding: 10px 18px; border-radius: var(--r-md); font-size: 14px; font-weight: 700; color: var(--c-on-primary);
+  background: var(--c-primary); box-shadow: var(--sh-primary); transition: background var(--dur-1), transform var(--dur-1);
 }
-.csp-dash-buy:hover { filter: brightness(1.06); }
+.csp-dash-buy:hover { background: color-mix(in srgb, var(--c-primary) 88%, black); }
+.csp-dash-buy:active { transform: scale(.98); }
 
 .csp-dash-stats { position: relative; margin-top: 20px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 @media (max-width: 720px) { .csp-dash-stats { grid-template-columns: 1fr; } }
@@ -612,15 +621,12 @@ const CSS = `
   background: var(--c-surface); border: 1px solid var(--c-border);
 }
 :root:not(.dark) .csp-stat { background: #fff; }
-.csp-stat-ico {
-  width: 44px; height: 44px; flex-shrink: 0; display: grid; place-items: center; border-radius: 12px;
-  background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary);
-}
+.csp-stat-art { filter: drop-shadow(0 4px 8px rgba(11, 18, 32, .12)); }
 .csp-stat-txt { min-width: 0; }
-.csp-stat-label { font-size: 11.5px; color: var(--c-text-muted); }
+.csp-stat-label { font-size: 12.5px; color: var(--c-text-muted); }
 .csp-stat-val { display: flex; align-items: baseline; gap: 6px; margin-top: 2px; }
 .csp-stat-val b { font-size: 20px; font-weight: 800; }
-.csp-stat-val span { font-size: 11px; color: var(--c-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.csp-stat-val span { font-size: 12px; color: var(--c-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* filter bar */
 .csp-dash-bar {
@@ -629,10 +635,10 @@ const CSS = `
 }
 .csp-dash-tabs { display: flex; gap: 3px; overflow-x: auto; }
 .csp-dash-tab {
-  border: 0; cursor: pointer; white-space: nowrap; padding: 8px 13px; border-radius: 11px;
-  font-size: 12.5px; font-weight: 600; color: var(--c-text-muted); background: transparent; transition: .15s;
+  border: 0; cursor: pointer; white-space: nowrap; min-height: 40px; padding: 8px 14px; border-radius: 11px;
+  font-size: 13px; font-weight: 600; color: var(--c-text-muted); background: transparent; transition: .15s;
 }
-.csp-dash-tab.on { background: var(--c-surface); color: var(--c-primary); box-shadow: 0 1px 3px rgba(15,23,42,.12); }
+.csp-dash-tab.on { background: var(--c-surface); color: var(--c-primary-fg); box-shadow: 0 1px 3px rgba(15,23,42,.12); }
 :root:not(.dark) .csp-dash-tab.on { background: #fff; }
 .csp-dash-tab-n { font-family: 'JetBrains Mono', ui-monospace, monospace; opacity: .7; }
 .csp-dash-search {
@@ -640,7 +646,9 @@ const CSS = `
   padding: 0 12px; border-radius: 12px; background: var(--c-surface); border: 1px solid var(--c-border); color: var(--c-text-muted);
 }
 :root:not(.dark) .csp-dash-search { background: #fff; }
-.csp-dash-search input { flex: 1; border: 0; background: transparent; outline: none; padding: 9px 0; font: inherit; font-size: 13px; color: var(--c-text); }
+.csp-dash-search input { flex: 1; min-width: 0; min-height: 42px; border: 0; background: transparent; outline: none; padding: 9px 0; font: inherit; font-size: 14px; color: var(--c-text); }
+.csp-dash-search:focus-within { border-color: var(--c-primary); box-shadow: var(--ring); }
+@media (max-width: 767px) { .csp-dash-search input { font-size: 16px; } .csp-dash-tab { min-height: 44px; } }
 
 /* service grid */
 .csp-dash-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
@@ -656,44 +664,44 @@ const CSS = `
 .csp-svc-id { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .csp-svc-icon {
   width: 40px; height: 40px; flex-shrink: 0; display: grid; place-items: center; border-radius: 12px;
-  background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary);
+  background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary-fg);
 }
 .csp-svc-id h2 { font-size: 16px; font-weight: 800; }
-.csp-svc-code { font-size: 10.5px; color: var(--c-text-muted); }
+.csp-svc-code { font-size: 12px; color: var(--c-text-muted); }
 .csp-svc-badge {
   flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
-  padding: 4px 10px; border-radius: 999px; font-size: 10.5px; font-weight: 700;
+  padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700;
 }
 .csp-svc-badge i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .csp-svc-badge i.spin { border-radius: 2px; animation: csp-spin 1.1s linear infinite; }
 @keyframes csp-spin { to { transform: rotate(360deg); } }
-.csp-svc-badge[data-tone="success"] { color: var(--c-success); background: color-mix(in srgb, var(--c-success) 14%, transparent); }
-.csp-svc-badge[data-tone="warning"] { color: var(--c-warning); background: color-mix(in srgb, var(--c-warning) 14%, transparent); }
-.csp-svc-badge[data-tone="danger"] { color: var(--c-danger); background: color-mix(in srgb, var(--c-danger) 14%, transparent); }
+.csp-svc-badge[data-tone="success"] { color: var(--c-success-fg); background: color-mix(in srgb, var(--c-success) 14%, transparent); }
+.csp-svc-badge[data-tone="warning"] { color: var(--c-warning-fg); background: color-mix(in srgb, var(--c-warning) 14%, transparent); }
+.csp-svc-badge[data-tone="danger"] { color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 14%, transparent); }
 
 .csp-svc-box { padding: 11px; border-radius: 12px; background: color-mix(in srgb, var(--c-text-muted) 6%, transparent); display: flex; flex-direction: column; gap: 7px; }
 .csp-svc-box--wait { background: color-mix(in srgb, var(--c-warning) 12%, transparent); }
-.csp-svc-box-t { font-size: 12.5px; font-weight: 700; color: var(--c-warning); }
-.csp-svc-box-d { font-size: 11px; color: var(--c-text-muted); }
-.csp-svc-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11.5px; }
+.csp-svc-box-t { font-size: 12.5px; font-weight: 700; color: var(--c-warning-fg); }
+.csp-svc-box-d { font-size: 12px; color: var(--c-text-muted); }
+.csp-svc-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; }
 .csp-svc-row span { color: var(--c-text-muted); }
-.csp-svc-row b { font-weight: 700; color: var(--c-primary); font-size: 11.5px; }
-.csp-svc-row--sub { font-size: 11px; }
+.csp-svc-row b { font-weight: 700; color: var(--c-primary-fg); font-size: 12px; }
+.csp-svc-row--sub { font-size: 12px; }
 .csp-svc-row--sub span { color: var(--c-text-muted); }
-.csp-svc-unl { color: var(--c-success) !important; font-weight: 600; }
-.csp-svc-warn { font-size: 11px; color: var(--c-danger); font-weight: 600; }
-.csp-svc-warn[data-tone="warning"] { color: var(--c-warning); }
+.csp-svc-unl { color: var(--c-success-fg) !important; font-weight: 600; }
+.csp-svc-warn { font-size: 12px; color: var(--c-danger-fg); font-weight: 600; }
+.csp-svc-warn[data-tone="warning"] { color: var(--c-warning-fg); }
 .csp-bar { height: 6px; border-radius: 999px; overflow: hidden; background: color-mix(in srgb, var(--c-text-muted) 18%, transparent); }
 .csp-bar > i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--c-primary), var(--c-secondary)); }
 
 .csp-svc-sub { display: flex; flex-direction: column; gap: 6px; }
-.csp-svc-sub-label { font-size: 10.5px; color: var(--c-text-muted); font-weight: 600; }
+.csp-svc-sub-label { font-size: 12px; color: var(--c-text-muted); font-weight: 600; }
 .csp-svc-sub-row {
   display: flex; align-items: center; gap: 6px; padding: 5px; border-radius: 12px;
   background: color-mix(in srgb, var(--c-text-muted) 8%, transparent);
 }
 .csp-svc-sub-row input {
-  flex: 1; min-width: 0; border: 0; background: transparent; outline: none; font-size: 10.5px; color: var(--c-text-muted);
+  flex: 1; min-width: 0; border: 0; background: transparent; outline: none; font-size: 12px; color: var(--c-text-muted);
 }
 .csp-svc-qr { display: grid; place-items: center; padding: 12px; border-radius: 14px; background: #fff; }
 .csp-svc-qr-img { width: 168px; height: 168px; }
@@ -724,12 +732,12 @@ const CSS = `
 .csp-dash-guide:hover { border-color: var(--c-primary); }
 .csp-dash-guide-ico {
   width: 40px; height: 40px; flex-shrink: 0; display: grid; place-items: center; border-radius: 12px;
-  background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary);
+  background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary-fg);
 }
 .csp-dash-guide-txt { flex: 1; min-width: 0; }
-.csp-dash-guide-t { font-size: 13px; font-weight: 700; }
-.csp-dash-guide-d { font-size: 11px; color: var(--c-text-muted); margin-top: 2px; }
-.csp-dash-guide-cta { flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: var(--c-primary); }
+.csp-dash-guide-t { font-size: 14px; font-weight: 700; }
+.csp-dash-guide-d { font-size: 12.5px; color: var(--c-text-muted); margin-top: 2px; }
+.csp-dash-guide-cta { flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: var(--c-primary-fg); }
 [dir="rtl"] .csp-dash-guide-cta svg, [dir="rtl"] .csp-dash-buy svg:first-child { }
 [dir="rtl"] .csp-dash-guide-cta svg { transform: scaleX(-1); }
 
@@ -748,23 +756,23 @@ const CSS = `
 .csp-qr-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .csp-qr-head h2 { font-size: 16px; font-weight: 800; }
 .csp-qr-sub { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
-.csp-qr-sub b { font-size: 13px; font-weight: 700; color: var(--c-primary); }
-.csp-qr-pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; }
+.csp-qr-sub b { font-size: 13px; font-weight: 700; color: var(--c-primary-fg); }
+.csp-qr-pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; }
 .csp-qr-pill i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
-.csp-qr-pill[data-tone="success"] { color: var(--c-success); background: color-mix(in srgb, var(--c-success) 14%, transparent); }
-.csp-qr-pill[data-tone="warning"] { color: var(--c-warning); background: color-mix(in srgb, var(--c-warning) 14%, transparent); }
-.csp-qr-pill[data-tone="danger"] { color: var(--c-danger); background: color-mix(in srgb, var(--c-danger) 14%, transparent); }
-.csp-qr-days { font-size: 10.5px; color: var(--c-text-muted); }
+.csp-qr-pill[data-tone="success"] { color: var(--c-success-fg); background: color-mix(in srgb, var(--c-success) 14%, transparent); }
+.csp-qr-pill[data-tone="warning"] { color: var(--c-warning-fg); background: color-mix(in srgb, var(--c-warning) 14%, transparent); }
+.csp-qr-pill[data-tone="danger"] { color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 14%, transparent); }
+.csp-qr-days { font-size: 12px; color: var(--c-text-muted); }
 .csp-qr-x { color: var(--c-text-muted); flex-shrink: 0; }
 .csp-qr-usage { display: flex; flex-direction: column; gap: 6px; }
-.csp-qr-usage-row { display: flex; justify-content: space-between; font-size: 11px; color: var(--c-text-muted); }
+.csp-qr-usage-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--c-text-muted); }
 .csp-qr-stage {
   display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px; border-radius: 16px;
   background: color-mix(in srgb, var(--c-text-muted) 6%, transparent);
 }
 .csp-qr-img { display: grid; place-items: center; width: 200px; height: 200px; padding: 12px; border-radius: 14px; background: #fff; }
 .csp-qr-img img { width: 100%; height: 100%; object-fit: contain; }
-.csp-qr-scan { font-size: 11px; color: var(--c-text-muted); text-align: center; line-height: 1.7; max-width: 300px; }
+.csp-qr-scan { font-size: 12px; color: var(--c-text-muted); text-align: center; line-height: 1.7; max-width: 300px; }
 .csp-qr-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 @media (max-width: 420px) { .csp-qr-btns { grid-template-columns: 1fr; } }
 .csp-qr-btn {
@@ -776,22 +784,22 @@ const CSS = `
 .csp-qr-btn:disabled { opacity: .5; cursor: default; }
 .csp-qr-btn--primary { background: var(--c-primary); color: #fff; border-color: var(--c-primary); }
 .csp-qr-link { display: flex; flex-direction: column; gap: 6px; }
-.csp-qr-link-label { font-size: 11px; font-weight: 700; color: var(--csp-text-2, var(--c-text)); }
+.csp-qr-link-label { font-size: 12px; font-weight: 700; color: var(--csp-text-2, var(--c-text)); }
 .csp-qr-link-row { display: flex; align-items: center; gap: 6px; padding: 5px; border-radius: 13px; background: color-mix(in srgb, var(--c-text-muted) 8%, transparent); }
-.csp-qr-link-row input { flex: 1; min-width: 0; border: 0; background: transparent; outline: none; font-size: 10.5px; color: var(--c-text-muted); }
+.csp-qr-link-row input { flex: 1; min-width: 0; border: 0; background: transparent; outline: none; font-size: 12px; color: var(--c-text-muted); }
 .csp-qr-link-row button {
-  flex-shrink: 0; padding: 7px 12px; border-radius: 9px; font-size: 11px; font-weight: 700; cursor: pointer;
-  background: var(--c-surface); color: var(--c-primary); border: 1px solid var(--c-border);
+  flex-shrink: 0; padding: 7px 12px; border-radius: 9px; font-size: 12px; font-weight: 700; cursor: pointer;
+  background: var(--c-surface); color: var(--c-primary-fg); border: 1px solid var(--c-border);
 }
 :root:not(.dark) .csp-qr-link-row button { background: #fff; }
 .csp-qr-steps { padding: 12px 14px; border-radius: 14px; background: color-mix(in srgb, var(--c-primary) 7%, transparent); }
-.csp-qr-steps-t { font-size: 11.5px; font-weight: 700; margin-bottom: 8px; }
+.csp-qr-steps-t { font-size: 12px; font-weight: 700; margin-bottom: 8px; }
 .csp-qr-steps-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 @media (max-width: 420px) { .csp-qr-steps-row { grid-template-columns: 1fr; } }
-.csp-qr-step { display: flex; align-items: center; gap: 6px; font-size: 10.5px; color: var(--c-text-muted); }
+.csp-qr-step { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--c-text-muted); }
 .csp-qr-step-n {
   width: 20px; height: 20px; flex-shrink: 0; display: grid; place-items: center; border-radius: 50%;
-  background: var(--c-primary); color: #fff; font-size: 10px; font-weight: 700;
+  background: var(--c-primary); color: #fff; font-size: 12px; font-weight: 700;
 }
 [dir="rtl"] .csp-qr-btn--primary svg { transform: scaleX(-1); }
 `

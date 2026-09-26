@@ -5,6 +5,8 @@ import { useI18n } from '../lib/i18n'
 import { useTheme } from '../theme/ThemeProvider'
 import { toman, tomanParts, gb as gbOf } from '../lib/format'
 import { Alert, Spinner } from '../components/ui'
+import { Art, EmptyState } from '../components/Art'
+import { Check } from '@phosphor-icons/react'
 
 /** price: Latin number in a mono span, currency word in a normal run */
 function Money({ n, lang, per }) {
@@ -114,15 +116,15 @@ function LegacyGrid({ plans, lang, t, selected, onSelect, showBadge }) {
             onClick={() => onSelect(p.id)}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(p.id) } }}>
             <div className="flex items-center justify-between gap-2">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white transition"
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white transition"
                 style={{ background: isSel ? 'var(--c-primary)' : 'transparent', border: `2px solid ${isSel ? 'var(--c-primary)' : 'var(--c-border)'}` }}
-                aria-hidden="true">{isSel ? '✓' : ''}</span>
+                aria-hidden="true">{isSel ? <Check size={12} weight="bold" /> : null}</span>
               {showBadge && cat && (
                 <span className="shrink-0 rounded-full px-2 py-0.5 text-xs"
-                  style={{ background: 'color-mix(in srgb, var(--c-primary) 14%, transparent)', color: 'var(--c-primary)' }}>{cat}</span>
+                  style={{ background: 'color-mix(in srgb, var(--c-primary) 14%, transparent)', color: 'var(--c-primary-fg)' }}>{cat}</span>
               )}
             </div>
-            {!showBadge && cat && <div className="text-xs font-bold" style={{ color: 'var(--c-secondary)' }}>{cat}</div>}
+            {!showBadge && cat && <div className="text-xs font-bold" style={{ color: 'var(--c-secondary-fg)' }}>{cat}</div>}
             <div className="font-bold" style={{ color: 'var(--c-ink)' }}>{(lang === 'fa' ? p.name_fa : p.name_en) || p.name_fa}</div>
             <div className="whitespace-pre-line text-sm text-muted">{(lang === 'fa' ? p.desc_fa : p.desc_en) || p.desc_fa}</div>
             <ul className="mt-1 space-y-1 text-sm">
@@ -131,12 +133,12 @@ function LegacyGrid({ plans, lang, t, selected, onSelect, showBadge }) {
               {p.discount_percent > 0 && <li className="text-success">{t('discount')} {p.discount_percent}%</li>}
             </ul>
             <div className="mt-auto pt-2">
-              <span className="font-bold" style={{ color: 'var(--c-primary)' }}>
+              <span className="font-bold" style={{ color: 'var(--c-primary-fg)' }}>
                 {p.type === 'custom_volume' ? `${toman(p.price_per_gb, lang)} / GB` : toman(p.final_price, lang)}
               </span>
               {isSel && (
                 <span className="ms-2 rounded-full px-2 py-0.5 text-xs"
-                  style={{ background: 'color-mix(in srgb, var(--c-success) 16%, transparent)', color: 'var(--c-success)' }}>{t('selected')}</span>
+                  style={{ background: 'color-mix(in srgb, var(--c-success) 16%, transparent)', color: 'var(--c-success-fg)' }}>{t('selected')}</span>
               )}
             </div>
           </div>
@@ -238,7 +240,7 @@ function CaspianStore() {
       </header>
 
       {plans.length === 0 ? (
-        <div className="csp-card csp-store-empty">{t('no_plans')}</div>
+        <div className="csp-card"><EmptyState art="package" title={t('no_plans')} /></div>
       ) : (
         <>
           <div className="csp-store-tabs">
@@ -247,7 +249,7 @@ function CaspianStore() {
             {hasCustom && <Tab id="custom" tab={tab} set={setTab}>{t('custom_vol_tab')}</Tab>}
           </div>
 
-          <div className="csp-store-grid">
+          <div className="csp-store-grid" role="radiogroup" aria-label={t('store_h1')}>
             {shown.map((p) => (
               <PlanCard key={p.id} p={p} lang={lang} t={t} sel={selected === p.id} onSelect={() => setSelected(p.id)} />
             ))}
@@ -258,7 +260,7 @@ function CaspianStore() {
           )}
 
           <div className="csp-store-note">
-            <span className="csp-store-note-ico"><SI d={ICO.shield} /></span>
+            <Art name="shield" size={36} />
             <div>
               <div className="csp-store-note-t">{t('quality_note_t')}</div>
               <div className="csp-store-note-d">{t('quality_note_d')}</div>
@@ -266,9 +268,18 @@ function CaspianStore() {
           </div>
 
           <Alert>{err}</Alert>
-          <button className="csp-store-cta" onClick={go} disabled={!selected}>
-            {t('continue_checkout')} <SI d={ICO.arrow} w={18} />
-          </button>
+          {/* phones: sticky above the bottom nav with the chosen plan's price */}
+          <div className="m-actionbar csp-store-bar">
+            {sel && (
+              <div className="csp-store-bar-sum">
+                <span className="csp-store-bar-name">{(lang === 'fa' ? sel.name_fa : sel.name_en) || sel.name_fa}</span>
+                <b className="csp-store-bar-price"><Money n={isCustom ? customPrice : sel.final_price} lang={lang} /></b>
+              </div>
+            )}
+            <button className="csp-store-cta" onClick={go} disabled={!selected}>
+              {t('continue_checkout')} <SI d={ICO.arrow} w={18} />
+            </button>
+          </div>
         </>
       )}
     </div>
@@ -289,7 +300,7 @@ function PlanCard({ p, lang, t, sel, onSelect }) {
   const custom = p.type === 'custom_volume'
   const volNum = p.data_limit ? `${faNum(gbOf(p.data_limit), lang)} GB` : null
   const dur = p.duration_days ? `${faNum(p.duration_days, lang)} ${t('days')}` : t('no_expiry')
-  const icon = custom ? ICO.tune : p.data_limit ? ICO.rocket : ICO.infinite
+  const art = custom ? 'package' : p.discount_percent > 0 ? 'gem' : p.data_limit ? 'rocket' : 'bolt'
 
   return (
     <div role="radio" aria-checked={sel} tabIndex={0}
@@ -300,7 +311,7 @@ function PlanCard({ p, lang, t, sel, onSelect }) {
         <span className="csp-plan-badge">{t('discount')} {faNum(p.discount_percent, lang)}%</span>
       )}
       <div className="csp-plan-top">
-        <span className="csp-plan-icon"><SI d={icon} /></span>
+        <Art name={art} size={44} className="csp-plan-art" />
         <span className="csp-plan-radio">{sel && <SI d={ICO.check} w={14} />}</span>
       </div>
       <h3 className="csp-plan-name csp-headline">{name}</h3>
@@ -372,7 +383,7 @@ const CSS = `
 .csp-store-hero { display: flex; flex-direction: column; gap: 6px; }
 .csp-store-eyebrow {
   display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700;
-  color: var(--c-primary); letter-spacing: .01em;
+  color: var(--c-primary-fg); letter-spacing: .01em;
 }
 .csp-store-h1 { font-size: clamp(20px, 3.5vw, 28px); font-weight: 800; line-height: 1.4; }
 .csp-store-lead { font-size: 13px; color: var(--c-text-muted); line-height: 1.8; max-width: 640px; }
@@ -385,7 +396,7 @@ const CSS = `
   border: 0; cursor: pointer; padding: 7px 15px; border-radius: 999px;
   font-size: 12.5px; font-weight: 600; color: var(--c-text-muted); white-space: nowrap; transition: .15s;
 }
-.csp-store-tab.on { background: var(--c-surface); color: var(--c-primary); box-shadow: 0 1px 3px rgba(15,23,42,.12); }
+.csp-store-tab.on { background: var(--c-surface); color: var(--c-primary-fg); box-shadow: 0 1px 3px rgba(15,23,42,.12); }
 :root:not(.dark) .csp-store-tab.on { background: #fff; }
 
 .csp-store-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
@@ -405,13 +416,11 @@ const CSS = `
 .csp-plan.on { border-color: var(--c-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-primary) 16%, transparent); }
 .csp-plan-badge {
   position: absolute; top: -10px; inset-inline-start: 18px; padding: 3px 10px; border-radius: 999px;
-  font-size: 10.5px; font-weight: 700; color: #fff; background: var(--c-success);
+  font-size: 12px; font-weight: 700; color: #fff; background: var(--c-success);
 }
 .csp-plan-top { display: flex; align-items: flex-start; justify-content: space-between; }
-.csp-plan-icon {
-  width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px;
-  background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary);
-}
+.csp-plan-art { filter: drop-shadow(0 6px 10px rgba(11, 18, 32, .14)); transition: transform var(--dur-2) var(--ease-out); }
+.csp-plan:hover .csp-plan-art, .csp-plan.on .csp-plan-art { transform: translateY(-2px) rotate(-4deg); }
 .csp-plan-radio {
   width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%;
   border: 2px solid var(--c-border); color: #fff;
@@ -427,12 +436,12 @@ const CSS = `
 .csp-plan-specs dt { color: var(--c-text-muted); }
 .csp-plan-specs dd { font-weight: 600; }
 .csp-plan-foot { margin-top: auto; padding-top: 6px; display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; }
-.csp-plan-payable { font-size: 10.5px; color: var(--c-text-muted); }
+.csp-plan-payable { font-size: 12px; color: var(--c-text-muted); }
 .csp-plan-price { display: flex; align-items: baseline; gap: 4px; }
-.csp-plan-price b { font-size: 17px; font-weight: 800; color: var(--c-primary); }
-.csp-plan-price span { font-size: 10.5px; color: var(--c-text-muted); }
+.csp-plan-price b { font-size: 17px; font-weight: 800; color: var(--c-primary-fg); }
+.csp-plan-price span { font-size: 12px; color: var(--c-text-muted); }
 .csp-plan-select {
-  flex-shrink: 0; padding: 6px 14px; border-radius: 999px; font-size: 11.5px; font-weight: 700;
+  flex-shrink: 0; padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 700;
   background: color-mix(in srgb, var(--c-text-muted) 12%, transparent); color: var(--c-text);
 }
 .csp-plan-select.on { background: var(--c-primary); color: #fff; }
@@ -446,12 +455,12 @@ const CSS = `
   display: flex; align-items: baseline; gap: 6px; padding: 6px 14px; border-radius: 14px;
   background: color-mix(in srgb, var(--c-primary) 10%, transparent);
 }
-.csp-vol-counter b { font-size: 30px; font-weight: 800; color: var(--c-primary); line-height: 1; }
+.csp-vol-counter b { font-size: 30px; font-weight: 800; color: var(--c-primary-fg); line-height: 1; }
 .csp-vol-counter span { font-size: 12px; color: var(--c-text-muted); }
 .csp-vol-range { width: 100%; }
-.csp-vol-scale { display: flex; justify-content: space-between; font-size: 11px; color: var(--c-text-muted); }
+.csp-vol-scale { display: flex; justify-content: space-between; font-size: 12px; color: var(--c-text-muted); }
 .csp-vol-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
-.csp-vol-chips-l { font-size: 11px; color: var(--c-text-muted); }
+.csp-vol-chips-l { font-size: 12px; color: var(--c-text-muted); }
 .csp-vol-chip {
   border: 1px solid var(--c-border); background: var(--c-surface); cursor: pointer;
   padding: 5px 11px; border-radius: 9px; font-size: 12px; font-weight: 600; color: var(--c-text); transition: .15s;
@@ -462,8 +471,8 @@ const CSS = `
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   padding-top: 13px; border-top: 1px solid var(--c-border); font-size: 12.5px; color: var(--c-text-muted);
 }
-.csp-vol-price-v b { font-size: 18px; font-weight: 800; color: var(--c-primary); }
-.csp-vol-price-v span { font-size: 11px; color: var(--c-text-muted); }
+.csp-vol-price-v b { font-size: 18px; font-weight: 800; color: var(--c-primary-fg); }
+.csp-vol-price-v span { font-size: 12px; color: var(--c-text-muted); }
 
 /* quality note + CTA */
 .csp-store-note {
@@ -471,18 +480,22 @@ const CSS = `
   background: color-mix(in srgb, var(--c-success) 9%, transparent);
   border: 1px solid color-mix(in srgb, var(--c-success) 24%, transparent);
 }
-.csp-store-note-ico {
-  flex-shrink: 0; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px;
-  background: color-mix(in srgb, var(--c-success) 16%, transparent); color: var(--c-success);
+
+.csp-store-note-t { font-size: 13.5px; font-weight: 700; color: var(--c-success-fg); }
+.csp-store-note-d { font-size: 12px; color: var(--c-text-muted); margin-top: 3px; line-height: 1.6; }
+.csp-store-bar-sum { display: none; }
+@media (max-width: 767px) {
+  .csp-store-bar { align-items: center; }
+  .csp-store-bar-sum { display: flex; flex-direction: column; flex: 0 1 auto !important; min-width: 0; max-width: 45%; line-height: 1.3; }
+  .csp-store-bar-name { font-size: 12.5px; color: var(--c-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .csp-store-bar-price { font-size: 15px; font-weight: 800; }
+  .csp-store-bar .csp-store-cta { flex: 1; margin: 0; }
 }
-.csp-store-note-t { font-size: 13px; font-weight: 700; color: color-mix(in srgb, var(--c-success) 80%, var(--c-text)); }
-.csp-store-note-d { font-size: 11.5px; color: var(--c-text-muted); margin-top: 3px; line-height: 1.6; }
-.csp-store-empty { padding: 40px; text-align: center; color: var(--c-text-muted); }
 
 .csp-store-cta {
   width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   padding: 14px 20px; border-radius: 16px; border: 0; cursor: pointer; font-weight: 700; font-size: 14px; color: #fff;
-  background: linear-gradient(135deg, var(--c-primary), color-mix(in srgb, var(--c-primary) 62%, #3f2bd0));
+  background: var(--c-primary);
   box-shadow: 0 10px 26px -8px color-mix(in srgb, var(--c-primary) 55%, transparent);
   transition: filter .15s;
 }

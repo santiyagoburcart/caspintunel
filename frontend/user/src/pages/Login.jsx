@@ -4,6 +4,7 @@ import { useAuth } from '../lib/auth'
 import { useI18n } from '../lib/i18n'
 import { useTheme } from '../theme/ThemeProvider'
 import { SESSION_EXPIRED_KEY } from '../lib/api'
+import { ADMIN_URL } from '../lib/site'
 import { Alert, Field, PasswordField, Spinner } from '../components/ui'
 import { CaspianBrand, CaspianAuthShell } from '../components/caspian'
 
@@ -84,14 +85,14 @@ function LegacyLogin() {
         {info && <Alert kind="warning">{t('session_expired_msg')}</Alert>}
         <Alert>{err}</Alert>
         <Field label={t('username')}>
-          <input className="input" value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} autoFocus />
+          <input className="input" dir="ltr" value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} autoFocus autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} />
         </Field>
         <PasswordField label={t('password')} value={f.password} autoComplete="current-password"
           onChange={(e) => setF({ ...f, password: e.target.value })} />
         <button className="btn-primary w-full" disabled={busy}>{busy ? <Spinner /> : t('login')}</button>
         <div className="flex justify-between text-sm text-muted">
-          <Link to="/register" className="hover:text-primary">{t('register')}</Link>
-          <Link to="/reset" className="hover:text-primary">{t('forgot')}</Link>
+          <Link to="/register" className="auth-link hover:text-primary">{t('register')}</Link>
+          <Link to="/reset" className="auth-link hover:text-primary">{t('forgot')}</Link>
         </div>
       </form>
     </AuthShell>
@@ -155,7 +156,7 @@ function CaspianLogin() {
                 <span className="csp-fld-label">{t('username_field_label')}</span>
                 <span className="csp-fld-wrap">
                   <Ico d={ICONS.user} />
-                  <input className="csp-fld-input" dir="ltr" autoFocus value={f.username}
+                  <input className="csp-fld-input" dir="ltr" autoFocus value={f.username} autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false}
                     onChange={(e) => setF({ ...f, username: e.target.value })} />
                 </span>
               </label>
@@ -208,7 +209,7 @@ function CaspianLogin() {
         <span>·</span>
         <Link to="/help" className="csp-auth-footer-l">{t('pages')}</Link>
         <span>·</span>
-        <a href="/panel/" className="csp-auth-footer-l">{t('foot_admin')}</a>
+        <a href={ADMIN_URL} className="csp-auth-footer-l">{t('foot_admin')}</a>
       </footer>
     </div>
   )
@@ -280,11 +281,11 @@ const CSS = `
   border-bottom: 1px solid var(--c-border);
   background: color-mix(in srgb, var(--c-surface) 80%, transparent);
   -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
-  position: sticky; top: 0; z-index: 10;
+  position: sticky; top: var(--preview-h, 0px); z-index: 10;
 }
 .csp-auth-brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .csp-auth-brand-name { font-size: 15px; font-weight: 800; letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.csp-auth-brand-sub { font-size: 11px; color: var(--c-text-muted); margin-top: 1px; }
+.csp-auth-brand-sub { font-size: 12px; color: var(--c-text-muted); margin-top: 1px; }
 .csp-auth-top-actions { display: flex; align-items: center; gap: 8px; }
 .csp-lang {
   font-size: 12px; font-weight: 700; padding: 6px 12px; border-radius: 10px;
@@ -292,7 +293,7 @@ const CSS = `
 }
 .csp-auth-help {
   font-size: 12px; font-weight: 700; padding: 7px 14px; border-radius: 10px;
-  color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 10%, transparent);
+  color: var(--c-primary-fg); background: color-mix(in srgb, var(--c-primary) 10%, transparent);
   border: 1px solid color-mix(in srgb, var(--c-primary) 22%, transparent);
 }
 
@@ -315,8 +316,8 @@ const CSS = `
 .csp-auth-lead { font-size: 12px; color: var(--c-text-muted); margin-top: 6px; line-height: 1.7; }
 .csp-auth-badge {
   flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
-  padding: 5px 11px; border-radius: 999px; font-size: 11px; font-weight: 600;
-  color: var(--c-success); background: color-mix(in srgb, var(--c-success) 12%, transparent);
+  padding: 5px 11px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  color: var(--c-success-fg); background: color-mix(in srgb, var(--c-success) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--c-success) 26%, transparent);
 }
 .csp-ping { width: 7px; height: 7px; border-radius: 50%; background: var(--c-success); animation: csp-pp 1.8s ease-in-out infinite; }
@@ -351,7 +352,7 @@ const CSS = `
 .csp-auth-submit {
   margin-top: 6px; width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   padding: 13px 18px; border-radius: 15px; font-weight: 700; font-size: 13px; color: #fff; border: 0; cursor: pointer;
-  background: linear-gradient(135deg, var(--c-primary), color-mix(in srgb, var(--c-primary) 62%, #3f2bd0));
+  background: var(--c-primary);
   box-shadow: 0 10px 26px -8px color-mix(in srgb, var(--c-primary) 55%, transparent);
   transition: filter .15s, transform .05s;
 }
@@ -360,7 +361,7 @@ const CSS = `
 .csp-auth-submit:disabled { opacity: .7; cursor: default; }
 [dir="rtl"] .csp-auth-submit .csp-ico { transform: scaleX(-1); }
 
-.csp-link { font-size: 11.5px; font-weight: 600; color: var(--c-primary); }
+.csp-link { font-size: 12px; font-weight: 600; color: var(--c-primary-fg); }
 .csp-link:hover { text-decoration: underline; }
 .csp-link-strong { font-weight: 700; display: inline-flex; align-items: center; gap: 3px; }
 [dir="rtl"] .csp-link-strong .csp-ico { transform: scaleX(-1); }
@@ -375,7 +376,7 @@ const CSS = `
 .csp-auth-show {
   position: relative; overflow: hidden; color: #fff; padding: clamp(28px, 4vw, 44px);
   display: flex; flex-direction: column; justify-content: center;
-  background: linear-gradient(150deg, var(--c-primary), color-mix(in srgb, var(--c-primary) 55%, #1a1350));
+  background: linear-gradient(150deg, var(--c-primary), #0B1B36);
 }
 @media (max-width: 860px) { .csp-auth-show { display: none; } }
 .csp-auth-show-blob { position: absolute; border-radius: 50%; filter: blur(60px); pointer-events: none; }
@@ -394,13 +395,13 @@ const CSS = `
   background: rgba(255,255,255,.18);
 }
 .csp-auth-feat-t { font-size: 12px; font-weight: 700; }
-.csp-auth-feat-d { font-size: 10.5px; opacity: .82; margin-top: 3px; line-height: 1.6; }
+.csp-auth-feat-d { font-size: 12px; opacity: .82; margin-top: 3px; line-height: 1.6; }
 
 /* ---- footer ---- */
 .csp-auth-footer {
   display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;
   padding: 16px; border-top: 1px solid var(--c-border);
-  font-size: 11px; color: var(--c-text-muted);
+  font-size: 12px; color: var(--c-text-muted);
 }
-.csp-auth-footer-l:hover { color: var(--c-primary); }
+.csp-auth-footer-l:hover { color: var(--c-primary-fg); }
 `

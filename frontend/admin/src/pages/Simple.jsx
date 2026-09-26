@@ -4,6 +4,7 @@ import { useI18n } from '../lib/i18n'
 import { digits } from '../lib/format'
 import { Alert, Spinner, Toggle } from '../components/ui'
 import { useDeleteConfirm } from '../lib/confirmDelete'
+import { Check, Crown } from '@phosphor-icons/react'
 
 function useList(url) {
   const [rows, setRows] = useState(null)
@@ -38,13 +39,13 @@ const I = {
 const SHARED_CSS = `
 .sm-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between; }
 .sm-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.sm-count-badge { font-size: 11px; font-weight: 600; padding: 2px 10px; border-radius: 999px; background: color-mix(in srgb, var(--c-text-muted) 14%, transparent); color: var(--c-text-muted); white-space: nowrap; }
+.sm-count-badge { font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 999px; background: color-mix(in srgb, var(--c-text-muted) 14%, transparent); color: var(--c-text-muted); white-space: nowrap; }
 .sm-add { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; }
 
 .sm-wrap { overflow-x: auto; }
 .sm-table { width: 100%; min-width: 620px; border-collapse: collapse; font-size: 13px; }
 .sm-table thead th {
-  text-align: start; font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: .03em;
+  text-align: start; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .03em;
   color: var(--c-text-muted); padding: 13px 18px; white-space: nowrap; border-bottom: 1px solid var(--c-border);
 }
 .sm-table td { padding: 13px 18px; vertical-align: middle; border-bottom: 1px solid var(--c-border); }
@@ -52,20 +53,20 @@ const SHARED_CSS = `
 .sm-c { text-align: center; }
 .sm-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
 .sm-slug { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; font-weight: 600; }
-.sm-ok { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: color-mix(in srgb, var(--c-success) 15%, transparent); color: var(--c-success); }
+.sm-ok { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: color-mix(in srgb, var(--c-success) 15%, transparent); color: var(--c-success-fg); }
 .sm-off { color: var(--c-text-muted); }
 
 .sm-acts { display: inline-flex; gap: 6px; }
 .sm-btn { padding: 5px 12px; border-radius: 9px; font-size: 12px; font-weight: 600; border: 1px solid var(--c-border); background: transparent; transition: .15s; white-space: nowrap; }
-.sm-btn:hover { border-color: var(--c-primary); color: var(--c-primary); }
-.sm-btn--del:hover { border-color: var(--c-danger); color: var(--c-danger); }
+.sm-btn:hover { border-color: var(--c-primary); color: var(--c-primary-fg); }
+.sm-btn--del:hover { border-color: var(--c-danger); color: var(--c-danger-fg); }
 
-.sm-cnt-pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; font-family: 'JetBrains Mono', monospace; background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary); }
+.sm-cnt-pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; font-family: 'JetBrains Mono', monospace; background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary-fg); }
 
 .sm-name-dot { display: inline-flex; align-items: center; gap: 8px; }
 .sm-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
-.sm-role-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 8px; font-size: 11.5px; font-weight: 600; border: 1px solid var(--c-border); color: var(--c-text-muted); }
-.sm-role-badge.super { background: color-mix(in srgb, #D97706 14%, transparent); color: #D97706; border-color: color-mix(in srgb, #D97706 26%, transparent); }
+.sm-role-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; border: 1px solid var(--c-border); color: var(--c-text-muted); }
+.sm-role-badge.super { background: color-mix(in srgb, #D97706 14%, transparent); color: var(--c-warning-fg); border-color: color-mix(in srgb, #D97706 26%, transparent); }
 .sm-av { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 12px; background: color-mix(in srgb, var(--c-text-muted) 16%, transparent); color: var(--c-text); flex-shrink: 0; }
 .sm-uname { display: flex; align-items: center; gap: 10px; }
 
@@ -75,7 +76,7 @@ const SHARED_CSS = `
 .sm-kpi > div { min-width: 0; }
 .sm-kpi-label { font-size: 12px; font-weight: 600; color: var(--c-text-muted); overflow-wrap: anywhere; }
 .sm-kpi-val { font-size: 22px; font-weight: 800; margin-top: 4px; font-family: 'JetBrains Mono', ui-monospace, monospace; }
-.sm-kpi-unit { font-size: 11px; font-weight: 500; color: var(--c-text-muted); font-family: inherit; }
+.sm-kpi-unit { font-size: 12px; font-weight: 500; color: var(--c-text-muted); font-family: inherit; }
 .sm-kpi-ico { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; flex-shrink: 0; }
 
 /* modal */
@@ -93,7 +94,7 @@ const SHARED_CSS = `
 @media (min-width: 560px) { .sm-grid2 { grid-template-columns: 1fr 1fr; } }
 .sm-fld { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .sm-fld .label { font-size: 12px; }
-.sm-hint { font-size: 11px; color: var(--c-text-muted); }
+.sm-hint { font-size: 12px; color: var(--c-text-muted); }
 
 .sm-lang-tabs { display: inline-flex; gap: 4px; padding: 3px; border-radius: 10px; background: color-mix(in srgb, var(--c-text-muted) 12%, transparent); }
 .sm-lang-tabs button { padding: 5px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; color: var(--c-text-muted); }
@@ -109,7 +110,7 @@ const SHARED_CSS = `
 @media (min-width: 768px) { .sm-perm-grid { grid-template-columns: 1fr 1fr; } }
 .sm-perm { display: flex; align-items: flex-start; gap: 8px; font-size: 12.5px; cursor: pointer; min-width: 0; }
 .sm-perm > span { min-width: 0; overflow-wrap: anywhere; }
-.sm-perm code { font-size: 10.5px; color: var(--c-text-muted); overflow-wrap: anywhere; word-break: break-word; }
+.sm-perm code { font-size: 12px; color: var(--c-text-muted); overflow-wrap: anywhere; word-break: break-word; }
 
 .sm-pw { position: relative; }
 .sm-pw .input { width: 100%; padding-inline-end: 40px; }
@@ -148,7 +149,7 @@ const SHARED_CSS = `
   .sm-table tr.sm-row > td { border-bottom: 0; }
   .sm-table tr.sm-row:hover > td { background: none; }
   .sm-table td { padding: 9px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: end; }
-  .sm-table td::before { content: attr(data-label); font-size: 11px; font-weight: 600; color: var(--c-text-muted); text-align: start; white-space: nowrap; }
+  .sm-table td::before { content: attr(data-label); font-size: 12px; font-weight: 600; color: var(--c-text-muted); text-align: start; white-space: nowrap; }
   .sm-table td:first-child { display: block; border-bottom: 1px solid var(--c-border); }
   .sm-table td:first-child::before { display: none; }
   .sm-table td.sm-c { text-align: end; }
@@ -254,7 +255,7 @@ export function Themes() {
                     {sw.map((c, i) => <span key={i} style={{ background: c }} />)}
                   </div>
                   {r.is_active ? (
-                    <span className="th-active-note">{s.active} ✓</span>
+                    <span className="th-active-note">{s.active} <Check size={14} weight="bold" aria-hidden="true" /></span>
                   ) : (
                     <button className="btn-primary text-sm th-activate" disabled={busy === r.id}
                       onClick={() => activate(r.id)}>
@@ -286,14 +287,14 @@ const TH_CSS = `
 .th-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
 .th-title-row { display: flex; align-items: center; gap: 8px; }
 .th-title-row b { font-size: 14px; }
-.th-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
-  background: color-mix(in srgb, var(--c-success) 16%, transparent); color: var(--c-success); }
-.th-desc { font-size: 11.5px; color: var(--c-text-muted); line-height: 1.6; min-height: 34px; }
-.th-meta { font-size: 11px; }
+.th-badge { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+  background: color-mix(in srgb, var(--c-success) 16%, transparent); color: var(--c-success-fg); }
+.th-desc { font-size: 12px; color: var(--c-text-muted); line-height: 1.6; min-height: 34px; }
+.th-meta { font-size: 12px; }
 .th-swatches { display: flex; gap: 5px; }
 .th-swatches span { width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--c-border); }
 .th-activate { margin-top: 4px; align-self: flex-start; }
-.th-active-note { margin-top: 4px; font-size: 12px; font-weight: 600; color: var(--c-success); }
+.th-active-note { margin-top: 4px; font-size: 12px; font-weight: 600; color: var(--c-success-fg); }
 @media (max-width: 639px) {
   .th-activate { align-self: stretch; text-align: center; }
   .th-preview { height: 84px; }
@@ -355,7 +356,7 @@ function PageModal({ row, s, t, onClose, onSaved }) {
       <form className="sm-modal card" onSubmit={submit} role="dialog" aria-modal="true">
         <div className="sm-modal-head">
           <div>
-            <h2 className="font-bold"><span style={{ color: 'var(--c-primary)' }}><Ico d={I.doc} w={18} /></span>
+            <h2 className="font-bold"><span style={{ color: 'var(--c-primary-fg)' }}><Ico d={I.doc} w={18} /></span>
               {editing ? s.edit_title.replace('{t}', row.title_fa || row.slug) : s.new_title}</h2>
             <p className="sm-hint mt-1">{s.modal_sub}</p>
           </div>
@@ -530,7 +531,7 @@ const R = {
   },
 }
 
-const DOT = ['#11AB53', '#1464BA', '#0891B2', '#7C3AED', '#D97706', '#DB2777']
+const DOT = ['#11AB53', '#1464BA', '#0891B2', 'var(--chart-3)', '#D97706', 'var(--chart-6)']
 const initials = (u = '') => (String(u).replace(/[^a-zA-Z0-9]/g, '').slice(0, 2) || '?').toUpperCase()
 
 function Kpi({ label, value, unit, tone, icon, lang }) {
@@ -569,7 +570,7 @@ function RoleModal({ row, perms, s, t, lang, onClose, onSaved }) {
     <div className="sm-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <form className="sm-modal card" onSubmit={submit} role="dialog" aria-modal="true">
         <div className="sm-modal-head">
-          <h2 className="font-bold"><span style={{ color: 'var(--c-primary)' }}><Ico d={I.shield} w={18} /></span>
+          <h2 className="font-bold"><span style={{ color: 'var(--c-primary-fg)' }}><Ico d={I.shield} w={18} /></span>
             {editing ? s.role_modal_edit.replace('{n}', row.name) : s.role_modal_new}</h2>
           <button type="button" className="sm-icon-btn" onClick={onClose} aria-label={t('cancel')}><Ico d={I.close} /></button>
         </div>
@@ -629,7 +630,7 @@ function StaffModal({ row, roles, s, t, onClose, onSaved }) {
     <div className="sm-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <form className="sm-modal sm-modal--sm card" onSubmit={submit} role="dialog" aria-modal="true">
         <div className="sm-modal-head">
-          <h2 className="font-bold"><span style={{ color: 'var(--c-primary)' }}><Ico d={I.users} w={18} /></span>
+          <h2 className="font-bold"><span style={{ color: 'var(--c-primary-fg)' }}><Ico d={I.users} w={18} /></span>
             {editing ? s.staff_modal_edit.replace('{n}', row.username) : s.staff_modal_new}</h2>
           <button type="button" className="sm-icon-btn" onClick={onClose} aria-label={t('cancel')}><Ico d={I.close} /></button>
         </div>
@@ -712,7 +713,7 @@ export function Roles() {
       <div className="sm-kpis">
         <Kpi label={s.kpi_roles} value={roles.rows.length} unit={s.kpi_roles_u} tone="#1464BA" icon={<Ico d={I.shield} w={22} />} lang={lang} />
         <Kpi label={s.kpi_staff} value={activeStaff} unit={s.kpi_staff_u} tone="#11AB53" icon={<Ico d={I.users} w={22} />} lang={lang} />
-        <Kpi label={s.kpi_perms} value={perms.rows.length} unit={s.kpi_perms_u} tone="#7C3AED" icon={<Ico d={I.key} w={22} />} lang={lang} />
+        <Kpi label={s.kpi_perms} value={perms.rows.length} unit={s.kpi_perms_u} tone="#0891B2" icon={<Ico d={I.key} w={22} />} lang={lang} />
       </div>
 
       {/* ---- roles ---- */}
@@ -792,7 +793,7 @@ export function Roles() {
                       </td>
                       <td data-label={s.c_role} className="sm-c">
                         {r.is_superadmin
-                          ? <span className="sm-role-badge super">★ {s.super}</span>
+                          ? <span className="sm-role-badge super"><Crown size={13} weight="fill" aria-hidden="true" /> {s.super}</span>
                           : <span className="sm-role-badge">{r.role_name || '—'}</span>}
                       </td>
                       <td data-label={s.c_active} className="sm-c">{r.is_active ? <span className="sm-ok"><Ico d={I.check} w={14} /></span> : <span className="sm-off">—</span>}</td>
@@ -818,7 +819,7 @@ export function Roles() {
                     </div>
                     <div className="mt-1">
                       {r.is_superadmin
-                        ? <span className="sm-role-badge super">★ {s.super}</span>
+                        ? <span className="sm-role-badge super"><Crown size={13} weight="fill" aria-hidden="true" /> {s.super}</span>
                         : <span className="sm-role-badge">{r.role_name || '—'}</span>}
                     </div>
                   </div>

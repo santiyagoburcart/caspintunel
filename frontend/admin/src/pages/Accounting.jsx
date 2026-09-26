@@ -6,6 +6,7 @@ import { toman, jalali, digits } from '../lib/format'
 import { Alert, Spinner } from '../components/ui'
 import { DateRangeModal, DRP_CSS } from '../components/DateRangePicker'
 import { BankFilterSheet, BFS_CSS } from '../components/BankFilterSheet'
+import { EmptyState } from '../components/Art'
 
 function Ico({ d, w = 16 }) {
   return (
@@ -187,7 +188,7 @@ export default function Accounting() {
             <div className="card acc-kpi">
               <div className="acc-kpi-top">
                 <span className="acc-kpi-label">{s.period_range}</span>
-                <span className="acc-kpi-ico" style={{ background: 'color-mix(in srgb, var(--c-secondary) 14%, transparent)', color: 'var(--c-secondary)' }}>
+                <span className="acc-kpi-ico" style={{ background: 'color-mix(in srgb, var(--c-secondary) 14%, transparent)', color: 'var(--c-secondary-fg)' }}>
                   <Ico d={ICONS.calendar} w={18} />
                 </span>
               </div>
@@ -205,7 +206,7 @@ export default function Accounting() {
               )}
             </div>
             {daily.length === 0 ? (
-              <div className="py-6 text-center text-sm text-muted">{s.none_found}</div>
+              <EmptyState art="chart-bar" text={s.none_found} compact />
             ) : (
               <div className="flex h-44 items-end gap-1">
                 {daily.map((x, i) => (
@@ -219,7 +220,7 @@ export default function Accounting() {
           <div className="acc-breakdown-grid">
             <Breakdown title={s.by_panel} icon={ICONS.panel} tone="#1464BA" rows={d.by_panel} keyName="panel" prefix="panel_" total={d.revenue} t={t} lang={lang} empty={s.none_found} ofTotal={s.of_total} />
             <Breakdown title={s.by_method} icon={ICONS.card} tone="#11AB53" rows={d.by_method} keyName="method" prefix="m_" total={d.revenue} t={t} lang={lang} empty={s.none_found} ofTotal={s.of_total} />
-            <Breakdown title={s.by_source} icon={ICONS.hub} tone="#7C3AED" rows={d.by_source} keyName="order__source" prefix="src_" total={d.revenue} t={t} lang={lang} empty={s.none_found} ofTotal={s.of_total} />
+            <Breakdown title={s.by_source} icon={ICONS.hub} tone="#0891B2" rows={d.by_source} keyName="order__source" prefix="src_" total={d.revenue} t={t} lang={lang} empty={s.none_found} ofTotal={s.of_total} />
             <Breakdown title={s.by_card} icon={ICONS.bank} tone="#D97706" rows={d.by_card} keyName="bank_card__card_number" prefix="card_" total={d.revenue} t={t} lang={lang} empty={s.none_found} ofTotal={s.of_total} />
           </div>
 
@@ -231,7 +232,7 @@ export default function Accounting() {
             {recent === null ? (
               <div className="grid place-items-center py-8"><Spinner /></div>
             ) : filteredRecent.length === 0 ? (
-              <div className="py-6 text-center text-sm text-muted">{s.none_found}</div>
+              <EmptyState art="chart-bar" text={s.none_found} compact />
             ) : (
               <div className="acc-recent-list">
                 {filteredRecent.map((r) => (
@@ -291,7 +292,7 @@ const CSS = `
 .acc-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between; }
 .acc-head-main { display: flex; align-items: flex-start; gap: 12px; }
 .acc-head-ico { width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0; display: grid; place-items: center;
-  background: color-mix(in srgb, #1464BA 12%, transparent); color: #1464BA; }
+  background: color-mix(in srgb, #1464BA 12%, transparent); color: var(--c-primary-fg); }
 
 .acc-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
 .acc-periods { display: inline-flex; gap: 4px; padding: 4px; border-radius: 12px; background: color-mix(in srgb, var(--c-text-muted) 10%, transparent); }
@@ -300,8 +301,8 @@ const CSS = `
 .acc-toolbar-acts { display: flex; flex-wrap: wrap; gap: 8px; }
 .acc-tool-btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border-radius: 10px; font-size: 12.5px; font-weight: 600;
   border: 1px solid var(--c-border); background: transparent; color: var(--c-text-muted); }
-.acc-tool-btn:hover { color: var(--c-primary); border-color: var(--c-primary); }
-.acc-tool-badge { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--c-primary); }
+.acc-tool-btn:hover { color: var(--c-primary-fg); border-color: var(--c-primary); }
+.acc-tool-badge { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--c-primary-fg); }
 
 .acc-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 14px; }
 .acc-kpi { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
@@ -311,12 +312,12 @@ const CSS = `
 .acc-kpi-ico { width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; flex-shrink: 0; }
 .acc-kpi-val { overflow-wrap: anywhere; font-size: 22px; font-weight: 800; letter-spacing: -.01em; font-family: 'JetBrains Mono', ui-monospace, monospace; }
 .acc-kpi-val--sm { font-size: 13px; font-weight: 700; }
-.acc-kpi-sub { font-size: 11.5px; color: var(--c-text-muted); display: flex; align-items: center; gap: 4px; }
-.acc-kpi-sub.up { color: var(--c-success); } .acc-kpi-sub.down { color: var(--c-danger); }
+.acc-kpi-sub { font-size: 12px; color: var(--c-text-muted); display: flex; align-items: center; gap: 4px; }
+.acc-kpi-sub.up { color: var(--c-success-fg); } .acc-kpi-sub.down { color: var(--c-danger-fg); }
 
 .acc-chart-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
-.acc-peak-tag { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px;
-  background: color-mix(in srgb, var(--c-success) 14%, transparent); color: var(--c-success); white-space: nowrap; }
+.acc-peak-tag { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px;
+  background: color-mix(in srgb, var(--c-success) 14%, transparent); color: var(--c-success-fg); white-space: nowrap; }
 .acc-bar { flex: 1; border-radius: 4px 4px 0 0; background: color-mix(in srgb, var(--c-primary) 55%, transparent); min-height: 2px; transition: background .15s; }
 .acc-bar:hover { background: var(--c-primary); }
 .acc-bar--peak { background: var(--c-success); }
@@ -331,10 +332,10 @@ const CSS = `
 .acc-bd-row-val { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: var(--c-text-muted); flex-shrink: 0; }
 .acc-bd-bar { height: 5px; border-radius: 999px; overflow: hidden; background: color-mix(in srgb, var(--c-text-muted) 16%, transparent); margin-top: 6px; }
 .acc-bd-bar > i { display: block; height: 100%; border-radius: 999px; }
-.acc-bd-row-sub { font-size: 11px; color: var(--c-text-muted); margin-top: 4px; }
+.acc-bd-row-sub { font-size: 12px; color: var(--c-text-muted); margin-top: 4px; }
 
 .acc-recent-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
-.acc-view-all { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--c-primary); }
+.acc-view-all { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--c-primary-fg); }
 .acc-recent-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--c-border); }
 .acc-recent-row:first-child { border-top: 0; }
 .acc-recent-amt { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 13px; white-space: nowrap; }

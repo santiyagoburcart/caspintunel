@@ -4,6 +4,7 @@ import { useI18n } from '../lib/i18n'
 import { jalali, digits } from '../lib/format'
 import { Alert, Field, Spinner, Toggle } from '../components/ui'
 import { useToast } from '../components/Toast'
+import { EmptyState } from '../components/Art'
 
 const L = {
   fa: {
@@ -139,7 +140,7 @@ export default function Notifications() {
           </Field>
         </div>
 
-        <Field label={s.f_target}>
+        <Field group label={s.f_target}>
           <div className="ntf-target-row">
             <label className="ntf-radio">
               <input type="radio" name="target" checked={f.target === 'all'}
@@ -155,7 +156,7 @@ export default function Notifications() {
           {f.target === 'specific_user' && <UserPicker s={s} value={pickedUser} onPick={setPickedUser} />}
         </Field>
 
-        <Field label={s.f_channels}>
+        <Field group label={s.f_channels}>
           <div className="ntf-ch-row">
             <label className="ntf-ch"><Toggle checked={f.via_site} onChange={(v) => setF({ ...f, via_site: v })} label={s.ch_site} /> {s.ch_site}</label>
             <label className="ntf-ch"><Toggle checked={f.via_bot} onChange={(v) => setF({ ...f, via_bot: v })} label={s.ch_bot} /> {s.ch_bot}</label>
@@ -173,7 +174,7 @@ export default function Notifications() {
         {rows === null ? (
           <div className="grid place-items-center py-10"><Spinner /></div>
         ) : rows.length === 0 ? (
-          <div className="text-center text-muted py-10 text-sm">{s.none_found}</div>
+          <EmptyState art="bell" text={s.none_found} compact />
         ) : (
           <div className="overflow-x-auto rtable-wrap">
             <table className="w-full text-sm rtable">
@@ -219,7 +220,7 @@ const CSS = `
 .ntf-ch { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
 .ntf-picker { position: relative; margin-top: 10px; }
 .ntf-picker-selected { margin-top: 6px; font-size: 12px; padding: 6px 10px; border-radius: 8px;
-  background: color-mix(in srgb, var(--c-primary) 10%, transparent); color: var(--c-primary); display: inline-block; }
+  background: color-mix(in srgb, var(--c-primary) 10%, transparent); color: var(--c-primary-fg); display: inline-block; }
 .ntf-picker-list { margin-top: 6px; border: 1px solid var(--c-border); border-radius: 10px; overflow: hidden; max-height: 220px; overflow-y: auto; }
 .ntf-picker-row { width: 100%; display: flex; justify-content: space-between; gap: 10px; padding: 8px 12px;
   background: var(--c-surface); border: 0; border-bottom: 1px solid var(--c-border); text-align: start; cursor: pointer; font-size: 13px; }

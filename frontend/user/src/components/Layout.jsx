@@ -1,5 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import {
+  House, Storefront, Receipt, Question, UserCircle, Scroll, List, X, Sun, Moon, SignOut,
+} from '@phosphor-icons/react'
 import { useAuth } from '../lib/auth'
 import { useI18n } from '../lib/i18n'
 import { useTheme } from '../theme/ThemeProvider'
@@ -8,13 +11,63 @@ import { CaspianBrand } from './caspian'
 import NotificationBell from './NotificationBell'
 
 const links = [
-  ['/', 'dashboard'],
-  ['/store', 'store'],
-  ['/history', 'history'],
-  ['/rules', 'rules'],
-  ['/profile', 'profile'],
-  ['/help', 'pages'],
+  ['/', 'dashboard', House],
+  ['/store', 'store', Storefront],
+  ['/history', 'history', Receipt],
+  ['/rules', 'rules', Scroll],
+  ['/profile', 'profile', UserCircle],
+  ['/help', 'pages', Question],
 ]
+// phone bottom tab bar: the 5 most-used destinations (Rules stays in the menu)
+const TABS = ['/', '/store', '/history', '/help', '/profile']
+
+/** Mobile bottom tab bar (≤999px) — icon + label, 56px targets, safe-area aware. */
+function BottomNav() {
+  const { t } = useI18n()
+  useEffect(() => {
+    document.documentElement.classList.add('has-botnav')
+    return () => document.documentElement.classList.remove('has-botnav')
+  }, [])
+  return (
+    <nav className="u-botnav" aria-label={t('menu')}>
+      {links.filter(([to]) => TABS.includes(to)).map(([to, key, Icon]) => (
+        <NavLink key={to} to={to} end className={({ isActive }) => 'u-botnav-item' + (isActive ? ' on' : '')}>
+          {({ isActive }) => (
+            <>
+              <Icon size={24} weight={isActive ? 'fill' : 'regular'} aria-hidden="true" />
+              <span>{t(key)}</span>
+            </>
+          )}
+        </NavLink>
+      ))}
+    </nav>
+  )
+}
+
+const BOTNAV_CSS = `
+.u-botnav {
+  position: fixed; inset-inline: 0; bottom: 0; z-index: var(--z-nav);
+  display: none; grid-template-columns: repeat(5, 1fr);
+  padding: 4px 6px calc(4px + env(safe-area-inset-bottom, 0px));
+  background: color-mix(in srgb, var(--c-surface-solid) 94%, transparent);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  border-top: 1px solid var(--c-border); box-shadow: 0 -6px 20px -12px rgba(11, 18, 32, .25);
+}
+.u-botnav-item {
+  min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  border-radius: var(--r-md); color: var(--c-text-muted); font-size: 12px; font-weight: 600; text-decoration: none;
+  transition: color var(--dur-1), background var(--dur-1);
+}
+.u-botnav-item span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 2px; }
+.u-botnav-item.on { color: var(--c-primary-fg); }
+.u-botnav-item.on svg { transform: translateY(-1px); }
+.u-botnav-item:active { background: var(--c-hover); }
+@media (max-width: 999px) {
+  .u-botnav { display: grid; }
+  html.has-botnav { --bottomnav-h: calc(64px + env(safe-area-inset-bottom, 0px)); }
+  html.has-botnav .u-main-pad { padding-bottom: calc(var(--bottomnav-h) + 20px) !important; }
+}
+`
 
 // brand-mark fallback when no logo is uploaded
 function BrandMark() {
@@ -42,8 +95,8 @@ function LegacyLayout() {
 
   return (
     <div className="min-h-full aurora">
-      <header className="glass sticky top-0 z-20 m-3 flex items-center gap-2 px-3 py-3 sm:gap-3 sm:px-4">
-        <button className="btn-ghost text-sm lg:hidden" onClick={() => setOpen(true)} aria-label="menu">☰</button>
+      <header className="glass sticky top-[var(--preview-h,0px)] z-20 m-3 flex items-center gap-2 px-3 py-3 sm:gap-3 sm:px-4">
+        <button className="icon-btn lg:hidden" onClick={() => setOpen(true)} aria-label={t('menu')}><List size={22} aria-hidden="true" /></button>
 
         <div className="flex min-w-0 items-center gap-2 font-bold">
           {config?.logo
@@ -53,10 +106,10 @@ function LegacyLayout() {
         </div>
 
         <nav className="hidden gap-1 lg:flex">
-          {links.map(([to, key]) => (
+          {links.map(([to, key, Icon]) => (
             <NavLink key={to} to={to} end
               className={({ isActive }) => `btn-ghost text-sm ${isActive ? 'text-primary' : ''}`}>
-              {t(key)}
+              <Icon size={18} aria-hidden="true" />{t(key)}
             </NavLink>
           ))}
         </nav>
@@ -64,7 +117,9 @@ function LegacyLayout() {
         <div className="ms-auto flex shrink-0 items-center gap-1 sm:gap-2">
           <NotificationBell />
           {!locked && (
-            <button className="btn-ghost text-sm" onClick={toggle}>{mode === 'dark' ? '☀️' : '🌙'}</button>
+            <button className="icon-btn" onClick={toggle} aria-label={t('theme')} title={t('theme')}>
+              {mode === 'dark' ? <Sun size={20} aria-hidden="true" /> : <Moon size={20} aria-hidden="true" />}
+            </button>
           )}
           <button className="btn-ghost text-sm" onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')}>
             {lang === 'fa' ? 'EN' : 'فا'}
@@ -83,30 +138,27 @@ function LegacyLayout() {
             className="glass absolute inset-y-0 start-0 flex w-64 flex-col gap-1 overflow-y-auto p-3"
             onClick={(e) => e.stopPropagation()}
           >
-            <button className="btn-ghost mb-2 self-end" onClick={() => setOpen(false)} aria-label="close">✕</button>
-            {links.map(([to, key]) => (
+            <button className="icon-btn mb-2 self-end" onClick={() => setOpen(false)} aria-label={t('close')}><X size={20} aria-hidden="true" /></button>
+            {links.map(([to, key, Icon]) => (
               <NavLink key={to} to={to} end onClick={() => setOpen(false)}
-                className={({ isActive }) => `btn-ghost text-sm ${isActive ? 'text-primary' : ''}`}>
-                {t(key)}
+                className={({ isActive }) => `btn-ghost justify-start text-sm ${isActive ? 'text-primary' : ''}`}>
+                <Icon size={20} aria-hidden="true" />{t(key)}
               </NavLink>
             ))}
           </nav>
         </div>
       )}
 
-      <main className="mx-auto max-w-4xl p-3">
+      <main className="u-main-pad mx-auto max-w-4xl p-3">
         <Outlet />
       </main>
+      <style>{BOTNAV_CSS}</style>
+      <BottomNav />
     </div>
   )
 }
 
 /* ---- Caspian: sticky glass top-nav shell (Stitch redesign) ---- */
-const MENU_ICON = 'M4 6h16M4 12h16M4 18h16'
-const CLOSE_ICON = 'M6 18L18 6M6 6l12 12'
-const SUN_ICON = ['M12 3v2M12 19v2M5 5l1.5 1.5M17.5 17.5L19 19M3 12h2M19 12h2M5 19l1.5-1.5M17.5 6.5L19 5', 'M12 8a4 4 0 100 8 4 4 0 000-8z']
-const MOON_ICON = 'M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z'
-const OUT_ICON = 'M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9'
 
 function CaspianLayout() {
   const { user, logout } = useAuth()
@@ -117,9 +169,10 @@ function CaspianLayout() {
   const inTelegram = isTelegramMiniApp()
   const brand = lang === 'fa' ? (config?.site_name_fa || 'کسپین تانل') : (config?.site_name_en || 'caspintunel')
 
-  const NavItems = ({ onClick }) => links.map(([to, key]) => (
+  const NavItems = ({ onClick, icons = false }) => links.map(([to, key, Icon]) => (
     <NavLink key={to} to={to} end onClick={onClick}
       className={({ isActive }) => 'csp-nav-link' + (isActive ? ' csp-nav-link--on' : '')}>
+      {icons && <Icon size={20} aria-hidden="true" />}
       {t(key)}
     </NavLink>
   ))
@@ -132,7 +185,7 @@ function CaspianLayout() {
         <div className="csp-topbar-inner">
           <div className="csp-topbar-l">
             <button className="csp-icon-btn csp-menu-btn" onClick={() => setOpen(true)} aria-label={t('menu')}>
-              <LIco d={MENU_ICON} />
+              <List size={22} aria-hidden="true" />
             </button>
             <NavLink to="/" className="csp-topbar-brand">
               <CaspianBrand logo={config?.logo} size={34} />
@@ -150,7 +203,7 @@ function CaspianLayout() {
             <NotificationBell />
             {!locked && (
               <button className="csp-icon-btn" onClick={toggle} aria-label={t('theme')}>
-                <LIco d={mode === 'dark' ? SUN_ICON : MOON_ICON} />
+                {mode === 'dark' ? <Sun size={20} aria-hidden="true" /> : <Moon size={20} aria-hidden="true" />}
               </button>
             )}
             <button className="csp-lang" onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')}>
@@ -162,7 +215,7 @@ function CaspianLayout() {
               {!inTelegram && (
                 <button className="csp-icon-btn csp-logout" onClick={() => logout().then(() => nav('/login'))}
                   aria-label={t('logout')} title={t('logout')}>
-                  <LIco d={OUT_ICON} />
+                  <SignOut size={19} aria-hidden="true" mirrored={lang === 'fa'} />
                 </button>
               )}
             </div>
@@ -178,48 +231,51 @@ function CaspianLayout() {
               <CaspianBrand logo={config?.logo} size={30} />
               <span className="csp-headline">{brand}</span>
               <button className="csp-icon-btn" onClick={() => setOpen(false)} aria-label={t('close')}>
-                <LIco d={CLOSE_ICON} />
+                <X size={20} aria-hidden="true" />
               </button>
             </div>
-            <NavItems onClick={() => setOpen(false)} />
+            <NavItems onClick={() => setOpen(false)} icons />
           </nav>
         </div>
       )}
 
-      <main className="csp-main">
+      <main className="csp-main u-main-pad">
         <Outlet />
       </main>
+      <style>{BOTNAV_CSS}</style>
+      <BottomNav />
     </div>
   )
 }
 
-function LIco({ d }) {
-  return (
-    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      {Array.isArray(d) ? d.map((p, i) => <path key={i} d={p} />) : <path d={d} />}
-    </svg>
-  )
-}
 
 const CSP_LAYOUT_CSS = `
 .csp-shell { min-height: 100%; display: flex; flex-direction: column; background: var(--c-bg); }
 .csp-topbar {
-  position: sticky; top: 0; z-index: 40;
+  position: sticky; top: var(--preview-h, 0px); z-index: 40;
   background: color-mix(in srgb, var(--c-surface) 82%, transparent);
   -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--c-border);
 }
 .csp-topbar-inner {
   max-width: 1200px; margin: 0 auto; padding: 0 clamp(14px, 3vw, 28px);
-  height: 66px; display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 14px;
 }
 .csp-topbar-l { display: flex; align-items: center; gap: 14px; min-width: 0; }
 .csp-topbar-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--c-text); }
-.csp-topbar-brand-txt { display: flex; flex-direction: column; line-height: 1.15; }
-.csp-topbar-brand-name { font-size: 14px; font-weight: 800; color: var(--c-primary); }
+.csp-topbar-brand-txt { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
+.csp-topbar-brand-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* phones: the bottom tab bar carries navigation — keep the top bar to brand + essentials */
+@media (max-width: 520px) {
+  .csp-topbar .csp-topbar-brand-sub, .csp-topbar .csp-user-av { display: none; }
+  .csp-topbar .csp-user { padding: 0; background: transparent; }
+  .csp-topbar-inner { gap: 8px; }
+  .csp-topbar-r { gap: 6px; }
+}
+@media (max-width: 420px) { .csp-topbar .csp-topbar-brand-txt { display: none; } }
+.csp-topbar-brand-name { font-size: 14px; font-weight: 800; color: var(--c-primary-fg); }
 .csp-topbar-brand-sub {
-  font-size: 10px; color: var(--c-text-muted); letter-spacing: .02em;
+  font-size: 12px; color: var(--c-text-muted); letter-spacing: .02em;
   font-family: 'JetBrains Mono', ui-monospace, monospace;
 }
 .csp-nav {
@@ -228,15 +284,16 @@ const CSP_LAYOUT_CSS = `
 }
 @media (min-width: 1000px) { .csp-nav { display: flex; } }
 .csp-nav-link {
-  padding: 7px 15px; border-radius: 999px; font-size: 13px; font-weight: 600;
-  color: var(--c-text-muted); white-space: nowrap; transition: color .15s, background .15s;
+  display: inline-flex; align-items: center; gap: 8px; min-height: 36px;
+  padding: 7px 15px; border-radius: 999px; font-size: 13.5px; font-weight: 600;
+  color: var(--c-text-muted); white-space: nowrap; transition: color var(--dur-1), background var(--dur-1);
 }
 .csp-nav-link:hover { color: var(--c-text); }
-.csp-nav-link--on { background: var(--c-primary); color: #fff; }
+.csp-nav-link--on { background: var(--c-primary); color: var(--c-on-primary); }
 
 .csp-topbar-r { display: flex; align-items: center; gap: 8px; }
 .csp-icon-btn {
-  width: 36px; height: 36px; flex-shrink: 0; display: grid; place-items: center; border-radius: 999px;
+  width: 40px; height: 40px; flex-shrink: 0; display: grid; place-items: center; border-radius: 999px;
   color: var(--c-text-muted); background: color-mix(in srgb, var(--c-text-muted) 10%, transparent);
   border: 0; cursor: pointer; transition: color .15s, background .15s;
 }
@@ -244,10 +301,10 @@ const CSP_LAYOUT_CSS = `
 .csp-menu-btn { display: grid; }
 @media (min-width: 1000px) { .csp-menu-btn { display: none; } }
 .csp-lang {
-  height: 36px; padding: 0 12px; border-radius: 999px; font-size: 12px; font-weight: 700; cursor: pointer;
+  height: 40px; min-width: 44px; padding: 0 12px; border-radius: 999px; font-size: 12px; font-weight: 700; cursor: pointer;
   color: var(--c-text); background: color-mix(in srgb, var(--c-text-muted) 10%, transparent); border: 0;
 }
-.csp-lang:hover { color: var(--c-primary); }
+.csp-lang:hover { color: var(--c-primary-fg); }
 .csp-user {
   display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px 10px; border-radius: 999px;
   background: color-mix(in srgb, var(--c-text-muted) 10%, transparent);
@@ -259,8 +316,13 @@ const CSP_LAYOUT_CSS = `
   width: 28px; height: 28px; flex-shrink: 0; display: grid; place-items: center; border-radius: 50%;
   background: var(--c-primary); color: #fff; font-size: 12px; font-weight: 700;
 }
-.csp-logout { width: 30px; height: 30px; background: transparent; }
-.csp-logout:hover { color: var(--c-danger); background: color-mix(in srgb, var(--c-danger) 12%, transparent); }
+.csp-logout { width: 36px; height: 36px; background: transparent; }
+@media (max-width: 999px), (pointer: coarse) {
+  .csp-icon-btn { width: 44px; height: 44px; }
+  .csp-lang { height: 44px; }
+  .csp-logout { width: 40px; height: 40px; }
+}
+.csp-logout:hover { color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 12%, transparent); }
 
 /* mobile drawer */
 .csp-drawer-wrap { position: fixed; inset: 0; z-index: 60; }
@@ -280,7 +342,7 @@ const CSP_LAYOUT_CSS = `
   margin-bottom: 6px; border-bottom: 1px solid var(--c-border);
 }
 .csp-drawer-head .csp-headline { flex: 1; font-size: 15px; font-weight: 800; }
-.csp-drawer .csp-nav-link { display: block; }
+.csp-drawer .csp-nav-link { display: flex; min-height: 48px; border-radius: var(--r-md); font-size: 14.5px; }
 
 .csp-main { flex: 1; width: 100%; max-width: 1200px; margin: 0 auto; padding: clamp(16px, 3vw, 28px); }
 `

@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useRef, useState } from 'react'
+import { Check, X } from '@phosphor-icons/react'
 
 const ToastContext = createContext(null)
 
@@ -49,7 +50,7 @@ function ToastPopup({ kind, message, onClose }) {
       <div className={`gtoast gtoast--${kind}`} onMouseDown={(e) => e.stopPropagation()} onClick={onClose}
         role="status" aria-live="polite">
         <span className="gtoast-ico">
-          {kind === 'loading' ? <span className="gtoast-spin" /> : kind === 'success' ? '✓' : '✗'}
+          {kind === 'loading' ? <span className="gtoast-spin" /> : kind === 'success' ? <Check size={16} weight="bold" aria-hidden="true" /> : <X size={16} weight="bold" aria-hidden="true" />}
         </span>
         <span className="gtoast-msg">{message}</span>
       </div>

@@ -10,6 +10,7 @@ import { copyToClipboard } from '../lib/clipboard'
 import { USER_ACTION_STRINGS, conflictText, useUserActions } from '../lib/userActions'
 import { Alert, Spinner } from '../components/ui'
 import { DateRangeModal, DRP_CSS } from '../components/DateRangePicker'
+import { fg } from '../lib/tone'
 
 const T = {
   fa: {
@@ -90,7 +91,7 @@ const I = {
 
 function StatePill({ restored, s }) {
   const c = restored ? 'var(--c-success)' : 'var(--c-danger)'
-  return <span className="du-pill" style={{ color: c, background: `color-mix(in srgb, ${c} 14%, transparent)` }}>{restored ? s.restored : s.deleted}</span>
+  return <span className="du-pill" style={{ color: fg(c), background: `color-mix(in srgb, ${c} 14%, transparent)` }}>{restored ? s.restored : s.deleted}</span>
 }
 
 export default function DeletedUsers() {
@@ -149,7 +150,7 @@ function ArchiveList() {
       <div className="card du-toolbar">
         <div className="du-search">
           <span className="du-search-ico"><Ico d={I.search} /></span>
-          <input className="input" value={q} placeholder={s.search_ph}
+          <input className="input" type="search" aria-label={s.search_ph} value={q} placeholder={s.search_ph}
             onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && doSearch()} />
         </div>
         <button type="button" className="btn-primary text-sm" onClick={doSearch}>{s.search}</button>
@@ -394,15 +395,15 @@ function ArchiveDetail({ id }) {
 
 const CSS = `
 .du-back { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--c-text-muted); }
-.du-back:hover { color: var(--c-primary); }
+.du-back:hover { color: var(--c-primary-fg); }
 .du-head { display: flex; align-items: flex-start; gap: 12px; }
 .du-head-ico { width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0; display: grid; place-items: center;
-  color: var(--c-danger); background: color-mix(in srgb, var(--c-danger) 12%, transparent); }
+  color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 12%, transparent); }
 .du-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
 .du-muted { color: var(--c-text-muted); font-size: 12px; }
-.du-ok { color: var(--c-success); }
+.du-ok { color: var(--c-success-fg); }
 .du-c { text-align: center; }
-.du-sub { display: block; font-size: 11px; color: var(--c-text-muted); margin-top: 2px; }
+.du-sub { display: block; font-size: 12px; color: var(--c-text-muted); margin-top: 2px; }
 
 .du-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .du-search { position: relative; flex: 1 1 240px; min-width: 0; }
@@ -410,16 +411,16 @@ const CSS = `
 .du-search-ico { position: absolute; inset-inline-start: 12px; top: 50%; transform: translateY(-50%); color: var(--c-text-muted); pointer-events: none; }
 .du-tool-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 10px; font-size: 12px; font-weight: 600;
   color: var(--c-text-muted); border: 1px solid var(--c-border); background: transparent; white-space: nowrap; transition: .15s; }
-.du-tool-btn:hover:not(:disabled) { color: var(--c-primary); border-color: var(--c-primary); }
+.du-tool-btn:hover:not(:disabled) { color: var(--c-primary-fg); border-color: var(--c-primary); }
 .du-tool-btn:disabled { opacity: .4; cursor: not-allowed; }
-.du-badge { font-size: 10.5px; padding: 1px 7px; border-radius: 6px; color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 12%, transparent); }
+.du-badge { font-size: 12px; padding: 1px 7px; border-radius: 6px; color: var(--c-primary-fg); background: color-mix(in srgb, var(--c-primary) 12%, transparent); }
 .du-tabs { display: inline-flex; gap: 3px; padding: 3px; border-radius: 11px; background: color-mix(in srgb, var(--c-text-muted) 12%, transparent); }
 .du-tab { padding: 6px 12px; border-radius: 8px; font-size: 12.5px; font-weight: 600; color: var(--c-text-muted); white-space: nowrap; }
 .du-tab.on { background: var(--c-primary); color: #fff; }
 
 .du-wrap { overflow-x: auto; }
 .du-table { width: 100%; min-width: 1000px; border-collapse: collapse; font-size: 13px; }
-.du-table thead th { text-align: start; font-weight: 600; font-size: 11.5px; letter-spacing: .03em; color: var(--c-text-muted);
+.du-table thead th { text-align: start; font-weight: 600; font-size: 12px; letter-spacing: .03em; color: var(--c-text-muted);
   padding: 12px 14px; white-space: nowrap; border-bottom: 1px solid var(--c-border); }
 .du-table td { padding: 11px 14px; vertical-align: middle; border-bottom: 1px solid var(--c-border); }
 .du-row { cursor: pointer; }
@@ -427,7 +428,7 @@ const CSS = `
 .du-row:hover > td { background: color-mix(in srgb, var(--c-primary) 5%, transparent); }
 .du-row:focus-visible { outline: 2px solid var(--c-primary); outline-offset: -2px; }
 .du-reason { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.du-pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+.du-pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
 .du-foot { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; padding: 13px 16px; border-top: 1px solid var(--c-border); }
 .du-pager { display: flex; align-items: center; gap: 8px; }
 
@@ -441,7 +442,7 @@ const CSS = `
 .du-restore-btn:disabled { opacity: .45; cursor: not-allowed; }
 .du-warn { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; font-size: 13px; line-height: 1.8;
   color: var(--c-text); border: 1px solid color-mix(in srgb, var(--c-warning) 40%, transparent); background: color-mix(in srgb, var(--c-warning) 10%, transparent); }
-.du-warn > svg { color: var(--c-warning); flex-shrink: 0; margin-top: 4px; }
+.du-warn > svg { color: var(--c-warning-fg); flex-shrink: 0; margin-top: 4px; }
 .du-warn p { overflow-wrap: anywhere; }
 
 .du-grid2 { display: grid; grid-template-columns: 1fr; gap: 16px; }
@@ -449,14 +450,14 @@ const CSS = `
 .du-sec h2, .du-sec-h { font-size: 14px; font-weight: 800; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
 .du-sec-h { padding: 16px 16px 0; }
 .card.du-sec:not(.p-0) .du-sec-h { padding: 0; }
-.du-count { font-size: 11px; padding: 1px 8px; border-radius: 999px; color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 12%, transparent); }
+.du-count { font-size: 12px; padding: 1px 8px; border-radius: 999px; color: var(--c-primary-fg); background: color-mix(in srgb, var(--c-primary) 12%, transparent); }
 .du-kv { display: grid; grid-template-columns: 1fr; gap: 0; }
 @media (min-width: 560px) { .du-kv { grid-template-columns: 1fr 1fr; column-gap: 18px; } }
 .du-kv > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px dashed var(--c-border); font-size: 12.5px; }
 .du-kv span { color: var(--c-text-muted); white-space: nowrap; }
 .du-kv b { font-weight: 600; text-align: end; min-width: 0; overflow-wrap: anywhere; }
 .du-reason-box { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--c-text-muted) 7%, transparent); }
-.du-reason-box span { display: block; font-size: 11px; color: var(--c-text-muted); margin-bottom: 4px; }
+.du-reason-box span { display: block; font-size: 12px; color: var(--c-text-muted); margin-bottom: 4px; }
 .du-reason-box p { font-size: 13px; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; }
 .du-empty { padding: 8px 16px 16px; font-size: 13px; color: var(--c-text-muted); }
 .du-svcs { display: grid; grid-template-columns: 1fr; gap: 12px; }
@@ -466,7 +467,7 @@ const CSS = `
 .du-svc .du-kv { grid-template-columns: 1fr; }
 .du-svc-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
 .du-subl { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
-.du-subl code { font-size: 11px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--c-text-muted); }
+.du-subl code { font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--c-text-muted); }
 
 @media (max-width: 900px) {
   .du-wrap { overflow-x: visible; }
@@ -476,7 +477,7 @@ const CSS = `
   .du-table tr.du-row { border: 1px solid var(--c-border); border-radius: 12px; margin: 12px; width: auto; padding: 4px 0; }
   .du-table tr.du-row:hover > td { background: none; }
   .du-table td { border: 0 !important; padding: 8px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: end; }
-  .du-table td::before { content: attr(data-label); font-family: 'Vazirmatn', ui-sans-serif, system-ui, sans-serif; font-size: 11px; font-weight: 600; color: var(--c-text-muted); text-align: start; white-space: nowrap; }
+  .du-table td::before { content: attr(data-label); font-family: 'Vazirmatn', ui-sans-serif, system-ui, sans-serif; font-size: 12px; font-weight: 600; color: var(--c-text-muted); text-align: start; white-space: nowrap; }
   .du-table td.du-c { justify-content: space-between; }
   .du-reason { max-width: none; white-space: normal; }
   .du-toolbar > .btn-primary { flex: 1 0 auto; }

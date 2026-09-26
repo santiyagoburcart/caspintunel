@@ -7,6 +7,7 @@ import { Alert, Spinner } from '../components/ui'
 import { ReceiptThumb } from '../components/ReceiptThumb'
 import { DateRangeModal, DRP_CSS } from '../components/DateRangePicker'
 import { BankFilterSheet, BFS_CSS } from '../components/BankFilterSheet'
+import { fg } from '../lib/tone'
 
 const TXS = {
   fa: { month: 'واریزی‌های این ماه', today: 'واریزی‌های امروز', queue: 'در صف بررسی', rejected: 'رد شده',
@@ -25,7 +26,7 @@ function TxStat({ label, value, sub, tone, lang }) {
     <div className="card tx-stat">
       <span className="tx-stat-label">{label}</span>
       <div className="tx-stat-val">{value == null ? '—' : value}</div>
-      {sub ? <div className="tx-stat-sub" style={tone ? { color: tone } : undefined}>{sub}</div> : null}
+      {sub ? <div className="tx-stat-sub" style={tone ? { color: fg(tone) } : undefined}>{sub}</div> : null}
       <span className="tx-stat-accent" style={{ background: tone || 'var(--c-primary)' }} />
     </div>
   )
@@ -90,7 +91,7 @@ const groupCard = (raw) => {
 function Pill({ tone, children }) {
   const c = `var(--c-${tone || 'text-muted'})`
   return (
-    <span className="tx-pill" style={{ background: `color-mix(in srgb, ${c} 16%, transparent)`, color: c }}>{children}</span>
+    <span className="tx-pill" style={{ background: `color-mix(in srgb, ${c} 16%, transparent)`, color: fg(c) }}>{children}</span>
   )
 }
 
@@ -237,22 +238,22 @@ const CSS = `
 .tx-filter-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
 .tx-tool-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 10px; font-size: 12.5px; font-weight: 600;
   border: 1px solid var(--c-border); background: transparent; color: var(--c-text-muted); }
-.tx-tool-btn:hover { color: var(--c-primary); border-color: var(--c-primary); }
-.acc-tool-badge { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--c-primary); }
+.tx-tool-btn:hover { color: var(--c-primary-fg); border-color: var(--c-primary); }
+.acc-tool-badge { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--c-primary-fg); }
 
 .tx-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 4px; }
 @media (min-width: 900px) { .tx-stats { grid-template-columns: repeat(4, 1fr); } }
 .tx-stat { position: relative; overflow: hidden; padding: 14px 16px; }
-.tx-stat-label { font-size: 11.5px; font-weight: 600; color: var(--c-text-muted); }
+.tx-stat-label { font-size: 12px; font-weight: 600; color: var(--c-text-muted); }
 .tx-stat-val { font-size: 19px; font-weight: 800; margin-top: 5px; letter-spacing: -.01em; }
-.tx-stat-sub { font-size: 11px; color: var(--c-text-muted); margin-top: 4px; }
+.tx-stat-sub { font-size: 12px; color: var(--c-text-muted); margin-top: 4px; }
 .tx-stat-accent { position: absolute; inset-inline: 0; bottom: 0; height: 3px; opacity: .85; }
 
-.tx-filter-on { color: var(--c-primary); border-color: var(--c-primary); }
+.tx-filter-on { color: var(--c-primary-fg); border-color: var(--c-primary); }
 .tx-wrap { overflow-x: auto; }
 .tx-table { width: 100%; min-width: 760px; border-collapse: collapse; font-size: 13px; }
 .tx-table thead th {
-  text-align: start; font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: .03em;
+  text-align: start; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .03em;
   color: var(--c-text-muted); padding: 12px 14px; white-space: nowrap; border-bottom: 1px solid var(--c-border);
 }
 .tx-table td { padding: 11px 14px; vertical-align: middle; }
@@ -262,23 +263,23 @@ const CSS = `
 .tx-detail-btn {
   display: inline-flex; align-items: center; gap: 5px; padding: 5px 11px; border-radius: 9px;
   font-size: 12px; font-weight: 600; white-space: nowrap;
-  color: var(--c-primary); border: 1px solid color-mix(in srgb, var(--c-primary) 32%, transparent);
+  color: var(--c-primary-fg); border: 1px solid color-mix(in srgb, var(--c-primary) 32%, transparent);
   background: color-mix(in srgb, var(--c-primary) 8%, transparent); transition: background .15s;
 }
 .tx-detail-btn:hover { background: color-mix(in srgb, var(--c-primary) 16%, transparent); }
 
 .tx-amt { font-weight: 700; white-space: nowrap; }
 .tx-user { display: block; font-weight: 500; }
-.tx-sub { display: block; font-size: 11px; color: var(--c-text-muted); margin-top: 1px; }
+.tx-sub { display: block; font-size: 12px; color: var(--c-text-muted); margin-top: 1px; }
 .tx-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
 .tx-date { white-space: nowrap; color: var(--c-text-muted); font-size: 12px; }
 .tx-c { text-align: center; }
-.tx-pill { display: inline-block; border-radius: 999px; padding: 3px 10px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+.tx-pill { display: inline-block; border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 600; white-space: nowrap; }
 
 .tx-note-row > td { padding: 0 14px 10px !important; border-bottom: 1px solid var(--c-border) !important; }
-.tx-note-warn, .tx-note-bad { font-size: 11.5px; }
-.tx-note-warn { color: var(--c-warning); }
-.tx-note-bad { color: var(--c-danger); }
+.tx-note-warn, .tx-note-bad { font-size: 12px; }
+.tx-note-warn { color: var(--c-warning-fg); }
+.tx-note-bad { color: var(--c-danger-fg); }
 
 /* mobile: table -> stacked cards */
 @media (max-width: 767px) {
@@ -290,7 +291,7 @@ const CSS = `
   .tx-table tr.tx-row > td { border-bottom: 0; }
   .tx-table tr.tx-row:hover > td { background: none; }
   .tx-table td { padding: 8px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: end; }
-  .tx-table td::before { content: attr(data-label); font-size: 11px; font-weight: 600; color: var(--c-text-muted); text-align: start; white-space: nowrap; }
+  .tx-table td::before { content: attr(data-label); font-size: 12px; font-weight: 600; color: var(--c-text-muted); text-align: start; white-space: nowrap; }
   .tx-table td.tx-amt { border-bottom: 1px solid var(--c-border); font-size: 15px; }
   .tx-table td.tx-c { justify-content: space-between; }
   .tx-table tr.tx-note-row { margin: -6px 12px 12px; border: 0; padding: 0; }

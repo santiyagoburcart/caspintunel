@@ -2,149 +2,245 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ==================================================================== *
+ *  DESIGN TOKENS (ui-refresh) — shared by the user site and the panel   *
+ *  Colour roles are overwritten at runtime by ThemeProvider from the    *
+ *  active theme's palette (backend/apps/settings_app/theme_palettes.json);*
+ *  the values here are the fallbacks and every non-colour token.        *
+ * ==================================================================== */
 :root {
-  --c-bg: #f5f7fa;
-  --c-surface: rgba(255, 255, 255, 0.7);
-  --c-primary: #6d48f0;
-  --c-secondary: #0ea5b7;
-  --c-success: #059669;
-  /* switch colors — fixed across every theme/palette (not overridable by --c-*) */
+  /* colour roles (palette-driven) */
+  --c-bg: #F6F8FB;
+  --c-surface: #FFFFFF;
+  --c-primary: #1464BA;
+  --c-secondary: #4C90D6;
+  --c-success: #11AB53;
+  --c-danger: #DC2626;
+  --c-warning: #F59E0B;
+  --c-text: #0B1220;
+  --c-text-muted: #4B5870;
+  --c-border: #E3E8EF;
+  /* text-safe role colours: ≥4.5:1 on --c-bg and --c-surface (palette *_fg) */
+  --c-primary-fg: #1464BA;
+  --c-success-fg: #086B35;
+  --c-danger-fg: #B91C1C;
+  --c-warning-fg: #8A4200;
+  --c-secondary-fg: #255A94;
+  /* derived roles */
+  --c-on-primary: #FFFFFF;
+  --c-success-strong: #0A7F3F;          /* white text on a green button (5:1) */
+  --c-surface-solid: #FFFFFF;           /* sheets / dialogs never translucent */
+  --c-input-border: #8C97A8;            /* ≥3:1 non-text contrast (WCAG 1.4.11) */
+  --c-hover: color-mix(in srgb, var(--c-text) 5%, transparent);
+  --c-primary-soft: color-mix(in srgb, var(--c-primary) 10%, transparent);
+  /* switch colours — fixed across every theme (not palette-driven) */
   --toggle-on: #11AB53;
-  --toggle-off: #3f4450;
-  --c-danger: #dc2626;
-  --c-warning: #d97706;
-  --c-text: #111827;
-  --c-text-muted: #6b7280;
-  --c-border: rgba(0, 0, 0, 0.08);
-  /* extended tokens (Royal Frost sets these explicitly; Midnight Aurora falls
-     back to sensible aurora-consistent defaults so it renders unchanged) */
+  --toggle-off: #3F4450;
+  /* charts: the only place purple is used (small amounts) */
+  --chart-1: #1464BA; --chart-2: #11AB53; --chart-3: #7C3AED;
+  --chart-4: #F59E0B; --chart-5: #0891B2; --chart-6: #DC2626;
+  /* spacing — 4pt scale */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px;
+  --sp-6: 24px; --sp-8: 32px; --sp-10: 40px; --sp-12: 48px;
+  /* radius */
+  --r-xs: 6px; --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-xl: 20px; --r-2xl: 24px; --r-full: 999px;
+  /* elevation */
+  --sh-1: 0 1px 2px rgba(11, 18, 32, .05), 0 1px 3px rgba(11, 18, 32, .06);
+  --sh-2: 0 6px 16px -4px rgba(11, 18, 32, .10), 0 2px 4px -2px rgba(11, 18, 32, .06);
+  --sh-3: 0 24px 56px -16px rgba(11, 18, 32, .28);
+  --sh-primary: 0 8px 20px -8px color-mix(in srgb, var(--c-primary) 60%, transparent);
+  /* type scale */
+  --fs-xs: 12px; --fs-sm: 13px; --fs-base: 14px; --fs-md: 16px; --fs-lg: 18px; --fs-xl: 22px; --fs-2xl: 28px;
+  --lh-tight: 1.3; --lh-base: 1.6;
+  /* motion */
+  --dur-1: 120ms; --dur-2: 200ms; --dur-3: 280ms;
+  --ease-out: cubic-bezier(.2, .8, .2, 1); --ease-in: cubic-bezier(.4, 0, 1, 1);
+  /* touch + focus + layers */
+  --touch: 44px;
+  --ring: 0 0 0 3px color-mix(in srgb, var(--c-primary) 32%, transparent);
+  --z-sticky: 20; --z-nav: 30; --z-overlay: 40; --z-sheet: 50; --z-toast: 300;
+  /* legacy aliases used by the Frost / Caspian flavours and shared widgets */
   --c-primary-2: var(--c-secondary);
   --c-ink: var(--c-text);
   --c-glass-border: var(--c-border);
-  /* Caspian-only tokens (fonts, wells, gauge gradient stops…) — Caspian's
-     own [data-theme-style="caspian"] block overrides these to its exact
-     Azure Telemetry / Caspian Tunnel values; the fallbacks here just make
-     sure a shared component (Gauge, Sparkline, pill tabs, pulse dot…)
-     still looks sane and on-brand if it's ever used on an Aurora/Frost page. */
   --csp-font-ui: 'Vazirmatn';
   --csp-font-display: 'Vazirmatn';
-  --csp-well: color-mix(in srgb, var(--c-text) 5%, transparent);
-  --csp-muted-bg: color-mix(in srgb, var(--c-text) 6%, transparent);
-  --csp-text-2: var(--c-text);
-  --csp-text-3: var(--c-text-muted);
-  --csp-border-strong: var(--c-border);
+  --csp-well: #F1F4F9;
+  --csp-muted-bg: #EEF2F7;
+  --csp-text-2: #1B2638;
+  --csp-text-3: #334155;
+  --csp-border-strong: #CBD5E1;
   --csp-signal: var(--c-secondary);
-  --csp-vibrant: var(--c-primary);
-  --csp-gauge-from: var(--c-primary);
-  --csp-gauge-to: var(--c-secondary);
+  --csp-vibrant: #0F4E92;
+  --csp-gauge-from: var(--c-secondary);
+  --csp-gauge-to: var(--c-primary);
   --csp-glow: transparent;
-  --csp-radius-card: 16px;
+  --csp-radius-card: var(--r-lg);
+  color-scheme: light;
 }
 .dark {
-  --c-bg: #0b0e14;
-  --c-surface: rgba(255, 255, 255, 0.06);
-  --c-primary: #7c5cff;
-  --c-secondary: #22d3ee;
-  --c-success: #34d399;
-  --toggle-off: #2e323c;
-  --c-danger: #f87171;
-  --c-warning: #fbbf24;
-  --c-text: #e6e8ec;
-  --c-text-muted: #9aa3b2;
-  --c-border: rgba(255, 255, 255, 0.1);
-  --c-primary-2: var(--c-secondary);
-  --c-ink: var(--c-text);
-  --c-glass-border: var(--c-border);
-  --csp-font-ui: 'Vazirmatn';
-  --csp-font-display: 'Vazirmatn';
-  --csp-well: color-mix(in srgb, black 20%, transparent);
-  --csp-muted-bg: color-mix(in srgb, white 6%, transparent);
-  --csp-text-2: var(--c-text);
-  --csp-text-3: var(--c-text-muted);
-  --csp-border-strong: var(--c-border);
-  --csp-signal: var(--c-secondary);
-  --csp-vibrant: var(--c-primary);
-  --csp-gauge-from: var(--c-primary);
-  --csp-gauge-to: var(--c-secondary);
-  --csp-glow: transparent;
-  --csp-radius-card: 16px;
+  --c-bg: #070A12;
+  --c-surface: #0F1522;
+  --c-primary: #1464BA;
+  --c-secondary: #4C90D6;
+  --c-success: #11AB53;
+  --c-danger: #DC2626;
+  --c-warning: #F59E0B;
+  --c-text: #E8ECF4;
+  --c-text-muted: #9AA6BA;
+  --c-border: #1F2A40;
+  --c-primary-fg: #6AA9EE;
+  --c-success-fg: #3DD37F;
+  --c-danger-fg: #FF8585;
+  --c-warning-fg: #FBBF24;
+  --c-secondary-fg: #8DBDF3;
+  --c-surface-solid: #111827;
+  --c-input-border: #5C6982;
+  --c-hover: color-mix(in srgb, #fff 6%, transparent);
+  --c-primary-soft: color-mix(in srgb, var(--c-primary) 22%, transparent);
+  --toggle-off: #2E323C;
+  --chart-3: #9F7AEA;
+  --sh-1: 0 1px 2px rgba(0, 0, 0, .35), 0 0 0 1px rgba(255, 255, 255, .02);
+  --sh-2: 0 8px 20px -6px rgba(0, 0, 0, .55);
+  --sh-3: 0 28px 64px -16px rgba(0, 0, 0, .7);
+  --ring: 0 0 0 3px color-mix(in srgb, var(--c-primary-fg) 40%, transparent);
+  --csp-well: #060910;
+  --csp-muted-bg: #161E30;
+  --csp-text-2: #D5DBE7;
+  --csp-text-3: #A3AEC2;
+  --csp-border-strong: #2B3852;
+  color-scheme: dark;
 }
 
 html, body, #root { height: 100%; }
+html { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body {
   margin: 0;
   background: var(--c-bg);
   color: var(--c-text);
   font-family: 'Vazirmatn', ui-sans-serif, system-ui, sans-serif;
-  transition: background .3s, color .3s;
+  line-height: var(--lh-base);
+  -webkit-font-smoothing: antialiased;
+  transition: background var(--dur-3), color var(--dur-3);
+}
+button, a, summary, [role="button"], label.toggle, select { touch-action: manipulation; }
+button:not(:disabled), [role="button"], summary, label.toggle, select { cursor: pointer; }
+
+/* ---- accessibility: one visible focus ring everywhere (keyboard only) ---- */
+:where(a, button, summary, [role="button"], [role="tab"], [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: 2px solid var(--c-primary-fg);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+/* ---- accessibility: honour reduced motion ---- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important; animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important; scroll-behavior: auto !important;
+  }
 }
 
 @layer components {
+  /* ---- surfaces ---- */
   .glass {
     background: var(--c-surface);
-    -webkit-backdrop-filter: blur(16px);
-    backdrop-filter: blur(16px);
     border: 1px solid var(--c-border);
-    border-radius: 16px;
+    border-radius: var(--r-lg);
+    box-shadow: var(--sh-1);
   }
-  .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 font-medium transition disabled:opacity-50;
-  }
-  .btn-primary { @apply btn text-white; background: var(--c-primary); }
-  .btn-ghost { @apply btn border; border-color: var(--c-border); }
-  .input {
-    @apply w-full rounded-xl px-3 py-2 outline-none border bg-transparent;
-    border-color: var(--c-border);
-  }
-  .input:focus { border-color: var(--c-primary); }
-  .label { @apply block text-sm mb-1 text-muted; }
-  .card { @apply glass p-5; }
-  .aurora {
-    background:
-      radial-gradient(60% 60% at 20% 10%, color-mix(in srgb, var(--c-primary) 22%, transparent), transparent),
-      radial-gradient(50% 50% at 90% 20%, color-mix(in srgb, var(--c-secondary) 18%, transparent), transparent);
-  }
+  .card { @apply glass; padding: var(--sp-5); }
+  @media (max-width: 767px) { .card { padding: var(--sp-4); } }
+  .aurora { background: none; }
 
-  /* ===== modern toggle switch — shared across both themes ===== */
-  .toggle { position: relative; display: inline-flex; width: 44px; height: 24px; flex-shrink: 0; cursor: pointer; }
-  .toggle input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+  /* ---- buttons: 40px desktop, 44px on touch; press feedback; loading ---- */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2);
+    min-height: 40px; padding: 0 var(--sp-4); border-radius: var(--r-md);
+    border: 1px solid transparent; font-weight: 600; font-size: var(--fs-base); line-height: 1.25;
+    transition: background var(--dur-1) var(--ease-out), border-color var(--dur-1), color var(--dur-1),
+      box-shadow var(--dur-2), transform var(--dur-1);
+    user-select: none;
+  }
+  .btn:active:not(:disabled) { transform: scale(.98); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-primary { @apply btn; background: var(--c-primary); color: var(--c-on-primary); }
+  .btn-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--c-primary) 88%, black); box-shadow: var(--sh-primary); }
+  .btn-ghost {
+    @apply btn; background: var(--c-surface); color: var(--c-text); border-color: var(--c-border);
+  }
+  .btn-ghost:hover:not(:disabled) { border-color: var(--c-primary); color: var(--c-primary-fg); background: var(--c-hover); }
+  .btn-soft { @apply btn; background: var(--c-primary-soft); color: var(--c-primary-fg); }
+  .btn-soft:hover:not(:disabled) { background: color-mix(in srgb, var(--c-primary) 18%, transparent); }
+  .btn-danger { @apply btn; background: var(--c-danger); color: #fff; }
+  .btn-danger:hover:not(:disabled) { background: color-mix(in srgb, var(--c-danger) 88%, black); }
+  .btn-success { @apply btn; background: var(--c-success-strong); color: #fff; }
+  .btn-success:hover:not(:disabled) { background: color-mix(in srgb, var(--c-success-strong) 88%, black); }
+  .btn-block { width: 100%; }
+  .btn .btn-spin {
+    width: 16px; height: 16px; border-radius: 50%; border: 2px solid currentColor; border-top-color: transparent;
+    animation: gtoast-spin .7s linear infinite; flex-shrink: 0;
+  }
+  .icon-btn {
+    display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: var(--r-md);
+    color: var(--c-text-muted); background: transparent; border: 1px solid transparent;
+    transition: background var(--dur-1), color var(--dur-1);
+  }
+  .icon-btn:hover { background: var(--c-hover); color: var(--c-text); }
+
+  /* ---- form fields: 44px, strong boundary, 16px text on phones ---- */
+  .input {
+    width: 100%; min-height: 44px; padding: 10px 12px; border-radius: var(--r-md);
+    border: 1px solid var(--c-input-border); background: var(--c-surface); color: var(--c-text);
+    font-size: var(--fs-base); line-height: 1.4; outline: none;
+    transition: border-color var(--dur-1), box-shadow var(--dur-1);
+  }
+  textarea.input { min-height: 88px; }
+  .input::placeholder { color: var(--c-text-muted); opacity: .85; }
+  .input:hover:not(:disabled):not(:focus) { border-color: color-mix(in srgb, var(--c-input-border) 60%, var(--c-text)); }
+  .input:focus { border-color: var(--c-primary); box-shadow: var(--ring); }
+  .input[aria-invalid="true"] { border-color: var(--c-danger); }
+  .input[aria-invalid="true"]:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-danger) 28%, transparent); }
+  .input:disabled, .input[readonly] { background: var(--c-hover); }
+  .label { display: block; margin-bottom: 6px; font-size: var(--fs-sm); font-weight: 600; color: var(--c-text); }
+  .hint { display: block; margin-top: 6px; font-size: var(--fs-xs); color: var(--c-text-muted); line-height: 1.5; }
+
+  /* ---- switch: 44x24 track inside a 44px-tall hit area ---- */
+  .toggle { position: relative; display: inline-flex; align-items: center; width: 44px; height: 44px; flex-shrink: 0; cursor: pointer; }
+  .toggle input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; z-index: 1; }
   .toggle .track {
-    position: absolute; inset: 0; border-radius: 999px; transition: background .2s, box-shadow .2s;
+    position: absolute; inset-inline: 0; top: 10px; height: 24px; border-radius: var(--r-full);
+    transition: background var(--dur-2), box-shadow var(--dur-2);
     background: var(--toggle-off); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06);
   }
   .toggle .track::before {
     content: ""; position: absolute; width: 18px; height: 18px; border-radius: 50%;
-    background: #fff; top: 3px; inset-inline-start: 3px; transition: inset-inline-start .2s;
+    background: #fff; top: 3px; inset-inline-start: 3px; transition: inset-inline-start var(--dur-2) var(--ease-out);
     box-shadow: 0 2px 6px rgba(0, 0, 0, .25);
   }
   .toggle input:checked + .track { background: var(--toggle-on); box-shadow: none; }
   .toggle input:checked + .track::before { inset-inline-start: calc(100% - 21px); }
-  .toggle input:focus-visible + .track { outline: 2px solid var(--c-primary); outline-offset: 2px; }
+  .toggle input:focus-visible + .track { outline: 2px solid var(--c-primary-fg); outline-offset: 2px; }
   .toggle input:disabled + .track { opacity: .5; cursor: not-allowed; }
-
-  /* label + switch row, e.g. a settings list */
-  .toggle-row { @apply flex items-center justify-between gap-3 py-3; border-bottom: 1px solid var(--c-border); }
+  .toggle-row { @apply flex items-center justify-between gap-3 py-2; border-bottom: 1px solid var(--c-border); }
   .toggle-row:last-child { border-bottom: none; }
 
-  /* range slider (e.g. custom-volume picker) — shared across both themes;
-     set the CSS var --pct (0%..100%) on the element to fill the track */
+  /* ---- range slider ---- */
   input[type="range"] {
     -webkit-appearance: none; appearance: none; width: 100%; height: 8px; border-radius: 8px; outline: none;
     background: linear-gradient(90deg, var(--c-primary) 0%, var(--c-secondary) var(--pct, 0%), var(--c-border) var(--pct, 0%), var(--c-border) 100%);
   }
   input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%;
+    -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%;
     background: #fff; border: 3px solid var(--c-primary); cursor: pointer;
     box-shadow: 0 3px 10px color-mix(in srgb, var(--c-primary) 40%, transparent);
   }
   input[type="range"]::-moz-range-thumb {
-    width: 22px; height: 22px; border-radius: 50%; background: #fff;
+    width: 24px; height: 24px; border-radius: 50%; background: #fff;
     border: 3px solid var(--c-primary); cursor: pointer;
   }
+  input[type="range"]:focus-visible { box-shadow: var(--ring); }
 
-  /* ===== Caspian shared components (components/caspian.jsx) — token-driven
-     so they render sensibly in every theme; [data-theme-style="caspian"]
-     below only layers extra neomorphic/glow flourishes on top. ===== */
+  /* ---- numbers ---- */
   .mono-num {
     font-family: 'JetBrains Mono', ui-monospace, monospace;
     font-variant-numeric: tabular-nums;
@@ -152,22 +248,34 @@ body {
     unicode-bidi: isolate;
   }
 
-  /* pill tabs / filter bar (.csp-tabs > .csp-tab.active) */
+  /* ---- pill tabs / filter bar ---- */
   .csp-tabs {
-    display: inline-flex; gap: 2px; padding: 4px; border-radius: 999px;
+    display: inline-flex; gap: 2px; padding: 4px; border-radius: var(--r-full);
     background: var(--csp-muted-bg); border: 1px solid var(--c-border);
+    max-width: 100%; overflow-x: auto; scrollbar-width: none;
   }
+  .csp-tabs::-webkit-scrollbar { display: none; }
   .csp-tab {
     border: 0; background: transparent; cursor: pointer; white-space: nowrap;
-    padding: 6px 16px; border-radius: 999px; font-size: 13px; font-weight: 600;
-    color: var(--c-text-muted); transition: background .2s, color .2s, box-shadow .2s;
+    min-height: 34px; padding: 6px 16px; border-radius: var(--r-full); font-size: var(--fs-sm); font-weight: 600;
+    color: var(--c-text-muted); transition: background var(--dur-2), color var(--dur-2), box-shadow var(--dur-2);
   }
-  .csp-tab.active {
-    background: var(--c-surface); color: var(--c-primary);
-    box-shadow: 0 1px 3px rgba(15, 23, 42, .12);
-  }
+  .csp-tab:hover { color: var(--c-text); }
+  .csp-tab.active { background: var(--c-surface-solid); color: var(--c-primary-fg); box-shadow: var(--sh-1); }
+  @media (max-width: 767px), (pointer: coarse) { .csp-tab { min-height: 40px; } }
 
-  /* live pulsating status dot (.csp-pulse[.warning|.danger]) */
+  /* ---- status: badges + live dot ---- */
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; min-height: 24px;
+    border-radius: var(--r-full); font-size: var(--fs-xs); font-weight: 700; line-height: 1.4; white-space: nowrap;
+    background: color-mix(in srgb, var(--c-text-muted) 14%, transparent); color: var(--c-text-muted);
+  }
+  .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+  .badge.no-dot::before { display: none; }
+  .badge-success { background: color-mix(in srgb, var(--c-success) 14%, transparent); color: var(--c-success-fg); }
+  .badge-danger { background: color-mix(in srgb, var(--c-danger) 12%, transparent); color: var(--c-danger-fg); }
+  .badge-warning { background: color-mix(in srgb, var(--c-warning) 16%, transparent); color: var(--c-warning-fg); }
+  .badge-primary { background: var(--c-primary-soft); color: var(--c-primary-fg); }
   .csp-pulse {
     position: relative; display: inline-flex; width: 8px; height: 8px;
     border-radius: 50%; background: var(--c-success); flex: 0 0 auto;
@@ -180,288 +288,223 @@ body {
   .csp-pulse.warning::after { border-color: var(--c-warning); }
   .csp-pulse.danger { background: var(--c-danger); }
   .csp-pulse.danger::after { border-color: var(--c-danger); }
-  @keyframes csp-ripple {
-    0% { transform: scale(.4); opacity: .8; }
-    100% { transform: scale(1.8); opacity: 0; }
-  }
 
-  /* circular SVG gauge center-label typography (ring itself is drawn by <Gauge>) */
+  /* ---- charts / gauges ---- */
   .csp-gauge-value {
     font-family: 'JetBrains Mono', ui-monospace, monospace; font-weight: 600;
     font-variant-numeric: tabular-nums; fill: var(--c-text); direction: ltr;
   }
   .csp-gauge-label { font-family: var(--csp-font-ui), 'Vazirmatn', sans-serif; fill: var(--c-text-muted); }
-
-  /* sparkline / area-chart recessed well */
   .csp-chart-well {
     background: var(--csp-well); border: 1px solid var(--c-border);
-    border-radius: 12px; overflow: hidden;
+    border-radius: var(--r-md); overflow: hidden;
+  }
+
+  /* ---- 3D illustration + empty state (components/Art.jsx) ---- */
+  .art { display: block; flex-shrink: 0; object-fit: contain; user-select: none; -webkit-user-drag: none; }
+  .art-tile {
+    display: grid; place-items: center; flex-shrink: 0; border-radius: var(--r-lg);
+    background: linear-gradient(145deg, color-mix(in srgb, var(--c-primary) 9%, var(--c-surface-solid)), var(--c-surface-solid));
+    border: 1px solid var(--c-border);
+  }
+  .empty-state {
+    display: grid; justify-items: center; gap: var(--sp-2); text-align: center;
+    padding: var(--sp-8) var(--sp-4); color: var(--c-text-muted);
+  }
+  .empty-state-title { font-size: var(--fs-md); font-weight: 700; color: var(--c-text); }
+  .empty-state-text { font-size: var(--fs-sm); max-width: 32ch; }
+  .empty-state .btn, .empty-state .btn-primary, .empty-state .btn-ghost { margin-top: var(--sp-2); }
+
+  /* ---- sticky primary action on phones (sits above a bottom nav) ---- */
+  .m-actionbar { display: contents; }
+  @media (max-width: 767px) {
+    .m-actionbar {
+      display: flex; gap: var(--sp-2); position: sticky; z-index: var(--z-sticky);
+      bottom: calc(var(--bottomnav-h, 0px) + env(safe-area-inset-bottom, 0px));
+      margin: var(--sp-4) calc(-1 * var(--sp-4)) 0; padding: var(--sp-3) var(--sp-4);
+      background: color-mix(in srgb, var(--c-bg) 92%, transparent);
+      -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+      border-top: 1px solid var(--c-border);
+    }
+    .m-actionbar > * { flex: 1; min-height: 48px; }
+  }
+
+  /* ---- skeleton placeholder ---- */
+  .skeleton {
+    border-radius: var(--r-sm); background: linear-gradient(90deg, var(--c-hover) 25%, color-mix(in srgb, var(--c-text) 9%, transparent) 50%, var(--c-hover) 75%);
+    background-size: 200% 100%; animation: skeleton-shimmer 1.2s ease-in-out infinite;
   }
 }
 
-/* ================================================================== *
- *  Royal Frost — light frosted-glass style, selected via              *
- *  data-theme-style="frost" (set by ThemeProvider from the active     *
- *  theme's palette.style). Midnight Aurora (no attr / "aurora") is    *
- *  completely untouched by anything below.                            *
- * ================================================================== */
+/* text-safe role colours for the Tailwind colour utilities */
+.text-primary { color: var(--c-primary-fg); }
+.text-success { color: var(--c-success-fg); }
+.text-danger { color: var(--c-danger-fg); }
+.text-warning { color: var(--c-warning-fg); }
+.text-secondary { color: var(--c-secondary-fg); }
+
+/* arrows that point "forward" flip in RTL */
+.dir-arrow { display: inline-block; }
+[dir="rtl"] .dir-arrow { transform: scaleX(-1); }
+
+/* phones + touch screens: every tap target reaches 44px (WCAG 2.5.5 / HIG).
+   Page-local button/chip styles are sized for the desktop; this floor applies
+   on small or coarse-pointer screens only. */
+@media (max-width: 767px), (pointer: coarse) {
+  /* min-* only (never shrinks anything); !important beats page-local sizes */
+  button:not(.u-botnav-item):not(.csp-bn-item), [role="button"], summary, input[type="file"], select,
+  a[class*="btn"], a[class*="-buy"] { min-height: var(--touch) !important; }
+  button:not(.u-botnav-item):not(.csp-bn-item), a[class*="btn"] { min-width: var(--touch) !important; }
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]) { min-height: var(--touch) !important; }
+  input[type="checkbox"]:not(.toggle input), input[type="radio"] { width: 22px; height: 22px; }
+  /* a checkbox / radio row: the whole label is the tap target */
+  label:has(> input[type="checkbox"]:not(.toggle input)), label:has(> input[type="radio"]) {
+    display: inline-flex; align-items: center; min-height: var(--touch);
+  }
+  /* standalone links (not inside running text) */
+  a.csp-link, a.csp-auth-footer-l, a.csp-auth-help, a.du-back, a.uo-back, a.uo-invoice-link, a.acc-view-all, a.cd-fraud-link,
+  a.int-foot-link, a.csp-help-app-link, a.reg-terms-link, a.al-portal, a.csp-mtop-brand, a.dash-view-all, a.auth-link,
+  a.csp-topbar-brand {
+    display: inline-flex; align-items: center; min-height: var(--touch); min-width: var(--touch);
+  }
+}
+
+/* touch devices: every control reaches 44px */
+@media (max-width: 767px), (pointer: coarse) {
+  .btn, .btn-primary, .btn-ghost, .btn-soft, .btn-danger, .btn-success { min-height: var(--touch); }
+  .icon-btn { width: var(--touch); height: var(--touch); }
+  .input, select.input { font-size: 16px; }
+}
+
+@keyframes csp-ripple { 0% { transform: scale(.4); opacity: .8; } 100% { transform: scale(1.8); opacity: 0; } }
+@keyframes skeleton-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+/* ==================================================================== *
+ *  THEME FLAVOURS — same tokens + accents, different surface treatment *
+ *  (selected by data-theme-style from the active palette's `style`)    *
+ * ==================================================================== */
+
+/* ---- Midnight Aurora (default style): soft blue/teal glow behind glass ---- */
+html:not([data-theme-style="frost"]):not([data-theme-style="caspian"]) body {
+  background:
+    radial-gradient(900px 480px at 88% -10%, color-mix(in srgb, var(--c-primary) 16%, transparent), transparent 60%),
+    radial-gradient(760px 420px at -8% 108%, color-mix(in srgb, var(--c-secondary) 12%, transparent), transparent 55%),
+    var(--c-bg);
+  background-attachment: fixed;
+}
+html:not([data-theme-style="frost"]):not([data-theme-style="caspian"]).dark .glass,
+html:not([data-theme-style="frost"]):not([data-theme-style="caspian"]).dark .card {
+  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+}
+
+/* ---- Royal Frost: light frosted glass, navy admin rail ---- */
 [data-theme-style="frost"] body {
   background:
-    radial-gradient(1100px 500px at 85% -8%, color-mix(in srgb, var(--c-secondary) 25%, transparent), transparent 60%),
-    radial-gradient(900px 500px at -5% 108%, color-mix(in srgb, var(--c-success) 12%, transparent), transparent 55%),
+    radial-gradient(1100px 500px at 85% -8%, color-mix(in srgb, var(--c-secondary) 22%, transparent), transparent 60%),
+    radial-gradient(900px 500px at -5% 108%, color-mix(in srgb, var(--c-success) 10%, transparent), transparent 55%),
     var(--c-bg);
+  background-attachment: fixed;
 }
-[data-theme-style="frost"] .aurora { background: none; }
-
 [data-theme-style="frost"] .glass,
 [data-theme-style="frost"] .card {
-  background: var(--c-surface);
-  -webkit-backdrop-filter: blur(22px);
-  backdrop-filter: blur(22px);
-  border: 1px solid var(--c-glass-border);
-  border-radius: 18px;
-  box-shadow: 0 10px 38px color-mix(in srgb, var(--c-primary) 10%, transparent), inset 0 1px 0 rgba(255, 255, 255, .7);
+  -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+  border-color: var(--c-glass-border);
+  box-shadow: 0 10px 32px color-mix(in srgb, var(--c-primary) 9%, transparent), inset 0 1px 0 rgba(255, 255, 255, .7);
 }
-
-[data-theme-style="frost"] .btn { border-radius: 12px; font-weight: 700; }
-[data-theme-style="frost"] .btn-primary {
-  background: linear-gradient(135deg, var(--c-primary), var(--c-primary-2));
-  box-shadow: 0 7px 18px color-mix(in srgb, var(--c-primary) 30%, transparent);
-}
-[data-theme-style="frost"] .btn-ghost {
-  background: rgba(255, 255, 255, .85);
-  color: var(--c-primary);
-  border-color: var(--c-border);
-}
-
-[data-theme-style="frost"] .input {
-  background: rgba(255, 255, 255, .85);
-  border-color: var(--c-border);
-  border-radius: 12px;
-}
-[data-theme-style="frost"] .input:focus {
-  border-color: var(--c-secondary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-secondary) 18%, transparent);
-}
-[data-theme-style="frost"] .label { color: var(--c-ink); font-weight: 700; }
-
-/* admin sidebar shell — dark navy/royal-blue, independent of the light frost
-   surface everywhere else (matches the reference's `.side`) */
+[data-theme-style="frost"] .btn-primary { background: linear-gradient(135deg, var(--c-primary), color-mix(in srgb, var(--c-primary) 70%, var(--c-primary-2))); }
+[data-theme-style="frost"] .btn-ghost, [data-theme-style="frost"] .input { background: rgba(255, 255, 255, .88); }
 [data-theme-style="frost"] .admin-side {
-  background: linear-gradient(180deg, var(--c-ink), #14285f);
+  background: linear-gradient(180deg, #0B1B36, #12305E);
   border-color: transparent;
-  box-shadow: 0 10px 30px color-mix(in srgb, var(--c-ink) 25%, transparent);
+  box-shadow: 0 10px 30px rgba(11, 27, 54, .25);
 }
 [data-theme-style="frost"] .admin-side .admin-brand,
-[data-theme-style="frost"] .admin-side .admin-brand .text-muted {
-  color: #fff;
-}
-[data-theme-style="frost"] .admin-side .btn-ghost {
-  background: transparent;
-  border-color: rgba(255, 255, 255, .2);
-  color: rgba(255, 255, 255, .82);
-}
-[data-theme-style="frost"] .admin-side .btn-ghost:hover {
-  background: rgba(255, 255, 255, .08);
-  color: #fff;
-}
-[data-theme-style="frost"] .admin-side .admin-nav-link {
-  border-color: transparent;
-}
-[data-theme-style="frost"] .admin-side .admin-nav-link.active-nav {
-  background: rgba(255, 255, 255, .16);
-  color: #fff;
-  font-weight: 600;
-}
+[data-theme-style="frost"] .admin-side .admin-brand .text-muted { color: #fff; }
+[data-theme-style="frost"] .admin-side .btn-ghost { background: transparent; border-color: rgba(255, 255, 255, .2); color: rgba(255, 255, 255, .86); }
+[data-theme-style="frost"] .admin-side .btn-ghost:hover { background: rgba(255, 255, 255, .08); color: #fff; }
+[data-theme-style="frost"] .admin-side .admin-nav-link { border-color: transparent; }
+[data-theme-style="frost"] .admin-side .admin-nav-link.active-nav { background: rgba(255, 255, 255, .16); color: #fff; font-weight: 600; }
 
-/* ================================================================== *
- *  Caspian — third theme, TWO user-switchable variants under ONE      *
- *  `style` key: light = "Azure Telemetry", dark = "Caspian Tunnel".   *
- *  Selected via data-theme-style="caspian" (palette.style). The       *
- *  dark/light SWITCH reuses the exact mechanism Midnight Aurora       *
- *  already has — the Caspian theme row carries no `base`, so          *
- *  ThemeProvider treats it as "auto" and honours the user's own       *
- *  ct_mode toggle, adding/removing .dark on <html> — no new toggle    *
- *  plumbing needed, just the [data-theme-style="caspian"] vs.         *
- *  [data-theme-style="caspian"].dark split below.                     *
- *  Neither Midnight Aurora nor Royal Frost is touched by anything     *
- *  here (they never carry data-theme-style="caspian").                *
- * ================================================================== */
-
-/* mode-scoped alias tokens — every rule below reads the unsuffixed
-   alias so it never needs to know which variant is active; the actual
-   -light/-dark values come from the active theme's palette.vars (with
-   hardcoded fallbacks here so the look is correct even if a var is
-   ever missing). */
+/* ---- Caspian (light "Azure Telemetry" / dark "Caspian Tunnel") ---- */
 [data-theme-style="caspian"] {
   --csp-font-ui: var(--csp-font-ui-light, 'Inter');
   --csp-font-display: var(--csp-font-display-light, 'Space Grotesk');
-  --csp-well: var(--csp-well-light, #f8fafc);
-  --csp-muted-bg: var(--csp-muted-bg-light, #f1f5f9);
-  --csp-text-2: var(--csp-text2-light, #1e293b);
+  --csp-well: var(--csp-well-light, #F1F4F9);
+  --csp-muted-bg: var(--csp-muted-bg-light, #EEF2F7);
+  --csp-text-2: var(--csp-text2-light, #1B2638);
   --csp-text-3: var(--csp-text3-light, #334155);
-  --csp-border-strong: var(--csp-border-strong-light, #cbd5e1);
+  --csp-border-strong: var(--csp-border-strong-light, #CBD5E1);
   --csp-signal: var(--csp-signal-light, #4C90D6);
   --csp-vibrant: var(--csp-vibrant-light, #0F4E92);
   --csp-gauge-from: var(--csp-gauge-from-light, #4C90D6);
   --csp-gauge-to: var(--csp-gauge-to-light, #1464BA);
   --csp-glow: var(--csp-glow-light, rgba(20, 100, 186, .28));
-  --csp-radius-card: var(--csp-radius-card-light, 0.75rem);
+  --csp-radius-card: var(--csp-radius-card-light, 16px);
 }
 [data-theme-style="caspian"].dark {
   --csp-font-ui: var(--csp-font-ui-dark, 'Plus Jakarta Sans');
   --csp-font-display: var(--csp-font-display-dark, 'Plus Jakarta Sans');
   --csp-well: var(--csp-well-dark, #060910);
-  --csp-muted-bg: var(--csp-muted-bg-dark, #181b25);
-  --csp-text-2: var(--csp-text2-dark, #cbc3d7);
-  --csp-text-3: var(--csp-text3-dark, #94a3b8);
-  --csp-border-strong: var(--csp-border-strong-dark, #494454);
+  --csp-muted-bg: var(--csp-muted-bg-dark, #161E30);
+  --csp-text-2: var(--csp-text2-dark, #D5DBE7);
+  --csp-text-3: var(--csp-text3-dark, #A3AEC2);
+  --csp-border-strong: var(--csp-border-strong-dark, #2B3852);
   --csp-signal: var(--csp-signal-dark, #4C90D6);
   --csp-vibrant: var(--csp-vibrant-dark, #0F4E92);
   --csp-gauge-from: var(--csp-gauge-from-dark, #4C90D6);
   --csp-gauge-to: var(--csp-gauge-to-dark, #1464BA);
-  --csp-glow: var(--csp-glow-dark, rgba(76, 144, 214, .45));
-  --csp-radius-card: var(--csp-radius-card-dark, 1rem);
+  --csp-glow: var(--csp-glow-dark, rgba(76, 144, 214, .40));
+  --csp-radius-card: var(--csp-radius-card-dark, 16px);
 }
-
-[data-theme-style="caspian"] body {
-  font-family: var(--csp-font-ui), 'Vazirmatn', ui-sans-serif, system-ui, sans-serif;
-  background: var(--c-bg);
-}
+[data-theme-style="caspian"] body { background: var(--c-bg); }
 [data-theme-style="caspian"].dark body {
   background:
-    radial-gradient(1000px 500px at 90% -10%, color-mix(in srgb, var(--c-primary) 20%, transparent), transparent 60%),
-    radial-gradient(800px 460px at -10% 105%, color-mix(in srgb, var(--c-secondary) 16%, transparent), transparent 55%),
+    radial-gradient(1000px 500px at 90% -10%, color-mix(in srgb, var(--c-primary) 14%, transparent), transparent 60%),
     var(--c-bg);
+  background-attachment: fixed;
 }
-[data-theme-style="caspian"] .aurora { background: none; }
-
-/* headline / KPI type — Space Grotesk (light) or heavier Plus Jakarta Sans (dark) */
+[data-theme-style="caspian"] .glass,
+[data-theme-style="caspian"] .card { border-radius: var(--csp-radius-card); }
 [data-theme-style="caspian"] .csp-display,
 [data-theme-style="caspian"] .csp-headline {
   font-family: var(--csp-font-display), 'Vazirmatn', ui-sans-serif, sans-serif;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-weight: 700; letter-spacing: -0.02em;
 }
-
-/* ---- cards: crisp bordered white (light) / neomorphic frosted glass (dark) ---- */
-[data-theme-style="caspian"] .glass,
-[data-theme-style="caspian"] .card {
-  background: var(--c-surface);
-  border: 1px solid var(--c-border);
-  border-radius: var(--csp-radius-card);
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, .05), 0 1px 2px -1px rgba(15, 23, 42, .03);
-}
-[data-theme-style="caspian"].dark .glass,
-[data-theme-style="caspian"].dark .card {
-  border-color: var(--c-border);
-  /* surface-panel (#0D111F) is opaque — this is neomorphic extrusion, not
-     glassmorphism, so no backdrop-filter here (that's reserved for actual
-     floating overlays using the translucent surface-glass tone instead) */
-  box-shadow:
-    -6px -6px 14px rgba(255, 255, 255, .02),
-    6px 6px 18px rgba(0, 0, 0, .65),
-    inset 1px 1px 1px rgba(255, 255, 255, .05);
-}
-
-/* ---- buttons ---- */
-[data-theme-style="caspian"] .btn { border-radius: 12px; font-weight: 600; }
-[data-theme-style="caspian"] .btn-primary {
-  background: var(--c-primary);
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--c-primary) 30%, transparent);
-}
-[data-theme-style="caspian"] .btn-primary:hover { background: color-mix(in srgb, var(--c-primary) 88%, white 12%); }
-[data-theme-style="caspian"].dark .btn-primary {
-  background: linear-gradient(135deg, var(--c-primary), var(--csp-vibrant));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .25), 0 4px 14px color-mix(in srgb, var(--c-primary) 30%, transparent);
-}
-[data-theme-style="caspian"].dark .btn-primary:hover {
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .25), 0 0 20px color-mix(in srgb, var(--c-primary) 50%, transparent);
-}
-[data-theme-style="caspian"] .btn-ghost {
-  background: var(--c-surface);
-  border-color: var(--c-border);
-  color: var(--csp-text-3);
-}
-[data-theme-style="caspian"] .btn-ghost:hover { border-color: var(--csp-signal); }
-[data-theme-style="caspian"].dark .btn-ghost {
-  background: var(--csp-well);
-  box-shadow: -4px -4px 10px rgba(255, 255, 255, .02), 4px 4px 12px rgba(0, 0, 0, .6);
-}
-[data-theme-style="caspian"].dark .btn-ghost:active {
-  box-shadow: inset 3px 3px 6px rgba(0, 0, 0, .8), inset -2px -2px 5px rgba(255, 255, 255, .03);
-}
-
-/* ---- inputs: recessed glow well (dark) / crisp bordered field (light) ---- */
-[data-theme-style="caspian"] .input {
-  background: var(--c-surface);
-  border-color: var(--c-border);
-  border-radius: 12px;
-  color: var(--c-text);
-  transition: border-color .15s, box-shadow .15s;
-}
-[data-theme-style="caspian"] .input::placeholder { color: var(--c-text-muted); }
-[data-theme-style="caspian"] .input:focus {
-  border-color: var(--c-primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-primary) 15%, transparent);
-}
-[data-theme-style="caspian"].dark .input {
-  background: var(--csp-well);
-  border-color: var(--c-border);
-  box-shadow: inset 3px 3px 6px rgba(0, 0, 0, .8), inset -2px -2px 5px rgba(255, 255, 255, .03);
-}
-[data-theme-style="caspian"].dark .input:focus {
-  border-color: var(--c-primary);
-  box-shadow: 0 0 0 1px var(--c-primary), 0 0 12px color-mix(in srgb, var(--c-primary) 35%, transparent);
-}
-[data-theme-style="caspian"] .label { color: var(--csp-text-2); font-weight: 600; }
-
-/* toggle colors are fixed app-wide (OFF dark gray, ON #11AB53) — see
-   --toggle-on/--toggle-off in :root; no per-theme override on purpose. */
-[data-theme-style="caspian"].dark .toggle .track { box-shadow: inset 2px 2px 5px rgba(0, 0, 0, .6); }
-[data-theme-style="caspian"].dark .toggle input:checked + .track { box-shadow: inset 2px 2px 5px rgba(0, 0, 0, .25); }
-[data-theme-style="caspian"].dark .toggle input:checked + .track::before {
-  box-shadow: 0 0 8px 2px color-mix(in srgb, var(--toggle-on) 60%, transparent), 0 2px 6px rgba(0, 0, 0, .4);
-}
-
-/* ---- pill tabs — dark gets a recessed well + raised active capsule ---- */
-[data-theme-style="caspian"].dark .csp-tabs {
-  border-color: transparent;
-  box-shadow: inset 3px 3px 6px rgba(0, 0, 0, .8), inset -2px -2px 5px rgba(255, 255, 255, .03);
-}
-[data-theme-style="caspian"].dark .csp-tab.active {
-  background: var(--csp-muted-bg);
-  color: var(--c-text);
-}
-
-/* ---- chart well — dark gets an inset neomorphic recess ---- */
-[data-theme-style="caspian"].dark .csp-chart-well {
-  box-shadow: inset 3px 3px 6px rgba(0, 0, 0, .8), inset -2px -2px 5px rgba(255, 255, 255, .03);
-}
-
-/* ---- live pulsating status dot: dark gets an outer glow behind the ripple ---- */
+[data-theme-style="caspian"] .label { color: var(--csp-text-2); }
+[data-theme-style="caspian"].dark .csp-glow-path { filter: drop-shadow(0 0 3px var(--csp-glow)); }
 [data-theme-style="caspian"].dark .csp-pulse { box-shadow: 0 0 8px var(--c-success); }
 [data-theme-style="caspian"].dark .csp-pulse.warning { box-shadow: 0 0 8px var(--c-warning); }
 [data-theme-style="caspian"].dark .csp-pulse.danger { box-shadow: 0 0 8px var(--c-danger); }
 
-/* ---- active radiant glow: focused/active interactive elements emit an
-   ambient cyan corona (dark only — the light variant stays flat/crisp) ---- */
-[data-theme-style="caspian"].dark .btn:focus-visible,
-[data-theme-style="caspian"].dark .csp-tab:focus-visible {
-  box-shadow: 0 0 16px rgba(6, 182, 212, .35), 0 0 2px #06B6D4;
+/* ===== global success / error / loading popup (components/Toast.jsx) ===== */
+.gtoast-backdrop {
+  position: fixed; inset: 0; z-index: var(--z-toast); display: grid; place-items: center; padding: var(--sp-4);
+  background: color-mix(in srgb, #0B1220 24%, transparent);
+  animation: gtoast-fade var(--dur-2) ease;
 }
-[data-theme-style="caspian"].dark .csp-tab.active {
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), 0 2px 8px rgba(0, 0, 0, .4), 0 0 16px rgba(6, 182, 212, .2);
+.gtoast {
+  display: flex; align-items: center; gap: var(--sp-3); padding: 14px 20px; border-radius: var(--r-lg);
+  background: var(--c-surface-solid); border: 1px solid var(--c-border); color: var(--c-text);
+  box-shadow: var(--sh-3); font-size: var(--fs-base); font-weight: 600;
+  cursor: pointer; max-width: min(92vw, 380px); min-height: 52px; animation: gtoast-pop var(--dur-2) var(--ease-out);
 }
+.gtoast-ico {
+  width: 28px; height: 28px; flex-shrink: 0; display: grid; place-items: center;
+  border-radius: 50%; font-size: 13px; font-weight: 800; color: #fff;
+}
+.gtoast--success .gtoast-ico { background: var(--c-success-strong); }
+.gtoast--error .gtoast-ico { background: var(--c-danger); }
+.gtoast--loading .gtoast-ico { background: transparent; }
+.gtoast-spin {
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--c-primary) 30%, transparent);
+  border-top-color: var(--c-primary); animation: gtoast-spin .7s linear infinite;
+}
+@keyframes gtoast-spin { to { transform: rotate(360deg); } }
+@keyframes gtoast-pop { from { transform: translateY(8px) scale(.96); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes gtoast-fade { from { opacity: 0; } to { opacity: 1; } }
 
-/* soft outer glow on the live sparkline/area-chart stroke (the reference's
-   `chart-glow-path`) — dark only, grid guides and secondary lines untouched */
-[data-theme-style="caspian"].dark .csp-glow-path {
-  filter: drop-shadow(0 0 3px var(--csp-glow));
-}
-
+/* ==================== user site only ==================== */
 /* ---- Caspian shared page chrome (brand mark, lang pill, auth shell) ---- */
 .csp-brandmark {
   border-radius: 12px; object-fit: contain; flex-shrink: 0; display: block;
@@ -472,10 +515,10 @@ body {
   box-shadow: 0 6px 16px -4px color-mix(in srgb, var(--c-primary) 45%, transparent);
 }
 [data-theme-style="caspian"] .csp-lang {
-  font-size: 12px; font-weight: 700; padding: 6px 12px; border-radius: 10px;
+  font-size: 12px; font-weight: 700; min-height: 36px; padding: 6px 12px; border-radius: 10px;
   border: 1px solid var(--c-border); color: var(--c-text); background: var(--c-surface); cursor: pointer;
 }
-[data-theme-style="caspian"] .csp-lang:hover { border-color: var(--c-primary); color: var(--c-primary); }
+[data-theme-style="caspian"] .csp-lang:hover { border-color: var(--c-primary); color: var(--c-primary-fg); }
 
 [data-theme-style="caspian"] .csp-authshell {
   min-height: 100%; display: grid; place-items: center; padding: 24px 16px;
@@ -494,36 +537,8 @@ body {
 [data-theme-style="caspian"] .csp-authshell-back {
   margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--c-border); text-align: center;
 }
-[data-theme-style="caspian"] .csp-link { color: var(--c-primary); font-weight: 600; font-size: 12px; }
+[data-theme-style="caspian"] .csp-link { color: var(--c-primary-fg); font-weight: 600; font-size: 13px; }
 [data-theme-style="caspian"] .csp-link:hover { text-decoration: underline; }
-
-/* ===== global success/error/loading popup — shared across all pages/themes ===== */
-.gtoast-backdrop {
-  position: fixed; inset: 0; z-index: 300; display: grid; place-items: center;
-  background: color-mix(in srgb, #0b1220 20%, transparent);
-  animation: gtoast-fade .15s ease;
-}
-.gtoast {
-  display: flex; align-items: center; gap: 10px; padding: 14px 22px; border-radius: 16px;
-  background: var(--c-surface); border: 1px solid var(--c-border); color: var(--c-text);
-  box-shadow: 0 20px 50px -12px rgba(0, 0, 0, .35); font-size: 14px; font-weight: 600;
-  cursor: pointer; max-width: min(90vw, 360px); animation: gtoast-pop .18s ease;
-}
-.gtoast-ico {
-  width: 24px; height: 24px; flex-shrink: 0; display: grid; place-items: center;
-  border-radius: 50%; font-size: 12px; font-weight: 800; color: #fff;
-}
-.gtoast--success .gtoast-ico { background: var(--c-success); }
-.gtoast--error .gtoast-ico { background: var(--c-danger); }
-.gtoast--loading .gtoast-ico { background: transparent; }
-.gtoast-spin {
-  width: 18px; height: 18px; border-radius: 50%;
-  border: 2px solid color-mix(in srgb, var(--c-primary) 30%, transparent);
-  border-top-color: var(--c-primary); animation: gtoast-spin .7s linear infinite;
-}
-@keyframes gtoast-spin { to { transform: rotate(360deg); } }
-@keyframes gtoast-pop { from { transform: scale(.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-@keyframes gtoast-fade { from { opacity: 0; } to { opacity: 1; } }
 
 
 /* ---- one font per language (overrides every per-theme / per-page font) ----
@@ -537,3 +552,14 @@ html[lang="en"] body, html[lang="en"] body *:not(code):not(pre):not(kbd):not(sam
   font-family: 'Inter', 'Vazirmatn', ui-sans-serif, system-ui, sans-serif !important;
 }
 code, pre, kbd, samp { font-family: 'JetBrains Mono', ui-monospace, monospace !important; }
+
+/* ---- preview build only (components/PreviewBanner.jsx) ---- */
+.preview-banner {
+  position: fixed; top: 0; inset-inline: 0; z-index: 10000;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 2px 8px;
+  padding: 6px 12px; background: #C2410C; color: #fff; text-align: center;
+  font-size: 12.5px; font-weight: 700; line-height: 1.5;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .18);
+}
+.preview-banner-sep { opacity: .7; }
+html[data-preview] body { padding-top: var(--preview-h, 0px); }

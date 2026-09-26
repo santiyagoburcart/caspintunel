@@ -15,6 +15,7 @@ import History from './pages/History'
 import Profile from './pages/Profile'
 import Help from './pages/Help'
 import Rules from './pages/Rules'
+import { Art } from './components/Art'
 
 const TG_ROUTES = { store: '/store', dashboard: '/', history: '/history', help: '/help', rules: '/rules', profile: '/profile' }
 
@@ -25,7 +26,7 @@ function Private({ children }) {
     return (
       <div className="mx-auto grid min-h-full max-w-sm place-items-center p-6">
         <div className="card space-y-3 text-center">
-          <div className="text-lg font-bold">⚠️</div>
+          <Art name="warning" size={56} className="mx-auto" />
           <Alert>{tgError}</Alert>
           <button className="btn-primary w-full" onClick={() => window.location.reload()}>
             تلاش دوباره / Retry

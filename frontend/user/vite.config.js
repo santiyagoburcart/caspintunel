@@ -13,6 +13,8 @@ const allowedHosts = hosts.length
 
 export default defineConfig({
   plugins: [react()],
+  // VITE_BASE is only set for the preview build (scripts/preview.sh → /preview/)
+  base: process.env.VITE_BASE || '/',
   server: {
     port: 5173,
     allowedHosts,
@@ -21,5 +23,10 @@ export default defineConfig({
       '/media': { target: process.env.API_TARGET || 'http://web:8000', changeOrigin: true },
     },
   },
-  build: { outDir: 'dist', sourcemap: false },
+  build: {
+    outDir: 'dist', sourcemap: false,
+    // 3D illustrations stay separate files (loaded only where shown), never
+    // base64-inlined into the JS bundle
+    assetsInlineLimit: (file) => (file.endsWith('.webp') ? false : undefined),
+  },
 })

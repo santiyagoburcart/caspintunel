@@ -189,7 +189,7 @@ export default function Payments() {
               <div className="flex items-center gap-1.5">
                 {isExpired(p) && <span className="pq-exp-tag">{s.tab_expired}</span>}
                 <span className="rounded-full px-2 py-0.5 text-xs"
-                  style={{ background: 'color-mix(in srgb, var(--c-secondary) 18%, transparent)', color: 'var(--c-secondary)' }}>
+                  style={{ background: 'color-mix(in srgb, var(--c-secondary) 18%, transparent)', color: 'var(--c-secondary-fg)' }}>
                   {p.order_source === 'bot' ? s.src_bot : s.src_site}
                 </span>
               </div>
@@ -232,7 +232,7 @@ export default function Payments() {
                 {t('reject')}
               </button>
               <button type="button" className="btn-ghost text-sm ms-auto inline-flex items-center gap-1.5"
-                style={{ color: 'var(--c-primary)', borderColor: 'color-mix(in srgb, var(--c-primary) 32%, transparent)' }}
+                style={{ color: 'var(--c-primary-fg)', borderColor: 'color-mix(in srgb, var(--c-primary) 32%, transparent)' }}
                 onClick={() => navigate(`/payments/${p.id}`)}>
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
                   strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -249,10 +249,10 @@ export default function Payments() {
 }
 
 const CSS = `
-.pq-live { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; color: var(--c-warning);
+.pq-live { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--c-warning-fg);
   padding: 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--c-warning) 12%, transparent); }
 .pq-live i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
-.pq-live.on { color: var(--c-success); background: color-mix(in srgb, var(--c-success) 12%, transparent); }
+.pq-live.on { color: var(--c-success-fg); background: color-mix(in srgb, var(--c-success) 12%, transparent); }
 .pq-live.on i { animation: pq-blink 1.6s ease-in-out infinite; }
 @keyframes pq-blink { 50% { opacity: .3; } }
 .pq-card--new { animation: pq-new 4s ease-out; }
@@ -260,14 +260,14 @@ const CSS = `
 .pq-tabs { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; border-radius: 12px; background: color-mix(in srgb, var(--c-text-muted) 12%, transparent); }
 .pq-tab { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 9px; font-size: 13px; font-weight: 600; color: var(--c-text-muted); }
 .pq-tab.on { background: var(--c-primary); color: #fff; }
-.pq-tab-n { font-size: 11px; font-weight: 700; padding: 0 6px; min-width: 18px; text-align: center; border-radius: 999px;
+.pq-tab-n { font-size: 12px; font-weight: 700; padding: 0 6px; min-width: 18px; text-align: center; border-radius: 999px;
   background: color-mix(in srgb, currentColor 22%, transparent); font-family: 'JetBrains Mono', monospace; }
 .pq-card--exp { border-color: color-mix(in srgb, var(--c-warning) 40%, var(--c-border)); }
-.pq-exp-tag { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap;
-  background: color-mix(in srgb, var(--c-warning) 16%, transparent); color: var(--c-warning); }
-.pq-exp-note { font-size: 11.5px; color: var(--c-warning); background: color-mix(in srgb, var(--c-warning) 10%, transparent);
+.pq-exp-tag { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap;
+  background: color-mix(in srgb, var(--c-warning) 16%, transparent); color: var(--c-warning-fg); }
+.pq-exp-note { font-size: 12px; color: var(--c-warning-fg); background: color-mix(in srgb, var(--c-warning) 10%, transparent);
   border-radius: 8px; padding: 6px 10px; }
-.pq-customer-card { font-size: 11.5px; color: var(--c-text-muted); background: color-mix(in srgb, var(--c-primary) 7%, transparent);
+.pq-customer-card { font-size: 12px; color: var(--c-text-muted); background: color-mix(in srgb, var(--c-primary) 7%, transparent);
   border-radius: 8px; padding: 6px 10px; }
 .pq-customer-card b { color: var(--c-text); }
 `

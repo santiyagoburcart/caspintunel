@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App'
+import PreviewBanner from './components/PreviewBanner'
 import { AuthProvider } from './lib/auth'
 import { I18nProvider } from './lib/i18n'
 import { ThemeProvider } from './theme/ThemeProvider'
@@ -26,7 +27,8 @@ import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <BrowserRouter>
+    <PreviewBanner />
+    <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
       <I18nProvider>
         <ThemeProvider>
           <ToastProvider>

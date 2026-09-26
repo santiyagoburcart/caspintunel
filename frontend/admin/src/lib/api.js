@@ -28,7 +28,7 @@ function sessionExpired() {
   tokens.clear()
   if (!location.pathname.endsWith('/login')) {
     try { sessionStorage.setItem(SESSION_EXPIRED_KEY, '1') } catch { /* private browsing */ }
-    location.href = '/panel/login'
+    location.href = `${import.meta.env.BASE_URL}login`
   }
   return new Promise(() => {})
 }

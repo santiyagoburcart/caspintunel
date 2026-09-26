@@ -2,6 +2,8 @@
  *  so a theme change from the panel restyles the app with no rebuild. */
 export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
+  // classes composed at runtime ('badge-' + tone) that the content scan can't see
+  safelist: ['badge-success', 'badge-danger', 'badge-warning', 'badge-primary'],
   darkMode: 'class',
   theme: {
     extend: {

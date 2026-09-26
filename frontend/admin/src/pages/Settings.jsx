@@ -8,6 +8,8 @@ import { Alert, Field, Spinner, Toggle } from '../components/ui'
 import { useToast } from '../components/Toast'
 import { copyToClipboard } from '../lib/clipboard'
 import { useDeleteConfirm } from '../lib/confirmDelete'
+import { ArtTile } from '../components/Art'
+import { X } from '@phosphor-icons/react'
 
 function HubIco({ d, w = 18 }) {
   return (
@@ -104,17 +106,25 @@ const HUB = {
 
 // icon tint by section category — network blue, bots violet, finance green,
 // security orange, appearance pink, everything else neutral gray
+// Settings hub rows: a 3D illustration per destination (components/Art.jsx)
+const HUB_ART = {
+  transactions: 'receipt', accounting: 'chart-bar', cards: 'card', plans: 'package', deleted: 'trash',
+  notifications: 'bell', monitoring: 'satellite', panel: 'link', bots: 'robot', email: 'envelope', apps: 'phone',
+  branding: 'sparkles', themes: 'palette', pages: 'page', roles: 'key', sms_devices: 'chat', sms_sources: 'bank',
+  unique_amount: 'money', alerts: 'warning', sync: 'renew', backup: 'backup', requirements: 'clipboard', display: 'globe',
+}
+
 const HUB_COLOR = {
-  themes: '#DB2777', branding: '#DB2777',
+  themes: '#1464BA', branding: '#1464BA',
   panel: '#1464BA',
-  bots: '#7C3AED', email: '#0891B2',
+  bots: '#0891B2', email: '#0891B2',
   sms_devices: '#11AB53', sms_sources: '#11AB53', unique_amount: '#11AB53',
   alerts: 'var(--c-warning)',
   requirements: '#D97706', roles: '#D97706',
   backup: '#1464BA',
   pages: '#64748B',
   transactions: '#11AB53', accounting: '#11AB53', cards: '#11AB53',
-  apps: '#0891B2', plans: '#1464BA', deleted: 'var(--c-danger)', notifications: '#7C3AED',
+  apps: '#0891B2', plans: '#1464BA', deleted: 'var(--c-danger)', notifications: '#0891B2',
   monitoring: '#0891B2', sync: '#1464BA', display: '#64748B',
 }
 
@@ -180,9 +190,13 @@ function SettingsHub() {
               const c = HUB_COLOR[key] || '#64748B'
               return (
                 <Link key={to} to={to} className="st-hub-item">
-                  <span className="st-hub-ico" style={{ background: `color-mix(in srgb, ${c} 14%, transparent)`, color: c }}>
-                    <HubIco d={HUB_ICONS[key]} />
-                  </span>
+                  {HUB_ART[key]
+                    ? <ArtTile name={HUB_ART[key]} size={30} tile={44} className="st-hub-art" />
+                    : (
+                      <span className="st-hub-ico" style={{ background: `color-mix(in srgb, ${c} 14%, transparent)`, color: c }}>
+                        <HubIco d={HUB_ICONS[key]} />
+                      </span>
+                    )}
                   <span className="min-w-0 flex-1">
                     <span className="block font-semibold text-sm">{h[key].t}</span>
                     <span className="block text-xs text-muted mt-0.5 truncate">{h[key].d}</span>
@@ -340,7 +354,7 @@ function SmsSourceModal({ mode, source, s, t, onClose, onSaved }) {
       <form className="sdm-modal card" onSubmit={submit} role="dialog" aria-modal="true">
         <div className="sdm-modal-head">
           <h2 className="font-bold">{s[SRC_MODAL_TITLE[mode]]}</h2>
-          <button type="button" className="sdm-icon-btn" onClick={onClose} aria-label={t('cancel')}>✕</button>
+          <button type="button" className="sdm-icon-btn" onClick={onClose} aria-label={t('cancel')}><X size={18} aria-hidden="true" /></button>
         </div>
 
         <div className="sdm-modal-body">
@@ -511,7 +525,7 @@ function SmsDeviceModal({ mode, device, s, t, onClose, onCreated }) {
       <div className="sdm-modal card" role="dialog" aria-modal="true">
         <div className="sdm-modal-head">
           <h2 className="font-bold">{s[DEV_MODAL_TITLE[mode]]}</h2>
-          <button type="button" className="sdm-icon-btn" onClick={onClose} aria-label={t('cancel')}>✕</button>
+          <button type="button" className="sdm-icon-btn" onClick={onClose} aria-label={t('cancel')}><X size={18} aria-hidden="true" /></button>
         </div>
 
         <div className="sdm-modal-body">
@@ -948,7 +962,8 @@ const CSS = `
   .st-solo-bar .btn-primary { flex: 2; min-height: 44px; } .st-solo-bar .btn-ghost { flex: 1; min-height: 44px; }
   .st-solo { padding-bottom: 70px; }
 }
-.st-hub-gh { font-size: 11.5px; font-weight: 700; color: var(--c-text-muted); margin: 0 4px 6px; }
+.st-hub-gh { font-size: 12.5px; font-weight: 700; color: var(--c-text-muted); margin: 0 4px 8px; }
+.st-hub-art { border-radius: 12px; }
 .st-hub-chev { color: var(--c-text-muted); display: grid; }
 [dir="rtl"] .st-hub-chev { transform: scaleX(-1); }
 
@@ -957,14 +972,14 @@ const CSS = `
 .st-hub-item:last-child { border-bottom: 0; }
 .st-hub-item:hover { background: color-mix(in srgb, var(--c-primary) 5%, transparent); }
 .st-hub-ico { width: 36px; height: 36px; border-radius: 11px; flex-shrink: 0; display: grid; place-items: center;
-  background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary); }
-.st-hub-ico--danger { background: color-mix(in srgb, var(--c-danger) 12%, transparent); color: var(--c-danger); }
-.st-hub-item--danger { color: var(--c-danger); }
+  background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary-fg); }
+.st-hub-ico--danger { background: color-mix(in srgb, var(--c-danger) 12%, transparent); color: var(--c-danger-fg); }
+.st-hub-item--danger { color: var(--c-danger-fg); }
 @media (max-width: 767px) { .set-mobile-only { display: block; } .st-hub { display: flex; flex-direction: column; gap: 14px; } }
 
 .st-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between; }
 @media (max-width: 640px) {
-  .st-head { position: sticky; top: 0; z-index: 20; margin: -12px -12px 4px; padding: 12px; background: color-mix(in srgb, var(--c-bg) 92%, transparent); backdrop-filter: blur(8px); }
+  .st-head { position: sticky; top: var(--preview-h, 0px); z-index: 20; margin: -12px -12px 4px; padding: 12px; background: color-mix(in srgb, var(--c-bg) 92%, transparent); backdrop-filter: blur(8px); }
   .st-head > div:last-child { width: 100%; }
   .st-head .btn-primary, .st-head .btn-ghost { flex: 1; }
   .st-foot { flex-direction: column; align-items: stretch; }
@@ -979,7 +994,7 @@ const CSS = `
 .st-fld { display: flex; flex-direction: column; gap: 6px; }
 .st-fld .label { font-size: 12px; }
 .st-fld-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-.st-hint { font-size: 11px; color: var(--c-text-muted); }
+.st-hint { font-size: 12px; color: var(--c-text-muted); }
 
 .st-toggles { padding: 16px 20px 8px; }
 .st-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 0; }
@@ -992,7 +1007,7 @@ const CSS = `
 
 .st-info { display: flex; gap: 14px; align-items: flex-start; }
 .st-info-ico { width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0; display: grid; place-items: center;
-  background: color-mix(in srgb, var(--c-primary) 13%, transparent); color: var(--c-primary); }
+  background: color-mix(in srgb, var(--c-primary) 13%, transparent); color: var(--c-primary-fg); }
 
 /* ---- SMS sources & devices sections (share the same table/modal look) ---- */
 .sms-dev-card { padding: 0; overflow: hidden; }
@@ -1005,13 +1020,13 @@ const CSS = `
 
 .sms-dev-table-wrap { overflow-x: auto; }
 .sms-dev-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-.sms-dev-table th { text-align: start; padding: 10px 20px; font-size: 11px; font-weight: 600; color: var(--c-text-muted);
+.sms-dev-table th { text-align: start; padding: 10px 20px; font-size: 12px; font-weight: 600; color: var(--c-text-muted);
   border-bottom: 1px solid var(--c-border); white-space: nowrap; }
 .sms-dev-table td { padding: 12px 20px; border-bottom: 1px solid var(--c-border); vertical-align: middle; }
 .sms-dev-table tr:last-child td { border-bottom: 0; }
 .sms-dev-masked { color: var(--c-text-muted); }
 .sms-dev-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.sms-dev-del:hover { color: var(--c-danger); border-color: var(--c-danger); }
+.sms-dev-del:hover { color: var(--c-danger-fg); border-color: var(--c-danger); }
 
 /* stack into cards below ~640px */
 @media (max-width: 640px) {
@@ -1020,7 +1035,7 @@ const CSS = `
   .sms-dev-table tr { padding: 12px 16px; border-bottom: 1px solid var(--c-border); }
   .sms-dev-table td { display: flex; align-items: center; justify-content: space-between; gap: 12px;
     padding: 6px 0; border-bottom: 0; }
-  .sms-dev-table td::before { content: attr(data-label); font-size: 11px; font-weight: 600; color: var(--c-text-muted); }
+  .sms-dev-table td::before { content: attr(data-label); font-size: 12px; font-weight: 600; color: var(--c-text-muted); }
 }
 
 /* modal (local to this page — do not confuse with Cards.jsx's cd-* classes) */
@@ -1037,7 +1052,7 @@ const CSS = `
 .sms-token-box { padding: 13px 14px; border-radius: 14px;
   border: 1px solid color-mix(in srgb, var(--c-warning) 30%, transparent);
   background: color-mix(in srgb, var(--c-warning) 8%, transparent); }
-.sms-token-warn { font-size: 12px; line-height: 1.7; color: color-mix(in srgb, var(--c-warning) 85%, var(--c-text)); margin: 0 0 10px; }
+.sms-token-warn { font-size: 12px; line-height: 1.7; color: var(--c-warning-fg); margin: 0 0 10px; }
 .sms-token-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px;
   background: var(--c-surface); border: 1px solid var(--c-border); }
 .sms-token-row code { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: 12px; }

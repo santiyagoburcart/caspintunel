@@ -6,6 +6,7 @@ import { useTheme } from '../theme/ThemeProvider'
 import { jalali, toman, tomanParts } from '../lib/format'
 import { Spinner, StatusBadge } from '../components/ui'
 import { AuthImage } from '../components/AuthImage'
+import { EmptyState } from '../components/Art'
 
 const PAY_NOTE = {
   pending: ['pay_pending', 'var(--c-success)'],
@@ -28,7 +29,11 @@ function LegacyHistory() {
     <div className="space-y-3">
       <h1 className="text-lg font-bold">{t('history')}</h1>
       <div className="card divide-y" style={{ borderColor: 'var(--c-border)' }}>
-        {rows.length === 0 && <div className="py-8 text-center text-muted">{t('no_orders')}</div>}
+        {rows.length === 0 && (
+          <EmptyState art="receipt" title={t('no_orders')}>
+            <Link to="/store" className="btn-primary">{t('buy')}</Link>
+          </EmptyState>
+        )}
         {rows.map((o) => {
           const note = o.status === 'pending_payment' && PAY_NOTE[o.payment_status]
           return (
@@ -43,7 +48,7 @@ function LegacyHistory() {
                 )}
                 {o.status === 'pending_payment' && (
                   <Link to={`/checkout?resume=${o.id}`} className="mt-1 inline-block text-xs text-primary hover:underline">
-                    {t('pay')} →
+                    {t('pay')} <span className="dir-arrow" aria-hidden="true">→</span>
                   </Link>
                 )}
               </div>
@@ -138,12 +143,16 @@ function CaspianHistory() {
           </div>
           <div className="csp-hist-search">
             <HI d={H.search} w={16} />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('search_order')} dir="auto" />
+            <input type="search" aria-label={t('search_order')} value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('search_order')} dir="auto" />
           </div>
         </div>
 
         {shown.length === 0 ? (
-          <div className="csp-hist-empty">{t('no_orders')}</div>
+          <div className="csp-hist-empty">
+            <EmptyState art="receipt" title={t('no_orders')}>
+              <Link to="/store" className="btn-primary">{t('buy')}</Link>
+            </EmptyState>
+          </div>
         ) : (
           <div className="csp-hist-list">
             {shown.map((o) => <Row key={o.id} o={o} t={t} lang={lang} onReceipt={() => setReceipt(o)} />)}
@@ -177,7 +186,9 @@ function Row({ o, t, lang, onReceipt }) {
   const pendingPay = o.status === 'pending_payment'
   const plan = (lang === 'fa' ? o.plan_name : (o.plan_name_en || o.plan_name)) || o.plan_name || '—'
   const icon = rejected ? H.timerOff : pendingPay ? H.clock : H.shield
-  const tone = rejected ? 'danger' : pendingPay ? 'warning' : 'success'
+  // expired = neutral (not an error); failed / rejected = danger; paid / completed = success
+  const tone = rejected || o.status === 'failed' ? 'danger' : pendingPay ? 'warning'
+    : o.status === 'expired' ? 'muted' : 'success'
   const { num, unit } = tomanParts(o.amount_unique ?? o.amount, lang)
   const svc = o.requested_account_name
 
@@ -208,7 +219,7 @@ function Row({ o, t, lang, onReceipt }) {
         </div>
         <div className="csp-hist-row-actions">
           {o.receipt_url && (
-            <button type="button" className="csp-hist-btn" onClick={onReceipt}>
+            <button type="button" className="csp-hist-btn" onClick={onReceipt} aria-label={t('view_receipt')} title={t('view_receipt')}>
               <HI d={H.receipt} w={15} /><span className="csp-hist-btn-txt">{t('view_receipt')}</span>
             </button>
           )}
@@ -288,44 +299,47 @@ const CSS = `
 .csp-hist-row:hover { background: color-mix(in srgb, var(--c-text-muted) 9%, transparent); }
 .csp-hist-row-l { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1; }
 .csp-hist-row-ico { width: 44px; height: 44px; flex-shrink: 0; display: grid; place-items: center; border-radius: 12px; }
-.csp-hist-row-ico[data-tone="success"] { background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary); }
-.csp-hist-row-ico[data-tone="warning"] { background: color-mix(in srgb, var(--c-warning) 14%, transparent); color: var(--c-warning); }
-.csp-hist-row-ico[data-tone="danger"] { background: color-mix(in srgb, var(--c-danger) 12%, transparent); color: var(--c-danger); }
+.csp-hist-row-ico[data-tone="success"] { background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary-fg); }
+.csp-hist-row-ico[data-tone="warning"] { background: color-mix(in srgb, var(--c-warning) 14%, transparent); color: var(--c-warning-fg); }
+.csp-hist-row-ico[data-tone="danger"] { background: color-mix(in srgb, var(--c-danger) 12%, transparent); color: var(--c-danger-fg); }
+.csp-hist-row-ico[data-tone="muted"] { background: color-mix(in srgb, var(--c-text-muted) 12%, transparent); color: var(--c-text-muted); }
 .csp-hist-row-info { min-width: 0; }
 .csp-hist-row-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .csp-hist-row-title b { font-size: 13.5px; font-weight: 700; }
 .csp-hist-pill {
   display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px;
-  font-size: 10px; font-weight: 700;
+  font-size: 12px; font-weight: 700;
 }
 .csp-hist-pill i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
-.csp-hist-pill[data-tone="success"] { color: var(--c-success); background: color-mix(in srgb, var(--c-success) 14%, transparent); }
-.csp-hist-pill[data-tone="warning"] { color: var(--c-warning); background: color-mix(in srgb, var(--c-warning) 14%, transparent); }
-.csp-hist-pill[data-tone="danger"] { color: var(--c-danger); background: color-mix(in srgb, var(--c-danger) 14%, transparent); }
-.csp-hist-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 5px; font-size: 10.5px; color: var(--c-text-muted); }
+.csp-hist-pill[data-tone="success"] { color: var(--c-success-fg); background: color-mix(in srgb, var(--c-success) 14%, transparent); }
+.csp-hist-pill[data-tone="warning"] { color: var(--c-warning-fg); background: color-mix(in srgb, var(--c-warning) 14%, transparent); }
+.csp-hist-pill[data-tone="danger"] { color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 14%, transparent); }
+.csp-hist-pill[data-tone="muted"] { color: var(--c-text-muted); background: color-mix(in srgb, var(--c-text-muted) 14%, transparent); }
+.csp-hist-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 5px; font-size: 12px; color: var(--c-text-muted); }
 .csp-hist-meta span { display: inline-flex; align-items: center; gap: 4px; }
-.csp-hist-meta-svc { color: var(--c-primary) !important; }
-.csp-hist-reason { margin-top: 5px; font-size: 10.5px; color: var(--c-danger); line-height: 1.6; }
+.csp-hist-meta-svc { color: var(--c-primary-fg) !important; }
+.csp-hist-reason { margin-top: 5px; font-size: 12px; color: var(--c-danger-fg); line-height: 1.6; }
 
 .csp-hist-row-r { display: flex; align-items: center; gap: 14px; margin-inline-start: auto; }
 .csp-hist-amt { display: flex; flex-direction: column; gap: 2px; text-align: end; }
 .csp-hist-amt span b { font-size: 16px; font-weight: 800; }
-.csp-hist-amt span { font-size: 11px; color: var(--c-text-muted); }
-.csp-hist-amt small { font-size: 10px; color: var(--c-text-muted); }
+.csp-hist-amt span { font-size: 12px; color: var(--c-text-muted); }
+.csp-hist-amt small { font-size: 12px; color: var(--c-text-muted); }
 .csp-hist-row-actions { display: flex; gap: 6px; }
 .csp-hist-btn {
-  display: inline-flex; align-items: center; gap: 5px; padding: 8px 13px; border-radius: 999px;
-  font-size: 11.5px; font-weight: 700; cursor: pointer; white-space: nowrap;
-  border: 1px solid var(--c-border); background: var(--c-surface); color: var(--c-primary); transition: .15s;
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 40px; min-width: 40px; padding: 8px 13px; border-radius: 999px;
+  font-size: 12.5px; font-weight: 700; cursor: pointer; white-space: nowrap;
+  border: 1px solid var(--c-border); background: var(--c-surface); color: var(--c-primary-fg); transition: .15s;
 }
 :root:not(.dark) .csp-hist-btn { background: #fff; }
 .csp-hist-btn:hover { border-color: var(--c-primary); }
 .csp-hist-btn--primary { background: var(--c-primary); color: #fff; border-color: var(--c-primary); }
 .csp-hist-btn--danger { background: var(--c-danger); color: #fff; border-color: var(--c-danger); }
 @media (max-width: 560px) { .csp-hist-btn-txt { display: none; } }
+@media (max-width: 767px), (pointer: coarse) { .csp-hist-btn { min-height: 44px; min-width: 44px; } }
 
 .csp-hist-empty { padding: 40px; text-align: center; color: var(--c-text-muted); }
-.csp-hist-foot { padding-top: 12px; border-top: 1px solid var(--c-border); font-size: 11px; color: var(--c-text-muted); }
+.csp-hist-foot { padding-top: 12px; border-top: 1px solid var(--c-border); font-size: 12px; color: var(--c-text-muted); }
 
 .csp-hist-tips { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media (max-width: 640px) { .csp-hist-tips { grid-template-columns: 1fr; } }
@@ -334,9 +348,9 @@ const CSS = `
   background: var(--c-surface); border: 1px solid var(--c-border);
 }
 :root:not(.dark) .csp-hist-tip { background: #fff; }
-.csp-hist-tip-ico { width: 34px; height: 34px; flex-shrink: 0; display: grid; place-items: center; border-radius: 10px; background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary); }
+.csp-hist-tip-ico { width: 34px; height: 34px; flex-shrink: 0; display: grid; place-items: center; border-radius: 10px; background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary-fg); }
 .csp-hist-tip-t { font-size: 12.5px; font-weight: 700; }
-.csp-hist-tip-d { font-size: 10.5px; color: var(--c-text-muted); margin-top: 3px; line-height: 1.6; }
+.csp-hist-tip-d { font-size: 12px; color: var(--c-text-muted); margin-top: 3px; line-height: 1.6; }
 
 /* receipt modal */
 .csp-hist-overlay { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; padding: 16px; background: rgba(15,23,42,.6); backdrop-filter: blur(4px); }

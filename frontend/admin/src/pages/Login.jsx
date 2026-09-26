@@ -4,6 +4,7 @@ import { useAuth } from '../lib/auth'
 import { useI18n } from '../lib/i18n'
 import { useTheme } from '../theme/ThemeProvider'
 import { SESSION_EXPIRED_KEY } from '../lib/api'
+import { USER_URL } from '../lib/site'
 import { Alert, Field, Spinner } from '../components/ui'
 
 export default function Login() {
@@ -60,11 +61,11 @@ function LegacyLogin() {
         {info && <Alert kind="warning">{t('session_expired_msg')}</Alert>}
         <Alert>{err}</Alert>
         <Field label={t('username')}>
-          <input className="input" dir="ltr" autoFocus value={f.username}
+          <input className="input" dir="ltr" autoFocus value={f.username} autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false}
             onChange={(e) => setF({ ...f, username: e.target.value })} />
         </Field>
         <Field label={t('password')}>
-          <input className="input" dir="ltr" type="password" value={f.password}
+          <input className="input" dir="ltr" type="password" autoComplete="current-password" value={f.password}
             onChange={(e) => setF({ ...f, password: e.target.value })} />
         </Field>
         <button className="btn-primary w-full" disabled={busy}>{busy ? <Spinner /> : t('login')}</button>
@@ -129,7 +130,7 @@ function CaspianLogin() {
           <button type="button" className="al-lang" onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')}>
             {lang === 'fa' ? 'EN' : 'فا'}
           </button>
-          <a href="/" className="al-portal">{t('back_to_user_portal')}</a>
+          <a href={USER_URL} className="al-portal">{t('back_to_user_portal')}</a>
         </div>
       </header>
 
@@ -155,7 +156,7 @@ function CaspianLogin() {
               <span className="al-fld-label">{t('admin_id')}</span>
               <span className="al-fld-wrap">
                 <LI d={I.user} />
-                <input className="al-input mono" dir="ltr" autoFocus value={f.username}
+                <input className="al-input mono" dir="ltr" autoFocus value={f.username} autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false}
                   onChange={(e) => setF({ ...f, username: e.target.value })} placeholder="root_admin" />
               </span>
             </label>
@@ -200,7 +201,7 @@ const CSS = `
 .al-glow-2 { width: 380px; height: 280px; bottom: -120px; inset-inline-start: 12%; background: color-mix(in srgb, var(--c-danger) 12%, transparent); }
 
 .al-top {
-  position: sticky; top: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  position: sticky; top: var(--preview-h, 0px); z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 12px;
   padding: 13px clamp(16px, 4vw, 40px); border-bottom: 1px solid var(--c-border);
   background: color-mix(in srgb, var(--c-surface) 78%, transparent);
   -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
@@ -208,26 +209,26 @@ const CSS = `
 .al-brand { display: flex; align-items: center; gap: 11px; min-width: 0; }
 .al-brand-ico {
   width: 34px; height: 34px; flex-shrink: 0; display: grid; place-items: center; border-radius: 10px;
-  background: color-mix(in srgb, var(--c-danger) 14%, transparent); color: var(--c-danger);
+  background: color-mix(in srgb, var(--c-danger) 14%, transparent); color: var(--c-danger-fg);
   border: 1px solid color-mix(in srgb, var(--c-danger) 26%, transparent);
 }
 .al-brand-name { display: flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 800; }
 .al-badge {
-  padding: 1px 7px; border-radius: 6px; font-size: 9.5px; font-weight: 700;
-  color: var(--c-danger); background: color-mix(in srgb, var(--c-danger) 14%, transparent);
+  padding: 1px 7px; border-radius: 6px; font-size: 12px; font-weight: 700;
+  color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 14%, transparent);
   border: 1px solid color-mix(in srgb, var(--c-danger) 26%, transparent);
 }
-.al-brand-sub { font-size: 10.5px; color: var(--c-text-muted); margin-top: 1px; }
+.al-brand-sub { font-size: 12px; color: var(--c-text-muted); margin-top: 1px; }
 .al-top-r { display: flex; align-items: center; gap: 8px; }
 .al-lang { font-size: 12px; font-weight: 700; padding: 6px 12px; border-radius: 10px; cursor: pointer; border: 1px solid var(--c-border); color: var(--c-text); background: var(--c-surface); }
-.al-portal { font-size: 11.5px; font-weight: 600; padding: 7px 13px; border-radius: 10px; color: var(--c-text-muted); background: color-mix(in srgb, var(--c-text-muted) 10%, transparent); }
+.al-portal { font-size: 12px; font-weight: 600; padding: 7px 13px; border-radius: 10px; color: var(--c-text-muted); background: color-mix(in srgb, var(--c-text-muted) 10%, transparent); }
 .al-portal:hover { color: var(--c-text); }
 
 .al-main { flex: 1; display: grid; place-items: center; padding: clamp(24px, 6vw, 60px) 16px; position: relative; z-index: 1; width: 100%; }
 .al-head { text-align: center; margin-bottom: 20px; max-width: 380px; }
 .al-shield {
   display: inline-grid; place-items: center; width: 60px; height: 60px; border-radius: 18px; margin-bottom: 12px;
-  color: var(--c-danger); background: var(--c-surface); border: 1px solid var(--c-border);
+  color: var(--c-danger-fg); background: var(--c-surface); border: 1px solid var(--c-border);
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--c-danger) 8%, transparent);
 }
 .al-head h1 { font-size: 22px; font-weight: 800; }
@@ -243,8 +244,8 @@ const CSS = `
 
 .al-warn {
   display: flex; align-items: flex-start; gap: 9px; padding: 11px 13px; border-radius: 14px; margin: 6px 0 16px;
-  font-size: 11px; line-height: 1.7;
-  color: color-mix(in srgb, var(--c-danger) 85%, var(--c-text));
+  font-size: 12px; line-height: 1.7;
+  color: var(--c-danger-fg);
   background: color-mix(in srgb, var(--c-danger) 9%, transparent);
   border: 1px solid color-mix(in srgb, var(--c-danger) 22%, transparent);
 }
@@ -252,7 +253,7 @@ const CSS = `
 
 .al-form { display: flex; flex-direction: column; gap: 13px; }
 .al-fld { display: flex; flex-direction: column; gap: 6px; }
-.al-fld-label { font-size: 11.5px; font-weight: 700; color: var(--csp-text-2, var(--c-text)); }
+.al-fld-label { font-size: 12px; font-weight: 700; color: var(--csp-text-2, var(--c-text)); }
 .al-fld-wrap { position: relative; display: flex; align-items: center; }
 .al-fld-wrap > svg { position: absolute; inset-inline-start: 13px; color: var(--c-text-muted); pointer-events: none; }
 .al-input {
@@ -284,8 +285,8 @@ const CSS = `
 .al-foot {
   margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--c-border);
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  font-size: 10px; color: var(--c-text-muted);
+  font-size: 12px; color: var(--c-text-muted);
 }
 .al-foot span { display: inline-flex; align-items: center; gap: 5px; }
-.al-foot span:first-child svg { color: var(--c-success); }
+.al-foot span:first-child svg { color: var(--c-success-fg); }
 `

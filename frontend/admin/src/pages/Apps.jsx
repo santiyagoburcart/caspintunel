@@ -248,7 +248,7 @@ export default function Apps() {
         <h1 className="text-lg font-bold">{s.h1}</h1>
         <p className="text-sm text-muted mt-1">{s.sub}</p>
       </div>
-      {err && <div className="card text-sm" style={{ color: 'var(--c-danger)' }}>{err}</div>}
+      {err && <div className="card text-sm" style={{ color: 'var(--c-danger-fg)' }}>{err}</div>}
       {rows === null ? <div className="grid place-items-center py-16"><Spinner /></div> : (
         <>
           <div className="ap-cards">
@@ -273,19 +273,19 @@ const CSS = `
 .ap-ico { width: 54px; height: 54px; border-radius: 16px; flex-shrink: 0; display: grid; place-items: center; }
 .ap-title { font-size: 16px; font-weight: 800; }
 .ap-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-.ap-chip { font-size: 11px; padding: 2px 8px; border-radius: 999px; color: var(--c-text-muted); background: color-mix(in srgb, var(--c-text-muted) 11%, transparent); }
-.ap-chip--src { color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 11%, transparent); }
+.ap-chip { font-size: 12px; padding: 2px 8px; border-radius: 999px; color: var(--c-text-muted); background: color-mix(in srgb, var(--c-text-muted) 11%, transparent); }
+.ap-chip--src { color: var(--c-primary-fg); background: color-mix(in srgb, var(--c-primary) 11%, transparent); }
 .ap-what { font-size: 13.5px; line-height: 2; color: var(--c-text); }
 .ap-cols { display: grid; grid-template-columns: 1fr; gap: 16px; }
 @media (min-width: 640px) { .ap-cols { grid-template-columns: 1fr 1fr; } }
 .ap-h3 { font-size: 12.5px; font-weight: 800; margin-bottom: 8px; }
 .ap-list { display: flex; flex-direction: column; gap: 7px; font-size: 12.5px; line-height: 1.8; }
 .ap-list li { display: flex; gap: 7px; align-items: flex-start; }
-.ap-list svg { color: var(--c-success); flex-shrink: 0; margin-top: 5px; }
+.ap-list svg { color: var(--c-success-fg); flex-shrink: 0; margin-top: 5px; }
 .ap-steps { display: flex; flex-direction: column; gap: 8px; font-size: 12.5px; line-height: 1.8; }
 .ap-steps li { display: flex; gap: 9px; align-items: flex-start; }
-.ap-steps b { width: 22px; height: 22px; flex-shrink: 0; border-radius: 999px; display: grid; place-items: center; font-size: 11px; margin-top: 2px;
-  color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 12%, transparent); }
+.ap-steps b { width: 22px; height: 22px; flex-shrink: 0; border-radius: 999px; display: grid; place-items: center; font-size: 12px; margin-top: 2px;
+  color: var(--c-primary-fg); background: color-mix(in srgb, var(--c-primary) 12%, transparent); }
 .ap-notes { padding: 10px 12px; border-radius: 12px; font-size: 12.5px; background: color-mix(in srgb, var(--c-text-muted) 8%, transparent); }
 .ap-notes p { margin-top: 4px; white-space: pre-wrap; line-height: 1.8; }
 .ap-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
@@ -295,7 +295,7 @@ const CSS = `
 .ap-manage { border-top: 1px solid var(--c-border); padding-top: 12px; }
 .ap-manage summary { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; font-size: 13px; font-weight: 700; color: var(--c-text-muted); list-style: none; }
 .ap-manage summary::-webkit-details-marker { display: none; }
-.ap-manage[open] summary { color: var(--c-primary); }
+.ap-manage[open] summary { color: var(--c-primary-fg); }
 .ap-form { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
 .ap-grid2 { display: grid; grid-template-columns: 1fr; gap: 12px; }
 @media (min-width: 640px) { .ap-grid2 { grid-template-columns: 1fr 1fr; } }
@@ -307,6 +307,6 @@ const CSS = `
 .ap-copy-v { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--c-border); min-width: 0; }
 .ap-copy-v code { flex: 1; min-width: 0; font-size: 12.5px; overflow-wrap: anywhere; }
 .ap-copy-btn { display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; font-size: 12px; font-weight: 700; padding: 6px 10px; border-radius: 9px;
-  color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 10%, transparent); min-height: 34px; }
+  color: var(--c-primary-fg); background: color-mix(in srgb, var(--c-primary) 10%, transparent); min-height: 34px; }
 @media (max-width: 767px) { .ap-dl { flex: 1 1 100%; justify-content: center; } }
 `

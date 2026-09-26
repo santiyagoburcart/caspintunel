@@ -57,7 +57,7 @@ function Upload({ label, hint, current, onFile, s, accept }) {
       <div className="min-w-0 flex-1">
         <span className="label">{label}</span>
         <p className="br-hint">{hint}</p>
-        <input className="br-file" type="file" accept={accept} onChange={(e) => pick(e.target.files[0])} />
+        <input className="br-file" type="file" accept={accept} aria-label={label} onChange={(e) => pick(e.target.files[0])} />
       </div>
     </div>
   )
@@ -158,7 +158,7 @@ export default function Branding() {
 const CSS = `
 .br-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between; }
 @media (max-width: 640px) {
-  .br-head { position: sticky; top: 0; z-index: 20; margin: -12px -12px 4px; padding: 12px; background: color-mix(in srgb, var(--c-bg) 92%, transparent); backdrop-filter: blur(8px); }
+  .br-head { position: sticky; top: var(--preview-h, 0px); z-index: 20; margin: -12px -12px 4px; padding: 12px; background: color-mix(in srgb, var(--c-bg) 92%, transparent); backdrop-filter: blur(8px); }
   .br-head .btn-primary { width: 100%; }
   .br-upload { flex-direction: column; align-items: flex-start; }
   .br-foot { flex-direction: column; align-items: stretch; }
@@ -166,15 +166,15 @@ const CSS = `
 }
 .br-card { padding: 0; overflow: hidden; }
 .br-card-head { padding: 18px 20px; border-bottom: 1px solid var(--c-border); display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
-.br-domain-badge { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 999px; white-space: nowrap;
-  background: color-mix(in srgb, var(--c-success) 14%, transparent); color: var(--c-success); font-family: 'JetBrains Mono', monospace; }
+.br-domain-badge { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; white-space: nowrap;
+  background: color-mix(in srgb, var(--c-success) 14%, transparent); color: var(--c-success-fg); font-family: 'JetBrains Mono', monospace; }
 
 .br-fields { padding: 20px; display: grid; grid-template-columns: 1fr; gap: 16px; }
 @media (min-width: 640px) { .br-fields { grid-template-columns: 1fr 1fr; } .br-fld--wide { grid-column: 1 / -1; } }
 .br-fld { display: flex; flex-direction: column; gap: 6px; }
 .br-fld .label { font-size: 12px; }
 .br-fld-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-.br-hint { font-size: 11px; color: var(--c-text-muted); }
+.br-hint { font-size: 12px; color: var(--c-text-muted); }
 
 .br-media { padding: 4px 20px 20px; border-top: 1px solid var(--c-border); }
 .br-media-h { display: block; margin: 14px 0 12px; }
@@ -184,7 +184,7 @@ const CSS = `
   border: 1px solid var(--c-border); background: color-mix(in srgb, var(--c-text-muted) 8%, transparent); }
 .br-upload-thumb img { width: 100%; height: 100%; object-fit: contain; }
 .br-upload-empty { color: var(--c-text-muted); }
-.br-hint { font-size: 11px; color: var(--c-text-muted); }
+.br-hint { font-size: 12px; color: var(--c-text-muted); }
 .br-file { font-size: 12px; margin-top: 8px; color: var(--c-text-muted); }
 .br-file::file-selector-button { border: 1px solid var(--c-border); background: transparent; color: var(--c-text);
   padding: 5px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; margin-inline-end: 10px; }

@@ -103,16 +103,16 @@ export function BankFilterSheet({ open, onClose, value, onApply }) {
 
 export const BFS_CSS = `
 .bfs-row-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
-.bfs-mini-btn { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px; color: var(--c-text-muted); border: 1px solid var(--c-border); }
-.bfs-mini-btn:hover { color: var(--c-primary); border-color: var(--c-primary); }
+.bfs-mini-btn { font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; color: var(--c-text-muted); border: 1px solid var(--c-border); }
+.bfs-mini-btn:hover { color: var(--c-primary-fg); border-color: var(--c-primary); }
 .bfs-chip-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
 .bfs-chip { display: flex; align-items: center; gap: 6px; padding: 8px 10px; border-radius: 10px; font-size: 12px; font-weight: 600;
   border: 1px solid var(--c-border); background: transparent; color: var(--c-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bfs-chip:hover { border-color: var(--c-primary); }
 .bfs-chip-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--c-text-muted); flex-shrink: 0; }
-.bfs-chip.on { border-color: color-mix(in srgb, var(--c-success) 45%, transparent); background: color-mix(in srgb, var(--c-success) 12%, transparent); color: var(--c-success); }
+.bfs-chip.on { border-color: color-mix(in srgb, var(--c-success) 45%, transparent); background: color-mix(in srgb, var(--c-success) 12%, transparent); color: var(--c-success-fg); }
 .bfs-chip.on .bfs-chip-dot { background: var(--c-success); }
 .bfs-filter-btn { display: inline-flex; align-items: center; gap: 6px; }
 .bfs-count-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 16px; height: 16px; padding: 0 4px;
-  border-radius: 999px; font-size: 10px; font-weight: 700; background: var(--c-success); color: #fff; }
+  border-radius: 999px; font-size: 12px; font-weight: 700; background: var(--c-success); color: #fff; }
 `

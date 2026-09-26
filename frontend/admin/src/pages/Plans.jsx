@@ -6,6 +6,7 @@ import { Alert, Field, Spinner, Toggle } from '../components/ui'
 import { useToast } from '../components/Toast'
 import { copyToClipboard } from '../lib/clipboard'
 import { useDeleteConfirm } from '../lib/confirmDelete'
+import { Check } from '@phosphor-icons/react'
 
 const GB = 1024 ** 3
 
@@ -62,7 +63,7 @@ const T = {
   },
 }
 
-const DOT = ['#1464BA', '#0891B2', '#D97706', '#7C3AED', '#11AB53', '#DB2777']
+const DOT = ['#1464BA', '#0891B2', '#D97706', 'var(--chart-3)', '#11AB53', 'var(--chart-6)']
 
 function Ico({ d, w = 16 }) {
   return (
@@ -267,7 +268,7 @@ export default function Plans() {
         <Stat label={s.st_total} value={stats.total} unit={s.st_total_u} tone="#1464BA" icon={<Ico d={I.layers} w={22} />} lang={lang} />
         <Stat label={s.st_active} value={stats.active} unit={s.st_active_u} tone="#11AB53" icon={<Ico d={I.check} w={22} />} lang={lang} />
         <Stat label={s.st_fixed} value={stats.fixed} unit={s.st_unit} tone="#0891B2" icon={<Ico d={I.pin} w={22} />} lang={lang} />
-        <Stat label={s.st_volume} value={stats.volume} unit={s.st_unit} tone="#7C3AED" icon={<Ico d={I.bolt} w={22} />} lang={lang} />
+        <Stat label={s.st_volume} value={stats.volume} unit={s.st_unit} tone="#0891B2" icon={<Ico d={I.bolt} w={22} />} lang={lang} />
       </div>
 
       <Alert>{err}</Alert>
@@ -437,13 +438,13 @@ export default function Plans() {
                   return (
                     <button type="button" key={g.id} onClick={() => toggleGroup(g.id)}
                       className="pl-group-chip" data-on={on ? '1' : '0'}>
-                      {on ? '✓ ' : ''}{g.name} <span className="text-xs text-muted">#{g.id}</span>
+                      {on ? <Check size={14} weight="bold" aria-hidden="true" /> : null} {g.name} <span className="text-xs text-muted">#{g.id}</span>
                     </button>
                   )
                 })}
               </div>
             )}
-            <p className="mt-2 text-xs" style={{ color: 'var(--c-primary)' }}>
+            <p className="mt-2 text-xs" style={{ color: 'var(--c-primary-fg)' }}>
               {lang === 'fa' ? 'اعمال‌شده روی کاربر جدید: ' : 'Applied to a new user: '}
               {effectiveGroups.length
                 ? effectiveGroups.map(groupName).join('، ')
@@ -461,7 +462,7 @@ export default function Plans() {
       <div className="card pl-toolbar">
         <div className="pl-search">
           <span className="pl-search-ico"><Ico d={I.search} w={16} /></span>
-          <input className="input" placeholder={s.search_ph} value={q} onChange={(e) => setQ(e.target.value)} />
+          <input className="input" type="search" aria-label={s.search_ph} placeholder={s.search_ph} value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
         <select className="input pl-sel" value={fType} onChange={(e) => setFType(e.target.value)}>
           <option value="">{s.f_type_all}</option>
@@ -570,7 +571,7 @@ const CSS = `
 .pl-stat { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .pl-stat-label { font-size: 12px; font-weight: 600; color: var(--c-text-muted); }
 .pl-stat-val { font-size: 24px; font-weight: 800; letter-spacing: -.02em; margin-top: 4px; font-family: 'JetBrains Mono', ui-monospace, monospace; }
-.pl-stat-unit { font-size: 11px; font-weight: 500; color: var(--c-text-muted); font-family: inherit; }
+.pl-stat-unit { font-size: 12px; font-weight: 500; color: var(--c-text-muted); font-family: inherit; }
 .pl-stat-ico { width: 46px; height: 46px; border-radius: 13px; display: grid; place-items: center; flex-shrink: 0; }
 
 .pl-form .pl-groups { border-top: 1px solid var(--c-border); padding-top: 14px; }
@@ -600,7 +601,7 @@ const CSS = `
 .pl-wrap { overflow-x: auto; }
 .pl-table { width: 100%; min-width: 900px; border-collapse: collapse; font-size: 13px; }
 .pl-table thead th {
-  text-align: start; font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: .03em;
+  text-align: start; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .03em;
   color: var(--c-text-muted); padding: 13px 16px; white-space: nowrap; border-bottom: 1px solid var(--c-border);
 }
 .pl-table td { padding: 13px 16px; vertical-align: middle; border-bottom: 1px solid var(--c-border); }
@@ -608,26 +609,26 @@ const CSS = `
 .pl-row--off { opacity: .55; }
 .pl-c { text-align: center; }
 .pl-muted { color: var(--c-text-muted); font-size: 12px; }
-.pl-sub { color: var(--c-text-muted); font-size: 11px; margin-top: 2px; }
+.pl-sub { color: var(--c-text-muted); font-size: 12px; margin-top: 2px; }
 
 .pl-name { display: flex; align-items: center; gap: 11px; }
 .pl-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 .pl-name-fa { font-weight: 700; }
-.pl-name-en { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 11px; color: var(--c-text-muted); margin-top: 1px; }
+.pl-name-en { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; color: var(--c-text-muted); margin-top: 1px; }
 .pl-vol { font-weight: 500; font-size: 12.5px; }
 
-.pl-type { display: inline-block; padding: 2px 9px; border-radius: 7px; font-size: 11px; font-weight: 600; border: 1px solid transparent; }
-.pl-type.fix { background: color-mix(in srgb, #1464BA 12%, transparent); color: #1464BA; border-color: color-mix(in srgb, #1464BA 22%, transparent); }
-.pl-type.vol { background: color-mix(in srgb, #0891B2 12%, transparent); color: #0891B2; border-color: color-mix(in srgb, #0891B2 22%, transparent); }
+.pl-type { display: inline-block; padding: 2px 9px; border-radius: 7px; font-size: 12px; font-weight: 600; border: 1px solid transparent; }
+.pl-type.fix { background: color-mix(in srgb, #1464BA 12%, transparent); color: var(--c-primary-fg); border-color: color-mix(in srgb, #1464BA 22%, transparent); }
+.pl-type.vol { background: color-mix(in srgb, #0891B2 12%, transparent); color: var(--c-secondary-fg); border-color: color-mix(in srgb, #0891B2 22%, transparent); }
 
 .pl-price { font-weight: 700; white-space: nowrap; }
-.pl-strike { font-size: 11px; font-weight: 400; color: var(--c-text-muted); text-decoration: line-through; margin-top: 1px; }
-.pl-discount { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; white-space: nowrap; background: color-mix(in srgb, var(--c-danger) 12%, transparent); color: var(--c-danger); }
+.pl-strike { font-size: 12px; font-weight: 400; color: var(--c-text-muted); text-decoration: line-through; margin-top: 1px; }
+.pl-discount { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; background: color-mix(in srgb, var(--c-danger) 12%, transparent); color: var(--c-danger-fg); }
 
 .pl-acts { display: inline-flex; align-items: center; gap: 4px; }
 .pl-act { display: inline-flex; padding: 7px; border-radius: 9px; color: var(--c-text-muted); transition: .15s; }
-.pl-act:hover { color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 12%, transparent); }
-.pl-act--del:hover { color: var(--c-danger); background: color-mix(in srgb, var(--c-danger) 12%, transparent); }
+.pl-act:hover { color: var(--c-primary-fg); background: color-mix(in srgb, var(--c-primary) 12%, transparent); }
+.pl-act--del:hover { color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 12%, transparent); }
 
 /* mobile: table -> stacked cards */
 @media (max-width: 767px) {
@@ -638,7 +639,7 @@ const CSS = `
   .pl-table tr.pl-row { border: 1px solid var(--c-border); border-radius: 12px; margin: 12px; padding: 4px 0; }
   .pl-table tr.pl-row:hover > td { background: none; }
   .pl-table td { border: 0 !important; padding: 9px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: end; }
-  .pl-table td::before { content: attr(data-label); font-size: 11px; font-weight: 600; color: var(--c-text-muted); text-align: start; white-space: nowrap; }
+  .pl-table td::before { content: attr(data-label); font-size: 12px; font-weight: 600; color: var(--c-text-muted); text-align: start; white-space: nowrap; }
   .pl-table td:first-child { display: block; border-bottom: 1px solid var(--c-border) !important; }
   .pl-table td:first-child::before { display: none; }
   .pl-table td.pl-c { text-align: end; }

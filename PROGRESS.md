@@ -256,6 +256,14 @@ Everything shipped since v1.6.0 (details in the session log):
 - **Real-iPhone Shortcut test** — sign `CaspinSMS.shortcut` on a Mac, install it, and confirm a real bank SMS
   auto-confirms a payment (only checked structurally so far).
 
+## Safe point before the UI refresh — v1.7.0 (live)
+- Tag `v1.7.0` and branch `stable-v1.7.0` = commit `68b0154` (what production runs), both on GitHub.
+- Undo the last deploy only: `./update.sh --rollback` (previous images).
+- Undo a merged UI refresh without rewriting history: `git revert -m 1 <merge-commit> && git push && ./update.sh`
+  (on `main` in `/root/caspintunel`). Every file of v1.7.0 is also always available: `git checkout v1.7.0 -- <path>`.
+- The UI refresh lives on branch `ui-refresh` (worktree `/root/caspintunel-ui`), previewed at
+  `/preview/` + `/preview-panel/` (`./scripts/preview.sh`) — not merged, not deployed.
+
 ## Current state & open items (keep this list current)
 - **Version** `VERSION` = 1.7.0 (tagged releases `v<version>`; v1.4.0/v1.4.1 were tagged before the file was bumped); iPhone Shortcut has its own `mobile_shortcut/VERSION`.
 - **Post-1.0 phases 1–6 done** (see session log 2026-09-25): checkout resume, phone rules + bot↔site merge,
@@ -355,3 +363,5 @@ Everything shipped since v1.6.0 (details in the session log):
 - 2026-09-25 — **v1.6.3: outgoing email configurable in the admin panel.** New `EmailSettings` singleton (`settings_app.0012`; password `EncryptedTextField`, write-only in the API) + `apps.common.mail.DynamicEmailBackend` as the global `EMAIL_BACKEND`: resolves at send time admin-panel relay → `.env` `EMAIL_*` → local mailserver, 30 s per-process cache + cache-version bump on save, records last success / last error on every send; readable SMTP errors (auth / timeout / sender refused / TLS …). Admin API `GET/PUT /admin/email/`, `POST /admin/email/test/` (permission `settings.email`, seeded; changes audit-logged without the password). Monitoring "mail" check now probes the effective server (connect + TLS + login). New page `/panel/settings/email` (sidebar, mobile hub, desktop Settings link card; presets Brevo/Mailgun/SendGrid/SES, test-email with the real error, status, help). Replaced the read-only `.env` email card + `/admin/integrations/email/`. Web app never touches the mailserver container.
 - 2026-09-25 — **v1.6.4**: live test of the email page against Brevo without credentials returned `502 5.7.0 Please authenticate first` on MAIL FROM (smtplib → `SMTPSenderRefused`), which 1.6.3 mislabelled "sender not verified"; replies that ask for authentication now map to `auth_required` ("server requires login"). Deploys of 1.6.3/1.6.4: 0 failed probe requests.
 - 2026-09-25 — **v1.7.0 — stable release** (summary above). No code changes vs 1.6.4 beyond VERSION/PROGRESS.
+
+- 2026-09-26 — **ui-refresh (branch, preview only)**: UI/UX refresh with the ui-ux-pro-max guidelines. Design tokens (text-safe `-fg` role colours, spacing/radius/elevation/type/motion, 44px touch floor, 12px minimum text, focus ring, reduced motion) in both `index.css`; palettes in `backend/apps/settings_app/theme_palettes.json` (blue #1464BA / green #11AB53 / red / orange / near-black, purple only in charts; seed applies them on deploy). Phosphor icons (MIT) replace emoji + hand-drawn paths; 44 Fluent Emoji 3D WebP accents (MIT, ~3 KB each) on dashboards, Settings hub, empty states, checkout results, plan cards. Mobile: user bottom tab bar, sticky Store/Checkout actions, decluttered top bars, 2-col admin KPIs; `Field` renders a real `<label>`; autofill/keyboard hints. Fixed on the way: duplicate i18n key, History "expired" shown green, GB float display. Audit (1408 renders, every page × 4 theme variants × fa/en × 360–1440px): low-contrast 728→0, tiny text 1136→0, unnamed controls 72→0, small targets 1032→0 on phones, overflow/Persian digits 0. Tests: 398 backend, browser suites 143/143. Design doc: `docs/ui-design.md`. Preview: `scripts/preview.sh`.

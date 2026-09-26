@@ -42,18 +42,18 @@ export default function Register() {
     <AuthShell title={t('register')} hideAdminLink>
       <style>{`.reg-terms { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; color: var(--c-text-muted); cursor: pointer; line-height: 1.7; }
 .reg-terms input { margin-top: 4px; flex-shrink: 0; width: 18px; height: 18px; accent-color: var(--c-primary); cursor: pointer; }
-.reg-terms-link { color: var(--c-primary); font-weight: 700; }
+.reg-terms-link { color: var(--c-primary-fg); font-weight: 700; }
 .reg-terms-link:hover { text-decoration: underline; }`}</style>
       <form onSubmit={submit} className="space-y-3">
         <Alert>{err}</Alert>
-        <Field label={t('username')}><input className="input" value={f.username} onChange={set('username')} /></Field>
+        <Field label={t('username')}><input className="input" dir="ltr" value={f.username} onChange={set('username')} autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} /></Field>
         <PasswordField label={t('password')} value={f.password} autoComplete="new-password" onChange={set('password')} />
-        <Field label={t('email')}><input className="input" type="email" value={f.email} onChange={set('email')} /></Field>
-        <Field label={t('name')}><input className="input" value={f.name} onChange={set('name')} /></Field>
+        <Field label={t('email')}><input className="input" type="email" dir="ltr" value={f.email} onChange={set('email')} autoComplete="email" inputMode="email" autoCapitalize="none" spellCheck={false} /></Field>
+        <Field label={t('name')}><input className="input" value={f.name} onChange={set('name')} autoComplete="name" /></Field>
         <Field label={t('phone') + (phoneRule.required ? ' *' : '')}>
           <PhoneInput value={f.phone} onChange={(v) => setF({ ...f, phone: v })} showError={tried} />
         </Field>
-        <Field label={t('referral')}><input className="input" value={f.referral_code} onChange={set('referral_code')} /></Field>
+        <Field label={t('referral')}><input className="input" dir="ltr" value={f.referral_code} onChange={set('referral_code')} autoComplete="off" autoCapitalize="characters" spellCheck={false} /></Field>
         <label className="reg-terms">
           <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} required />
           <span>
@@ -63,7 +63,7 @@ export default function Register() {
           </span>
         </label>
         <button className="btn-primary w-full" disabled={busy || !agreed}>{busy ? <Spinner /> : t('register')}</button>
-        <div className="text-sm text-muted"><Link to="/login" className="hover:text-primary">{t('login')}</Link></div>
+        <div className="text-sm text-muted"><Link to="/login" className="auth-link hover:text-primary">{t('login')}</Link></div>
       </form>
     </AuthShell>
   )

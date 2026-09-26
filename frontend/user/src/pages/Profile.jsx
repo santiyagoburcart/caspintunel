@@ -78,12 +78,12 @@ function LegacyProfile() {
           <span className="text-muted">{t('username')}</span>
           <span className="flex items-center gap-2"><code dir="ltr">{user?.username}</code><Copyable text={user?.username || ''} /></span>
         </div>
-        <Field label={t('name')}><input className="input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
+        <Field label={t('name')}><input className="input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} autoComplete="name" /></Field>
         <Field label={t('phone') + (phoneRule.required ? ' *' : '')}>
           <PhoneInput value={f.phone} onChange={(v) => setF({ ...f, phone: v })} />
         </Field>
         <Field label={t('email')}>
-          <input className="input" type="email" dir="ltr" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />
+          <input className="input" type="email" dir="ltr" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} autoComplete="email" inputMode="email" autoCapitalize="none" spellCheck={false} />
           {user?.email && !user?.email_verified && <button type="button" className="btn-ghost text-xs mt-1" onClick={resend}>{t('verify_email')}</button>}
         </Field>
         <button className="btn-primary" disabled={infoBusy || !dirty}>{infoBusy ? <Spinner /> : t('save_changes')}</button>
@@ -301,7 +301,7 @@ function CaspianProfile() {
             <div className="csp-pf-fields">
               <label className="csp-pf-fld">
                 <span className="csp-pf-fld-label">{t('name')}</span>
-                <input className="csp-pf-input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
+                <input className="csp-pf-input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} autoComplete="name" />
               </label>
               <label className="csp-pf-fld">
                 <span className="csp-pf-fld-label">{t('phone') + (phoneRule.required ? ' *' : '')}</span>
@@ -317,8 +317,8 @@ function CaspianProfile() {
                 </span>
                 <span className="csp-pf-fld-wrap">
                   <PI d={P.mail} w={15} />
-                  <input className="csp-pf-input csp-pf-input--icon" type="email" dir="ltr" value={f.email}
-                    onChange={(e) => setF({ ...f, email: e.target.value })} placeholder={t('add_email')} />
+                  <input className="csp-pf-input csp-pf-input--icon" type="email" dir="ltr" value={f.email} autoComplete="email" inputMode="email" autoCapitalize="none" spellCheck={false}
+                    onChange={(e) => setF({ ...f, email: e.target.value })} placeholder={t('add_email')} aria-label={t('email')} />
                 </span>
               </label>
 
@@ -433,15 +433,15 @@ const CSS = `
 .csp-pf { display: flex; flex-direction: column; gap: 20px; }
 .csp-pf-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
 .csp-pf-title { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
-.csp-pf-title-ico { width: 32px; height: 32px; flex-shrink: 0; display: grid; place-items: center; border-radius: 10px; background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary); }
+.csp-pf-title-ico { width: 32px; height: 32px; flex-shrink: 0; display: grid; place-items: center; border-radius: 10px; background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary-fg); }
 .csp-pf-title h1 { font-size: clamp(18px, 3vw, 24px); font-weight: 800; }
-.csp-pf-uid { padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 700; color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 10%, transparent); }
+.csp-pf-uid { padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; color: var(--c-primary-fg); background: color-mix(in srgb, var(--c-primary) 10%, transparent); }
 .csp-pf-lead { font-size: 12.5px; color: var(--c-text-muted); margin-top: 6px; line-height: 1.7; }
 .csp-pf-head-r { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.csp-pf-status { display: inline-flex; align-items: center; gap: 6px; padding: 8px 13px; border-radius: 12px; font-size: 11.5px; font-weight: 700; color: var(--c-success); background: color-mix(in srgb, var(--c-success) 12%, transparent); }
-.csp-pf-status.warn { color: var(--c-warning); background: color-mix(in srgb, var(--c-warning) 12%, transparent); }
+.csp-pf-status { display: inline-flex; align-items: center; gap: 6px; padding: 8px 13px; border-radius: 12px; font-size: 12px; font-weight: 700; color: var(--c-success-fg); background: color-mix(in srgb, var(--c-success) 12%, transparent); }
+.csp-pf-status.warn { color: var(--c-warning-fg); background: color-mix(in srgb, var(--c-warning) 12%, transparent); }
 .csp-pf-status i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
-.csp-pf-support { display: inline-flex; align-items: center; gap: 6px; padding: 8px 13px; border-radius: 12px; font-size: 11.5px; font-weight: 700; color: var(--c-text); background: color-mix(in srgb, var(--c-text-muted) 10%, transparent); }
+.csp-pf-support { display: inline-flex; align-items: center; gap: 6px; padding: 8px 13px; border-radius: 12px; font-size: 12px; font-weight: 700; color: var(--c-text); background: color-mix(in srgb, var(--c-text-muted) 10%, transparent); }
 
 .csp-pf-grid { display: grid; grid-template-columns: 7fr 5fr; gap: 16px; align-items: start; }
 @media (max-width: 900px) { .csp-pf-grid { grid-template-columns: 1fr; } }
@@ -454,25 +454,25 @@ const CSS = `
 :root:not(.dark) .csp-pf-card { background: #fff; }
 [data-theme-style="caspian"].dark .csp-pf-card { box-shadow: -6px -6px 14px rgba(255,255,255,.02), 6px 6px 18px rgba(0,0,0,.5); }
 .csp-pf-card-h { display: flex; align-items: center; gap: 8px; }
-.csp-pf-card-h-ico { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 9px; background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary); }
+.csp-pf-card-h-ico { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 9px; background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary-fg); }
 .csp-pf-card-h h2 { font-size: 14px; font-weight: 800; }
 
 .csp-pf-account-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .csp-pf-avatar {
   width: 52px; height: 52px; flex-shrink: 0; display: grid; place-items: center; border-radius: 16px; font-size: 16px; font-weight: 800; color: #fff;
-  background: linear-gradient(135deg, var(--c-primary), color-mix(in srgb, var(--c-primary) 55%, #1a1350));
+  background: linear-gradient(135deg, var(--c-primary), #0B1B36);
 }
 .csp-pf-account-id { min-width: 0; }
 .csp-pf-account-name { display: flex; align-items: center; gap: 6px; }
 .csp-pf-account-name b { font-size: 14px; font-weight: 800; }
-.csp-pf-tg { padding: 1px 7px; border-radius: 6px; font-size: 10px; font-weight: 700; background: color-mix(in srgb, var(--c-secondary) 20%, transparent); color: var(--c-secondary); }
-.csp-pf-account-sub { font-size: 11px; color: var(--c-text-muted); }
-.csp-pf-verified { margin-inline-start: auto; display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 999px; font-size: 10px; font-weight: 700; color: var(--c-success); background: color-mix(in srgb, var(--c-success) 12%, transparent); }
+.csp-pf-tg { padding: 1px 7px; border-radius: 6px; font-size: 12px; font-weight: 700; background: color-mix(in srgb, var(--c-secondary) 20%, transparent); color: var(--c-secondary-fg); }
+.csp-pf-account-sub { font-size: 12px; color: var(--c-text-muted); }
+.csp-pf-verified { margin-inline-start: auto; display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; color: var(--c-success-fg); background: color-mix(in srgb, var(--c-success) 12%, transparent); }
 
 .csp-pf-fields { display: flex; flex-direction: column; gap: 12px; }
 .csp-pf-fld { display: flex; flex-direction: column; gap: 6px; }
 .csp-pf-fld-label { font-size: 12px; font-weight: 700; color: var(--csp-text-2, var(--c-text)); display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.csp-pf-fld-hint { font-size: 11.5px; line-height: 1.7; color: var(--c-text-muted); margin-top: -2px; }
+.csp-pf-fld-hint { font-size: 12px; line-height: 1.7; color: var(--c-text-muted); margin-top: -2px; }
 .csp-pf-fld-wrap { position: relative; display: flex; align-items: center; }
 .csp-pf-fld-wrap > svg { position: absolute; inset-inline-start: 12px; color: var(--c-text-muted); pointer-events: none; }
 .csp-pf-input {
@@ -483,16 +483,16 @@ const CSS = `
 .csp-pf-input--icon { padding-inline-start: 38px; }
 .csp-pf-input:focus { outline: none; border-color: var(--c-primary); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c-primary) 14%, transparent); background: var(--c-surface); }
 .csp-pf-eye { position: absolute; inset-inline-end: 6px; display: flex; align-items: center; padding: 8px; color: var(--c-text-muted); }
-.csp-pf-link { font-size: 11px; font-weight: 700; color: var(--c-primary); }
+.csp-pf-link { font-size: 12px; font-weight: 700; color: var(--c-primary-fg); }
 .csp-pf-link:hover { text-decoration: underline; }
 
 .csp-pf-kv { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 12px; border-top: 1px solid var(--c-border); }
 .csp-pf-kv-k { display: block; font-size: 12.5px; font-weight: 600; }
-.csp-pf-kv-note { display: block; font-size: 10px; color: var(--c-text-muted); margin-top: 2px; }
-.csp-pf-refcode { display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border-radius: 12px; cursor: pointer; border: 1px solid var(--c-border); background: color-mix(in srgb, var(--c-text-muted) 6%, transparent); color: var(--c-primary); font-weight: 800; letter-spacing: .08em; }
+.csp-pf-kv-note { display: block; font-size: 12px; color: var(--c-text-muted); margin-top: 2px; }
+.csp-pf-refcode { display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border-radius: 12px; cursor: pointer; border: 1px solid var(--c-border); background: color-mix(in srgb, var(--c-text-muted) 6%, transparent); color: var(--c-primary-fg); font-weight: 800; letter-spacing: .08em; }
 .csp-pf-refcode:hover { border-color: var(--c-primary); }
 .csp-pf-refcount b { font-size: 18px; font-weight: 800; }
-.csp-pf-refcount { font-size: 11px; color: var(--c-text-muted); }
+.csp-pf-refcount { font-size: 12px; color: var(--c-text-muted); }
 
 .csp-pf-strength { display: flex; align-items: center; gap: 8px; margin-top: 7px; }
 .csp-pf-strength-bars { display: flex; gap: 3px; flex: 1; }
@@ -500,7 +500,7 @@ const CSS = `
 .csp-pf-strength-bars span.on.s1 { background: var(--c-danger); }
 .csp-pf-strength-bars span.on.s2 { background: var(--c-warning); }
 .csp-pf-strength-bars span.on.s3 { background: var(--c-success); }
-.csp-pf-strength-l { font-size: 10.5px; color: var(--c-text-muted); white-space: nowrap; }
+.csp-pf-strength-l { font-size: 12px; color: var(--c-text-muted); white-space: nowrap; }
 
 .csp-pf-actions { display: flex; justify-content: flex-end; }
 .csp-pf-save {
@@ -518,16 +518,16 @@ const CSS = `
 .csp-pf-pref-ico { width: 32px; height: 32px; flex-shrink: 0; display: grid; place-items: center; border-radius: 9px; background: color-mix(in srgb, var(--c-text-muted) 10%, transparent); color: var(--c-text); }
 .csp-pf-pref-txt { flex: 1; display: flex; flex-direction: column; }
 .csp-pf-pref-txt span { font-size: 13px; font-weight: 600; }
-.csp-pf-pref-txt small { font-size: 10.5px; color: var(--c-text-muted); }
+.csp-pf-pref-txt small { font-size: 12px; color: var(--c-text-muted); }
 
 .csp-pf-refbanner {
   padding: 16px; border-radius: 18px; display: flex; flex-direction: column; gap: 10px;
   background: linear-gradient(135deg, color-mix(in srgb, var(--c-primary) 14%, transparent), color-mix(in srgb, var(--c-secondary) 8%, transparent));
   border: 1px solid color-mix(in srgb, var(--c-primary) 20%, transparent);
 }
-.csp-pf-refbanner-h { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 800; color: var(--c-primary); }
-.csp-pf-refbanner p { font-size: 11.5px; color: var(--c-text-muted); line-height: 1.8; }
-.csp-pf-refbanner-code { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 12px; background: var(--c-surface); font-weight: 800; letter-spacing: .1em; color: var(--c-primary); }
+.csp-pf-refbanner-h { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 800; color: var(--c-primary-fg); }
+.csp-pf-refbanner p { font-size: 12px; color: var(--c-text-muted); line-height: 1.8; }
+.csp-pf-refbanner-code { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 12px; background: var(--c-surface); font-weight: 800; letter-spacing: .1em; color: var(--c-primary-fg); }
 :root:not(.dark) .csp-pf-refbanner-code { background: #fff; }
 .csp-pf-refbanner-btn {
   display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; padding: 9px 15px; border-radius: 12px; border: 0; cursor: pointer;

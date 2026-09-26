@@ -10,6 +10,7 @@
  */
 import { useRef } from 'react'
 import { useI18n } from '../lib/i18n'
+import { ADMIN_URL } from '../lib/site'
 
 let idSeq = 0
 
@@ -47,7 +48,7 @@ export function CaspianAuthShell({ title, children, hideAdminLink = false }) {
         {children}
         {!hideAdminLink && (
           <div className="csp-authshell-back">
-            <a href="/panel/" className="csp-link">{t('foot_admin')}</a>
+            <a href={ADMIN_URL} className="csp-link">{t('foot_admin')}</a>
           </div>
         )}
       </div>

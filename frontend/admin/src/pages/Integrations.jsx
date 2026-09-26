@@ -4,6 +4,7 @@ import { useI18n } from '../lib/i18n'
 import { digits, relTime } from '../lib/format'
 import { Alert, Field, Spinner, Toggle } from '../components/ui'
 import { useDeleteConfirm } from '../lib/confirmDelete'
+import { Check } from '@phosphor-icons/react'
 
 function Ico({ d, w = 15 }) {
   return (
@@ -32,13 +33,13 @@ const ICONS = {
 }
 
 // password/secret input with a show/hide eye toggle
-function SecretInput({ value, onChange, placeholder, autoComplete = 'new-password' }) {
+function SecretInput({ value, onChange, placeholder, autoComplete = 'new-password', label }) {
   const { t } = useI18n()
   const [show, setShow] = useState(false)
   return (
     <div className="int-secret">
       <input className="input" dir="ltr" type={show ? 'text' : 'password'} autoComplete={autoComplete}
-        placeholder={placeholder} value={value} onChange={onChange} />
+        placeholder={placeholder} value={value} onChange={onChange} aria-label={label} />
       <button type="button" className="int-secret-eye" onClick={() => setShow((v) => !v)}
         aria-label={t(show ? 'hide_password' : 'show_password')}>
         <Ico d={show ? ICONS.eyeOff : ICONS.eye} w={15} />
@@ -54,14 +55,14 @@ const INT_CSS = `
 .int-secret-eye:hover { color: var(--c-text); }
 .int-head { display: flex; align-items: flex-start; gap: 12px; }
 .int-head-ico { width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0; display: grid; place-items: center;
-  background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary); }
+  background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary-fg); }
 .int-card-head { display: flex; align-items: center; gap: 11px; }
 .int-card-ico { width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0; display: grid; place-items: center;
-  background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary); }
+  background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary-fg); }
 .int-head-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between; }
 .int-pills { display: flex; flex-wrap: wrap; gap: 8px; }
-.int-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; padding: 4px 11px; border-radius: 999px; white-space: nowrap; }
-.int-pill.on { background: color-mix(in srgb, var(--c-success) 14%, transparent); color: var(--c-success); }
+.int-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; padding: 4px 11px; border-radius: 999px; white-space: nowrap; }
+.int-pill.on { background: color-mix(in srgb, var(--c-success) 14%, transparent); color: var(--c-success-fg); }
 .int-pill.off { background: color-mix(in srgb, var(--c-text-muted) 15%, transparent); color: var(--c-text-muted); }
 
 .int-metrics { display: grid; grid-template-columns: 1fr; gap: 14px; }
@@ -71,41 +72,41 @@ const INT_CSS = `
 .int-metric-label { font-size: 12px; font-weight: 600; color: var(--c-text-muted); }
 .int-metric-ico { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; flex-shrink: 0; }
 .int-metric-val { font-size: 20px; font-weight: 800; letter-spacing: -.01em; margin-top: 4px; }
-.int-metric-sub { font-size: 11px; color: var(--c-text-muted); }
+.int-metric-sub { font-size: 12px; color: var(--c-text-muted); }
 
 .int-bot-grid { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: stretch; }
 @media (min-width: 1024px) { .int-bot-grid { grid-template-columns: 1fr 1fr; } }
 .int-bot-card { height: 100%; }
 .int-bot-card-foot { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--c-border); }
 .int-bot-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
-.int-foot-link { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 600; color: var(--c-primary); }
+.int-foot-link { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--c-primary-fg); }
 .int-foot-link:hover { text-decoration: underline; }
-.int-foot-tag { font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
-.int-foot-tag.ok { background: color-mix(in srgb, var(--c-success) 14%, transparent); color: var(--c-success); }
+.int-foot-tag { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.int-foot-tag.ok { background: color-mix(in srgb, var(--c-success) 14%, transparent); color: var(--c-success-fg); }
 .int-foot-tag.muted { background: color-mix(in srgb, var(--c-text-muted) 15%, transparent); color: var(--c-text-muted); }
 .int-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
 .int-chatid-row { display: flex; gap: 8px; }
 .int-chatid-row .input { flex: 1; }
 .int-test-btn { display: inline-flex; align-items: center; gap: 5px; padding: 0 12px; border-radius: 10px; font-size: 12px; font-weight: 600; white-space: nowrap;
-  border: 1px solid color-mix(in srgb, var(--c-primary) 32%, transparent); color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 8%, transparent); }
+  border: 1px solid color-mix(in srgb, var(--c-primary) 32%, transparent); color: var(--c-primary-fg); background: color-mix(in srgb, var(--c-primary) 8%, transparent); }
 .int-test-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--c-primary) 16%, transparent); }
 .int-test-btn:disabled { opacity: .5; }
-.int-ch-admin { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
-.int-ch-admin.ok { background: color-mix(in srgb, var(--c-success) 14%, transparent); color: var(--c-success); }
-.int-ch-admin.no { background: color-mix(in srgb, var(--c-danger) 13%, transparent); color: var(--c-danger); }
+.int-ch-admin { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.int-ch-admin.ok { background: color-mix(in srgb, var(--c-success) 14%, transparent); color: var(--c-success-fg); }
+.int-ch-admin.no { background: color-mix(in srgb, var(--c-danger) 13%, transparent); color: var(--c-danger-fg); }
 .int-ch-admin.unknown { background: color-mix(in srgb, var(--c-text-muted) 15%, transparent); color: var(--c-text-muted); }
 .int-bots-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
-.int-token-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
-.int-token-badge.set { background: color-mix(in srgb, var(--c-success) 15%, transparent); color: var(--c-success); }
+.int-token-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.int-token-badge.set { background: color-mix(in srgb, var(--c-success) 15%, transparent); color: var(--c-success-fg); }
 .int-token-badge.none { background: color-mix(in srgb, var(--c-text-muted) 15%, transparent); color: var(--c-text-muted); }
-.int-code { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 10px; color: var(--c-text-muted); }
+.int-code { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; color: var(--c-text-muted); }
 
 .int-warn { display: flex; gap: 10px; align-items: flex-start; border-radius: 12px; padding: 12px 14px; font-size: 12px; line-height: 1.7;
-  background: color-mix(in srgb, var(--c-warning) 12%, transparent); color: var(--c-warning); }
+  background: color-mix(in srgb, var(--c-warning) 12%, transparent); color: var(--c-warning-fg); }
 
 .int-ch-wrap { overflow-x: auto; }
 .int-ch-table { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 13px; }
-.int-ch-table thead th { text-align: start; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .03em;
+.int-ch-table thead th { text-align: start; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .03em;
   color: var(--c-text-muted); padding: 12px 16px; white-space: nowrap; border-bottom: 1px solid var(--c-border); }
 .int-ch-table td { padding: 12px 16px; vertical-align: middle; border-bottom: 1px solid var(--c-border); }
 .int-ch-table tbody tr:last-child td { border-bottom: 0; }
@@ -114,13 +115,13 @@ const INT_CSS = `
 .int-ch-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; color: var(--c-text-muted); }
 .int-ch-name { display: flex; align-items: center; gap: 10px; }
 .int-ch-av { width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0; display: grid; place-items: center; font-weight: 700; font-size: 13px; }
-.int-ch-av.on { background: color-mix(in srgb, var(--c-primary) 14%, transparent); color: var(--c-primary); }
+.int-ch-av.on { background: color-mix(in srgb, var(--c-primary) 14%, transparent); color: var(--c-primary-fg); }
 .int-ch-av.off { background: color-mix(in srgb, var(--c-text-muted) 15%, transparent); color: var(--c-text-muted); }
-.int-ch-tag { display: inline-block; font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 999px; margin-top: 2px; }
-.int-ch-tag.ok { background: color-mix(in srgb, var(--c-success) 15%, transparent); color: var(--c-success); }
+.int-ch-tag { display: inline-block; font-size: 12px; font-weight: 700; padding: 1px 7px; border-radius: 999px; margin-top: 2px; }
+.int-ch-tag.ok { background: color-mix(in srgb, var(--c-success) 15%, transparent); color: var(--c-success-fg); }
 .int-ch-tag.muted { background: color-mix(in srgb, var(--c-text-muted) 15%, transparent); color: var(--c-text-muted); }
 .int-ch-mem { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 13px; }
-.int-ch-sync { font-size: 10px; color: var(--c-text-muted); margin-top: 1px; }
+.int-ch-sync { font-size: 12px; color: var(--c-text-muted); margin-top: 1px; }
 .int-ch-acts { display: inline-flex; gap: 4px; }
 
 .int-backdrop { position: fixed; inset: 0; z-index: 60; background: color-mix(in srgb, #0b1220 62%, transparent); backdrop-filter: blur(3px);
@@ -129,7 +130,7 @@ const INT_CSS = `
 .int-modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--c-border); }
 .int-modal-body { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
 .int-modal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 18px; border-top: 1px solid var(--c-border); }
-.int-modal-hint { display: flex; align-items: flex-start; gap: 6px; font-size: 11px; color: var(--c-text-muted); line-height: 1.6; }
+.int-modal-hint { display: flex; align-items: flex-start; gap: 6px; font-size: 12px; color: var(--c-text-muted); line-height: 1.6; }
 
 /* mobile: channels table -> cards */
 @media (max-width: 767px) {
@@ -138,60 +139,60 @@ const INT_CSS = `
   .int-ch-table thead { display: none; }
   .int-ch-table tr { border: 1px solid var(--c-border); border-radius: 12px; padding: 6px 4px; margin: 10px; }
   .int-ch-table td { border: 0 !important; padding: 7px 12px; display: flex; justify-content: space-between; gap: 12px; text-align: end; }
-  .int-ch-table td::before { content: attr(data-label); font-size: 11px; font-weight: 600; color: var(--c-text-muted); text-align: start; }
+  .int-ch-table td::before { content: attr(data-label); font-size: 12px; font-weight: 600; color: var(--c-text-muted); text-align: start; }
   .int-ch-table td:first-child::before { display: none; }
   .int-ch-c { text-align: end; }
   .int-ch-acts { justify-content: flex-end; }
 }
 .int-icon-btn { display: inline-flex; padding: 6px; border-radius: 8px; color: var(--c-text-muted); }
-.int-icon-btn:hover { color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 12%, transparent); }
-.int-icon-btn--del:hover { color: var(--c-danger); background: color-mix(in srgb, var(--c-danger) 12%, transparent); }
+.int-icon-btn:hover { color: var(--c-primary-fg); background: color-mix(in srgb, var(--c-primary) 12%, transparent); }
+.int-icon-btn--del:hover { color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 12%, transparent); }
 
 /* --- Pasargad panel list --- */
 .pl-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media (min-width: 900px) { .pl-stats { grid-template-columns: repeat(4, 1fr); } }
 .pl-stat { padding: 14px 16px; }
-.pl-stat-label { font-size: 11.5px; font-weight: 600; color: var(--c-text-muted); }
+.pl-stat-label { font-size: 12px; font-weight: 600; color: var(--c-text-muted); }
 .pl-stat-val { font-size: 22px; font-weight: 800; margin-top: 4px; font-family: 'JetBrains Mono', ui-monospace, monospace; }
-.pl-stat-unit { font-size: 11px; font-weight: 500; color: var(--c-text-muted); font-family: inherit; }
+.pl-stat-unit { font-size: 12px; font-weight: 500; color: var(--c-text-muted); font-family: inherit; }
 
 .pl-list-h { display: flex; align-items: center; gap: 10px; }
-.pl-count-badge { font-size: 11px; font-weight: 600; padding: 2px 10px; border-radius: 999px;
+.pl-count-badge { font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 999px;
   background: color-mix(in srgb, var(--c-text-muted) 14%, transparent); color: var(--c-text-muted); }
 
 .pl-row { display: flex; flex-direction: column; gap: 12px; }
 .pl-row--off { opacity: .62; }
 .pl-row-main { display: flex; gap: 14px; align-items: flex-start; }
 .pl-row-ico { width: 46px; height: 46px; border-radius: 13px; flex-shrink: 0; display: grid; place-items: center; }
-.pl-row-ico.on { background: color-mix(in srgb, var(--c-primary) 13%, transparent); color: var(--c-primary); }
+.pl-row-ico.on { background: color-mix(in srgb, var(--c-primary) 13%, transparent); color: var(--c-primary-fg); }
 .pl-row-ico.off { background: color-mix(in srgb, var(--c-text-muted) 14%, transparent); color: var(--c-text-muted); }
 .pl-row-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .pl-row-title b { font-size: 14px; }
-.pl-tag { display: inline-flex; align-items: center; gap: 3px; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
-.pl-tag.ok { background: color-mix(in srgb, var(--c-success) 15%, transparent); color: var(--c-success); }
-.pl-tag.ssl { background: color-mix(in srgb, var(--c-primary) 13%, transparent); color: var(--c-primary); }
+.pl-tag { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.pl-tag.ok { background: color-mix(in srgb, var(--c-success) 15%, transparent); color: var(--c-success-fg); }
+.pl-tag.ssl { background: color-mix(in srgb, var(--c-primary) 13%, transparent); color: var(--c-primary-fg); }
 .pl-tag.muted { background: color-mix(in srgb, var(--c-text-muted) 15%, transparent); color: var(--c-text-muted); }
 .pl-row-url { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; color: var(--c-text-muted); margin-top: 4px; word-break: break-all; }
 .pl-row-meta { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 6px; font-size: 12px; color: var(--c-text-muted); }
 .pl-row-groups { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
-.pl-gchip { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 600; padding: 1px 6px; border-radius: 5px;
-  background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary); }
+.pl-gchip { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; padding: 1px 6px; border-radius: 5px;
+  background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary-fg); }
 .pl-row-acts { display: flex; flex-wrap: wrap; gap: 8px; border-top: 1px solid var(--c-border); padding-top: 12px; }
 .pl-rbtn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border-radius: 9px; font-size: 12px; font-weight: 600;
   border: 1px solid var(--c-border); background: transparent; color: var(--c-text-muted); transition: .15s; }
 .pl-rbtn:hover:not(:disabled) { color: var(--c-text); border-color: var(--c-primary); }
 .pl-rbtn:disabled { opacity: .5; }
-.pl-rbtn--primary { color: var(--c-primary); border-color: color-mix(in srgb, var(--c-primary) 32%, transparent); background: color-mix(in srgb, var(--c-primary) 8%, transparent); }
+.pl-rbtn--primary { color: var(--c-primary-fg); border-color: color-mix(in srgb, var(--c-primary) 32%, transparent); background: color-mix(in srgb, var(--c-primary) 8%, transparent); }
 .pl-rbtn--primary:hover { background: color-mix(in srgb, var(--c-primary) 16%, transparent); }
-.pl-rbtn--del { color: var(--c-danger); border-color: color-mix(in srgb, var(--c-danger) 28%, transparent); }
+.pl-rbtn--del { color: var(--c-danger-fg); border-color: color-mix(in srgb, var(--c-danger) 28%, transparent); }
 .pl-rbtn--del:hover { background: color-mix(in srgb, var(--c-danger) 12%, transparent); border-color: var(--c-danger); }
 .pl-row-acts .pl-rbtn--del { margin-inline-start: auto; }
 
 /* ---- mobile-only connection status banner (Bots page) ---- */
 .int-mobile-only { display: none; }
 .int-status-banner { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 12px; font-size: 12.5px; line-height: 1.6; }
-.int-status-banner.ok { background: color-mix(in srgb, var(--c-success) 12%, transparent); color: var(--c-success); }
-.int-status-banner.warn { background: color-mix(in srgb, var(--c-warning) 12%, transparent); color: var(--c-warning); }
+.int-status-banner.ok { background: color-mix(in srgb, var(--c-success) 12%, transparent); color: var(--c-success-fg); }
+.int-status-banner.warn { background: color-mix(in srgb, var(--c-warning) 12%, transparent); color: var(--c-warning-fg); }
 .int-status-banner.bad { background: color-mix(in srgb, var(--c-text-muted) 14%, transparent); color: var(--c-text-muted); }
 
 /* ---- panel add/edit form: toggle rows + action bar ---- */
@@ -728,7 +729,7 @@ function PanelCard({ s, panel, isNew = false, onSaved, onDeleted, onCancel }) {
         )}
         {!isNew && !inUse && (
           <button type="button" className="btn-ghost ms-auto text-sm inline-flex items-center gap-1.5"
-            style={{ color: 'var(--c-danger)' }} onClick={del}><Ico d={ICONS.trash} w={14} /> {s.del_panel}</button>
+            style={{ color: 'var(--c-danger-fg)' }} onClick={del}><Ico d={ICONS.trash} w={14} /> {s.del_panel}</button>
         )}
       </div>
     </form>
@@ -745,7 +746,7 @@ function BotMetric({ label, value, sub, tone, icon, ok }) {
         <span className="int-metric-label">{label}</span>
         <span className="int-metric-ico" style={{ background: `color-mix(in srgb, ${tone} 13%, transparent)`, color: tone }}>{icon}</span>
       </div>
-      <div className="int-metric-val" style={ok === false ? { color: 'var(--c-danger)' } : ok ? { color: 'var(--c-success)' } : undefined}>{value}</div>
+      <div className="int-metric-val" style={ok === false ? { color: 'var(--c-danger-fg)' } : ok ? { color: 'var(--c-success-fg)' } : undefined}>{value}</div>
       {sub ? <div className="int-metric-sub">{sub}</div> : null}
     </div>
   )
@@ -763,7 +764,7 @@ function BotMetrics({ s, lang }) {
       <BotMetric label={s.m_backup} tone="#11AB53" icon={<Ico d={ICONS.backup} w={20} />}
         value={d ? (b ? relTime(b.created_at, lang) : s.m_backup_none) : '…'}
         sub={b ? s.m_backup_sub.replace('{mb}', digits(b.size_mb, lang)) : (b === null ? '' : undefined)} />
-      <BotMetric label={s.m_proxy} tone="#7C3AED" icon={<Ico d={ICONS.router} w={20} />}
+      <BotMetric label={s.m_proxy} tone="#0891B2" icon={<Ico d={ICONS.router} w={20} />}
         value={!d ? '…' : !p.configured ? s.m_proxy_none : p.ok ? s.m_proxy_ok : s.m_proxy_fail}
         ok={p.configured ? !!p.ok : undefined}
         sub={!d ? undefined : !p.configured ? s.m_proxy_none_sub
@@ -906,7 +907,7 @@ export function Bots() {
                   </span>
                   {stats?.backup && (
                     <span className={'int-foot-tag ' + (stats.backup.sent_to_telegram ? 'ok' : 'muted')}>
-                      DB {digits(stats.backup.size_mb, lang)} MB {stats.backup.sent_to_telegram ? '✓' : ''}
+                      DB {digits(stats.backup.size_mb, lang)} MB {stats.backup.sent_to_telegram ? <Check size={13} weight="bold" aria-hidden="true" /> : null}
                     </span>
                   )}
                 </div>
@@ -1062,11 +1063,11 @@ function RequiredChannels({ s }) {
                   </td>
                   <td data-label={s.ch_col_act} className="int-ch-c">
                     <div className="int-ch-acts">
-                      <button className="int-icon-btn" title={s.ch_test} onClick={() => test(c.id)} disabled={testing === c.id}>
+                      <button className="int-icon-btn" title={s.ch_test} aria-label={s.ch_test} onClick={() => test(c.id)} disabled={testing === c.id}>
                         {testing === c.id ? '…' : <Ico d={ICONS.refresh} w={15} />}
                       </button>
-                      <button className="int-icon-btn" title={s.save} onClick={() => { setEdit({ ...c }); setAdding(false) }}><Ico d={ICONS.edit} w={15} /></button>
-                      <button className="int-icon-btn int-icon-btn--del" onClick={() => del(c)}><Ico d={ICONS.trash} w={15} /></button>
+                      <button className="int-icon-btn" title={s.save} aria-label={s.save} onClick={() => { setEdit({ ...c }); setAdding(false) }}><Ico d={ICONS.edit} w={15} /></button>
+                      <button className="int-icon-btn int-icon-btn--del" title={s.ch_confirm_del} aria-label={s.ch_confirm_del} onClick={() => del(c)}><Ico d={ICONS.trash} w={15} /></button>
                     </div>
                   </td>
                 </tr>
@@ -1081,7 +1082,7 @@ function RequiredChannels({ s }) {
           <form className="int-modal card" onSubmit={saveChannel} role="dialog" aria-modal="true">
             <div className="int-modal-head">
               <h3 className="font-bold flex items-center gap-2">
-                <span style={{ color: 'var(--c-primary)' }}><Ico d={ICONS.plus} w={16} /></span>
+                <span style={{ color: 'var(--c-primary-fg)' }}><Ico d={ICONS.plus} w={16} /></span>
                 {s.ch_modal_h}
               </h3>
               <button type="button" className="int-icon-btn" onClick={() => { setAdding(false); setEdit(null) }}><Ico d={ICONS.close} w={16} /></button>
@@ -1148,7 +1149,7 @@ function BotCard({ title, subtitle, icon, row, value, onChange, s, showChatId, f
             {row.token_set ? s.token_badge_set : s.token_badge_none}
           </span>
         </div>
-        <SecretInput placeholder={row.token_set ? s.unchanged : '123456:ABC-DEF…'}
+        <SecretInput label={s.bot_token} placeholder={row.token_set ? s.unchanged : '123456:ABC-DEF…'}
           value={value.token} onChange={(e) => set('token', e.target.value)} />
         <span className="mt-1 block text-xs text-muted">
           {row.token_set ? s.token_stored : s.token_none}
@@ -1164,10 +1165,10 @@ function BotCard({ title, subtitle, icon, row, value, onChange, s, showChatId, f
         <div>
           <div className="flex items-center justify-between gap-2 mb-1.5">
             <span className="label mb-0">{s.chat_id}</span>
-            <span className="text-[11px] text-muted">{s.chat_hint_short}</span>
+            <span className="text-xs text-muted">{s.chat_hint_short}</span>
           </div>
           <div className="int-chatid-row">
-            <input className="input" dir="ltr" inputMode="numeric" placeholder="-1001234567890"
+            <input className="input" dir="ltr" inputMode="numeric" placeholder="-1001234567890" aria-label={s.chat_id}
               value={value.backup_chat_id} onChange={(e) => set('backup_chat_id', e.target.value)} />
             {onTestSend && (
               <button type="button" className="int-test-btn" onClick={onTestSend} disabled={testing || !value.backup_chat_id}>

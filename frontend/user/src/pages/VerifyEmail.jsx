@@ -24,7 +24,7 @@ export default function VerifyEmail() {
       {state === 'loading' && <p className="text-muted">{t('checking')}</p>}
       {state === 'ok' && <Alert kind="success">{msg}</Alert>}
       {state === 'error' && <Alert>{msg}</Alert>}
-      <div className="mt-4 text-sm"><Link to="/" className="hover:text-primary">{t('back')}</Link></div>
+      <div className="mt-4 text-sm"><Link to="/" className="auth-link hover:text-primary">{t('back')}</Link></div>
     </AuthShell>
   )
 }

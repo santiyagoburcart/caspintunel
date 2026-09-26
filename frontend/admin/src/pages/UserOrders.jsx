@@ -40,7 +40,7 @@ const T = {
   },
 }
 
-const AV_TONES = ['#1464BA', '#11AB53', '#7C3AED', '#D97706', '#0891B2', '#DB2777']
+const AV_TONES = ['#1464BA', '#0A7F3F', '#0E7490', '#B45309', '#0369A1', '#475569']  // white initials ≥4.5:1 on each
 const initials = (r) => {
   const name = String(r?.name || '').normalize('NFKC').trim()
   if (name) {
@@ -84,8 +84,9 @@ const I = {
 function StatusPill({ status, t }) {
   const tone = ST_TONE[status] || 'muted'
   const color = `var(--c-${tone === 'muted' ? 'text-muted' : tone})`
+  const text = tone === 'muted' ? color : `var(--c-${tone}-fg)`
   return (
-    <span className="uo-pill" style={{ background: `color-mix(in srgb, ${color} 16%, transparent)`, color }}>
+    <span className="uo-pill" style={{ background: `color-mix(in srgb, ${color} 14%, transparent)`, color: text }}>
       {enumLabel(t, 'os_', status)}
     </span>
   )
@@ -218,20 +219,20 @@ export default function UserOrders() {
 
 const CSS = `
 .uo-back { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--c-text-muted); }
-.uo-back:hover { color: var(--c-primary); }
+.uo-back:hover { color: var(--c-primary-fg); }
 .uo-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; }
 .uo-head-r { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .uo-del-btn {
   display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 9px;
   font-size: 12px; font-weight: 600; white-space: nowrap;
-  color: var(--c-danger); border: 1px solid color-mix(in srgb, var(--c-danger) 32%, transparent);
+  color: var(--c-danger-fg); border: 1px solid color-mix(in srgb, var(--c-danger) 32%, transparent);
   background: color-mix(in srgb, var(--c-danger) 7%, transparent);
 }
 .uo-del-btn:hover { background: color-mix(in srgb, var(--c-danger) 15%, transparent); }
 .uo-deleted { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 12px; font-size: 13px;
   color: var(--c-text); border: 1px solid color-mix(in srgb, var(--c-danger) 30%, transparent);
   background: color-mix(in srgb, var(--c-danger) 7%, transparent); }
-.uo-deleted-tag { font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; color: #fff; background: var(--c-danger); }
+.uo-deleted-tag { font-size: 12px; font-weight: 700; padding: 2px 9px; border-radius: 999px; color: #fff; background: var(--c-danger); }
 .uo-title { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 800; color: var(--c-text-muted); }
 .uo-idcell { display: flex; align-items: center; gap: 12px; }
 .uo-av {
@@ -242,10 +243,10 @@ const CSS = `
 .uo-sub { display: block; font-size: 12px; color: var(--c-text-muted); margin-top: 2px; }
 .uo-src-tag {
   display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-sans, inherit);
-  font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 999px;
+  font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px;
 }
-.uo-src-tag.bot { background: color-mix(in srgb, #0891B2 15%, transparent); color: #0891B2; }
-.uo-src-tag.site { background: color-mix(in srgb, #7C3AED 15%, transparent); color: #7C3AED; }
+.uo-src-tag.bot { background: color-mix(in srgb, #0891B2 15%, transparent); color: var(--c-secondary-fg); }
+.uo-src-tag.site { background: color-mix(in srgb, var(--c-secondary) 16%, transparent); color: var(--c-secondary-fg); }
 
 .uo-wrap { overflow-x: auto; }
 .uo-tabs { display: flex; gap: 3px; padding: 10px 12px; overflow-x: auto; border-bottom: 1px solid var(--c-border); }
@@ -260,7 +261,7 @@ const CSS = `
 
 .uo-table { width: 100%; min-width: 900px; border-collapse: collapse; font-size: 13px; }
 .uo-table thead th {
-  text-align: start; font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: .03em;
+  text-align: start; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .03em;
   color: var(--c-text-muted); padding: 12px 16px; white-space: nowrap; border-bottom: 1px solid var(--c-border);
 }
 .uo-table td { padding: 11px 16px; vertical-align: middle; border-bottom: 1px solid var(--c-border); white-space: nowrap; }
@@ -268,9 +269,9 @@ const CSS = `
 .uo-c { text-align: center; }
 .uo-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
 .uo-date { color: var(--c-text-muted); font-size: 12px; }
-.uo-type-tag { margin-inline-start: 8px; font-size: 10px; font-weight: 600; padding: 1px 7px; border-radius: 999px; color: var(--c-text-muted); background: color-mix(in srgb, var(--c-text-muted) 12%, transparent); }
-.uo-pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 700; white-space: nowrap; }
-.uo-invoice-link { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--c-primary); }
+.uo-type-tag { margin-inline-start: 8px; font-size: 12px; font-weight: 600; padding: 1px 7px; border-radius: 999px; color: var(--c-text-muted); background: color-mix(in srgb, var(--c-text-muted) 12%, transparent); }
+.uo-pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.uo-invoice-link { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--c-primary-fg); }
 .uo-invoice-link:hover { text-decoration: underline; }
 
 /* mobile: table -> stacked cards */
@@ -282,7 +283,7 @@ const CSS = `
   .uo-table tr.uo-row { border: 1px solid var(--c-border); border-radius: 12px; margin: 12px; padding: 4px 0; }
   .uo-table tr.uo-row:hover > td { background: none; }
   .uo-table td { border: 0 !important; padding: 9px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: end; white-space: normal; }
-  .uo-table td::before { content: attr(data-label); font-size: 11px; font-weight: 600; color: var(--c-text-muted); text-align: start; white-space: nowrap; }
+  .uo-table td::before { content: attr(data-label); font-size: 12px; font-weight: 600; color: var(--c-text-muted); text-align: start; white-space: nowrap; }
   .uo-table td.uo-c { justify-content: space-between; text-align: end; }
 }
 `
