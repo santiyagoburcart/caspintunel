@@ -1,0 +1,31 @@
+# UI-audit stack = the isolated test stack (docker-compose.test.yml: throw-away
+# MySQL + Redis on tmpfs, own network) + an API server on top of it, filled with
+# FAKE data. Never the live DB / Redis / API. Driven by scripts/ui-audit/stack.sh
+# (project `caspintunel-uiaudit`, per-run keys) — do not run it by hand.
+services:
+  web:
+    image: caspintunel-backend
+    depends_on:
+      test-db:
+        condition: service_healthy
+      test-redis:
+        condition: service_started
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.test   # carries the production guard
+      RUN_MIGRATIONS: "0"
+      DB_HOST: test-db
+      DB_PORT: "3306"
+      DB_NAME: caspintunel
+      DB_USER: root
+      DB_PASSWORD: test-only-root
+      REDIS_URL: redis://test-redis:6379/0
+      CELERY_BROKER_URL: redis://test-redis:6379/1
+      CELERY_RESULT_BACKEND: redis://test-redis:6379/2
+      CHANNELS_REDIS_URL: redis://test-redis:6379/3
+      SECRET_KEY: ${TEST_SECRET_KEY:?run via scripts/ui-audit/stack.sh}
+      FIELD_ENCRYPTION_KEY: ${TEST_FIELD_ENCRYPTION_KEY:?run via scripts/ui-audit/stack.sh}
+    volumes:
+      - ./backend:/app
+      - ./scripts/ui-audit:/ui-audit:ro
+    tmpfs: [/app/media]
+    command: ["python", "manage.py", "runserver", "0.0.0.0:8000", "--noreload"]

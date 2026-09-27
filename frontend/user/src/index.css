@@ -25,7 +25,7 @@
   --c-success-fg: #086B35;
   --c-danger-fg: #B91C1C;
   --c-warning-fg: #8A4200;
-  --c-secondary-fg: #255A94;
+  --c-secondary-fg: #1F4F85;
   /* derived roles */
   --c-on-primary: #FFFFFF;
   --c-success-strong: #0A7F3F;          /* white text on a green button (5:1) */
@@ -391,6 +391,8 @@ button:not(:disabled), [role="button"], summary, label.toggle, select { cursor: 
   body { font-size: var(--m-fs-body); line-height: 1.55; }
   /* page titles */
   main h1 { font-size: var(--m-fs-title) !important; line-height: 1.35 !important; }
+  /* large title only: the explanatory subtitle under a page title is desktop-only */
+  main h1 + p, main div:has(> h1) + p { display: none !important; }
   /* tighter vertical rhythm inside pages */
   main .space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: var(--m-gap); }
   main .space-y-3 > :not([hidden]) ~ :not([hidden]) { margin-top: 10px; }

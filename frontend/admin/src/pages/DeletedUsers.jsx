@@ -437,7 +437,7 @@ const CSS = `
 .du-dtitle h1 { font-size: 18px; font-weight: 800; overflow-wrap: anywhere; }
 .du-dacts { display: flex; flex-wrap: wrap; gap: 8px; }
 .du-restore-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 700;
-  color: #fff; background: #11AB53; border: 0; }
+  color: #fff; background: var(--c-success-strong, #0A7F3F); border: 0; }
 .du-restore-btn:hover:not(:disabled) { background: #0E9447; }
 .du-restore-btn:disabled { opacity: .45; cursor: not-allowed; }
 .du-warn { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; font-size: 13px; line-height: 1.8;

@@ -576,7 +576,9 @@ function CountdownRing({ deadline }) {
   const ss = String(totalSeconds % 60).padStart(2, '0')
 
   const minutesLeft = remainingMs / 60000
-  const color = minutesLeft < 2 ? 'var(--c-danger)' : minutesLeft < 5 ? 'var(--c-warning)' : 'var(--c-success)'
+  const tone = minutesLeft < 2 ? 'danger' : minutesLeft < 5 ? 'warning' : 'success'
+  const color = `var(--c-${tone})`          // ring stroke (fill colour)
+  const textColor = `var(--c-${tone}-fg)`   // label (text-safe variant)
 
   const size = 80
   const stroke = 6
@@ -591,7 +593,7 @@ function CountdownRing({ deadline }) {
           strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={circumference * (1 - pct)}
           transform={`rotate(-90 ${size / 2} ${size / 2})`} style={{ transition: 'stroke-dashoffset 1s linear, stroke .3s' }} />
       </svg>
-      <div className="ctd-ring-label mono-num" dir="ltr" style={{ color }}>{mm}:{ss}</div>
+      <div className="ctd-ring-label mono-num" dir="ltr" style={{ color: textColor }}>{mm}:{ss}</div>
     </div>
   )
 }

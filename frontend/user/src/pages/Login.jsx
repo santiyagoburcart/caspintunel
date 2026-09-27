@@ -404,4 +404,6 @@ const CSS = `
   font-size: 12px; color: var(--c-text-muted);
 }
 .csp-auth-footer-l:hover { color: var(--c-primary-fg); }
+/* phones: 16px so iOS never zooms into a field */
+@media (max-width: 767px), (pointer: coarse) { .csp-fld-input { font-size: 16px; } }
 `

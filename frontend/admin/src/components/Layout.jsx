@@ -492,7 +492,7 @@ const CASPIAN_CSS = `
   .csp-mtop-logo {
     width: 34px; height: 34px; flex-shrink: 0; border-radius: 999px; overflow: hidden;
     display: grid; place-items: center; color: #fff; font-weight: 900; font-size: 14px;
-    background: linear-gradient(135deg, var(--c-primary), color-mix(in srgb, var(--c-primary) 55%, #7cc6ff));
+    background: linear-gradient(135deg, var(--c-primary), color-mix(in srgb, var(--c-primary) 78%, #06284a));
     box-shadow: 0 4px 12px -3px color-mix(in srgb, var(--c-primary) 45%, transparent);
   }
   .csp-mtop-logo img { width: 100%; height: 100%; object-fit: cover; }

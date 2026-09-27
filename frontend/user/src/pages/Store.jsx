@@ -428,7 +428,7 @@ const CSS = `
 .csp-plan.on { border-color: var(--c-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-primary) 16%, transparent); }
 .csp-plan-badge {
   position: absolute; top: -10px; inset-inline-start: 18px; padding: 3px 10px; border-radius: 999px;
-  font-size: 12px; font-weight: 700; color: #fff; background: var(--c-success);
+  font-size: 12px; font-weight: 700; color: #fff; background: var(--c-success-strong);
 }
 .csp-plan-top { display: flex; align-items: flex-start; justify-content: space-between; }
 .csp-plan-art { filter: drop-shadow(0 6px 10px rgba(11, 18, 32, .14)); transition: transform var(--dur-2) var(--ease-out); }

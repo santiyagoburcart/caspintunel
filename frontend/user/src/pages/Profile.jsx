@@ -534,4 +534,6 @@ const CSS = `
   font-size: 12px; font-weight: 700; color: #fff; background: var(--c-primary);
 }
 .csp-pf-refbanner-btn:hover { filter: brightness(1.06); }
+/* phones: 16px so iOS never zooms into a field */
+@media (max-width: 767px), (pointer: coarse) { .csp-pf-input { font-size: 16px; } }
 `

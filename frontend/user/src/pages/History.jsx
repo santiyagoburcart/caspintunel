@@ -47,7 +47,7 @@ function LegacyHistory() {
                   </div>
                 )}
                 {o.status === 'pending_payment' && (
-                  <Link to={`/checkout?resume=${o.id}`} className="mt-1 inline-block text-xs text-primary hover:underline">
+                  <Link to={`/checkout?resume=${o.id}`} className="btn-soft mt-1 text-xs">
                     {t('pay')} <span className="dir-arrow" aria-hidden="true">→</span>
                   </Link>
                 )}
@@ -335,8 +335,9 @@ const CSS = `
 }
 :root:not(.dark) .csp-hist-btn { background: #fff; }
 .csp-hist-btn:hover { border-color: var(--c-primary); }
-.csp-hist-btn--primary { background: var(--c-primary); color: #fff; border-color: var(--c-primary); }
-.csp-hist-btn--danger { background: var(--c-danger); color: #fff; border-color: var(--c-danger); }
+/* filled variants must beat the light-mode white button (:root:not(.dark) .csp-hist-btn) */
+:root .csp-hist-btn.csp-hist-btn--primary { background: var(--c-primary); color: #fff; border-color: var(--c-primary); }
+:root .csp-hist-btn.csp-hist-btn--danger { background: var(--c-danger); color: #fff; border-color: var(--c-danger); }
 @media (max-width: 560px) { .csp-hist-btn-txt { display: none; } }
 @media (max-width: 767px), (pointer: coarse) { .csp-hist-btn { min-height: 44px; min-width: 44px; } }
 
@@ -378,24 +379,29 @@ const CSS = `
   .csp-hist-search { flex: 1 1 100%; min-width: 0; }
   .csp-hist-search input { font-size: 16px; min-height: 44px; }
   .csp-hist-list { gap: 6px; }
-  /* two lines per order: [icon] title ········ amount / [icon] meta ······ actions */
+  /* [icon] title ··········· price
+     [icon] status ·········· [actions]
+     [icon] date · #id · service        (one line) */
+  .csp-hist-buy { display: none; }
   .csp-hist-row {
-    display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; column-gap: 10px; row-gap: 4px;
-    grid-template-areas: "ico title amt" "ico meta act" "ico reason reason";
+    display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; column-gap: 10px; row-gap: 2px;
+    grid-template-areas: "ico title price" "ico pill act" "ico meta meta" "ico reason reason";
     align-items: center; padding: 10px; border-radius: 12px;
   }
-  .csp-hist-row-l, .csp-hist-row-info, .csp-hist-row-r { display: contents; }
+  .csp-hist-row-l, .csp-hist-row-info, .csp-hist-row-r, .csp-hist-row-title, .csp-hist-amt { display: contents; }
   .csp-hist-row-ico { grid-area: ico; align-self: start; width: 36px; height: 36px; border-radius: 10px; }
   .csp-hist-row-ico svg { width: 18px; height: 18px; }
-  .csp-hist-row-title { grid-area: title; gap: 2px 6px; min-width: 0; }
-  .csp-hist-row-title b { font-size: 13.5px; line-height: 1.45; }
-  .csp-hist-meta { grid-area: meta; gap: 0 10px; margin-top: 0; min-width: 0; }
-  .csp-hist-reason { grid-area: reason; margin-top: 0; }
-  .csp-hist-amt { grid-area: amt; }
-  .csp-hist-amt small { display: none; }
-  .csp-hist-meta-method { display: inline-flex !important; }
-  .csp-hist-amt span b { font-size: 15px; }
+  .csp-hist-row-title > b { grid-area: title; font-size: 13.5px; line-height: 1.45; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .csp-hist-pill { grid-area: pill; justify-self: start; white-space: nowrap; }
+  .csp-hist-amt > span { grid-area: price; text-align: end; white-space: nowrap; }
+  .csp-hist-amt > span b { font-size: 15px; }
+  .csp-hist-amt > small { display: none; }
   .csp-hist-row-actions { grid-area: act; justify-self: end; }
+  .csp-hist-meta { grid-area: meta; flex-wrap: nowrap; gap: 0 10px; margin-top: 2px; min-width: 0; overflow: hidden; white-space: nowrap; }
+  .csp-hist-meta > span { flex-shrink: 0; }
+  .csp-hist-meta > span:last-child { flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .csp-hist-meta-method { display: none !important; }
+  .csp-hist-reason { grid-area: reason; margin-top: 0; }
   .csp-hist-foot { padding-top: 8px; }
   .csp-hist-tips { gap: 8px; }
   .csp-hist-tip { padding: 10px 12px; }

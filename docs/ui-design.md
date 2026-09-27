@@ -154,15 +154,22 @@ Content cards no longer blur (Aurora-dark/Frost used to blur every card), scrims
 and a dropdown inside a bar never blurs again. Override for support: `?glass=full|lite|solid`,
 `?glass=auto` to reset.
 
-### Checks
+### Checks (`scripts/ui-audit/`, all kept in the repo)
 
-- `scripts/ui-audit/glass-contrast.mjs` — AA proof (no browser).
-- `scripts/ui-audit/public-audit.mjs` — offline Playwright: logged-out pages × 5 theme variants ×
-  fa/en × 360/390/768/1440 (contrast, overflow, <12px text, <44px targets, Persian digits,
-  unnamed controls, page errors) + the glass runtime suite (tier selection for every
-  heuristic, material per tier, scroll states, reduced motion, frame smoke test).
-
-## Preview workflow
-
-`./scripts/preview.sh update` builds this checkout for `/preview/` + `/preview-panel/` (banner,
-live API, preview palettes) and serves it next to the live site; `remove` deletes it.
+- `glass-contrast.mjs` — AA proof for text on glass (no browser).
+- `run.sh [audit] [density] [suites] [contrast]` — builds this checkout's SPAs, starts the
+  **isolated ui-audit stack** (`stack.sh`: the test stack's throw-away MySQL + Redis on tmpfs,
+  its own network, an API server on `config.settings.test` with its production guard, per-run
+  keys, `seed` + FAKE data from `seed_fake.py`), runs the checks in the pinned Playwright image
+  on that network only, and tears the stack down. Never the live DB / Redis / API.
+  - `audit.mjs` — every page (logged-out + logged-in, user + admin) × 5 theme variants × fa/en ×
+    360/390/768/1440: contrast (composited backgrounds), overflow, text <12px, targets <44px on
+    phones, Persian digits, unnamed controls, page errors, API 5xx, bounced sessions.
+    Without `API` it audits the logged-out pages offline from fixtures.
+  - `audit.mjs` with `MODE=density` — what fits in the first 390×844 viewport on the key pages.
+  - `run-suites.mjs` + `suites/*.mjs` — regression suites: `glass` (tiers, material, scroll
+    states, floating tab bars, blur budget), `shell` (tab bars, drawers, rails, Settings hub
+    reachability, back button, redirects), `invariants` (toggle colours in every theme, shared
+    ConfirmDialog / no window dialogs, Jalali + Latin digits, fonts per language, copy helper,
+    16px inputs), `user-flows` and `admin-flows` (real clicks on the fake stack).
+- Fake accounts (stack only): `audit-user` / `audit-admin`, password `audit-pass-123`.

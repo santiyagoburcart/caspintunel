@@ -164,11 +164,13 @@ export default function Services() {
           <p className="text-sm text-muted mt-1">{s.sub}</p>
         </div>
         <div className="svc-head-acts">
-          <button type="button" className="btn-ghost text-sm inline-flex items-center gap-1.5" onClick={syncNow} disabled={syncing}>
-            <Ico d={ICONS.sync} w={14} />{syncing ? s.syncing : s.sync_btn}
+          <button type="button" className="btn-ghost text-sm inline-flex items-center gap-1.5 svc-sync-btn" onClick={syncNow} disabled={syncing}
+            aria-label={syncing ? s.syncing : s.sync_btn} title={syncing ? s.syncing : s.sync_btn}>
+            <Ico d={ICONS.sync} w={14} /><span className="svc-btn-t">{syncing ? s.syncing : s.sync_btn}</span>
           </button>
-          <button type="button" className="btn-primary text-sm inline-flex items-center gap-1.5" onClick={() => setCreateOpen(true)}>
-            <Ico d={ICONS.plus} w={14} />{s.create_btn}
+          <button type="button" className="btn-primary text-sm inline-flex items-center gap-1.5 svc-create-btn" onClick={() => setCreateOpen(true)}
+            aria-label={s.create_btn} title={s.create_btn}>
+            <Ico d={ICONS.plus} w={14} /><span className="svc-btn-t">{s.create_btn}</span>
           </button>
         </div>
       </div>
@@ -676,18 +678,33 @@ const CSS = `
   .svc-table, .svc-table tbody, .svc-table tr, .svc-table td { display: block; width: 100%; }
   .svc-table { min-width: 0; }
   .svc-table thead { display: none; }
-  /* compact record: account as the title row, then 2 columns of label-over-value */
+  /* compact record: [account ········ status] / user · plan · panel / usage · expiry / online · actions */
   .svc-table tr.svc-row {
-    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start;
-    border: 1px solid var(--c-border); border-radius: 12px; margin: 8px; padding: 4px 0;
+    display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); align-items: start;
+    border: 1px solid var(--c-border); border-radius: 12px; margin: 8px; padding: 2px 0;
   }
   .svc-table tr.svc-row > td { border-bottom: 0; }
   .svc-table tr:hover td { background: none; }
-  .svc-table td { padding: 5px 12px; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-width: 0; text-align: start; font-size: 13px; overflow-wrap: anywhere; }
+  .svc-table td { grid-column: span 2; padding: 3px 12px; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-width: 0; text-align: start; font-size: 13px; overflow-wrap: anywhere; }
   .svc-table td::before { content: attr(data-label); font-size: 12px; line-height: 16px; font-weight: 600; color: var(--c-text-muted); white-space: nowrap; }
-  .svc-table td:first-child { grid-column: 1 / -1; flex-direction: row; align-items: center; gap: 8px; font-weight: 700; padding-block: 7px; }
-  .svc-table td:first-child::before { font-weight: 600; }
+  .svc-table td:nth-child(1) { grid-column: 1 / 5; grid-row: 1; font-weight: 700; padding-block: 6px; }
+  .svc-table td:nth-child(1)::before, .svc-table td:nth-child(5)::before { display: none; }
+  .svc-table td:nth-child(5) { grid-column: 5 / 7; grid-row: 1; align-items: flex-end; padding-block: 6px; }
+  .svc-table td:nth-child(6), .svc-table td:nth-child(7) { grid-column: span 3; }
+  .svc-table td:nth-child(8) { grid-column: span 2; }
+  .svc-table td:nth-child(9) { grid-column: span 4; align-items: flex-end; }
+  .svc-table td:nth-child(9)::before { display: none; }
   .svc-table td.svc-c { align-items: flex-start; }
+  .svc-table td.svc-c:nth-child(9) { align-items: flex-end; }
   .svc-usage { min-width: 0; width: 100%; }
+  .svc-table td:nth-child(2) .svc-sub { display: none; }
+}
+@media (max-width: 767px) {
+  .svc-head { flex-wrap: nowrap; align-items: center; }
+  .svc-head-acts { flex-wrap: nowrap; }
+  .svc-sync-btn .svc-btn-t, .svc-create-btn .svc-btn-t { display: none; }
+  .svc-head h1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .svc-head > div:first-child { min-width: 0; }
+  .svc-sync-line { flex-wrap: nowrap; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
 }
 `

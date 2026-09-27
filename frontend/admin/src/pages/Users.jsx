@@ -6,6 +6,7 @@ import { jalali, digits } from '../lib/format'
 import { Alert, Spinner, Toggle } from '../components/ui'
 import { useAuth } from '../lib/auth'
 import { useUserActions } from '../lib/userActions'
+import { fg } from '../lib/tone'
 
 const T = {
   fa: {
@@ -125,7 +126,7 @@ function GrowthBadge({ stat, s, lang }) {
   const pct = Math.abs(stat.growth_percent ?? 0)
   const pctStr = `${pct}%`
   return (
-    <span className="usr-growth" style={{ background: `color-mix(in srgb, ${g.tone} 14%, transparent)`, color: g.tone }}>
+    <span className="usr-growth" style={{ background: `color-mix(in srgb, ${g.tone} 14%, transparent)`, color: fg(g.tone) }}>
       {g.arrow} {pctStr} {s.this_week}
     </span>
   )
@@ -379,8 +380,8 @@ export default function Users() {
           <p className="text-sm text-muted mt-1">{s.subtitle}</p>
         </div>
         <div className="usr-head-acts">
-          <Link to="/users/deleted" className="usr-hist-btn usr-archive-link">
-            <Ico d={I.archive} w={15} /> {s.deleted_users}
+          <Link to="/users/deleted" className="usr-hist-btn usr-archive-link" aria-label={s.deleted_users} title={s.deleted_users}>
+            <Ico d={I.archive} w={15} /> <span className="usr-archive-t">{s.deleted_users}</span>
           </Link>
           <button type="button" className="btn-primary text-sm" onClick={() => setModal({ row: null })}>
             <Ico d={I.plus} w={15} /> {s.add_user}
@@ -446,6 +447,7 @@ export default function Users() {
                           {r.is_legacy && <span className="usr-src-tag legacy">{s.legacy}</span>}
                         </div>
                         <span className="usr-sub">{s.uid}: #{r.id}</span>
+                        <span className="usr-sub usr-sub-m">{[r.name, r.phone].filter(Boolean).join(' · ') || '—'}</span>
                       </div>
                     </div>
                   </td>
@@ -588,37 +590,44 @@ const CSS = `
 /* phones: compact records — title row (avatar · user · active toggle), then
    label-over-value cells on a 6-column grid, actions in one row */
 @media (max-width: 767px) {
+  .usr-head { flex-wrap: nowrap; align-items: center; }
+  .usr-head-acts { flex-wrap: nowrap; }
+  .usr-archive-t { display: none; }
   .usr-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-  .usr-stat { gap: 4px; padding: 10px 12px !important; }
-  .usr-stat-ico { width: 28px; height: 28px; border-radius: 9px; }
-  .usr-stat-ico svg { width: 16px; height: 16px; }
+  .usr-stat { gap: 2px; padding: 9px 12px !important; }
+  .usr-stat-ico { display: none; }
   .usr-stat-val { font-size: 19px; }
   .usr-stat-row { gap: 6px; }
   .usr-toolbar { gap: 8px; padding: 10px !important; }
-  .usr-search { flex: 1 1 100%; min-width: 0; }
+  .usr-search { flex: 1 1 0; min-width: 0; }
   .usr-sel { flex: 1 1 0; max-width: none; min-width: 0; }
+  .usr-sel:first-of-type { margin-inline-start: 0; }
   .usr-wrap { overflow-x: visible; }
   .usr-table, .usr-table tbody { display: block; width: 100%; }
   .usr-table { min-width: 0; }
   .usr-table thead { display: none; }
+  /* record: [avatar · user / name · phone ········ active]
+             [services] [joined]   then the actions in one row */
   .usr-table tr.usr-row {
-    display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); align-items: start;
+    display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); align-items: center;
     border: 1px solid var(--c-border); border-radius: 12px; margin: 8px; padding: 4px 0;
   }
   .usr-table tr.usr-row:hover > td { background: none; }
-  .usr-table td { border: 0 !important; padding: 5px 12px; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-width: 0; font-size: 13px; overflow-wrap: anywhere; }
-  .usr-table td::before { content: attr(data-label); font-size: 12px; line-height: 16px; font-weight: 600; color: var(--c-text-muted); white-space: nowrap; }
+  .usr-table td { border: 0 !important; padding: 4px 12px; display: flex; flex-direction: row; align-items: center; gap: 6px; min-width: 0; font-size: 13px; overflow-wrap: anywhere; }
+  .usr-table td::before { content: attr(data-label) ":"; font-size: 12px; font-weight: 600; color: var(--c-text-muted); white-space: nowrap; }
+  .usr-table td:nth-child(2), .usr-table td:nth-child(3), .usr-table td:nth-child(4) { display: none; }
   .usr-table td:nth-child(1) { grid-column: 1 / 6; grid-row: 1; padding-block: 6px; }
   .usr-table td:nth-child(1)::before { display: none; }
-  .usr-table td:nth-child(7) { grid-column: 6; grid-row: 1; align-items: flex-end; justify-content: center; padding-inline: 8px; }
+  .usr-table td:nth-child(7) { grid-column: 6; grid-row: 1; justify-content: flex-end; padding-inline: 8px; }
   .usr-table td:nth-child(7)::before { display: none; }
-  .usr-table td:nth-child(2), .usr-table td:nth-child(3) { grid-column: span 3; }
-  .usr-table td:nth-child(4), .usr-table td:nth-child(5), .usr-table td:nth-child(6) { grid-column: span 2; }
-  .usr-table td:nth-child(8) { grid-column: 1 / -1; padding-top: 6px; }
+  .usr-table td:nth-child(5), .usr-table td:nth-child(6) { grid-column: span 3; }
+  .usr-table td:nth-child(8) { grid-column: 1 / -1; padding-top: 4px; }
   .usr-table td:nth-child(8)::before { display: none; }
-  .usr-table td.usr-c { text-align: start; }
+  .usr-table .usr-sub-m { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .usr-table td:nth-child(1) .usr-sub:not(.usr-sub-m) { display: none; }
   .usr-av { width: 32px; height: 32px; border-radius: 10px; }
-  .usr-idcell { gap: 8px; }
+  .usr-idcell { gap: 8px; min-width: 0; }
+  .usr-idcell > div { min-width: 0; }
   .usr-actions { justify-content: flex-start; flex-wrap: nowrap; width: 100%; }
   .usr-actions > * { flex: 1 1 0; justify-content: center; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .usr-date { font-size: 13px; }
@@ -640,6 +649,7 @@ const CSS = `
 .usr-pw .input { width: 100%; padding-inline-end: 40px; }
 .usr-pw-eye { position: absolute; inset-inline-end: 10px; top: 50%; transform: translateY(-50%); color: var(--c-text-muted); }
 .usr-pw-eye:hover { color: var(--c-text); }
+.usr-sub-m { display: none; }
 .usr-note { width: 100%; resize: vertical; min-height: 58px; line-height: 1.6; font-family: inherit; }
 .usr-status-box { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--c-primary) 22%, transparent); background: color-mix(in srgb, var(--c-primary) 6%, transparent); }
 .usr-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c-text-muted); flex-shrink: 0; }

@@ -542,7 +542,7 @@ const CSS = `
   background:linear-gradient(135deg,var(--csp-gauge-from),var(--csp-gauge-to)); color:#fff; }
 .mon .brand-text { display:flex; flex-direction:column; line-height:1.3; }
 .mon .brand-text h1 { font-size:15px; font-weight:800; margin:0; }
-.mon .brand-en { font-weight:500; font-size:12px; color:var(--csp-gauge-to); }
+.mon .brand-en { font-weight:500; font-size:12px; color:var(--c-primary-fg); }
 .mon .brand-sub { font-size: 12px; color:var(--c-text-muted); }
 .mon .status-pill { display:inline-flex; align-items:center; gap:8px; font-size:12.5px;
   padding:6px 12px; border-radius:999px; background:var(--csp-muted-bg); color:var(--c-text-muted); white-space:nowrap; }
@@ -553,7 +553,7 @@ const CSS = `
 .mon .btn { display:inline-flex; align-items:center; gap:6px; font-size:13px; cursor:pointer; text-decoration:none;
   padding:8px 14px; border-radius:12px; background:var(--csp-muted-bg); border:1px solid var(--c-border);
   color:var(--c-text); transition:opacity .2s, box-shadow .2s; white-space:nowrap; }
-.mon .btn.primary { background:linear-gradient(90deg,var(--csp-gauge-from),var(--csp-gauge-to)); border:0; color:#fff; }
+.mon .btn.primary { background:linear-gradient(90deg,var(--c-primary),color-mix(in srgb,var(--c-primary) 80%,#06284a)); border:0; color:#fff; }
 .mon .btn.full { width:100%; justify-content:center; margin-top:12px; }
 .mon .btn:disabled { opacity:.55; cursor:default; }
 
@@ -570,7 +570,7 @@ const CSS = `
         divider · avg-peak row · sparkline pinned to the bottom edge ---- */
 .mon .rescard { display:flex; flex-direction:column; justify-content:space-between; }
 .mon .card-head { display:flex; align-items:center; justify-content:space-between; gap:10px; }
-.mon .card-head-left { display:flex; align-items:center; gap:8px; color:var(--csp-gauge-to); font-weight:700; }
+.mon .card-head-left { display:flex; align-items:center; gap:8px; color:var(--c-primary-fg); font-weight:700; }
 .mon .label-mono { font-family:'JetBrains Mono',ui-monospace,monospace; font-size:12.5px; text-transform:uppercase; letter-spacing:.04em; }
 .mon .head-detail { font-size: 12px; color:var(--c-text-muted); white-space:nowrap; }
 .mon .ic { width:22px; height:22px; display:grid; place-items:center; font-size:13px; flex:0 0 auto; }
@@ -581,7 +581,7 @@ const CSS = `
 .mon .avgpeak { display:flex; justify-content:space-between; font-size: 12px; color:var(--c-text-muted); margin-bottom:8px;
   text-transform:uppercase; letter-spacing:.02em; }
 .mon .avgpeak b { color:var(--c-text); text-transform:none; font-variant-numeric:tabular-nums; }
-.mon .avgpeak b.accent { color:var(--csp-gauge-to); }
+.mon .avgpeak b.accent { color:var(--c-primary-fg); }
 .mon .avgpeak b.warn { color:var(--c-warning-fg); }
 .mon .spark-slot { height:40px; margin:0 -18px -18px; }
 .mon .spark-slot svg { display:block; }
@@ -651,7 +651,7 @@ const CSS = `
 .mon .seg-cols > div { display:flex; flex-direction:column; gap:4px; min-width:0; }
 .mon .seg-label { font-size: 12px; color:var(--c-text-muted); text-transform:uppercase; letter-spacing:.03em; }
 .mon .seg-value { font-size:17px; font-weight:800; }
-.mon .seg-value.accent { color:var(--csp-gauge-to); }
+.mon .seg-value.accent { color:var(--c-primary-fg); }
 /* IP segment: reference keeps the eye button beside the WHOLE label+list
    block (vertically centered), not inline with just the label */
 .mon .ip-seg-inner { display:flex; align-items:center; justify-content:space-between; gap:14px; }
@@ -1294,9 +1294,9 @@ const CM_CSS = `
   background:var(--cm-pill-bg); color:var(--cm-pill-fg); border:1px solid var(--cm-pill-bd);
   font-size:12px; font-weight:600; white-space:nowrap;
 }
-.cm-pill-ver { font-size: 12px; padding:2px 6px; border-radius:4px; background:rgba(255,255,255,.12); }
-.cm.cm-dark .cm-pill-ver { background:color-mix(in srgb, var(--c-success) 34%, transparent); color:color-mix(in srgb, var(--c-success) 55%, #ffffff); }
-.cm:not(.cm-dark) .cm-pill-ver { background:#ffffff; color:#707881; }
+.cm-pill-ver { font-size: 12px; padding:2px 6px; border-radius:4px; background:rgba(255,255,255,.12); color: var(--c-text-muted); }
+.cm.cm-dark .cm-pill-ver { background:color-mix(in srgb, var(--c-success) 34%, transparent); color:color-mix(in srgb, var(--c-success) 30%, #ffffff); }
+.cm:not(.cm-dark) .cm-pill-ver { background:#ffffff; color:#5A626C; }
 .cm-ping { position:relative; width:9px; height:9px; border-radius:50%; background:var(--cm-ok); flex:0 0 auto; }
 .cm-ping::after { content:""; position:absolute; inset:0; border-radius:50%; background:var(--cm-ok); opacity:.75; animation:cm-ping 1.4s cubic-bezier(0,0,.2,1) infinite; }
 @keyframes cm-ping { 75%,100%{ transform:scale(2.4); opacity:0; } }

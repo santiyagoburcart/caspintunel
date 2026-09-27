@@ -25,8 +25,9 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   `install.sh` run them. `seed` must stay idempotent and must never overwrite admin-panel values.
 - Tests: **only** `./scripts/test.sh [pytest args]` — isolated stack (`docker-compose.test.yml`, project
   `caspintunel-test`, own network, throw-away MySQL + Redis on tmpfs, per-run keys, nothing from `.env`).
-  Browser checks: Playwright image `mcr.microsoft.com/playwright:v1.49.1-noble` against the live site with
-  writes blocked in-browser (never create fake data in the prod DB).
+  Browser checks: Playwright image `mcr.microsoft.com/playwright:v1.49.1-noble`; logged-in pages via
+  `scripts/ui-audit/run.sh` (isolated stack + FAKE data). Against the live site only read-only, writes blocked
+  in-browser (never create fake data in the prod DB).
 
 - UI previews: `./scripts/preview.sh update|up|status|remove` serves a checkout at `/preview/` +
   `/preview-panel/` (live API, orange banner) without touching `/` or `/panel/`. Work on a UI branch in a
@@ -82,7 +83,8 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   phones/touch (global floor in `index.css`); every input needs a label (`Field` = real `<label>`).
 - **Liquid Glass = the floating layer only** (`src/styles/liquid.css` + `src/lib/glass.js`, identical in both SPAs;
   `html[data-glass]` full/lite/solid). Never glass a content card; new text-on-glass colours must pass
-  `node scripts/ui-audit/glass-contrast.mjs`. Offline UI audit: `scripts/ui-audit/public-audit.mjs`.
+  `node scripts/ui-audit/glass-contrast.mjs`. UI audit + browser suites: `scripts/ui-audit/run.sh` (isolated
+  stack with FAKE data, torn down afterwards — see docs/ui-design.md § Checks).
 - **One popup for everything**: `components/ConfirmDialog.jsx` (identical in both SPAs) + `useConfirm()`.
   Never use `window.confirm/alert/prompt`. **One copy helper**: `lib/clipboard.js::copyToClipboard`.
 - Fonts are bundled (`@fontsource`, no CDN): fa = Vazirmatn, en = Inter, `<code>` = JetBrains Mono.

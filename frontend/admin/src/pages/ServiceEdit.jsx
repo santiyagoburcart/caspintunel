@@ -726,7 +726,7 @@ const CSS = `
 .sed-act--success { color: var(--c-success-fg); border-color: color-mix(in srgb, #11AB53 35%, transparent); background: color-mix(in srgb, #11AB53 7%, transparent); }
 .sed-act--warning { color: var(--c-warning-fg); border-color: color-mix(in srgb, #D97706 35%, transparent); background: color-mix(in srgb, #D97706 7%, transparent); }
 .sed-act--danger { color: var(--c-danger-fg); border-color: color-mix(in srgb, #E11D48 35%, transparent); background: color-mix(in srgb, #E11D48 6%, transparent); }
-.dark .sed-act--success { color: #34d399; } .dark .sed-act--warning { color: #fbbf24; } .dark .sed-act--danger { color: #fb7185; }
+.dark .sed-act--success { color: var(--c-success-fg); } .dark .sed-act--warning { color: var(--c-warning-fg); } .dark .sed-act--danger { color: var(--c-danger-fg); }
 .sed-act:hover { filter: brightness(1.05); transform: translateY(-1px); }
 .sed-raw summary { cursor: pointer; font-size: 12.5px; font-weight: 700; color: var(--c-text-muted); }
 .sed-raw pre { margin-top: 10px; max-height: 320px; overflow: auto; padding: 12px; border-radius: 12px; font-size: 12px;

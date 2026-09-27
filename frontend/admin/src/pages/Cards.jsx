@@ -372,7 +372,7 @@ const CSS = `
   min-height: 216px;
   display: flex; flex-direction: column; justify-content: space-between;
   background:
-    radial-gradient(130% 130% at 100% 0%, color-mix(in srgb, var(--c-secondary) 92%, #fff) 0%, transparent 46%),
+    radial-gradient(130% 130% at 100% 0%, color-mix(in srgb, var(--c-secondary) 30%, transparent) 0%, transparent 46%),
     linear-gradient(135deg, var(--c-primary) 0%, color-mix(in srgb, var(--c-primary) 52%, #06284a) 100%);
   box-shadow: 0 14px 34px -10px color-mix(in srgb, var(--c-primary) 50%, transparent);
 }
@@ -391,7 +391,7 @@ const CSS = `
   text-transform: uppercase; letter-spacing: .04em; white-space: nowrap;
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.25);
 }
-.bankcard-state.on { background: color-mix(in srgb, var(--c-success) 88%, transparent); color: #fff; }
+.bankcard-state.on { background: var(--c-success-strong, #0A7F3F); color: #fff; }
 .bankcard-state.off { background: rgba(0,0,0,.32); }
 
 .bankcard-chip {

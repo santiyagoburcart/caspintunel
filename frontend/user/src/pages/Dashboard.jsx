@@ -328,7 +328,7 @@ function CaspianDashboard() {
 
       {/* filter + search */}
       {items && items.length > 0 && (
-        <div className={'csp-dash-bar' + (items.length <= 3 ? ' csp-dash-bar--few' : '')}>
+        <div className={'csp-dash-bar' + (items.length <= 5 ? ' csp-dash-bar--few' : '')}>
           <div className="csp-dash-tabs">
             {FILTERS.map(([k, key, fn]) => (
               <button key={k} type="button" className={'csp-dash-tab' + (filter === k ? ' on' : '')}
@@ -486,6 +486,7 @@ function SvcCard({ s, t, lang, onRevoke, onRenewClick }) {
         <button type="button" className="csp-svc-btn csp-svc-btn--primary" onClick={onRenewClick}>
           <DI d={D.renew} w={16} />{t('renew')}
         </button>
+        {s.subscription_url && <span className="csp-svc-copy csp-mob-only"><Copyable text={s.subscription_url} /></span>}
         {s.subscription_url && (
           <button type="button" className="csp-svc-btn csp-svc-more csp-mob-only" onClick={() => setMore((v) => !v)}
             aria-expanded={more} aria-label={more ? t('less_options') : t('more_options')} title={more ? t('less_options') : t('more_options')}>
@@ -840,7 +841,7 @@ const CSS = `
   .csp-stat-val { flex-direction: column; align-items: flex-start; gap: 0; margin-top: 0; }
   .csp-stat-val b { font-size: 19px; line-height: 1.25; }
   .csp-stat-val span { max-width: 100%; }
-  /* filter + search — pointless for a handful of services on a phone */
+  /* filter + search — pointless for a handful (≤5) of services on a phone */
   .csp-dash-bar--few { display: none; }
   .csp-dash-bar { padding: 6px; gap: 6px; border-radius: 14px; }
   .csp-dash-tabs { flex: 1 1 100%; }
@@ -853,7 +854,9 @@ const CSS = `
   .csp-svc-icon { width: 32px; height: 32px; border-radius: 10px; }
   .csp-svc-id h2 { font-size: 15px; line-height: 1.3; }
   .csp-svc-box { padding: 8px 10px; gap: 5px; }
-  .csp-svc-sub { gap: 0; }
+  .csp-svc-sub { display: none; }
+  .csp-svc-copy { flex: 0 0 44px; }
+  .csp-svc-copy .icon-btn { width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--c-border); background: color-mix(in srgb, var(--c-text-muted) 8%, transparent); color: var(--c-text); }
   .csp-svc-sub-label { display: none; }
   .csp-svc-sub-row { padding: 0 4px 0 0; gap: 4px; }
   [dir="rtl"] .csp-svc-sub-row { padding: 0 0 0 4px; }

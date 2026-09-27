@@ -181,9 +181,9 @@ export default function Payments() {
       {rows.length > 0 && shown.length === 0 && (
         <div className="card text-center text-muted">{s.none_tab}</div>
       )}
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {shown.map((p) => (
-          <div key={p.id} className={'card space-y-2' + (isExpired(p) ? ' pq-card--exp' : '') + (freshIds.has(p.id) ? ' pq-card--new' : '')}>
+          <div key={p.id} className={'card min-w-0 space-y-2' + (isExpired(p) ? ' pq-card--exp' : '') + (freshIds.has(p.id) ? ' pq-card--new' : '')}>
             <div className="flex items-center justify-between gap-2">
               <span className="font-bold">{toman(p.amount, lang)}</span>
               <div className="flex items-center gap-1.5">
@@ -217,7 +217,7 @@ export default function Payments() {
             {cards.length > 0 && (
               <label className="block text-xs text-muted">
                 {s.deposit_card}
-                <select className="input mt-0.5 text-sm"
+                <select className="input mt-0.5 min-w-0 text-sm"
                   value={cardById[p.id] ?? p.bank_card ?? cards[0]?.id ?? ''}
                   onChange={(e) => setCardById((m) => ({ ...m, [p.id]: Number(e.target.value) }))}>
                   {cards.map((c) => (
@@ -264,6 +264,9 @@ const CSS = `
 .pq-tabs { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; border-radius: 12px; background: color-mix(in srgb, var(--c-text-muted) 12%, transparent); }
 .pq-tab { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 9px; font-size: 13px; font-weight: 600; color: var(--c-text-muted); }
 .pq-tab.on { background: var(--c-primary); color: #fff; }
+/* count bubble: darken on the filled tab, neutral elsewhere (≥4.5:1 both ways) */
+.pq-tab.on .pq-tab-n { background: rgba(0, 0, 0, .22) !important; color: #fff; }
+.pq-tab:not(.on) .pq-tab-n { background: color-mix(in srgb, var(--c-text-muted) 12%, transparent) !important; color: var(--c-text); }
 .pq-tab-n { font-size: 12px; font-weight: 700; padding: 0 6px; min-width: 18px; text-align: center; border-radius: 999px;
   background: color-mix(in srgb, currentColor 22%, transparent); font-family: 'JetBrains Mono', monospace; }
 .pq-card--exp { border-color: color-mix(in srgb, var(--c-warning) 40%, var(--c-border)); }
@@ -283,6 +286,8 @@ const CSS = `
   .pq-info { font-size: 13px; line-height: 1.55; overflow-wrap: anywhere; }
   .pq-rcpt img { width: 92px; height: 116px; max-height: none; object-fit: cover; }
   .pq-rcpt > span { height: 116px; }
+  .pq-customer-card { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pq-exp-note { padding: 5px 10px; }
   .pq-acts { flex-wrap: nowrap; }
   .pq-acts > button { flex: 1 1 0; min-width: 0; padding-inline: 10px; }
   .pq-acts > button:last-child { flex: 0 0 auto; margin-inline-start: 0 !important; }

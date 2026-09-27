@@ -9,9 +9,9 @@
       "danger": "#DC2626",
       "warning": "#F59E0B",
       "text": "#E8ECF4",
-      "text_muted": "#A0AABD",
+      "text_muted": "#AEB8CA",
       "border": "rgba(255,255,255,0.10)",
-      "primary_fg": "#72AFF0",
+      "primary_fg": "#8BBEF4",
       "success_fg": "#3DD37F",
       "danger_fg": "#FF8585",
       "warning_fg": "#FBBF24"
@@ -25,12 +25,12 @@
       "danger": "#DC2626",
       "warning": "#F59E0B",
       "text": "#0B1220",
-      "text_muted": "#4B5870",
+      "text_muted": "#414E65",
       "border": "rgba(11,18,32,0.10)",
-      "primary_fg": "#1464BA",
-      "success_fg": "#086B35",
-      "danger_fg": "#B91C1C",
-      "warning_fg": "#8A4200"
+      "primary_fg": "#0C4C8F",
+      "success_fg": "#075C2E",
+      "danger_fg": "#A11818",
+      "warning_fg": "#783900"
     }
   },
   "Royal Frost": {
@@ -45,12 +45,12 @@
       "danger": "#DC2626",
       "warning": "#F59E0B",
       "text": "#0B1B36",
-      "text_muted": "#46566F",
+      "text_muted": "#3C4B63",
       "border": "rgba(20,100,186,0.16)",
-      "primary_fg": "#1464BA",
-      "success_fg": "#086B35",
-      "danger_fg": "#B91C1C",
-      "warning_fg": "#8A4200"
+      "primary_fg": "#0C4C8F",
+      "success_fg": "#075C2E",
+      "danger_fg": "#A11818",
+      "warning_fg": "#783900"
     },
     "dark": {
       "background": "#EEF3FA",
@@ -61,12 +61,12 @@
       "danger": "#DC2626",
       "warning": "#F59E0B",
       "text": "#0B1B36",
-      "text_muted": "#46566F",
+      "text_muted": "#3C4B63",
       "border": "rgba(20,100,186,0.16)",
-      "primary_fg": "#1464BA",
-      "success_fg": "#086B35",
-      "danger_fg": "#B91C1C",
-      "warning_fg": "#8A4200"
+      "primary_fg": "#0C4C8F",
+      "success_fg": "#075C2E",
+      "danger_fg": "#A11818",
+      "warning_fg": "#783900"
     },
     "vars": {
       "--c-primary-2": "#4C90D6",

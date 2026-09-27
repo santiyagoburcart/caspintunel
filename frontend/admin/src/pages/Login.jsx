@@ -289,4 +289,6 @@ const CSS = `
 }
 .al-foot span { display: inline-flex; align-items: center; gap: 5px; }
 .al-foot span:first-child svg { color: var(--c-success-fg); }
+/* phones: 16px so iOS never zooms into a field */
+@media (max-width: 767px), (pointer: coarse) { .al-input { font-size: 16px; } }
 `

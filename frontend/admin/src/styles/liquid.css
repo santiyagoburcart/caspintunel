@@ -174,7 +174,8 @@ html[data-glass] :is(.u-botnav-item.on, .csp-bn-item.on:not(.csp-bn-centre), .cs
     padding: var(--lg-pad); border: 0; border-radius: var(--lg-r-bar);
     transition: inset-inline var(--lg-dur) var(--lg-spring);
   }
-  html[data-glass] { --bottomnav-h: calc(80px + env(safe-area-inset-bottom, 0px)); }
+  /* capsule = 6 + item (icon + label, the centre lens is 44px) + 6, floating 10px up */
+  html[data-glass] { --bottomnav-h: calc(96px + env(safe-area-inset-bottom, 0px)); }
   html[data-glass] .csp-content { padding-bottom: calc(var(--bottomnav-h) + 16px) !important; }
   html[data-glass] .csp-bn-item {
     min-height: 56px; border-radius: var(--lg-r-item); gap: 1px;
