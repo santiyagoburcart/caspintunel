@@ -71,6 +71,7 @@ function LegacyStore() {
 
   return (
     <div className="space-y-5">
+      <style>{LEGACY_CSS}</style>
       <h1 className="text-lg font-bold">{t('store')}</h1>
       {plans.length === 0 && <div className="card text-center text-muted">{t('no_plans')}</div>}
       {mode === 'grouped' ? (
@@ -90,9 +91,11 @@ function LegacyStore() {
       {plans.length > 0 && (
         <div className="space-y-2">
           <Alert>{err}</Alert>
-          <button className="btn-primary w-full" disabled={!selected} onClick={continueToCheckout}>
-            {t('continue_checkout')}
-          </button>
+          <div className="m-actionbar">
+            <button className="btn-primary w-full" disabled={!selected} onClick={continueToCheckout}>
+              {t('continue_checkout')}
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -107,7 +110,7 @@ function LegacyGrid({ plans, lang, t, selected, onSelect, showBadge }) {
         const isSel = selected === p.id
         return (
           <div key={p.id} role="radio" aria-checked={isSel} tabIndex={0}
-            className="card flex cursor-pointer flex-col gap-2 outline-none transition"
+            className="card lstore-plan flex cursor-pointer flex-col gap-2 outline-none transition"
             style={{
               borderWidth: 2, borderStyle: 'solid',
               borderColor: isSel ? 'var(--c-primary)' : 'var(--c-border)',
@@ -126,8 +129,8 @@ function LegacyGrid({ plans, lang, t, selected, onSelect, showBadge }) {
             </div>
             {!showBadge && cat && <div className="text-xs font-bold" style={{ color: 'var(--c-secondary-fg)' }}>{cat}</div>}
             <div className="font-bold" style={{ color: 'var(--c-ink)' }}>{(lang === 'fa' ? p.name_fa : p.name_en) || p.name_fa}</div>
-            <div className="whitespace-pre-line text-sm text-muted">{(lang === 'fa' ? p.desc_fa : p.desc_en) || p.desc_fa}</div>
-            <ul className="mt-1 space-y-1 text-sm">
+            <div className="lstore-desc whitespace-pre-line text-sm text-muted">{(lang === 'fa' ? p.desc_fa : p.desc_en) || p.desc_fa}</div>
+            <ul className="lstore-specs mt-1 space-y-1 text-sm">
               <li>{t('volume')}: {p.type === 'custom_volume' ? t('selectable') : p.data_limit ? `${p.data_limit / GB} GB` : t('unlimited')}</li>
               <li>{t('duration')}: {p.duration_days ? `${p.duration_days} ${t('days')}` : t('no_expiry')}</li>
               {p.discount_percent > 0 && <li className="text-success">{t('discount')} {p.discount_percent}%</li>}
@@ -147,6 +150,15 @@ function LegacyGrid({ plans, lang, t, selected, onSelect, showBadge }) {
     </div>
   )
 }
+
+const LEGACY_CSS = `
+@media (max-width: 767px) {
+  .lstore-plan { gap: 6px !important; }
+  .lstore-desc { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 13px; }
+  .lstore-specs { display: flex; flex-wrap: wrap; gap: 2px 14px; margin-top: 0 !important; font-size: 13px; }
+  .lstore-specs > li { margin: 0 !important; }
+}
+`
 
 /* ================= Caspian — Stitch redesign port ================= */
 const ICO = {
@@ -503,4 +515,35 @@ const CSS = `
 .csp-store-cta:disabled { opacity: .6; cursor: default; }
 [dir="rtl"] .csp-store-cta svg, [dir="rtl"] .csp-store-eyebrow svg { }
 [dir="rtl"] .csp-store-cta > svg:last-child { transform: scaleX(-1); }
+/* ---- phones (≤767px): compact plan rows ---- */
+@media (max-width: 767px) {
+  .csp-store { gap: 12px; }
+  .csp-store-hero { gap: 2px; }
+  .csp-store-lead { font-size: 12.5px; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .csp-store-tab { min-height: 44px; padding: 0 14px; }
+  .csp-store-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .csp-plan {
+    display: grid; grid-template-columns: 32px minmax(0, 1fr) 24px; column-gap: 10px; row-gap: 6px;
+    grid-template-areas: "art name radio" "art desc radio" "specs specs specs" "foot foot foot";
+    padding: 12px 14px; border-radius: 16px;
+  }
+  .csp-plan-top { display: contents; }
+  .csp-plan-art { grid-area: art; width: 32px; height: 32px; align-self: start; }
+  .csp-plan-radio { grid-area: radio; align-self: start; }
+  .csp-plan-name { grid-area: name; font-size: 15px; line-height: 1.35; }
+  .csp-plan-desc { grid-area: desc; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+  .csp-plan-specs { grid-area: specs; flex-direction: row; flex-wrap: wrap; gap: 2px 14px; padding: 6px 10px; border-radius: 10px; }
+  .csp-plan-specs > div { justify-content: flex-start; gap: 5px; }
+  .csp-plan-foot { grid-area: foot; padding-top: 0; align-items: center; }
+  .csp-plan-foot > div { display: flex; align-items: baseline; gap: 6px; }
+  .csp-plan-select { display: none; }
+  .csp-plan-badge { top: -9px; inset-inline-start: 14px; }
+  .csp-vol { padding: 14px; gap: 12px; }
+  .csp-vol-counter b { font-size: 24px; }
+  .csp-vol-chip { min-height: 44px; padding: 0 12px; }
+  .csp-store-note { padding: 10px 12px; gap: 10px; border-radius: 14px; }
+  .csp-store-note img { width: 28px; height: 28px; }
+  .csp-store-note-d { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+}
 `
+

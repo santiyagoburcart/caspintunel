@@ -149,7 +149,7 @@ button:not(:disabled), [role="button"], summary, label.toggle, select { cursor: 
     box-shadow: var(--sh-1);
   }
   .card { @apply glass; padding: var(--sp-5); }
-  @media (max-width: 767px) { .card { padding: var(--sp-4); } }
+  @media (max-width: 767px) { .card { padding: var(--m-card-pad, 14px); } }
   .aurora { background: none; }
 
   /* ---- buttons: 40px desktop, 44px on touch; press feedback; loading ---- */
@@ -376,6 +376,36 @@ button:not(:disabled), [role="button"], summary, label.toggle, select { cursor: 
   .input, select.input { font-size: 16px; }
 }
 
+/* ==================================================================== *
+ *  PHONE DENSITY (≤767px) — compact, information-dense layout.         *
+ *  Compactness comes from padding, rhythm and layout; tap targets stay *
+ *  ≥44px and inputs stay 16px (no iOS zoom) — see the touch floor above.*
+ *  Type scale: body 14 · secondary 12–13 · section 17 · page title 20  *
+ *  · big numbers 18–20.                                                *
+ * ==================================================================== */
+@media (max-width: 767px) {
+  :root {
+    --m-card-pad: 14px; --m-gap: 12px;
+    --m-fs-body: 14px; --m-fs-2: 12.5px; --m-fs-section: 17px; --m-fs-title: 20px; --m-fs-num: 19px;
+  }
+  body { font-size: var(--m-fs-body); line-height: 1.55; }
+  /* page titles */
+  main h1 { font-size: var(--m-fs-title) !important; line-height: 1.35 !important; }
+  /* tighter vertical rhythm inside pages */
+  main .space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: var(--m-gap); }
+  main .space-y-3 > :not([hidden]) ~ :not([hidden]) { margin-top: 10px; }
+  main :is(.gap-4, .sm\:gap-4) { gap: var(--m-gap); }
+  main .text-2xl { font-size: 20px; line-height: 1.3; }
+  /* the ubiquitous stacked "label: value" record (DataTable → .rtable):
+     a 2-column grid of label-over-value cells instead of one line per field */
+  table.rtable tr { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 8px !important; padding: 6px 0 !important; }
+  table.rtable td { flex-direction: column; align-items: flex-start !important; justify-content: flex-start !important;
+    gap: 1px !important; text-align: start !important; padding: 5px 12px !important; font-size: 13px; }
+  table.rtable td::before { font-size: 12px !important; line-height: 16px; }
+  table.rtable td:first-child, table.rtable td[colspan] { grid-column: 1 / -1; }
+  table.rtable td:first-child { flex-direction: row; align-items: center !important; justify-content: space-between !important; }
+}
+
 @keyframes csp-ripple { 0% { transform: scale(.4); opacity: .8; } 100% { transform: scale(1.8); opacity: 0; } }
 @keyframes skeleton-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 
@@ -392,10 +422,9 @@ html:not([data-theme-style="frost"]):not([data-theme-style="caspian"]) body {
     var(--c-bg);
   background-attachment: fixed;
 }
-html:not([data-theme-style="frost"]):not([data-theme-style="caspian"]).dark .glass,
-html:not([data-theme-style="frost"]):not([data-theme-style="caspian"]).dark .card {
-  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
-}
+/* content cards are lightly frosted (translucent --c-surface over the fixed
+   glow) WITHOUT a backdrop blur — blur is reserved for the floating layer
+   (styles/liquid.css) and would stack one blur per card on low-end phones */
 
 /* ---- Royal Frost: light frosted glass, navy admin rail ---- */
 [data-theme-style="frost"] body {
@@ -407,7 +436,6 @@ html:not([data-theme-style="frost"]):not([data-theme-style="caspian"]).dark .car
 }
 [data-theme-style="frost"] .glass,
 [data-theme-style="frost"] .card {
-  -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
   border-color: var(--c-glass-border);
   box-shadow: 0 10px 32px color-mix(in srgb, var(--c-primary) 9%, transparent), inset 0 1px 0 rgba(255, 255, 255, .7);
 }

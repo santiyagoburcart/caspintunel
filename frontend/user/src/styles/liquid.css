@@ -1,0 +1,299 @@
+/* ==================================================================== *
+ *  LIQUID GLASS — the floating navigation / control layer              *
+ *  Identical file in both SPAs (frontend/user + frontend/admin).       *
+ *  Principles + sources: docs/ui-design.md § Liquid Glass.             *
+ *                                                                      *
+ *  Glass is for the layer that floats ABOVE content (bars, sidebars,   *
+ *  tab bars, sheets, dialogs, menus, toasts, segmented controls).      *
+ *  Content cards stay solid / lightly frosted without blur.            *
+ *                                                                      *
+ *  html[data-glass] is set by lib/glass.js before first paint:         *
+ *    full  — translucent tint + backdrop blur + saturation             *
+ *    lite  — same shapes, rim and depth, no blur (low-end devices,     *
+ *            slow frames, Save-Data, no backdrop-filter support)       *
+ *    solid — opaque (prefers-reduced-transparency / more contrast)     *
+ *  Every rule is scoped under html[data-glass] (0,2,1) so it outranks  *
+ *  the page-local <style> blocks without !important.                   *
+ * ==================================================================== */
+
+:root {
+  /* regular variant — the tint alone keeps text ≥ WCAG AA over ANY content
+     (worst case: solid black / white / brand colour directly underneath;
+     scripts/ui-audit/glass-contrast.mjs proves it for every palette) */
+  --lg-tint: color-mix(in srgb, var(--c-surface-solid) 90%, transparent);        /* bars, tab bars, toolbars */
+  --lg-tint-strong: color-mix(in srgb, var(--c-surface-solid) 92%, transparent); /* sidebars, sheets, dialogs, menus */
+  --lg-blur: 20px;
+  --lg-sat: 180%;
+  --lg-sheen: linear-gradient(180deg, rgba(255, 255, 255, .34), rgba(255, 255, 255, 0) 42%);
+  --lg-stroke: rgba(11, 18, 32, .09);
+  --lg-spec: rgba(255, 255, 255, .85);     /* specular highlight — top edge */
+  --lg-spec-2: rgba(255, 255, 255, .30);   /* lower rim */
+  --lg-shadow: 0 10px 30px -12px rgba(11, 18, 32, .28), 0 2px 8px -2px rgba(11, 18, 32, .10);
+  --lg-edge: inset 0 1px 0 var(--lg-spec), inset 0 -1px 0 var(--lg-spec-2), inset 0 0 0 1px var(--lg-stroke);
+  /* labels on glass: a touch darker than --c-text-muted (vibrant label);
+     the selected tab's label sits on a blue pill, so it is darkened too */
+  --lg-label: color-mix(in srgb, var(--c-text-muted) 72%, var(--c-text));
+  --lg-active-fg: color-mix(in srgb, var(--c-primary-fg) 72%, var(--c-text));
+  --lg-scrim: rgba(11, 18, 32, .42);
+  /* concentric radii: outer = inner + padding */
+  --lg-pad: 6px;
+  --lg-r-item: 22px;
+  --lg-r-bar: calc(var(--lg-r-item) + var(--lg-pad));
+  --lg-dur: 320ms;
+  --lg-spring: cubic-bezier(.34, 1.36, .64, 1);   /* fluid, slightly elastic */
+}
+.dark {
+  --lg-sheen: linear-gradient(180deg, rgba(255, 255, 255, .07), rgba(255, 255, 255, 0) 42%);
+  --lg-stroke: rgba(255, 255, 255, .10);
+  --lg-spec: rgba(255, 255, 255, .18);
+  --lg-spec-2: rgba(255, 255, 255, .05);
+  --lg-shadow: 0 14px 34px -12px rgba(0, 0, 0, .70), 0 2px 8px -2px rgba(0, 0, 0, .45);
+  --lg-label: color-mix(in srgb, var(--c-text-muted) 72%, var(--c-text));
+  --lg-active-fg: var(--c-primary-fg);
+  --lg-scrim: rgba(0, 0, 0, .56);
+}
+
+/* ---------- the material ---------- */
+html[data-glass] :is(.lg, .lg-strong) {
+  background: var(--lg-sheen), var(--lg-tint);
+  box-shadow: var(--lg-edge), var(--lg-shadow);
+  border-color: transparent;
+}
+html[data-glass] .lg-strong { background: var(--lg-sheen), var(--lg-tint-strong); }
+html[data-glass="full"] :is(.lg, .lg-strong) {
+  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat));
+  backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat));
+}
+/* lite: no blur — nearly opaque tint so text never depends on the blur */
+html[data-glass="lite"] {
+  --lg-tint: color-mix(in srgb, var(--c-surface-solid) 95%, transparent);
+  --lg-tint-strong: var(--c-surface-solid);
+}
+/* solid: reduced transparency / increased contrast — opaque, crisp border */
+html[data-glass="solid"] {
+  --lg-tint: var(--c-surface-solid);
+  --lg-tint-strong: var(--c-surface-solid);
+  --lg-sheen: linear-gradient(transparent, transparent);
+  --lg-edge: inset 0 0 0 1px var(--c-border);
+  --lg-label: var(--c-text-muted);
+}
+@media (prefers-contrast: more) {
+  html[data-glass] { --lg-edge: inset 0 0 0 1px var(--c-text-muted); }
+}
+
+/* ---------- the floating layer: bars / sidebars / sheets / menus ---------- */
+/* regular tint (bars that carry icons + short labels) */
+html[data-glass] :is(
+  .csp-topbar, .csp-mtop, .u-botnav, .csp-botnav, .m-actionbar, .lg-bar,
+  .st-solo-bar, .gtoast, .csp-auth-top, .al-top, .sed-mhead, .sed-mbar
+) {
+  background: var(--lg-sheen), var(--lg-tint);
+  box-shadow: var(--lg-edge), var(--lg-shadow);
+}
+/* strong tint (surfaces that carry body text) */
+html[data-glass] :is(
+  .csp-side, .admin-side, .csp-drawer, .lg-drawer, .cdlg, .ct-nbell-panel, .csp-qr-modal, .lg-menu
+) {
+  background: var(--lg-sheen), var(--lg-tint-strong);
+  box-shadow: var(--lg-edge), var(--lg-shadow);
+}
+html[data-glass="full"] :is(
+  .csp-topbar, .csp-mtop, .u-botnav, .csp-botnav, .m-actionbar, .lg-bar, .st-solo-bar, .gtoast,
+  .csp-auth-top, .al-top, .sed-mhead, .sed-mbar,
+  .csp-side, .admin-side, .csp-drawer, .lg-drawer, .cdlg, .ct-nbell-panel, .csp-qr-modal, .lg-menu
+) {
+  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat));
+  backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat));
+}
+html[data-glass]:not([data-glass="full"]) :is(
+  .csp-topbar, .csp-mtop, .u-botnav, .csp-botnav, .m-actionbar, .lg-bar, .st-solo-bar, .gtoast,
+  .csp-auth-top, .al-top, .sed-mhead, .sed-mbar,
+  .csp-side, .admin-side, .csp-drawer, .lg-drawer, .cdlg, .ct-nbell-panel, .csp-qr-modal, .lg-menu
+) {
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+/* no backdrop-filter support at all → behave like lite */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  html[data-glass] {
+    --lg-tint: color-mix(in srgb, var(--c-surface-solid) 95%, transparent);
+    --lg-tint-strong: var(--c-surface-solid);
+  }
+}
+
+/* ---------- scrims: dim only, never blur the whole page (the most
+   expensive layer on low-end Android, and the sheet is glass anyway) ---------- */
+html[data-glass] :is(
+  .cdlg-backdrop, .csp-qr-overlay, .csp-hist-overlay, .usr-backdrop, .svc-backdrop, .cd-backdrop,
+  .int-backdrop, .sdm-backdrop, .sm-backdrop, .drp-backdrop, .st-modal-backdrop, .txd-lb, .txd-receipt-hint
+) {
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+html[data-glass] :is(.cdlg-backdrop, .csp-qr-overlay, .csp-hist-overlay) { background: var(--lg-scrim); }
+html[data-glass] :is(.csp-drawer-scrim, .ct-nbell-scrim) { background: var(--lg-scrim); }
+
+/* ---------- top bars: content scrolls underneath; scroll-edge effect ---------- */
+html[data-glass] :is(.csp-topbar, .csp-mtop, .lg-bar) { border-color: transparent; }
+html[data-glass] :is(.csp-topbar, .csp-mtop)::after {
+  content: ""; position: absolute; inset-inline: 0; top: 100%; height: 16px; pointer-events: none;
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--c-bg) 70%, transparent), transparent);
+  opacity: 0; transition: opacity var(--dur-2);
+}
+html[data-glass].lg-scrolled :is(.csp-topbar, .csp-mtop)::after { opacity: 1; }
+html[data-glass]:not(.lg-scrolled) :is(.csp-topbar, .csp-mtop) { box-shadow: var(--lg-edge); }
+html[data-glass] :is(.csp-topbar, .csp-mtop) { position: sticky; }
+
+/* ---------- labels / icons on glass ---------- */
+html[data-glass] :is(.u-botnav-item, .csp-bn-item):not(.on) { color: var(--lg-label); }
+html[data-glass] :is(.u-botnav-item.on, .csp-bn-item.on:not(.csp-bn-centre), .csp-tab.active, .csp-store-tab.on, .csp-dash-tab.on) { color: var(--lg-active-fg); }
+
+/* ---------- floating capsule tab bars (phones) — shrink while scrolling down ---------- */
+@media (max-width: 999px) {
+  html[data-glass] .u-botnav {
+    inset-inline: 12px; bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    padding: var(--lg-pad); border: 0; border-radius: var(--lg-r-bar);
+    transition: inset-inline var(--lg-dur) var(--lg-spring), padding var(--lg-dur) var(--lg-spring);
+  }
+  html[data-glass].has-botnav { --bottomnav-h: calc(80px + env(safe-area-inset-bottom, 0px)); }
+  html[data-glass] .u-botnav-item {
+    min-height: 56px; border-radius: var(--lg-r-item); gap: 1px;
+    transition: min-height var(--lg-dur) var(--lg-spring), background var(--dur-1), color var(--dur-1);
+  }
+  html[data-glass] .u-botnav-item.on { background: color-mix(in srgb, var(--c-primary) 13%, transparent); }
+  html[data-glass] .u-botnav-item span {
+    max-height: 18px; line-height: 18px; overflow: hidden;
+    transition: max-height var(--lg-dur) var(--lg-spring), opacity var(--dur-2);
+  }
+  /* minimized: narrower capsule, icons only — every item stays ≥ 44 × 44 */
+  html[data-glass].lg-min .u-botnav { inset-inline: max(12px, calc(50% - 150px)); }
+  html[data-glass].lg-min .u-botnav-item { min-height: 44px; }
+  html[data-glass].lg-min .u-botnav-item span { max-height: 0; opacity: 0; }
+}
+@media (max-width: 767px) {
+  html[data-glass] .csp-botnav {
+    inset-inline: 12px; bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    padding: var(--lg-pad); border: 0; border-radius: var(--lg-r-bar);
+    transition: inset-inline var(--lg-dur) var(--lg-spring);
+  }
+  html[data-glass] { --bottomnav-h: calc(80px + env(safe-area-inset-bottom, 0px)); }
+  html[data-glass] .csp-content { padding-bottom: calc(var(--bottomnav-h) + 16px) !important; }
+  html[data-glass] .csp-bn-item {
+    min-height: 56px; border-radius: var(--lg-r-item); gap: 1px;
+    transition: min-height var(--lg-dur) var(--lg-spring);
+  }
+  html[data-glass] .csp-bn-item.on:not(.csp-bn-centre) { background: color-mix(in srgb, var(--c-primary) 13%, transparent); }
+  html[data-glass] .csp-bn-dot { display: none; }
+  html[data-glass] .csp-bn-t {
+    max-height: 18px; line-height: 18px; overflow: hidden;
+    transition: max-height var(--lg-dur) var(--lg-spring), opacity var(--dur-2);
+  }
+  /* the payments queue stays the prominent action: a tinted glass lens inside the bar */
+  html[data-glass] .csp-bn-centre .csp-bn-ico {
+    margin-top: 0; width: 44px; height: 44px;
+    background: var(--c-primary);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45), inset 0 -1px 0 rgba(0, 0, 0, .12),
+      0 6px 16px -6px color-mix(in srgb, var(--c-primary) 70%, transparent);
+  }
+  html[data-glass] .csp-bn-centre.on .csp-bn-ico {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45), 0 0 0 3px color-mix(in srgb, var(--c-primary) 30%, transparent),
+      0 6px 16px -6px color-mix(in srgb, var(--c-primary) 70%, transparent);
+  }
+  html[data-glass] .csp-bn-centre .csp-bn-t { color: var(--c-primary-fg); }
+  html[data-glass].lg-min .csp-botnav { inset-inline: max(12px, calc(50% - 150px)); }
+  html[data-glass].lg-min .csp-bn-item { min-height: 44px; }
+  html[data-glass].lg-min .csp-bn-t { max-height: 0; opacity: 0; }
+}
+
+/* ---------- sticky action bars float as a glass capsule above the tab bar ---------- */
+@media (max-width: 767px) {
+  html[data-glass] .m-actionbar {
+    margin: var(--sp-3) 0 0; padding: 8px; border: 0; border-radius: 24px;
+    bottom: calc(var(--bottomnav-h, 0px) + 8px);
+  }
+  html[data-glass] .m-actionbar > * { border-radius: 18px; }
+  /* page bars that sat on the old flat nav now clear the floating capsule */
+  html[data-glass] .st-solo-bar {
+    inset-inline: 12px; bottom: calc(var(--bottomnav-h) + 8px); border: 0; border-radius: 24px; padding: 8px;
+  }
+  html[data-glass] .st-solo { padding-bottom: 76px; }
+  html[data-glass][data-theme-style="caspian"] .sed-mbar { bottom: calc(var(--bottomnav-h) + 8px); border: 0; border-radius: 24px; }
+  html[data-glass] .sed-mhead { border-bottom-color: transparent; }
+}
+/* Settings / Branding page headers stick (and float) on phones only */
+@media (max-width: 640px) {
+  html[data-glass] :is(.st-head, .br-head) { background: var(--lg-sheen), var(--lg-tint); box-shadow: var(--lg-edge); }
+  html[data-glass="full"] :is(.st-head, .br-head) { -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat)); backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat)); }
+  html[data-glass]:not([data-glass="full"]) :is(.st-head, .br-head) { -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+
+/* ---------- sheets + dialogs (shared ConfirmDialog) ---------- */
+html[data-glass] .cdlg { --cdlg-surface: transparent; border-color: transparent; border-radius: 28px; }
+html[data-glass] .cdlg-box { background: color-mix(in srgb, var(--c-text) 5%, transparent); }
+@media (max-width: 767px) {
+  /* bottom sheet inset from the screen edge so content peeks around it */
+  html[data-glass] .cdlg {
+    margin: 0 8px calc(8px + env(safe-area-inset-bottom, 0px)); border-radius: 30px;
+    padding-bottom: 20px; max-height: calc(100dvh - 24px);
+  }
+}
+html[data-glass] .csp-qr-modal { border-color: transparent; border-radius: 28px; }
+html[data-glass] .gtoast { border-color: transparent; border-radius: 999px; }
+
+/* ---------- menus / popovers / notification panel ---------- */
+html[data-glass] .ct-nbell-panel { border-color: transparent; }
+/* never glass-on-glass: a dropdown inside a blurred bar would only see the bar
+   (its "backdrop root") and cost a second blur — it gets an opaque tint instead */
+html[data-glass] :is(.csp-topbar, .lg-bar, .csp-mtop) .ct-nbell-panel {
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  background: var(--lg-sheen), var(--c-surface-solid);
+}
+
+/* ---------- sidebars ---------- */
+/* Royal Frost keeps its navy rail (white text): navy-tinted glass */
+html[data-glass][data-theme-style="frost"] .admin-side {
+  background: linear-gradient(180deg, rgba(11, 27, 54, .92), rgba(18, 48, 94, .92));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16), inset 0 0 0 1px rgba(255, 255, 255, .06), 0 10px 30px rgba(11, 27, 54, .25);
+}
+html[data-glass]:not([data-glass="full"])[data-theme-style="frost"] .admin-side { background: linear-gradient(180deg, #0B1B36, #12305E); }
+html[data-glass] .csp-side { border-inline-end-color: transparent; }
+@media (min-width: 768px) {
+  /* the rail floats: inset from the window edge, concentric corners */
+  html[data-glass] .csp-rail { inset-block: 12px; inset-inline-start: 12px; width: calc(18rem - 12px); }
+  html[data-glass] .csp-rail .csp-side { border-radius: 26px; }
+  html[data-glass] .csp-link { border-radius: 14px; }
+  /* desktop top bar floats over the content too */
+  html[data-glass] .csp-main > .csp-topbar {
+    top: calc(var(--preview-h, 0px) + 12px); z-index: 30; margin: 12px 12px 0; border: 0; border-radius: 22px;
+  }
+}
+html[data-glass] .csp-drawer { border-inline-end-color: transparent; }
+html[data-glass] .csp-drawer .csp-nav-link, html[data-glass] .csp-link { transition: background var(--dur-1), color var(--dur-1), transform var(--dur-1); }
+
+/* ---------- segmented controls: glass without blur (nothing scrolls under them) ---------- */
+html[data-glass] :is(.csp-tabs, .csp-store-tabs, .csp-hist-tabs, .csp-dash-tabs, .pq-tabs, .svc-mode-tabs, .csp-topbar .csp-nav) {
+  background: color-mix(in srgb, var(--c-text-muted) 11%, transparent);
+  box-shadow: inset 0 1px 2px rgba(11, 18, 32, .08), inset 0 0 0 1px var(--lg-stroke);
+  border-color: transparent;
+}
+html[data-glass] :is(.csp-tab.active, .csp-store-tab.on, .csp-dash-tab.on) {
+  background: var(--lg-sheen), var(--c-surface-solid);
+  box-shadow: var(--lg-edge), 0 2px 8px -2px rgba(11, 18, 32, .18);
+  transition: background var(--dur-2), box-shadow var(--dur-2), transform var(--dur-1);
+}
+html[data-glass] :is(.csp-tab, .csp-store-tab, .csp-hist-tab, .csp-dash-tab, .pq-tab, .svc-mode-tab):active { transform: scale(.97); }
+
+/* ---------- toggles: the knob turns into a glass lens while pressed ---------- */
+html[data-glass] .toggle .track::before {
+  transition: inset-inline-start var(--lg-dur) var(--lg-spring), transform var(--dur-2) var(--lg-spring),
+    background var(--dur-2), box-shadow var(--dur-2);
+}
+html[data-glass] .toggle input:active:not(:disabled) + .track::before {
+  transform: scale(1.35, 1.2);
+  background: rgba(255, 255, 255, .72);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9), inset 0 0 0 1px rgba(255, 255, 255, .5), 0 3px 10px rgba(0, 0, 0, .25);
+}
+
+/* ---------- motion: fluid, and none at all when reduced ---------- */
+@media (prefers-reduced-motion: reduce) {
+  html[data-glass] :is(.u-botnav, .csp-botnav, .u-botnav-item, .csp-bn-item, .u-botnav-item span, .csp-bn-t) { transition: none; }
+  html[data-glass] .toggle input:active + .track::before { transform: none; }
+}

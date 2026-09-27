@@ -95,7 +95,7 @@ function LegacyLayout() {
 
   return (
     <div className="min-h-full aurora">
-      <header className="glass sticky top-[var(--preview-h,0px)] z-20 m-3 flex items-center gap-2 px-3 py-3 sm:gap-3 sm:px-4">
+      <header className="glass lg-bar sticky top-[calc(var(--preview-h,0px)+8px)] z-20 m-3 flex items-center gap-2 px-3 py-2 sm:gap-3 sm:px-4">
         <button className="icon-btn lg:hidden" onClick={() => setOpen(true)} aria-label={t('menu')}><List size={22} aria-hidden="true" /></button>
 
         <div className="flex min-w-0 items-center gap-2 font-bold">
@@ -135,7 +135,7 @@ function LegacyLayout() {
         <div className="fixed inset-0 z-30 lg:hidden" onClick={() => setOpen(false)}>
           <div className="absolute inset-0 bg-black/40" />
           <nav
-            className="glass absolute inset-y-0 start-0 flex w-64 flex-col gap-1 overflow-y-auto p-3"
+            className="glass lg-drawer absolute inset-y-0 start-0 flex w-64 flex-col gap-1 overflow-y-auto p-3"
             onClick={(e) => e.stopPropagation()}
           >
             <button className="icon-btn mb-2 self-end" onClick={() => setOpen(false)} aria-label={t('close')}><X size={20} aria-hidden="true" /></button>
@@ -273,6 +273,7 @@ const CSP_LAYOUT_CSS = `
   .csp-topbar-r { gap: 6px; }
 }
 @media (max-width: 420px) { .csp-topbar .csp-topbar-brand-txt { display: none; } }
+@media (max-width: 767px) { .csp-topbar-inner { height: 56px; } }
 .csp-topbar-brand-name { font-size: 14px; font-weight: 800; color: var(--c-primary-fg); }
 .csp-topbar-brand-sub {
   font-size: 12px; color: var(--c-text-muted); letter-spacing: .02em;

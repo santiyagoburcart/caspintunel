@@ -328,6 +328,7 @@ export default function Checkout() {
         .ckt-keep { font-size: 13px; line-height: 1.8; color: var(--c-text-muted); text-align: center; }
         .ckt-linkbtn { display: block; margin: 0 auto; min-height: 44px; padding: 0 12px; font-size: 13px; color: var(--c-text-muted); background: none; border: 0; cursor: pointer; text-decoration: underline; }
       `}</style>
+      <style>{CHECKOUT_CSS}</style>
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
           <h1 className="text-lg font-bold">{order.status === 'completed' || confirmed ? t('checkout') : t('pay')}</h1>
@@ -422,7 +423,7 @@ export default function Checkout() {
                 const isSel = selectedCard === c.id
                 return (
                   <div key={c.id} role="radio" aria-checked={isSel} tabIndex={0}
-                    className="flex cursor-pointer items-center justify-between gap-2 rounded-xl border-2 px-3 py-3 transition outline-none"
+                    className="ckt-cardopt flex cursor-pointer items-center justify-between gap-2 rounded-xl border-2 px-3 py-3 transition outline-none"
                     style={{
                       borderColor: isSel ? 'var(--c-primary)' : 'var(--c-border)',
                       background: isSel ? 'color-mix(in srgb, var(--c-primary) 7%, transparent)' : undefined,
@@ -446,7 +447,7 @@ export default function Checkout() {
           ) : (instructions?.cards || []).length === 1 ? (
             <div className="space-y-2">
               {instructions.cards.map((c) => (
-                <div key={c.id} className="flex items-center justify-between rounded-xl border-2 px-3 py-3" style={{ borderColor: 'var(--c-primary)' }}>
+                <div key={c.id} className="ckt-cardopt flex items-center justify-between rounded-xl border-2 px-3 py-3" style={{ borderColor: 'var(--c-primary)' }}>
                   <div>
                     <div dir="ltr" className="font-mono text-lg font-extrabold tracking-wide" style={{ color: 'var(--c-ink)' }}>{c.card_number}</div>
                     <div className="text-sm text-muted">{c.holder_name}</div>
@@ -460,10 +461,10 @@ export default function Checkout() {
           )}
 
           {/* 3. amount */}
-          <div className="rounded-xl p-3 text-center" style={{ background: 'color-mix(in srgb, var(--c-primary) 12%, transparent)' }}>
-            <div className="text-sm text-muted">{t('amount')}</div>
-            <div className="text-2xl font-bold" style={{ color: 'var(--c-primary-fg)' }}>{toman(order.amount_unique ?? instructions?.amount_to_pay, lang)}</div>
-            <div className="text-xs text-muted">{t('pay_exact')}</div>
+          <div className="ckt-amount rounded-xl p-3 text-center" style={{ background: 'color-mix(in srgb, var(--c-primary) 12%, transparent)' }}>
+            <div className="ckt-amount-l text-sm text-muted">{t('amount')}</div>
+            <div className="ckt-amount-v text-2xl font-bold" style={{ color: 'var(--c-primary-fg)' }}>{toman(order.amount_unique ?? instructions?.amount_to_pay, lang)}</div>
+            <div className="ckt-amount-h text-xs text-muted">{t('pay_exact')}</div>
           </div>
 
           {payStatus !== 'pending' && <div className="ckt-keep">{t('invoice_keep_hint')}</div>}
@@ -480,7 +481,7 @@ export default function Checkout() {
           {needsReceipt && (() => {
             const needsCardChoice = (instructions?.cards || []).length > 1 && !selectedCard
             return (
-              <label className={`block rounded-2xl border-2 border-dashed p-6 text-center transition ${busy || needsCardChoice ? 'pointer-events-none opacity-60' : 'cursor-pointer'}`}
+              <label className={`ckt-upload block rounded-2xl border-2 border-dashed p-6 text-center transition ${busy || needsCardChoice ? 'pointer-events-none opacity-60' : 'cursor-pointer'}`}
                 style={{ borderColor: 'var(--c-border)' }}>
                 <Art name="receipt" size={52} className="mx-auto mb-2" />
                 <div className="font-medium" style={{ color: 'var(--c-ink)' }}>
@@ -620,4 +621,23 @@ const CHECKOUT_CSS = `
 .ckt-plan-detail-label { color: var(--c-text-muted); opacity: .7; }
 .ckt-plan-detail-val { font-weight: 700; color: var(--c-ink); }
 .ckt-plan-detail--price .ckt-plan-price { color: var(--c-primary-fg); font-size: 15px; font-weight: 800; }
+/* ---- phones (≤767px): the pay step fits one screen ---- */
+@media (max-width: 767px) {
+  .ckt-plan-card { padding: 12px 14px; }
+  .ckt-plan-details { margin-top: 8px; padding-top: 8px; gap: 4px; }
+  .ckt-renew-banner { padding: 8px 12px; }
+  .ctd-ring { width: 64px !important; height: 64px !important; margin-top: 0; }
+  .ctd-ring svg { width: 64px; height: 64px; }
+  .ctd-ring-label { font-size: 13px; }
+  .ckt-cardopt { padding-block: 8px !important; }
+  .ckt-amount { display: grid; grid-template-columns: auto 1fr; align-items: baseline; column-gap: 10px; padding: 10px 12px !important; text-align: start !important; }
+  .ckt-amount-v { font-size: 20px !important; text-align: end; }
+  .ckt-amount-h { grid-column: 1 / -1; }
+  .ckt-upload { padding: 14px 12px !important; }
+  .ckt-upload img { width: 36px; height: 36px; margin-bottom: 4px; }
+  .ckt-state { gap: 8px; padding: 0; }
+  .ckt-state img { width: 48px; height: 48px; }
+  .ckt-state h2 { font-size: 16px; }
+}
 `
+

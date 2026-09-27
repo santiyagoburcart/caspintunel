@@ -585,20 +585,44 @@ const CSS = `
 .usr-foot { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; padding: 13px 16px; border-top: 1px solid var(--c-border); }
 .usr-pager { display: flex; align-items: center; gap: 8px; }
 
-/* mobile: table -> stacked cards */
+/* phones: compact records — title row (avatar · user · active toggle), then
+   label-over-value cells on a 6-column grid, actions in one row */
 @media (max-width: 767px) {
+  .usr-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .usr-stat { gap: 4px; padding: 10px 12px !important; }
+  .usr-stat-ico { width: 28px; height: 28px; border-radius: 9px; }
+  .usr-stat-ico svg { width: 16px; height: 16px; }
+  .usr-stat-val { font-size: 19px; }
+  .usr-stat-row { gap: 6px; }
+  .usr-toolbar { gap: 8px; padding: 10px !important; }
+  .usr-search { flex: 1 1 100%; min-width: 0; }
+  .usr-sel { flex: 1 1 0; max-width: none; min-width: 0; }
   .usr-wrap { overflow-x: visible; }
-  .usr-table, .usr-table tbody, .usr-table tr, .usr-table td { display: block; width: 100%; }
+  .usr-table, .usr-table tbody { display: block; width: 100%; }
   .usr-table { min-width: 0; }
   .usr-table thead { display: none; }
-  .usr-table tr.usr-row { border: 1px solid var(--c-border); border-radius: 12px; margin: 12px; padding: 4px 0; }
+  .usr-table tr.usr-row {
+    display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); align-items: start;
+    border: 1px solid var(--c-border); border-radius: 12px; margin: 8px; padding: 4px 0;
+  }
   .usr-table tr.usr-row:hover > td { background: none; }
-  .usr-table td { border: 0 !important; padding: 9px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: end; }
-  .usr-table td::before { content: attr(data-label); font-size: 12px; font-weight: 600; color: var(--c-text-muted); text-align: start; white-space: nowrap; }
-  .usr-table td:first-child { display: block; border-bottom: 1px solid var(--c-border) !important; }
-  .usr-table td:first-child::before { display: none; }
-  .usr-table td.usr-c { justify-content: space-between; text-align: end; }
+  .usr-table td { border: 0 !important; padding: 5px 12px; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-width: 0; font-size: 13px; overflow-wrap: anywhere; }
+  .usr-table td::before { content: attr(data-label); font-size: 12px; line-height: 16px; font-weight: 600; color: var(--c-text-muted); white-space: nowrap; }
+  .usr-table td:nth-child(1) { grid-column: 1 / 6; grid-row: 1; padding-block: 6px; }
+  .usr-table td:nth-child(1)::before { display: none; }
+  .usr-table td:nth-child(7) { grid-column: 6; grid-row: 1; align-items: flex-end; justify-content: center; padding-inline: 8px; }
+  .usr-table td:nth-child(7)::before { display: none; }
+  .usr-table td:nth-child(2), .usr-table td:nth-child(3) { grid-column: span 3; }
+  .usr-table td:nth-child(4), .usr-table td:nth-child(5), .usr-table td:nth-child(6) { grid-column: span 2; }
+  .usr-table td:nth-child(8) { grid-column: 1 / -1; padding-top: 6px; }
+  .usr-table td:nth-child(8)::before { display: none; }
+  .usr-table td.usr-c { text-align: start; }
+  .usr-av { width: 32px; height: 32px; border-radius: 10px; }
+  .usr-idcell { gap: 8px; }
+  .usr-actions { justify-content: flex-start; flex-wrap: nowrap; width: 100%; }
+  .usr-actions > * { flex: 1 1 0; justify-content: center; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .usr-date { font-size: 13px; }
+  .usr-foot { padding: 10px 12px; }
 }
 
 /* modal */

@@ -975,7 +975,16 @@ const CSS = `
   background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary-fg); }
 .st-hub-ico--danger { background: color-mix(in srgb, var(--c-danger) 12%, transparent); color: var(--c-danger-fg); }
 .st-hub-item--danger { color: var(--c-danger-fg); }
-@media (max-width: 767px) { .set-mobile-only { display: block; } .st-hub { display: flex; flex-direction: column; gap: 14px; } }
+@media (max-width: 767px) {
+  .set-mobile-only { display: block; }
+  .st-hub { display: flex; flex-direction: column; gap: 10px; }
+  .st-hub-gh { margin: 0 4px 6px; }
+  /* compact index rows: 52px (≥ 44px target), 36px art tile */
+  .st-hub-item { min-height: 52px; padding: 7px 14px; gap: 10px; }
+  .st-hub-art { width: 36px !important; height: 36px !important; border-radius: 10px; }
+  .st-hub-art img { width: 24px; height: 24px; }
+  .st-hub-ico { width: 32px; height: 32px; border-radius: 10px; }
+}
 
 .st-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between; }
 @media (max-width: 640px) {

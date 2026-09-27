@@ -158,7 +158,7 @@ function LegacyLayout() {
       )}
 
       <div className="min-w-0 flex-1">
-        <header className="glass m-3 flex items-center gap-2 px-3 py-2 text-sm sm:px-4">
+        <header className="glass lg-bar sticky top-[calc(var(--preview-h,0px)+8px)] z-20 m-3 flex items-center gap-2 px-3 py-2 text-sm sm:px-4">
           <button className="icon-btn shrink-0 md:hidden" onClick={() => setOpen(true)} aria-label={t('menu')}><List size={22} aria-hidden="true" /></button>
           {/* the active theme can lock the whole site to one mode (e.g. Royal Frost is light-only) */}
           {!locked && (

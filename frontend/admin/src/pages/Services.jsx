@@ -676,11 +676,18 @@ const CSS = `
   .svc-table, .svc-table tbody, .svc-table tr, .svc-table td { display: block; width: 100%; }
   .svc-table { min-width: 0; }
   .svc-table thead { display: none; }
-  .svc-table tr.svc-row { border: 1px solid var(--c-border); border-radius: 12px; margin: 12px; padding: 4px 0; }
+  /* compact record: account as the title row, then 2 columns of label-over-value */
+  .svc-table tr.svc-row {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start;
+    border: 1px solid var(--c-border); border-radius: 12px; margin: 8px; padding: 4px 0;
+  }
   .svc-table tr.svc-row > td { border-bottom: 0; }
   .svc-table tr:hover td { background: none; }
-  .svc-table td { padding: 8px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: end; }
-  .svc-table td::before { content: attr(data-label); font-size: 12px; font-weight: 600; color: var(--c-text-muted); text-align: start; white-space: nowrap; }
-  .svc-table td.svc-c { justify-content: space-between; }
+  .svc-table td { padding: 5px 12px; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-width: 0; text-align: start; font-size: 13px; overflow-wrap: anywhere; }
+  .svc-table td::before { content: attr(data-label); font-size: 12px; line-height: 16px; font-weight: 600; color: var(--c-text-muted); white-space: nowrap; }
+  .svc-table td:first-child { grid-column: 1 / -1; flex-direction: row; align-items: center; gap: 8px; font-weight: 700; padding-block: 7px; }
+  .svc-table td:first-child::before { font-weight: 600; }
+  .svc-table td.svc-c { align-items: flex-start; }
+  .svc-usage { min-width: 0; width: 100%; }
 }
 `

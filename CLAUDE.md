@@ -80,6 +80,9 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
 - Icons: **Phosphor (`@phosphor-icons/react`) only**; 3D accents: `components/Art.jsx` (Fluent Emoji 3D,
   MIT, bundled WebP) — decorative only. **No emoji as icons.** Min font 12px; 44px touch targets on
   phones/touch (global floor in `index.css`); every input needs a label (`Field` = real `<label>`).
+- **Liquid Glass = the floating layer only** (`src/styles/liquid.css` + `src/lib/glass.js`, identical in both SPAs;
+  `html[data-glass]` full/lite/solid). Never glass a content card; new text-on-glass colours must pass
+  `node scripts/ui-audit/glass-contrast.mjs`. Offline UI audit: `scripts/ui-audit/public-audit.mjs`.
 - **One popup for everything**: `components/ConfirmDialog.jsx` (identical in both SPAs) + `useConfirm()`.
   Never use `window.confirm/alert/prompt`. **One copy helper**: `lib/clipboard.js::copyToClipboard`.
 - Fonts are bundled (`@fontsource`, no CDN): fa = Vazirmatn, en = Inter, `<code>` = JetBrains Mono.

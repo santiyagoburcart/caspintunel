@@ -10,7 +10,7 @@ import { useToast } from '../components/Toast'
 import { ConfirmDialog, useConfirm } from '../components/ConfirmDialog'
 import { copyToClipboard } from '../lib/clipboard'
 import { Art, EmptyState } from '../components/Art'
-import { ArrowClockwise, CaretDown, CaretUp, Plus } from '@phosphor-icons/react'
+import { ArrowClockwise, CaretDown, CaretUp, DotsThree, Plus } from '@phosphor-icons/react'
 
 export default function Dashboard() {
   const { styleKey } = useTheme()
@@ -210,9 +210,6 @@ function LegacyServiceCard({ s, t, lang, onRefresh, onRenewClick }) {
             <code dir="ltr" className="min-w-0 flex-1 truncate rounded bg-black/10 px-2 py-1 text-xs">{s.subscription_url}</code>
             <Copyable text={s.subscription_url} />
           </div>
-          <button className="btn-ghost w-full text-sm" onClick={() => setShowQr((v) => !v)} aria-expanded={showQr}>
-            {showQr ? <CaretUp size={16} aria-hidden="true" /> : <CaretDown size={16} aria-hidden="true" />} QR
-          </button>
           {showQr && (
             <div className="grid place-items-center rounded-xl bg-white p-3">
               <AuthImage path={`/services/${s.id}/qr/`} alt="QR" className="h-44 w-44" />
@@ -221,8 +218,13 @@ function LegacyServiceCard({ s, t, lang, onRefresh, onRenewClick }) {
         </div>
       )}
       <Alert>{err}</Alert>
-      <div className="flex flex-wrap gap-2">
-        <button type="button" className="btn-primary text-sm" onClick={onRenewClick}>{t('renew')}</button>
+      <div className="flex gap-2">
+        {s.subscription_url && (
+          <button className="btn-ghost flex-1 text-sm" onClick={() => setShowQr((v) => !v)} aria-expanded={showQr}>
+            {showQr ? <CaretUp size={16} aria-hidden="true" /> : <CaretDown size={16} aria-hidden="true" />} QR
+          </button>
+        )}
+        <button type="button" className="btn-primary flex-1 text-sm" onClick={onRenewClick}>{t('renew')}</button>
       </div>
     </div>
   )
@@ -326,7 +328,7 @@ function CaspianDashboard() {
 
       {/* filter + search */}
       {items && items.length > 0 && (
-        <div className="csp-dash-bar">
+        <div className={'csp-dash-bar' + (items.length <= 3 ? ' csp-dash-bar--few' : '')}>
           <div className="csp-dash-tabs">
             {FILTERS.map(([k, key, fn]) => (
               <button key={k} type="button" className={'csp-dash-tab' + (filter === k ? ' on' : '')}
@@ -393,6 +395,7 @@ function Stat({ art, label, value, sub }) {
 function SvcCard({ s, t, lang, onRevoke, onRenewClick }) {
   const toast = useToast()
   const [qrOpen, setQrOpen] = useState(false)
+  const [more, setMore] = useState(false)   // phones: secondary actions folded away
   const confirm = useConfirm()
   // every device on the old link disconnects, so this is deliberately not one-click
   const askRevoke = async () => {
@@ -476,14 +479,27 @@ function SvcCard({ s, t, lang, onRevoke, onRenewClick }) {
           </button>
         )}
         {s.subscription_url && (
-          <button type="button" className="csp-svc-btn" onClick={askRevoke}>
+          <button type="button" className="csp-svc-btn csp-desk-only" onClick={askRevoke}>
             <DI d={D.link} w={16} />{t('change_sub_link')}
           </button>
         )}
         <button type="button" className="csp-svc-btn csp-svc-btn--primary" onClick={onRenewClick}>
           <DI d={D.renew} w={16} />{t('renew')}
         </button>
+        {s.subscription_url && (
+          <button type="button" className="csp-svc-btn csp-svc-more csp-mob-only" onClick={() => setMore((v) => !v)}
+            aria-expanded={more} aria-label={more ? t('less_options') : t('more_options')} title={more ? t('less_options') : t('more_options')}>
+            <DotsThree size={20} weight="bold" aria-hidden="true" />
+          </button>
+        )}
       </div>
+      {more && s.subscription_url && (
+        <div className="csp-svc-extra csp-mob-only">
+          <button type="button" className="csp-svc-btn" onClick={askRevoke}>
+            <DI d={D.link} w={16} />{t('change_sub_link')}
+          </button>
+        </div>
+      )}
 
       {qrOpen && <QrModal s={s} t={t} lang={lang} onClose={() => setQrOpen(false)} />}
     </div>
@@ -802,4 +818,52 @@ const CSS = `
   background: var(--c-primary); color: #fff; font-size: 12px; font-weight: 700;
 }
 [dir="rtl"] .csp-qr-btn--primary svg { transform: scaleX(-1); }
+/* ---- phones (≤767px): compact, information-dense ---- */
+.csp-mob-only { display: none !important; }
+@media (max-width: 767px) {
+  .csp-desk-only { display: none !important; }
+  .csp-mob-only { display: inline-flex !important; }
+  .csp-svc-extra.csp-mob-only { display: flex !important; }
+  .csp-dash { gap: 12px; }
+  /* hero: one title row + a 3-up KPI strip (≈19% of a 390×844 screen) */
+  .csp-dash-hero { padding: 14px; border-radius: 20px; }
+  .csp-dash-hero-blob, .csp-dash-hero-lead, .csp-stat-art { display: none; }
+  .csp-dash-hero-inner { flex-wrap: nowrap; gap: 10px; }
+  .csp-dash-hero-txt { min-width: 0; }
+  .csp-dash-hero-h { gap: 8px; }
+  .csp-dash-hero-h h1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .csp-dash-hero-art { width: 28px; height: 28px; }
+  .csp-dash-buy { padding: 0 14px; font-size: 13px; }
+  .csp-dash-stats { margin-top: 12px; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .csp-stat { display: block; padding: 8px 10px; border-radius: 12px; min-width: 0; }
+  .csp-stat-label { display: block; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .csp-stat-val { flex-direction: column; align-items: flex-start; gap: 0; margin-top: 0; }
+  .csp-stat-val b { font-size: 19px; line-height: 1.25; }
+  .csp-stat-val span { max-width: 100%; }
+  /* filter + search — pointless for a handful of services on a phone */
+  .csp-dash-bar--few { display: none; }
+  .csp-dash-bar { padding: 6px; gap: 6px; border-radius: 14px; }
+  .csp-dash-tabs { flex: 1 1 100%; }
+  .csp-dash-tab { padding: 0 11px; }
+  .csp-dash-search { flex: 1 1 100%; min-width: 0; }
+  /* service cards */
+  .csp-dash-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .csp-svc { padding: 12px; gap: 10px; border-radius: 16px; }
+  .csp-svc-id { gap: 8px; }
+  .csp-svc-icon { width: 32px; height: 32px; border-radius: 10px; }
+  .csp-svc-id h2 { font-size: 15px; line-height: 1.3; }
+  .csp-svc-box { padding: 8px 10px; gap: 5px; }
+  .csp-svc-sub { gap: 0; }
+  .csp-svc-sub-label { display: none; }
+  .csp-svc-sub-row { padding: 0 4px 0 0; gap: 4px; }
+  [dir="rtl"] .csp-svc-sub-row { padding: 0 0 0 4px; }
+  .csp-svc-actions { padding-top: 10px; gap: 6px; flex-wrap: nowrap; }
+  .csp-svc-btn { min-width: 0; padding: 0 10px; font-size: 12.5px; white-space: nowrap; }
+  .csp-svc-more { flex: 0 0 44px; padding: 0; }
+  .csp-svc-extra { gap: 6px; margin-top: -4px; }
+  /* connection guide: one compact row */
+  .csp-dash-guide { padding: 10px 12px; gap: 10px; border-radius: 16px; }
+  .csp-dash-guide img { width: 28px; height: 28px; }
+  .csp-dash-guide-d { display: none; }
+}
 `

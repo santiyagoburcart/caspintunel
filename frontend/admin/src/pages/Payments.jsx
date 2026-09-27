@@ -194,15 +194,19 @@ export default function Payments() {
                 </span>
               </div>
             </div>
-            <div className="space-y-0.5 text-sm text-muted">
-              <div>{s.user}: {p.user}{p.user_telegram ? ` (@${p.user_telegram})` : ''}</div>
-              <div>{s.order} #{p.order_id} · {s.plan}: {p.plan_name || '—'}{p.account_name ? ` · ${s.account}: ${p.account_name}` : ''}</div>
-              <div className="text-xs">{jalali(p.created_at, true, lang)}</div>
+            <div className="pq-main">
+              <div className="pq-info space-y-0.5 text-sm text-muted">
+                <div>{s.user}: {p.user}{p.user_telegram ? ` (@${p.user_telegram})` : ''}</div>
+                <div>{s.order} #{p.order_id} · {s.plan}: {p.plan_name || '—'}{p.account_name ? ` · ${s.account}: ${p.account_name}` : ''}</div>
+                <div className="text-xs">{jalali(p.created_at, true, lang)}</div>
+              </div>
+              <div className="pq-rcpt">
+                {p.receipt_url
+                  ? <ReceiptThumb url={p.receipt_url} alt={s.receipt} variant="full" />
+                  : <div className="text-xs text-muted">{s.no_receipt}</div>}
+              </div>
             </div>
             {isExpired(p) && <div className="pq-exp-note">{s.expired_note}</div>}
-            {p.receipt_url
-              ? <ReceiptThumb url={p.receipt_url} alt={s.receipt} variant="full" />
-              : <div className="text-xs text-muted">{s.no_receipt}</div>}
             {p.bank_card_number && (
               <div className="pq-customer-card">
                 {s.customer_card}: <b className="mono-num" dir="ltr">{p.bank_card_number}</b>
@@ -222,7 +226,7 @@ export default function Payments() {
                 </select>
               </label>
             )}
-            <div className="flex flex-wrap gap-2 pt-1">
+            <div className="pq-acts flex flex-wrap gap-2 pt-1">
               <button className="btn-primary text-sm" disabled={busyId === p.id}
                 onClick={() => act(p.id, 'approve')}>
                 {busyId === p.id ? '…' : t('approve')}
@@ -270,5 +274,18 @@ const CSS = `
 .pq-customer-card { font-size: 12px; color: var(--c-text-muted); background: color-mix(in srgb, var(--c-primary) 7%, transparent);
   border-radius: 8px; padding: 6px 10px; }
 .pq-customer-card b { color: var(--c-text); }
+.pq-main { display: flex; flex-direction: column; gap: 8px; }
+/* phones: details beside a receipt thumbnail (tap opens it full size) */
+@media (max-width: 767px) {
+  .pq-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .pq-tab { flex: 1 0 auto; justify-content: center; padding: 0 12px; }
+  .pq-main { display: grid; grid-template-columns: minmax(0, 1fr) 92px; align-items: start; gap: 10px; }
+  .pq-info { font-size: 13px; line-height: 1.55; overflow-wrap: anywhere; }
+  .pq-rcpt img { width: 92px; height: 116px; max-height: none; object-fit: cover; }
+  .pq-rcpt > span { height: 116px; }
+  .pq-acts { flex-wrap: nowrap; }
+  .pq-acts > button { flex: 1 1 0; min-width: 0; padding-inline: 10px; }
+  .pq-acts > button:last-child { flex: 0 0 auto; margin-inline-start: 0 !important; }
+}
 `
 

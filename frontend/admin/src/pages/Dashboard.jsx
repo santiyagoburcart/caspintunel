@@ -169,12 +169,18 @@ const CSS = `
 .dash .kpi-label { font-size: 12.5px; font-weight: 600; color: var(--c-text-muted); }
 .dash .kpi-value { font-size: 26px; font-weight: 800; line-height: 1.15; margin-top: 2px; letter-spacing: -.01em; overflow-wrap: anywhere; }
 .dash .kpi-sub { font-size: 12px; color: var(--c-text-muted); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* phones: compact 2-column KPI tiles (art on top) */
+/* phones: compact 2-column KPI tiles — art + label on one line, number below */
 @media (max-width: 639px) {
-  .dash .kpi { flex-direction: column; gap: 8px; padding: 14px; }
-  .dash .kpi-art { width: 34px; height: 34px; }
-  .dash .kpi-value { font-size: 20px; }
-  .dash .kpi-label { font-size: 12px; }
+  .dash .kpi { display: grid; grid-template-columns: 24px minmax(0, 1fr); align-items: center; column-gap: 8px; row-gap: 2px; padding: 10px 12px; }
+  .dash .kpi-art { width: 24px; height: 24px; }
+  .dash .kpi-body { display: contents; }
+  .dash .kpi-label { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dash .kpi-value { grid-column: 1 / -1; font-size: 19px; margin-top: 2px; }
+  .dash .kpi-sub { grid-column: 1 / -1; margin-top: 0; }
+}
+@media (max-width: 767px) {
+  .dash .dash-srow { gap: 8px; font-size: 13px; }
+  .dash .space-y-2\.5 > :not([hidden]) ~ :not([hidden]) { margin-top: 6px; }
 }
 
 .dash .dash-bar { height: 7px; border-radius: 999px; overflow: hidden; background: color-mix(in srgb, var(--c-text-muted) 20%, transparent); }

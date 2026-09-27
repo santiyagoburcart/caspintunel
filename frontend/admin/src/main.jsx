@@ -25,6 +25,11 @@ import '@fontsource/inter/800.css'
 import '@fontsource/jetbrains-mono/400.css'
 import '@fontsource/jetbrains-mono/600.css'
 import './index.css'
+import './styles/liquid.css'
+import { initGlass } from './lib/glass'
+
+// Liquid Glass tier (full / lite / solid) before the first paint
+initGlass()
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
