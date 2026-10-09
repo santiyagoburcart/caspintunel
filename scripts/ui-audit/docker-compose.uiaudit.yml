@@ -26,6 +26,7 @@ services:
       FIELD_ENCRYPTION_KEY: ${TEST_FIELD_ENCRYPTION_KEY:?run via scripts/ui-audit/stack.sh}
     volumes:
       - ./backend:/app
+      - ./mobile_shortcut:/app/mobile_shortcut:ro
       - ./scripts/ui-audit:/ui-audit:ro
     tmpfs: [/app/media]
     command: ["python", "manage.py", "runserver", "0.0.0.0:8000", "--noreload"]

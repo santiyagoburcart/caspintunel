@@ -80,6 +80,7 @@ SETTINGS_DEFAULTS = [
     ("default_language", "fa", ValueType.STR),
     ("alert_volume_percent", "80", ValueType.INT),
     ("alert_expire_days", "3", ValueType.INT),
+    ("ios_shortcut_icloud_url", "", ValueType.STR),
 ]
 
 PAGES = [

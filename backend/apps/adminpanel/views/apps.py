@@ -4,16 +4,23 @@ downloaded from our own server so it works on an offline / Iran-only host.
 GET    /admin/apps/                        both platforms' current release info
 GET    /admin/apps/<platform>/download/    the file (uploaded, or the bundled APK)
                                            ios: built from the repo template, ?device=<id> injects that token
-POST   /admin/apps/<platform>/             multipart: file? (android only), version?, link?, notes?, clear_file?
+                                           (UNSIGNED — the "advanced" path; iOS 15+ needs it signed on a Mac)
+GET    /admin/apps/ios/qr/                 PNG QR code of the iCloud install link (404 when unset)
+POST   /admin/apps/<platform>/             multipart: file? (android only), version?, link?, notes?, clear_file?,
+                                           icloud_url? (ios: the `ios_shortcut_icloud_url` setting)
 
 The iPhone Shortcut has ONE source: the repo's mobile_shortcut/CaspinSMS.shortcut
 (apps.settings_app.shortcut). It is never uploaded; changing it = edit the repo
-file + bump mobile_shortcut/VERSION.
+file + bump mobile_shortcut/VERSION, re-import it on an iPhone, share a new
+iCloud link and paste it into the panel (the official distribution).
 """
 from __future__ import annotations
 
+import io
 import mimetypes
 from pathlib import Path
+
+import qrcode
 
 from django.conf import settings
 from django.http import FileResponse, Http404, HttpResponse
@@ -26,6 +33,7 @@ from apps.common.models import write_audit
 from apps.payments_sms.models import SmsAppDevice
 from apps.settings_app import shortcut
 from apps.settings_app.models import AppPlatform, AppRelease
+from apps.settings_app.utils import set_setting
 
 from .base import AdminAPIView
 
@@ -67,6 +75,7 @@ def _info(platform: str) -> dict:
                        endpoint=shortcut.endpoint_url())
             if not out["updated_at"]:
                 out["updated_at"] = timezone.datetime.fromtimestamp(st.st_mtime, tz=timezone.get_current_timezone())
+        out["icloud_url"] = shortcut.icloud_url()
         return out
     if out["source"] is None and platform == AppPlatform.ANDROID:
         apk = bundled_apk()
@@ -112,16 +121,44 @@ class AppReleaseDetailView(AdminAPIView):
             rel.file.save(f"{platform}{ext}" if platform == AppPlatform.IOS else Path(f.name).name, f, save=False)
         elif str(data.get("clear_file", "")).lower() in ("1", "true", "yes") and rel.file:
             rel.file.delete(save=False)
+        icloud_changed = False
+        if platform == AppPlatform.IOS and "icloud_url" in data:
+            try:
+                url = shortcut.clean_icloud_url(data.get("icloud_url"))
+            except ValueError as exc:
+                return Response({"detail": str(exc), "field": "icloud_url"}, status=400)
+            icloud_changed = url != shortcut.icloud_url()
         for key in ("version", "link", "notes"):
             if key in data:
                 setattr(rel, key, (data.get(key) or "").strip())
         if rel.link and not rel.link.startswith(("http://", "https://")):
             return Response({"detail": "link must start with http:// or https://"}, status=400)
+        if platform == AppPlatform.IOS and "icloud_url" in data:
+            set_setting(shortcut.ICLOUD_SETTING, url, "str")
         rel.updated_by = getattr(request.user, "username", "")
         rel.save()
         write_audit(action="apps.release_updated", staff=request.user, target=rel,
-                    detail={"platform": platform, "version": rel.version, "file": bool(f)})
+                    detail={"platform": platform, "version": rel.version, "file": bool(f),
+                            **({"icloud_url_changed": True} if icloud_changed else {})})
         return Response(_info(platform))
+
+
+class ShortcutQrView(AdminAPIView):
+    """QR code of the iCloud install link, so it can be scanned from a desktop
+    screen with the iPhone camera. The link is not secret; no token in it."""
+
+    perms_map = {"GET": ["settings.manage"]}
+
+    @extend_schema(summary="QR code (PNG) of the iPhone Shortcut iCloud link", responses=bytes)
+    def get(self, request):
+        url = shortcut.icloud_url()
+        if not url:
+            raise Http404
+        buf = io.BytesIO()
+        qrcode.make(url, border=2).save(buf, format="PNG")
+        resp = HttpResponse(buf.getvalue(), content_type="image/png")
+        resp["Cache-Control"] = "private, no-store"
+        return resp
 
 
 class AppReleaseDownloadView(AdminAPIView):

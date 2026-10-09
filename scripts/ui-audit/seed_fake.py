@@ -223,6 +223,10 @@ if not HealthCheck.objects.exists():
         ResourceStat.objects.filter(pk=r.pk).update(sampled_at=ago(hours=h))
     BackupLog.objects.create(filename="backup-2026-09-26.sql.gz", size=48 * 1024 ** 2, sent_to_telegram=True)
 
+# ---- iPhone Shortcut: a (fake) iCloud install link so the Apps page shows the install flow ----
+from apps.settings_app.utils import set_setting  # noqa: E402
+set_setting("ios_shortcut_icloud_url", "https://www.icloud.com/shortcuts/0a1b2c3d4e5f60718293a4b5c6d7e8f9")
+
 # ---- one soft-deleted customer (archive page) ----
 gone = mk_user("left_user", name="کاربر حذف‌شده", phone="09350000009")
 if gone.deleted_at is None and not gone.services.exists():

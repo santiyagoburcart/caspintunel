@@ -7,6 +7,8 @@
 #   scripts/ui-audit/run.sh [audit] [density] [suites] [contrast]   (default: all)
 #   OUT=/path   results + screenshots (default: $TMPDIR/ui-audit-<ts>)
 #   KEEP=1      leave the stack running afterwards (then: stack.sh down)
+#   PATHS=regex audit only the matching pages, e.g. PATHS='^/panel/apps$'
+#   PATHS=regex audit only matching pages, e.g. PATHS='^/panel/apps$'
 #
 # Offline alternative for the logged-out pages only (no stack):
 #   API= node scripts/ui-audit/audit.mjs   (see the header of audit.mjs)
@@ -47,7 +49,7 @@ for w in "${WHAT[@]}"; do
   case "$w" in
     contrast) node scripts/ui-audit/glass-contrast.mjs | tail -1 || rc=1 ;;
     density)  pw -e MODE=density -e SHOTS=1 -e OUT=/o/density node /w/scripts/ui-audit/audit.mjs || rc=1 ;;
-    audit)    pw -e MODE=audit -e SHOTS=1 -e OUT=/o/audit node /w/scripts/ui-audit/audit.mjs | tail -40 || rc=1 ;;
+    audit)    pw -e MODE=audit -e SHOTS=1 -e "PATHS=${PATHS:-}" -e OUT=/o/audit node /w/scripts/ui-audit/audit.mjs | tail -40 || rc=1 ;;
     suites)   pw -e OUT=/o/suites node /w/scripts/ui-audit/run-suites.mjs || rc=1 ;;
     *) echo "unknown check: $w" >&2; rc=2 ;;
   esac
