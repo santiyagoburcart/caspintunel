@@ -145,20 +145,34 @@ def create_order(
 
 
 def _reusable_pending_order(*, user, plan, order_type, service, requested_account_name, custom_volume_gb):
-    """The customer's still-reserved pending order for exactly this purchase, if any."""
+    """The customer's still-reserved pending order for exactly this purchase, if any.
+    Only a truly open reservation qualifies: pending_payment, not expired, and no
+    rejected (or approved) payment on it. Rejected / expired / completed orders
+    are never handed back — buying again creates a new order + unique amount."""
     qs = Order.objects.select_for_update().filter(
         user=user, plan=plan, type=order_type, service=service,
         status=OrderStatus.PENDING_PAYMENT, unique_expire_at__gt=timezone.now(),
         custom_volume_gb=custom_volume_gb,
-    )
+    ).exclude(payment__status__in=[PaymentStatus.REJECTED, PaymentStatus.APPROVED])
     if order_type == OrderType.NEW:
         qs = qs.filter(requested_account_name__iexact=requested_account_name)
     return qs.order_by("-created_at").first()
 
 
 def _assign_unique_amount(order: Order, base: Decimal) -> None:
+    # never hand a customer an amount one of their own recent (rejected /
+    # expired) orders had: a late bank SMS for that old payment must not
+    # confirm the new order
+    from datetime import timedelta
+
+    recent = set(
+        Order.objects.filter(user=order.user, created_at__gte=timezone.now() - timedelta(hours=24))
+        .values_list("amount_unique", flat=True)
+    )
     for surcharge in _surcharge_range():
         candidate = base + Decimal(surcharge)
+        if candidate in recent:
+            continue
         order.amount_unique = candidate
         order.amount_unique_lock = candidate
         try:
@@ -176,7 +190,14 @@ def mark_paid_and_fulfill(order: Order) -> None:
 
     order.status = OrderStatus.PAID
     order.sync_unique_lock()  # PAID still holds the lock until provisioning completes
-    order.save(update_fields=["status", "amount_unique_lock", "updated_at"])
+    try:
+        with transaction.atomic():
+            order.save(update_fields=["status", "amount_unique_lock", "updated_at"])
+    except IntegrityError:
+        # a late approval (order was rejected/expired, its unique amount released
+        # and since taken by another open order): pay it without the lock
+        order.amount_unique_lock = None
+        order.save(update_fields=["status", "amount_unique_lock", "updated_at"])
     transaction.on_commit(lambda: fulfill_order.delay(order.id))
 
 

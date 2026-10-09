@@ -7,6 +7,9 @@ import { jalali, toman, tomanParts } from '../lib/format'
 import { Spinner, StatusBadge } from '../components/ui'
 import { AuthImage } from '../components/AuthImage'
 
+/** a rejected order is never resumed — buy the same plan again as a new order */
+const buyAgain = (o) => `/checkout?plan=${o.plan}${o.type === 'renew' && o.service ? `&renew=${o.service}` : ''}`
+
 const PAY_NOTE = {
   pending: ['pay_pending', 'var(--c-success)'],
   rejected: ['pay_rejected', 'var(--c-warning)'],
@@ -30,7 +33,8 @@ function LegacyHistory() {
       <div className="card divide-y" style={{ borderColor: 'var(--c-border)' }}>
         {rows.length === 0 && <div className="py-8 text-center text-muted">{t('no_orders')}</div>}
         {rows.map((o) => {
-          const note = o.status === 'pending_payment' && PAY_NOTE[o.payment_status]
+          const note = (o.status === 'pending_payment' && PAY_NOTE[o.payment_status])
+            || (o.status === 'rejected' && ['pay_rejected', 'var(--c-danger)'])
           return (
             <div key={o.id} className="flex items-start justify-between gap-3 py-3">
               <div className="min-w-0">
@@ -213,7 +217,8 @@ function Row({ o, t, lang, onReceipt }) {
             </button>
           )}
           {(pendingPay || rejected) && (
-            <Link to={`/checkout?resume=${o.id}`} className={'csp-hist-btn' + (rejected ? ' csp-hist-btn--danger' : ' csp-hist-btn--primary')}>
+            // a rejected order is closed: "pay again" starts a NEW order (new unique amount)
+            <Link to={rejected ? buyAgain(o) : `/checkout?resume=${o.id}`} className={'csp-hist-btn' + (rejected ? ' csp-hist-btn--danger' : ' csp-hist-btn--primary')}>
               <HI d={rejected ? H.replay : H.receipt} w={15} />{rejected ? t('pay_again') : t('pay')}
             </Link>
           )}
@@ -320,8 +325,8 @@ const CSS = `
 }
 :root:not(.dark) .csp-hist-btn { background: #fff; }
 .csp-hist-btn:hover { border-color: var(--c-primary); }
-.csp-hist-btn--primary { background: var(--c-primary); color: #fff; border-color: var(--c-primary); }
-.csp-hist-btn--danger { background: var(--c-danger); color: #fff; border-color: var(--c-danger); }
+:root .csp-hist-btn.csp-hist-btn--primary { background: var(--c-primary); color: #fff; border-color: var(--c-primary); }
+:root .csp-hist-btn.csp-hist-btn--danger { background: var(--c-danger); color: #fff; border-color: var(--c-danger); }
 @media (max-width: 560px) { .csp-hist-btn-txt { display: none; } }
 
 .csp-hist-empty { padding: 40px; text-align: center; color: var(--c-text-muted); }

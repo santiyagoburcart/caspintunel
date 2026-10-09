@@ -68,24 +68,49 @@ def submit_receipt(*, order: Order, image, bank_card=None, user) -> Payment:
     return payment
 
 
+# order states from which an approval must (re)start fulfilment
+_FULFILLABLE = (OrderStatus.PENDING_PAYMENT, OrderStatus.EXPIRED, OrderStatus.REJECTED, OrderStatus.FAILED)
+
+
+def _staff_or_none(actor):
+    from apps.accounts.models import Staff
+
+    return actor if isinstance(actor, Staff) else None
+
+
 @transaction.atomic
 def approve_payment(payment_id: int, *, actor=None, bank_card=None) -> Payment:
+    """Approve a payment and deliver the service — the ONLY way into
+    `approved`, whatever the previous status (pending, or a rejected payment
+    the admin changed their mind about). Idempotent: an approved payment is
+    returned as is, and an order that is already paid/completed is never
+    provisioned again."""
     payment = Payment.objects.select_for_update().select_related("order").get(pk=payment_id)
     if payment.status == PaymentStatus.APPROVED:
         return payment
-    if payment.status != PaymentStatus.PENDING:
+    if payment.status not in (PaymentStatus.PENDING, PaymentStatus.REJECTED):
         raise PaymentError(f"payment is {payment.status}")
+    order = Order.objects.select_for_update().get(pk=payment.order_id)
+    previous = payment.status
 
     payment.status = PaymentStatus.APPROVED
     payment.confirmed_by = ConfirmedBy.ADMIN
+    payment.confirmed_by_staff = _staff_or_none(actor)
     payment.confirmed_at = timezone.now()
+    payment.reject_reason = ""
     if bank_card is not None:
         payment.bank_card = bank_card
     elif payment.bank_card_id is None:
         payment.bank_card = default_bank_card()
-    payment.save(update_fields=["status", "confirmed_by", "confirmed_at", "bank_card", "updated_at"])
+    payment.save(update_fields=["status", "confirmed_by", "confirmed_by_staff", "confirmed_at",
+                                "reject_reason", "bank_card", "updated_at"])
 
-    mark_paid_and_fulfill(payment.order)
+    payment.order = order
+    if order.status in _FULFILLABLE:
+        mark_paid_and_fulfill(order)
+    else:
+        # already paid (fulfilment queued) or completed: never provision twice
+        log.info("approve_payment(%s): order %s is %s — not fulfilling again", payment.id, order.id, order.status)
     notify_user(
         payment.order.user,
         title="سفارش شما تأیید شد",
@@ -96,7 +121,7 @@ def approve_payment(payment_id: int, *, actor=None, bank_card=None) -> Payment:
         via_site=True, via_bot=True, via_email=True,
     )
     write_audit(action="payment.approved", target=payment, staff=actor,
-                detail={"order": payment.order_id})
+                detail={"order": payment.order_id, "from": previous})
     push_payments_event("payment_approved", order_id=payment.order_id, payment_id=payment.id,
                         by=getattr(actor, "username", None))
     return payment
@@ -104,14 +129,33 @@ def approve_payment(payment_id: int, *, actor=None, bank_card=None) -> Payment:
 
 @transaction.atomic
 def reject_payment(payment_id: int, *, reason: str, actor=None) -> Payment:
+    """Reject a payment AND its order: the order becomes `rejected` (shown red
+    with the reason, never reused for a new purchase) and its unique amount is
+    released. Buying again creates a new order with a new unique amount."""
     payment = Payment.objects.select_for_update().select_related("order").get(pk=payment_id)
     if payment.status == PaymentStatus.APPROVED:
         raise PaymentError("cannot reject an approved payment")
+    order = Order.objects.select_for_update().get(pk=payment.order_id)
+    if order.status in (OrderStatus.PAID, OrderStatus.COMPLETED):
+        raise PaymentError(f"order is {order.status}, cannot reject its payment")
     payment.status = PaymentStatus.REJECTED
     payment.reject_reason = reason
-    payment.save(update_fields=["status", "reject_reason", "updated_at"])
-    # order stays pending_payment so the customer can upload a new receipt
-    write_audit(action="payment.rejected", target=payment, staff=actor, detail={"reason": reason})
+    payment.confirmed_by_staff = _staff_or_none(actor)
+    payment.save(update_fields=["status", "reject_reason", "confirmed_by_staff", "updated_at"])
+    if order.status in (OrderStatus.PENDING_PAYMENT, OrderStatus.EXPIRED):
+        order.status = OrderStatus.REJECTED
+        order.sync_unique_lock()   # releases the unique amount
+        order.save(update_fields=["status", "amount_unique_lock", "updated_at"])
+    notify_user(
+        order.user,
+        title="پرداخت شما رد شد",
+        body=f"پرداخت سفارش #{order.id} رد شد. دلیل: {reason}\nبرای خرید دوباره یک سفارش جدید ثبت کنید.",
+        title_en="Your payment was rejected",
+        body_en=f"Payment for order #{order.id} was rejected. Reason: {reason}\nPlace a new order to buy again.",
+        ntype=NotificationType.EVENT,
+        via_site=True, via_bot=True, via_email=True,
+    )
+    write_audit(action="payment.rejected", target=payment, staff=actor, detail={"reason": reason, "order": order.id})
     push_payments_event("payment_rejected", order_id=payment.order_id, payment_id=payment.id,
                         by=getattr(actor, "username", None))
     return payment

@@ -13,6 +13,7 @@ const nav = [
   ['/plans', 'plans', 'plans.manage'],
   ['/payments', 'payments', 'payment.view'],
   ['/transactions', 'transactions', 'payment.view'],
+  ['/sms-log', 'sms_log', 'payment.view'],
   ['/accounting', 'accounting', 'accounting.view'],
   ['/cards', 'cards', 'payment.view'],
   ['/monitoring', 'monitoring', 'monitoring.view'],
@@ -44,6 +45,7 @@ const CASPIAN_GROUPS = [
   ['nav_group_finance', [
     ['/payments', 'payments', 'payment.view', 'payments'],
     ['/transactions', 'transactions', 'payment.view', 'transactions'],
+    ['/sms-log', 'sms_log', 'payment.view', 'sms'],
     ['/accounting', 'accounting', 'accounting.view', 'accounting'],
     ['/cards', 'cards', 'payment.view', 'cards'],
   ]],
@@ -76,6 +78,7 @@ const NAV_ICONS = {
   bots: 'M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z',
   payments: 'M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3',
   transactions: 'M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5',
+  sms: 'M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z',
   accounting: 'M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z',
   cards: 'M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z',
   services: 'M4 6h16M4 6a2 2 0 012-2h12a2 2 0 012 2M4 6v12a2 2 0 002 2h12a2 2 0 002-2V6M8 11h8M8 15h5',
@@ -236,7 +239,7 @@ const CASPIAN_BOTNAV = [
 // inner-page titles for the mobile top bar (longest prefix wins)
 const MOBILE_TITLES = [
   ['/users/deleted', 'deleted_users'], ['/users', 'users'], ['/services', 'services'], ['/plans', 'plans'],
-  ['/payments', 'nav_pay_queue'], ['/transactions', 'transactions'], ['/accounting', 'accounting'],
+  ['/payments', 'nav_pay_queue'], ['/transactions', 'transactions'], ['/sms-log', 'sms_log'], ['/accounting', 'accounting'],
   ['/cards', 'cards'], ['/monitoring', 'monitoring'], ['/panel-link', 'panel_link'], ['/bots', 'bots'],
   ['/branding', 'branding'], ['/apps', 'apps'], ['/settings', 'settings'], ['/notifications', 'notifications'],
   ['/pages', 'pages'], ['/themes', 'themes'], ['/roles', 'roles'],

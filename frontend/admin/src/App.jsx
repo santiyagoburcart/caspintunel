@@ -11,6 +11,7 @@ import Plans from './pages/Plans'
 import Payments from './pages/Payments'
 import Transactions from './pages/Transactions'
 import TransactionDetail from './pages/TransactionDetail'
+import SmsLog from './pages/SmsLog'
 import Accounting from './pages/Accounting'
 import Cards from './pages/Cards'
 import Monitoring from './pages/Monitoring'
@@ -44,6 +45,7 @@ export default function App() {
         <Route path="/payments" element={<Payments />} />
         <Route path="/payments/:id" element={<TransactionDetail />} />
         <Route path="/transactions" element={<Transactions />} />
+        <Route path="/sms-log" element={<SmsLog />} />
         <Route path="/transactions/:id" element={<TransactionDetail />} />
         <Route path="/accounting" element={<Accounting />} />
         <Route path="/cards" element={<Cards />} />

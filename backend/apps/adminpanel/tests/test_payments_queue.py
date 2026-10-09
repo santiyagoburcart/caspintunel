@@ -72,14 +72,14 @@ def test_approve_from_queue_marks_paid(boss, pending_payment):
     assert boss.get("/api/v1/admin/payments/pending/").data["count"] == 0
 
 
-def test_reject_from_queue_keeps_order_open(boss, pending_payment):
+def test_reject_from_queue_closes_the_order(boss, pending_payment):
     r = boss.post(f"/api/v1/admin/payments/{pending_payment.id}/reject/", {"reason": "blurry"}, format="json")
     assert r.status_code == 200
     pending_payment.refresh_from_db()
     assert pending_payment.status == "rejected"
     assert pending_payment.reject_reason == "blurry"
     pending_payment.order.refresh_from_db()
-    assert pending_payment.order.status == OrderStatus.PENDING_PAYMENT
+    assert pending_payment.order.status == OrderStatus.REJECTED       # closed, never resumed
 
 
 def test_queue_needs_payment_view_perm(staff_client, perms, pending_payment):

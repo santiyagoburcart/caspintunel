@@ -11,7 +11,7 @@ from apps.orders.models import OrderStatus, OrderType
 from apps.orders.services import create_order
 from apps.panel.models import Panel, ServiceStatus
 from apps.payments_sms.models import BankCard, Payment, PaymentStatus
-from apps.payments_sms.services import approve_payment, reject_payment, submit_receipt
+from apps.payments_sms.services import PaymentError, approve_payment, reject_payment, submit_receipt
 from apps.plans.models import Plan
 
 pytestmark = pytest.mark.django_db
@@ -93,7 +93,9 @@ def test_approve_marks_paid_and_provisions(user, panel, plan, order, django_capt
     assert order.amount_unique_lock is None
 
 
-def test_reject_keeps_order_open_for_retry(user, order):
+def test_reject_closes_the_order(user, order):
+    """A rejected payment closes its order (shown as rejected, never resumed);
+    the customer buys again with a new order instead of re-uploading."""
     submit_receipt(order=order, image=_png(), user=user)
     payment = Payment.objects.get(order=order)
     reject_payment(payment.id, reason="blurry image")
@@ -101,12 +103,11 @@ def test_reject_keeps_order_open_for_retry(user, order):
     order.refresh_from_db()
     assert payment.status == PaymentStatus.REJECTED
     assert payment.reject_reason == "blurry image"
-    assert order.status == OrderStatus.PENDING_PAYMENT
+    assert order.status == OrderStatus.REJECTED
 
-    # customer can upload a fresh receipt -> back to pending
-    submit_receipt(order=order, image=_png(), user=user)
-    payment.refresh_from_db()
-    assert payment.status == PaymentStatus.PENDING
+    # no more receipts on a closed order
+    with pytest.raises(PaymentError):
+        submit_receipt(order=order, image=_png(), user=user)
 
 
 def test_approve_endpoint_is_admin_only(user, order):

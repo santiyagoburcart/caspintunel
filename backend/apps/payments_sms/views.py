@@ -169,7 +169,11 @@ class SmsInboundView(APIView):
                    summary="Ingest one deposit SMS and try to auto-confirm an order")
     def post(self, request):
         ser = SmsInboundSerializer(data=request.data)
-        ser.is_valid(raise_exception=True)
+        if not ser.is_valid():
+            # keep a trace in the admin SMS log (e.g. an iPhone Shortcut whose
+            # automation passes no message body → empty "text"), then answer 400
+            _log_rejected_inbound(request, ser.errors)
+            return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
         _msg, result = ingest_sms(
             device=request.auth,
             raw_text=ser.validated_data["text"],
@@ -207,3 +211,18 @@ class SmsSourcesView(APIView):
                 for s in sources
             ],
         })
+
+
+def _log_rejected_inbound(request, errors) -> None:
+    from .models import SmsMessage
+
+    data = request.data if hasattr(request.data, "get") else {}
+    text = data.get("text") if isinstance(data.get("text"), str) else ""
+    sender = data.get("sender") if isinstance(data.get("sender"), str) else ""
+    fields = ", ".join(sorted(errors)) if hasattr(errors, "keys") else "body"
+    hint = (" — the device sent an empty message body: in the iPhone automation the shortcut "
+            "must receive the message as Shortcut Input" if "text" in errors and not (text or "").strip() else "")
+    SmsMessage.objects.create(
+        device=request.auth, raw_text=(text or "")[:2000], sender=(sender or "")[:64],
+        note=f"rejected by the server (400: invalid {fields}){hint}"[:255],
+    )

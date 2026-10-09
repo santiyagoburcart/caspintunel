@@ -68,10 +68,14 @@ class SmsMessage(models.Model):
         SmsAppDevice, null=True, blank=True, on_delete=models.SET_NULL, related_name="messages"
     )
     raw_text = models.TextField()
+    # what the device said the sender was (also kept when it is not an allowed source)
+    sender = models.CharField(max_length=64, blank=True, default="")
     parsed_amount = models.DecimalField(max_digits=12, decimal_places=0, null=True, blank=True)
     matched_order = models.ForeignKey(
         "orders.Order", null=True, blank=True, on_delete=models.SET_NULL, related_name="sms_messages"
     )
+    # why it matched / did not match — shown in the admin SMS log
+    note = models.CharField(max_length=255, blank=True, default="")
     received_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

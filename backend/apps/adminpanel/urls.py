@@ -20,6 +20,7 @@ from .views.finance import (
     AccountingView,
     PaymentDecisionView,
     PendingPaymentsView,
+    SmsLogViewSet,
     TransactionViewSet,
 )
 from .views.integrations import (
@@ -49,6 +50,7 @@ router.register("roles", RoleViewSet, basename="admin-roles")
 router.register("permissions", PermissionListViewSet, basename="admin-permissions")
 router.register("staff", StaffViewSet, basename="admin-staff")
 router.register("transactions", TransactionViewSet, basename="admin-transactions")
+router.register("sms-log", SmsLogViewSet, basename="admin-sms-log")
 router.register("notifications", NotificationViewSet, basename="admin-notifications")
 router.register("services", ServiceListViewSet, basename="admin-services")
 router.register("backups", BackupViewSet, basename="admin-backups")

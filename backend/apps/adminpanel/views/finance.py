@@ -59,11 +59,12 @@ class TransactionViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, views
         if target == payment.status:
             return Response(TransactionSerializer(payment).data)
 
-        # pending -> approved/rejected goes through the real flow (fulfilment etc.)
+        # ANY transition into approved runs the real flow (fulfilment, notification,
+        # confirmer) — incl. rejected -> approved; into rejected likewise.
         try:
-            if payment.status == PaymentStatus.PENDING and target == PaymentStatus.APPROVED:
+            if target == PaymentStatus.APPROVED:
                 payment = approve_payment(payment.pk, actor=request.user)
-            elif payment.status == PaymentStatus.PENDING and target == PaymentStatus.REJECTED:
+            elif target == PaymentStatus.REJECTED and payment.status == PaymentStatus.PENDING:
                 payment = reject_payment(payment.pk, reason=reason or "رد شد", actor=request.user)
             else:
                 # any other transition = a manual override, no side effects
@@ -230,3 +231,30 @@ def _parse_any_date(value, *, end_of_day=False):
         return timezone.make_aware(dt)
     except (ValueError, TypeError):
         return None
+
+
+class SmsLogViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+    """GET /admin/sms-log/ — every SMS the phones forwarded (newest first), with
+    the sender, the parsed amount, the matched order or the reason it did not
+    match. ?matched=1|0 filters."""
+
+    authentication_classes = _AUTH
+    permission_classes = [StaffPermission]
+    perms_map = {"GET": ["payment.view"]}
+
+    def get_serializer_class(self):
+        from ..serializers import AdminSmsLogSerializer
+
+        return AdminSmsLogSerializer
+
+    def get_queryset(self):
+        from apps.payments_sms.models import SmsMessage
+
+        qs = SmsMessage.objects.select_related("device", "sms_source", "matched_order").order_by("-received_at", "-id")
+        m = self.request.query_params.get("matched")
+        if m in ("1", "true"):
+            qs = qs.filter(matched_order__isnull=False)
+        elif m in ("0", "false"):
+            qs = qs.filter(matched_order__isnull=True)
+        return qs
+

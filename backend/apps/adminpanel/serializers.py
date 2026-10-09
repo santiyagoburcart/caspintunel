@@ -7,7 +7,7 @@ from apps.notifications.models import Notification
 from apps.ops.models import BackupLog, HealthCheck, ResourceStat
 from apps.orders.models import Order
 from apps.panel.models import Panel, Service
-from apps.payments_sms.models import BankCard, Payment, SmsAppDevice, SmsSource
+from apps.payments_sms.models import BankCard, Payment, SmsAppDevice, SmsMessage, SmsSource
 from apps.plans.models import Plan
 from apps.plans.serializers import PlanPanelDefaultMixin
 from apps.settings_app.models import Page, SiteConfig, Theme
@@ -620,3 +620,26 @@ class AdminServiceLinkSerializer(serializers.Serializer):
     panel_username = serializers.CharField(max_length=64)
     user = serializers.PrimaryKeyRelatedField(queryset=User.objects.filter(deleted_at__isnull=True))
     plan = serializers.PrimaryKeyRelatedField(queryset=Plan.objects.all(), required=False, allow_null=True)
+
+
+class AdminSmsLogSerializer(serializers.ModelSerializer):
+    """One inbound SMS as the admin SMS log shows it: card / account numbers are
+    masked to their last 4 digits; `note` says why it matched or did not."""
+
+    text = serializers.SerializerMethodField()
+    device = serializers.CharField(source="device.name", default="", read_only=True)
+    source = serializers.CharField(source="sms_source.phone_number", default="", read_only=True)
+    matched_order = serializers.IntegerField(source="matched_order_id", read_only=True)
+    matched_order_status = serializers.CharField(source="matched_order.status", default=None, read_only=True)
+
+    class Meta:
+        model = SmsMessage
+        fields = ("id", "received_at", "device", "sender", "source", "text", "parsed_amount",
+                  "matched_order", "matched_order_status", "note")
+        read_only_fields = fields
+
+    def get_text(self, obj) -> str:
+        from apps.payments_sms.matching import mask_sms
+
+        return mask_sms(obj.raw_text)
+

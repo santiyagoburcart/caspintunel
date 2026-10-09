@@ -47,6 +47,9 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
 - API-first under `/api/v1/`; admin API `/api/v1/admin/…` uses the **separate `Staff` model** + staff JWT +
   `StaffPermission`: `perms_map` per method, `action_perms` per viewset action (wins over `perms_map`).
 - Every admin write that matters → `write_audit(action=…, staff=request.user, target=…)`.
+- Payments move to `approved` ONLY via `payments_sms.services.approve_payment` (it fulfils, notifies, records the
+  confirmer; idempotent) and to `rejected` only via `reject_payment` (closes the order). Never set `payment.status`
+  to approved/rejected directly. Rejected / expired / completed orders are never reused by `create_order`.
 - Panel operations: **panel first, then read the account back and mirror it** (`apply_user_to_service`);
   only send changed fields (`update_service`). Never delete a panel account when "disable" is meant.
 - Users are **soft-deleted** only (`apps/accounts/deletion.py`); hard `DELETE /admin/users/<id>/` is 405

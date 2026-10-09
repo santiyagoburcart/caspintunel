@@ -32,6 +32,7 @@ const HUB_ICONS = {
   chevron: <polyline points="9 18 15 12 9 6" />,
   apps: <><rect x="6" y="2" width="12" height="20" rx="3" /><path d="M11 18h2" /></>,
   transactions: <path d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />,
+  sms_log: <path d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />,
   accounting: <path d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z" />,
   cards: <><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20M6 15h4" /></>,
   plans: <path d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3zM6 6h.008v.008H6V6z" />,
@@ -61,6 +62,7 @@ const HUB = {
     pages: { t: 'صفحات', d: 'سوالات متداول و شرایط استفاده' },
     apps: { t: 'اپلیکیشن‌ها و ابزارها', d: 'دانلود اپ اندروید و شورتکات آیفون از سرور' },
     transactions: { t: 'تراکنش‌ها', d: 'همهٔ پرداخت‌ها با فیلتر وضعیت، تاریخ و بانک' },
+    sms_log: { t: 'لاگ پیامک‌ها', d: 'پیامک‌های رسیده از گوشی و دلیل تطبیق یا عدم تطبیق' },
     accounting: { t: 'حسابداری', d: 'درآمد روزانه، هفتگی، ماهانه و بازهٔ دلخواه' },
     cards: { t: 'کارت‌های بانکی', d: 'افزودن و مدیریت کارت‌های دریافت وجه' },
     plans: { t: 'پلن‌ها', d: 'ساخت و ویرایش پلن‌های فروش' },
@@ -89,6 +91,7 @@ const HUB = {
     pages: { t: 'Pages', d: 'FAQ and terms of use' },
     apps: { t: 'Apps & tools', d: 'Download the Android app and iPhone shortcut from the server' },
     transactions: { t: 'Transactions', d: 'Every payment, filtered by status, date and bank' },
+    sms_log: { t: 'SMS log', d: 'SMS forwarded by the phone and why each matched or not' },
     accounting: { t: 'Accounting', d: 'Daily, weekly, monthly and custom revenue' },
     cards: { t: 'Bank cards', d: 'Add and manage the receiving cards' },
     plans: { t: 'Plans', d: 'Create and edit the plans on sale' },
@@ -113,7 +116,7 @@ const HUB_COLOR = {
   requirements: '#D97706', roles: '#D97706',
   backup: '#1464BA',
   pages: '#64748B',
-  transactions: '#11AB53', accounting: '#11AB53', cards: '#11AB53',
+  transactions: '#11AB53', sms_log: '#1464BA', accounting: '#11AB53', cards: '#11AB53',
   apps: '#0891B2', plans: '#1464BA', deleted: 'var(--c-danger)', notifications: '#7C3AED',
   monitoring: '#0891B2', sync: '#1464BA', display: '#64748B',
 }
@@ -123,6 +126,7 @@ const HUB_COLOR = {
 const HUB_GROUPS = [
   ['g_finance', [
     ['/transactions', 'transactions', 'payment.view'],
+    ['/sms-log', 'sms_log', 'payment.view'],
     ['/accounting', 'accounting', 'accounting.view'],
     ['/cards', 'cards', 'payment.view'],
   ]],

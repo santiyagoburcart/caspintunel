@@ -138,6 +138,21 @@ export default function TransactionDetail() {
       }).then((ok) => { if (!ok) setSel(r.status) })
       return
     }
+    if (sel === 'approved') {
+      // any move into "approved" runs the real fulfilment on the server
+      confirm({
+        tone: 'success', icon: 'check', badge: 'payment.approve',
+        title: t('approve_deliver_title'),
+        message: r.status === 'rejected' ? `${t('approve_deliver_msg')} ${t('approve_deliver_rejected')}` : t('approve_deliver_msg'),
+        targetLabel: t('txd_id_label'), targetId: `#${r.id}`,
+        confirmLabel: t('approve_deliver_btn'),
+        action: async () => {
+          await api.post(`/admin/transactions/${id}/status/`, { status: 'approved' })
+          await load()
+        },
+      }).then((ok) => { if (!ok) setSel(r.status) })
+      return
+    }
     commit(sel)
   }
 

@@ -135,13 +135,19 @@ export default function Payments() {
       if (ok) { toast.success(t('reject')); await load() }
       return
     }
+    const p = rows.find((r) => r.id === id)
+    const body = { bank_card: cardById[id] ?? p?.bank_card ?? cards[0]?.id ?? null }
+    // approving delivers the service — say so in the shared dialog first
     setBusyId(id)
-    const body = { bank_card: cardById[id] ?? rows.find((r) => r.id === id)?.bank_card ?? cards[0]?.id ?? null }
-    toast.loading(t('action_in_progress'))
     try {
-      await api.post(`/admin/payments/${id}/${kind}/`, body)
-      toast.success(t('approve'))
-      await load()
+      const ok = await confirm({
+        tone: 'success', icon: 'check', badge: 'payment.approve',
+        title: t('approve_deliver_title'), message: t('approve_deliver_msg'),
+        targetLabel: s.order, targetId: `#${p?.order_id ?? id}`,
+        confirmLabel: t('approve_deliver_btn'), footnote: s.audit,
+        action: () => api.post(`/admin/payments/${id}/${kind}/`, body),
+      })
+      if (ok) { toast.success(t('approve')); await load() }
     } catch (e) { toast.error(apiError(e)); setErr(apiError(e)) } finally { setBusyId(null) }
   }
 
