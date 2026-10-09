@@ -103,10 +103,13 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
 ## Operator phone tools
 - Android SMS Bridge: `mobile_sms/` (Kotlin); the APK in `mobile_sms/release/` is served by the panel.
 - **iPhone Shortcut: single source `mobile_shortcut/CaspinSMS.shortcut`** (XML plist, no secrets; endpoint +
-  token are import questions). The panel download builds it from that file and fills in the endpoint (and
-  optionally one device's token) at request time; iOS files cannot be uploaded.
-  **Shortcut change = update the repo file + panel download (automatic) + bump `mobile_shortcut/VERSION`
-  + changelog in `mobile_shortcut/README.md`.** Keep the two action UUIDs the backend looks for.
+  token are import questions). **Official distribution = an iCloud link** (setting `ios_shortcut_icloud_url`,
+  validated `https://www.icloud.com/shortcuts/<id>`, edited on Apps & tools; button + QR). iOS 15+ refuses
+  unsigned files and this Linux server can't sign, so the panel's built file is only the "Advanced: unsigned"
+  download (`shortcuts sign --mode anyone` on a Mac). A token never goes into the iCloud link or a page URL.
+  **Shortcut change = update the repo file + bump `mobile_shortcut/VERSION` + changelog in
+  `mobile_shortcut/README.md` + re-import on an iPhone, re-share as a NEW iCloud link, update the setting.**
+  Keep the two action UUIDs the backend looks for.
 
 ## Secrets / .env
 - Mail: every app email uses `EMAIL_BACKEND = apps.common.mail.DynamicEmailBackend`, which picks the server

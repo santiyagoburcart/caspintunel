@@ -8,6 +8,7 @@ from drf_spectacular.utils import extend_schema
 from rest_framework.response import Response
 
 from apps.common.models import write_audit
+from apps.settings_app import shortcut
 from apps.settings_app.utils import get_setting, set_setting
 
 from .base import AdminAPIView
@@ -31,8 +32,14 @@ EDITABLE_SETTINGS = [
     ("force_share_phone", "bool", False, None, None),
     ("default_language", "str", "fa", None, None),
     ("product_display_mode", "str", "grouped", None, None),
+    ("ios_shortcut_icloud_url", "str", "", None, None),
 ]
 _SPEC = {k: (t, d, lo, hi) for (k, t, d, lo, hi) in EDITABLE_SETTINGS}
+
+# str settings with a validator (returns the cleaned value or raises ValueError)
+_VALIDATORS = {
+    "ios_shortcut_icloud_url": shortcut.clean_icloud_url,
+}
 
 # str settings restricted to a fixed choice set
 _ENUM = {
@@ -75,6 +82,11 @@ class SettingsView(AdminAPIView):
                     if key in _ENUM and val not in _ENUM[key]:
                         return Response(
                             {"detail": f"{key} must be one of {sorted(_ENUM[key])}"}, status=400)
+                    if key in _VALIDATORS:
+                        try:
+                            val = _VALIDATORS[key](val)
+                        except ValueError as exc:
+                            return Response({"detail": str(exc), "field": key}, status=400)
             except (TypeError, ValueError):
                 return Response({"detail": f"bad value for {key}"}, status=400)
             set_setting(key, val, vtype)

@@ -156,6 +156,8 @@ const HUB_GROUPS = [
 
 // sections of the settings <form> (saved with the sticky bar); the SMS
 // sections manage their own rows
+// edited elsewhere: the iPhone Shortcut iCloud link lives on Apps & tools (validated there)
+const OWN_PAGE_SETTINGS = new Set(['ios_shortcut_icloud_url'])
 const FORM_SECTIONS = ['unique-amount', 'alerts', 'sync', 'backup', 'requirements', 'display']
 const SOLO_SECTIONS = [...FORM_SECTIONS, 'sms-devices', 'sms-sources']
 
@@ -676,8 +678,10 @@ export default function Settings() {
   const load = () =>
     api.get('/admin/settings/')
       .then((r) => {
-        const f = Object.fromEntries(r.data.settings.map((x) => [x.key, x.value]))
-        setRows(r.data.settings); setForm(f); setInitial(f); setErr('')
+        // settings with their own page are left out, so this form never sends a stale copy
+        const rows = r.data.settings.filter((x) => !OWN_PAGE_SETTINGS.has(x.key))
+        const f = Object.fromEntries(rows.map((x) => [x.key, x.value]))
+        setRows(rows); setForm(f); setInitial(f); setErr('')
       })
       .catch(() => { setRows([]); setErr(t('load_error')) })
   useEffect(() => { load() }, [])
