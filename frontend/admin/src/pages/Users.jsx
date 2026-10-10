@@ -17,7 +17,7 @@ const T = {
     f_source_all: 'منبع: همه', f_status_all: 'وضعیت: همه',
     only_active: 'فقط فعال', only_inactive: 'فقط غیرفعال', reset: 'بازنشانی فیلترها',
     filters: 'فیلترها', f_source: 'منبع', f_status: 'وضعیت', f_all: 'همه', f_active: 'فعال', f_inactive: 'غیرفعال',
-    n_users: '{n} کاربر', n_filters: '{n} فیلتر فعال', clear_search: 'پاک کردن جستجو',
+    n_users: '{n} کاربر', n_user1: '1 کاربر', n_filters: '{n} فیلتر فعال', clear_search: 'پاک کردن جستجو',
     col_user: 'نام کاربری و مشخصات', col_services: 'کل سرویس‌ها', col_joined: 'تاریخ عضویت',
     col_actions: 'عملیات', uid: 'شناسه', legacy: 'قدیمی',
     rows_of: 'نمایش {a} از {b} کاربر', prev: 'قبلی', next: 'بعدی',
@@ -51,7 +51,7 @@ const T = {
     f_source_all: 'Source: all', f_status_all: 'Status: all',
     only_active: 'Active only', only_inactive: 'Inactive only', reset: 'Reset filters',
     filters: 'Filters', f_source: 'Source', f_status: 'Status', f_all: 'All', f_active: 'Active', f_inactive: 'Inactive',
-    n_users: '{n} users', n_filters: '{n} filter(s) on', clear_search: 'Clear search',
+    n_users: '{n} users', n_user1: '1 user', n_filters: '{n} filter(s) on', clear_search: 'Clear search',
     col_user: 'Username & details', col_services: 'Total services', col_joined: 'Joined',
     col_actions: 'Actions', uid: 'ID', legacy: 'Legacy',
     rows_of: 'Showing {a} of {b} users', prev: 'Prev', next: 'Next',
@@ -434,8 +434,8 @@ export default function Users() {
           </span>
         </div>
         <div className="usr-tb-foot">
-          <span className="usr-count" aria-live="polite">
-            {s.n_users.replace('{n}', digits(count, lang))}
+          <span className="usr-total" aria-live="polite">
+            {count === 1 ? s.n_user1 : s.n_users.replace('{n}', digits(count, lang))}
             {activeFilters > 0 && <span className="usr-fbadge">{s.n_filters.replace('{n}', digits(activeFilters, lang))}</span>}
           </span>
           {activeFilters > 0 && (
@@ -544,42 +544,50 @@ const CSS = `
 .usr-growth { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 7px; font-size: 11px; font-weight: 700; white-space: nowrap; }
 .usr-stat-accent { position: absolute; inset-inline: 0; bottom: 0; height: 3px; opacity: .85; }
 
-.usr-toolbar { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; }
-.usr-search { position: relative; }
-.usr-search .input { padding-inline-start: 38px; padding-inline-end: 40px; width: 100%; min-height: 42px; }
-.usr-search-clear { position: absolute; inset-inline-end: 6px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px;
-  border-radius: 999px; font-size: 20px; line-height: 1; color: var(--c-text-muted); }
+/* search + filters: one row on desktop, wraps on tablet, stacked on phones.
+   (.usr-search must not carry a flex-basis in a column layout — it became its
+   HEIGHT and pushed the absolutely-centred icon far below the input.) */
+.usr-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 12px; }
+.usr-search { position: relative; display: flex; align-items: center; flex: 1 1 260px; min-width: 200px; max-width: 420px; }
+.usr-search .input { width: 100%; height: 40px; min-height: 0; padding-block: 0; padding-inline-start: 36px; padding-inline-end: 36px; }
+.usr-search-ico { position: absolute; inset-inline-start: 11px; top: 50%; transform: translateY(-50%); display: flex;
+  color: var(--c-text-muted); pointer-events: none; }
+.usr-search-clear { position: absolute; inset-inline-end: 4px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px;
+  display: grid; place-items: center; border-radius: 999px; font-size: 20px; line-height: 1; color: var(--c-text-muted); }
 .usr-search-clear:hover { background: color-mix(in srgb, var(--c-text-muted) 12%, transparent); color: var(--c-text); }
-.usr-filters { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
-.usr-fgroup { display: inline-flex; align-items: center; gap: 6px; }
+.usr-search .input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
+.usr-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
+.usr-fgroup { display: inline-flex; align-items: center; gap: 5px; }
 .usr-fgroup-l { font-size: 12px; font-weight: 700; color: var(--c-text-muted); margin-inline-end: 2px; }
-.usr-chip { min-height: 32px; padding: 0 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; white-space: nowrap;
+.usr-chip { height: 32px; padding: 0 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; white-space: nowrap;
   color: var(--c-text); border: 1px solid var(--c-border); background: transparent; transition: background .15s, border-color .15s; }
 .usr-chip:hover { border-color: var(--c-primary); }
 .usr-chip.on { background: var(--c-primary); border-color: var(--c-primary); color: #fff; }
-.usr-tb-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 28px; }
-.usr-count { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--c-text-muted); }
+.usr-tb-foot { display: flex; align-items: center; gap: 8px; margin-inline-start: auto; }
+.usr-total { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--c-text-muted); white-space: nowrap; }
 .usr-fbadge { padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; color: var(--c-primary-fg);
   background: color-mix(in srgb, var(--c-primary) 12%, transparent); }
 .usr-reset { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 700; color: var(--c-danger-fg);
-  padding: 4px 8px; border-radius: 8px; }
+  height: 32px; padding: 0 8px; border-radius: 8px; white-space: nowrap; }
 .usr-reset:hover { background: color-mix(in srgb, var(--c-danger) 10%, transparent); }
+@media (max-width: 1023px) {     /* tablet: search on top, both chip groups on one row */
+  .usr-fgroup-l { display: none; }
+  .usr-fgroup + .usr-fgroup { padding-inline-start: 8px; border-inline-start: 1px solid var(--c-border); }
+}
 @media (max-width: 767px) {
-  .usr-toolbar { padding: 10px; gap: 8px; }
-  .usr-search .input { font-size: 16px; min-height: 44px; }
-  .usr-search-clear { width: 44px; height: 44px; inset-inline-end: 0; }
+  .usr-toolbar { flex-direction: column; align-items: stretch; flex-wrap: nowrap; padding: 10px; gap: 8px; }
+  .usr-search { flex: none; max-width: none; min-width: 0; }
+  .usr-search .input { font-size: 16px; height: 44px; }
+  .usr-search-clear { width: 40px; height: 40px; inset-inline-end: 2px; }
   .usr-filters { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 6px; margin-inline: -10px; padding-inline: 10px; }
   .usr-filters::-webkit-scrollbar { display: none; }
-  .usr-fgroup { gap: 6px; flex-shrink: 0; }
+  .usr-fgroup { flex-shrink: 0; }
   .usr-fgroup + .usr-fgroup { padding-inline-start: 6px; border-inline-start: 1px solid var(--c-border); }
   .usr-fgroup-l { display: none; }
-  .usr-chip { min-height: 44px; padding: 0 14px; }
-  .usr-reset { min-height: 44px; }
+  .usr-chip { height: 44px; padding: 0 14px; }
+  .usr-tb-foot { margin-inline-start: 0; justify-content: space-between; }
+  .usr-reset { height: 44px; }
 }
-.usr-search { position: relative; flex: 1 1 240px; min-width: 200px; }
-.usr-search .input { padding-inline-start: 38px; width: 100%; }
-.usr-search-ico { position: absolute; inset-inline-start: 12px; top: 50%; transform: translateY(-50%); color: var(--c-text-muted); pointer-events: none; }
-.usr-search-btn { flex-shrink: 0; }
 .usr-sel { max-width: 170px; flex: 0 1 150px; }
 
 .usr-icon-btn {
