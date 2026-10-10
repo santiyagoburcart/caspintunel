@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Children, cloneElement, isValidElement, useId, useState } from 'react'
 import { copyToClipboard } from '../lib/clipboard'
 import { useI18n } from '../lib/i18n'
 import { normalizeIrPhone } from '../lib/phone'
@@ -18,8 +18,20 @@ export function Alert({ kind = 'danger', children }) {
   )
 }
 
+/** Label + one control. A single input/select/textarea child is tied to the
+ *  label (htmlFor/id), so screen readers announce its name. */
 export function Field({ label, children }) {
-  return <div><span className="label">{label}</span>{children}</div>
+  const auto = useId()
+  const kids = Children.toArray(children)
+  const controls = kids.filter((k) => isValidElement(k) && ['input', 'select', 'textarea'].includes(k.type))
+  if (controls.length !== 1) return <div><span className="label">{label}</span>{children}</div>
+  const id = controls[0].props.id || auto
+  return (
+    <div>
+      <label className="label" htmlFor={id}>{label}</label>
+      {kids.map((k) => (k === controls[0] ? cloneElement(k, { id }) : k))}
+    </div>
+  )
 }
 
 function EyeIcon({ off }) {
@@ -50,7 +62,7 @@ export function PasswordField({ label, value, onChange, autoComplete, autoFocus 
     <Field label={label}>
       <div className="relative">
         <input
-          className="input" type={show ? 'text' : 'password'} value={value} onChange={onChange}
+          className="input" type={show ? 'text' : 'password'} value={value} onChange={onChange} aria-label={label}
           autoComplete={autoComplete} autoFocus={autoFocus}
           style={{ paddingInlineEnd: '2.75rem' }}
         />
@@ -84,7 +96,7 @@ export function Toggle({ checked, onChange, disabled, label }) {
 }
 
 const BADGE_COLOR = {
-  active: 'success', on_hold: 'warning', expired: 'danger', limited: 'warning',
+  active: 'success', on_hold: 'warning', expired: 'muted', limited: 'warning',
   disabled: 'muted', pending: 'secondary', pending_payment: 'warning',
   paid: 'secondary', completed: 'success', rejected: 'danger',
 }
@@ -92,7 +104,8 @@ const BADGE_COLOR = {
 export function StatusBadge({ status }) {
   const { t } = useI18n()
   const c = BADGE_COLOR[status] || 'muted'
-  const color = `var(--c-${c === 'muted' ? 'text-muted' : c})`
+  // text in the text-safe variant, tint from the same role (expired = neutral gray)
+  const color = `var(--c-${c}-fg)`
   const key = 'st_' + status
   const label = t(key) === key ? status : t(key)
   return (
@@ -142,7 +155,7 @@ export function PhoneInput({ value, onChange, className = 'input', hintClassName
   const err = (touched || showError) ? error(value) : ''
   return (
     <>
-      <input className={className} dir="ltr" type="tel" inputMode="tel" autoComplete="tel"
+      <input className={className} dir="ltr" type="tel" inputMode="tel" autoComplete="tel" aria-label={t('phone')}
         placeholder="09121234567" value={value} required={required} aria-invalid={!!err}
         onBlur={() => setTouched(true)} onChange={(e) => onChange(e.target.value)}
         style={err ? { borderColor: 'var(--c-danger)' } : undefined} />

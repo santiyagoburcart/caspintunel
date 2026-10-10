@@ -16,6 +16,8 @@ const T = {
     search_ph: 'جستجو (نام، نام کاربری، ایمیل یا تلفن)...',
     f_source_all: 'منبع: همه', f_status_all: 'وضعیت: همه',
     only_active: 'فقط فعال', only_inactive: 'فقط غیرفعال', reset: 'بازنشانی فیلترها',
+    filters: 'فیلترها', f_source: 'منبع', f_status: 'وضعیت', f_all: 'همه', f_active: 'فعال', f_inactive: 'غیرفعال',
+    n_users: '{n} کاربر', n_filters: '{n} فیلتر فعال', clear_search: 'پاک کردن جستجو',
     col_user: 'نام کاربری و مشخصات', col_services: 'کل سرویس‌ها', col_joined: 'تاریخ عضویت',
     col_actions: 'عملیات', uid: 'شناسه', legacy: 'قدیمی',
     rows_of: 'نمایش {a} از {b} کاربر', prev: 'قبلی', next: 'بعدی',
@@ -48,6 +50,8 @@ const T = {
     search_ph: 'Search (name, username, email or phone)…',
     f_source_all: 'Source: all', f_status_all: 'Status: all',
     only_active: 'Active only', only_inactive: 'Inactive only', reset: 'Reset filters',
+    filters: 'Filters', f_source: 'Source', f_status: 'Status', f_all: 'All', f_active: 'Active', f_inactive: 'Inactive',
+    n_users: '{n} users', n_filters: '{n} filter(s) on', clear_search: 'Clear search',
     col_user: 'Username & details', col_services: 'Total services', col_joined: 'Joined',
     col_actions: 'Actions', uid: 'ID', legacy: 'Legacy',
     rows_of: 'Showing {a} of {b} users', prev: 'Prev', next: 'Next',
@@ -316,7 +320,8 @@ export default function Users() {
   const [rows, setRows] = useState(null)
   const [count, setCount] = useState(0)
   const [offset, setOffset] = useState(0)
-  const [q, setQ] = useState('')
+  const [q, setQ] = useState('')          // applied search
+  const [qInput, setQInput] = useState('') // what is typed (debounced into q)
   const [source, setSource] = useState('')
   const [active, setActive] = useState('')
   const [err, setErr] = useState('')
@@ -360,8 +365,18 @@ export default function Users() {
     if (await userActions.remove(u)) { load(); loadStats() }
   }
 
-  const doSearch = () => { setOffset(0); load() }
-  const resetFilters = () => { setQ(''); setSource(''); setActive(''); setOffset(0) }
+  // search as you type (debounced) — Enter applies at once
+  useEffect(() => {
+    const id = setTimeout(() => { if (qInput.trim() !== q) { setQ(qInput.trim()); setOffset(0) } }, 300)
+    return () => clearTimeout(id)
+  }, [qInput])
+  const doSearch = () => { setQ(qInput.trim()); setOffset(0) }
+  const resetFilters = () => { setQ(''); setQInput(''); setSource(''); setActive(''); setOffset(0) }
+  const activeFilters = (q ? 1 : 0) + (source ? 1 : 0) + (active ? 1 : 0)
+  const chip = (value, current, set, label) => (
+    <button key={value || 'all'} type="button" className={'usr-chip' + (current === value ? ' on' : '')}
+      aria-pressed={current === value} onClick={() => { set(value); setOffset(0) }}>{label}</button>
+  )
   const onSaved = (msg) => { setModal(null); setToast(msg); load(); loadStats(); setTimeout(() => setToast(''), 2500) }
 
   const page = Math.floor(offset / PAGE) + 1
@@ -379,8 +394,8 @@ export default function Users() {
           <p className="text-sm text-muted mt-1">{s.subtitle}</p>
         </div>
         <div className="usr-head-acts">
-          <Link to="/users/deleted" className="usr-hist-btn usr-archive-link">
-            <Ico d={I.archive} w={15} /> {s.deleted_users}
+          <Link to="/users/deleted" className="usr-hist-btn usr-archive-link" aria-label={s.deleted_users} title={s.deleted_users}>
+            <Ico d={I.archive} w={15} /> <span className="usr-archive-t">{s.deleted_users}</span>
           </Link>
           <button type="button" className="btn-primary text-sm" onClick={() => setModal({ row: null })}>
             <Ico d={I.plus} w={15} /> {s.add_user}
@@ -401,21 +416,32 @@ export default function Users() {
       <div className="card usr-toolbar">
         <div className="usr-search">
           <span className="usr-search-ico"><Ico d={I.search} w={17} /></span>
-          <input className="input" placeholder={s.search_ph} value={q}
-            onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && doSearch()} />
+          <input className="input" type="search" aria-label={s.search_ph} placeholder={s.search_ph} value={qInput}
+            onChange={(e) => setQInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && doSearch()} enterKeyHint="search" />
+          {qInput && (
+            <button type="button" className="usr-search-clear" onClick={() => { setQInput(''); setQ(''); setOffset(0) }}
+              aria-label={s.clear_search} title={s.clear_search}>×</button>
+          )}
         </div>
-        <button className="btn-primary text-sm usr-search-btn" onClick={doSearch}>{t('search')}</button>
-        <select className="input usr-sel" value={source} onChange={(e) => { setSource(e.target.value); setOffset(0) }}>
-          <option value="">{s.f_source_all}</option>
-          <option value="bot">{t('src_bot')}</option>
-          <option value="site">{t('src_site')}</option>
-        </select>
-        <select className="input usr-sel" value={active} onChange={(e) => { setActive(e.target.value); setOffset(0) }}>
-          <option value="">{s.f_status_all}</option>
-          <option value="true">{s.only_active}</option>
-          <option value="false">{s.only_inactive}</option>
-        </select>
-        <button className="usr-icon-btn" onClick={resetFilters} title={s.reset} aria-label={s.reset}><Ico d={I.reset} w={15} /></button>
+        <div className="usr-filters" role="group" aria-label={s.filters}>
+          <span className="usr-fgroup">
+            <span className="usr-fgroup-l">{s.f_source}</span>
+            {chip('', source, setSource, s.f_all)}{chip('bot', source, setSource, t('src_bot'))}{chip('site', source, setSource, t('src_site'))}
+          </span>
+          <span className="usr-fgroup">
+            <span className="usr-fgroup-l">{s.f_status}</span>
+            {chip('', active, setActive, s.f_all)}{chip('true', active, setActive, s.f_active)}{chip('false', active, setActive, s.f_inactive)}
+          </span>
+        </div>
+        <div className="usr-tb-foot">
+          <span className="usr-count" aria-live="polite">
+            {s.n_users.replace('{n}', digits(count, lang))}
+            {activeFilters > 0 && <span className="usr-fbadge">{s.n_filters.replace('{n}', digits(activeFilters, lang))}</span>}
+          </span>
+          {activeFilters > 0 && (
+            <button type="button" className="usr-reset" onClick={resetFilters}><Ico d={I.reset} w={14} />{s.reset}</button>
+          )}
+        </div>
       </div>
 
       {rows === null ? (
@@ -446,6 +472,7 @@ export default function Users() {
                           {r.is_legacy && <span className="usr-src-tag legacy">{s.legacy}</span>}
                         </div>
                         <span className="usr-sub">{s.uid}: #{r.id}</span>
+                        <span className="usr-sub usr-sub-m">{[r.name, r.phone].filter(Boolean).join(' · ') || '—'}</span>
                       </div>
                     </div>
                   </td>
@@ -517,7 +544,38 @@ const CSS = `
 .usr-growth { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 7px; font-size: 11px; font-weight: 700; white-space: nowrap; }
 .usr-stat-accent { position: absolute; inset-inline: 0; bottom: 0; height: 3px; opacity: .85; }
 
-.usr-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.usr-toolbar { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; }
+.usr-search { position: relative; }
+.usr-search .input { padding-inline-start: 38px; padding-inline-end: 40px; width: 100%; min-height: 42px; }
+.usr-search-clear { position: absolute; inset-inline-end: 6px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px;
+  border-radius: 999px; font-size: 20px; line-height: 1; color: var(--c-text-muted); }
+.usr-search-clear:hover { background: color-mix(in srgb, var(--c-text-muted) 12%, transparent); color: var(--c-text); }
+.usr-filters { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+.usr-fgroup { display: inline-flex; align-items: center; gap: 6px; }
+.usr-fgroup-l { font-size: 12px; font-weight: 700; color: var(--c-text-muted); margin-inline-end: 2px; }
+.usr-chip { min-height: 32px; padding: 0 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; white-space: nowrap;
+  color: var(--c-text); border: 1px solid var(--c-border); background: transparent; transition: background .15s, border-color .15s; }
+.usr-chip:hover { border-color: var(--c-primary); }
+.usr-chip.on { background: var(--c-primary); border-color: var(--c-primary); color: #fff; }
+.usr-tb-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 28px; }
+.usr-count { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--c-text-muted); }
+.usr-fbadge { padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; color: var(--c-primary-fg);
+  background: color-mix(in srgb, var(--c-primary) 12%, transparent); }
+.usr-reset { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 700; color: var(--c-danger-fg);
+  padding: 4px 8px; border-radius: 8px; }
+.usr-reset:hover { background: color-mix(in srgb, var(--c-danger) 10%, transparent); }
+@media (max-width: 767px) {
+  .usr-toolbar { padding: 10px; gap: 8px; }
+  .usr-search .input { font-size: 16px; min-height: 44px; }
+  .usr-search-clear { width: 44px; height: 44px; inset-inline-end: 0; }
+  .usr-filters { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 6px; margin-inline: -10px; padding-inline: 10px; }
+  .usr-filters::-webkit-scrollbar { display: none; }
+  .usr-fgroup { gap: 6px; flex-shrink: 0; }
+  .usr-fgroup + .usr-fgroup { padding-inline-start: 6px; border-inline-start: 1px solid var(--c-border); }
+  .usr-fgroup-l { display: none; }
+  .usr-chip { min-height: 44px; padding: 0 14px; }
+  .usr-reset { min-height: 44px; }
+}
 .usr-search { position: relative; flex: 1 1 240px; min-width: 200px; }
 .usr-search .input { padding-inline-start: 38px; width: 100%; }
 .usr-search-ico { position: absolute; inset-inline-start: 12px; top: 50%; transform: translateY(-50%); color: var(--c-text-muted); pointer-events: none; }
@@ -585,20 +643,46 @@ const CSS = `
 .usr-foot { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; padding: 13px 16px; border-top: 1px solid var(--c-border); }
 .usr-pager { display: flex; align-items: center; gap: 8px; }
 
-/* mobile: table -> stacked cards */
+/* phones: compact records — [avatar · user / name · phone ······ active] then
+   [services] [joined] and the actions in one row */
+.usr-sub-m { display: none; }
 @media (max-width: 767px) {
+  .usr-head { flex-wrap: nowrap; align-items: center; }
+  .usr-head-acts { flex-wrap: nowrap; }
+  .usr-archive-t { display: none; }
+  .usr-stats { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 8px; }
+  .usr-stat { gap: 2px; padding: 9px 12px !important; }
+  .usr-stat-ico { display: none; }
+  .usr-stat-val { font-size: 19px; }
+  .usr-stat-row { gap: 6px; }
   .usr-wrap { overflow-x: visible; }
-  .usr-table, .usr-table tbody, .usr-table tr, .usr-table td { display: block; width: 100%; }
+  .usr-table, .usr-table tbody { display: block; width: 100%; }
   .usr-table { min-width: 0; }
   .usr-table thead { display: none; }
-  .usr-table tr.usr-row { border: 1px solid var(--c-border); border-radius: 12px; margin: 12px; padding: 4px 0; }
+  .usr-table tr.usr-row {
+    display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); align-items: center;
+    border: 1px solid var(--c-border); border-radius: 12px; margin: 8px; padding: 4px 0;
+  }
   .usr-table tr.usr-row:hover > td { background: none; }
-  .usr-table td { border: 0 !important; padding: 9px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: end; }
-  .usr-table td::before { content: attr(data-label); font-size: 11px; font-weight: 600; color: var(--c-text-muted); text-align: start; white-space: nowrap; }
-  .usr-table td:first-child { display: block; border-bottom: 1px solid var(--c-border) !important; }
-  .usr-table td:first-child::before { display: none; }
-  .usr-table td.usr-c { justify-content: space-between; text-align: end; }
+  .usr-table td { border: 0 !important; padding: 4px 12px; display: flex; flex-direction: row; align-items: center; gap: 6px; min-width: 0; font-size: 13px; overflow-wrap: anywhere; }
+  .usr-table td::before { content: attr(data-label) ":"; font-size: 12px; font-weight: 600; color: var(--c-text-muted); white-space: nowrap; }
+  .usr-table td:nth-child(2), .usr-table td:nth-child(3), .usr-table td:nth-child(4) { display: none; }
+  .usr-table td:nth-child(1) { grid-column: 1 / 6; grid-row: 1; padding-block: 6px; }
+  .usr-table td:nth-child(1)::before { display: none; }
+  .usr-table td:nth-child(7) { grid-column: 6; grid-row: 1; justify-content: flex-end; padding-inline: 8px; }
+  .usr-table td:nth-child(7)::before { display: none; }
+  .usr-table td:nth-child(5), .usr-table td:nth-child(6) { grid-column: span 3; }
+  .usr-table td:nth-child(8) { grid-column: 1 / -1; padding-top: 4px; }
+  .usr-table td:nth-child(8)::before { display: none; }
+  .usr-table .usr-sub-m { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .usr-table td:nth-child(1) .usr-sub:not(.usr-sub-m) { display: none; }
+  .usr-av { width: 32px; height: 32px; border-radius: 10px; }
+  .usr-idcell { gap: 8px; min-width: 0; }
+  .usr-idcell > div { min-width: 0; }
+  .usr-actions { justify-content: flex-start; flex-wrap: nowrap; width: 100%; }
+  .usr-actions > * { flex: 1 1 0; justify-content: center; min-width: 0; min-height: 44px; overflow: hidden; text-overflow: ellipsis; }
   .usr-date { font-size: 13px; }
+  .usr-foot { padding: 10px 12px; }
 }
 
 /* modal */

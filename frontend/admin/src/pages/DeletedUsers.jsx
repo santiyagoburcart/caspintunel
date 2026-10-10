@@ -90,7 +90,7 @@ const I = {
 
 function StatePill({ restored, s }) {
   const c = restored ? 'var(--c-success)' : 'var(--c-danger)'
-  return <span className="du-pill" style={{ color: c, background: `color-mix(in srgb, ${c} 14%, transparent)` }}>{restored ? s.restored : s.deleted}</span>
+  return <span className="du-pill" style={{ color: restored ? 'var(--c-success-fg)' : 'var(--c-danger-fg)', background: `color-mix(in srgb, ${c} 14%, transparent)` }}>{restored ? s.restored : s.deleted}</span>
 }
 
 export default function DeletedUsers() {

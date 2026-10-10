@@ -76,7 +76,15 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   Never use `window.confirm/alert/prompt`. **One copy helper**: `lib/clipboard.js::copyToClipboard`.
 - Fonts are bundled (`@fontsource`, no CDN): fa = Vazirmatn, en = Inter, `<code>` = JetBrains Mono.
 - Mobile (≤767px, Caspian admin): bottom nav + Settings page = index of every page not in the bottom nav.
-  A new admin page must be reachable from the sidebar **and** that index.
+  A new admin page must be reachable from the sidebar **and** that index (+ `MOBILE_TITLES`).
+  Phone density: record-grid cards (not stacked tables), KPI tiles 2 per row, subtitles hidden, inputs 16px,
+  targets ≥44px. Badge/pill **text** uses `--c-*-fg` (contrast-safe); "expired" is always `muted` gray.
+- Subscription QR = `apps/common/qrcard.py::qr_card_png` everywhere (bot, site modal, downloads): never
+  restyle the code itself (black on white, 4-module quiet zone, integer modules); backgrounds are bundled
+  JPEGs (`qr_backgrounds/generate.py`) or the Branding upload. Bot support IDs/text live in `SiteConfig`.
+- Admin "Documentation" serves only `docs/*.md` (secret-looking `NAME=value` lines masked). Keep docs free
+  of real values; new docs show up automatically.
+- The rejected Liquid Glass refresh is archived at tag `archive/ui-refresh-liquid-glass` — don't copy from it.
 
 ## Gotchas (learned the hard way)
 - `useEffect(load, [])` where `load` returns a Promise breaks under StrictMode (dev server). Always

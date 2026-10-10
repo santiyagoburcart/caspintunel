@@ -438,8 +438,8 @@ const CSS = `
 .csp-pf-uid { padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 700; color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 10%, transparent); }
 .csp-pf-lead { font-size: 12.5px; color: var(--c-text-muted); margin-top: 6px; line-height: 1.7; }
 .csp-pf-head-r { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.csp-pf-status { display: inline-flex; align-items: center; gap: 6px; padding: 8px 13px; border-radius: 12px; font-size: 11.5px; font-weight: 700; color: var(--c-success); background: color-mix(in srgb, var(--c-success) 12%, transparent); }
-.csp-pf-status.warn { color: var(--c-warning); background: color-mix(in srgb, var(--c-warning) 12%, transparent); }
+.csp-pf-status { display: inline-flex; align-items: center; gap: 6px; padding: 8px 13px; border-radius: 12px; font-size: 11.5px; font-weight: 700; color: var(--c-success-fg); background: color-mix(in srgb, var(--c-success) 12%, transparent); }
+.csp-pf-status.warn { color: var(--c-warning-fg); background: color-mix(in srgb, var(--c-warning) 12%, transparent); }
 .csp-pf-status i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 .csp-pf-support { display: inline-flex; align-items: center; gap: 6px; padding: 8px 13px; border-radius: 12px; font-size: 11.5px; font-weight: 700; color: var(--c-text); background: color-mix(in srgb, var(--c-text-muted) 10%, transparent); }
 
@@ -534,4 +534,9 @@ const CSS = `
   font-size: 12px; font-weight: 700; color: #fff; background: var(--c-primary);
 }
 .csp-pf-refbanner-btn:hover { filter: brightness(1.06); }
+/* ---- phones (<=767px): compact cards; 16px fields (no iOS zoom) ---- */
+@media (max-width: 767px), (pointer: coarse) { .csp-pf-input { font-size: 16px; } }
+@media (max-width: 767px) {
+  .csp-pf-card, .csp-card { padding: 14px; }
+}
 `

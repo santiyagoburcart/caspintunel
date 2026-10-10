@@ -38,7 +38,7 @@ const I = {
 const SHARED_CSS = `
 .sm-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between; }
 .sm-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.sm-count-badge { font-size: 11px; font-weight: 600; padding: 2px 10px; border-radius: 999px; background: color-mix(in srgb, var(--c-text-muted) 14%, transparent); color: var(--c-text-muted); white-space: nowrap; }
+.sm-count-badge { font-size: 11px; font-weight: 600; padding: 2px 10px; border-radius: 999px; background: color-mix(in srgb, var(--c-text-muted) 14%, transparent); color: var(--c-muted-fg); white-space: nowrap; }
 .sm-add { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; }
 
 .sm-wrap { overflow-x: auto; }
@@ -60,7 +60,7 @@ const SHARED_CSS = `
 .sm-btn:hover { border-color: var(--c-primary); color: var(--c-primary); }
 .sm-btn--del:hover { border-color: var(--c-danger); color: var(--c-danger); }
 
-.sm-cnt-pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; font-family: 'JetBrains Mono', monospace; background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary); }
+.sm-cnt-pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; font-family: 'JetBrains Mono', monospace; background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary-fg); }
 
 .sm-name-dot { display: inline-flex; align-items: center; gap: 8px; }
 .sm-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
@@ -69,14 +69,14 @@ const SHARED_CSS = `
 .sm-av { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 12px; background: color-mix(in srgb, var(--c-text-muted) 16%, transparent); color: var(--c-text); flex-shrink: 0; }
 .sm-uname { display: flex; align-items: center; gap: 10px; }
 
-.sm-kpis { display: grid; grid-template-columns: 1fr; gap: 14px; }
-@media (min-width: 640px) { .sm-kpis { grid-template-columns: repeat(3, 1fr); } }
+.sm-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.sm-kpis > .card { padding: 12px 14px; }
 .sm-kpi { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; }
 .sm-kpi > div { min-width: 0; }
 .sm-kpi-label { font-size: 12px; font-weight: 600; color: var(--c-text-muted); overflow-wrap: anywhere; }
-.sm-kpi-val { font-size: 22px; font-weight: 800; margin-top: 4px; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.sm-kpi-val { font-size: 20px; font-weight: 800; margin-top: 2px; font-family: 'JetBrains Mono', ui-monospace, monospace; }
 .sm-kpi-unit { font-size: 11px; font-weight: 500; color: var(--c-text-muted); font-family: inherit; }
-.sm-kpi-ico { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; flex-shrink: 0; }
+.sm-kpi-ico { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; flex-shrink: 0; }
 
 /* modal */
 .sm-backdrop { position: fixed; inset: 0; z-index: 60; background: color-mix(in srgb, #0b1220 62%, transparent); backdrop-filter: blur(3px); display: flex; align-items: flex-start; justify-content: center; padding: 24px 16px; overflow-y: auto; box-sizing: border-box; }
@@ -118,14 +118,13 @@ const SHARED_CSS = `
 .sm-toggle-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
 
 /* mobile: dedicated role/staff cards replace the table entirely (Stitch roles_desktop) */
-.sm-mobile-only { display: none; }
+.sm-mobile-only, .sm-role-cards.sm-mobile-only, .sm-staff-cards.sm-mobile-only { display: none; }
 .sm-role-cards, .sm-staff-cards { display: flex; flex-direction: column; gap: 10px; width: 100%; min-width: 0; }
 .sm-role-card { width: 100%; max-width: 100%; box-sizing: border-box; min-width: 0; border: 1px solid var(--c-border); border-radius: 14px; padding: 14px; background: var(--c-surface);
   border-inline-start: 3px solid var(--dot, var(--c-primary)); }
 .sm-role-card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; min-width: 0; }
 .sm-role-card-desc { font-size: 12.5px; color: var(--c-text-muted); margin-top: 6px; overflow-wrap: anywhere; }
-.sm-role-card-acts { display: flex; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--c-border); }
-.sm-role-card-acts .sm-btn { flex: 1; text-align: center; }
+.sm-role-card-acts { display: flex; justify-content: flex-end; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--c-border); }
 .sm-staff-card { width: 100%; max-width: 100%; box-sizing: border-box; display: flex; align-items: flex-start; gap: 12px; border: 1px solid var(--c-border); border-radius: 14px;
   padding: 12px 14px; background: var(--c-surface); flex-wrap: wrap; }
 .sm-staff-card--off { opacity: .6; }
@@ -140,6 +139,15 @@ const SHARED_CSS = `
   .sm-kpis { grid-template-columns: 1fr; }
   .sm-desktop-only { display: none; }
   .sm-mobile-only { display: block; }
+  .sm-role-cards.sm-mobile-only, .sm-staff-cards.sm-mobile-only { display: flex; gap: 8px; }
+  .sm-role-card { padding: 10px 12px; }
+  .sm-staff-card { padding: 10px 12px; gap: 8px; }
+  .sm-kpis { gap: 8px; }
+  .sm-kpis > .card { padding: 10px; }
+  .sm-kpi { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .sm-kpi-ico { display: none; }
+  .sm-kpi-val { font-size: 18px; }
+  .sm-btn { min-height: 44px; padding: 0 14px; }
   .sm-wrap { overflow-x: visible; }
   .sm-table, .sm-table tbody, .sm-table tr, .sm-table td { display: block; width: 100%; }
   .sm-table { min-width: 0; }
@@ -287,7 +295,7 @@ const TH_CSS = `
 .th-title-row { display: flex; align-items: center; gap: 8px; }
 .th-title-row b { font-size: 14px; }
 .th-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
-  background: color-mix(in srgb, var(--c-success) 16%, transparent); color: var(--c-success); }
+  background: color-mix(in srgb, var(--c-success) 16%, transparent); color: var(--c-success-fg); }
 .th-desc { font-size: 11.5px; color: var(--c-text-muted); line-height: 1.6; min-height: 34px; }
 .th-meta { font-size: 11px; }
 .th-swatches { display: flex; gap: 5px; }
@@ -704,7 +712,7 @@ export function Roles() {
   const activeStaff = staff.rows.filter((x) => x.is_active).length
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <style>{SHARED_CSS}</style>
       <Alert>{(roles.err || staff.err || perms.err) ? t('load_error') : err}</Alert>
       {toast && <Alert kind="success">{toast}</Alert>}

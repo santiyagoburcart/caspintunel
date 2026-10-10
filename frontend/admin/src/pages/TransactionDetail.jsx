@@ -345,7 +345,7 @@ function StatusPill({ status, t, sm }) {
   const c = `var(--c-${tone})`
   return (
     <span className={'txd-pill' + (sm ? ' txd-pill--sm' : '')}
-      style={{ background: `color-mix(in srgb, ${c} 15%, transparent)`, color: c,
+      style={{ background: `color-mix(in srgb, ${c} 15%, transparent)`, color: `var(--c-${tone === 'text-muted' ? 'muted' : tone}-fg)`,
         borderColor: `color-mix(in srgb, ${c} 32%, transparent)` }}>
       <Ico name={ST_PILL_ICON[status] || 'clock'} w={sm ? 11 : 13} />{label}
     </span>

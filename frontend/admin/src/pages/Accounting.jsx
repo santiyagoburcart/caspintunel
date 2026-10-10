@@ -316,7 +316,7 @@ const CSS = `
 
 .acc-chart-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
 .acc-peak-tag { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px;
-  background: color-mix(in srgb, var(--c-success) 14%, transparent); color: var(--c-success); white-space: nowrap; }
+  background: color-mix(in srgb, var(--c-success) 14%, transparent); color: var(--c-success-fg); white-space: nowrap; }
 .acc-bar { flex: 1; border-radius: 4px 4px 0 0; background: color-mix(in srgb, var(--c-primary) 55%, transparent); min-height: 2px; transition: background .15s; }
 .acc-bar:hover { background: var(--c-primary); }
 .acc-bar--peak { background: var(--c-success); }

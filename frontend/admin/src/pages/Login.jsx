@@ -214,7 +214,7 @@ const CSS = `
 .al-brand-name { display: flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 800; }
 .al-badge {
   padding: 1px 7px; border-radius: 6px; font-size: 9.5px; font-weight: 700;
-  color: var(--c-danger); background: color-mix(in srgb, var(--c-danger) 14%, transparent);
+  color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 14%, transparent);
   border: 1px solid color-mix(in srgb, var(--c-danger) 26%, transparent);
 }
 .al-brand-sub { font-size: 10.5px; color: var(--c-text-muted); margin-top: 1px; }
@@ -288,4 +288,6 @@ const CSS = `
 }
 .al-foot span { display: inline-flex; align-items: center; gap: 5px; }
 .al-foot span:first-child svg { color: var(--c-success); }
+/* phones: 16px so iOS never zooms into a field */
+@media (max-width: 767px), (pointer: coarse) { .al-input { font-size: 16px; } }
 `

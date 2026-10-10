@@ -28,7 +28,7 @@ from apps.plans.models import PlanType
 from apps.settings_app.models import Page, SiteConfig
 
 from ..shop import active_plans, product_display_mode, qr_png
-from .texts import ORDER_STATUS, ORDER_TYPE, OS_APPS, SERVICE_STATUS, is_en, money, pick, tr
+from .texts import HIST_STATUS, ORDER_STATUS, ORDER_TYPE, OS_APPS, SERVICE_STATUS, is_en, money, pick, tr
 
 GB = 1024 ** 3
 PAGE_SIZE = 6
@@ -249,13 +249,26 @@ def services(user, page: int = 0) -> Screen:
         return Screen(tr(user, "svcs_empty"), _kb([[_b(tr(user, "btn_buy"), "m:buy")], _nav(user)]))
     pages = (len(svcs) + PAGE_SIZE - 1) // PAGE_SIZE
     page = max(0, min(page, pages - 1))
-    rows = []
+    rows, blocks = [], []
     for s in svcs[page * PAGE_SIZE:(page + 1) * PAGE_SIZE]:
         icon, fa, en = SERVICE_STATUS.get(s.status, ("•", s.status, s.status))
         rows.append([_b(f"{icon} {s.panel_username} · {pick(user, fa, en)}", f"s:{s.id}")])
+        blocks.append(service_line(user, s, icon, pick(user, fa, en)))
     rows.append(_pager(user, "m:svcs", page, pages))
     rows.append(_nav(user))
-    return Screen(tr(user, "svcs_title", n=len(svcs)), _kb(rows))
+    text = tr(user, "svcs_title", n=len(svcs)) + "\n\n" + "\n\n".join(blocks)
+    return Screen(_clip(text), _kb(rows))
+
+
+def service_line(user, s, icon: str, status: str) -> str:
+    """Stored numbers only (no panel call per row): name + status, usage, expiry."""
+    used = round(s.data_used / GB, 1)
+    total = "∞" if not s.data_limit else round(s.data_limit / GB, 1)
+    lines = [f"{icon} <b>{html.escape(s.panel_username)}</b> · {status}", "📊 " + tr(user, "svc_usage", u=used, t=total)]
+    if s.expire_at:
+        lines.append("🗓 " + tr(user, "svc_expiry", d=to_jalali_str(s.expire_at, "%Y/%m/%d"),
+                                n=max((s.expire_at - timezone.now()).days, 0)))
+    return "\n".join(lines)
 
 
 def service_text(user, svc) -> str:
@@ -314,27 +327,43 @@ def renew_plans(user, svc) -> Screen:
 
 
 # --- history ------------------------------------------------------------------
+MANUAL_TYPES = ("manual", "imported")
+
+
+def history_item(user, o) -> str:
+    """One order as a small block: status + number, plan, account, the amount
+    really paid (unique amount) or "manual service", Jalali date, reject reason."""
+    icon, fa, en = HIST_STATUS.get(o.status, ("•", o.status, o.status))
+    typ = pick(user, *ORDER_TYPE.get(o.type, (o.type, o.type)))
+    lines = [f"{icon} <b>{tr(user, 'hist_order', id=o.id)}</b> · {pick(user, fa, en)}",
+             f"📦 {html.escape(plan_name(user, o.plan)) if o.plan_id else ''}{' · ' if o.plan_id else ''}{typ}"]
+    account = o.requested_account_name or (o.service.panel_username if o.service_id and o.service else "")
+    if account:
+        lines.append(tr(user, "hist_account", a=html.escape(account)))
+    manual = o.type in MANUAL_TYPES or not o.amount_unique
+    lines.append(tr(user, "hist_manual") if manual else tr(user, "hist_paid", m=money(user, o.amount_unique)))
+    lines.append(tr(user, "hist_date", d=to_jalali_str(o.created_at, "%Y/%m/%d %H:%M")))
+    pay = getattr(o, "payment", None)
+    if o.status == OrderStatus.REJECTED and pay and pay.reject_reason:
+        lines.append(tr(user, "hist_reason", r=html.escape(pay.reject_reason)[:120]))
+    return "\n".join(lines)
+
+
 def history(user, page: int = 0) -> Screen:
-    qs = Order.objects.filter(user=user).select_related("plan", "payment").order_by("-created_at")
+    qs = Order.objects.filter(user=user).select_related("plan", "payment", "service").order_by("-created_at")
     total = qs.count()
     if not total:
         return Screen(tr(user, "hist_empty"), _kb([[_b(tr(user, "btn_buy"), "m:buy")], _nav(user)]))
     pages = (total + PAGE_SIZE - 1) // PAGE_SIZE
     page = max(0, min(page, pages - 1))
-    lines, rows = [tr(user, "hist_title", n=total), ""], []
+    blocks, rows = [], []
     for o in qs[page * PAGE_SIZE:(page + 1) * PAGE_SIZE]:
-        icon, fa, en = ORDER_STATUS.get(o.status, ("•", o.status, o.status))
-        typ = pick(user, *ORDER_TYPE.get(o.type, (o.type, o.type)))
-        lines.append(f"{icon} <b>#{o.id}</b> {html.escape(plan_name(user, o.plan))} · {typ}\n"
-                     f"    {money(user, o.amount_unique)} · {pick(user, fa, en)} · {to_jalali_str(o.created_at, '%Y/%m/%d %H:%M')}")
-        pay = getattr(o, "payment", None)
-        if o.status == OrderStatus.REJECTED and pay and pay.reject_reason:
-            lines.append(f"    ❌ {html.escape(pay.reject_reason)[:120]}")
+        blocks.append(history_item(user, o))
         if o.status == OrderStatus.PENDING_PAYMENT:
             rows.append([_b(f"⏳ #{o.id} — {tr(user, 'btn_check')[2:]}", f"o:{o.id}")])
     rows.append(_pager(user, "m:history", page, pages))
     rows.append(_nav(user))
-    return Screen(_clip("\n".join(lines)), _kb(rows))
+    return Screen(_clip(tr(user, "hist_title", n=total) + "\n\n" + "\n\n".join(blocks)), _kb(rows))
 
 
 # --- account --------------------------------------------------------------------
@@ -396,13 +425,44 @@ def guide_os(user, os_key: str) -> Screen:
                   _kb([[_b(tr(user, "btn_svcs"), "m:svcs")], _nav(user, "m:guide")]))
 
 
+SUPPORT_SPLIT = re.compile(r"[\s,،]+")
+
+
+def support_contacts(cfg) -> list[tuple[str, str]]:
+    """[(shown, url)] from the bot's own support ids, else the site one."""
+    raw = (cfg.bot_support_telegram or "").strip() or (cfg.support_telegram or "").strip()
+    out = []
+    for item in SUPPORT_SPLIT.split(raw):
+        item = item.strip()
+        if not item:
+            continue
+        if item.startswith("http"):
+            out.append((item, item))
+        else:
+            h = item.lstrip("@")
+            if h:
+                out.append((f"@{h}", f"https://t.me/{h}"))
+    return out[:4]
+
+
 def support(user) -> Screen:
-    handle = (SiteConfig.load().support_telegram or "").strip().lstrip("@")
-    if not handle:
+    cfg = SiteConfig.load()
+    contacts = support_contacts(cfg)
+    custom = (pick(user, cfg.bot_support_text_fa, cfg.bot_support_text_en) or cfg.bot_support_text_fa or "").strip()
+    if not contacts and not custom:
         return Screen(tr(user, "support_soon"), _kb([_nav(user)]))
-    url = handle if handle.startswith("http") else f"https://t.me/{handle}"
-    shown = handle if handle.startswith("http") else f"@{handle}"
-    return Screen(tr(user, "support", h=html.escape(shown)), _kb([[_b(tr(user, "btn_support_chat"), url=url)], _nav(user)]))
+    shown = " · ".join(html.escape(h) for h, _ in contacts)
+    if custom:
+        text = tr(user, "support_title") + "\n\n" + html.escape(custom)[:3000]
+        if shown:
+            text += "\n\n" + tr(user, "support_ids", h=shown)
+    else:
+        text = tr(user, "support", h=shown)
+    if len(contacts) == 1:
+        rows = [[_b(tr(user, "btn_support_chat"), url=contacts[0][1])]]
+    else:
+        rows = [[_b(tr(user, "btn_support_chat_n", h=h), url=u)] for h, u in contacts]
+    return Screen(_clip(text), _kb(rows + [_nav(user)]))
 
 
 def join_channels(user, channels) -> Screen:

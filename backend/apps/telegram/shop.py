@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import html
-import io
 
 from django.core.files.base import ContentFile
 from django.utils import timezone
@@ -246,9 +245,7 @@ def service_caption(service, *, title: str = "", summary: str = "") -> str:
 
 
 def qr_png(url: str) -> bytes:
-    import qrcode
+    from apps.common.qrcard import qr_card_png
 
-    buf = io.BytesIO()
-    qrcode.make(url).save(buf, format="PNG")
-    return buf.getvalue()
+    return qr_card_png(url)
 

@@ -1,11 +1,11 @@
-import io
 import logging
 
-import qrcode
 from django.http import HttpResponse
 from rest_framework import mixins, permissions, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+
+from apps.common.qrcard import qr_card_png
 
 from .exceptions import PanelError
 from .models import Service
@@ -119,9 +119,6 @@ class ServiceViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.
         service = self.get_object()
         if not service.subscription_url:
             return HttpResponse(status=404)
-        img = qrcode.make(service.subscription_url)
-        buf = io.BytesIO()
-        img.save(buf, format="PNG")
-        resp = HttpResponse(buf.getvalue(), content_type="image/png")
+        resp = HttpResponse(qr_card_png(service.subscription_url), content_type="image/png")
         resp["Cache-Control"] = "private, max-age=60"
         return resp

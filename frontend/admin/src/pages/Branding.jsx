@@ -16,6 +16,13 @@ const T = {
     domain_hint: 'آدرس بدون پروتکل http/https',
     meta_hint: 'حداکثر 160 کاراکتر برای نتایج گوگل',
     current: 'فعلی', choose: 'انتخاب فایل جدید',
+    bot_h: 'پشتیبانی ربات تلگرام', bot_sub: 'پیامی که با دکمهٔ «💬 پشتیبانی» در ربات فروش نمایش داده می‌شود',
+    bot_ids: 'آیدی پشتیبانی ربات', bot_ids_hint: '@id یا لینک t.me — چند مورد با کاما؛ خالی = پشتیبانی سایت',
+    bot_text_fa: 'متن پشتیبانی (فارسی)', bot_text_en: 'متن پشتیبانی (انگلیسی)',
+    bot_text_hint: 'مثلاً ساعات کاری و زمان پاسخ‌گویی',
+    qr_h: 'پس‌زمینهٔ QR اشتراک', qr_sub: 'خود QR دست نمی‌خورد؛ روی یک کارت سفید وسط پس‌زمینه قرار می‌گیرد — در ربات، سایت و فایل دانلودی',
+    qr_custom: 'تصویر دلخواه', qr_custom_hint: 'JPEG، PNG یا WebP — حداکثر 5MB، هر ضلع 512 تا 8000 پیکسل',
+    qr_custom_saved: 'پیش‌نمایش پس از ذخیره به‌روز می‌شود', qr_active: 'فعال',
   },
   en: {
     h1: 'Branding & identity',
@@ -29,6 +36,13 @@ const T = {
     domain_hint: 'address without the http/https protocol',
     meta_hint: 'up to 160 characters for Google results',
     current: 'current', choose: 'choose a new file',
+    bot_h: 'Telegram bot support', bot_sub: 'Shown by the “💬 Support” button in the sales bot',
+    bot_ids: 'Bot support IDs', bot_ids_hint: '@id or t.me link — several with commas; empty = the site support',
+    bot_text_fa: 'Support message (Persian)', bot_text_en: 'Support message (English)',
+    bot_text_hint: 'e.g. working hours and response time',
+    qr_h: 'Subscription QR background', qr_sub: 'The QR itself is untouched; it sits on a white card in the middle — bot, site and downloads',
+    qr_custom: 'Custom image', qr_custom_hint: 'JPEG, PNG or WebP — up to 5 MB, 512–8000 px per side',
+    qr_custom_saved: 'The preview updates after saving', qr_active: 'Active',
   },
 }
 
@@ -41,6 +55,24 @@ const FIELDS = [
   ['bot_description_en', 'bot_desc_en', true, true],
   ['meta_description', 'meta_desc', false, true],
 ]
+
+const BOT_FIELDS = [
+  ['bot_support_telegram', 'bot_ids', true, false],
+  ['bot_support_text_fa', 'bot_text_fa', false, true],
+  ['bot_support_text_en', 'bot_text_en', true, true],
+]
+
+/** Sample QR on one background, rendered by the server exactly as customers get it. */
+function QrThumb({ bg, size = 240, version, alt }) {
+  const [src, setSrc] = useState(null)
+  useEffect(() => {
+    let url = null, live = true
+    api.get(`/admin/branding/qr-preview/?bg=${encodeURIComponent(bg)}&size=${size}&v=${encodeURIComponent(version || '')}`, { responseType: 'blob' })
+      .then((r) => { if (live) { url = URL.createObjectURL(r.data); setSrc(url) } }).catch(() => {})
+    return () => { live = false; if (url) URL.revokeObjectURL(url) }
+  }, [bg, size, version])
+  return src ? <img src={src} alt={alt} width={size} height={size} /> : <span className="br-qr-ph"><Spinner /></span>
+}
 
 function Upload({ label, hint, current, onFile, s, accept }) {
   const [preview, setPreview] = useState(null)
@@ -80,6 +112,9 @@ export default function Branding() {
     try {
       const fd = new FormData()
       FIELDS.forEach(([k]) => fd.append(k, f[k] ?? ''))
+      BOT_FIELDS.forEach(([k]) => fd.append(k, f[k] ?? ''))
+      if (f.qr_background) fd.append('qr_background', f.qr_background)
+      if (f._qrcustom) fd.append('qr_background_custom', f._qrcustom)
       if (f._logo) fd.append('logo', f._logo)
       if (f._favicon) fd.append('favicon', f._favicon)
       const { data } = await api.patch('/admin/branding/', fd)
@@ -134,6 +169,55 @@ export default function Branding() {
           ))}
         </div>
 
+        <div className="br-sec">
+          <div className="br-sec-head">
+            <h3 className="font-bold text-sm">{s.bot_h}</h3>
+            <p className="text-xs text-muted mt-0.5">{s.bot_sub}</p>
+          </div>
+          <div className="br-fields br-fields--sec">
+            {BOT_FIELDS.map(([k, label, ltr, area]) => (
+              <label key={k} className={'br-fld' + (area ? '' : ' br-fld--wide')}>
+                <span className="br-fld-top">
+                  <span className="label">{s[label]}</span>
+                  <span className="br-hint">{area ? s.bot_text_hint : s.bot_ids_hint}</span>
+                </span>
+                {area ? (
+                  <textarea className="input" rows={3} dir={ltr ? 'ltr' : undefined}
+                    value={f[k] || ''} onChange={(e) => setF({ ...f, [k]: e.target.value })} />
+                ) : (
+                  <input className="input" dir="ltr" placeholder="@support, @support2"
+                    value={f[k] || ''} onChange={(e) => setF({ ...f, [k]: e.target.value })} />
+                )}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div className="br-sec">
+          <div className="br-sec-head">
+            <h3 className="font-bold text-sm">{s.qr_h}</h3>
+            <p className="text-xs text-muted mt-0.5">{s.qr_sub}</p>
+          </div>
+          <div className="br-qr-grid" role="radiogroup" aria-label={s.qr_h}>
+            {(f.qr_backgrounds || []).concat(f.qr_background_custom ? [{ key: 'custom', fa: s.qr_custom, en: s.qr_custom }] : []).map((b) => {
+              const on = f.qr_background === b.key
+              const name = lang === 'en' ? b.en : b.fa
+              return (
+                <button type="button" key={b.key} role="radio" aria-checked={on}
+                  className={'br-qr-opt' + (on ? ' is-on' : '')} onClick={() => setF({ ...f, qr_background: b.key })}>
+                  <QrThumb bg={b.key} size={240} version={b.key === 'custom' ? f.updated_at : ''} alt={name} />
+                  <span className="br-qr-name">{name}{on && <em>{s.qr_active}</em>}</span>
+                </button>
+              )
+            })}
+          </div>
+          <div className="br-qr-upload">
+            <Upload label={s.qr_custom} hint={f._qrcustom ? s.qr_custom_saved : s.qr_custom_hint} current={f.qr_background_custom}
+              accept="image/jpeg,image/png,image/webp" s={s}
+              onFile={(file) => setF((p) => ({ ...p, _qrcustom: file, ...(file ? { qr_background: 'custom' } : {}) }))} />
+          </div>
+        </div>
+
         <div className="br-media">
           <span className="label br-media-h">{s.media_h}</span>
           <Upload label={t('logo')} hint={s.logo_hint} current={f.logo} accept="image/*"
@@ -167,7 +251,7 @@ const CSS = `
 .br-card { padding: 0; overflow: hidden; }
 .br-card-head { padding: 18px 20px; border-bottom: 1px solid var(--c-border); display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
 .br-domain-badge { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 999px; white-space: nowrap;
-  background: color-mix(in srgb, var(--c-success) 14%, transparent); color: var(--c-success); font-family: 'JetBrains Mono', monospace; }
+  background: color-mix(in srgb, var(--c-success) 14%, transparent); color: var(--c-success-fg); font-family: 'JetBrains Mono', monospace; }
 
 .br-fields { padding: 20px; display: grid; grid-template-columns: 1fr; gap: 16px; }
 @media (min-width: 640px) { .br-fields { grid-template-columns: 1fr 1fr; } .br-fld--wide { grid-column: 1 / -1; } }
@@ -189,5 +273,22 @@ const CSS = `
 .br-file::file-selector-button { border: 1px solid var(--c-border); background: transparent; color: var(--c-text);
   padding: 5px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; margin-inline-end: 10px; }
 
+.br-sec { border-top: 1px solid var(--c-border); }
+.br-sec-head { padding: 16px 20px 0; }
+.br-fields--sec { padding-top: 14px; }
+.br-qr-grid { padding: 14px 20px 4px; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 132px), 1fr)); }
+.br-qr-opt { display: flex; flex-direction: column; gap: 6px; padding: 6px; border-radius: 14px; border: 2px solid var(--c-border);
+  background: transparent; color: var(--c-text); cursor: pointer; text-align: start; min-width: 0; }
+.br-qr-opt.is-on { border-color: var(--c-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-primary) 22%, transparent); }
+.br-qr-opt img, .br-qr-ph { width: 100%; height: auto; aspect-ratio: 1; border-radius: 9px; display: grid; place-items: center;
+  background: color-mix(in srgb, var(--c-text-muted) 8%, transparent); }
+.br-qr-name { font-size: 12px; font-weight: 600; display: flex; justify-content: space-between; gap: 6px; padding: 0 2px 2px; }
+.br-qr-name em { font-style: normal; font-size: 11px; color: var(--c-primary-fg); }
+.br-qr-upload { padding: 0 20px 8px; }
+@media (max-width: 640px) {
+  .br-qr-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 12px; }
+  .br-sec-head { padding: 12px 12px 0; }
+  .br-qr-upload { padding: 0 12px 8px; }
+}
 .br-foot { padding: 16px 20px; border-top: 1px solid var(--c-border); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
 `

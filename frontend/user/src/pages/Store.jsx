@@ -405,7 +405,7 @@ const CSS = `
 .csp-plan.on { border-color: var(--c-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-primary) 16%, transparent); }
 .csp-plan-badge {
   position: absolute; top: -10px; inset-inline-start: 18px; padding: 3px 10px; border-radius: 999px;
-  font-size: 10.5px; font-weight: 700; color: #fff; background: var(--c-success);
+  font-size: 10.5px; font-weight: 700; color: #fff; background: color-mix(in srgb, var(--c-success) 72%, #000);
 }
 .csp-plan-top { display: flex; align-items: flex-start; justify-content: space-between; }
 .csp-plan-icon {
@@ -490,4 +490,33 @@ const CSS = `
 .csp-store-cta:disabled { opacity: .6; cursor: default; }
 [dir="rtl"] .csp-store-cta svg, [dir="rtl"] .csp-store-eyebrow svg { }
 [dir="rtl"] .csp-store-cta > svg:last-child { transform: scaleX(-1); }
+/* ---- phones (<=767px): compact plan cards ---- */
+@media (max-width: 767px) {
+  .csp-store { gap: 12px; }
+  .csp-store-hero { gap: 2px; }
+  .csp-store-lead { font-size: 12.5px; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .csp-store-tab { min-height: 44px; padding: 0 14px; }
+  .csp-store-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .csp-plan {
+    display: grid; grid-template-columns: 32px minmax(0, 1fr) 24px; column-gap: 10px; row-gap: 6px;
+    grid-template-areas: "art name radio" "art desc radio" "specs specs specs" "foot foot foot";
+    padding: 12px 14px; border-radius: 16px;
+  }
+  .csp-plan-top { display: contents; }
+  .csp-plan-art { grid-area: art; width: 32px; height: 32px; align-self: start; }
+  .csp-plan-radio { grid-area: radio; align-self: start; }
+  .csp-plan-name { grid-area: name; font-size: 15px; line-height: 1.35; }
+  .csp-plan-desc { grid-area: desc; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+  .csp-plan-specs { grid-area: specs; flex-direction: row; flex-wrap: wrap; gap: 2px 14px; padding: 6px 10px; border-radius: 10px; }
+  .csp-plan-specs > div { justify-content: flex-start; gap: 5px; }
+  .csp-plan-foot { grid-area: foot; padding-top: 0; align-items: center; }
+  .csp-plan-foot > div { display: flex; align-items: baseline; gap: 6px; }
+  .csp-plan-select { display: none; }
+  .csp-plan-badge { top: -9px; inset-inline-start: 14px; }
+  .csp-vol { padding: 14px; gap: 12px; }
+  .csp-vol-counter b { font-size: 24px; }
+  .csp-vol-chip { min-height: 44px; padding: 0 12px; }
+  .csp-store-note { padding: 10px 12px; gap: 10px; border-radius: 14px; }
+  .csp-store-note-d { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+}
 `

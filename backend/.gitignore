@@ -4,3 +4,4 @@
 
 # mount point for mobile_shortcut (docker-compose), never committed here
 /mobile_shortcut/
+/docs/

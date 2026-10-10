@@ -45,6 +45,8 @@ WebSockets: `/ws/notifications/?token=<customer JWT>` (live site notifications) 
 | catalog | `plans/` · `cards/` (+ deposit report) · `panels/` (+ `{id}/test/`, `{id}/groups/`) · `pages/` · `themes/` (+ `{id}/activate/`) |
 | finance | `payments/pending/` · `payments/{id}/approve|reject/` · `transactions/` (+ `{id}/status/`) · `accounting/` (period or Jalali `from`/`to`) |
 | messaging | `notifications/` (+ `broadcast/`) · `channels/` (required channels) · `integrations/telegram/` · `bots/stats/` · `bots/backup-test/` · `email/` (SMTP relay settings, write-only password) · `email/test/` |
-| settings | `settings/` (typed settings) · `branding/` · `integrations/panel/` (+ `test/`, `groups/`) · `sms-devices/` · `sms-sources/` |
+| settings | `settings/` (typed settings) · `branding/` (incl. `bot_support_*`, `qr_background`, multipart `qr_background_custom`; GET lists `qr_backgrounds`) · `branding/qr-preview/?bg=&size=` (PNG) · `integrations/panel/` (+ `test/`, `groups/`) · `sms-devices/` · `sms-sources/` |
 | **apps** | `apps/` (Android SMS Bridge + iPhone shortcut info) · `apps/{android|ios}/` (POST multipart: file [android only — the iOS Shortcut is never uploaded], version, link, notes, clear_file) · `apps/{android|ios}/download/` — served from this server (perm `settings.manage`); **ios** is built from `mobile_shortcut/CaspinSMS.shortcut` with this server's endpoint, `?device=<id>` also injects that device's token (needs `sms.manage`) |
 | RBAC | `roles/` · `permissions/` · `staff/` |
+| docs | `docs/` (list) · `docs/{slug}/` (markdown, secrets masked) — perm `settings.manage` |
+| SMS log | `sms-log/?matched=0` or `1` (masked text + reason) — perm `payment.view` |

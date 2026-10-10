@@ -56,6 +56,14 @@ class SiteConfig(models.Model):
     bot_description_fa = models.TextField(blank=True)
     bot_description_en = models.TextField(blank=True)
     support_telegram = models.CharField(max_length=64, blank=True)
+    # sales-bot 💬 Support screen: its own contacts (comma/space separated
+    # @ids or t.me links; empty → support_telegram) and an optional message
+    bot_support_telegram = models.CharField(max_length=255, blank=True, default="")
+    bot_support_text_fa = models.TextField(blank=True, default="")
+    bot_support_text_en = models.TextField(blank=True, default="")
+    # subscription QR background (apps/common/qrcard.py): "plain", a built-in key or "custom"
+    qr_background = models.CharField(max_length=32, default="caspian-light")
+    qr_background_custom = models.FileField(upload_to="branding/qr/", null=True, blank=True)
     meta_description = models.TextField(blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 

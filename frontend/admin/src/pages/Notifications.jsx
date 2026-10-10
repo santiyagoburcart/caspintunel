@@ -226,4 +226,10 @@ const CSS = `
 .ntf-picker-row:last-child { border-bottom: 0; }
 .ntf-picker-row:hover { background: color-mix(in srgb, var(--c-text-muted) 8%, transparent); }
 .ntf-hist-head { padding: 14px 16px; border-bottom: 1px solid var(--c-border); }
+@media (max-width: 767px) {
+  .ntf-form { gap: 10px; }
+  .ntf-grid { gap: 8px; }
+  .ntf-form textarea.input { min-height: 64px; height: 64px; }
+  .ntf-hist-head { padding: 10px 12px; }
+}
 `

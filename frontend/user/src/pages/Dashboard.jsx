@@ -183,7 +183,7 @@ function LegacyServiceCard({ s, t, lang, onRefresh, onRenewClick }) {
       )}
       <div className="text-sm text-muted">
         {t('volume')}: {gbTotal != null ? t('used_of', { used: gbUsed, total: gbTotal }) : t('unlimited')}
-        {gbTotal != null && ` · ${Math.max(gbTotal - gbUsed, 0)} ${t('remaining')}`}
+        {gbTotal != null && ` · ${Math.round(Math.max(gbTotal - gbUsed, 0) * 10) / 10} ${t('remaining')}`}
       </div>
       {gbTotal != null && (
         <div className="h-2 rounded-full" style={{ background: 'var(--c-border)' }}>
@@ -191,7 +191,7 @@ function LegacyServiceCard({ s, t, lang, onRefresh, onRenewClick }) {
         </div>
       )}
       {(s.status === 'limited' || s.status === 'expired') && (
-        <div className="text-xs" style={{ color: s.status === 'limited' ? 'var(--c-warning)' : 'var(--c-danger)' }}>
+        <div className="text-xs" style={{ color: s.status === 'limited' ? 'var(--c-warning-fg)' : 'var(--c-muted-fg)' }}>
           {s.status === 'limited' ? t('st_limited_note') : t('st_expired_note')}
         </div>
       )}
@@ -316,7 +316,7 @@ function CaspianDashboard() {
 
       {/* filter + search */}
       {items && items.length > 0 && (
-        <div className="csp-dash-bar">
+        <div className={'csp-dash-bar' + (items.length <= 5 ? ' csp-dash-bar--few' : '')}>
           <div className="csp-dash-tabs">
             {FILTERS.map(([k, key, fn]) => (
               <button key={k} type="button" className={'csp-dash-tab' + (filter === k ? ' on' : '')}
@@ -404,7 +404,8 @@ function SvcCard({ s, t, lang, onRevoke, onRenewClick }) {
 
   const st = waiting ? 'pending' : s.status
   const badgeTone = st === 'active' ? 'success'
-    : (st === 'pending' || st === 'on_hold' || st === 'limited') ? 'warning' : 'danger'
+    : (st === 'pending' || st === 'on_hold' || st === 'limited') ? 'warning'
+    : st === 'expired' ? 'muted' : 'danger'
 
   return (
     <div className="csp-svc">
@@ -436,11 +437,11 @@ function SvcCard({ s, t, lang, onRevoke, onRenewClick }) {
           {s.expire_at && <div className="csp-bar"><i style={{ width: `${dayPct}%` }} /></div>}
           <div className="csp-svc-row csp-svc-row--sub">
             <span>{gbTotal != null ? t('used_of', { used: fnum(gbUsed, lang), total: fnum(gbTotal, lang) }) : `${t('volume')}: ${fnum(gbUsed, lang)} GB`}</span>
-            <span className="csp-svc-unl">{gbTotal == null ? t('unlimited') : `${fnum(Math.max(gbTotal - gbUsed, 0), lang)} ${t('remaining')}`}</span>
+            <span className="csp-svc-unl">{gbTotal == null ? t('unlimited') : `${fnum(Math.round(Math.max(gbTotal - gbUsed, 0) * 10) / 10, lang)} ${t('remaining')}`}</span>
           </div>
           {gbTotal != null && <div className="csp-bar"><i style={{ width: `${pct}%`, background: pct > 85 ? 'var(--c-danger)' : undefined }} /></div>}
           {(s.status === 'limited' || s.status === 'expired') && (
-            <div className="csp-svc-warn" data-tone={s.status === 'limited' ? 'warning' : 'danger'}>
+            <div className="csp-svc-warn" data-tone={s.status === 'limited' ? 'warning' : 'muted'}>
               {s.status === 'limited' ? t('st_limited_note') : t('st_expired_note')}
             </div>
           )}
@@ -667,9 +668,10 @@ const CSS = `
 .csp-svc-badge i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .csp-svc-badge i.spin { border-radius: 2px; animation: csp-spin 1.1s linear infinite; }
 @keyframes csp-spin { to { transform: rotate(360deg); } }
-.csp-svc-badge[data-tone="success"] { color: var(--c-success); background: color-mix(in srgb, var(--c-success) 14%, transparent); }
-.csp-svc-badge[data-tone="warning"] { color: var(--c-warning); background: color-mix(in srgb, var(--c-warning) 14%, transparent); }
-.csp-svc-badge[data-tone="danger"] { color: var(--c-danger); background: color-mix(in srgb, var(--c-danger) 14%, transparent); }
+.csp-svc-badge[data-tone="success"] { color: var(--c-success-fg); background: color-mix(in srgb, var(--c-success) 14%, transparent); }
+.csp-svc-badge[data-tone="warning"] { color: var(--c-warning-fg); background: color-mix(in srgb, var(--c-warning) 14%, transparent); }
+.csp-svc-badge[data-tone="danger"] { color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 14%, transparent); }
+.csp-svc-badge[data-tone="muted"] { color: var(--c-muted-fg); background: color-mix(in srgb, var(--c-text-muted) 16%, transparent); }
 
 .csp-svc-box { padding: 11px; border-radius: 12px; background: color-mix(in srgb, var(--c-text-muted) 6%, transparent); display: flex; flex-direction: column; gap: 7px; }
 .csp-svc-box--wait { background: color-mix(in srgb, var(--c-warning) 12%, transparent); }
@@ -681,8 +683,9 @@ const CSS = `
 .csp-svc-row--sub { font-size: 11px; }
 .csp-svc-row--sub span { color: var(--c-text-muted); }
 .csp-svc-unl { color: var(--c-success) !important; font-weight: 600; }
-.csp-svc-warn { font-size: 11px; color: var(--c-danger); font-weight: 600; }
-.csp-svc-warn[data-tone="warning"] { color: var(--c-warning); }
+.csp-svc-warn { font-size: 11px; color: var(--c-danger-fg); font-weight: 600; }
+.csp-svc-warn[data-tone="warning"] { color: var(--c-warning-fg); }
+.csp-svc-warn[data-tone="muted"] { color: var(--c-muted-fg); }
 .csp-bar { height: 6px; border-radius: 999px; overflow: hidden; background: color-mix(in srgb, var(--c-text-muted) 18%, transparent); }
 .csp-bar > i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--c-primary), var(--c-secondary)); }
 
@@ -794,4 +797,37 @@ const CSS = `
   background: var(--c-primary); color: #fff; font-size: 10px; font-weight: 700;
 }
 [dir="rtl"] .csp-qr-btn--primary svg { transform: scaleX(-1); }
+/* ---- phones (<=767px): compact, information-dense (44px targets kept) ---- */
+@media (max-width: 767px) {
+  .csp-dash { gap: 12px; }
+  .csp-dash-hero { padding: 14px; border-radius: 18px; }
+  .csp-dash-hero-blob, .csp-dash-hero-lead, .csp-stat-art { display: none; }
+  .csp-dash-hero-inner { flex-wrap: nowrap; gap: 10px; }
+  .csp-dash-hero-txt { min-width: 0; }
+  .csp-dash-hero-h { gap: 8px; }
+  .csp-dash-hero-h h1 { font-size: 19px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .csp-dash-hero-art { width: 28px; height: 28px; }
+  .csp-dash-buy { padding: 0 14px; font-size: 13px; }
+  .csp-dash-stats { margin-top: 12px; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .csp-stat { display: block; padding: 8px 10px; border-radius: 12px; min-width: 0; }
+  .csp-stat-label { display: block; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .csp-stat-val { flex-direction: column; align-items: flex-start; gap: 0; margin-top: 0; }
+  .csp-stat-val b { font-size: 19px; line-height: 1.25; }
+  .csp-stat-val span { max-width: 100%; }
+  .csp-dash-bar--few { display: none; }        /* filter/search only pays off with many services */
+  .csp-dash-bar { padding: 6px; gap: 6px; border-radius: 14px; }
+  .csp-dash-tabs { flex: 1 1 100%; }
+  .csp-dash-search { flex: 1 1 100%; min-width: 0; }
+  .csp-dash-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .csp-svc { padding: 12px; gap: 10px; border-radius: 16px; }
+  .csp-svc-icon { width: 32px; height: 32px; border-radius: 10px; }
+  .csp-svc-id h2 { font-size: 15px; line-height: 1.3; }
+  .csp-svc-box { padding: 8px 10px; gap: 5px; }
+  .csp-svc-sub-label { display: none; }
+  .csp-svc-actions { padding-top: 10px; gap: 6px; }
+  .csp-svc-btn { min-width: 0; padding: 0 10px; }
+  .csp-dash-guide { padding: 10px 12px; gap: 10px; border-radius: 16px; }
+  .csp-dash-guide img { width: 28px; height: 28px; }
+  .csp-dash-guide-d { display: none; }
+}
 `

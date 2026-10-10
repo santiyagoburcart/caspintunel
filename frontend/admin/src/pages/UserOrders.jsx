@@ -85,7 +85,7 @@ function StatusPill({ status, t }) {
   const tone = ST_TONE[status] || 'muted'
   const color = `var(--c-${tone === 'muted' ? 'text-muted' : tone})`
   return (
-    <span className="uo-pill" style={{ background: `color-mix(in srgb, ${color} 16%, transparent)`, color }}>
+    <span className="uo-pill" style={{ background: `color-mix(in srgb, ${color} 16%, transparent)`, color: `var(--c-${tone}-fg)` }}>
       {enumLabel(t, 'os_', status)}
     </span>
   )
@@ -268,7 +268,7 @@ const CSS = `
 .uo-c { text-align: center; }
 .uo-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
 .uo-date { color: var(--c-text-muted); font-size: 12px; }
-.uo-type-tag { margin-inline-start: 8px; font-size: 10px; font-weight: 600; padding: 1px 7px; border-radius: 999px; color: var(--c-text-muted); background: color-mix(in srgb, var(--c-text-muted) 12%, transparent); }
+.uo-type-tag { margin-inline-start: 8px; font-size: 10px; font-weight: 600; padding: 1px 7px; border-radius: 999px; color: var(--c-muted-fg); background: color-mix(in srgb, var(--c-text-muted) 12%, transparent); }
 .uo-pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 700; white-space: nowrap; }
 .uo-invoice-link { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--c-primary); }
 .uo-invoice-link:hover { text-decoration: underline; }
@@ -276,13 +276,20 @@ const CSS = `
 /* mobile: table -> stacked cards */
 @media (max-width: 900px) {
   .uo-wrap { overflow-x: visible; }
-  .uo-table, .uo-table tbody, .uo-table tr, .uo-table td { display: block; width: 100%; }
+  .uo-table, .uo-table tbody { display: block; width: 100%; }
   .uo-table { min-width: 0; }
   .uo-table thead { display: none; }
-  .uo-table tr.uo-row { border: 1px solid var(--c-border); border-radius: 12px; margin: 12px; padding: 4px 0; }
+  .uo-table tr.uo-row {
+    display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); align-items: start;
+    border: 1px solid var(--c-border); border-radius: 12px; margin: 8px; padding: 2px 0; width: auto;
+  }
   .uo-table tr.uo-row:hover > td { background: none; }
-  .uo-table td { border: 0 !important; padding: 9px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: end; white-space: normal; }
-  .uo-table td::before { content: attr(data-label); font-size: 11px; font-weight: 600; color: var(--c-text-muted); text-align: start; white-space: nowrap; }
-  .uo-table td.uo-c { justify-content: space-between; text-align: end; }
+  .uo-table tr.uo-row > td { grid-column: span 2; border: 0 !important; padding: 3px 12px; display: flex; flex-direction: column;
+    align-items: flex-start; gap: 1px; min-width: 0; text-align: start; font-size: 13px; overflow-wrap: anywhere; white-space: normal; }
+  .uo-table tr.uo-row > td::before { content: attr(data-label); font-size: 12px; line-height: 16px; font-weight: 600; color: var(--c-text-muted); white-space: nowrap; }
+  /* [order # ······ status] then three facts per row */
+  .uo-table tr.uo-row > td:nth-child(1) { grid-column: 1 / 5; grid-row: 1; font-weight: 800; padding-block: 7px; flex-direction: row; align-items: center; gap: 8px; }
+  .uo-table tr.uo-row > td:nth-child(6) { grid-column: 5 / 7; grid-row: 1; align-items: flex-end; padding-block: 7px; }
+  .uo-table tr.uo-row > td:nth-child(1)::before, .uo-table tr.uo-row > td:nth-child(6)::before { display: none; }
 }
 `

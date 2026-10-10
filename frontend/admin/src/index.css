@@ -15,6 +15,10 @@
   --c-warning: #d97706;
   --c-text: #111827;
   --c-text-muted: #6b7280;
+  /* text-safe role colours (>=4.5:1 on page/cards): text in a role colour uses
+     these, never the fill (fills stay --c-success etc.). Expired = neutral gray. */
+  --c-success-fg: #06592C; --c-danger-fg: #A11818; --c-warning-fg: #733700;
+  --c-primary-fg: #0F4C8F; --c-secondary-fg: #1F4F85; --c-muted-fg: #475061;
   --c-border: rgba(0, 0, 0, 0.08);
   /* extended tokens (Royal Frost sets these explicitly; Midnight Aurora falls
      back to sensible aurora-consistent defaults so it renders unchanged) */
@@ -51,6 +55,8 @@
   --c-warning: #fbbf24;
   --c-text: #e6e8ec;
   --c-text-muted: #9aa3b2;
+  --c-success-fg: #5CE59A; --c-danger-fg: #FFA3A3; --c-warning-fg: #FCD34D;
+  --c-primary-fg: #A3CBF7; --c-secondary-fg: #ADD0F7; --c-muted-fg: #C6CDD8;
   --c-border: rgba(255, 255, 255, 0.1);
   --c-primary-2: var(--c-secondary);
   --c-ink: var(--c-text);
@@ -495,7 +501,7 @@ body {
 .nav-pending-badge {
   margin-inline-start: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px;
   display: inline-grid; place-items: center; flex-shrink: 0;
-  background: var(--c-danger); color: #fff; font-size: 11px; font-weight: 800; line-height: 1;
+  background: color-mix(in srgb, var(--c-danger) 70%, #000); color: #fff; font-size: 11px; font-weight: 800; line-height: 1;
   font-family: 'JetBrains Mono', ui-monospace, monospace;
   animation: nav-pending-pop .25s ease-out;
 }
@@ -560,3 +566,40 @@ html[lang="en"] body, html[lang="en"] body *:not(code):not(pre):not(kbd):not(sam
   font-family: 'Inter', 'Vazirmatn', ui-sans-serif, system-ui, sans-serif !important;
 }
 code, pre, kbd, samp { font-family: 'JetBrains Mono', ui-monospace, monospace !important; }
+
+/* ==================================================================== *
+ *  PHONE DENSITY (≤767px) — compact pages, more content on the first    *
+ *  screen. Compactness comes from padding / spacing / layout; tap       *
+ *  targets stay ≥44px and inputs 16px (no iOS zoom).                    *
+ * ==================================================================== */
+@media (max-width: 767px) {
+  main .card { padding: 12px; }
+  main .card.p-0 { padding: 0; }
+  main h1 { font-size: 19px !important; line-height: 1.35; }
+  main h2.text-lg { font-size: 16px; }
+  /* the explanatory subtitle under a page title is desktop-only */
+  main h1 + p, main div:has(> h1) + p { display: none !important; }
+  main .space-y-6 > :not([hidden]) ~ :not([hidden]) { margin-top: 14px; }
+  main .space-y-5 > :not([hidden]) ~ :not([hidden]) { margin-top: 12px; }
+  main .space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: 10px; }
+  main :is(.gap-4, .sm\:gap-4) { gap: 10px; }
+  main .input, main select, main textarea { font-size: 16px; }
+  /* stacked records: a 2-column grid of label-over-value cells under a full-width title */
+  table.rtable tr { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 8px !important; padding: 4px 0 !important; }
+  table.rtable td { flex-direction: column; align-items: flex-start !important; justify-content: flex-start !important;
+    gap: 1px !important; text-align: start !important; padding: 4px 12px !important; font-size: 13px; }
+  table.rtable td::before { font-size: 12px !important; line-height: 16px; }
+  table.rtable td:first-child, table.rtable td[colspan] { grid-column: 1 / -1; }
+  table.rtable td:first-child { flex-direction: row; align-items: center !important; justify-content: space-between !important; }
+}
+/* phones: every page's KPI / metric tiles — 2 per row, compact, no decorative icon */
+@media (max-width: 767px) {
+  :is(.acc-kpis, .cd-metrics, .int-metrics, .pl-stats, .tx-stats) { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 8px !important; }
+  :is(.acc-kpis, .cd-metrics, .int-metrics, .pl-stats, .tx-stats) > * { padding: 10px 12px !important; gap: 2px !important; min-height: 0 !important; }
+  :is(.acc-kpi-ico, .cd-metric-ico, .int-metric-ico, .pl-stat-ico) { display: none !important; }
+  :is(.acc-kpis, .cd-metrics, .int-metrics, .pl-stats, .tx-stats) :is([class*="-val"], [class*="-value"], [class*="-num"]) { font-size: 19px !important; line-height: 1.25 !important; }
+}
+@media (max-width: 767px) {
+  :is(.acc-kpis, .cd-metrics, .int-metrics, .pl-stats, .tx-stats) :is([class$="-sub"], [class*="-sub "], [class*="-accent"]) { display: none !important; }
+}
+

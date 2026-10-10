@@ -544,9 +544,9 @@ const CSS = `
 .mon .brand-en { font-weight:500; font-size:12px; color:var(--csp-gauge-to); }
 .mon .brand-sub { font-size:11px; color:var(--c-text-muted); }
 .mon .status-pill { display:inline-flex; align-items:center; gap:8px; font-size:12.5px;
-  padding:6px 12px; border-radius:999px; background:var(--csp-muted-bg); color:var(--c-text-muted); white-space:nowrap; }
+  padding:6px 12px; border-radius:999px; background:var(--csp-muted-bg); color: var(--c-muted-fg); white-space:nowrap; }
 .mon .status-pill.xray { background:color-mix(in srgb, var(--c-success) 14%, transparent);
-  border:1px solid color-mix(in srgb, var(--c-success) 30%, transparent); color:var(--c-success); }
+  border:1px solid color-mix(in srgb, var(--c-success) 30%, transparent); color: var(--c-success-fg); }
 .mon .ver-badge { font-size:10px; padding:2px 7px; border-radius:6px; background:color-mix(in srgb, var(--c-success) 20%, transparent); }
 .mon .actions, .mon .csp-toolbar { margin-inline-start:auto; display:flex; gap:8px; flex-wrap:wrap; }
 .mon .btn { display:inline-flex; align-items:center; gap:6px; font-size:13px; cursor:pointer; text-decoration:none;
@@ -1203,7 +1203,7 @@ const CM_CSS = `
 .cm {
   --cm-bg:#faf8ff; --cm-card:#ffffff; --cm-well:#f2f3ff; --cm-chip:#eaedff;
   --cm-divider:#eaedff; --cm-hair:#eaedff;
-  --cm-text:#131b2e; --cm-text2:#3f4850; --cm-dim:#707881;
+  --cm-text:#131b2e; --cm-text2:#3f4850; --cm-dim:#5f6770;
   /* brand blue (#1464BA) is the single-source primary — driven by the
      Caspian theme palette (--c-primary / --c-secondary) */
   --cm-accent:var(--c-primary); --cm-accent-2:var(--c-secondary);
@@ -1426,6 +1426,7 @@ const CM_CSS = `
   background:var(--cm-chip); border:1px solid transparent; color:var(--cm-dim); }
 .cm-chip.on { background:var(--cm-accent); color:var(--cm-primary-fg); }
 .cm.cm-dark .cm-chip.on { color:#020617; }
+.cm:not(.cm-dark) .cm-chip.on { background:color-mix(in srgb, var(--cm-accent) 80%, #000); }
 .cm-svc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); column-gap:24px; }
 @media (max-width:640px){ .cm-svc-grid{ grid-template-columns:1fr; } }
 .cm-svc { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:10px;

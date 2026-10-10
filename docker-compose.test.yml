@@ -47,5 +47,6 @@ services:
     volumes:
       - ./backend:/app
       - ./mobile_shortcut:/app/mobile_shortcut:ro
+      - ./docs:/app/docs:ro                           # admin "Documentation" page
       - ./mobile_sms/release:/app/app_releases:ro
     command: ["python", "-m", "pytest", "-p", "no:warnings"]

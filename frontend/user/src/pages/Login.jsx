@@ -316,7 +316,7 @@ const CSS = `
 .csp-auth-badge {
   flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
   padding: 5px 11px; border-radius: 999px; font-size: 11px; font-weight: 600;
-  color: var(--c-success); background: color-mix(in srgb, var(--c-success) 12%, transparent);
+  color: var(--c-success-fg); background: color-mix(in srgb, var(--c-success) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--c-success) 26%, transparent);
 }
 .csp-ping { width: 7px; height: 7px; border-radius: 50%; background: var(--c-success); animation: csp-pp 1.8s ease-in-out infinite; }
@@ -403,4 +403,6 @@ const CSS = `
   font-size: 11px; color: var(--c-text-muted);
 }
 .csp-auth-footer-l:hover { color: var(--c-primary); }
+/* phones: 16px so iOS never zooms into a field */
+@media (max-width: 767px), (pointer: coarse) { .csp-fld-input { font-size: 16px; } }
 `

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Children, cloneElement, isValidElement, useId, useState } from 'react'
 import { copyToClipboard } from '../lib/clipboard'
 
 export function Spinner() {
@@ -15,8 +15,20 @@ export function Alert({ kind = 'danger', children }) {
   )
 }
 
+/** Label + one control. A single input/select/textarea child is tied to the
+ *  label (htmlFor/id), so screen readers announce its name. */
 export function Field({ label, children }) {
-  return <div><span className="label">{label}</span>{children}</div>
+  const auto = useId()
+  const kids = Children.toArray(children)
+  const controls = kids.filter((k) => isValidElement(k) && ['input', 'select', 'textarea'].includes(k.type))
+  if (controls.length !== 1) return <div><span className="label">{label}</span>{children}</div>
+  const id = controls[0].props.id || auto
+  return (
+    <div>
+      <label className="label" htmlFor={id}>{label}</label>
+      {kids.map((k) => (k === controls[0] ? cloneElement(k, { id }) : k))}
+    </div>
+  )
 }
 
 /** Modern on/off switch — shared control for every boolean setting. */
@@ -37,13 +49,14 @@ export function Toggle({ checked, onChange, disabled, label }) {
 export function StatusBadge({ status }) {
   const map = {
     active: ['success', 'فعال'], on_hold: ['warning', 'در انتظار اتصال'],
-    expired: ['danger', 'منقضی'], limited: ['warning', 'اتمام حجم'],
+    expired: ['muted', 'منقضی'], limited: ['warning', 'اتمام حجم'],
     disabled: ['muted', 'غیرفعال'], pending: ['secondary', 'در حال ساخت'],
     pending_payment: ['warning', 'در انتظار پرداخت'], paid: ['secondary', 'پرداخت شد'],
     completed: ['success', 'تکمیل شد'], rejected: ['danger', 'رد شد'],
   }
   const [c, label] = map[status] || ['muted', status]
-  const color = `var(--c-${c === 'muted' ? 'text-muted' : c})`
+  // text in the text-safe variant (expired = neutral gray)
+  const color = `var(--c-${c}-fg)`
   return (
     <span className="rounded-full px-2 py-0.5 text-xs" style={{ background: `color-mix(in srgb, ${color} 18%, transparent)`, color }}>
       {label}

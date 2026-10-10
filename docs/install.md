@@ -54,4 +54,9 @@ cp .env.example .env      # fill every blank; generate the two keys:
 python3 -c "import secrets;print(secrets.token_urlsafe(64))"                 # SECRET_KEY
 python3 -c "from cryptography.fernet import Fernet;print(Fernet.generate_key().decode())"  # FIELD_ENCRYPTION_KEY
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+# prod `web` does not migrate on boot — run schema + seed + static once:
+docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm --entrypoint sh web -c \
+  'python manage.py migrate --noinput && python manage.py seed && python manage.py collectstatic --noinput'
 ```
+After the first install, every later change goes through `./update.sh` (backup → build →
+migrate → rolling swap); don't run `docker compose build` by hand (see [deploy.md](deploy.md)).

@@ -12,5 +12,6 @@ mail-keys/
 backups/
 app_releases/
 mobile_shortcut/
+docs/
 real.png
 .pytest_cache/

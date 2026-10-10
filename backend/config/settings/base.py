@@ -180,6 +180,9 @@ APP_RELEASES_DIR = env("APP_RELEASES_DIR", default=str(BASE_DIR / "app_releases"
 # at /app/mobile_shortcut in the containers; repo path when run outside Docker).
 SHORTCUT_SOURCE_DIR = env("SHORTCUT_SOURCE_DIR", default=str(
     BASE_DIR / "mobile_shortcut" if (BASE_DIR / "mobile_shortcut").is_dir() else BASE_DIR.parent / "mobile_shortcut"))
+# docs/*.md — read-only in the admin "Documentation" page (mounted at /app/docs)
+DOCS_DIR = env("DOCS_DIR", default=str(
+    BASE_DIR / "docs" if (BASE_DIR / "docs").is_dir() else BASE_DIR.parent / "docs"))
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},

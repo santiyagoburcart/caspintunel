@@ -339,7 +339,7 @@ export default function Cards() {
 const CSS = `
 .cd-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between; }
 .cd-add { flex-shrink: 0; }
-.cd-badge { font-size: 11px; font-weight: 700; padding: 2px 10px; border-radius: 999px; background: color-mix(in srgb, var(--c-primary) 14%, transparent); color: var(--c-primary); white-space: nowrap; }
+.cd-badge { font-size: 11px; font-weight: 700; padding: 2px 10px; border-radius: 999px; background: color-mix(in srgb, var(--c-primary) 14%, transparent); color: var(--c-primary-fg); white-space: nowrap; }
 
 .cd-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 14px; }
 .cd-metric { min-width: 0; display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }

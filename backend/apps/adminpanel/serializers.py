@@ -502,16 +502,48 @@ class SiteConfigSerializer(serializers.ModelSerializer):
         model = SiteConfig
         fields = ("site_name_fa", "site_name_en", "site_domain", "logo", "favicon",
                   "bot_description_fa", "bot_description_en", "support_telegram",
+                  "bot_support_telegram", "bot_support_text_fa", "bot_support_text_en",
+                  "qr_background", "qr_background_custom",
                   "meta_description", "updated_at")
         read_only_fields = ("updated_at",)
 
+    def validate_qr_background(self, value):
+        from apps.common import qrcard
+
+        if value not in qrcard.CHOICES:
+            raise serializers.ValidationError("unknown background")
+        return value
+
+    def validate_qr_background_custom(self, f):
+        from apps.common import qrcard
+
+        if f:
+            try:
+                qrcard.validate_upload(f)
+            except ValueError as exc:
+                raise serializers.ValidationError(str(exc)) from exc
+        return f
+
+    def validate(self, attrs):
+        from apps.common import qrcard
+
+        bg = attrs.get("qr_background", getattr(self.instance, "qr_background", None))
+        has_file = attrs.get("qr_background_custom") or getattr(self.instance, "qr_background_custom", None)
+        if bg == qrcard.CUSTOM and not has_file:
+            raise serializers.ValidationError({"qr_background_custom": "upload an image first"})
+        return attrs
+
     def to_representation(self, obj):
+        from apps.common import qrcard
         from apps.settings_app.serializers import rel_media
 
         data = super().to_representation(obj)
         # root-relative URLs — reachable from whatever origin the panel runs on
         data["logo"] = rel_media(obj.logo)
         data["favicon"] = rel_media(obj.favicon)
+        data["qr_background_custom"] = rel_media(obj.qr_background_custom)
+        data["qr_backgrounds"] = [{"key": qrcard.PLAIN, "fa": "بدون پس‌زمینه", "en": "Plain", "light": True}] + [
+            {"key": k, "fa": fa, "en": en, "light": light} for k, (fa, en, light) in qrcard.BUILT_IN.items()]
         return data
 
 

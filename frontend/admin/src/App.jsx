@@ -12,6 +12,7 @@ import Payments from './pages/Payments'
 import Transactions from './pages/Transactions'
 import TransactionDetail from './pages/TransactionDetail'
 import SmsLog from './pages/SmsLog'
+import Docs from './pages/Docs'
 import Accounting from './pages/Accounting'
 import Cards from './pages/Cards'
 import Monitoring from './pages/Monitoring'
@@ -63,6 +64,8 @@ export default function App() {
         <Route path="/pages" element={<Pages />} />
         <Route path="/themes" element={<Themes />} />
         <Route path="/roles" element={<Roles />} />
+        <Route path="/docs" element={<Docs />} />
+        <Route path="/docs/:slug" element={<Docs />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

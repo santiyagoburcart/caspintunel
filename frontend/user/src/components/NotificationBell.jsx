@@ -196,7 +196,7 @@ const NBELL_CSS = `
 .ct-nbell-btn:hover { color: var(--c-text); background: color-mix(in srgb, var(--c-text-muted) 16%, transparent); }
 .ct-nbell-badge {
   position: absolute; top: -2px; inset-inline-end: -2px; min-width: 16px; height: 16px; padding: 0 3px;
-  border-radius: 999px; background: var(--c-danger, #ef4444); color: #fff; font-size: 10px; font-weight: 800;
+  border-radius: 999px; background: color-mix(in srgb, var(--c-danger) 70%, #000); color: #fff; font-size: 10px; font-weight: 800;
   display: grid; place-items: center; line-height: 1; border: 2px solid var(--c-surface);
 }
 .ct-nbell-panel {

@@ -1,7 +1,9 @@
+from django.http import HttpResponse
 from drf_spectacular.utils import extend_schema
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
+from apps.common import qrcard
 from apps.common.models import write_audit
 from apps.settings_app.models import SiteConfig
 
@@ -32,3 +34,26 @@ class SiteConfigView(AdminAPIView):
         write_audit(action="branding.updated", target=cfg, staff=request.user,
                     detail={"fields": list(request.data.keys())})
         return Response(ser.data)
+
+
+class QrPreviewView(AdminAPIView):
+    """A sample QR on a background: `?bg=<key>` (default: the active one),
+    `?size=` 160–1080 for picker thumbnails."""
+
+    perms_map = {"GET": ["settings.manage"]}
+
+    @extend_schema(summary="Sample subscription QR on a background (PNG)", responses=bytes)
+    def get(self, request):
+        cfg = SiteConfig.load()
+        key = request.query_params.get("bg") or cfg.qr_background or qrcard.DEFAULT
+        if key not in qrcard.CHOICES:
+            key = qrcard.DEFAULT
+        try:
+            size = min(max(int(request.query_params.get("size", qrcard.SIZE)), 160), qrcard.SIZE)
+        except ValueError:
+            size = qrcard.SIZE
+        bg = qrcard.background_image(key, cfg.qr_background_custom, size)
+        img, _ = qrcard.compose("https://example.com/sub/sample-subscription-link", bg, size)
+        resp = HttpResponse(qrcard.to_png(img), content_type="image/png")
+        resp["Cache-Control"] = "private, no-store"
+        return resp

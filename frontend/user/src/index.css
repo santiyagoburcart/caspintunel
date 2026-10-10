@@ -15,6 +15,10 @@
   --c-warning: #d97706;
   --c-text: #111827;
   --c-text-muted: #6b7280;
+  /* text-safe role colours (>=4.5:1 on page/cards): text in a role colour uses
+     these, never the fill (fills stay --c-success etc.). Expired = neutral gray. */
+  --c-success-fg: #06592C; --c-danger-fg: #A11818; --c-warning-fg: #733700;
+  --c-primary-fg: #0F4C8F; --c-secondary-fg: #1F4F85; --c-muted-fg: #475061;
   --c-border: rgba(0, 0, 0, 0.08);
   /* extended tokens (Royal Frost sets these explicitly; Midnight Aurora falls
      back to sensible aurora-consistent defaults so it renders unchanged) */
@@ -51,6 +55,8 @@
   --c-warning: #fbbf24;
   --c-text: #e6e8ec;
   --c-text-muted: #9aa3b2;
+  --c-success-fg: #5CE59A; --c-danger-fg: #FFA3A3; --c-warning-fg: #FCD34D;
+  --c-primary-fg: #A3CBF7; --c-secondary-fg: #ADD0F7; --c-muted-fg: #C6CDD8;
   --c-border: rgba(255, 255, 255, 0.1);
   --c-primary-2: var(--c-secondary);
   --c-ink: var(--c-text);

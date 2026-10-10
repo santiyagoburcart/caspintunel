@@ -13,9 +13,13 @@ app, on top of a Pasargad / **PasarGuard** panel (consumed over its HTTP API onl
 ./install.sh --offline  # air-gapped server (pre-built images, manual cert)
 ```
 
+Update a running server with `./update.sh` (backup → build → migrate → rolling swap;
+`./update.sh --rollback` to undo). Tests: `./scripts/test.sh` (isolated stack only).
+
 See **[docs/](docs/)** — [install](docs/install.md) · [offline](docs/offline.md) ·
 [deploy](docs/deploy.md) · [architecture](docs/architecture.md) · [api](docs/api.md) ·
-[operations](docs/operations.md).
+[operations](docs/operations.md) · [bots](docs/bots.md) · [development](docs/development.md).
+The same pages are readable in the admin panel → **Documentation**.
 
 ## Features
 
@@ -23,9 +27,12 @@ See **[docs/](docs/)** — [install](docs/install.md) · [offline](docs/offline.
 - Plans (fixed & custom-volume), per-plan panel groups, discounts, enable/disable
 - Orders with **atomic unique-amount reservation**; **card-to-card** (receipt + admin approval) and **SMS auto-confirm**
 - Panel provisioning — On-Hold for timed plans, renewal keeps the same subscription link, retry-safe
-- Telegram sales bot (buy/renew/custom/status/QR, forced channels + phone, first-time → random site account) · separate backup bot
+- Telegram sales bot with site parity (buy/renew/custom volume/receipt/status, services, purchase history with the real paid amount, account, rules, guide, configurable support message, forced channels + phone, first-time → random site account) · Telegram **Mini App auto-login** · separate backup bot
+- Subscription QR codes on a branded background (6 built-in designs or a custom upload; the code itself untouched and decode-tested)
+- Rejected orders kept visible with the reason; late approvals still fulfil; admin **SMS log** with the match/no-match reason
 - Admin panel — users (soft delete + deleted-users archive / restore), services (full edit incl. HWID limit, manual create, link an existing panel account), plans, **live payments queue** (WebSocket), **Jalali accounting**, per-card deposit report, broadcast, dynamic branding, roles/RBAC, CMS pages, themes, **Apps & tools** (Android SMS app + iPhone shortcut downloaded from the server)
-- Fully responsive admin on phones — bottom nav with the payment queue in the centre, every desktop page reachable from the Settings index
+- Fully responsive admin on phones — bottom nav with the payment queue in the centre, compact record cards, every desktop page reachable from the Settings index
+- In-panel **Documentation** page (this repo's `docs/`, rendered read-only with contents + search)
 - Offline-safe frontends — all fonts (Vazirmatn / Inter) and assets bundled, no CDN
 - Monitoring — 9 health targets, CPU/RAM/disk, automatic backups, service usage/expiry alerts
 - Menu-driven `install.sh` (install / update / uninstall) + in-panel **Update** button + `VERSION`; **offline / air-gapped** install path; domain changeable with no rebuild

@@ -5,6 +5,7 @@ and never blocks the others or raises.
 """
 from __future__ import annotations
 
+import html
 import logging
 
 from django.conf import settings
@@ -43,7 +44,7 @@ def _deliver_bot(user, title, body) -> tuple[str, str]:
         client = sales_client()
         if client is None:
             return DeliveryStatus.FAILED, "sales bot not configured"
-        client.send_message(user.telegram_id, f"<b>{title}</b>\n\n{body}")
+        client.send_message(user.telegram_id, f"🔔 <b>{html.escape(title or '')}</b>\n\n{html.escape(body or '')}")
         return DeliveryStatus.SENT, ""
     except Exception as exc:  # noqa: BLE001
         log.warning("notify bot to %s failed: %s", user.telegram_id, exc)

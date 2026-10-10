@@ -181,7 +181,9 @@ function Row({ o, t, lang, onReceipt }) {
   const pendingPay = o.status === 'pending_payment'
   const plan = (lang === 'fa' ? o.plan_name : (o.plan_name_en || o.plan_name)) || o.plan_name || '—'
   const icon = rejected ? H.timerOff : pendingPay ? H.clock : H.shield
-  const tone = rejected ? 'danger' : pendingPay ? 'warning' : 'success'
+  // expired = neutral gray (not a success, not an error); failed / rejected = red
+  const tone = rejected || o.status === 'failed' ? 'danger' : pendingPay ? 'warning'
+    : o.status === 'expired' ? 'muted' : 'success'
   const { num, unit } = tomanParts(o.amount_unique ?? o.amount, lang)
   const svc = o.requested_account_name
 
@@ -293,9 +295,10 @@ const CSS = `
 .csp-hist-row:hover { background: color-mix(in srgb, var(--c-text-muted) 9%, transparent); }
 .csp-hist-row-l { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1; }
 .csp-hist-row-ico { width: 44px; height: 44px; flex-shrink: 0; display: grid; place-items: center; border-radius: 12px; }
-.csp-hist-row-ico[data-tone="success"] { background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary); }
-.csp-hist-row-ico[data-tone="warning"] { background: color-mix(in srgb, var(--c-warning) 14%, transparent); color: var(--c-warning); }
-.csp-hist-row-ico[data-tone="danger"] { background: color-mix(in srgb, var(--c-danger) 12%, transparent); color: var(--c-danger); }
+.csp-hist-row-ico[data-tone="success"] { background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary-fg); }
+.csp-hist-row-ico[data-tone="warning"] { background: color-mix(in srgb, var(--c-warning) 14%, transparent); color: var(--c-warning-fg); }
+.csp-hist-row-ico[data-tone="danger"] { background: color-mix(in srgb, var(--c-danger) 12%, transparent); color: var(--c-danger-fg); }
+.csp-hist-row-ico[data-tone="muted"] { background: color-mix(in srgb, var(--c-text-muted) 14%, transparent); color: var(--c-muted-fg); }
 .csp-hist-row-info { min-width: 0; }
 .csp-hist-row-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .csp-hist-row-title b { font-size: 13.5px; font-weight: 700; }
@@ -304,9 +307,10 @@ const CSS = `
   font-size: 10px; font-weight: 700;
 }
 .csp-hist-pill i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
-.csp-hist-pill[data-tone="success"] { color: var(--c-success); background: color-mix(in srgb, var(--c-success) 14%, transparent); }
-.csp-hist-pill[data-tone="warning"] { color: var(--c-warning); background: color-mix(in srgb, var(--c-warning) 14%, transparent); }
-.csp-hist-pill[data-tone="danger"] { color: var(--c-danger); background: color-mix(in srgb, var(--c-danger) 14%, transparent); }
+.csp-hist-pill[data-tone="success"] { color: var(--c-success-fg); background: color-mix(in srgb, var(--c-success) 14%, transparent); }
+.csp-hist-pill[data-tone="warning"] { color: var(--c-warning-fg); background: color-mix(in srgb, var(--c-warning) 14%, transparent); }
+.csp-hist-pill[data-tone="danger"] { color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 14%, transparent); }
+.csp-hist-pill[data-tone="muted"] { color: var(--c-muted-fg); background: color-mix(in srgb, var(--c-text-muted) 16%, transparent); }
 .csp-hist-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 5px; font-size: 10.5px; color: var(--c-text-muted); }
 .csp-hist-meta span { display: inline-flex; align-items: center; gap: 4px; }
 .csp-hist-meta-svc { color: var(--c-primary) !important; }
@@ -354,4 +358,39 @@ const CSS = `
 .csp-hist-modal-head button { color: var(--c-text-muted); }
 .csp-hist-modal-body { padding: 16px; display: grid; place-items: center; }
 .csp-hist-modal-img { max-width: 100%; max-height: 60vh; border-radius: 12px; }
+
+/* ---- phones: one order = title (full width) / meta line / amount + actions ---- */
+@media (max-width: 767px) {
+  .csp-hist { gap: 12px; }
+  .csp-hist-head { flex-wrap: nowrap; align-items: center; gap: 10px; }
+  .csp-hist-head > div { min-width: 0; }
+  .csp-hist-lead { display: none; }
+  .csp-hist-buy { min-height: 44px; padding: 0 12px; flex-shrink: 0; }
+  .csp-hist-body { padding: 10px; gap: 10px; }
+  .csp-hist-bar-row { gap: 6px; }
+  .csp-hist-tabs { flex: 1 1 100%; }
+  .csp-hist-search { flex: 1 1 100%; min-width: 0; }
+  .csp-hist-search input { font-size: 16px; min-height: 44px; }
+  .csp-hist-list { gap: 8px; }
+  .csp-hist-row {
+    display: grid; grid-template-columns: 36px minmax(0, 1fr); column-gap: 10px; row-gap: 4px;
+    grid-template-areas: "ico title" "ico meta" "reason reason" "foot foot";
+    padding: 10px 12px; border-radius: 14px; align-items: start;
+  }
+  .csp-hist-row-l, .csp-hist-row-info { display: contents; }
+  .csp-hist-row-ico { grid-area: ico; width: 36px; height: 36px; border-radius: 10px; }
+  .csp-hist-row-ico svg { width: 18px; height: 18px; }
+  .csp-hist-row-title { grid-area: title; min-width: 0; gap: 4px 8px; }
+  .csp-hist-row-title b { font-size: 14px; line-height: 1.6; overflow-wrap: normal; word-break: normal; }
+  .csp-hist-meta { grid-area: meta; margin-top: 0; gap: 2px 12px; }
+  .csp-hist-reason { grid-area: reason; margin-top: 2px; }
+  .csp-hist-row-r {
+    grid-area: foot; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    margin: 4px 0 0; padding-top: 8px; border-top: 1px dashed var(--c-border);
+  }
+  .csp-hist-amt { text-align: start; flex-direction: row; align-items: baseline; gap: 8px; }
+  .csp-hist-amt span b { font-size: 15px; }
+  .csp-hist-tip { padding: 10px 12px; }
+  .csp-hist-tip-d { display: none; }
+}
 `

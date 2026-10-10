@@ -46,7 +46,7 @@ function StatusPill({ t, status }) {
   )
 }
 
-const ST_TONE = { active: 'success', on_hold: 'warning', pending: 'warning', limited: 'warning', expired: 'danger', disabled: 'danger' }
+const ST_TONE = { active: 'success', on_hold: 'warning', pending: 'warning', limited: 'warning', expired: 'text-muted', disabled: 'danger' }
 
 export default function Dashboard() {
   const { t, lang } = useI18n()
@@ -202,7 +202,7 @@ const CSS = `
 .dash-live { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; color: var(--c-text-muted); }
 .dash-live i { width: 7px; height: 7px; border-radius: 50%; background: var(--c-success); animation: dash-pp 1.8s ease-in-out infinite; }
 @keyframes dash-pp { 50% { opacity: .35; } }
-.dash-chip { font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; color: var(--c-text-muted); background: color-mix(in srgb, var(--c-text-muted) 12%, transparent); }
+.dash-chip { font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; color: var(--c-muted-fg); background: color-mix(in srgb, var(--c-text-muted) 12%, transparent); }
 .dash-ring { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
 .dash-ring.ok { background: var(--c-success); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c-success) 18%, transparent); }
 .dash-ring.warn { background: var(--c-warning); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c-warning) 18%, transparent); }
@@ -214,4 +214,13 @@ const CSS = `
 .dash .dash-srow-l { color: var(--c-text-muted); white-space: nowrap; }
 .dash .dash-srow-n { font-variant-numeric: tabular-nums; }
 @media (max-width: 420px) { .dash .dash-srow { grid-template-columns: auto 1fr auto; } .dash .dash-srow .dash-bar { display: none; } }
+/* phones: compact 2-column KPI tiles — icon + label on one line, number below */
+@media (max-width: 639px) {
+  .dash .kpi { display: grid; grid-template-columns: 24px minmax(0, 1fr); align-items: center; column-gap: 8px; row-gap: 2px; padding: 10px 12px; }
+  .dash .kpi-art, .dash .kpi-ico { width: 24px; height: 24px; }
+  .dash .kpi-body { display: contents; }
+  .dash .kpi-label { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dash .kpi-value { grid-column: 1 / -1; font-size: 19px; margin-top: 2px; }
+  .dash .kpi-sub { grid-column: 1 / -1; margin-top: 0; }
+}
 `

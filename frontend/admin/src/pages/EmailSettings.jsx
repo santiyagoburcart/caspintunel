@@ -261,7 +261,7 @@ export default function EmailSettings() {
                   {data.password_set && !clearPw && <span className="em-badge">{s.pw_saved}</span>}
                 </span>
                 <div className="em-pw" dir="ltr">
-                  <input className="input" dir="ltr" type={showPw ? 'text' : 'password'} autoComplete="new-password"
+                  <input className="input" dir="ltr" type={showPw ? 'text' : 'password'} autoComplete="new-password" aria-label={s.password}
                     placeholder={data.password_set ? '••••••••' : ''} value={pw}
                     onChange={(e) => { setPw(e.target.value); if (e.target.value) setClearPw(false) }} />
                   <button type="button" className="em-eye" onClick={() => setShowPw((v) => !v)} aria-label={s.password}>

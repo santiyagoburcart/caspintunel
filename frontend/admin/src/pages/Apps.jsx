@@ -289,6 +289,9 @@ function AppCard({ info, s, lang, onSaved, endpoint }) {
 
       <p className="ap-what">{android ? s.android_what : s.ios_what}</p>
 
+      {/* features + setup: open on desktop, folded on phones (secondary info) */}
+      <details className="ap-more" open={typeof window === 'undefined' || window.matchMedia('(min-width: 768px)').matches}>
+        <summary className="ap-more-sum">{s.features} · {s.setup}</summary>
       <div className="ap-cols">
         <div>
           <h3 className="ap-h3">{s.features}</h3>
@@ -299,6 +302,7 @@ function AppCard({ info, s, lang, onSaved, endpoint }) {
           <ol className="ap-steps">{steps.map((x, i) => <li key={x}><b>{digits(i + 1, lang)}</b><span>{x}</span></li>)}</ol>
         </div>
       </div>
+      </details>
 
       {info.notes && <div className="ap-notes"><b>{s.notes_h}</b><p>{info.notes}</p></div>}
 
@@ -404,8 +408,8 @@ const CSS = `
 .ap-ico { width: 54px; height: 54px; border-radius: 16px; flex-shrink: 0; display: grid; place-items: center; }
 .ap-title { font-size: 16px; font-weight: 800; }
 .ap-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-.ap-chip { font-size: 11px; padding: 2px 8px; border-radius: 999px; color: var(--c-text-muted); background: color-mix(in srgb, var(--c-text-muted) 11%, transparent); }
-.ap-chip--src { color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 11%, transparent); }
+.ap-chip { font-size: 11px; padding: 2px 8px; border-radius: 999px; color: var(--c-muted-fg); background: color-mix(in srgb, var(--c-text-muted) 11%, transparent); }
+.ap-chip--src { color: var(--c-primary-fg); background: color-mix(in srgb, var(--c-primary) 11%, transparent); }
 .ap-what { font-size: 13.5px; line-height: 2; color: var(--c-text); }
 .ap-cols { display: grid; grid-template-columns: 1fr; gap: 16px; }
 @media (min-width: 640px) { .ap-cols { grid-template-columns: 1fr 1fr; } }
@@ -483,4 +487,13 @@ const CSS = `
 .ap-adv-body { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
 .ap-check { display: flex; align-items: center; gap: 8px; font-size: 12.5px; cursor: pointer; }
 .ap-check input { width: 18px; height: 18px; accent-color: var(--c-primary); }
+.ap-more > .ap-more-sum { display: none; }
+@media (max-width: 767px) {
+  .ap-card { gap: 12px; }
+  .ap-what { font-size: 13px; line-height: 1.85; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .ap-more { border: 1px solid var(--c-border); border-radius: 12px; padding: 0 12px; }
+  .ap-more > .ap-more-sum { display: flex; align-items: center; min-height: 44px; cursor: pointer; font-size: 13px; font-weight: 700; color: var(--c-primary); list-style: none; }
+  .ap-more > .ap-more-sum::-webkit-details-marker { display: none; }
+  .ap-more[open] > .ap-cols { padding-bottom: 12px; }
+}
 `

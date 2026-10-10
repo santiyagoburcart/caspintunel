@@ -40,6 +40,13 @@ node status, and the group ids to put in `Plan.group_ids` / `Panel.default_group
 | attach an existing panel account to a user | panel → Services → Create manual service → "Link existing panel service" (live panel search; nothing changes on the panel) |
 | rotate a leaked secret | edit `.env`, `docker compose up -d` the affected service (no rebuild); rotate `FIELD_ENCRYPTION_KEY` requires re-encrypting rows |
 | change alert thresholds / toggles | panel settings (`setting` table) |
+| bot support contact / message | panel → Branding → *Telegram bot support* (IDs comma-separated; fa/en text, e.g. working hours) |
+| QR background for customers | panel → Branding → *Subscription QR background* (built-in or custom upload; applies to bot, site and downloads at once) |
+| why didn't an SMS confirm a payment? | panel → SMS log (masked text, parsed amount, matched order or the reason) |
+| a rejected order was paid after all | approve it from Transactions — late approvals are fulfilled normally |
+| read the docs on the server | panel → Documentation (`docs/*.md`, read-only) |
+| run the tests | `./scripts/test.sh` — isolated stack only, never the live DB |
+| roll back a bad release | `./update.sh --rollback` (images); restore `backups/pre-update-*.sql.gz` only if a migration must be undone |
 
 ## Logs
 `docker compose logs -f web celery_worker bot_sales` — app logs go to stdout

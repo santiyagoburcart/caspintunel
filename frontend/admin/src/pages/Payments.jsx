@@ -156,7 +156,7 @@ export default function Payments() {
   return (
     <div className="space-y-3">
       <style>{CSS}</style>
-      <div className="flex flex-wrap items-start justify-between gap-2">
+      <div className="pq-head flex flex-wrap items-start justify-between gap-2">
         <div>
           <h1 className="text-lg font-bold">{s.title}</h1>
           <p className="text-sm text-muted mt-1">{s.subtitle}</p>
@@ -187,7 +187,7 @@ export default function Payments() {
       {rows.length > 0 && shown.length === 0 && (
         <div className="card text-center text-muted">{s.none_tab}</div>
       )}
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {shown.map((p) => (
           <div key={p.id} className={'card space-y-2' + (isExpired(p) ? ' pq-card--exp' : '') + (freshIds.has(p.id) ? ' pq-card--new' : '')}>
             <div className="flex items-center justify-between gap-2">
@@ -200,15 +200,19 @@ export default function Payments() {
                 </span>
               </div>
             </div>
-            <div className="space-y-0.5 text-sm text-muted">
-              <div>{s.user}: {p.user}{p.user_telegram ? ` (@${p.user_telegram})` : ''}</div>
-              <div>{s.order} #{p.order_id} · {s.plan}: {p.plan_name || '—'}{p.account_name ? ` · ${s.account}: ${p.account_name}` : ''}</div>
-              <div className="text-xs">{jalali(p.created_at, true, lang)}</div>
+            <div className="pq-main">
+              <div className="pq-info space-y-0.5 text-sm text-muted">
+                <div>{s.user}: {p.user}{p.user_telegram ? ` (@${p.user_telegram})` : ''}</div>
+                <div>{s.order} #{p.order_id} · {s.plan}: {p.plan_name || '—'}{p.account_name ? ` · ${s.account}: ${p.account_name}` : ''}</div>
+                <div className="text-xs">{jalali(p.created_at, true, lang)}</div>
+              </div>
+              <div className="pq-rcpt">
+                {p.receipt_url
+                  ? <ReceiptThumb url={p.receipt_url} alt={s.receipt} variant="full" />
+                  : <div className="text-xs text-muted">{s.no_receipt}</div>}
+              </div>
             </div>
             {isExpired(p) && <div className="pq-exp-note">{s.expired_note}</div>}
-            {p.receipt_url
-              ? <ReceiptThumb url={p.receipt_url} alt={s.receipt} variant="full" />
-              : <div className="text-xs text-muted">{s.no_receipt}</div>}
             {p.bank_card_number && (
               <div className="pq-customer-card">
                 {s.customer_card}: <b className="mono-num" dir="ltr">{p.bank_card_number}</b>
@@ -217,7 +221,7 @@ export default function Payments() {
               </div>
             )}
             {cards.length > 0 && (
-              <label className="block text-xs text-muted">
+              <label className="pq-deposit-l block text-xs text-muted" aria-label={s.deposit_card}>
                 {s.deposit_card}
                 <select className="input mt-0.5 text-sm"
                   value={cardById[p.id] ?? p.bank_card ?? cards[0]?.id ?? ''}
@@ -228,7 +232,7 @@ export default function Payments() {
                 </select>
               </label>
             )}
-            <div className="flex flex-wrap gap-2 pt-1">
+            <div className="pq-acts flex flex-wrap gap-2 pt-1">
               <button className="btn-primary text-sm" disabled={busyId === p.id}
                 onClick={() => act(p.id, 'approve')}>
                 {busyId === p.id ? '…' : t('approve')}
@@ -270,11 +274,37 @@ const CSS = `
   background: color-mix(in srgb, currentColor 22%, transparent); font-family: 'JetBrains Mono', monospace; }
 .pq-card--exp { border-color: color-mix(in srgb, var(--c-warning) 40%, var(--c-border)); }
 .pq-exp-tag { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap;
-  background: color-mix(in srgb, var(--c-warning) 16%, transparent); color: var(--c-warning); }
-.pq-exp-note { font-size: 11.5px; color: var(--c-warning); background: color-mix(in srgb, var(--c-warning) 10%, transparent);
+  background: color-mix(in srgb, var(--c-warning) 16%, transparent); color: var(--c-warning-fg); }
+.pq-exp-note { font-size: 11.5px; color: var(--c-warning-fg); background: color-mix(in srgb, var(--c-warning) 10%, transparent);
   border-radius: 8px; padding: 6px 10px; }
 .pq-customer-card { font-size: 11.5px; color: var(--c-text-muted); background: color-mix(in srgb, var(--c-primary) 7%, transparent);
   border-radius: 8px; padding: 6px 10px; }
 .pq-customer-card b { color: var(--c-text); }
+.pq-main { display: flex; flex-direction: column; gap: 8px; }
+/* tab counters readable on the filled and the plain tab */
+.pq-tab.on .pq-tab-n { background: rgba(0, 0, 0, .22) !important; color: #fff; }
+.pq-tab:not(.on) .pq-tab-n { background: color-mix(in srgb, var(--c-text-muted) 12%, transparent) !important; color: var(--c-text); }
+/* phones: details beside a receipt thumbnail (tap opens it full size) */
+@media (max-width: 767px) {
+  .pq-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .pq-tab { flex: 1 0 auto; justify-content: center; min-height: 44px; padding: 0 12px; }
+  .pq-main { display: grid; grid-template-columns: minmax(0, 1fr) 92px; align-items: start; gap: 10px; }
+  .pq-info { font-size: 13px; line-height: 1.55; overflow-wrap: anywhere; }
+  .pq-rcpt img { width: 92px; height: 116px; max-height: none; object-fit: cover; }
+  .pq-rcpt > span { height: 116px; }
+  .pq-customer-card { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pq-exp-note { padding: 5px 10px; }
+  .pq-acts { flex-wrap: nowrap; }
+  .pq-acts > button { flex: 1 1 0; min-width: 0; min-height: 44px; padding-inline: 10px; }
+  .pq-acts > button:last-child { flex: 0 0 auto; margin-inline-start: 0 !important; }
+}
+@media (max-width: 767px) {
+  .pq-head { flex-wrap: nowrap !important; align-items: center !important; }
+  .pq-exp-note { display: none; }               /* the "expired" tag already says it */
+  .pq-rcpt img { width: 76px !important; height: 96px !important; }
+  .pq-rcpt > span { height: 96px !important; }
+  .pq-main { grid-template-columns: minmax(0, 1fr) 76px !important; }
+  .pq-deposit-l { font-size: 0 !important; }   /* the select shows the card itself */
+}
 `
 

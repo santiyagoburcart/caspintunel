@@ -297,8 +297,25 @@ def test_history_icons_and_reject_reason(bot, user, plans):
     done, rej, exp, pend = mk("completed"), mk("rejected"), mk("expired"), mk("pending_payment")
     Payment.objects.create(order=rej, method="card_manual", amount=1200, status="rejected", reject_reason="رسید ناخوانا")
     text = bot.click("m:history")[0][1]
-    assert f"✅ <b>#{done.id}</b>" in text and f"❌ <b>#{rej.id}</b>" in text and "رسید ناخوانا" in text
-    assert f"⌛ <b>#{exp.id}</b>" in text and f"⏳ <b>#{pend.id}</b>" in text
+    assert f"✅ <b>سفارش #{done.id}</b> · تکمیل‌شده" in text and f"❌ <b>سفارش #{rej.id}</b> · رد شده" in text
+    assert "دلیل: رسید ناخوانا" in text
+    assert f"⌛ <b>سفارش #{exp.id}</b> · منقضی" in text and f"⏳ <b>سفارش #{pend.id}</b> · در انتظار" in text
+    assert "1,200 تومان" in text and "\n\n" in text
+
+
+def test_history_shows_paid_amount_account_and_manual_services(bot, user, plans):
+    a, *_ = plans
+    exp = timezone.now() + timedelta(minutes=5)
+    paid = Order.objects.create(user=user, plan=a, amount=250000, amount_unique=250430, status="completed",
+                                requested_account_name="pouya_main", unique_expire_at=exp)
+    manual = Order.objects.create(user=user, plan=a, type="manual", amount=0, amount_unique=0, status="completed",
+                                  requested_account_name="gift1", unique_expire_at=exp)
+    text = bot.click("m:history")[0][1]
+    assert "250,430 تومان" in text and "<code>pouya_main</code>" in text
+    block = text.split(f"#{manual.id}</b>")[1].split("\n\n")[0]
+    assert "سرویس دستی (ادمین)" in block and "0 تومان" not in block and "<code>gift1</code>" in block
+    assert f"#{paid.id}" in text and "/" in block   # Jalali date with Latin digits
+    assert not any("\u06f0" <= ch <= "\u06f9" for ch in text)
 
 
 # --- account / pages / referral ---------------------------------------------------
@@ -340,3 +357,21 @@ def test_start_with_referral_credits_the_inviter(bot):
 def test_old_buttons_in_chat_history_still_work(bot, user, plans, legacy):
     out = bot.click(legacy)
     assert out and out[0][0] in ("edit", "send")
+
+
+def test_bot_support_has_its_own_ids_and_message(bot, user):
+    cfg = SiteConfig.load()
+    cfg.support_telegram = "@site_support"
+    cfg.bot_support_telegram = "@bot_help, https://t.me/bot_help2"
+    cfg.bot_support_text_fa = "ساعات کاری: ۹ تا ۲۱ <همه روزه>"
+    cfg.save()
+    text, kb = bot.click("m:help")[0][1:3]
+    assert "ساعات کاری" in text and "&lt;همه روزه&gt;" in text and "@bot_help" in text
+    assert "site_support" not in text
+    assert [d for d in _datas(kb) if d.startswith("https")] == ["https://t.me/bot_help", "https://t.me/bot_help2"]
+
+
+def test_bot_support_falls_back_to_site_id(bot, user):
+    cfg = SiteConfig.load(); cfg.support_telegram = "caspin"; cfg.bot_support_telegram = ""; cfg.save()
+    s = bot.click("m:help")[0]
+    assert "@caspin" in s[1] and "https://t.me/caspin" in _datas(s[2])

@@ -89,8 +89,9 @@ const groupCard = (raw) => {
 
 function Pill({ tone, children }) {
   const c = `var(--c-${tone || 'text-muted'})`
+  const fg = `var(--c-${!tone || tone === 'text-muted' ? 'muted' : tone}-fg)`   // contrast-safe text
   return (
-    <span className="tx-pill" style={{ background: `color-mix(in srgb, ${c} 16%, transparent)`, color: c }}>{children}</span>
+    <span className="tx-pill" style={{ background: `color-mix(in srgb, ${c} 16%, transparent)`, color: fg }}>{children}</span>
   )
 }
 
@@ -283,19 +284,29 @@ const CSS = `
 /* mobile: table -> stacked cards */
 @media (max-width: 767px) {
   .tx-wrap { overflow-x: visible; }
-  .tx-table, .tx-table tbody, .tx-table tr, .tx-table td { display: block; width: 100%; }
+  .tx-table, .tx-table tbody { display: block; width: 100%; }
   .tx-table { min-width: 0; }
   .tx-table thead { display: none; }
-  .tx-table tr.tx-row { border: 1px solid var(--c-border); border-radius: 12px; margin: 12px; padding: 4px 0; }
-  .tx-table tr.tx-row > td { border-bottom: 0; }
+  .tx-table tr.tx-row {
+    display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); align-items: start;
+    border: 1px solid var(--c-border); border-radius: 12px; margin: 8px; padding: 2px 0; width: auto;
+  }
   .tx-table tr.tx-row:hover > td { background: none; }
-  .tx-table td { padding: 8px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: end; }
-  .tx-table td::before { content: attr(data-label); font-size: 11px; font-weight: 600; color: var(--c-text-muted); text-align: start; white-space: nowrap; }
-  .tx-table td.tx-amt { border-bottom: 1px solid var(--c-border); font-size: 15px; }
-  .tx-table td.tx-c { justify-content: space-between; }
-  .tx-table tr.tx-note-row { margin: -6px 12px 12px; border: 0; padding: 0; }
-  .tx-table tr.tx-note-row > td { display: block; padding: 0 14px 8px !important; border: 0 !important; }
+  .tx-table tr.tx-row > td { grid-column: span 2; border: 0 !important; padding: 3px 12px; display: flex; flex-direction: column;
+    align-items: flex-start; gap: 1px; min-width: 0; text-align: start; font-size: 13px; overflow-wrap: anywhere; white-space: normal; }
+  .tx-table tr.tx-row > td::before { content: attr(data-label); font-size: 12px; line-height: 16px; font-weight: 600; color: var(--c-text-muted); white-space: nowrap; }
+  /* [amount ······ status] / user · date / type · source · method / card · confirmer / receipt · details */
+  .tx-table tr.tx-row > td:nth-child(1) { grid-column: 1 / 5; grid-row: 1; font-size: 15px; font-weight: 800; padding-block: 7px; }
+  .tx-table tr.tx-row > td:nth-child(9) { grid-column: 5 / 7; grid-row: 1; align-items: flex-end; padding-block: 7px; }
+  .tx-table tr.tx-row > td:nth-child(1)::before, .tx-table tr.tx-row > td:nth-child(9)::before, .tx-table tr.tx-row > td:nth-child(11)::before { display: none; }
+  /* DOM order packs into even rows of 6: user 3 + type 3 / source 2 + method 2 + card 2 / confirmer 2 + date 4 / receipt 2 + details 4 */
+  .tx-table tr.tx-row > td:nth-child(2), .tx-table tr.tx-row > td:nth-child(3) { grid-column: span 3; }
+  .tx-table tr.tx-row > td:nth-child(8), .tx-table tr.tx-row > td:nth-child(11) { grid-column: span 4; }
+  .tx-table tr.tx-row > td:nth-child(11) { align-items: flex-end; justify-content: center; }
+  .tx-table tr.tx-row > td:nth-child(10) img { width: 44px; height: 44px; }
+  .tx-table tr.tx-note-row { display: block; margin: -4px 8px 8px; border: 0; padding: 0; }
+  .tx-table tr.tx-note-row > td { display: block; padding: 0 12px 6px !important; border: 0 !important; }
   .tx-table tr.tx-note-row > td::before { display: none; }
-  .tx-detail-btn { width: 100%; justify-content: center; }
+  .tx-detail-btn { min-height: 44px; }
 }
 `

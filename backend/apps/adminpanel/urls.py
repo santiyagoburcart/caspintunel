@@ -3,7 +3,8 @@ from rest_framework.routers import SimpleRouter
 
 from .views.apps import AppReleaseDetailView, AppReleaseDownloadView, AppReleaseListView, ShortcutQrView
 from .views.auth import StaffLoginView, StaffMeView, StaffRefreshView
-from .views.branding import SiteConfigView
+from .views.branding import QrPreviewView, SiteConfigView
+from .views.docs import DocsListView, DocsPageView
 from .views.catalog import (
     BankCardViewSet,
     PageViewSet,
@@ -67,6 +68,9 @@ urlpatterns = [
     path("payments/pending/", PendingPaymentsView.as_view(), name="admin-payments-pending"),
     path("payments/<int:pk>/<str:action>/", PaymentDecisionView.as_view(), name="admin-payment-decision"),
     path("branding/", SiteConfigView.as_view(), name="admin-branding"),
+    path("branding/qr-preview/", QrPreviewView.as_view(), name="admin-branding-qr-preview"),
+    path("docs/", DocsListView.as_view(), name="admin-docs"),
+    path("docs/<str:slug>/", DocsPageView.as_view(), name="admin-docs-page"),
     path("dashboard/", DashboardView.as_view(), name="admin-dashboard"),
     path("telegram-stats/", TelegramStatsView.as_view(), name="admin-telegram-stats"),
     path("health/", HealthView.as_view(), name="admin-health"),

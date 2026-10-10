@@ -27,6 +27,7 @@ const nav = [
   ['/pages', 'pages', 'pages.manage'],
   ['/themes', 'themes', 'themes.manage'],
   ['/roles', 'roles', 'roles.manage'],
+  ['/docs', 'docs', 'settings.manage'],
 ]
 
 // Caspian — the same 16 real routes, arranged into the Stitch reference's
@@ -59,6 +60,7 @@ const CASPIAN_GROUPS = [
     ['/pages', 'pages', 'pages.manage', 'pages'],
     ['/themes', 'themes', 'themes.manage', 'themes'],
     ['/roles', 'roles', 'roles.manage', 'roles'],
+    ['/docs', 'docs', 'settings.manage', 'docs'],
   ]],
 ]
 
@@ -70,6 +72,7 @@ const NAV_ICONS = {
   moon: 'M21.752 15.002A9.72 9.72 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z',
   back: 'M8.25 4.5l7.5 7.5-7.5 7.5',
   apps: 'M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3',
+  docs: 'M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25',
   dashboard: 'M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6zM13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z',
   monitoring: 'M9.348 14.652a3.75 3.75 0 010-5.304m5.304 0a3.75 3.75 0 010 5.304m-7.425 2.121a6.75 6.75 0 010-9.546m9.546 0a6.75 6.75 0 010 9.546M5.106 18.894c-3.808-3.807-3.808-9.98 0-13.788m13.788 0c3.808 3.807 3.808 9.98 0 13.788M12 12h.008v.008H12V12z',
   users: 'M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z',
@@ -242,7 +245,7 @@ const MOBILE_TITLES = [
   ['/payments', 'nav_pay_queue'], ['/transactions', 'transactions'], ['/sms-log', 'sms_log'], ['/accounting', 'accounting'],
   ['/cards', 'cards'], ['/monitoring', 'monitoring'], ['/panel-link', 'panel_link'], ['/bots', 'bots'],
   ['/branding', 'branding'], ['/apps', 'apps'], ['/settings', 'settings'], ['/notifications', 'notifications'],
-  ['/pages', 'pages'], ['/themes', 'themes'], ['/roles', 'roles'],
+  ['/pages', 'pages'], ['/themes', 'themes'], ['/roles', 'roles'], ['/docs', 'docs'],
 ]
 const TAB_ROOTS = new Set(['/', '/users', '/payments', '/services', '/settings'])
 
@@ -572,7 +575,7 @@ const CASPIAN_CSS = `
 }
 .csp-bn-ico { position: relative; display: grid; place-items: center; }
 .csp-bn-badge { position: absolute; top: -6px; inset-inline-end: -10px; min-width: 18px; height: 18px; padding: 0 5px;
-  border-radius: 999px; background: var(--c-danger); color: #fff; font-size: 10px; font-weight: 800; line-height: 18px;
+  border-radius: 999px; background: color-mix(in srgb, var(--c-danger) 70%, #000); color: #fff; font-size: 10px; font-weight: 800; line-height: 18px;
   text-align: center; box-shadow: 0 0 0 2px var(--c-surface); }
 /* raised centre tab (payments queue) */
 .csp-bn-centre .csp-bn-ico { width: 50px; height: 50px; margin-top: -26px; border-radius: 999px; color: #fff;

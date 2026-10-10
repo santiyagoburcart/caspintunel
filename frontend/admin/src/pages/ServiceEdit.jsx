@@ -119,7 +119,7 @@ function Ico({ d, w = 18, sw = 1.8 }) {
 
 const EDITABLE = ['active', 'on_hold', 'disabled']
 const QUICK_GB = [5, 50, 100, 200, 250, 500]
-const tone = (st) => ({ active: 'success', on_hold: 'warning', disabled: 'danger', expired: 'danger', limited: 'warning' }[st] || 'text-muted')
+const tone = (st) => ({ active: 'success', on_hold: 'warning', disabled: 'danger', expired: 'text-muted', limited: 'warning' }[st] || 'text-muted')
 
 const pad = (n) => String(n).padStart(2, '0')
 /** local calendar date (YYYY-MM-DD) of an ISO datetime */
@@ -655,8 +655,8 @@ const CSS = `
 .sed-date:disabled { cursor: not-allowed; opacity: .7; }
 .sed-date svg { color: var(--c-text-muted); flex-shrink: 0; }
 .sed-chip { display: inline-flex; align-items: center; justify-content: center; padding: 0 12px; border-radius: 12px; font-size: 12px; font-weight: 700;
-  white-space: nowrap; color: var(--c-text-muted); background: color-mix(in srgb, var(--c-text-muted) 10%, transparent); min-width: 104px; }
-.sed-chip--bad { color: var(--c-danger); background: color-mix(in srgb, var(--c-danger) 10%, transparent); }
+  white-space: nowrap; color: var(--c-muted-fg); background: color-mix(in srgb, var(--c-text-muted) 10%, transparent); min-width: 104px; }
+.sed-chip--bad { color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 10%, transparent); }
 .sed-mini-acts { display: flex; gap: 6px; flex-wrap: wrap; }
 .sed-mini-acts button, .sed-link { font-size: 11.5px; font-weight: 700; color: var(--c-primary); padding: 3px 10px; border-radius: 999px;
   background: color-mix(in srgb, var(--c-primary) 10%, transparent); }
@@ -751,7 +751,7 @@ const CSS = `
   .sed-mhead-row { display: flex; align-items: center; gap: 8px; }
   .sed-mhead-row b { font-size: 15.5px; font-weight: 800; }
   .sed-mhead-txt > span { font-size: 11.5px; color: var(--c-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .sed-idchip { font: 700 10.5px 'JetBrains Mono', monospace; padding: 2px 6px; border-radius: 6px; color: var(--c-primary);
+  .sed-idchip { font: 700 10.5px 'JetBrains Mono', monospace; padding: 2px 6px; border-radius: 6px; color: var(--c-primary-fg);
     border: 1px solid color-mix(in srgb, var(--c-primary) 40%, transparent); background: color-mix(in srgb, var(--c-primary) 8%, transparent); }
   .sed-msum { display: flex; flex-direction: column; gap: 14px; padding: 16px; border-radius: 20px; }
   .sed-msum-top { display: flex; align-items: center; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--c-border); }

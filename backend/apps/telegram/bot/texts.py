@@ -100,6 +100,12 @@ T: dict[str, tuple[str, str]] = {
     # --- history ---
     "hist_title": ("🧾 <b>سوابق خرید</b> ({n})", "🧾 <b>Purchase history</b> ({n})"),
     "hist_empty": ("هنوز خریدی ثبت نشده است.", "No purchases yet."),
+    "hist_order": ("سفارش #{id}", "Order #{id}"),
+    "hist_account": ("👤 اکانت: <code>{a}</code>", "👤 Account: <code>{a}</code>"),
+    "hist_paid": ("💳 مبلغ: <b>{m}</b>", "💳 Amount: <b>{m}</b>"),
+    "hist_manual": ("🛠 سرویس دستی (ادمین)", "🛠 Manual service (admin)"),
+    "hist_date": ("🗓 {d}", "🗓 {d}"),
+    "hist_reason": ("↳ دلیل: {r}", "↳ Reason: {r}"),
     # --- account ---
     "acc": ("👤 <b>حساب من</b>\n\nنام کاربری: <code>{u}</code>\nموبایل: {phone}\nزبان: فارسی\n\n"
             "🎁 کد معرف شما: <code>{code}</code>\nتعداد دعوت‌شده‌ها: {n}\n\nلینک دعوت (برای کپی بزنید):\n{links}",
@@ -128,8 +134,11 @@ T: dict[str, tuple[str, str]] = {
     "page_more": ("\n\n… متن کامل در سایت.", "\n\n… full text on the website."),
     "page_missing": ("این صفحه هنوز تنظیم نشده است.", "This page is not set up yet."),
     "support": ("💬 <b>پشتیبانی</b>\n\nبرای هر سؤال یا مشکل به پشتیبانی پیام دهید: {h}", "💬 <b>Support</b>\n\nMessage support for any question or problem: {h}"),
+    "support_title": ("💬 <b>پشتیبانی</b>", "💬 <b>Support</b>"),
+    "support_ids": ("📨 {h}", "📨 {h}"),
     "support_soon": ("💬 <b>پشتیبانی</b>\n\nراه ارتباطی پشتیبانی به‌زودی اعلام می‌شود.", "💬 <b>Support</b>\n\nThe support contact will be announced soon."),
     "btn_support_chat": ("💬 پیام به پشتیبانی", "💬 Message support"),
+    "btn_support_chat_n": ("💬 پیام به {h}", "💬 Message {h}"),
     # --- gates ---
     "join_channels": ("📢 برای استفاده از ربات ابتدا در کانال‌های زیر عضو شوید:", "📢 Join these channels first to use the bot:"),
     "btn_join": ("عضویت در {c}", "Join {c}"),
@@ -148,6 +157,15 @@ SERVICE_STATUS = {
     "active": ("🟢", "فعال", "Active"), "on_hold": ("⏳", "در انتظار اولین اتصال", "Waiting for first connection"),
     "expired": ("🔴", "منقضی", "Expired"), "limited": ("🟠", "اتمام حجم", "Out of data"),
     "disabled": ("⚫️", "غیرفعال", "Disabled"), "pending": ("🔵", "در حال ساخت", "Being prepared"),
+}
+# short labels for list messages (history)
+HIST_STATUS = {
+    "pending_payment": ("⏳", "در انتظار", "Pending"),
+    "paid": ("🔄", "در حال ساخت", "Preparing"),
+    "completed": ("✅", "تکمیل‌شده", "Completed"),
+    "rejected": ("❌", "رد شده", "Rejected"),
+    "failed": ("⚠️", "ناموفق", "Failed"),
+    "expired": ("⌛", "منقضی", "Expired"),
 }
 ORDER_TYPE = {"new": ("خرید جدید", "New"), "renew": ("تمدید", "Renewal"), "addon_volume": ("حجم اضافه", "Add-on"),
               "manual": ("دستی", "Manual"), "imported": ("انتقالی", "Imported")}

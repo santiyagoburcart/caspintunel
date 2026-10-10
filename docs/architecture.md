@@ -8,17 +8,17 @@ Bilingual fa/en.
 
 | App | Responsibility |
 |-----|----------------|
-| `common` | base model, encrypted fields (`FIELD_ENCRYPTION_KEY` / Fernet), Jalali helpers, audit log, `DynamicAllowedHostsMiddleware`, health/root views |
+| `common` | base model, encrypted fields (`FIELD_ENCRYPTION_KEY` / Fernet), Jalali helpers, audit log, `DynamicAllowedHostsMiddleware`, health/root views, `mail.DynamicEmailBackend`, `public_cache`, **`qrcard`** (subscription QR on the active background; bundled backgrounds in `qr_backgrounds/`) |
 | `accounts` | customer `User` (`AUTH_USER_MODEL`), independent RBAC — `Permission` / `Role` / `Staff`; JWT auth (password-hash claim revokes sessions), registration (terms accepted at sign-up), phone normalization / Iran-only rule, outage-aware email verification, 3-path password reset, legacy import, bot↔site account merge, **soft delete + `DeletedUserArchive`** snapshot / restore (`accounts/deletion.py`) |
 | `panel` | multi-panel `Panel` + `PasarGuardClient` (token cache, typed errors), `Service`, payload mappers, idempotent provision/renew/sync, scheduled renewals (reset / carry-over), admin full edit (status, volume, expiry, groups, note, HWID limit), manual create + **link an existing panel account**, retry-safe Celery tasks, `Service` read API + QR |
 | `plans` | `Plan` (fixed / custom-volume), `group_ids` per plan with panel-default fallback |
 | `orders` | `Order` (new / renew / add-on / manual / imported), atomic unique-amount reservation (`amount_unique_lock`), checkout resume, `fulfill_order` + `retry_unfulfilled_orders` tasks |
 | `payments_sms` | `BankCard`, `Payment`, card-to-card flow; `SmsSource` / `SmsAppDevice` / `SmsMessage`, `SmsDeviceAuthentication`, rial-aware parser, auto-match engine |
 | `notifications` | `Notification` / `NotificationDelivery`, `dispatch.notify_user` (per-channel isolated: site / email / bot), Channels WebSockets: customer notifications + staff live payments queue |
-| `telegram` | `TelegramClient` (raw API, proxy), `ensure_bot_user`, forced-channel + phone gate (asked again on any message), sales bot (pyTelegramBotAPI; every service is sent as a QR photo with the subscription link as tap-to-copy `<code>`), Mini App login, backup bot, `run_database_backup` |
-| `settings_app` | `Setting` (typed KV), `SiteConfig` (branding singleton), `Theme`, `Page`, **`AppRelease`** (operator apps served from this server), `shortcut.py` (builds the iPhone Shortcut from `mobile_shortcut/` at download time); public config/theme/pages endpoints; interval-reconcile signal |
+| `telegram` | `TelegramClient` (raw API, proxy), `ensure_bot_user`, forced-channel + phone gate (asked again on any message), sales bot (pyTelegramBotAPI; pure `bot/screens.py` + fa/en `bot/texts.py`, messages edited in place; every service is sent as a QR photo with the subscription link as tap-to-copy `<code>`; see [bots.md](bots.md)), Mini App auto-login, backup bot, `run_database_backup` |
+| `settings_app` | `Setting` (typed KV), `SiteConfig` (branding singleton — names, domain, logo, site + bot support contacts/message, QR background), `Theme`, `Page`, **`AppRelease`** (operator apps served from this server), `shortcut.py` (builds the iPhone Shortcut from `mobile_shortcut/` at download time); public config/theme/pages endpoints; interval-reconcile signal |
 | `ops` | `HealthCheck` / `ResourceStat` / `BackupLog`, health probes, `psutil` sampling, service alerts, Cloudflare `configure_dns` |
-| `adminpanel` | the operator API under `/api/v1/admin/` — Staff JWT + `StaffPermission`, all management endpoints |
+| `adminpanel` | the operator API under `/api/v1/admin/` — Staff JWT + `StaffPermission`, all management endpoints, SMS log, read-only `docs/*.md` for the Documentation page |
 
 ## Async
 
@@ -36,6 +36,8 @@ time (`@fontsource`) — nothing is loaded from a CDN, so the site works on a se
 with only Iranian/national internet. Fonts: Persian UI = **Vazirmatn** everywhere,
 English UI = **Inter** (Vazirmatn fallback), JetBrains Mono only for `<code>`.
 One shared `ConfirmDialog` (bottom sheet on phones) for every confirmation.
+Badge/pill text uses contrast-safe `--c-*-fg` tokens; *expired* is neutral gray.
+Phones: 16 px inputs, ≥ 44 px targets, compact record-grid cards instead of tables.
 Admin on phones (Caspian): bottom nav = dashboard · users · payment queue (centre,
 live badge) · services · settings; Settings is the index of every other page, each
 settings section has its own route (`/panel/settings/<section>`).
@@ -50,6 +52,13 @@ amount → **SMS auto-match** (`Payment.confirmed_by=system`) **or** receipt upl
 Timed plans use panel **On-Hold** (`status="on_hold"` + `on_hold_expire_duration`)
 so the clock starts on the user's first connection. Renewal keeps the same panel
 username and subscription URL.
+
+## Deploy
+
+Production runs the code baked into images (`docker-compose.yml` +
+`docker-compose.prod.yml`, selected by `COMPOSE_FILE` in `.env`). `./update.sh`
+backs up the DB, builds, migrates once and swaps web/daphne/SPAs one by one
+behind healthchecks; see [deploy.md](deploy.md).
 
 ## Security posture
 
