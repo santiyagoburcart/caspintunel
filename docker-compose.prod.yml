@@ -132,6 +132,7 @@ services:
       - media_data:/var/www/media:ro
       - static_data:/var/www/static:ro
       - ./nginx/prod.conf:/etc/nginx/conf.d/caspintunel.conf:ro
+      - ./nginx/flags:/etc/nginx/flags:ro            # maintenance switch (docs/migration.md)
       - ./nginx/letsencrypt:/etc/letsencrypt
       - ./nginx/certbot-webroot:/var/www/certbot
       - ./nginx/manual-certs:/etc/nginx/manual-certs:ro

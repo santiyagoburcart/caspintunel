@@ -1,0 +1,2 @@
+# `touch maintenance` here puts the site into maintenance mode (503 page).
+# Managed by scripts/migrate-export.sh / migrate-import.sh — see docs/migration.md

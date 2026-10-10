@@ -88,7 +88,7 @@ function parse(md) {
       const items = []
       while (i < lines.length) {
         const m = lines[i].match(/^(\s*)([-*+]|\d+[.)])\s+(.*)$/)
-        if (m) { items.push({ depth: m[1].length >= 2 ? 1 : 0, text: m[3] }); i++; continue }
+        if (m) { items.push({ depth: m[1].length >= 2 ? 1 : 0, text: m[3].replace(/^\[ \]\s+/, '☐ ').replace(/^\[x\]\s+/i, '☑ ') }); i++; continue }
         if (/^\s{2,}\S/.test(lines[i]) && items.length) { items[items.length - 1].text += ' ' + lines[i].trim(); i++; continue }
         break
       }
@@ -218,7 +218,7 @@ export default function Docs() {
             )}
           </aside>
 
-          <article className="card dc-body" dir="ltr">
+          <article className="card dc-body" dir={!hits && /-fa$/.test(current || '') ? 'rtl' : 'ltr'}>
             {hits ? (
               <div className="dc-hits">
                 <div className="text-xs text-muted mb-2" dir="auto">{hits.length ? s.hits.replace('{n}', hits.length) : s.no_hits}</div>
@@ -252,10 +252,16 @@ const CSS = `
 .dc-page.is-on { background: color-mix(in srgb, var(--c-primary) 13%, transparent); color: var(--c-primary-fg); }
 .dc-toc { border-top: 1px solid var(--c-border); padding-top: 8px; display: flex; flex-direction: column; }
 .dc-toc summary { font-size: 12px; font-weight: 700; color: var(--c-text-muted); cursor: pointer; padding: 4px 2px; }
-.dc-toc a { display: block; font-size: 12.5px; padding: 4px 10px; color: var(--c-text-muted); text-decoration: none; direction: ltr; text-align: left; }
+.dc-toc a { display: block; font-size: 12.5px; padding: 4px 10px; color: var(--c-text-muted); text-decoration: none; unicode-bidi: plaintext; text-align: start; }
 .dc-toc a:hover { color: var(--c-text); }
 .dc-toc .dc-toc-sub { padding-left: 22px; font-size: 12px; }
 .dc-body { padding: 20px 24px; min-width: 0; text-align: left; font-family: Inter, Vazirmatn, sans-serif; font-size: 14px; line-height: 1.65; }
+.dc-body[dir="rtl"] { text-align: right; font-family: Vazirmatn, Inter, sans-serif; line-height: 1.9; }
+.dc-body[dir="rtl"] .dc-list { padding-left: 0; padding-right: 22px; }
+.dc-body[dir="rtl"] .dc-li-sub { margin-left: 0 !important; margin-right: 18px !important; }
+.dc-body[dir="rtl"] .dc-table th, .dc-body[dir="rtl"] .dc-table td { text-align: right; }
+.dc-body[dir="rtl"] .dc-quote { border-left: 0; border-right: 3px solid var(--c-primary); border-radius: 8px 0 0 8px; }
+.dc-body[dir="rtl"] code { direction: ltr; unicode-bidi: isolate; }
 .dc-body a { color: var(--c-primary-fg); text-decoration: underline; text-underline-offset: 2px; }
 .dc-h { font-weight: 800; line-height: 1.3; scroll-margin-top: 70px; }
 .dc-h1 { font-size: 22px; margin: 0 0 12px; }

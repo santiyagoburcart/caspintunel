@@ -18,7 +18,7 @@ Update a running server with `./update.sh` (backup → build → migrate → rol
 
 See **[docs/](docs/)** — [install](docs/install.md) · [offline](docs/offline.md) ·
 [deploy](docs/deploy.md) · [architecture](docs/architecture.md) · [api](docs/api.md) ·
-[operations](docs/operations.md) · [bots](docs/bots.md) · [development](docs/development.md).
+[operations](docs/operations.md) · [server migration](docs/migration.md) · [bots](docs/bots.md) · [development](docs/development.md).
 The same pages are readable in the admin panel → **Documentation**.
 
 ## Features

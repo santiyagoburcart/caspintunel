@@ -81,3 +81,4 @@ mail/
 !mobile_sms/app/src/main/java/com/caspintunel/smsbridge/data/*
 !mobile_sms/release/
 !mobile_sms/release/*
+nginx/flags/maintenance

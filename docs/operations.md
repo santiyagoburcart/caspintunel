@@ -46,6 +46,9 @@ node status, and the group ids to put in `Plan.group_ids` / `Panel.default_group
 | a rejected order was paid after all | approve it from Transactions — late approvals are fulfilled normally |
 | read the docs on the server | panel → Documentation (`docs/*.md`, read-only) |
 | run the tests | `./scripts/test.sh` — isolated stack only, never the live DB |
+| move to a new server | `scripts/migrate-export.sh` → `scripts/migrate-import.sh` — runbook in [migration.md](migration.md) |
+| maintenance mode (503 page, nothing reaches the app) | `touch nginx/flags/maintenance` / `rm nginx/flags/maintenance` |
+| keep bots + celery idle | `MIGRATION_HOLD=1` in `.env` + `docker compose up -d --force-recreate bot_sales bot_backup celery_beat celery_worker` |
 | roll back a bad release | `./update.sh --rollback` (images); restore `backups/pre-update-*.sql.gz` only if a migration must be undone |
 
 ## Logs

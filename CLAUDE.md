@@ -111,6 +111,16 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
 - Tests that call `transaction.on_commit` work need `@pytest.mark.django_db(transaction=True)` and a stubbed
   `fulfill_order.delay` (no panel in tests). Bot handler tests must stub `close_old_connections`.
 
+## Server migration (docs/migration.md)
+- `scripts/migrate-export.sh [--final|--resume]` (old server) → encrypted archive + manifest;
+  `scripts/migrate-import.sh ARCHIVE | --start-workers | --status` (new server); `scripts/migrate-check.sh IP`
+  (pre-DNS test, read-only). Test the toolkit only with `scripts/test-migration.sh` (throw-away `migtest-*` stacks).
+- Maintenance mode = file `nginx/flags/maintenance` (503 for everything except ACME). Worker hold =
+  `MIGRATION_HOLD=1` in `.env`: `entrypoint.sh` keeps bots + celery idle (survives restarts and `update.sh`).
+  Never run `--final`, `--resume` or an import on the live server without being asked: they stop/replace live state.
+- The import keeps the target's own `DB_*`, `COMPOSE_FILE`, `SERVER_IP`; everything else (incl. `SECRET_KEY`,
+  `FIELD_ENCRYPTION_KEY`) comes from the source. A new server-specific `.env` key must be added to `KEEP_KEYS`.
+
 ## Operator phone tools
 - Android SMS Bridge: `mobile_sms/` (Kotlin); the APK in `mobile_sms/release/` is served by the panel.
 - **iPhone Shortcut: single source `mobile_shortcut/CaspinSMS.shortcut`** (XML plist, no secrets; endpoint +
