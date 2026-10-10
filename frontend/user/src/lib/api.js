@@ -26,6 +26,15 @@ api.interceptors.request.use((cfg) => {
 // would otherwise see this promise settle, so it deliberately never resolves
 function sessionExpired() {
   tokens.clear()
+  // inside the Telegram Mini App the session comes from initData: start over
+  // at the app root (it signs in again) instead of showing the login form
+  if (window.Telegram?.WebApp?.initData || /tgWebAppData=/.test(window.location.hash)) {
+    if (!sessionStorage.getItem('ct_tg_relaunch')) {
+      try { sessionStorage.setItem('ct_tg_relaunch', '1') } catch { /* ignore */ }
+      window.location.replace(import.meta.env.BASE_URL || '/')
+    }
+    return new Promise(() => {})
+  }
   if (!location.pathname.startsWith('/login')) {
     try { sessionStorage.setItem(SESSION_EXPIRED_KEY, '1') } catch { /* private browsing */ }
     location.href = '/login'

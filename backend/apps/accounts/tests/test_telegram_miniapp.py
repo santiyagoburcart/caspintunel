@@ -149,3 +149,43 @@ def test_disabled_account_cannot_start_a_session(client, sales_bot):
     User.objects.create_user("banned", "x", telegram_id=555, source=Source.BOT, is_active=False)
     r = client.post(URL, {"init_data": _sign(_fields(tg_id=555))}, format="json")
     assert r.status_code == 403
+
+
+# --- regression: the mini app showed the login form (v1.7.3) -------------------
+def test_stale_bearer_token_in_the_webview_does_not_block_the_login(client, sales_bot):
+    """A stale JWT left in localStorage used to make DRF answer 401 before
+    initData was looked at; the endpoint must ignore Authorization entirely."""
+    client.credentials(HTTP_AUTHORIZATION="Bearer stale.or.revoked.token")
+    r = client.post(URL, {"init_data": _sign(_fields())}, format="json")
+    assert r.status_code == 200, r.content
+    assert r.json()["access"] and r.json()["user"]["telegram_id"] == 777001
+
+
+def test_token_comes_from_the_db_not_env(client, settings):
+    """BOT_SALES_TOKEN was removed from .env — only the DB row signs initData."""
+    settings.BOT_SALES_TOKEN = "123456:SOMETHING-ELSE"
+    TelegramConfig.objects.create(bot_type=BotType.SALES, token=BOT_TOKEN, is_active=True)
+    assert client.post(URL, {"init_data": _sign(_fields())}, format="json").status_code == 200
+    assert client.post(URL, {"init_data": _sign(_fields(), token="123456:SOMETHING-ELSE")},
+                       format="json").status_code == 401
+
+
+def test_phone_gate_applies_like_the_bot(client, sales_bot):
+    from apps.settings_app.utils import set_setting
+
+    set_setting("force_share_phone", "true", "bool")
+    r = client.post(URL, {"init_data": _sign(_fields(tg_id=5551))}, format="json")
+    assert r.status_code == 403 and r.json()["code"] == "phone_required"
+    u = User.objects.get(telegram_id=5551)          # the account exists (created like the bot)
+    u.phone = "09121234567"; u.save(update_fields=["phone"])
+    assert client.post(URL, {"init_data": _sign(_fields(tg_id=5551))}, format="json").status_code == 200
+
+
+def test_empty_miniapp_url_falls_back_to_the_site(monkeypatch):
+    import environ
+    from config.settings import base
+
+    monkeypatch.setenv("MINIAPP_URL", "")
+    env = environ.Env()
+    assert (env("MINIAPP_URL", default="") or base.PUBLIC_BASE_URL) == base.PUBLIC_BASE_URL
+

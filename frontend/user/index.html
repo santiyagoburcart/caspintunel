@@ -5,9 +5,9 @@
     <link id="favicon" rel="icon" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>caspintunel</title>
-    <!-- Telegram Mini App SDK. Harmless outside Telegram (window.Telegram.WebApp
-         is just inert). Loaded from telegram.org — allowed by the user-site CSP. -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- The Telegram Mini App SDK is BUNDLED (src/main.jsx imports @twa-dev/sdk):
+         telegram.org can be unreachable from Iranian networks, and without it
+         the app could not see initData and fell back to the login form. -->
   </head>
   <body>
     <div id="root"></div>

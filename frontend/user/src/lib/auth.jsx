@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
+import axios from 'axios'
 import { api, apiError, tokens } from './api'
-import { isTelegramMiniApp, tgInitData, initTelegramUi } from './telegram'
+import { isTelegramMiniApp, tgInitData, initTelegramUi, isTelegramWebView } from './telegram'
 
 const Ctx = createContext(null)
 
@@ -28,14 +29,21 @@ export function AuthProvider({ children }) {
   // stale stored token inside Telegram.
   const bootstrapTelegram = async () => {
     initTelegramUi()
+    // a stale token from an earlier session must not ride along (it used to
+    // turn this call into a 401 → "session expired" → login form)
+    tokens.clear()
     try {
-      const { data } = await api.post('/auth/telegram/miniapp/', { init_data: tgInitData() })
+      const { data } = await axios.post('/api/v1/auth/telegram/miniapp/', { init_data: tgInitData() })
       tokens.set(data)
       setUser(data.user)
+      setTgError('')
+      try { sessionStorage.removeItem('ct_tg_relaunch') } catch { /* ignore */ }
     } catch (e) {
       tokens.clear()
       setUser(null)
-      setTgError(apiError(e, 'Telegram session could not be verified.'))
+      const code = e?.response?.data?.code
+      setTgError(code === 'phone_required' ? 'phone_required'
+        : apiError(e, 'Telegram session could not be verified.'))
     } finally {
       setLoading(false)
     }
@@ -45,6 +53,7 @@ export function AuthProvider({ children }) {
     if (booted.current) return   // StrictMode double-invoke guard
     booted.current = true
     if (isTelegramMiniApp()) bootstrapTelegram()
+    else if (isTelegramWebView()) { setTgError('no_init_data'); setLoading(false) }
     else refreshMe()
   }, [])
 
@@ -67,7 +76,8 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <Ctx.Provider value={{ user, loading, tgError, login, register, logout, refreshMe, setUser }}>
+    <Ctx.Provider value={{ user, loading, tgError, login, register, logout, refreshMe, setUser,
+      retryTelegram: () => { setLoading(true); bootstrapTelegram() } }}>
       {children}
     </Ctx.Provider>
   )

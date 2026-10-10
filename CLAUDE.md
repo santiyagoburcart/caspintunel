@@ -114,6 +114,15 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   `mobile_shortcut/README.md` + re-import on an iPhone, re-share as a NEW iCloud link, update the setting.**
   Keep the two action UUIDs the backend looks for.
 
+## Telegram
+- Mini app: the WebApp SDK is BUNDLED (`@twa-dev/sdk`, never the telegram.org CDN); initData is also read from
+  `#tgWebAppData`. `POST /auth/telegram/miniapp/` has `authentication_classes = []` (a stale JWT must never block it),
+  validates with the DB sales-bot token, applies the phone gate. Inside Telegram the SPA never shows a login form.
+- Sales bot: screens are pure functions in `apps/telegram/bot/screens.py` (texts fa/en in `bot/texts.py`); the
+  router in `sales_bot.py` EDITS the current message; typed steps live in the cache (`tgbot:state:<tg_id>`).
+  callback_data ≤64 bytes; keep old callback names working (users' chat history). Tests use a fake bot, never
+  the live one.
+
 ## Secrets / .env
 - Mail: every app email uses `EMAIL_BACKEND = apps.common.mail.DynamicEmailBackend`, which picks the server
   at send time: **admin-panel relay (`EmailSettings`, enabled) → `.env` `EMAIL_*` (external host) → local

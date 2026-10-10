@@ -37,6 +37,12 @@ class FakeBot:
         self.sent.append((text, reply_markup))
         return NS(chat=NS(id=chat_id), message_id=len(self.sent))
 
+    def edit_message_text(self, text, chat_id, message_id, reply_markup=None, **kw):
+        self.sent.append((text, reply_markup))
+
+    def send_photo(self, chat_id, photo, caption=None, reply_markup=None, **kw):
+        self.sent.append((caption, reply_markup))
+
     def register_next_step_handler(self, *a, **kw):
         self.sent.append(("<next-step>", None))
 

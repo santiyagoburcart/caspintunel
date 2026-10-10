@@ -1,3 +1,6 @@
+// Telegram Mini App SDK first (bundled, no CDN): it reads #tgWebAppData before
+// the router can touch the URL and exposes window.Telegram.WebApp
+import '@twa-dev/sdk'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'

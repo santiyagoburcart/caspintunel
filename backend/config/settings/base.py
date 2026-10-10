@@ -240,7 +240,8 @@ PUBLIC_BASE_URL = env("PUBLIC_BASE_URL", default=f"https://{DOMAIN}")
 
 # Telegram Mini App: the URL Telegram opens (our user SPA), and how long a
 # signed initData blob stays acceptable after Telegram issued it.
-MINIAPP_URL = env("MINIAPP_URL", default=PUBLIC_BASE_URL)
+# an EMPTY MINIAPP_URL= in .env must not disable the mini app buttons — fall back to the site
+MINIAPP_URL = env("MINIAPP_URL", default="") or PUBLIC_BASE_URL
 MINIAPP_INITDATA_MAX_AGE = env.int("MINIAPP_INITDATA_MAX_AGE", default=3600)
 
 SPECTACULAR_SETTINGS = {

@@ -86,6 +86,9 @@ class TelegramMiniAppLoginView(GenericAPIView):
     """
 
     permission_classes = [permissions.AllowAny]
+    # never authenticate this request: a stale JWT left in the webview's storage
+    # used to fail authentication (401) BEFORE initData was even looked at
+    authentication_classes = []
     serializer_class = TelegramMiniAppSerializer
     throttle_scope = "auth"
 
@@ -124,7 +127,14 @@ class TelegramMiniAppLoginView(GenericAPIView):
             name=" ".join(filter(None, [tg.get("first_name"), tg.get("last_name")])) or None,
         )
         if not user.is_active:
-            return Response({"detail": "this account is disabled"},
+            return Response({"detail": "this account is disabled", "code": "disabled"},
+                            status=status.HTTP_403_FORBIDDEN)
+        # same gate as the bot: with force_share_phone on, a phone must be on file
+        # (the mini app asks Telegram for the contact, the bot links it, then retries)
+        from apps.telegram.gate import needs_phone
+
+        if needs_phone(user):
+            return Response({"detail": "share your phone number with the bot first", "code": "phone_required"},
                             status=status.HTTP_403_FORBIDDEN)
 
         user.last_login = timezone.now()
