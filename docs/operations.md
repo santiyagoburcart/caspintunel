@@ -42,6 +42,7 @@ node status, and the group ids to put in `Plan.group_ids` / `Panel.default_group
 | change alert thresholds / toggles | panel settings (`setting` table) |
 | bot support contact / message | panel → Branding → *Telegram bot support* (IDs comma-separated; fa/en text, e.g. working hours) |
 | QR background for customers | panel → Branding → *Subscription QR background* (built-in or custom upload; applies to bot, site and downloads at once) |
+| an SMS shows "amount mismatch" | the SMS equals an open invoice only after a Rial/Toman change (e.g. 10× too little) — never auto-approved; compare with the bank statement and approve/reject by hand. Each bank number has an *SMS amount unit* (Settings → Bank numbers), used when the SMS names no unit |
 | why didn't an SMS confirm a payment? | panel → SMS log (masked text, parsed amount, matched order or the reason) |
 | a rejected order was paid after all | approve it from Transactions — late approvals are fulfilled normally |
 | read the docs on the server | panel → Documentation (`docs/*.md`, read-only) |

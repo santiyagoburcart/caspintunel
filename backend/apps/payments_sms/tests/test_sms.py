@@ -17,7 +17,7 @@ from apps.payments_sms.models import (
     SmsMessage,
     SmsSource,
 )
-from apps.payments_sms.parsing import candidate_amounts, extract_numbers
+from apps.payments_sms.parsing import deposit_amount, extract_numbers
 from apps.plans.models import Plan
 
 pytestmark = pytest.mark.django_db
@@ -30,10 +30,9 @@ def test_persian_digits_and_separators():
     assert extract_numbers("deposit 1,502,300 RIAL") == [1502300]
 
 
-def test_rial_to_toman_candidates():
-    cands = candidate_amounts("واریز 1,512,590 ریال")
-    assert Decimal("1512590") in cands
-    assert Decimal("151259") in cands   # /10
+def test_rial_is_converted_once_never_offered_raw():
+    a = deposit_amount("واریز 1,512,590 ریال")
+    assert (a.raw, a.unit, a.toman) == (1512590, "rial", Decimal("151259"))
 
 
 # --- fixtures -------------------------------------------------------

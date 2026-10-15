@@ -12,7 +12,7 @@ from apps.orders.models import Order, OrderStatus
 from apps.orders.services import create_order
 from apps.payments_sms.matching import ingest_sms, mask_sms
 from apps.payments_sms.models import SmsAppDevice, SmsMessage, SmsSource
-from apps.payments_sms.parsing import candidate_amounts, deposit_amounts, primary_amount_toman
+from apps.payments_sms.parsing import deposit_amount, deposit_amounts
 from apps.plans.models import Plan
 
 pytestmark = pytest.mark.django_db
@@ -29,19 +29,18 @@ RESALAT_WITHDRAW = "رسالت\n-1,000,000\n10.123456.1\nمانده:5,000,000"
 @pytest.mark.parametrize("text", [RESALAT, RESALAT_PLUS, RESALAT_LINE, RESALAT_CARD])
 def test_resalat_formats_give_the_deposit_amount_only(text):
     assert deposit_amounts(text) == [2504300]
-    cands = candidate_amounts(text)
-    assert Decimal("250430") in cands                 # rials -> tomans
-    assert Decimal("12345678") not in cands and Decimal("1234567") not in cands   # balance / account
+    a = deposit_amount(text)                          # RESALAT_PLUS names no unit -> source default (rial)
+    assert a.toman == Decimal("250430") and a.raw == 2504300
 
 
 def test_rial_text_reports_tomans_in_the_log():
-    assert primary_amount_toman(RESALAT) == Decimal("250430")
-    assert primary_amount_toman(BLU_DEPOSIT) == Decimal("250000")
+    assert deposit_amount(RESALAT).toman == Decimal("250430")
+    assert deposit_amount(BLU_DEPOSIT).toman == Decimal("250000")
 
 
 @pytest.mark.parametrize("text", [BLU_WITHDRAW, RESALAT_WITHDRAW])
 def test_withdrawals_yield_nothing(text):
-    assert deposit_amounts(text) == [] and candidate_amounts(text) == set()
+    assert deposit_amounts(text) == [] and deposit_amount(text) is None
 
 
 def test_blu_deposit_on_the_next_line():

@@ -236,7 +236,7 @@ def _parse_any_date(value, *, end_of_day=False):
 class SmsLogViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     """GET /admin/sms-log/ — every SMS the phones forwarded (newest first), with
     the sender, the parsed amount, the matched order or the reason it did not
-    match. ?matched=1|0 filters."""
+    match. ?matched=1|0|mismatch filters."""
 
     authentication_classes = _AUTH
     permission_classes = [StaffPermission]
@@ -256,5 +256,7 @@ class SmsLogViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
             qs = qs.filter(matched_order__isnull=False)
         elif m in ("0", "false"):
             qs = qs.filter(matched_order__isnull=True)
+        elif m == "mismatch":                 # unit / amount mismatches waiting for a manual check
+            qs = qs.filter(matched_order__isnull=True, note__startswith="amount mismatch")
         return qs
 

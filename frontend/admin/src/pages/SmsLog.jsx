@@ -12,14 +12,14 @@ import { DataTable } from '../components/DataTable'
 const T = {
   fa: {
     h1: 'لاگ پیامک‌ها', sub: 'پیامک‌هایی که گوشیِ دریافت‌کنندهٔ پیامک بانک به سرور فرستاده و نتیجهٔ تطبیق هرکدام با سفارش‌ها',
-    all: 'همه', matched: 'تطبیق‌یافته', unmatched: 'تطبیق‌نیافته',
+    all: 'همه', matched: 'تطبیق‌یافته', unmatched: 'تطبیق‌نیافته', mismatch: 'مغایرت مبلغ', mismatch_pill: 'مغایرت مبلغ — بررسی دستی', rial: 'ریال', toman_u: 'تومان',
     time: 'زمان', sender: 'فرستنده', device: 'دستگاه', amount: 'مبلغ یافت‌شده', result: 'نتیجه', text: 'متن (شماره‌ها پوشانده شده)',
     ok: 'سفارش', none: 'تطبیق نشد', empty: 'پیامکی ثبت نشده است', more: 'بیشتر', unknown: 'نامشخص',
     hint: 'اگر پیامکی اینجا نیست، گوشی چیزی به سرور نفرستاده است (اتوماسیون/اپ را بررسی کنید). اگر هست، ستون «نتیجه» دلیل را می‌گوید.',
   },
   en: {
     h1: 'SMS log', sub: 'SMS the bank-SMS phone forwarded to the server, and how each was matched to an order',
-    all: 'All', matched: 'Matched', unmatched: 'Not matched',
+    all: 'All', matched: 'Matched', unmatched: 'Not matched', mismatch: 'Amount mismatch', mismatch_pill: 'Amount mismatch — check by hand', rial: 'Rial', toman_u: 'Toman',
     time: 'Time', sender: 'Sender', device: 'Device', amount: 'Amount found', result: 'Result', text: 'Text (numbers masked)',
     ok: 'Order', none: 'Not matched', empty: 'No SMS recorded yet', more: 'Load more', unknown: 'unknown',
     hint: 'If an SMS is missing here, the phone never sent it (check the automation / app). If it is here, "Result" says why.',
@@ -56,7 +56,7 @@ export default function SmsLog() {
         <p className="text-sm text-muted mt-1">{s.sub}</p>
       </div>
       <div className="smsl-tabs" role="tablist">
-        {[['', s.all], ['1', s.matched], ['0', s.unmatched]].map(([k, label]) => (
+        {[['', s.all], ['1', s.matched], ['0', s.unmatched], ['mismatch', s.mismatch]].map(([k, label]) => (
           <button key={k || 'all'} type="button" role="tab" aria-selected={filter === k}
             className={'smsl-tab' + (filter === k ? ' on' : '')} onClick={() => setFilter(k)}>{label}</button>
         ))}
@@ -73,12 +73,19 @@ export default function SmsLog() {
               { key: 'received_at', label: s.time, render: (r) => <span className="smsl-mono" dir="ltr">{jalali(r.received_at, true, lang)}</span> },
               { key: 'sender', label: s.sender, render: (r) => <span dir="auto">{r.sender || (r.source ? r.source : '—')}</span> },
               { key: 'device', label: s.device, render: (r) => r.device || '—' },
-              { key: 'parsed_amount', label: s.amount, render: (r) => (r.parsed_amount != null ? toman(r.parsed_amount, lang) : <span className="text-muted">{s.unknown}</span>) },
+              { key: 'parsed_amount', label: s.amount, render: (r) => (r.parsed_raw != null ? (
+                <span className="smsl-amt">
+                  <span className="smsl-mono" dir="ltr">{r.parsed_raw.toLocaleString('en-US')} {r.parsed_unit === 'toman' ? s.toman_u : s.rial}</span>
+                  {r.parsed_unit === 'rial' && <span className="text-xs text-muted">= {r.parsed_amount != null ? toman(r.parsed_amount, lang) : (r.parsed_raw / 10).toLocaleString('en-US', { maximumFractionDigits: 1 }) + (lang === 'en' ? ' T' : ' تومان')}</span>}
+                </span>
+              ) : r.parsed_amount != null ? toman(r.parsed_amount, lang) : <span className="text-muted">{s.unknown}</span>) },
               { key: 'result', label: s.result, render: (r) => (
                 <div className="smsl-res">
                   {r.matched_order
                     ? <span className="smsl-pill smsl-pill--ok">{s.ok} #{r.matched_order}</span>
-                    : <span className="smsl-pill smsl-pill--no">{s.none}</span>}
+                    : (r.note || '').startsWith('amount mismatch')
+                      ? <span className="smsl-pill smsl-pill--bad">{s.mismatch_pill}</span>
+                      : <span className="smsl-pill smsl-pill--no">{s.none}</span>}
                   {r.note && <span className="smsl-note" dir="auto">{r.note}</span>}
                 </div>
               ) },
@@ -106,6 +113,8 @@ const CSS = `
 .smsl-pill { display: inline-flex; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
 .smsl-pill--ok { color: var(--c-text); background: color-mix(in srgb, var(--c-success) 18%, transparent); }
 .smsl-pill--no { color: var(--c-text); background: color-mix(in srgb, var(--c-warning) 20%, transparent); }
+.smsl-pill--bad { color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 16%, transparent); font-weight: 700; }
+.smsl-amt { display: inline-flex; flex-direction: column; gap: 1px; }
 .smsl-note { font-size: 12px; line-height: 1.7; color: var(--c-text-muted); overflow-wrap: anywhere; }
 .smsl-text { margin: 0; max-width: 360px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; line-height: 1.7;
   font-family: 'Vazirmatn', ui-sans-serif, system-ui, sans-serif; color: var(--c-text); }

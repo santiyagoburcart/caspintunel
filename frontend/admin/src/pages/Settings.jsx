@@ -242,6 +242,8 @@ const T = {
     src_add_title: 'افزودن شمارهٔ مجاز', src_edit_title: 'ویرایش شمارهٔ مجاز',
     src_phone_label: 'شماره فرستنده (مثلاً 10008556)', src_phone_placeholder: '10008556',
     src_desc_label: 'توضیحات (مثلاً نام بانک)', src_desc_placeholder: 'مثلاً بانک ملت',
+    src_unit_label: 'واحد مبلغ در پیامک', src_unit_rial: 'ریال', src_unit_toman: 'تومان', src_col_unit: 'واحد',
+    src_unit_hint: 'فقط وقتی استفاده می‌شود که خود پیامک «ریال» یا «تومان» را ننوشته باشد. بانک بلو: ریال.',
     src_create_btn: 'افزودن شماره', src_save_btn: 'ذخیرهٔ تغییرات',
 
     dev_h: 'دستگاه‌های SMS', dev_sub: 'دستگاه‌های اندرویدی مجاز برای ارسال پیامک‌های واریزی به سرور',
@@ -280,6 +282,8 @@ const T = {
     src_add_title: 'Add an allowed number', src_edit_title: 'Edit allowed number',
     src_phone_label: 'Sender number (e.g. 10008556)', src_phone_placeholder: '10008556',
     src_desc_label: 'Description (e.g. bank name)', src_desc_placeholder: 'e.g. Bank Mellat',
+    src_unit_label: 'SMS amount unit', src_unit_rial: 'Rial', src_unit_toman: 'Toman', src_col_unit: 'Unit',
+    src_unit_hint: 'Used only when the SMS itself does not say Rial or Toman. Blu bank: Rial.',
     src_create_btn: 'Add number', src_save_btn: 'Save changes',
 
     dev_h: 'SMS Devices', dev_sub: 'Android devices authorized to forward deposit SMS to the server',
@@ -331,12 +335,13 @@ const SRC_MODAL_TITLE = { add: 'src_add_title', edit: 'src_edit_title' }
 function SmsSourceModal({ mode, source, s, t, onClose, onSaved }) {
   const [phone, setPhone] = useState(mode === 'edit' && source ? source.phone_number : '')
   const [desc, setDesc] = useState(mode === 'edit' && source ? source.description : '')
+  const [unit, setUnit] = useState(mode === 'edit' && source ? (source.amount_unit || 'rial') : 'rial')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
 
   const submit = async (e) => {
     e.preventDefault(); setBusy(true); setErr('')
-    const body = { phone_number: phone.trim(), description: desc.trim() }
+    const body = { phone_number: phone.trim(), description: desc.trim(), amount_unit: unit }
     try {
       if (mode === 'edit') await api.patch(`/admin/sms-sources/${source.id}/`, body)
       else await api.post('/admin/sms-sources/', body)
@@ -364,6 +369,13 @@ function SmsSourceModal({ mode, source, s, t, onClose, onSaved }) {
             <input className="input" placeholder={s.src_desc_placeholder}
               value={desc} onChange={(e) => setDesc(e.target.value)} />
           </Field>
+          <Field label={s.src_unit_label}>
+            <select className="input" value={unit} onChange={(e) => setUnit(e.target.value)}>
+              <option value="rial">{s.src_unit_rial}</option>
+              <option value="toman">{s.src_unit_toman}</option>
+            </select>
+          </Field>
+          <p className="text-xs text-muted -mt-1">{s.src_unit_hint}</p>
         </div>
 
         <div className="sdm-modal-foot">
@@ -429,6 +441,7 @@ function SmsSourcesSection({ t, s, lang }) {
               <tr>
                 <th>{s.src_col_phone}</th>
                 <th>{s.src_col_desc}</th>
+                <th>{s.src_col_unit}</th>
                 <th>{s.src_col_active}</th>
                 <th>{s.src_col_created}</th>
                 <th>{s.src_col_actions}</th>
@@ -439,6 +452,7 @@ function SmsSourcesSection({ t, s, lang }) {
                 <tr key={src.id}>
                   <td data-label={s.src_col_phone}><code className="mono-num" dir="ltr">{src.phone_number}</code></td>
                   <td data-label={s.src_col_desc}>{src.description || '—'}</td>
+                  <td data-label={s.src_col_unit}>{src.amount_unit === 'toman' ? s.src_unit_toman : s.src_unit_rial}</td>
                   <td data-label={s.src_col_active}>
                     <Toggle checked={src.is_active} onChange={() => toggle(src)} label={s.src_col_active} />
                   </td>

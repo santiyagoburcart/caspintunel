@@ -278,7 +278,7 @@ class AdminSmsSourceSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SmsSource
-        fields = ("id", "phone_number", "description", "is_active", "created_at")
+        fields = ("id", "phone_number", "description", "amount_unit", "is_active", "created_at")
         read_only_fields = ("created_at",)
 
 
@@ -667,7 +667,7 @@ class AdminSmsLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = SmsMessage
         fields = ("id", "received_at", "device", "sender", "source", "text", "parsed_amount",
-                  "matched_order", "matched_order_status", "note")
+                  "parsed_raw", "parsed_unit", "matched_order", "matched_order_status", "note")
         read_only_fields = fields
 
     def get_text(self, obj) -> str:

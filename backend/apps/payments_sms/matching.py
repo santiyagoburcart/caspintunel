@@ -1,8 +1,16 @@
-"""SMS → invoice matching + auto-confirmation (flowchart 1.4)."""
+"""SMS → invoice matching + auto-confirmation (flowchart 1.4).
+
+The SMS amount is converted to tomans ONCE, with an explicit unit (parsing.py),
+and an order is auto-confirmed only when that amount is EXACTLY its invoice
+amount. No tolerance and no ×10 / ÷10 retries: an SMS whose amount equals an
+open invoice only after a unit change (175,662 Rial vs a 175,662 Toman invoice)
+is logged as "amount mismatch" for manual review and never approved.
+"""
 from __future__ import annotations
 
 import logging
 import re
+from decimal import Decimal
 
 from django.db import transaction
 from django.utils import timezone
@@ -18,7 +26,7 @@ from .models import (
     SmsMessage,
     SmsSource,
 )
-from .parsing import candidate_amounts, normalize_digits, primary_amount_toman
+from .parsing import RIAL, SmsAmount, deposit_amount, normalize_digits
 
 log = logging.getLogger("caspintunel")
 
@@ -41,7 +49,8 @@ def mask_sms(text: str) -> str:
         d = re.sub(r"\D", "", m.group(0))
         return "****-" + d[-4:] if len(d) >= 4 else m.group(0)
     text = re.sub(r"\d{4}[\s-]?[\d*]{4}[\s-]?[\d*]{4}[\s-]?\d{4}", card, normalize_digits(text or ""))
-    text = re.sub(r"\d+(?:\.\d+){2,}", lambda m: "***." + re.sub(r"\D", "", m.group(0))[-4:], text)   # 10.1234567.1
+    text = re.sub(r"\d+(?:\.\d+){2,}", lambda m: m.group(0) if re.fullmatch(r"\d{1,3}(?:\.\d{3})+", m.group(0))
+                  else "***." + re.sub(r"\D", "", m.group(0))[-4:], text)   # 10.1234567.1 (not 1.750.000)
     return re.sub(r"\d{13,}", lambda m: "*" * 4 + m.group(0)[-4:], text)
 
 
@@ -73,9 +82,11 @@ def _resolve_source(sender: str | None):
 @transaction.atomic
 def ingest_sms(*, device, raw_text: str, sender: str | None = None, received_at=None) -> tuple[SmsMessage, dict]:
     source, allowed = _resolve_source(sender)
+    amount = deposit_amount(raw_text, source.amount_unit if source else RIAL)
     msg = SmsMessage.objects.create(
         device=device, sms_source=source, raw_text=raw_text, sender=(sender or "")[:64],
-        parsed_amount=primary_amount_toman(raw_text),
+        parsed_amount=amount.toman if amount and amount.whole else None,
+        parsed_raw=amount.raw if amount else None, parsed_unit=amount.unit if amount else "",
     )
     if received_at:
         SmsMessage.objects.filter(pk=msg.pk).update(received_at=received_at)
@@ -87,7 +98,7 @@ def ingest_sms(*, device, raw_text: str, sender: str | None = None, received_at=
               else "no sender reported, and an allow-list of bank numbers is set")
         return msg, result
 
-    payment = match_sms_message(msg)
+    payment = match_sms_message(msg, amount)
     if payment is not None:
         result.update(
             matched=True,
@@ -95,10 +106,18 @@ def ingest_sms(*, device, raw_text: str, sender: str | None = None, received_at=
             amount=str(payment.amount),
             payment_status=payment.status,
         )
-        _note(msg, f"matched order #{payment.order_id} ({payment.amount} T) — auto-confirmed")
-    else:
-        result["reason"] = "no pending order matches an amount in this SMS"
-        _note(msg, _why_unmatched(msg.raw_text))
+        _note(msg, f"matched order #{payment.order_id} ({payment.amount} T, SMS {amount.describe()}) — auto-confirmed")
+        return msg, result
+    suspect = unit_mismatch_order(amount)
+    if suspect is not None:
+        result["reason"] = "amount mismatch"
+        _note(msg, f"amount mismatch — NOT approved, review by hand: SMS {amount.describe()}, "
+                   f"order #{suspect.id} expects {suspect.amount_unique:,} T")
+        log.warning("SMS %s: amount mismatch with order %s (%s vs %s T) — not approved",
+                    msg.id, suspect.id, amount.describe(), suspect.amount_unique)
+        return msg, result
+    result["reason"] = "no pending order matches the amount in this SMS"
+    _note(msg, _why_unmatched(amount))
     return msg, result
 
 
@@ -107,36 +126,58 @@ def _note(msg: SmsMessage, text: str) -> None:
     SmsMessage.objects.filter(pk=msg.pk).update(note=msg.note)
 
 
-def _why_unmatched(raw_text: str) -> str:
+def _whole(values) -> list:
+    return sorted({v for v in values if v > 0 and v == v.to_integral_value()})
+
+
+def unit_mismatch_order(amount: SmsAmount | None) -> Order | None:
+    """An open order whose invoice equals this SMS only after a ×10 / ÷10 unit
+    change (the raw number, ten times / a tenth of the converted amount) — the
+    classic Rial/Toman mix-up. Such an SMS is never approved, only flagged."""
+    if amount is None:
+        return None
+    t, raw = amount.toman, Decimal(amount.raw)
+    suspects = _whole([raw, raw * 10, raw / 10, t * 10, t / 10])
+    suspects = [v for v in suspects if v != t]
+    if not suspects:
+        return None
+    return (Order.objects.filter(status=OrderStatus.PENDING_PAYMENT, amount_unique__in=suspects)
+            .order_by("-created_at").first())
+
+
+def _why_unmatched(amount: SmsAmount | None) -> str:
     """Human-readable reason for the SMS log (what the admin needs to debug)."""
-    candidates = candidate_amounts(raw_text)
-    if not candidates:
+    if amount is None:
         return "no deposit amount found in the text (withdrawal, or a format the parser does not know)"
+    if not amount.whole:
+        return f"SMS {amount.describe()} — not a whole toman amount, no invoice can match"
     from datetime import timedelta
 
-    near = (Order.objects.filter(amount_unique__in=candidates, created_at__gte=timezone.now() - timedelta(days=3))
+    near = (Order.objects.filter(amount_unique=amount.toman, created_at__gte=timezone.now() - timedelta(days=3))
             .order_by("-created_at").first())
-    amounts = ", ".join(str(a) for a in sorted(candidates))
     if near is None:
-        return f"no order with amount {amounts} (tomans or rials) in the last 3 days — paid a different amount?"
+        return f"no order of exactly {amount.toman:,} T in the last 3 days (SMS {amount.describe()})"
     return f"order #{near.id} has this amount but is {near.status} (only pending, unexpired orders auto-confirm)"
 
 
-
-def match_sms_message(msg: SmsMessage) -> Payment | None:
+def match_sms_message(msg: SmsMessage, amount: SmsAmount | None = None) -> Payment | None:
+    """Auto-confirm the pending order whose invoice is EXACTLY the SMS amount in
+    tomans. `amount` defaults to re-parsing the stored text with the source's unit."""
     if msg.matched_order_id:
         return None
-    candidates = candidate_amounts(msg.raw_text)
-    if not candidates:
+    if amount is None:
+        unit = msg.sms_source.amount_unit if msg.sms_source_id else RIAL
+        amount = deposit_amount(msg.raw_text, unit)
+    if amount is None or not amount.whole:
         return None
 
     order = (
         Order.objects.select_for_update()
-        .filter(status=OrderStatus.PENDING_PAYMENT, amount_unique_lock__in=candidates)
+        .filter(status=OrderStatus.PENDING_PAYMENT, amount_unique_lock=amount.toman)
         .order_by("created_at")
         .first()
     )
-    if order is None:
+    if order is None or order.amount_unique != amount.toman:
         return None
 
     msg.parsed_amount = order.amount_unique

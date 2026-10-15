@@ -27,10 +27,19 @@ class BankCard(models.Model):
 # ---------------------------------------------------------------------------
 # SMS confirmation (data-model · Module 5)
 # ---------------------------------------------------------------------------
+class AmountUnit(models.TextChoices):
+    RIAL = "rial", "Rial"
+    TOMAN = "toman", "Toman"
+
+
 class SmsSource(models.Model):
     phone_number = models.CharField(max_length=20)
     description = models.CharField(max_length=255, blank=True)
     is_active = models.BooleanField(default=True)
+    # unit of the amounts in this bank's SMS — used ONLY when the SMS itself
+    # names no unit (ریال / تومان); never a guess, never both
+    amount_unit = models.CharField(max_length=5, choices=AmountUnit.choices, default=AmountUnit.RIAL,
+                                   db_default=AmountUnit.RIAL)
     created_at = models.DateTimeField(auto_now_add=True, null=True)
 
     class Meta:
@@ -70,7 +79,11 @@ class SmsMessage(models.Model):
     raw_text = models.TextField()
     # what the device said the sender was (also kept when it is not an allowed source)
     sender = models.CharField(max_length=64, blank=True, default="")
+    # deposit in WHOLE tomans (null when there is none, or a rial amount is not a
+    # multiple of 10); parsed_raw/parsed_unit = the number as written + its unit
     parsed_amount = models.DecimalField(max_digits=12, decimal_places=0, null=True, blank=True)
+    parsed_raw = models.BigIntegerField(null=True, blank=True)
+    parsed_unit = models.CharField(max_length=5, blank=True, default="", db_default="")
     matched_order = models.ForeignKey(
         "orders.Order", null=True, blank=True, on_delete=models.SET_NULL, related_name="sms_messages"
     )
