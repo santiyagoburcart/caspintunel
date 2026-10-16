@@ -13,6 +13,7 @@ import Transactions from './pages/Transactions'
 import TransactionDetail from './pages/TransactionDetail'
 import SmsLog from './pages/SmsLog'
 import Docs from './pages/Docs'
+import { AgencyAdminDetail, AgencyAdmins, AgencyDashboard, AgencyGroups, AgencySettings, AgencySyncLogs } from './pages/Agency'
 import Accounting from './pages/Accounting'
 import Cards from './pages/Cards'
 import Monitoring from './pages/Monitoring'
@@ -64,6 +65,12 @@ export default function App() {
         <Route path="/pages" element={<Pages />} />
         <Route path="/themes" element={<Themes />} />
         <Route path="/roles" element={<Roles />} />
+        <Route path="/agency" element={<AgencyDashboard />} />
+        <Route path="/agency/admins" element={<AgencyAdmins />} />
+        <Route path="/agency/admins/:username" element={<AgencyAdminDetail />} />
+        <Route path="/agency/groups" element={<AgencyGroups />} />
+        <Route path="/agency/sync-logs" element={<AgencySyncLogs />} />
+        <Route path="/agency/settings" element={<AgencySettings />} />
         <Route path="/docs" element={<Docs />} />
         <Route path="/docs/:slug" element={<Docs />} />
       </Route>

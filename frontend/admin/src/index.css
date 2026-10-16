@@ -594,12 +594,12 @@ code, pre, kbd, samp { font-family: 'JetBrains Mono', ui-monospace, monospace !i
 }
 /* phones: every page's KPI / metric tiles — 2 per row, compact, no decorative icon */
 @media (max-width: 767px) {
-  :is(.acc-kpis, .cd-metrics, .int-metrics, .pl-stats, .tx-stats) { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 8px !important; }
-  :is(.acc-kpis, .cd-metrics, .int-metrics, .pl-stats, .tx-stats) > * { padding: 10px 12px !important; gap: 2px !important; min-height: 0 !important; }
+  :is(.acc-kpis, .cd-metrics, .int-metrics, .pl-stats, .tx-stats, .ag-kpis) { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 8px !important; }
+  :is(.acc-kpis, .cd-metrics, .int-metrics, .pl-stats, .tx-stats, .ag-kpis) > * { padding: 10px 12px !important; gap: 2px !important; min-height: 0 !important; }
   :is(.acc-kpi-ico, .cd-metric-ico, .int-metric-ico, .pl-stat-ico) { display: none !important; }
-  :is(.acc-kpis, .cd-metrics, .int-metrics, .pl-stats, .tx-stats) :is([class*="-val"], [class*="-value"], [class*="-num"]) { font-size: 19px !important; line-height: 1.25 !important; }
+  :is(.acc-kpis, .cd-metrics, .int-metrics, .pl-stats, .tx-stats, .ag-kpis) :is([class*="-val"], [class*="-value"], [class*="-num"]) { font-size: 19px !important; line-height: 1.25 !important; }
 }
 @media (max-width: 767px) {
-  :is(.acc-kpis, .cd-metrics, .int-metrics, .pl-stats, .tx-stats) :is([class$="-sub"], [class*="-sub "], [class*="-accent"]) { display: none !important; }
+  :is(.acc-kpis, .cd-metrics, .int-metrics, .pl-stats, .tx-stats, .ag-kpis) :is([class$="-sub"], [class*="-sub "], [class*="-accent"]) { display: none !important; }
 }
 

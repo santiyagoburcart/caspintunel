@@ -32,6 +32,7 @@ const HUB_ICONS = {
   chevron: <polyline points="9 18 15 12 9 6" />,
   apps: <><rect x="6" y="2" width="12" height="20" rx="3" /><path d="M11 18h2" /></>,
   transactions: <path d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />,
+  agency: <path d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />,
   docs: <path d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />,
   sms_log: <path d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />,
   accounting: <path d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z" />,
@@ -69,6 +70,7 @@ const HUB = {
     cards: { t: 'کارت‌های بانکی', d: 'افزودن و مدیریت کارت‌های دریافت وجه' },
     plans: { t: 'پلن‌ها', d: 'ساخت و ویرایش پلن‌های فروش' },
     deleted: { t: 'کاربران حذف‌شده', d: 'بایگانی کاربران حذف‌شده و بازگردانی' },
+    agency: { t: 'پنل نمایندگی', d: 'ادمین‌های نماینده، حجم فروخته‌شده و محدودیت‌ها' },
     notifications: { t: 'اطلاعیه‌ها', d: 'ارسال پیام همگانی به سایت، ربات و ایمیل' },
     monitoring: { t: 'مانیتورینگ', d: 'سلامت سرویس‌ها، منابع سرور و بک‌آپ‌ها' },
     sync: { t: 'همگام‌سازی سرویس‌ها', d: 'فاصلهٔ همگام‌سازی خودکار با پنل' },
@@ -99,6 +101,7 @@ const HUB = {
     cards: { t: 'Bank cards', d: 'Add and manage the receiving cards' },
     plans: { t: 'Plans', d: 'Create and edit the plans on sale' },
     deleted: { t: 'Deleted users', d: 'Archive of deleted users and restore' },
+    agency: { t: 'Agency panel', d: 'Reseller admins, sold volume and limits' },
     notifications: { t: 'Notifications', d: 'Broadcast to site, bot and email' },
     monitoring: { t: 'Monitoring', d: 'Service health, server resources and backups' },
     sync: { t: 'Service sync', d: 'Automatic panel sync interval' },
@@ -121,7 +124,7 @@ const HUB_COLOR = {
   pages: '#64748B',
   transactions: '#11AB53', sms_log: '#1464BA', accounting: '#11AB53', cards: '#11AB53',
   apps: '#0891B2', plans: '#1464BA', deleted: 'var(--c-danger)', notifications: '#7C3AED',
-  monitoring: '#0891B2', sync: '#1464BA', display: '#64748B', docs: '#64748B',
+  monitoring: '#0891B2', sync: '#1464BA', display: '#64748B', docs: '#64748B', agency: '#7C3AED',
 }
 
 // the mobile index of every admin page that isn't a bottom-nav tab, grouped
@@ -136,6 +139,7 @@ const HUB_GROUPS = [
   ['g_users', [
     ['/plans', 'plans', 'plans.manage'],
     ['/users/deleted', 'deleted', 'users.view'],
+    ['/agency', 'agency', 'agency.view'],
     ['/notifications', 'notifications', 'broadcast.send'],
   ]],
   ['g_system', [

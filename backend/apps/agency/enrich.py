@@ -4,6 +4,7 @@ PAMP v1.5.3 `admins/views.py` (sha256 cf8e262f…65cf):
   _fmt_bytes_signed, _enrich           → verbatim (portal / admin-detail numbers;
                                          note: hidden traffic is NOT clamped here)
   dashboard_numbers()                  → body of dashboard_v2 (totals, over-limit list)
+                                         + total_hidden from the v1 `dashboard` view
   portal_state(panel_admin)            → body of portal_v2 (block state, 80% warning)
 
 Only the surrounding function signatures/returns are new.
@@ -100,6 +101,9 @@ def dashboard_numbers():
         'total_active': totals['total_active'] or 0,
         'over_limit_admins': over_limit_list,
         'total_limit': total_limit, 'total_used': total_used, 'total_remaining': total_remaining,
+        # PAMP's v1 `dashboard` view: total_hidden = total_limit - total_used - total_remaining (verbatim)
+        'total_hidden': total_limit - total_used - total_remaining,
+        'total_hidden_fmt': _fmt_bytes(total_limit - total_used - total_remaining),
     }
 
 

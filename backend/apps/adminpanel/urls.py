@@ -5,6 +5,8 @@ from .views.apps import AppReleaseDetailView, AppReleaseDownloadView, AppRelease
 from .views.auth import StaffLoginView, StaffMeView, StaffRefreshView
 from .views.branding import QrPreviewView, SiteConfigView
 from .views.docs import DocsListView, DocsPageView
+from .views.agency import (AgencyAdminActionView, AgencyAdminDetailView, AgencyAdminListView, AgencyDashboardView,
+                           AgencyGroupsView, AgencySettingsView, AgencySyncLogsView, AgencySyncNowView)
 from .views.catalog import (
     BankCardViewSet,
     PageViewSet,
@@ -69,6 +71,15 @@ urlpatterns = [
     path("payments/<int:pk>/<str:action>/", PaymentDecisionView.as_view(), name="admin-payment-decision"),
     path("branding/", SiteConfigView.as_view(), name="admin-branding"),
     path("branding/qr-preview/", QrPreviewView.as_view(), name="admin-branding-qr-preview"),
+    path("agency/", AgencyDashboardView.as_view(), name="admin-agency"),
+    path("agency/admins/", AgencyAdminListView.as_view(), name="admin-agency-admins"),
+    path("agency/admins/<str:username>/<str:action>/", AgencyAdminActionView.as_view(), name="admin-agency-action"),
+    path("agency/admins/<str:username>/", AgencyAdminDetailView.as_view(), name="admin-agency-admin"),
+    path("agency/sync-now/", AgencySyncNowView.as_view(), name="admin-agency-sync-now"),
+    path("agency/groups/", AgencyGroupsView.as_view(), name="admin-agency-groups"),
+    path("agency/groups/<int:group_id>/", AgencyGroupsView.as_view(), name="admin-agency-group"),
+    path("agency/sync-logs/", AgencySyncLogsView.as_view(), name="admin-agency-sync-logs"),
+    path("agency/settings/", AgencySettingsView.as_view(), name="admin-agency-settings"),
     path("docs/", DocsListView.as_view(), name="admin-docs"),
     path("docs/<str:slug>/", DocsPageView.as_view(), name="admin-docs-page"),
     path("dashboard/", DashboardView.as_view(), name="admin-dashboard"),

@@ -1,9 +1,26 @@
-# Agency panel (پنل نمایندگی) — phase 1
+# Agency panel (پنل نمایندگی)
 
 Reseller-admin management ported from PAMP v1.5.3 into caspintunel (app `backend/apps/agency`): the
 PasarGuard admins (resellers), their limits, used / sold / hidden traffic, deleted-users accounting,
 enforcement (disable an admin at 100 % of their limit, re-enable below it) and account groups.
-Phase 1 = backend + data import; no UI yet. Porting map: `backend/apps/agency/PORTING.md`.
+Phase 1 = backend + data import; phase 2 = admin UI. Porting map: `backend/apps/agency/PORTING.md`.
+
+## Admin UI (`/panel/agency`, permission `agency.view`)
+
+Dashboard (PAMP totals: Total Sold, Used, Remaining, Hidden, admins; the ≥80 % list) · Admins (search,
+status / limit / group filters, usage bar, Total Sold, Sold Limit, Hidden, Remaining) · admin detail (every
+PAMP number, user counts, snapshots, recent syncs, actions) · Groups · Sync logs · Settings (sync,
+enforcement, interval; `agency.manage`). Every number comes from the backend (`apps/agency/api.py` only
+selects values computed by the ported code); the pages only format them.
+
+**Until the cut-over every write is off**: set/remove limit, enable/disable admin or all their users, reset
+deleted traffic, sync now and group edits answer `409 pre_cutover` and the buttons show "فعال پس از انتقال
+نهایی". They open when `agency_sync_enabled` is turned on — which the Settings page only accepts after typing
+`FINLAND-STOPPED` (that switch IS the cut-over). Enforcement can only be on while sync is on.
+
+API: `GET /api/v1/admin/agency/` · `agency/admins/` · `agency/admins/<username>/` ·
+`POST agency/admins/<username>/{set-limit|remove-limit|admin-action|reset-deleted-traffic}/` ·
+`POST agency/sync-now/` · `agency/groups/` · `agency/sync-logs/` · `GET/PATCH agency/settings/`.
 
 ## Switches (all OFF by default)
 
