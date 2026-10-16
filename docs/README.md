@@ -9,6 +9,7 @@
 | [api.md](api.md) | API surface overview (full spec at `/api/schema/`, UI at `/api/docs/`) |
 | [operations.md](operations.md) | day-2: backups, monitoring, alerts, user delete/restore, SMS devices & apps, common tasks |
 | [migration.md](migration.md) · [فارسی](migration-fa.md) | moving to a new server: export / import scripts, pre-DNS test, runbook, rollback, server specs |
+| [agency.md](agency.md) | agency panel (reseller admins, PAMP port): switches, data import, golden test |
 | [bots.md](bots.md) | the Telegram sales bot: menus, support message, purchase history, QR photos |
 | [telegram-miniapp.md](telegram-miniapp.md) | Telegram Mini App auto-login |
 | [email-relay.md](email-relay.md) | outbound mail through a relay |

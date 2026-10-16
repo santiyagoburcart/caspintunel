@@ -115,6 +115,13 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
 - Tests that call `transaction.on_commit` work need `@pytest.mark.django_db(transaction=True)` and a stubbed
   `fulfill_order.delay` (no panel in tests). Bot handler tests must stub `close_old_connections`.
 
+## Agency panel (apps/agency, docs/agency.md)
+- 1:1 port of PAMP v1.5.3 (reseller admins). Formulas, sync order and enforcement are VERBATIM (PORTING.md);
+  `tests/test_golden.py` compares them with the ORIGINAL PAMP code — never "improve" them here.
+- `agency_sync_enabled` / `agency_enforcement_enabled` stay OFF until the owner approves the cut-over from the
+  Finland PAMP (never two syncs on one panel). Resellers are NOT `accounts.User` rows.
+- Real PAMP data (dumps, recorded panel responses) lives only in `backups/pamp/` and `backend/.golden_local/`.
+
 ## Server migration (docs/migration.md)
 - `scripts/migrate-export.sh [--final|--resume]` (old server) → encrypted archive + manifest;
   `scripts/migrate-import.sh ARCHIVE | --start-workers | --status` (new server); `scripts/migrate-check.sh IP`

@@ -1,0 +1,7220 @@
+{
+ "initial": {
+  "admins": {
+   "alice": {
+    "active_user_count": 0,
+    "active_users": 0,
+    "admin_limit_bytes": 107374182400,
+    "admin_limit_fmt": "100.00 GB",
+    "admin_limit_gb": 100.0,
+    "admin_remaining": 42949672960,
+    "admin_remaining_fmt": "40.00 GB",
+    "admin_remaining_gb": 40.0,
+    "admin_used_bytes": 64424509440,
+    "admin_used_fmt": "60.00 GB",
+    "deleted_traffic_reset_at_set": false,
+    "deleted_users_used_bytes": 7516205113,
+    "disabled_users": 0,
+    "effective_status": [
+     "active",
+     "Active",
+     "#10b981"
+    ],
+    "enrich": {
+     "admin_limit_fmt": "100.00 GB",
+     "admin_remaining_fmt": "40.00 GB",
+     "admin_used_fmt": "60.00 GB",
+     "deleted_used_bytes": 7516205113,
+     "deleted_used_fmt": "7.00 GB",
+     "hidden_traffic_fmt": "-10.00 GB",
+     "sold_limit_fmt": "+10.00 GB",
+     "sold_limit_value": 10737418240,
+     "total_user_limit_fmt": "90.00 GB",
+     "total_user_used_fmt": "60.00 GB",
+     "usage_percent": 60.0
+    },
+    "expired_users": 0,
+    "has_data_limit": true,
+    "hidden_traffic": 0,
+    "hidden_traffic_bytes": 0,
+    "hidden_traffic_fmt": "0 B",
+    "hidden_traffic_gb": 0.0,
+    "id": 1,
+    "is_active": true,
+    "is_sudo": false,
+    "is_unlimited": false,
+    "last_synced_at_set": false,
+    "limit_config": {
+     "is_blocked": false,
+     "limit_bytes": 107374182400,
+     "support_telegram": "@help",
+     "telegram_username": "@alice",
+     "warning_sent_80": false
+    },
+    "limited_users": 0,
+    "on_hold_users": 0,
+    "pamp_blocked": false,
+    "pamp_blocked_at_set": false,
+    "portal": {
+     "block_reason": null,
+     "is_blocked": false,
+     "show_warning": false,
+     "support_telegram": "@help",
+     "warning_pct": 60.0
+    },
+    "raw_data": {},
+    "sold_limit_bytes": 10737418240,
+    "status": "active",
+    "status_code": "active",
+    "status_color": "#10b981",
+    "status_label": "Active",
+    "total_user_limit": 96636764160,
+    "total_user_limit_fmt": "90.00 GB",
+    "total_user_limit_gb": 90.0,
+    "total_user_used": 64424509440,
+    "total_user_used_fmt": "60.00 GB",
+    "total_user_used_gb": 60.0,
+    "usage_percent": 60.0,
+    "user_count": 3,
+    "username": "alice",
+    "users_count": 3
+   },
+   "bob": {
+    "active_user_count": 0,
+    "active_users": 0,
+    "admin_limit_bytes": 10737418240,
+    "admin_limit_fmt": "10.00 GB",
+    "admin_limit_gb": 10.0,
+    "admin_remaining": 1073741824,
+    "admin_remaining_fmt": "1.00 GB",
+    "admin_remaining_gb": 1.0,
+    "admin_used_bytes": 9663676416,
+    "admin_used_fmt": "9.00 GB",
+    "deleted_traffic_reset_at_set": false,
+    "deleted_users_used_bytes": 0,
+    "disabled_users": 0,
+    "effective_status": [
+     "active",
+     "Active",
+     "#10b981"
+    ],
+    "enrich": {
+     "admin_limit_fmt": "10.00 GB",
+     "admin_remaining_fmt": "1.00 GB",
+     "admin_used_fmt": "9.00 GB",
+     "deleted_used_bytes": 0,
+     "deleted_used_fmt": "0 B",
+     "hidden_traffic_fmt": "-10.00 GB",
+     "sold_limit_fmt": "+10.00 GB",
+     "sold_limit_value": 10737418240,
+     "total_user_limit_fmt": "0 B",
+     "total_user_used_fmt": "9.00 GB",
+     "usage_percent": 90.0
+    },
+    "expired_users": 0,
+    "has_data_limit": true,
+    "hidden_traffic": 0,
+    "hidden_traffic_bytes": 0,
+    "hidden_traffic_fmt": "0 B",
+    "hidden_traffic_gb": 0.0,
+    "id": 2,
+    "is_active": true,
+    "is_sudo": false,
+    "is_unlimited": false,
+    "last_synced_at_set": false,
+    "limit_config": {
+     "is_blocked": false,
+     "limit_bytes": 0,
+     "support_telegram": "",
+     "telegram_username": "",
+     "warning_sent_80": false
+    },
+    "limited_users": 0,
+    "on_hold_users": 0,
+    "pamp_blocked": false,
+    "pamp_blocked_at_set": false,
+    "portal": {
+     "block_reason": null,
+     "is_blocked": false,
+     "show_warning": true,
+     "support_telegram": "@support",
+     "warning_pct": 90.0
+    },
+    "raw_data": {},
+    "sold_limit_bytes": 10737418240,
+    "status": "active",
+    "status_code": "active",
+    "status_color": "#10b981",
+    "status_label": "Active",
+    "total_user_limit": 0,
+    "total_user_limit_fmt": "0 B",
+    "total_user_limit_gb": 0.0,
+    "total_user_used": 9663676416,
+    "total_user_used_fmt": "9.00 GB",
+    "total_user_used_gb": 9.0,
+    "usage_percent": 90.0,
+    "user_count": 0,
+    "username": "bob",
+    "users_count": 0
+   },
+   "dave": {
+    "active_user_count": 0,
+    "active_users": 0,
+    "admin_limit_bytes": 35433480969,
+    "admin_limit_fmt": "33.00 GB",
+    "admin_limit_gb": 33.0,
+    "admin_remaining": 5,
+    "admin_remaining_fmt": "5.00 B",
+    "admin_remaining_gb": 0.0,
+    "admin_used_bytes": 0,
+    "admin_used_fmt": "0 B",
+    "deleted_traffic_reset_at_set": false,
+    "deleted_users_used_bytes": 999,
+    "disabled_users": 0,
+    "effective_status": [
+     "active",
+     "Active",
+     "#10b981"
+    ],
+    "enrich": {
+     "admin_limit_fmt": "33.00 GB",
+     "admin_remaining_fmt": "5.00 B",
+     "admin_used_fmt": "0 B",
+     "deleted_used_bytes": 999,
+     "deleted_used_fmt": "999.00 B",
+     "hidden_traffic_fmt": "7.00 B",
+     "sold_limit_fmt": "-7.00 B",
+     "sold_limit_value": -7,
+     "total_user_limit_fmt": "12.00 B",
+     "total_user_used_fmt": "0 B",
+     "usage_percent": 0.0
+    },
+    "expired_users": 0,
+    "has_data_limit": true,
+    "hidden_traffic": 7,
+    "hidden_traffic_bytes": 7,
+    "hidden_traffic_fmt": "7.00 B",
+    "hidden_traffic_gb": 0.0,
+    "id": 3,
+    "is_active": true,
+    "is_sudo": false,
+    "is_unlimited": false,
+    "last_synced_at_set": false,
+    "limit_config": null,
+    "limited_users": 0,
+    "on_hold_users": 0,
+    "pamp_blocked": false,
+    "pamp_blocked_at_set": false,
+    "portal": {
+     "block_reason": null,
+     "is_blocked": false,
+     "show_warning": false,
+     "support_telegram": "@support",
+     "warning_pct": 0.0
+    },
+    "raw_data": {},
+    "sold_limit_bytes": -7,
+    "status": "active",
+    "status_code": "active",
+    "status_color": "#10b981",
+    "status_label": "Active",
+    "total_user_limit": 12,
+    "total_user_limit_fmt": "12.00 B",
+    "total_user_limit_gb": 0.0,
+    "total_user_used": 0,
+    "total_user_used_fmt": "0 B",
+    "total_user_used_gb": 0.0,
+    "usage_percent": 0.0,
+    "user_count": 0,
+    "username": "dave",
+    "users_count": 0
+   },
+   "erin": {
+    "active_user_count": 0,
+    "active_users": 0,
+    "admin_limit_bytes": 0,
+    "admin_limit_fmt": "Unlimited",
+    "admin_limit_gb": 0.0,
+    "admin_remaining": 0,
+    "admin_remaining_fmt": "Unlimited",
+    "admin_remaining_gb": 0.0,
+    "admin_used_bytes": 0,
+    "admin_used_fmt": "0 B",
+    "deleted_traffic_reset_at_set": false,
+    "deleted_users_used_bytes": 0,
+    "disabled_users": 0,
+    "effective_status": [
+     "active",
+     "Active",
+     "#10b981"
+    ],
+    "enrich": {
+     "admin_limit_fmt": "Unlimited",
+     "admin_remaining_fmt": "Unlimited",
+     "admin_used_fmt": "0 B",
+     "deleted_used_bytes": 0,
+     "deleted_used_fmt": "0 B",
+     "hidden_traffic_fmt": "0 B",
+     "sold_limit_fmt": "0 GB",
+     "sold_limit_value": 0,
+     "total_user_limit_fmt": "0 B",
+     "total_user_used_fmt": "0 B",
+     "usage_percent": 0
+    },
+    "expired_users": 0,
+    "has_data_limit": false,
+    "hidden_traffic": 0,
+    "hidden_traffic_bytes": 0,
+    "hidden_traffic_fmt": "0 B",
+    "hidden_traffic_gb": 0.0,
+    "id": 4,
+    "is_active": true,
+    "is_sudo": false,
+    "is_unlimited": true,
+    "last_synced_at_set": false,
+    "limit_config": null,
+    "limited_users": 0,
+    "on_hold_users": 0,
+    "pamp_blocked": false,
+    "pamp_blocked_at_set": false,
+    "portal": {
+     "block_reason": null,
+     "is_blocked": false,
+     "show_warning": false,
+     "support_telegram": "@support",
+     "warning_pct": 0
+    },
+    "raw_data": {},
+    "sold_limit_bytes": 0,
+    "status": "active",
+    "status_code": "active",
+    "status_color": "#10b981",
+    "status_label": "Active",
+    "total_user_limit": 0,
+    "total_user_limit_fmt": "0 B",
+    "total_user_limit_gb": 0.0,
+    "total_user_used": 0,
+    "total_user_used_fmt": "0 B",
+    "total_user_used_gb": 0.0,
+    "usage_percent": 0,
+    "user_count": 0,
+    "username": "erin",
+    "users_count": 0
+   },
+   "gina": {
+    "active_user_count": 0,
+    "active_users": 0,
+    "admin_limit_bytes": 0,
+    "admin_limit_fmt": "Unlimited",
+    "admin_limit_gb": 0.0,
+    "admin_remaining": 0,
+    "admin_remaining_fmt": "Unlimited",
+    "admin_remaining_gb": 0.0,
+    "admin_used_bytes": 0,
+    "admin_used_fmt": "0 B",
+    "deleted_traffic_reset_at_set": false,
+    "deleted_users_used_bytes": 0,
+    "disabled_users": 0,
+    "effective_status": [
+     "active",
+     "Active",
+     "#10b981"
+    ],
+    "enrich": {
+     "admin_limit_fmt": "Unlimited",
+     "admin_remaining_fmt": "Unlimited",
+     "admin_used_fmt": "0 B",
+     "deleted_used_bytes": 0,
+     "deleted_used_fmt": "0 B",
+     "hidden_traffic_fmt": "0 B",
+     "sold_limit_fmt": "0 GB",
+     "sold_limit_value": 0,
+     "total_user_limit_fmt": "0 B",
+     "total_user_used_fmt": "0 B",
+     "usage_percent": 0
+    },
+    "expired_users": 0,
+    "has_data_limit": false,
+    "hidden_traffic": 0,
+    "hidden_traffic_bytes": 0,
+    "hidden_traffic_fmt": "0 B",
+    "hidden_traffic_gb": 0.0,
+    "id": 5,
+    "is_active": true,
+    "is_sudo": false,
+    "is_unlimited": true,
+    "last_synced_at_set": false,
+    "limit_config": null,
+    "limited_users": 0,
+    "on_hold_users": 0,
+    "pamp_blocked": false,
+    "pamp_blocked_at_set": false,
+    "portal": {
+     "block_reason": null,
+     "is_blocked": false,
+     "show_warning": false,
+     "support_telegram": "@support",
+     "warning_pct": 0
+    },
+    "raw_data": {},
+    "sold_limit_bytes": 0,
+    "status": "active",
+    "status_code": "active",
+    "status_color": "#10b981",
+    "status_label": "Active",
+    "total_user_limit": 0,
+    "total_user_limit_fmt": "0 B",
+    "total_user_limit_gb": 0.0,
+    "total_user_used": 0,
+    "total_user_used_fmt": "0 B",
+    "total_user_used_gb": 0.0,
+    "usage_percent": 0,
+    "user_count": 0,
+    "username": "gina",
+    "users_count": 0
+   },
+   "yuki": {
+    "active_user_count": 0,
+    "active_users": 0,
+    "admin_limit_bytes": 5368709120,
+    "admin_limit_fmt": "5.00 GB",
+    "admin_limit_gb": 5.0,
+    "admin_remaining": 0,
+    "admin_remaining_fmt": "0 B",
+    "admin_remaining_gb": 0.0,
+    "admin_used_bytes": 0,
+    "admin_used_fmt": "0 B",
+    "deleted_traffic_reset_at_set": false,
+    "deleted_users_used_bytes": 0,
+    "disabled_users": 0,
+    "effective_status": [
+     "pamp_limited",
+     "Limited",
+     "#f59e0b"
+    ],
+    "enrich": {
+     "admin_limit_fmt": "5.00 GB",
+     "admin_remaining_fmt": "0 B",
+     "admin_used_fmt": "0 B",
+     "deleted_used_bytes": 0,
+     "deleted_used_fmt": "0 B",
+     "hidden_traffic_fmt": "0 B",
+     "sold_limit_fmt": "0 GB",
+     "sold_limit_value": 0,
+     "total_user_limit_fmt": "0 B",
+     "total_user_used_fmt": "0 B",
+     "usage_percent": 0.0
+    },
+    "expired_users": 0,
+    "has_data_limit": true,
+    "hidden_traffic": 0,
+    "hidden_traffic_bytes": 0,
+    "hidden_traffic_fmt": "0 B",
+    "hidden_traffic_gb": 0.0,
+    "id": 6,
+    "is_active": true,
+    "is_sudo": false,
+    "is_unlimited": false,
+    "last_synced_at_set": false,
+    "limit_config": null,
+    "limited_users": 0,
+    "on_hold_users": 0,
+    "pamp_blocked": true,
+    "pamp_blocked_at_set": false,
+    "portal": {
+     "block_reason": "pamp_limited",
+     "is_blocked": true,
+     "show_warning": false,
+     "support_telegram": "@support",
+     "warning_pct": 0.0
+    },
+    "raw_data": {},
+    "sold_limit_bytes": 0,
+    "status": "active",
+    "status_code": "pamp_limited",
+    "status_color": "#f59e0b",
+    "status_label": "Limited",
+    "total_user_limit": 0,
+    "total_user_limit_fmt": "0 B",
+    "total_user_limit_gb": 0.0,
+    "total_user_used": 0,
+    "total_user_used_fmt": "0 B",
+    "total_user_used_gb": 0.0,
+    "usage_percent": 0.0,
+    "user_count": 0,
+    "username": "yuki",
+    "users_count": 0
+   }
+  },
+  "dashboard": {
+   "active_count": 6,
+   "admin_count": 6,
+   "disabled_count": 0,
+   "near_limit_count": 1,
+   "over_limit_admins": [
+    {
+     "limit_fmt": "10.00 GB",
+     "pct": 90.0,
+     "state": "at_risk",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "used_fmt": "9.00 GB",
+     "username": "bob"
+    }
+   ],
+   "pamp_limited_count": 1,
+   "total_active": 0,
+   "total_limit_fmt": "90.00 GB",
+   "total_remaining_fmt": "41.00 GB",
+   "total_used_fmt": "69.00 GB",
+   "total_users": 3
+  },
+  "snapshots": {
+   "alice": {
+    "count": 3,
+    "sum": 35433480526,
+    "users": [
+     [
+      "a1",
+      10737418240
+     ],
+     [
+      "a2",
+      21474836481
+     ],
+     [
+      "a3",
+      3221225805
+     ]
+    ]
+   },
+   "bob": {
+    "count": 0,
+    "sum": 0,
+    "users": []
+   },
+   "dave": {
+    "count": 2,
+    "sum": 11811160064,
+    "users": [
+     [
+      "d1",
+      5368709120
+     ],
+     [
+      "d2",
+      6442450944
+     ]
+    ]
+   },
+   "erin": {
+    "count": 2,
+    "sum": 4294968196,
+    "users": [
+     [
+      "e-old",
+      4294967296
+     ],
+     [
+      "g0",
+      900
+     ]
+    ]
+   },
+   "gina": {
+    "count": 0,
+    "sum": 0,
+    "users": []
+   },
+   "yuki": {
+    "count": 0,
+    "sum": 0,
+    "users": []
+   }
+  }
+ },
+ "rounds": [
+  {
+   "admins": {
+    "alice": {
+     "active_user_count": 2,
+     "active_users": 2,
+     "admin_limit_bytes": 107374182400,
+     "admin_limit_fmt": "100.00 GB",
+     "admin_limit_gb": 100.0,
+     "admin_remaining": 41875931119,
+     "admin_remaining_fmt": "39.00 GB",
+     "admin_remaining_gb": 39.0,
+     "admin_used_bytes": 65498251281,
+     "admin_used_fmt": "61.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 7516205113,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "100.00 GB",
+      "admin_remaining_fmt": "39.00 GB",
+      "admin_used_fmt": "61.00 GB",
+      "deleted_used_bytes": 7516205113,
+      "deleted_used_fmt": "7.00 GB",
+      "hidden_traffic_fmt": "-48.00 GB",
+      "sold_limit_fmt": "+48.00 GB",
+      "sold_limit_value": 51539595207,
+      "total_user_limit_fmt": "52.00 GB",
+      "total_user_used_fmt": "61.00 GB",
+      "usage_percent": 61.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 1,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": {
+      "is_blocked": false,
+      "limit_bytes": 107374182400,
+      "support_telegram": "@help",
+      "telegram_username": "@alice",
+      "warning_sent_80": false
+     },
+     "limited_users": 1,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": false,
+      "support_telegram": "@help",
+      "warning_pct": 61.0
+     },
+     "raw_data": {
+      "data_limit": 107374182400,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 3,
+      "used_traffic": 65498251281,
+      "username": "alice"
+     },
+     "sold_limit_bytes": 51539595207,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 55834587193,
+     "total_user_limit_fmt": "52.00 GB",
+     "total_user_limit_gb": 52.0,
+     "total_user_used": 65498251281,
+     "total_user_used_fmt": "61.00 GB",
+     "total_user_used_gb": 61.0,
+     "usage_percent": 61.0,
+     "user_count": 3,
+     "username": "alice",
+     "users_count": 3
+    },
+    "bob": {
+     "active_user_count": 0,
+     "active_users": 0,
+     "admin_limit_bytes": 10737418240,
+     "admin_limit_fmt": "10.00 GB",
+     "admin_limit_gb": 10.0,
+     "admin_remaining": 0,
+     "admin_remaining_fmt": "0 B",
+     "admin_remaining_gb": 0.0,
+     "admin_used_bytes": 10737418241,
+     "admin_used_fmt": "10.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 1,
+     "effective_status": [
+      "pamp_limited",
+      "Limited",
+      "#f59e0b"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "10.00 GB",
+      "admin_remaining_fmt": "0 B",
+      "admin_used_fmt": "10.00 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "-4.00 GB",
+      "sold_limit_fmt": "+4.00 GB",
+      "sold_limit_value": 4294967297,
+      "total_user_limit_fmt": "6.00 GB",
+      "total_user_used_fmt": "10.00 GB",
+      "usage_percent": 100.0
+     },
+     "expired_users": 1,
+     "has_data_limit": true,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 2,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": {
+      "is_blocked": false,
+      "limit_bytes": 0,
+      "support_telegram": "",
+      "telegram_username": "",
+      "warning_sent_80": false
+     },
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": true,
+     "pamp_blocked_at_set": true,
+     "portal": {
+      "block_reason": "pamp_limited",
+      "is_blocked": true,
+      "show_warning": true,
+      "support_telegram": "@support",
+      "warning_pct": 100.0
+     },
+     "raw_data": {
+      "data_limit": 10737418240,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 2,
+      "used_traffic": 10737418241,
+      "username": "bob"
+     },
+     "sold_limit_bytes": 4294967297,
+     "status": "active",
+     "status_code": "pamp_limited",
+     "status_color": "#f59e0b",
+     "status_label": "Limited",
+     "total_user_limit": 6442450944,
+     "total_user_limit_fmt": "6.00 GB",
+     "total_user_limit_gb": 6.0,
+     "total_user_used": 10737418241,
+     "total_user_used_fmt": "10.00 GB",
+     "total_user_used_gb": 10.0,
+     "usage_percent": 100.0,
+     "user_count": 2,
+     "username": "bob",
+     "users_count": 2
+    },
+    "carol": {
+     "active_user_count": 2,
+     "active_users": 2,
+     "admin_limit_bytes": 0,
+     "admin_limit_fmt": "Unlimited",
+     "admin_limit_gb": 0.0,
+     "admin_remaining": 0,
+     "admin_remaining_fmt": "Unlimited",
+     "admin_remaining_gb": 0.0,
+     "admin_used_bytes": 268435456003,
+     "admin_used_fmt": "250.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "Unlimited",
+      "admin_remaining_fmt": "Unlimited",
+      "admin_used_fmt": "250.00 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "-249.00 GB",
+      "sold_limit_fmt": "0 GB",
+      "sold_limit_value": 0,
+      "total_user_limit_fmt": "1.00 GB",
+      "total_user_used_fmt": "250.00 GB",
+      "usage_percent": 0
+     },
+     "expired_users": 0,
+     "has_data_limit": false,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 7,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": true,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 1,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": false,
+      "support_telegram": "@support",
+      "warning_pct": 0
+     },
+     "raw_data": {
+      "data_limit": null,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 4,
+      "used_traffic": 268435456003,
+      "username": "carol"
+     },
+     "sold_limit_bytes": 0,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 1073741824,
+     "total_user_limit_fmt": "1.00 GB",
+     "total_user_limit_gb": 1.0,
+     "total_user_used": 268435456003,
+     "total_user_used_fmt": "250.00 GB",
+     "total_user_used_gb": 250.0,
+     "usage_percent": 0,
+     "user_count": 4,
+     "username": "carol",
+     "users_count": 4
+    },
+    "dave": {
+     "active_user_count": 2,
+     "active_users": 2,
+     "admin_limit_bytes": 35433480969,
+     "admin_limit_fmt": "33.00 GB",
+     "admin_limit_gb": 33.0,
+     "admin_remaining": 34359739145,
+     "admin_remaining_fmt": "32.00 GB",
+     "admin_remaining_gb": 32.0,
+     "admin_used_bytes": 1073741824,
+     "admin_used_fmt": "1.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 999,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "33.00 GB",
+      "admin_remaining_fmt": "32.00 GB",
+      "admin_used_fmt": "1.00 GB",
+      "deleted_used_bytes": 999,
+      "deleted_used_fmt": "999.00 B",
+      "hidden_traffic_fmt": "-16.00 GB",
+      "sold_limit_fmt": "+16.00 GB",
+      "sold_limit_value": 17179868962,
+      "total_user_limit_fmt": "17.00 GB",
+      "total_user_used_fmt": "1.00 GB",
+      "usage_percent": 3.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 3,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": false,
+      "support_telegram": "@support",
+      "warning_pct": 3.0
+     },
+     "raw_data": {
+      "data_limit": 35433480969,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 2,
+      "used_traffic": 1073741824,
+      "username": "dave"
+     },
+     "sold_limit_bytes": 17179868962,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 18253612007,
+     "total_user_limit_fmt": "17.00 GB",
+     "total_user_limit_gb": 17.0,
+     "total_user_used": 1073741824,
+     "total_user_used_fmt": "1.00 GB",
+     "total_user_used_gb": 1.0,
+     "usage_percent": 3.0,
+     "user_count": 2,
+     "username": "dave",
+     "users_count": 2
+    },
+    "erin": {
+     "active_user_count": 4096,
+     "active_users": 4096,
+     "admin_limit_bytes": 0,
+     "admin_limit_fmt": "Unlimited",
+     "admin_limit_gb": 0.0,
+     "admin_remaining": 0,
+     "admin_remaining_fmt": "Unlimited",
+     "admin_remaining_gb": 0.0,
+     "admin_used_bytes": 123456789012,
+     "admin_used_fmt": "114.98 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "Unlimited",
+      "admin_remaining_fmt": "Unlimited",
+      "admin_used_fmt": "114.98 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "-114.96 GB",
+      "sold_limit_fmt": "0 GB",
+      "sold_limit_value": 0,
+      "total_user_limit_fmt": "19.53 MB",
+      "total_user_used_fmt": "114.98 GB",
+      "usage_percent": 0
+     },
+     "expired_users": 0,
+     "has_data_limit": false,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 4,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": true,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": false,
+      "support_telegram": "@support",
+      "warning_pct": 0
+     },
+     "raw_data": {
+      "data_limit": 0,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 4096,
+      "used_traffic": 123456789012,
+      "username": "erin"
+     },
+     "sold_limit_bytes": 0,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 20480000,
+     "total_user_limit_fmt": "19.53 MB",
+     "total_user_limit_gb": 0.02,
+     "total_user_used": 123456789012,
+     "total_user_used_fmt": "114.98 GB",
+     "total_user_used_gb": 114.98,
+     "usage_percent": 0,
+     "user_count": 4096,
+     "username": "erin",
+     "users_count": 4096
+    },
+    "frank": {
+     "active_user_count": 1,
+     "active_users": 1,
+     "admin_limit_bytes": 21474836480,
+     "admin_limit_fmt": "20.00 GB",
+     "admin_limit_gb": 20.0,
+     "admin_remaining": 0,
+     "admin_remaining_fmt": "0 B",
+     "admin_remaining_gb": 0.0,
+     "admin_used_bytes": 22548578304,
+     "admin_used_fmt": "21.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "panel_disabled",
+      "Disabled",
+      "#ef4444"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "20.00 GB",
+      "admin_remaining_fmt": "0 B",
+      "admin_used_fmt": "21.00 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "4.00 GB",
+      "sold_limit_fmt": "-4.00 GB",
+      "sold_limit_value": -4294967296,
+      "total_user_limit_fmt": "25.00 GB",
+      "total_user_used_fmt": "21.00 GB",
+      "usage_percent": 105.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 4294967296,
+     "hidden_traffic_bytes": 4294967296,
+     "hidden_traffic_fmt": "4.00 GB",
+     "hidden_traffic_gb": 4.0,
+     "id": 8,
+     "is_active": false,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": true,
+     "pamp_blocked_at_set": true,
+     "portal": {
+      "block_reason": "disabled",
+      "is_blocked": true,
+      "show_warning": true,
+      "support_telegram": "@support",
+      "warning_pct": 105.0
+     },
+     "raw_data": {
+      "data_limit": 21474836480,
+      "is_disabled": true,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 1,
+      "used_traffic": 22548578304,
+      "username": "frank"
+     },
+     "sold_limit_bytes": -4294967296,
+     "status": "disabled",
+     "status_code": "panel_disabled",
+     "status_color": "#ef4444",
+     "status_label": "Disabled",
+     "total_user_limit": 26843545600,
+     "total_user_limit_fmt": "25.00 GB",
+     "total_user_limit_gb": 25.0,
+     "total_user_used": 22548578304,
+     "total_user_used_fmt": "21.00 GB",
+     "total_user_used_gb": 21.0,
+     "usage_percent": 105.0,
+     "user_count": 1,
+     "username": "frank",
+     "users_count": 1
+    },
+    "gina": {
+     "active_user_count": 0,
+     "active_users": 0,
+     "admin_limit_bytes": 7516192768,
+     "admin_limit_fmt": "7.00 GB",
+     "admin_limit_gb": 7.0,
+     "admin_remaining": 4294967296,
+     "admin_remaining_fmt": "4.00 GB",
+     "admin_remaining_gb": 4.0,
+     "admin_used_bytes": 3221225472,
+     "admin_used_fmt": "3.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "7.00 GB",
+      "admin_remaining_fmt": "4.00 GB",
+      "admin_used_fmt": "3.00 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "-7.00 GB",
+      "sold_limit_fmt": "+7.00 GB",
+      "sold_limit_value": 7516192768,
+      "total_user_limit_fmt": "0 B",
+      "total_user_used_fmt": "3.00 GB",
+      "usage_percent": 42.9
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 5,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": false,
+      "support_telegram": "@support",
+      "warning_pct": 42.9
+     },
+     "raw_data": {
+      "data_limit": 7516192768,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 0,
+      "used_traffic": 3221225472,
+      "username": "gina"
+     },
+     "sold_limit_bytes": 7516192768,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 0,
+     "total_user_limit_fmt": "0 B",
+     "total_user_limit_gb": 0.0,
+     "total_user_used": 3221225472,
+     "total_user_used_fmt": "3.00 GB",
+     "total_user_used_gb": 3.0,
+     "usage_percent": 42.9,
+     "user_count": 0,
+     "username": "gina",
+     "users_count": 0
+    },
+    "ivy": {
+     "active_user_count": 1,
+     "active_users": 1,
+     "admin_limit_bytes": 53687091200,
+     "admin_limit_fmt": "50.00 GB",
+     "admin_limit_gb": 50.0,
+     "admin_remaining": 10737418117,
+     "admin_remaining_fmt": "10.00 GB",
+     "admin_remaining_gb": 10.0,
+     "admin_used_bytes": 42949673083,
+     "admin_used_fmt": "40.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "50.00 GB",
+      "admin_remaining_fmt": "10.00 GB",
+      "admin_used_fmt": "40.00 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "10.00 GB",
+      "sold_limit_fmt": "-10.00 GB",
+      "sold_limit_value": -10737418240,
+      "total_user_limit_fmt": "60.00 GB",
+      "total_user_used_fmt": "40.00 GB",
+      "usage_percent": 80.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 10737418240,
+     "hidden_traffic_bytes": 10737418240,
+     "hidden_traffic_fmt": "10.00 GB",
+     "hidden_traffic_gb": 10.0,
+     "id": 9,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": null,
+     "raw_data": {
+      "data_limit": 53687091200,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 1,
+      "used_traffic": 42949673083,
+      "username": "ivy"
+     },
+     "sold_limit_bytes": -10737418240,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 64424509440,
+     "total_user_limit_fmt": "60.00 GB",
+     "total_user_limit_gb": 60.0,
+     "total_user_used": 42949673083,
+     "total_user_used_fmt": "40.00 GB",
+     "total_user_used_gb": 40.0,
+     "usage_percent": 80.0,
+     "user_count": 1,
+     "username": "ivy",
+     "users_count": 1
+    },
+    "yuki": {
+     "active_user_count": 1,
+     "active_users": 1,
+     "admin_limit_bytes": 5368709120,
+     "admin_limit_fmt": "5.00 GB",
+     "admin_limit_gb": 5.0,
+     "admin_remaining": 3221225472,
+     "admin_remaining_fmt": "3.00 GB",
+     "admin_remaining_gb": 3.0,
+     "admin_used_bytes": 2147483648,
+     "admin_used_fmt": "2.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "5.00 GB",
+      "admin_remaining_fmt": "3.00 GB",
+      "admin_used_fmt": "2.00 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "-1.00 GB",
+      "sold_limit_fmt": "+1.00 GB",
+      "sold_limit_value": 1073741824,
+      "total_user_limit_fmt": "4.00 GB",
+      "total_user_used_fmt": "2.00 GB",
+      "usage_percent": 40.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 6,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": false,
+      "support_telegram": "@support",
+      "warning_pct": 40.0
+     },
+     "raw_data": {
+      "data_limit": 5368709120,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 1,
+      "used_traffic": 2147483648,
+      "username": "yuki"
+     },
+     "sold_limit_bytes": 1073741824,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 4294967296,
+     "total_user_limit_fmt": "4.00 GB",
+     "total_user_limit_gb": 4.0,
+     "total_user_used": 2147483648,
+     "total_user_used_fmt": "2.00 GB",
+     "total_user_used_gb": 2.0,
+     "usage_percent": 40.0,
+     "user_count": 1,
+     "username": "yuki",
+     "users_count": 1
+    },
+    "zed": {
+     "active_user_count": 1,
+     "active_users": 1,
+     "admin_limit_bytes": 1073741824,
+     "admin_limit_fmt": "1.00 GB",
+     "admin_limit_gb": 1.0,
+     "admin_remaining": 0,
+     "admin_remaining_fmt": "0 B",
+     "admin_remaining_gb": 0.0,
+     "admin_used_bytes": 1073741824,
+     "admin_used_fmt": "1.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "1.00 GB",
+      "admin_remaining_fmt": "0 B",
+      "admin_used_fmt": "1.00 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "1.00 GB",
+      "sold_limit_fmt": "-1.00 GB",
+      "sold_limit_value": -1073741824,
+      "total_user_limit_fmt": "2.00 GB",
+      "total_user_used_fmt": "1.00 GB",
+      "usage_percent": 100.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 1073741824,
+     "hidden_traffic_bytes": 1073741824,
+     "hidden_traffic_fmt": "1.00 GB",
+     "hidden_traffic_gb": 1.0,
+     "id": 10,
+     "is_active": true,
+     "is_sudo": true,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": true,
+      "support_telegram": "@support",
+      "warning_pct": 100.0
+     },
+     "raw_data": {
+      "data_limit": 1073741824,
+      "is_disabled": false,
+      "is_owner": true,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 1,
+      "used_traffic": 1073741824,
+      "username": "zed"
+     },
+     "sold_limit_bytes": -1073741824,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 2147483648,
+     "total_user_limit_fmt": "2.00 GB",
+     "total_user_limit_gb": 2.0,
+     "total_user_used": 1073741824,
+     "total_user_used_fmt": "1.00 GB",
+     "total_user_used_gb": 1.0,
+     "usage_percent": 100.0,
+     "user_count": 1,
+     "username": "zed",
+     "users_count": 1
+    }
+   },
+   "calls": [
+    {
+     "body": "username=golden&password=golden",
+     "method": "POST",
+     "path": "/api/admin/token",
+     "query": {}
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/admins",
+     "query": {}
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "alice"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "bob"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "carol"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "dave"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "erin"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "frank"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "gina"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "ivy"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "yuki"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "zed"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": "username=golden&password=golden",
+     "method": "POST",
+     "path": "/api/admin/token",
+     "query": {}
+    },
+    {
+     "body": {
+      "status": "disabled"
+     },
+     "method": "PUT",
+     "path": "/api/admin/bob",
+     "query": {}
+    },
+    {
+     "body": {
+      "status": "disabled"
+     },
+     "method": "PUT",
+     "path": "/api/admin/frank",
+     "query": {}
+    },
+    {
+     "body": {
+      "status": "active"
+     },
+     "method": "PUT",
+     "path": "/api/admin/yuki",
+     "query": {}
+    },
+    {
+     "body": {
+      "status": "disabled"
+     },
+     "method": "PUT",
+     "path": "/api/admin/zed",
+     "query": {}
+    }
+   ],
+   "dashboard": {
+    "active_count": 9,
+    "admin_count": 10,
+    "disabled_count": 1,
+    "near_limit_count": 4,
+    "over_limit_admins": [
+     {
+      "limit_fmt": "20.00 GB",
+      "pct": 105.0,
+      "state": "over",
+      "status_color": "#ef4444",
+      "status_label": "Disabled",
+      "used_fmt": "21.00 GB",
+      "username": "frank"
+     },
+     {
+      "limit_fmt": "10.00 GB",
+      "pct": 100.0,
+      "state": "over",
+      "status_color": "#f59e0b",
+      "status_label": "Limited",
+      "used_fmt": "10.00 GB",
+      "username": "bob"
+     },
+     {
+      "limit_fmt": "1.00 GB",
+      "pct": 100.0,
+      "state": "over",
+      "status_color": "#10b981",
+      "status_label": "Active",
+      "used_fmt": "1.00 GB",
+      "username": "zed"
+     },
+     {
+      "limit_fmt": "50.00 GB",
+      "pct": 80.0,
+      "state": "at_risk",
+      "status_color": "#10b981",
+      "status_label": "Active",
+      "used_fmt": "40.00 GB",
+      "username": "ivy"
+     }
+    ],
+    "pamp_limited_count": 2,
+    "total_active": 4106,
+    "total_limit_fmt": "167.02 GB",
+    "total_remaining_fmt": "88.00 GB",
+    "total_used_fmt": "503.98 GB",
+    "total_users": 4111
+   },
+   "result": "Synced 10 admins.",
+   "result_state": "SUCCESS",
+   "snapshots": {
+    "alice": {
+     "count": 3,
+     "sum": 35433480531,
+     "users": [
+      [
+       "a1",
+       10737418245
+      ],
+      [
+       "a2",
+       21474836481
+      ],
+      [
+       "a3",
+       3221225805
+      ]
+     ]
+    },
+    "bob": {
+     "count": 2,
+     "sum": 10737418241,
+     "users": [
+      [
+       "b1",
+       5368709120
+      ],
+      [
+       "b2",
+       5368709121
+      ]
+     ]
+    },
+    "carol": {
+     "count": 4,
+     "sum": 268435456003,
+     "users": [
+      [
+       "c1",
+       107374182400
+      ],
+      [
+       "c2",
+       161061273603
+      ],
+      [
+       "c3",
+       0
+      ],
+      [
+       "c4",
+       0
+      ]
+     ]
+    },
+    "dave": {
+     "count": 2,
+     "sum": 11811160064,
+     "users": [
+      [
+       "d1",
+       5368709120
+      ],
+      [
+       "d2",
+       6442450944
+      ]
+     ]
+    },
+    "erin": {
+     "count": 2,
+     "sum": 4294968196,
+     "users": [
+      [
+       "e-old",
+       4294967296
+      ],
+      [
+       "g0",
+       900
+      ]
+     ]
+    },
+    "frank": {
+     "count": 1,
+     "sum": 22548578304,
+     "users": [
+      [
+       "f1",
+       22548578304
+      ]
+     ]
+    },
+    "gina": {
+     "count": 0,
+     "sum": 0,
+     "users": []
+    },
+    "ivy": {
+     "count": 1,
+     "sum": 42949673083,
+     "users": [
+      [
+       "i1",
+       42949673083
+      ]
+     ]
+    },
+    "yuki": {
+     "count": 1,
+     "sum": 2147483648,
+     "users": [
+      [
+       "y1",
+       2147483648
+      ]
+     ]
+    },
+    "zed": {
+     "count": 1,
+     "sum": 1073741824,
+     "users": [
+      [
+       "z1",
+       1073741824
+      ]
+     ]
+    }
+   },
+   "sync_logs": [
+    {
+     "admins_synced": 10,
+     "error_message": "",
+     "status": "success"
+    }
+   ]
+  },
+  {
+   "admins": {
+    "alice": {
+     "active_user_count": 2,
+     "active_users": 2,
+     "admin_limit_bytes": 107374182400,
+     "admin_limit_fmt": "100.00 GB",
+     "admin_limit_gb": 100.0,
+     "admin_remaining": 41875931119,
+     "admin_remaining_fmt": "39.00 GB",
+     "admin_remaining_gb": 39.0,
+     "admin_used_bytes": 65498251281,
+     "admin_used_fmt": "61.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 10737430918,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "100.00 GB",
+      "admin_remaining_fmt": "39.00 GB",
+      "admin_used_fmt": "61.00 GB",
+      "deleted_used_bytes": 10737430918,
+      "deleted_used_fmt": "10.00 GB",
+      "hidden_traffic_fmt": "-60.00 GB",
+      "sold_limit_fmt": "+60.00 GB",
+      "sold_limit_value": 64424496762,
+      "total_user_limit_fmt": "40.00 GB",
+      "total_user_used_fmt": "61.00 GB",
+      "usage_percent": 61.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 1,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": {
+      "is_blocked": false,
+      "limit_bytes": 107374182400,
+      "support_telegram": "@help",
+      "telegram_username": "@alice",
+      "warning_sent_80": false
+     },
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": false,
+      "support_telegram": "@help",
+      "warning_pct": 61.0
+     },
+     "raw_data": {
+      "data_limit": 107374182400,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 3,
+      "used_traffic": 65498251281,
+      "username": "alice"
+     },
+     "sold_limit_bytes": 64424496762,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 42949685638,
+     "total_user_limit_fmt": "40.00 GB",
+     "total_user_limit_gb": 40.0,
+     "total_user_used": 65498251281,
+     "total_user_used_fmt": "61.00 GB",
+     "total_user_used_gb": 61.0,
+     "usage_percent": 61.0,
+     "user_count": 3,
+     "username": "alice",
+     "users_count": 3
+    },
+    "bob": {
+     "active_user_count": 0,
+     "active_users": 0,
+     "admin_limit_bytes": 10737418240,
+     "admin_limit_fmt": "10.00 GB",
+     "admin_limit_gb": 10.0,
+     "admin_remaining": 0,
+     "admin_remaining_fmt": "0 B",
+     "admin_remaining_gb": 0.0,
+     "admin_used_bytes": 10737418241,
+     "admin_used_fmt": "10.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 10737418241,
+     "disabled_users": 0,
+     "effective_status": [
+      "pamp_limited",
+      "Limited",
+      "#f59e0b"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "10.00 GB",
+      "admin_remaining_fmt": "0 B",
+      "admin_used_fmt": "10.00 GB",
+      "deleted_used_bytes": 10737418241,
+      "deleted_used_fmt": "10.00 GB",
+      "hidden_traffic_fmt": "0 B",
+      "sold_limit_fmt": "0 GB",
+      "sold_limit_value": 0,
+      "total_user_limit_fmt": "10.00 GB",
+      "total_user_used_fmt": "10.00 GB",
+      "usage_percent": 100.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 2,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": {
+      "is_blocked": false,
+      "limit_bytes": 0,
+      "support_telegram": "",
+      "telegram_username": "",
+      "warning_sent_80": false
+     },
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": true,
+     "pamp_blocked_at_set": true,
+     "portal": {
+      "block_reason": "pamp_limited",
+      "is_blocked": true,
+      "show_warning": true,
+      "support_telegram": "@support",
+      "warning_pct": 100.0
+     },
+     "raw_data": {
+      "data_limit": 10737418240,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 2,
+      "used_traffic": 10737418241,
+      "username": "bob"
+     },
+     "sold_limit_bytes": 0,
+     "status": "active",
+     "status_code": "pamp_limited",
+     "status_color": "#f59e0b",
+     "status_label": "Limited",
+     "total_user_limit": 10737418241,
+     "total_user_limit_fmt": "10.00 GB",
+     "total_user_limit_gb": 10.0,
+     "total_user_used": 10737418241,
+     "total_user_used_fmt": "10.00 GB",
+     "total_user_used_gb": 10.0,
+     "usage_percent": 100.0,
+     "user_count": 2,
+     "username": "bob",
+     "users_count": 2
+    },
+    "carol": {
+     "active_user_count": 2,
+     "active_users": 2,
+     "admin_limit_bytes": 0,
+     "admin_limit_fmt": "Unlimited",
+     "admin_limit_gb": 0.0,
+     "admin_remaining": 0,
+     "admin_remaining_fmt": "Unlimited",
+     "admin_remaining_gb": 0.0,
+     "admin_used_bytes": 268435456003,
+     "admin_used_fmt": "250.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "Unlimited",
+      "admin_remaining_fmt": "Unlimited",
+      "admin_used_fmt": "250.00 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "-249.00 GB",
+      "sold_limit_fmt": "0 GB",
+      "sold_limit_value": 0,
+      "total_user_limit_fmt": "1.00 GB",
+      "total_user_used_fmt": "250.00 GB",
+      "usage_percent": 0
+     },
+     "expired_users": 0,
+     "has_data_limit": false,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 7,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": true,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 1,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": false,
+      "support_telegram": "@support",
+      "warning_pct": 0
+     },
+     "raw_data": {
+      "data_limit": null,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 4,
+      "used_traffic": 268435456003,
+      "username": "carol"
+     },
+     "sold_limit_bytes": 0,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 1073741824,
+     "total_user_limit_fmt": "1.00 GB",
+     "total_user_limit_gb": 1.0,
+     "total_user_used": 268435456003,
+     "total_user_used_fmt": "250.00 GB",
+     "total_user_used_gb": 250.0,
+     "usage_percent": 0,
+     "user_count": 4,
+     "username": "carol",
+     "users_count": 4
+    },
+    "dave": {
+     "active_user_count": 2,
+     "active_users": 2,
+     "admin_limit_bytes": 35433480969,
+     "admin_limit_fmt": "33.00 GB",
+     "admin_limit_gb": 33.0,
+     "admin_remaining": 34359739145,
+     "admin_remaining_fmt": "32.00 GB",
+     "admin_remaining_gb": 32.0,
+     "admin_used_bytes": 1073741824,
+     "admin_used_fmt": "1.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 999,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "33.00 GB",
+      "admin_remaining_fmt": "32.00 GB",
+      "admin_used_fmt": "1.00 GB",
+      "deleted_used_bytes": 999,
+      "deleted_used_fmt": "999.00 B",
+      "hidden_traffic_fmt": "-16.00 GB",
+      "sold_limit_fmt": "+16.00 GB",
+      "sold_limit_value": 17179868962,
+      "total_user_limit_fmt": "17.00 GB",
+      "total_user_used_fmt": "1.00 GB",
+      "usage_percent": 3.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 3,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": false,
+      "support_telegram": "@support",
+      "warning_pct": 3.0
+     },
+     "raw_data": {
+      "data_limit": 35433480969,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 2,
+      "used_traffic": 1073741824,
+      "username": "dave"
+     },
+     "sold_limit_bytes": 17179868962,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 18253612007,
+     "total_user_limit_fmt": "17.00 GB",
+     "total_user_limit_gb": 17.0,
+     "total_user_used": 1073741824,
+     "total_user_used_fmt": "1.00 GB",
+     "total_user_used_gb": 1.0,
+     "usage_percent": 3.0,
+     "user_count": 2,
+     "username": "dave",
+     "users_count": 2
+    },
+    "erin": {
+     "active_user_count": 4096,
+     "active_users": 4096,
+     "admin_limit_bytes": 0,
+     "admin_limit_fmt": "Unlimited",
+     "admin_limit_gb": 0.0,
+     "admin_remaining": 0,
+     "admin_remaining_fmt": "Unlimited",
+     "admin_remaining_gb": 0.0,
+     "admin_used_bytes": 123456789012,
+     "admin_used_fmt": "114.98 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "Unlimited",
+      "admin_remaining_fmt": "Unlimited",
+      "admin_used_fmt": "114.98 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "-114.96 GB",
+      "sold_limit_fmt": "0 GB",
+      "sold_limit_value": 0,
+      "total_user_limit_fmt": "19.53 MB",
+      "total_user_used_fmt": "114.98 GB",
+      "usage_percent": 0
+     },
+     "expired_users": 0,
+     "has_data_limit": false,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 4,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": true,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": false,
+      "support_telegram": "@support",
+      "warning_pct": 0
+     },
+     "raw_data": {
+      "data_limit": 0,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 4096,
+      "used_traffic": 123456789012,
+      "username": "erin"
+     },
+     "sold_limit_bytes": 0,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 20480000,
+     "total_user_limit_fmt": "19.53 MB",
+     "total_user_limit_gb": 0.02,
+     "total_user_used": 123456789012,
+     "total_user_used_fmt": "114.98 GB",
+     "total_user_used_gb": 114.98,
+     "usage_percent": 0,
+     "user_count": 4096,
+     "username": "erin",
+     "users_count": 4096
+    },
+    "frank": {
+     "active_user_count": 1,
+     "active_users": 1,
+     "admin_limit_bytes": 21474836480,
+     "admin_limit_fmt": "20.00 GB",
+     "admin_limit_gb": 20.0,
+     "admin_remaining": 0,
+     "admin_remaining_fmt": "0 B",
+     "admin_remaining_gb": 0.0,
+     "admin_used_bytes": 22548578304,
+     "admin_used_fmt": "21.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "panel_disabled",
+      "Disabled",
+      "#ef4444"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "20.00 GB",
+      "admin_remaining_fmt": "0 B",
+      "admin_used_fmt": "21.00 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "4.00 GB",
+      "sold_limit_fmt": "-4.00 GB",
+      "sold_limit_value": -4294967296,
+      "total_user_limit_fmt": "25.00 GB",
+      "total_user_used_fmt": "21.00 GB",
+      "usage_percent": 105.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 4294967296,
+     "hidden_traffic_bytes": 4294967296,
+     "hidden_traffic_fmt": "4.00 GB",
+     "hidden_traffic_gb": 4.0,
+     "id": 8,
+     "is_active": false,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": true,
+     "pamp_blocked_at_set": true,
+     "portal": {
+      "block_reason": "disabled",
+      "is_blocked": true,
+      "show_warning": true,
+      "support_telegram": "@support",
+      "warning_pct": 105.0
+     },
+     "raw_data": {
+      "data_limit": 21474836480,
+      "is_disabled": true,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 1,
+      "used_traffic": 22548578304,
+      "username": "frank"
+     },
+     "sold_limit_bytes": -4294967296,
+     "status": "disabled",
+     "status_code": "panel_disabled",
+     "status_color": "#ef4444",
+     "status_label": "Disabled",
+     "total_user_limit": 26843545600,
+     "total_user_limit_fmt": "25.00 GB",
+     "total_user_limit_gb": 25.0,
+     "total_user_used": 22548578304,
+     "total_user_used_fmt": "21.00 GB",
+     "total_user_used_gb": 21.0,
+     "usage_percent": 105.0,
+     "user_count": 1,
+     "username": "frank",
+     "users_count": 1
+    },
+    "hank": {
+     "active_user_count": 1,
+     "active_users": 1,
+     "admin_limit_bytes": 2147483648,
+     "admin_limit_fmt": "2.00 GB",
+     "admin_limit_gb": 2.0,
+     "admin_remaining": 2147483647,
+     "admin_remaining_fmt": "2.00 GB",
+     "admin_remaining_gb": 2.0,
+     "admin_used_bytes": 1,
+     "admin_used_fmt": "1.00 B",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "2.00 GB",
+      "admin_remaining_fmt": "2.00 GB",
+      "admin_used_fmt": "1.00 B",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "0 B",
+      "sold_limit_fmt": "0 GB",
+      "sold_limit_value": 0,
+      "total_user_limit_fmt": "2.00 GB",
+      "total_user_used_fmt": "1.00 B",
+      "usage_percent": 0.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 11,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": false,
+      "support_telegram": "@support",
+      "warning_pct": 0.0
+     },
+     "raw_data": {
+      "data_limit": 2147483648,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 1,
+      "used_traffic": 1,
+      "username": "hank"
+     },
+     "sold_limit_bytes": 0,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 2147483648,
+     "total_user_limit_fmt": "2.00 GB",
+     "total_user_limit_gb": 2.0,
+     "total_user_used": 1,
+     "total_user_used_fmt": "1.00 B",
+     "total_user_used_gb": 0.0,
+     "usage_percent": 0.0,
+     "user_count": 1,
+     "username": "hank",
+     "users_count": 1
+    },
+    "ivy": {
+     "active_user_count": 1,
+     "active_users": 1,
+     "admin_limit_bytes": 53687091200,
+     "admin_limit_fmt": "50.00 GB",
+     "admin_limit_gb": 50.0,
+     "admin_remaining": 10737418117,
+     "admin_remaining_fmt": "10.00 GB",
+     "admin_remaining_gb": 10.0,
+     "admin_used_bytes": 42949673083,
+     "admin_used_fmt": "40.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "50.00 GB",
+      "admin_remaining_fmt": "10.00 GB",
+      "admin_used_fmt": "40.00 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "10.00 GB",
+      "sold_limit_fmt": "-10.00 GB",
+      "sold_limit_value": -10737418240,
+      "total_user_limit_fmt": "60.00 GB",
+      "total_user_used_fmt": "40.00 GB",
+      "usage_percent": 80.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 10737418240,
+     "hidden_traffic_bytes": 10737418240,
+     "hidden_traffic_fmt": "10.00 GB",
+     "hidden_traffic_gb": 10.0,
+     "id": 9,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": null,
+     "raw_data": {
+      "data_limit": 53687091200,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 1,
+      "used_traffic": 42949673083,
+      "username": "ivy"
+     },
+     "sold_limit_bytes": -10737418240,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 64424509440,
+     "total_user_limit_fmt": "60.00 GB",
+     "total_user_limit_gb": 60.0,
+     "total_user_used": 42949673083,
+     "total_user_used_fmt": "40.00 GB",
+     "total_user_used_gb": 40.0,
+     "usage_percent": 80.0,
+     "user_count": 1,
+     "username": "ivy",
+     "users_count": 1
+    },
+    "yuki": {
+     "active_user_count": 1,
+     "active_users": 1,
+     "admin_limit_bytes": 5368709120,
+     "admin_limit_fmt": "5.00 GB",
+     "admin_limit_gb": 5.0,
+     "admin_remaining": 3221225472,
+     "admin_remaining_fmt": "3.00 GB",
+     "admin_remaining_gb": 3.0,
+     "admin_used_bytes": 2147483648,
+     "admin_used_fmt": "2.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "5.00 GB",
+      "admin_remaining_fmt": "3.00 GB",
+      "admin_used_fmt": "2.00 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "-1.00 GB",
+      "sold_limit_fmt": "+1.00 GB",
+      "sold_limit_value": 1073741824,
+      "total_user_limit_fmt": "4.00 GB",
+      "total_user_used_fmt": "2.00 GB",
+      "usage_percent": 40.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 6,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": false,
+      "support_telegram": "@support",
+      "warning_pct": 40.0
+     },
+     "raw_data": {
+      "data_limit": 5368709120,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 1,
+      "used_traffic": 2147483648,
+      "username": "yuki"
+     },
+     "sold_limit_bytes": 1073741824,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 4294967296,
+     "total_user_limit_fmt": "4.00 GB",
+     "total_user_limit_gb": 4.0,
+     "total_user_used": 2147483648,
+     "total_user_used_fmt": "2.00 GB",
+     "total_user_used_gb": 2.0,
+     "usage_percent": 40.0,
+     "user_count": 1,
+     "username": "yuki",
+     "users_count": 1
+    },
+    "zed": {
+     "active_user_count": 1,
+     "active_users": 1,
+     "admin_limit_bytes": 1073741824,
+     "admin_limit_fmt": "1.00 GB",
+     "admin_limit_gb": 1.0,
+     "admin_remaining": 0,
+     "admin_remaining_fmt": "0 B",
+     "admin_remaining_gb": 0.0,
+     "admin_used_bytes": 1073741824,
+     "admin_used_fmt": "1.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "pamp_limited",
+      "Limited",
+      "#f59e0b"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "1.00 GB",
+      "admin_remaining_fmt": "0 B",
+      "admin_used_fmt": "1.00 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "1.00 GB",
+      "sold_limit_fmt": "-1.00 GB",
+      "sold_limit_value": -1073741824,
+      "total_user_limit_fmt": "2.00 GB",
+      "total_user_used_fmt": "1.00 GB",
+      "usage_percent": 100.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 1073741824,
+     "hidden_traffic_bytes": 1073741824,
+     "hidden_traffic_fmt": "1.00 GB",
+     "hidden_traffic_gb": 1.0,
+     "id": 10,
+     "is_active": true,
+     "is_sudo": true,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": true,
+     "pamp_blocked_at_set": true,
+     "portal": {
+      "block_reason": "pamp_limited",
+      "is_blocked": true,
+      "show_warning": true,
+      "support_telegram": "@support",
+      "warning_pct": 100.0
+     },
+     "raw_data": {
+      "data_limit": 1073741824,
+      "is_disabled": false,
+      "is_owner": true,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 1,
+      "used_traffic": 1073741824,
+      "username": "zed"
+     },
+     "sold_limit_bytes": -1073741824,
+     "status": "active",
+     "status_code": "pamp_limited",
+     "status_color": "#f59e0b",
+     "status_label": "Limited",
+     "total_user_limit": 2147483648,
+     "total_user_limit_fmt": "2.00 GB",
+     "total_user_limit_gb": 2.0,
+     "total_user_used": 1073741824,
+     "total_user_used_fmt": "1.00 GB",
+     "total_user_used_gb": 1.0,
+     "usage_percent": 100.0,
+     "user_count": 1,
+     "username": "zed",
+     "users_count": 1
+    }
+   },
+   "calls": [
+    {
+     "body": "username=golden&password=golden",
+     "method": "POST",
+     "path": "/api/admin/token",
+     "query": {}
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/admins",
+     "query": {}
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "alice"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "bob"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "carol"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "dave"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "erin"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "frank"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "ivy"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "yuki"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "zed"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "hank"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": "username=golden&password=golden",
+     "method": "POST",
+     "path": "/api/admin/token",
+     "query": {}
+    },
+    {
+     "body": {
+      "status": "disabled"
+     },
+     "method": "PUT",
+     "path": "/api/admin/zed",
+     "query": {}
+    }
+   ],
+   "dashboard": {
+    "active_count": 9,
+    "admin_count": 10,
+    "disabled_count": 1,
+    "near_limit_count": 4,
+    "over_limit_admins": [
+     {
+      "limit_fmt": "20.00 GB",
+      "pct": 105.0,
+      "state": "over",
+      "status_color": "#ef4444",
+      "status_label": "Disabled",
+      "used_fmt": "21.00 GB",
+      "username": "frank"
+     },
+     {
+      "limit_fmt": "10.00 GB",
+      "pct": 100.0,
+      "state": "over",
+      "status_color": "#f59e0b",
+      "status_label": "Limited",
+      "used_fmt": "10.00 GB",
+      "username": "bob"
+     },
+     {
+      "limit_fmt": "1.00 GB",
+      "pct": 100.0,
+      "state": "over",
+      "status_color": "#f59e0b",
+      "status_label": "Limited",
+      "used_fmt": "1.00 GB",
+      "username": "zed"
+     },
+     {
+      "limit_fmt": "50.00 GB",
+      "pct": 80.0,
+      "state": "at_risk",
+      "status_color": "#10b981",
+      "status_label": "Active",
+      "used_fmt": "40.00 GB",
+      "username": "ivy"
+     }
+    ],
+    "pamp_limited_count": 3,
+    "total_active": 4107,
+    "total_limit_fmt": "161.02 GB",
+    "total_remaining_fmt": "86.00 GB",
+    "total_used_fmt": "500.98 GB",
+    "total_users": 4112
+   },
+   "result": "Synced 9 admins.",
+   "result_state": "SUCCESS",
+   "snapshots": {
+    "alice": {
+     "count": 2,
+     "sum": 33285996553,
+     "users": [
+      [
+       "a1",
+       11811160064
+      ],
+      [
+       "a2",
+       21474836489
+      ]
+     ]
+    },
+    "bob": {
+     "count": 0,
+     "sum": 0,
+     "users": []
+    },
+    "carol": {
+     "count": 4,
+     "sum": 268435456003,
+     "users": [
+      [
+       "c1",
+       107374182400
+      ],
+      [
+       "c2",
+       161061273603
+      ],
+      [
+       "c3",
+       0
+      ],
+      [
+       "c4",
+       0
+      ]
+     ]
+    },
+    "dave": {
+     "count": 2,
+     "sum": 11811160064,
+     "users": [
+      [
+       "d1",
+       5368709120
+      ],
+      [
+       "d2",
+       6442450944
+      ]
+     ]
+    },
+    "erin": {
+     "count": 2,
+     "sum": 4294968196,
+     "users": [
+      [
+       "e-old",
+       4294967296
+      ],
+      [
+       "g0",
+       900
+      ]
+     ]
+    },
+    "frank": {
+     "count": 1,
+     "sum": 22548578304,
+     "users": [
+      [
+       "f1",
+       22548578304
+      ]
+     ]
+    },
+    "hank": {
+     "count": 1,
+     "sum": 1,
+     "users": [
+      [
+       "h1",
+       1
+      ]
+     ]
+    },
+    "ivy": {
+     "count": 1,
+     "sum": 42949673083,
+     "users": [
+      [
+       "i1",
+       42949673083
+      ]
+     ]
+    },
+    "yuki": {
+     "count": 1,
+     "sum": 2147483648,
+     "users": [
+      [
+       "y1",
+       2147483648
+      ]
+     ]
+    },
+    "zed": {
+     "count": 1,
+     "sum": 1073741824,
+     "users": [
+      [
+       "z1",
+       1073741824
+      ]
+     ]
+    }
+   },
+   "sync_logs": [
+    {
+     "admins_synced": 9,
+     "error_message": "dave: /api/users failed \u2014 GET /api/users failed: 500 Server Error: Internal Server Error for url: https://panel.golden.test/api/users?limit=4096&admin=dave (skipped this run, old values kept, will retry next sync)",
+     "status": "partial"
+    }
+   ]
+  },
+  {
+   "admins": {
+    "alice": {
+     "active_user_count": 2,
+     "active_users": 2,
+     "admin_limit_bytes": 107374182400,
+     "admin_limit_fmt": "100.00 GB",
+     "admin_limit_gb": 100.0,
+     "admin_remaining": 41875931119,
+     "admin_remaining_fmt": "39.00 GB",
+     "admin_remaining_gb": 39.0,
+     "admin_used_bytes": 65498251281,
+     "admin_used_fmt": "61.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 10737430918,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "100.00 GB",
+      "admin_remaining_fmt": "39.00 GB",
+      "admin_used_fmt": "61.00 GB",
+      "deleted_used_bytes": 10737430918,
+      "deleted_used_fmt": "10.00 GB",
+      "hidden_traffic_fmt": "-60.00 GB",
+      "sold_limit_fmt": "+60.00 GB",
+      "sold_limit_value": 64424496762,
+      "total_user_limit_fmt": "40.00 GB",
+      "total_user_used_fmt": "61.00 GB",
+      "usage_percent": 61.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 1,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": {
+      "is_blocked": false,
+      "limit_bytes": 107374182400,
+      "support_telegram": "@help",
+      "telegram_username": "@alice",
+      "warning_sent_80": false
+     },
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": false,
+      "support_telegram": "@help",
+      "warning_pct": 61.0
+     },
+     "raw_data": {
+      "data_limit": 107374182400,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 3,
+      "used_traffic": 65498251281,
+      "username": "alice"
+     },
+     "sold_limit_bytes": 64424496762,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 42949685638,
+     "total_user_limit_fmt": "40.00 GB",
+     "total_user_limit_gb": 40.0,
+     "total_user_used": 65498251281,
+     "total_user_used_fmt": "61.00 GB",
+     "total_user_used_gb": 61.0,
+     "usage_percent": 61.0,
+     "user_count": 3,
+     "username": "alice",
+     "users_count": 3
+    },
+    "bob": {
+     "active_user_count": 0,
+     "active_users": 0,
+     "admin_limit_bytes": 53687091200,
+     "admin_limit_fmt": "50.00 GB",
+     "admin_limit_gb": 50.0,
+     "admin_remaining": 42949672959,
+     "admin_remaining_fmt": "40.00 GB",
+     "admin_remaining_gb": 40.0,
+     "admin_used_bytes": 10737418241,
+     "admin_used_fmt": "10.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 10737418241,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "50.00 GB",
+      "admin_remaining_fmt": "40.00 GB",
+      "admin_used_fmt": "10.00 GB",
+      "deleted_used_bytes": 10737418241,
+      "deleted_used_fmt": "10.00 GB",
+      "hidden_traffic_fmt": "-40.00 GB",
+      "sold_limit_fmt": "+40.00 GB",
+      "sold_limit_value": 42949672959,
+      "total_user_limit_fmt": "10.00 GB",
+      "total_user_used_fmt": "10.00 GB",
+      "usage_percent": 20.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 2,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": {
+      "is_blocked": false,
+      "limit_bytes": 0,
+      "support_telegram": "",
+      "telegram_username": "",
+      "warning_sent_80": false
+     },
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": false,
+      "support_telegram": "@support",
+      "warning_pct": 20.0
+     },
+     "raw_data": {
+      "data_limit": 53687091200,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 2,
+      "used_traffic": 10737418241,
+      "username": "bob"
+     },
+     "sold_limit_bytes": 42949672959,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 10737418241,
+     "total_user_limit_fmt": "10.00 GB",
+     "total_user_limit_gb": 10.0,
+     "total_user_used": 10737418241,
+     "total_user_used_fmt": "10.00 GB",
+     "total_user_used_gb": 10.0,
+     "usage_percent": 20.0,
+     "user_count": 2,
+     "username": "bob",
+     "users_count": 2
+    },
+    "carol": {
+     "active_user_count": 2,
+     "active_users": 2,
+     "admin_limit_bytes": 322122547200,
+     "admin_limit_fmt": "300.00 GB",
+     "admin_limit_gb": 300.0,
+     "admin_remaining": 53687091197,
+     "admin_remaining_fmt": "50.00 GB",
+     "admin_remaining_gb": 50.0,
+     "admin_used_bytes": 268435456003,
+     "admin_used_fmt": "250.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "300.00 GB",
+      "admin_remaining_fmt": "50.00 GB",
+      "admin_used_fmt": "250.00 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "-299.00 GB",
+      "sold_limit_fmt": "+299.00 GB",
+      "sold_limit_value": 321048805376,
+      "total_user_limit_fmt": "1.00 GB",
+      "total_user_used_fmt": "250.00 GB",
+      "usage_percent": 83.3
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 7,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 1,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": true,
+      "support_telegram": "@support",
+      "warning_pct": 83.3
+     },
+     "raw_data": {
+      "data_limit": 322122547200,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 4,
+      "used_traffic": 268435456003,
+      "username": "carol"
+     },
+     "sold_limit_bytes": 321048805376,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 1073741824,
+     "total_user_limit_fmt": "1.00 GB",
+     "total_user_limit_gb": 1.0,
+     "total_user_used": 268435456003,
+     "total_user_used_fmt": "250.00 GB",
+     "total_user_used_gb": 250.0,
+     "usage_percent": 83.3,
+     "user_count": 4,
+     "username": "carol",
+     "users_count": 4
+    },
+    "dave": {
+     "active_user_count": 2,
+     "active_users": 2,
+     "admin_limit_bytes": 35433480969,
+     "admin_limit_fmt": "33.00 GB",
+     "admin_limit_gb": 33.0,
+     "admin_remaining": 34359739145,
+     "admin_remaining_fmt": "32.00 GB",
+     "admin_remaining_gb": 32.0,
+     "admin_used_bytes": 1073741824,
+     "admin_used_fmt": "1.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 999,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "33.00 GB",
+      "admin_remaining_fmt": "32.00 GB",
+      "admin_used_fmt": "1.00 GB",
+      "deleted_used_bytes": 999,
+      "deleted_used_fmt": "999.00 B",
+      "hidden_traffic_fmt": "-16.00 GB",
+      "sold_limit_fmt": "+16.00 GB",
+      "sold_limit_value": 17179868962,
+      "total_user_limit_fmt": "17.00 GB",
+      "total_user_used_fmt": "1.00 GB",
+      "usage_percent": 3.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 3,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": false,
+      "support_telegram": "@support",
+      "warning_pct": 3.0
+     },
+     "raw_data": {
+      "data_limit": 35433480969,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 2,
+      "used_traffic": 1073741824,
+      "username": "dave"
+     },
+     "sold_limit_bytes": 17179868962,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 18253612007,
+     "total_user_limit_fmt": "17.00 GB",
+     "total_user_limit_gb": 17.0,
+     "total_user_used": 1073741824,
+     "total_user_used_fmt": "1.00 GB",
+     "total_user_used_gb": 1.0,
+     "usage_percent": 3.0,
+     "user_count": 2,
+     "username": "dave",
+     "users_count": 2
+    },
+    "erin": {
+     "active_user_count": 4096,
+     "active_users": 4096,
+     "admin_limit_bytes": 0,
+     "admin_limit_fmt": "Unlimited",
+     "admin_limit_gb": 0.0,
+     "admin_remaining": 0,
+     "admin_remaining_fmt": "Unlimited",
+     "admin_remaining_gb": 0.0,
+     "admin_used_bytes": 123456789012,
+     "admin_used_fmt": "114.98 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "Unlimited",
+      "admin_remaining_fmt": "Unlimited",
+      "admin_used_fmt": "114.98 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "-114.96 GB",
+      "sold_limit_fmt": "0 GB",
+      "sold_limit_value": 0,
+      "total_user_limit_fmt": "19.53 MB",
+      "total_user_used_fmt": "114.98 GB",
+      "usage_percent": 0
+     },
+     "expired_users": 0,
+     "has_data_limit": false,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 4,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": true,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": false,
+      "support_telegram": "@support",
+      "warning_pct": 0
+     },
+     "raw_data": {
+      "data_limit": 0,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 4096,
+      "used_traffic": 123456789012,
+      "username": "erin"
+     },
+     "sold_limit_bytes": 0,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 20480000,
+     "total_user_limit_fmt": "19.53 MB",
+     "total_user_limit_gb": 0.02,
+     "total_user_used": 123456789012,
+     "total_user_used_fmt": "114.98 GB",
+     "total_user_used_gb": 114.98,
+     "usage_percent": 0,
+     "user_count": 4096,
+     "username": "erin",
+     "users_count": 4096
+    },
+    "frank": {
+     "active_user_count": 1,
+     "active_users": 1,
+     "admin_limit_bytes": 21474836480,
+     "admin_limit_fmt": "20.00 GB",
+     "admin_limit_gb": 20.0,
+     "admin_remaining": 0,
+     "admin_remaining_fmt": "0 B",
+     "admin_remaining_gb": 0.0,
+     "admin_used_bytes": 22548578304,
+     "admin_used_fmt": "21.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "panel_disabled",
+      "Disabled",
+      "#ef4444"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "20.00 GB",
+      "admin_remaining_fmt": "0 B",
+      "admin_used_fmt": "21.00 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "4.00 GB",
+      "sold_limit_fmt": "-4.00 GB",
+      "sold_limit_value": -4294967296,
+      "total_user_limit_fmt": "25.00 GB",
+      "total_user_used_fmt": "21.00 GB",
+      "usage_percent": 105.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 4294967296,
+     "hidden_traffic_bytes": 4294967296,
+     "hidden_traffic_fmt": "4.00 GB",
+     "hidden_traffic_gb": 4.0,
+     "id": 8,
+     "is_active": false,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": true,
+     "pamp_blocked_at_set": true,
+     "portal": {
+      "block_reason": "disabled",
+      "is_blocked": true,
+      "show_warning": true,
+      "support_telegram": "@support",
+      "warning_pct": 105.0
+     },
+     "raw_data": {
+      "data_limit": 21474836480,
+      "is_disabled": true,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 1,
+      "used_traffic": 22548578304,
+      "username": "frank"
+     },
+     "sold_limit_bytes": -4294967296,
+     "status": "disabled",
+     "status_code": "panel_disabled",
+     "status_color": "#ef4444",
+     "status_label": "Disabled",
+     "total_user_limit": 26843545600,
+     "total_user_limit_fmt": "25.00 GB",
+     "total_user_limit_gb": 25.0,
+     "total_user_used": 22548578304,
+     "total_user_used_fmt": "21.00 GB",
+     "total_user_used_gb": 21.0,
+     "usage_percent": 105.0,
+     "user_count": 1,
+     "username": "frank",
+     "users_count": 1
+    },
+    "hank": {
+     "active_user_count": 1,
+     "active_users": 1,
+     "admin_limit_bytes": 2147483648,
+     "admin_limit_fmt": "2.00 GB",
+     "admin_limit_gb": 2.0,
+     "admin_remaining": 2147483647,
+     "admin_remaining_fmt": "2.00 GB",
+     "admin_remaining_gb": 2.0,
+     "admin_used_bytes": 1,
+     "admin_used_fmt": "1.00 B",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "2.00 GB",
+      "admin_remaining_fmt": "2.00 GB",
+      "admin_used_fmt": "1.00 B",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "0 B",
+      "sold_limit_fmt": "0 GB",
+      "sold_limit_value": 0,
+      "total_user_limit_fmt": "2.00 GB",
+      "total_user_used_fmt": "1.00 B",
+      "usage_percent": 0.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 11,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": false,
+      "support_telegram": "@support",
+      "warning_pct": 0.0
+     },
+     "raw_data": {
+      "data_limit": 2147483648,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 1,
+      "used_traffic": 1,
+      "username": "hank"
+     },
+     "sold_limit_bytes": 0,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 2147483648,
+     "total_user_limit_fmt": "2.00 GB",
+     "total_user_limit_gb": 2.0,
+     "total_user_used": 1,
+     "total_user_used_fmt": "1.00 B",
+     "total_user_used_gb": 0.0,
+     "usage_percent": 0.0,
+     "user_count": 1,
+     "username": "hank",
+     "users_count": 1
+    },
+    "ivy": {
+     "active_user_count": 1,
+     "active_users": 1,
+     "admin_limit_bytes": 53687091200,
+     "admin_limit_fmt": "50.00 GB",
+     "admin_limit_gb": 50.0,
+     "admin_remaining": 10737418117,
+     "admin_remaining_fmt": "10.00 GB",
+     "admin_remaining_gb": 10.0,
+     "admin_used_bytes": 42949673083,
+     "admin_used_fmt": "40.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "50.00 GB",
+      "admin_remaining_fmt": "10.00 GB",
+      "admin_used_fmt": "40.00 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "10.00 GB",
+      "sold_limit_fmt": "-10.00 GB",
+      "sold_limit_value": -10737418240,
+      "total_user_limit_fmt": "60.00 GB",
+      "total_user_used_fmt": "40.00 GB",
+      "usage_percent": 80.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 10737418240,
+     "hidden_traffic_bytes": 10737418240,
+     "hidden_traffic_fmt": "10.00 GB",
+     "hidden_traffic_gb": 10.0,
+     "id": 9,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": null,
+     "raw_data": {
+      "data_limit": 53687091200,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 1,
+      "used_traffic": 42949673083,
+      "username": "ivy"
+     },
+     "sold_limit_bytes": -10737418240,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 64424509440,
+     "total_user_limit_fmt": "60.00 GB",
+     "total_user_limit_gb": 60.0,
+     "total_user_used": 42949673083,
+     "total_user_used_fmt": "40.00 GB",
+     "total_user_used_gb": 40.0,
+     "usage_percent": 80.0,
+     "user_count": 1,
+     "username": "ivy",
+     "users_count": 1
+    },
+    "yuki": {
+     "active_user_count": 1,
+     "active_users": 1,
+     "admin_limit_bytes": 5368709120,
+     "admin_limit_fmt": "5.00 GB",
+     "admin_limit_gb": 5.0,
+     "admin_remaining": 3221225472,
+     "admin_remaining_fmt": "3.00 GB",
+     "admin_remaining_gb": 3.0,
+     "admin_used_bytes": 2147483648,
+     "admin_used_fmt": "2.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "5.00 GB",
+      "admin_remaining_fmt": "3.00 GB",
+      "admin_used_fmt": "2.00 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "-1.00 GB",
+      "sold_limit_fmt": "+1.00 GB",
+      "sold_limit_value": 1073741824,
+      "total_user_limit_fmt": "4.00 GB",
+      "total_user_used_fmt": "2.00 GB",
+      "usage_percent": 40.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 6,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": false,
+      "support_telegram": "@support",
+      "warning_pct": 40.0
+     },
+     "raw_data": {
+      "data_limit": 5368709120,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 1,
+      "used_traffic": 2147483648,
+      "username": "yuki"
+     },
+     "sold_limit_bytes": 1073741824,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 4294967296,
+     "total_user_limit_fmt": "4.00 GB",
+     "total_user_limit_gb": 4.0,
+     "total_user_used": 2147483648,
+     "total_user_used_fmt": "2.00 GB",
+     "total_user_used_gb": 2.0,
+     "usage_percent": 40.0,
+     "user_count": 1,
+     "username": "yuki",
+     "users_count": 1
+    },
+    "zed": {
+     "active_user_count": 1,
+     "active_users": 1,
+     "admin_limit_bytes": 1073741824,
+     "admin_limit_fmt": "1.00 GB",
+     "admin_limit_gb": 1.0,
+     "admin_remaining": 0,
+     "admin_remaining_fmt": "0 B",
+     "admin_remaining_gb": 0.0,
+     "admin_used_bytes": 1073741824,
+     "admin_used_fmt": "1.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "pamp_limited",
+      "Limited",
+      "#f59e0b"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "1.00 GB",
+      "admin_remaining_fmt": "0 B",
+      "admin_used_fmt": "1.00 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "1.00 GB",
+      "sold_limit_fmt": "-1.00 GB",
+      "sold_limit_value": -1073741824,
+      "total_user_limit_fmt": "2.00 GB",
+      "total_user_used_fmt": "1.00 GB",
+      "usage_percent": 100.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 1073741824,
+     "hidden_traffic_bytes": 1073741824,
+     "hidden_traffic_fmt": "1.00 GB",
+     "hidden_traffic_gb": 1.0,
+     "id": 10,
+     "is_active": true,
+     "is_sudo": true,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": true,
+     "pamp_blocked_at_set": true,
+     "portal": {
+      "block_reason": "pamp_limited",
+      "is_blocked": true,
+      "show_warning": true,
+      "support_telegram": "@support",
+      "warning_pct": 100.0
+     },
+     "raw_data": {
+      "data_limit": 1073741824,
+      "is_disabled": false,
+      "is_owner": true,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 1,
+      "used_traffic": 1073741824,
+      "username": "zed"
+     },
+     "sold_limit_bytes": -1073741824,
+     "status": "active",
+     "status_code": "pamp_limited",
+     "status_color": "#f59e0b",
+     "status_label": "Limited",
+     "total_user_limit": 2147483648,
+     "total_user_limit_fmt": "2.00 GB",
+     "total_user_limit_gb": 2.0,
+     "total_user_used": 1073741824,
+     "total_user_used_fmt": "1.00 GB",
+     "total_user_used_gb": 1.0,
+     "usage_percent": 100.0,
+     "user_count": 1,
+     "username": "zed",
+     "users_count": 1
+    }
+   },
+   "calls": [
+    {
+     "body": "username=golden&password=golden",
+     "method": "POST",
+     "path": "/api/admin/token",
+     "query": {}
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/admins",
+     "query": {}
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "alice"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "bob"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "carol"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "dave"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "erin"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "frank"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "ivy"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "yuki"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "zed"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "hank"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": "username=golden&password=golden",
+     "method": "POST",
+     "path": "/api/admin/token",
+     "query": {}
+    },
+    {
+     "body": {
+      "status": "active"
+     },
+     "method": "PUT",
+     "path": "/api/admin/bob",
+     "query": {}
+    }
+   ],
+   "dashboard": {
+    "active_count": 9,
+    "admin_count": 10,
+    "disabled_count": 1,
+    "near_limit_count": 4,
+    "over_limit_admins": [
+     {
+      "limit_fmt": "20.00 GB",
+      "pct": 105.0,
+      "state": "over",
+      "status_color": "#ef4444",
+      "status_label": "Disabled",
+      "used_fmt": "21.00 GB",
+      "username": "frank"
+     },
+     {
+      "limit_fmt": "1.00 GB",
+      "pct": 100.0,
+      "state": "over",
+      "status_color": "#f59e0b",
+      "status_label": "Limited",
+      "used_fmt": "1.00 GB",
+      "username": "zed"
+     },
+     {
+      "limit_fmt": "300.00 GB",
+      "pct": 83.3,
+      "state": "at_risk",
+      "status_color": "#10b981",
+      "status_label": "Active",
+      "used_fmt": "250.00 GB",
+      "username": "carol"
+     },
+     {
+      "limit_fmt": "50.00 GB",
+      "pct": 80.0,
+      "state": "at_risk",
+      "status_color": "#10b981",
+      "status_label": "Active",
+      "used_fmt": "40.00 GB",
+      "username": "ivy"
+     }
+    ],
+    "pamp_limited_count": 2,
+    "total_active": 4107,
+    "total_limit_fmt": "161.02 GB",
+    "total_remaining_fmt": "176.00 GB",
+    "total_used_fmt": "500.98 GB",
+    "total_users": 4112
+   },
+   "result": "Synced 9 admins.",
+   "result_state": "SUCCESS",
+   "snapshots": {
+    "alice": {
+     "count": 2,
+     "sum": 33285996553,
+     "users": [
+      [
+       "a1",
+       11811160064
+      ],
+      [
+       "a2",
+       21474836489
+      ]
+     ]
+    },
+    "bob": {
+     "count": 0,
+     "sum": 0,
+     "users": []
+    },
+    "carol": {
+     "count": 4,
+     "sum": 268435456003,
+     "users": [
+      [
+       "c1",
+       107374182400
+      ],
+      [
+       "c2",
+       161061273603
+      ],
+      [
+       "c3",
+       0
+      ],
+      [
+       "c4",
+       0
+      ]
+     ]
+    },
+    "dave": {
+     "count": 2,
+     "sum": 11811160064,
+     "users": [
+      [
+       "d1",
+       5368709120
+      ],
+      [
+       "d2",
+       6442450944
+      ]
+     ]
+    },
+    "erin": {
+     "count": 2,
+     "sum": 4294968196,
+     "users": [
+      [
+       "e-old",
+       4294967296
+      ],
+      [
+       "g0",
+       900
+      ]
+     ]
+    },
+    "frank": {
+     "count": 1,
+     "sum": 22548578304,
+     "users": [
+      [
+       "f1",
+       22548578304
+      ]
+     ]
+    },
+    "hank": {
+     "count": 1,
+     "sum": 1,
+     "users": [
+      [
+       "h1",
+       1
+      ]
+     ]
+    },
+    "ivy": {
+     "count": 1,
+     "sum": 42949673083,
+     "users": [
+      [
+       "i1",
+       42949673083
+      ]
+     ]
+    },
+    "yuki": {
+     "count": 1,
+     "sum": 2147483648,
+     "users": [
+      [
+       "y1",
+       2147483648
+      ]
+     ]
+    },
+    "zed": {
+     "count": 1,
+     "sum": 1073741824,
+     "users": [
+      [
+       "z1",
+       1073741824
+      ]
+     ]
+    }
+   },
+   "sync_logs": [
+    {
+     "admins_synced": 9,
+     "error_message": "dave: /api/users failed \u2014 GET /api/users failed: read timed out (skipped this run, old values kept, will retry next sync)",
+     "status": "partial"
+    }
+   ]
+  },
+  {
+   "admins": {
+    "alice": {
+     "active_user_count": 2,
+     "active_users": 2,
+     "admin_limit_bytes": 107374182400,
+     "admin_limit_fmt": "100.00 GB",
+     "admin_limit_gb": 100.0,
+     "admin_remaining": 41875931119,
+     "admin_remaining_fmt": "39.00 GB",
+     "admin_remaining_gb": 39.0,
+     "admin_used_bytes": 65498251281,
+     "admin_used_fmt": "61.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 10737430918,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "100.00 GB",
+      "admin_remaining_fmt": "39.00 GB",
+      "admin_used_fmt": "61.00 GB",
+      "deleted_used_bytes": 10737430918,
+      "deleted_used_fmt": "10.00 GB",
+      "hidden_traffic_fmt": "-60.00 GB",
+      "sold_limit_fmt": "+60.00 GB",
+      "sold_limit_value": 64424496762,
+      "total_user_limit_fmt": "40.00 GB",
+      "total_user_used_fmt": "61.00 GB",
+      "usage_percent": 61.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 1,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": {
+      "is_blocked": false,
+      "limit_bytes": 107374182400,
+      "support_telegram": "@help",
+      "telegram_username": "@alice",
+      "warning_sent_80": false
+     },
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": false,
+      "support_telegram": "@help",
+      "warning_pct": 61.0
+     },
+     "raw_data": {
+      "data_limit": 107374182400,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 3,
+      "used_traffic": 65498251281,
+      "username": "alice"
+     },
+     "sold_limit_bytes": 64424496762,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 42949685638,
+     "total_user_limit_fmt": "40.00 GB",
+     "total_user_limit_gb": 40.0,
+     "total_user_used": 65498251281,
+     "total_user_used_fmt": "61.00 GB",
+     "total_user_used_gb": 61.0,
+     "usage_percent": 61.0,
+     "user_count": 3,
+     "username": "alice",
+     "users_count": 3
+    },
+    "bob": {
+     "active_user_count": 0,
+     "active_users": 0,
+     "admin_limit_bytes": 53687091200,
+     "admin_limit_fmt": "50.00 GB",
+     "admin_limit_gb": 50.0,
+     "admin_remaining": 42949672959,
+     "admin_remaining_fmt": "40.00 GB",
+     "admin_remaining_gb": 40.0,
+     "admin_used_bytes": 10737418241,
+     "admin_used_fmt": "10.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 10737418241,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "50.00 GB",
+      "admin_remaining_fmt": "40.00 GB",
+      "admin_used_fmt": "10.00 GB",
+      "deleted_used_bytes": 10737418241,
+      "deleted_used_fmt": "10.00 GB",
+      "hidden_traffic_fmt": "-40.00 GB",
+      "sold_limit_fmt": "+40.00 GB",
+      "sold_limit_value": 42949672959,
+      "total_user_limit_fmt": "10.00 GB",
+      "total_user_used_fmt": "10.00 GB",
+      "usage_percent": 20.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 2,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": {
+      "is_blocked": false,
+      "limit_bytes": 0,
+      "support_telegram": "",
+      "telegram_username": "",
+      "warning_sent_80": false
+     },
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": false,
+      "support_telegram": "@support",
+      "warning_pct": 20.0
+     },
+     "raw_data": {
+      "data_limit": 53687091200,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 2,
+      "used_traffic": 10737418241,
+      "username": "bob"
+     },
+     "sold_limit_bytes": 42949672959,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 10737418241,
+     "total_user_limit_fmt": "10.00 GB",
+     "total_user_limit_gb": 10.0,
+     "total_user_used": 10737418241,
+     "total_user_used_fmt": "10.00 GB",
+     "total_user_used_gb": 10.0,
+     "usage_percent": 20.0,
+     "user_count": 2,
+     "username": "bob",
+     "users_count": 2
+    },
+    "carol": {
+     "active_user_count": 2,
+     "active_users": 2,
+     "admin_limit_bytes": 322122547200,
+     "admin_limit_fmt": "300.00 GB",
+     "admin_limit_gb": 300.0,
+     "admin_remaining": 53687091197,
+     "admin_remaining_fmt": "50.00 GB",
+     "admin_remaining_gb": 50.0,
+     "admin_used_bytes": 268435456003,
+     "admin_used_fmt": "250.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "300.00 GB",
+      "admin_remaining_fmt": "50.00 GB",
+      "admin_used_fmt": "250.00 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "-299.00 GB",
+      "sold_limit_fmt": "+299.00 GB",
+      "sold_limit_value": 321048805376,
+      "total_user_limit_fmt": "1.00 GB",
+      "total_user_used_fmt": "250.00 GB",
+      "usage_percent": 83.3
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 7,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 1,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": true,
+      "support_telegram": "@support",
+      "warning_pct": 83.3
+     },
+     "raw_data": {
+      "data_limit": 322122547200,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 4,
+      "used_traffic": 268435456003,
+      "username": "carol"
+     },
+     "sold_limit_bytes": 321048805376,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 1073741824,
+     "total_user_limit_fmt": "1.00 GB",
+     "total_user_limit_gb": 1.0,
+     "total_user_used": 268435456003,
+     "total_user_used_fmt": "250.00 GB",
+     "total_user_used_gb": 250.0,
+     "usage_percent": 83.3,
+     "user_count": 4,
+     "username": "carol",
+     "users_count": 4
+    },
+    "dave": {
+     "active_user_count": 2,
+     "active_users": 2,
+     "admin_limit_bytes": 35433480969,
+     "admin_limit_fmt": "33.00 GB",
+     "admin_limit_gb": 33.0,
+     "admin_remaining": 34359739145,
+     "admin_remaining_fmt": "32.00 GB",
+     "admin_remaining_gb": 32.0,
+     "admin_used_bytes": 1073741824,
+     "admin_used_fmt": "1.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 999,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "33.00 GB",
+      "admin_remaining_fmt": "32.00 GB",
+      "admin_used_fmt": "1.00 GB",
+      "deleted_used_bytes": 999,
+      "deleted_used_fmt": "999.00 B",
+      "hidden_traffic_fmt": "-16.00 GB",
+      "sold_limit_fmt": "+16.00 GB",
+      "sold_limit_value": 17179868962,
+      "total_user_limit_fmt": "17.00 GB",
+      "total_user_used_fmt": "1.00 GB",
+      "usage_percent": 3.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 3,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": false,
+      "support_telegram": "@support",
+      "warning_pct": 3.0
+     },
+     "raw_data": {
+      "data_limit": 35433480969,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 2,
+      "used_traffic": 1073741824,
+      "username": "dave"
+     },
+     "sold_limit_bytes": 17179868962,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 18253612007,
+     "total_user_limit_fmt": "17.00 GB",
+     "total_user_limit_gb": 17.0,
+     "total_user_used": 1073741824,
+     "total_user_used_fmt": "1.00 GB",
+     "total_user_used_gb": 1.0,
+     "usage_percent": 3.0,
+     "user_count": 2,
+     "username": "dave",
+     "users_count": 2
+    },
+    "erin": {
+     "active_user_count": 4096,
+     "active_users": 4096,
+     "admin_limit_bytes": 0,
+     "admin_limit_fmt": "Unlimited",
+     "admin_limit_gb": 0.0,
+     "admin_remaining": 0,
+     "admin_remaining_fmt": "Unlimited",
+     "admin_remaining_gb": 0.0,
+     "admin_used_bytes": 123456789012,
+     "admin_used_fmt": "114.98 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "Unlimited",
+      "admin_remaining_fmt": "Unlimited",
+      "admin_used_fmt": "114.98 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "-114.96 GB",
+      "sold_limit_fmt": "0 GB",
+      "sold_limit_value": 0,
+      "total_user_limit_fmt": "19.53 MB",
+      "total_user_used_fmt": "114.98 GB",
+      "usage_percent": 0
+     },
+     "expired_users": 0,
+     "has_data_limit": false,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 4,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": true,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": false,
+      "support_telegram": "@support",
+      "warning_pct": 0
+     },
+     "raw_data": {
+      "data_limit": 0,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 4096,
+      "used_traffic": 123456789012,
+      "username": "erin"
+     },
+     "sold_limit_bytes": 0,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 20480000,
+     "total_user_limit_fmt": "19.53 MB",
+     "total_user_limit_gb": 0.02,
+     "total_user_used": 123456789012,
+     "total_user_used_fmt": "114.98 GB",
+     "total_user_used_gb": 114.98,
+     "usage_percent": 0,
+     "user_count": 4096,
+     "username": "erin",
+     "users_count": 4096
+    },
+    "frank": {
+     "active_user_count": 1,
+     "active_users": 1,
+     "admin_limit_bytes": 21474836480,
+     "admin_limit_fmt": "20.00 GB",
+     "admin_limit_gb": 20.0,
+     "admin_remaining": 0,
+     "admin_remaining_fmt": "0 B",
+     "admin_remaining_gb": 0.0,
+     "admin_used_bytes": 22548578304,
+     "admin_used_fmt": "21.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "panel_disabled",
+      "Disabled",
+      "#ef4444"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "20.00 GB",
+      "admin_remaining_fmt": "0 B",
+      "admin_used_fmt": "21.00 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "4.00 GB",
+      "sold_limit_fmt": "-4.00 GB",
+      "sold_limit_value": -4294967296,
+      "total_user_limit_fmt": "25.00 GB",
+      "total_user_used_fmt": "21.00 GB",
+      "usage_percent": 105.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 4294967296,
+     "hidden_traffic_bytes": 4294967296,
+     "hidden_traffic_fmt": "4.00 GB",
+     "hidden_traffic_gb": 4.0,
+     "id": 8,
+     "is_active": false,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": true,
+     "pamp_blocked_at_set": true,
+     "portal": {
+      "block_reason": "disabled",
+      "is_blocked": true,
+      "show_warning": true,
+      "support_telegram": "@support",
+      "warning_pct": 105.0
+     },
+     "raw_data": {
+      "data_limit": 21474836480,
+      "is_disabled": true,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 1,
+      "used_traffic": 22548578304,
+      "username": "frank"
+     },
+     "sold_limit_bytes": -4294967296,
+     "status": "disabled",
+     "status_code": "panel_disabled",
+     "status_color": "#ef4444",
+     "status_label": "Disabled",
+     "total_user_limit": 26843545600,
+     "total_user_limit_fmt": "25.00 GB",
+     "total_user_limit_gb": 25.0,
+     "total_user_used": 22548578304,
+     "total_user_used_fmt": "21.00 GB",
+     "total_user_used_gb": 21.0,
+     "usage_percent": 105.0,
+     "user_count": 1,
+     "username": "frank",
+     "users_count": 1
+    },
+    "hank": {
+     "active_user_count": 1,
+     "active_users": 1,
+     "admin_limit_bytes": 2147483648,
+     "admin_limit_fmt": "2.00 GB",
+     "admin_limit_gb": 2.0,
+     "admin_remaining": 2147483647,
+     "admin_remaining_fmt": "2.00 GB",
+     "admin_remaining_gb": 2.0,
+     "admin_used_bytes": 1,
+     "admin_used_fmt": "1.00 B",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "2.00 GB",
+      "admin_remaining_fmt": "2.00 GB",
+      "admin_used_fmt": "1.00 B",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "0 B",
+      "sold_limit_fmt": "0 GB",
+      "sold_limit_value": 0,
+      "total_user_limit_fmt": "2.00 GB",
+      "total_user_used_fmt": "1.00 B",
+      "usage_percent": 0.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 11,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": false,
+      "support_telegram": "@support",
+      "warning_pct": 0.0
+     },
+     "raw_data": {
+      "data_limit": 2147483648,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 1,
+      "used_traffic": 1,
+      "username": "hank"
+     },
+     "sold_limit_bytes": 0,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 2147483648,
+     "total_user_limit_fmt": "2.00 GB",
+     "total_user_limit_gb": 2.0,
+     "total_user_used": 1,
+     "total_user_used_fmt": "1.00 B",
+     "total_user_used_gb": 0.0,
+     "usage_percent": 0.0,
+     "user_count": 1,
+     "username": "hank",
+     "users_count": 1
+    },
+    "ivy": {
+     "active_user_count": 1,
+     "active_users": 1,
+     "admin_limit_bytes": 53687091200,
+     "admin_limit_fmt": "50.00 GB",
+     "admin_limit_gb": 50.0,
+     "admin_remaining": 10737418117,
+     "admin_remaining_fmt": "10.00 GB",
+     "admin_remaining_gb": 10.0,
+     "admin_used_bytes": 42949673083,
+     "admin_used_fmt": "40.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "50.00 GB",
+      "admin_remaining_fmt": "10.00 GB",
+      "admin_used_fmt": "40.00 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "10.00 GB",
+      "sold_limit_fmt": "-10.00 GB",
+      "sold_limit_value": -10737418240,
+      "total_user_limit_fmt": "60.00 GB",
+      "total_user_used_fmt": "40.00 GB",
+      "usage_percent": 80.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 10737418240,
+     "hidden_traffic_bytes": 10737418240,
+     "hidden_traffic_fmt": "10.00 GB",
+     "hidden_traffic_gb": 10.0,
+     "id": 9,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": null,
+     "raw_data": {
+      "data_limit": 53687091200,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 1,
+      "used_traffic": 42949673083,
+      "username": "ivy"
+     },
+     "sold_limit_bytes": -10737418240,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 64424509440,
+     "total_user_limit_fmt": "60.00 GB",
+     "total_user_limit_gb": 60.0,
+     "total_user_used": 42949673083,
+     "total_user_used_fmt": "40.00 GB",
+     "total_user_used_gb": 40.0,
+     "usage_percent": 80.0,
+     "user_count": 1,
+     "username": "ivy",
+     "users_count": 1
+    },
+    "yuki": {
+     "active_user_count": 1,
+     "active_users": 1,
+     "admin_limit_bytes": 5368709120,
+     "admin_limit_fmt": "5.00 GB",
+     "admin_limit_gb": 5.0,
+     "admin_remaining": 3221225472,
+     "admin_remaining_fmt": "3.00 GB",
+     "admin_remaining_gb": 3.0,
+     "admin_used_bytes": 2147483648,
+     "admin_used_fmt": "2.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "5.00 GB",
+      "admin_remaining_fmt": "3.00 GB",
+      "admin_used_fmt": "2.00 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "-1.00 GB",
+      "sold_limit_fmt": "+1.00 GB",
+      "sold_limit_value": 1073741824,
+      "total_user_limit_fmt": "4.00 GB",
+      "total_user_used_fmt": "2.00 GB",
+      "usage_percent": 40.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 6,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": false,
+      "support_telegram": "@support",
+      "warning_pct": 40.0
+     },
+     "raw_data": {
+      "data_limit": 5368709120,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 1,
+      "used_traffic": 2147483648,
+      "username": "yuki"
+     },
+     "sold_limit_bytes": 1073741824,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 4294967296,
+     "total_user_limit_fmt": "4.00 GB",
+     "total_user_limit_gb": 4.0,
+     "total_user_used": 2147483648,
+     "total_user_used_fmt": "2.00 GB",
+     "total_user_used_gb": 2.0,
+     "usage_percent": 40.0,
+     "user_count": 1,
+     "username": "yuki",
+     "users_count": 1
+    },
+    "zed": {
+     "active_user_count": 1,
+     "active_users": 1,
+     "admin_limit_bytes": 1073741824,
+     "admin_limit_fmt": "1.00 GB",
+     "admin_limit_gb": 1.0,
+     "admin_remaining": 0,
+     "admin_remaining_fmt": "0 B",
+     "admin_remaining_gb": 0.0,
+     "admin_used_bytes": 1073741824,
+     "admin_used_fmt": "1.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "pamp_limited",
+      "Limited",
+      "#f59e0b"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "1.00 GB",
+      "admin_remaining_fmt": "0 B",
+      "admin_used_fmt": "1.00 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "1.00 GB",
+      "sold_limit_fmt": "-1.00 GB",
+      "sold_limit_value": -1073741824,
+      "total_user_limit_fmt": "2.00 GB",
+      "total_user_used_fmt": "1.00 GB",
+      "usage_percent": 100.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 1073741824,
+     "hidden_traffic_bytes": 1073741824,
+     "hidden_traffic_fmt": "1.00 GB",
+     "hidden_traffic_gb": 1.0,
+     "id": 10,
+     "is_active": true,
+     "is_sudo": true,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": true,
+     "pamp_blocked_at_set": true,
+     "portal": {
+      "block_reason": "pamp_limited",
+      "is_blocked": true,
+      "show_warning": true,
+      "support_telegram": "@support",
+      "warning_pct": 100.0
+     },
+     "raw_data": {
+      "data_limit": 1073741824,
+      "is_disabled": false,
+      "is_owner": true,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 1,
+      "used_traffic": 1073741824,
+      "username": "zed"
+     },
+     "sold_limit_bytes": -1073741824,
+     "status": "active",
+     "status_code": "pamp_limited",
+     "status_color": "#f59e0b",
+     "status_label": "Limited",
+     "total_user_limit": 2147483648,
+     "total_user_limit_fmt": "2.00 GB",
+     "total_user_limit_gb": 2.0,
+     "total_user_used": 1073741824,
+     "total_user_used_fmt": "1.00 GB",
+     "total_user_used_gb": 1.0,
+     "usage_percent": 100.0,
+     "user_count": 1,
+     "username": "zed",
+     "users_count": 1
+    }
+   },
+   "calls": [
+    {
+     "body": "username=golden&password=golden",
+     "method": "POST",
+     "path": "/api/admin/token",
+     "query": {}
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/admins",
+     "query": {}
+    },
+    {
+     "body": "username=golden&password=golden",
+     "method": "POST",
+     "path": "/api/admin/token",
+     "query": {}
+    }
+   ],
+   "dashboard": {
+    "active_count": 9,
+    "admin_count": 10,
+    "disabled_count": 1,
+    "near_limit_count": 4,
+    "over_limit_admins": [
+     {
+      "limit_fmt": "20.00 GB",
+      "pct": 105.0,
+      "state": "over",
+      "status_color": "#ef4444",
+      "status_label": "Disabled",
+      "used_fmt": "21.00 GB",
+      "username": "frank"
+     },
+     {
+      "limit_fmt": "1.00 GB",
+      "pct": 100.0,
+      "state": "over",
+      "status_color": "#f59e0b",
+      "status_label": "Limited",
+      "used_fmt": "1.00 GB",
+      "username": "zed"
+     },
+     {
+      "limit_fmt": "300.00 GB",
+      "pct": 83.3,
+      "state": "at_risk",
+      "status_color": "#10b981",
+      "status_label": "Active",
+      "used_fmt": "250.00 GB",
+      "username": "carol"
+     },
+     {
+      "limit_fmt": "50.00 GB",
+      "pct": 80.0,
+      "state": "at_risk",
+      "status_color": "#10b981",
+      "status_label": "Active",
+      "used_fmt": "40.00 GB",
+      "username": "ivy"
+     }
+    ],
+    "pamp_limited_count": 2,
+    "total_active": 4107,
+    "total_limit_fmt": "161.02 GB",
+    "total_remaining_fmt": "176.00 GB",
+    "total_used_fmt": "500.98 GB",
+    "total_users": 4112
+   },
+   "result": "Synced 0 admins.",
+   "result_state": "SUCCESS",
+   "snapshots": {
+    "alice": {
+     "count": 2,
+     "sum": 33285996553,
+     "users": [
+      [
+       "a1",
+       11811160064
+      ],
+      [
+       "a2",
+       21474836489
+      ]
+     ]
+    },
+    "bob": {
+     "count": 0,
+     "sum": 0,
+     "users": []
+    },
+    "carol": {
+     "count": 4,
+     "sum": 268435456003,
+     "users": [
+      [
+       "c1",
+       107374182400
+      ],
+      [
+       "c2",
+       161061273603
+      ],
+      [
+       "c3",
+       0
+      ],
+      [
+       "c4",
+       0
+      ]
+     ]
+    },
+    "dave": {
+     "count": 2,
+     "sum": 11811160064,
+     "users": [
+      [
+       "d1",
+       5368709120
+      ],
+      [
+       "d2",
+       6442450944
+      ]
+     ]
+    },
+    "erin": {
+     "count": 2,
+     "sum": 4294968196,
+     "users": [
+      [
+       "e-old",
+       4294967296
+      ],
+      [
+       "g0",
+       900
+      ]
+     ]
+    },
+    "frank": {
+     "count": 1,
+     "sum": 22548578304,
+     "users": [
+      [
+       "f1",
+       22548578304
+      ]
+     ]
+    },
+    "hank": {
+     "count": 1,
+     "sum": 1,
+     "users": [
+      [
+       "h1",
+       1
+      ]
+     ]
+    },
+    "ivy": {
+     "count": 1,
+     "sum": 42949673083,
+     "users": [
+      [
+       "i1",
+       42949673083
+      ]
+     ]
+    },
+    "yuki": {
+     "count": 1,
+     "sum": 2147483648,
+     "users": [
+      [
+       "y1",
+       2147483648
+      ]
+     ]
+    },
+    "zed": {
+     "count": 1,
+     "sum": 1073741824,
+     "users": [
+      [
+       "z1",
+       1073741824
+      ]
+     ]
+    }
+   },
+   "sync_logs": [
+    {
+     "admins_synced": 0,
+     "error_message": "/api/admins returned no admins \u2014 skipped admin-deletion step this run",
+     "status": "partial"
+    }
+   ]
+  },
+  {
+   "admins": {
+    "alice": {
+     "active_user_count": 2,
+     "active_users": 2,
+     "admin_limit_bytes": 107374182400,
+     "admin_limit_fmt": "100.00 GB",
+     "admin_limit_gb": 100.0,
+     "admin_remaining": 41875931119,
+     "admin_remaining_fmt": "39.00 GB",
+     "admin_remaining_gb": 39.0,
+     "admin_used_bytes": 65498251281,
+     "admin_used_fmt": "61.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 10737430918,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "100.00 GB",
+      "admin_remaining_fmt": "39.00 GB",
+      "admin_used_fmt": "61.00 GB",
+      "deleted_used_bytes": 10737430918,
+      "deleted_used_fmt": "10.00 GB",
+      "hidden_traffic_fmt": "-60.00 GB",
+      "sold_limit_fmt": "+60.00 GB",
+      "sold_limit_value": 64424496762,
+      "total_user_limit_fmt": "40.00 GB",
+      "total_user_used_fmt": "61.00 GB",
+      "usage_percent": 61.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 1,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": {
+      "is_blocked": false,
+      "limit_bytes": 107374182400,
+      "support_telegram": "@help",
+      "telegram_username": "@alice",
+      "warning_sent_80": false
+     },
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": false,
+      "support_telegram": "@help",
+      "warning_pct": 61.0
+     },
+     "raw_data": {
+      "data_limit": 107374182400,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 3,
+      "used_traffic": 65498251281,
+      "username": "alice"
+     },
+     "sold_limit_bytes": 64424496762,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 42949685638,
+     "total_user_limit_fmt": "40.00 GB",
+     "total_user_limit_gb": 40.0,
+     "total_user_used": 65498251281,
+     "total_user_used_fmt": "61.00 GB",
+     "total_user_used_gb": 61.0,
+     "usage_percent": 61.0,
+     "user_count": 3,
+     "username": "alice",
+     "users_count": 3
+    },
+    "bob": {
+     "active_user_count": 0,
+     "active_users": 0,
+     "admin_limit_bytes": 53687091200,
+     "admin_limit_fmt": "50.00 GB",
+     "admin_limit_gb": 50.0,
+     "admin_remaining": 42949672959,
+     "admin_remaining_fmt": "40.00 GB",
+     "admin_remaining_gb": 40.0,
+     "admin_used_bytes": 10737418241,
+     "admin_used_fmt": "10.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 10737418241,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "50.00 GB",
+      "admin_remaining_fmt": "40.00 GB",
+      "admin_used_fmt": "10.00 GB",
+      "deleted_used_bytes": 10737418241,
+      "deleted_used_fmt": "10.00 GB",
+      "hidden_traffic_fmt": "-40.00 GB",
+      "sold_limit_fmt": "+40.00 GB",
+      "sold_limit_value": 42949672959,
+      "total_user_limit_fmt": "10.00 GB",
+      "total_user_used_fmt": "10.00 GB",
+      "usage_percent": 20.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 2,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": {
+      "is_blocked": false,
+      "limit_bytes": 0,
+      "support_telegram": "",
+      "telegram_username": "",
+      "warning_sent_80": false
+     },
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": false,
+      "support_telegram": "@support",
+      "warning_pct": 20.0
+     },
+     "raw_data": {
+      "data_limit": 53687091200,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 2,
+      "used_traffic": 10737418241,
+      "username": "bob"
+     },
+     "sold_limit_bytes": 42949672959,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 10737418241,
+     "total_user_limit_fmt": "10.00 GB",
+     "total_user_limit_gb": 10.0,
+     "total_user_used": 10737418241,
+     "total_user_used_fmt": "10.00 GB",
+     "total_user_used_gb": 10.0,
+     "usage_percent": 20.0,
+     "user_count": 2,
+     "username": "bob",
+     "users_count": 2
+    },
+    "carol": {
+     "active_user_count": 2,
+     "active_users": 2,
+     "admin_limit_bytes": 322122547200,
+     "admin_limit_fmt": "300.00 GB",
+     "admin_limit_gb": 300.0,
+     "admin_remaining": 53687091197,
+     "admin_remaining_fmt": "50.00 GB",
+     "admin_remaining_gb": 50.0,
+     "admin_used_bytes": 268435456003,
+     "admin_used_fmt": "250.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "300.00 GB",
+      "admin_remaining_fmt": "50.00 GB",
+      "admin_used_fmt": "250.00 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "-299.00 GB",
+      "sold_limit_fmt": "+299.00 GB",
+      "sold_limit_value": 321048805376,
+      "total_user_limit_fmt": "1.00 GB",
+      "total_user_used_fmt": "250.00 GB",
+      "usage_percent": 83.3
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 7,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 1,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": true,
+      "support_telegram": "@support",
+      "warning_pct": 83.3
+     },
+     "raw_data": {
+      "data_limit": 322122547200,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 4,
+      "used_traffic": 268435456003,
+      "username": "carol"
+     },
+     "sold_limit_bytes": 321048805376,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 1073741824,
+     "total_user_limit_fmt": "1.00 GB",
+     "total_user_limit_gb": 1.0,
+     "total_user_used": 268435456003,
+     "total_user_used_fmt": "250.00 GB",
+     "total_user_used_gb": 250.0,
+     "usage_percent": 83.3,
+     "user_count": 4,
+     "username": "carol",
+     "users_count": 4
+    },
+    "dave": {
+     "active_user_count": 2,
+     "active_users": 2,
+     "admin_limit_bytes": 35433480969,
+     "admin_limit_fmt": "33.00 GB",
+     "admin_limit_gb": 33.0,
+     "admin_remaining": 34359739145,
+     "admin_remaining_fmt": "32.00 GB",
+     "admin_remaining_gb": 32.0,
+     "admin_used_bytes": 1073741824,
+     "admin_used_fmt": "1.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 999,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "33.00 GB",
+      "admin_remaining_fmt": "32.00 GB",
+      "admin_used_fmt": "1.00 GB",
+      "deleted_used_bytes": 999,
+      "deleted_used_fmt": "999.00 B",
+      "hidden_traffic_fmt": "-16.00 GB",
+      "sold_limit_fmt": "+16.00 GB",
+      "sold_limit_value": 17179868962,
+      "total_user_limit_fmt": "17.00 GB",
+      "total_user_used_fmt": "1.00 GB",
+      "usage_percent": 3.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 3,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": false,
+      "support_telegram": "@support",
+      "warning_pct": 3.0
+     },
+     "raw_data": {
+      "data_limit": 35433480969,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 2,
+      "used_traffic": 1073741824,
+      "username": "dave"
+     },
+     "sold_limit_bytes": 17179868962,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 18253612007,
+     "total_user_limit_fmt": "17.00 GB",
+     "total_user_limit_gb": 17.0,
+     "total_user_used": 1073741824,
+     "total_user_used_fmt": "1.00 GB",
+     "total_user_used_gb": 1.0,
+     "usage_percent": 3.0,
+     "user_count": 2,
+     "username": "dave",
+     "users_count": 2
+    },
+    "erin": {
+     "active_user_count": 4096,
+     "active_users": 4096,
+     "admin_limit_bytes": 0,
+     "admin_limit_fmt": "Unlimited",
+     "admin_limit_gb": 0.0,
+     "admin_remaining": 0,
+     "admin_remaining_fmt": "Unlimited",
+     "admin_remaining_gb": 0.0,
+     "admin_used_bytes": 123456789012,
+     "admin_used_fmt": "114.98 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "Unlimited",
+      "admin_remaining_fmt": "Unlimited",
+      "admin_used_fmt": "114.98 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "-114.96 GB",
+      "sold_limit_fmt": "0 GB",
+      "sold_limit_value": 0,
+      "total_user_limit_fmt": "19.53 MB",
+      "total_user_used_fmt": "114.98 GB",
+      "usage_percent": 0
+     },
+     "expired_users": 0,
+     "has_data_limit": false,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 4,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": true,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": false,
+      "support_telegram": "@support",
+      "warning_pct": 0
+     },
+     "raw_data": {
+      "data_limit": 0,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 4096,
+      "used_traffic": 123456789012,
+      "username": "erin"
+     },
+     "sold_limit_bytes": 0,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 20480000,
+     "total_user_limit_fmt": "19.53 MB",
+     "total_user_limit_gb": 0.02,
+     "total_user_used": 123456789012,
+     "total_user_used_fmt": "114.98 GB",
+     "total_user_used_gb": 114.98,
+     "usage_percent": 0,
+     "user_count": 4096,
+     "username": "erin",
+     "users_count": 4096
+    },
+    "frank": {
+     "active_user_count": 1,
+     "active_users": 1,
+     "admin_limit_bytes": 21474836480,
+     "admin_limit_fmt": "20.00 GB",
+     "admin_limit_gb": 20.0,
+     "admin_remaining": 0,
+     "admin_remaining_fmt": "0 B",
+     "admin_remaining_gb": 0.0,
+     "admin_used_bytes": 22548578304,
+     "admin_used_fmt": "21.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "panel_disabled",
+      "Disabled",
+      "#ef4444"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "20.00 GB",
+      "admin_remaining_fmt": "0 B",
+      "admin_used_fmt": "21.00 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "4.00 GB",
+      "sold_limit_fmt": "-4.00 GB",
+      "sold_limit_value": -4294967296,
+      "total_user_limit_fmt": "25.00 GB",
+      "total_user_used_fmt": "21.00 GB",
+      "usage_percent": 105.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 4294967296,
+     "hidden_traffic_bytes": 4294967296,
+     "hidden_traffic_fmt": "4.00 GB",
+     "hidden_traffic_gb": 4.0,
+     "id": 8,
+     "is_active": false,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": true,
+     "pamp_blocked_at_set": true,
+     "portal": {
+      "block_reason": "disabled",
+      "is_blocked": true,
+      "show_warning": true,
+      "support_telegram": "@support",
+      "warning_pct": 105.0
+     },
+     "raw_data": {
+      "data_limit": 21474836480,
+      "is_disabled": true,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 1,
+      "used_traffic": 22548578304,
+      "username": "frank"
+     },
+     "sold_limit_bytes": -4294967296,
+     "status": "disabled",
+     "status_code": "panel_disabled",
+     "status_color": "#ef4444",
+     "status_label": "Disabled",
+     "total_user_limit": 26843545600,
+     "total_user_limit_fmt": "25.00 GB",
+     "total_user_limit_gb": 25.0,
+     "total_user_used": 22548578304,
+     "total_user_used_fmt": "21.00 GB",
+     "total_user_used_gb": 21.0,
+     "usage_percent": 105.0,
+     "user_count": 1,
+     "username": "frank",
+     "users_count": 1
+    },
+    "hank": {
+     "active_user_count": 1,
+     "active_users": 1,
+     "admin_limit_bytes": 2147483648,
+     "admin_limit_fmt": "2.00 GB",
+     "admin_limit_gb": 2.0,
+     "admin_remaining": 2147483647,
+     "admin_remaining_fmt": "2.00 GB",
+     "admin_remaining_gb": 2.0,
+     "admin_used_bytes": 1,
+     "admin_used_fmt": "1.00 B",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "2.00 GB",
+      "admin_remaining_fmt": "2.00 GB",
+      "admin_used_fmt": "1.00 B",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "0 B",
+      "sold_limit_fmt": "0 GB",
+      "sold_limit_value": 0,
+      "total_user_limit_fmt": "2.00 GB",
+      "total_user_used_fmt": "1.00 B",
+      "usage_percent": 0.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 11,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": false,
+      "support_telegram": "@support",
+      "warning_pct": 0.0
+     },
+     "raw_data": {
+      "data_limit": 2147483648,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 1,
+      "used_traffic": 1,
+      "username": "hank"
+     },
+     "sold_limit_bytes": 0,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 2147483648,
+     "total_user_limit_fmt": "2.00 GB",
+     "total_user_limit_gb": 2.0,
+     "total_user_used": 1,
+     "total_user_used_fmt": "1.00 B",
+     "total_user_used_gb": 0.0,
+     "usage_percent": 0.0,
+     "user_count": 1,
+     "username": "hank",
+     "users_count": 1
+    },
+    "ivy": {
+     "active_user_count": 1,
+     "active_users": 1,
+     "admin_limit_bytes": 53687091200,
+     "admin_limit_fmt": "50.00 GB",
+     "admin_limit_gb": 50.0,
+     "admin_remaining": 10737418117,
+     "admin_remaining_fmt": "10.00 GB",
+     "admin_remaining_gb": 10.0,
+     "admin_used_bytes": 42949673083,
+     "admin_used_fmt": "40.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "50.00 GB",
+      "admin_remaining_fmt": "10.00 GB",
+      "admin_used_fmt": "40.00 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "10.00 GB",
+      "sold_limit_fmt": "-10.00 GB",
+      "sold_limit_value": -10737418240,
+      "total_user_limit_fmt": "60.00 GB",
+      "total_user_used_fmt": "40.00 GB",
+      "usage_percent": 80.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 10737418240,
+     "hidden_traffic_bytes": 10737418240,
+     "hidden_traffic_fmt": "10.00 GB",
+     "hidden_traffic_gb": 10.0,
+     "id": 9,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": null,
+     "raw_data": {
+      "data_limit": 53687091200,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 1,
+      "used_traffic": 42949673083,
+      "username": "ivy"
+     },
+     "sold_limit_bytes": -10737418240,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 64424509440,
+     "total_user_limit_fmt": "60.00 GB",
+     "total_user_limit_gb": 60.0,
+     "total_user_used": 42949673083,
+     "total_user_used_fmt": "40.00 GB",
+     "total_user_used_gb": 40.0,
+     "usage_percent": 80.0,
+     "user_count": 1,
+     "username": "ivy",
+     "users_count": 1
+    },
+    "yuki": {
+     "active_user_count": 1,
+     "active_users": 1,
+     "admin_limit_bytes": 5368709120,
+     "admin_limit_fmt": "5.00 GB",
+     "admin_limit_gb": 5.0,
+     "admin_remaining": 3221225472,
+     "admin_remaining_fmt": "3.00 GB",
+     "admin_remaining_gb": 3.0,
+     "admin_used_bytes": 2147483648,
+     "admin_used_fmt": "2.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "5.00 GB",
+      "admin_remaining_fmt": "3.00 GB",
+      "admin_used_fmt": "2.00 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "-1.00 GB",
+      "sold_limit_fmt": "+1.00 GB",
+      "sold_limit_value": 1073741824,
+      "total_user_limit_fmt": "4.00 GB",
+      "total_user_used_fmt": "2.00 GB",
+      "usage_percent": 40.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 6,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": false,
+      "support_telegram": "@support",
+      "warning_pct": 40.0
+     },
+     "raw_data": {
+      "data_limit": 5368709120,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 1,
+      "used_traffic": 2147483648,
+      "username": "yuki"
+     },
+     "sold_limit_bytes": 1073741824,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 4294967296,
+     "total_user_limit_fmt": "4.00 GB",
+     "total_user_limit_gb": 4.0,
+     "total_user_used": 2147483648,
+     "total_user_used_fmt": "2.00 GB",
+     "total_user_used_gb": 2.0,
+     "usage_percent": 40.0,
+     "user_count": 1,
+     "username": "yuki",
+     "users_count": 1
+    },
+    "zed": {
+     "active_user_count": 1,
+     "active_users": 1,
+     "admin_limit_bytes": 1073741824,
+     "admin_limit_fmt": "1.00 GB",
+     "admin_limit_gb": 1.0,
+     "admin_remaining": 0,
+     "admin_remaining_fmt": "0 B",
+     "admin_remaining_gb": 0.0,
+     "admin_used_bytes": 1073741824,
+     "admin_used_fmt": "1.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "pamp_limited",
+      "Limited",
+      "#f59e0b"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "1.00 GB",
+      "admin_remaining_fmt": "0 B",
+      "admin_used_fmt": "1.00 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "1.00 GB",
+      "sold_limit_fmt": "-1.00 GB",
+      "sold_limit_value": -1073741824,
+      "total_user_limit_fmt": "2.00 GB",
+      "total_user_used_fmt": "1.00 GB",
+      "usage_percent": 100.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 1073741824,
+     "hidden_traffic_bytes": 1073741824,
+     "hidden_traffic_fmt": "1.00 GB",
+     "hidden_traffic_gb": 1.0,
+     "id": 10,
+     "is_active": true,
+     "is_sudo": true,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": true,
+     "pamp_blocked_at_set": true,
+     "portal": {
+      "block_reason": "pamp_limited",
+      "is_blocked": true,
+      "show_warning": true,
+      "support_telegram": "@support",
+      "warning_pct": 100.0
+     },
+     "raw_data": {
+      "data_limit": 1073741824,
+      "is_disabled": false,
+      "is_owner": true,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 1,
+      "used_traffic": 1073741824,
+      "username": "zed"
+     },
+     "sold_limit_bytes": -1073741824,
+     "status": "active",
+     "status_code": "pamp_limited",
+     "status_color": "#f59e0b",
+     "status_label": "Limited",
+     "total_user_limit": 2147483648,
+     "total_user_limit_fmt": "2.00 GB",
+     "total_user_limit_gb": 2.0,
+     "total_user_used": 1073741824,
+     "total_user_used_fmt": "1.00 GB",
+     "total_user_used_gb": 1.0,
+     "usage_percent": 100.0,
+     "user_count": 1,
+     "username": "zed",
+     "users_count": 1
+    }
+   },
+   "calls": [
+    {
+     "body": "username=golden&password=golden",
+     "method": "POST",
+     "path": "/api/admin/token",
+     "query": {}
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/admins",
+     "query": {}
+    },
+    {
+     "body": "username=golden&password=golden",
+     "method": "POST",
+     "path": "/api/admin/token",
+     "query": {}
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/admins",
+     "query": {}
+    },
+    {
+     "body": "username=golden&password=golden",
+     "method": "POST",
+     "path": "/api/admin/token",
+     "query": {}
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/admins",
+     "query": {}
+    },
+    {
+     "body": "username=golden&password=golden",
+     "method": "POST",
+     "path": "/api/admin/token",
+     "query": {}
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/admins",
+     "query": {}
+    }
+   ],
+   "dashboard": {
+    "active_count": 9,
+    "admin_count": 10,
+    "disabled_count": 1,
+    "near_limit_count": 4,
+    "over_limit_admins": [
+     {
+      "limit_fmt": "20.00 GB",
+      "pct": 105.0,
+      "state": "over",
+      "status_color": "#ef4444",
+      "status_label": "Disabled",
+      "used_fmt": "21.00 GB",
+      "username": "frank"
+     },
+     {
+      "limit_fmt": "1.00 GB",
+      "pct": 100.0,
+      "state": "over",
+      "status_color": "#f59e0b",
+      "status_label": "Limited",
+      "used_fmt": "1.00 GB",
+      "username": "zed"
+     },
+     {
+      "limit_fmt": "300.00 GB",
+      "pct": 83.3,
+      "state": "at_risk",
+      "status_color": "#10b981",
+      "status_label": "Active",
+      "used_fmt": "250.00 GB",
+      "username": "carol"
+     },
+     {
+      "limit_fmt": "50.00 GB",
+      "pct": 80.0,
+      "state": "at_risk",
+      "status_color": "#10b981",
+      "status_label": "Active",
+      "used_fmt": "40.00 GB",
+      "username": "ivy"
+     }
+    ],
+    "pamp_limited_count": 2,
+    "total_active": 4107,
+    "total_limit_fmt": "161.02 GB",
+    "total_remaining_fmt": "176.00 GB",
+    "total_used_fmt": "500.98 GB",
+    "total_users": 4112
+   },
+   "result": "GET /api/admins failed: 502 Server Error: Bad Gateway for url: https://panel.golden.test/api/admins",
+   "result_state": "FAILURE",
+   "snapshots": {
+    "alice": {
+     "count": 2,
+     "sum": 33285996553,
+     "users": [
+      [
+       "a1",
+       11811160064
+      ],
+      [
+       "a2",
+       21474836489
+      ]
+     ]
+    },
+    "bob": {
+     "count": 0,
+     "sum": 0,
+     "users": []
+    },
+    "carol": {
+     "count": 4,
+     "sum": 268435456003,
+     "users": [
+      [
+       "c1",
+       107374182400
+      ],
+      [
+       "c2",
+       161061273603
+      ],
+      [
+       "c3",
+       0
+      ],
+      [
+       "c4",
+       0
+      ]
+     ]
+    },
+    "dave": {
+     "count": 2,
+     "sum": 11811160064,
+     "users": [
+      [
+       "d1",
+       5368709120
+      ],
+      [
+       "d2",
+       6442450944
+      ]
+     ]
+    },
+    "erin": {
+     "count": 2,
+     "sum": 4294968196,
+     "users": [
+      [
+       "e-old",
+       4294967296
+      ],
+      [
+       "g0",
+       900
+      ]
+     ]
+    },
+    "frank": {
+     "count": 1,
+     "sum": 22548578304,
+     "users": [
+      [
+       "f1",
+       22548578304
+      ]
+     ]
+    },
+    "hank": {
+     "count": 1,
+     "sum": 1,
+     "users": [
+      [
+       "h1",
+       1
+      ]
+     ]
+    },
+    "ivy": {
+     "count": 1,
+     "sum": 42949673083,
+     "users": [
+      [
+       "i1",
+       42949673083
+      ]
+     ]
+    },
+    "yuki": {
+     "count": 1,
+     "sum": 2147483648,
+     "users": [
+      [
+       "y1",
+       2147483648
+      ]
+     ]
+    },
+    "zed": {
+     "count": 1,
+     "sum": 1073741824,
+     "users": [
+      [
+       "z1",
+       1073741824
+      ]
+     ]
+    }
+   },
+   "sync_logs": [
+    {
+     "admins_synced": 0,
+     "error_message": "GET /api/admins failed: 502 Server Error: Bad Gateway for url: https://panel.golden.test/api/admins",
+     "status": "failed"
+    },
+    {
+     "admins_synced": 0,
+     "error_message": "GET /api/admins failed: 502 Server Error: Bad Gateway for url: https://panel.golden.test/api/admins",
+     "status": "failed"
+    },
+    {
+     "admins_synced": 0,
+     "error_message": "GET /api/admins failed: 502 Server Error: Bad Gateway for url: https://panel.golden.test/api/admins",
+     "status": "failed"
+    },
+    {
+     "admins_synced": 0,
+     "error_message": "GET /api/admins failed: 502 Server Error: Bad Gateway for url: https://panel.golden.test/api/admins",
+     "status": "failed"
+    }
+   ]
+  },
+  {
+   "admins": {
+    "alice": {
+     "active_user_count": 2,
+     "active_users": 2,
+     "admin_limit_bytes": 107374182400,
+     "admin_limit_fmt": "100.00 GB",
+     "admin_limit_gb": 100.0,
+     "admin_remaining": 41875931119,
+     "admin_remaining_fmt": "39.00 GB",
+     "admin_remaining_gb": 39.0,
+     "admin_used_bytes": 65498251281,
+     "admin_used_fmt": "61.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 10737430918,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "100.00 GB",
+      "admin_remaining_fmt": "39.00 GB",
+      "admin_used_fmt": "61.00 GB",
+      "deleted_used_bytes": 10737430918,
+      "deleted_used_fmt": "10.00 GB",
+      "hidden_traffic_fmt": "-60.00 GB",
+      "sold_limit_fmt": "+60.00 GB",
+      "sold_limit_value": 64424496762,
+      "total_user_limit_fmt": "40.00 GB",
+      "total_user_used_fmt": "61.00 GB",
+      "usage_percent": 61.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 1,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": {
+      "is_blocked": false,
+      "limit_bytes": 107374182400,
+      "support_telegram": "@help",
+      "telegram_username": "@alice",
+      "warning_sent_80": false
+     },
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": false,
+      "support_telegram": "@help",
+      "warning_pct": 61.0
+     },
+     "raw_data": {
+      "data_limit": 107374182400,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 3,
+      "used_traffic": 65498251281,
+      "username": "alice"
+     },
+     "sold_limit_bytes": 64424496762,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 42949685638,
+     "total_user_limit_fmt": "40.00 GB",
+     "total_user_limit_gb": 40.0,
+     "total_user_used": 65498251281,
+     "total_user_used_fmt": "61.00 GB",
+     "total_user_used_gb": 61.0,
+     "usage_percent": 61.0,
+     "user_count": 3,
+     "username": "alice",
+     "users_count": 3
+    },
+    "bob": {
+     "active_user_count": 0,
+     "active_users": 0,
+     "admin_limit_bytes": 53687091200,
+     "admin_limit_fmt": "50.00 GB",
+     "admin_limit_gb": 50.0,
+     "admin_remaining": 42949672959,
+     "admin_remaining_fmt": "40.00 GB",
+     "admin_remaining_gb": 40.0,
+     "admin_used_bytes": 10737418241,
+     "admin_used_fmt": "10.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 10737418241,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "50.00 GB",
+      "admin_remaining_fmt": "40.00 GB",
+      "admin_used_fmt": "10.00 GB",
+      "deleted_used_bytes": 10737418241,
+      "deleted_used_fmt": "10.00 GB",
+      "hidden_traffic_fmt": "-40.00 GB",
+      "sold_limit_fmt": "+40.00 GB",
+      "sold_limit_value": 42949672959,
+      "total_user_limit_fmt": "10.00 GB",
+      "total_user_used_fmt": "10.00 GB",
+      "usage_percent": 20.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 2,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": {
+      "is_blocked": false,
+      "limit_bytes": 0,
+      "support_telegram": "",
+      "telegram_username": "",
+      "warning_sent_80": false
+     },
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": false,
+      "support_telegram": "@support",
+      "warning_pct": 20.0
+     },
+     "raw_data": {
+      "data_limit": 53687091200,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 2,
+      "used_traffic": 10737418241,
+      "username": "bob"
+     },
+     "sold_limit_bytes": 42949672959,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 10737418241,
+     "total_user_limit_fmt": "10.00 GB",
+     "total_user_limit_gb": 10.0,
+     "total_user_used": 10737418241,
+     "total_user_used_fmt": "10.00 GB",
+     "total_user_used_gb": 10.0,
+     "usage_percent": 20.0,
+     "user_count": 2,
+     "username": "bob",
+     "users_count": 2
+    },
+    "carol": {
+     "active_user_count": 2,
+     "active_users": 2,
+     "admin_limit_bytes": 322122547200,
+     "admin_limit_fmt": "300.00 GB",
+     "admin_limit_gb": 300.0,
+     "admin_remaining": 53687091197,
+     "admin_remaining_fmt": "50.00 GB",
+     "admin_remaining_gb": 50.0,
+     "admin_used_bytes": 268435456003,
+     "admin_used_fmt": "250.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "300.00 GB",
+      "admin_remaining_fmt": "50.00 GB",
+      "admin_used_fmt": "250.00 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "-299.00 GB",
+      "sold_limit_fmt": "+299.00 GB",
+      "sold_limit_value": 321048805376,
+      "total_user_limit_fmt": "1.00 GB",
+      "total_user_used_fmt": "250.00 GB",
+      "usage_percent": 83.3
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 7,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 1,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": true,
+      "support_telegram": "@support",
+      "warning_pct": 83.3
+     },
+     "raw_data": {
+      "data_limit": 322122547200,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 4,
+      "used_traffic": 268435456003,
+      "username": "carol"
+     },
+     "sold_limit_bytes": 321048805376,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 1073741824,
+     "total_user_limit_fmt": "1.00 GB",
+     "total_user_limit_gb": 1.0,
+     "total_user_used": 268435456003,
+     "total_user_used_fmt": "250.00 GB",
+     "total_user_used_gb": 250.0,
+     "usage_percent": 83.3,
+     "user_count": 4,
+     "username": "carol",
+     "users_count": 4
+    },
+    "dave": {
+     "active_user_count": 0,
+     "active_users": 0,
+     "admin_limit_bytes": 35433480969,
+     "admin_limit_fmt": "33.00 GB",
+     "admin_limit_gb": 33.0,
+     "admin_remaining": 34359739145,
+     "admin_remaining_fmt": "32.00 GB",
+     "admin_remaining_gb": 32.0,
+     "admin_used_bytes": 1073741824,
+     "admin_used_fmt": "1.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 11811161063,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "33.00 GB",
+      "admin_remaining_fmt": "32.00 GB",
+      "admin_used_fmt": "1.00 GB",
+      "deleted_used_bytes": 11811161063,
+      "deleted_used_fmt": "11.00 GB",
+      "hidden_traffic_fmt": "-22.00 GB",
+      "sold_limit_fmt": "+22.00 GB",
+      "sold_limit_value": 23622319906,
+      "total_user_limit_fmt": "11.00 GB",
+      "total_user_used_fmt": "1.00 GB",
+      "usage_percent": 3.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 3,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": false,
+      "support_telegram": "@support",
+      "warning_pct": 3.0
+     },
+     "raw_data": {
+      "data_limit": 35433480969,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 2,
+      "used_traffic": 1073741824,
+      "username": "dave"
+     },
+     "sold_limit_bytes": 23622319906,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 11811161063,
+     "total_user_limit_fmt": "11.00 GB",
+     "total_user_limit_gb": 11.0,
+     "total_user_used": 1073741824,
+     "total_user_used_fmt": "1.00 GB",
+     "total_user_used_gb": 1.0,
+     "usage_percent": 3.0,
+     "user_count": 2,
+     "username": "dave",
+     "users_count": 2
+    },
+    "erin": {
+     "active_user_count": 4096,
+     "active_users": 4096,
+     "admin_limit_bytes": 0,
+     "admin_limit_fmt": "Unlimited",
+     "admin_limit_gb": 0.0,
+     "admin_remaining": 0,
+     "admin_remaining_fmt": "Unlimited",
+     "admin_remaining_gb": 0.0,
+     "admin_used_bytes": 123456789012,
+     "admin_used_fmt": "114.98 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "Unlimited",
+      "admin_remaining_fmt": "Unlimited",
+      "admin_used_fmt": "114.98 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "-114.96 GB",
+      "sold_limit_fmt": "0 GB",
+      "sold_limit_value": 0,
+      "total_user_limit_fmt": "19.53 MB",
+      "total_user_used_fmt": "114.98 GB",
+      "usage_percent": 0
+     },
+     "expired_users": 0,
+     "has_data_limit": false,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 4,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": true,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": false,
+      "support_telegram": "@support",
+      "warning_pct": 0
+     },
+     "raw_data": {
+      "data_limit": 0,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 4096,
+      "used_traffic": 123456789012,
+      "username": "erin"
+     },
+     "sold_limit_bytes": 0,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 20480000,
+     "total_user_limit_fmt": "19.53 MB",
+     "total_user_limit_gb": 0.02,
+     "total_user_used": 123456789012,
+     "total_user_used_fmt": "114.98 GB",
+     "total_user_used_gb": 114.98,
+     "usage_percent": 0,
+     "user_count": 4096,
+     "username": "erin",
+     "users_count": 4096
+    },
+    "frank": {
+     "active_user_count": 1,
+     "active_users": 1,
+     "admin_limit_bytes": 21474836480,
+     "admin_limit_fmt": "20.00 GB",
+     "admin_limit_gb": 20.0,
+     "admin_remaining": 0,
+     "admin_remaining_fmt": "0 B",
+     "admin_remaining_gb": 0.0,
+     "admin_used_bytes": 22548578304,
+     "admin_used_fmt": "21.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "panel_disabled",
+      "Disabled",
+      "#ef4444"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "20.00 GB",
+      "admin_remaining_fmt": "0 B",
+      "admin_used_fmt": "21.00 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "4.00 GB",
+      "sold_limit_fmt": "-4.00 GB",
+      "sold_limit_value": -4294967296,
+      "total_user_limit_fmt": "25.00 GB",
+      "total_user_used_fmt": "21.00 GB",
+      "usage_percent": 105.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 4294967296,
+     "hidden_traffic_bytes": 4294967296,
+     "hidden_traffic_fmt": "4.00 GB",
+     "hidden_traffic_gb": 4.0,
+     "id": 8,
+     "is_active": false,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": true,
+     "pamp_blocked_at_set": true,
+     "portal": {
+      "block_reason": "disabled",
+      "is_blocked": true,
+      "show_warning": true,
+      "support_telegram": "@support",
+      "warning_pct": 105.0
+     },
+     "raw_data": {
+      "data_limit": 21474836480,
+      "is_disabled": true,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 1,
+      "used_traffic": 22548578304,
+      "username": "frank"
+     },
+     "sold_limit_bytes": -4294967296,
+     "status": "disabled",
+     "status_code": "panel_disabled",
+     "status_color": "#ef4444",
+     "status_label": "Disabled",
+     "total_user_limit": 26843545600,
+     "total_user_limit_fmt": "25.00 GB",
+     "total_user_limit_gb": 25.0,
+     "total_user_used": 22548578304,
+     "total_user_used_fmt": "21.00 GB",
+     "total_user_used_gb": 21.0,
+     "usage_percent": 105.0,
+     "user_count": 1,
+     "username": "frank",
+     "users_count": 1
+    },
+    "hank": {
+     "active_user_count": 1,
+     "active_users": 1,
+     "admin_limit_bytes": 2147483648,
+     "admin_limit_fmt": "2.00 GB",
+     "admin_limit_gb": 2.0,
+     "admin_remaining": 2147483647,
+     "admin_remaining_fmt": "2.00 GB",
+     "admin_remaining_gb": 2.0,
+     "admin_used_bytes": 1,
+     "admin_used_fmt": "1.00 B",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "2.00 GB",
+      "admin_remaining_fmt": "2.00 GB",
+      "admin_used_fmt": "1.00 B",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "0 B",
+      "sold_limit_fmt": "0 GB",
+      "sold_limit_value": 0,
+      "total_user_limit_fmt": "2.00 GB",
+      "total_user_used_fmt": "1.00 B",
+      "usage_percent": 0.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 11,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": false,
+      "support_telegram": "@support",
+      "warning_pct": 0.0
+     },
+     "raw_data": {
+      "data_limit": 2147483648,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 1,
+      "used_traffic": 1,
+      "username": "hank"
+     },
+     "sold_limit_bytes": 0,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 2147483648,
+     "total_user_limit_fmt": "2.00 GB",
+     "total_user_limit_gb": 2.0,
+     "total_user_used": 1,
+     "total_user_used_fmt": "1.00 B",
+     "total_user_used_gb": 0.0,
+     "usage_percent": 0.0,
+     "user_count": 1,
+     "username": "hank",
+     "users_count": 1
+    },
+    "ivy": {
+     "active_user_count": 1,
+     "active_users": 1,
+     "admin_limit_bytes": 53687091200,
+     "admin_limit_fmt": "50.00 GB",
+     "admin_limit_gb": 50.0,
+     "admin_remaining": 10737418117,
+     "admin_remaining_fmt": "10.00 GB",
+     "admin_remaining_gb": 10.0,
+     "admin_used_bytes": 42949673083,
+     "admin_used_fmt": "40.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "50.00 GB",
+      "admin_remaining_fmt": "10.00 GB",
+      "admin_used_fmt": "40.00 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "10.00 GB",
+      "sold_limit_fmt": "-10.00 GB",
+      "sold_limit_value": -10737418240,
+      "total_user_limit_fmt": "60.00 GB",
+      "total_user_used_fmt": "40.00 GB",
+      "usage_percent": 80.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 10737418240,
+     "hidden_traffic_bytes": 10737418240,
+     "hidden_traffic_fmt": "10.00 GB",
+     "hidden_traffic_gb": 10.0,
+     "id": 9,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": null,
+     "raw_data": {
+      "data_limit": 53687091200,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 1,
+      "used_traffic": 42949673083,
+      "username": "ivy"
+     },
+     "sold_limit_bytes": -10737418240,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 64424509440,
+     "total_user_limit_fmt": "60.00 GB",
+     "total_user_limit_gb": 60.0,
+     "total_user_used": 42949673083,
+     "total_user_used_fmt": "40.00 GB",
+     "total_user_used_gb": 40.0,
+     "usage_percent": 80.0,
+     "user_count": 1,
+     "username": "ivy",
+     "users_count": 1
+    },
+    "yuki": {
+     "active_user_count": 1,
+     "active_users": 1,
+     "admin_limit_bytes": 5368709120,
+     "admin_limit_fmt": "5.00 GB",
+     "admin_limit_gb": 5.0,
+     "admin_remaining": 3221225472,
+     "admin_remaining_fmt": "3.00 GB",
+     "admin_remaining_gb": 3.0,
+     "admin_used_bytes": 2147483648,
+     "admin_used_fmt": "2.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "active",
+      "Active",
+      "#10b981"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "5.00 GB",
+      "admin_remaining_fmt": "3.00 GB",
+      "admin_used_fmt": "2.00 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "-1.00 GB",
+      "sold_limit_fmt": "+1.00 GB",
+      "sold_limit_value": 1073741824,
+      "total_user_limit_fmt": "4.00 GB",
+      "total_user_used_fmt": "2.00 GB",
+      "usage_percent": 40.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 0,
+     "hidden_traffic_bytes": 0,
+     "hidden_traffic_fmt": "0 B",
+     "hidden_traffic_gb": 0.0,
+     "id": 6,
+     "is_active": true,
+     "is_sudo": false,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": false,
+     "pamp_blocked_at_set": false,
+     "portal": {
+      "block_reason": null,
+      "is_blocked": false,
+      "show_warning": false,
+      "support_telegram": "@support",
+      "warning_pct": 40.0
+     },
+     "raw_data": {
+      "data_limit": 5368709120,
+      "is_disabled": false,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 1,
+      "used_traffic": 2147483648,
+      "username": "yuki"
+     },
+     "sold_limit_bytes": 1073741824,
+     "status": "active",
+     "status_code": "active",
+     "status_color": "#10b981",
+     "status_label": "Active",
+     "total_user_limit": 4294967296,
+     "total_user_limit_fmt": "4.00 GB",
+     "total_user_limit_gb": 4.0,
+     "total_user_used": 2147483648,
+     "total_user_used_fmt": "2.00 GB",
+     "total_user_used_gb": 2.0,
+     "usage_percent": 40.0,
+     "user_count": 1,
+     "username": "yuki",
+     "users_count": 1
+    },
+    "zed": {
+     "active_user_count": 1,
+     "active_users": 1,
+     "admin_limit_bytes": 1073741824,
+     "admin_limit_fmt": "1.00 GB",
+     "admin_limit_gb": 1.0,
+     "admin_remaining": 0,
+     "admin_remaining_fmt": "0 B",
+     "admin_remaining_gb": 0.0,
+     "admin_used_bytes": 1073741824,
+     "admin_used_fmt": "1.00 GB",
+     "deleted_traffic_reset_at_set": false,
+     "deleted_users_used_bytes": 0,
+     "disabled_users": 0,
+     "effective_status": [
+      "pamp_limited",
+      "Limited",
+      "#f59e0b"
+     ],
+     "enrich": {
+      "admin_limit_fmt": "1.00 GB",
+      "admin_remaining_fmt": "0 B",
+      "admin_used_fmt": "1.00 GB",
+      "deleted_used_bytes": 0,
+      "deleted_used_fmt": "0 B",
+      "hidden_traffic_fmt": "1.00 GB",
+      "sold_limit_fmt": "-1.00 GB",
+      "sold_limit_value": -1073741824,
+      "total_user_limit_fmt": "2.00 GB",
+      "total_user_used_fmt": "1.00 GB",
+      "usage_percent": 100.0
+     },
+     "expired_users": 0,
+     "has_data_limit": true,
+     "hidden_traffic": 1073741824,
+     "hidden_traffic_bytes": 1073741824,
+     "hidden_traffic_fmt": "1.00 GB",
+     "hidden_traffic_gb": 1.0,
+     "id": 10,
+     "is_active": true,
+     "is_sudo": true,
+     "is_unlimited": false,
+     "last_synced_at_set": true,
+     "limit_config": null,
+     "limited_users": 0,
+     "on_hold_users": 0,
+     "pamp_blocked": true,
+     "pamp_blocked_at_set": true,
+     "portal": {
+      "block_reason": "pamp_limited",
+      "is_blocked": true,
+      "show_warning": true,
+      "support_telegram": "@support",
+      "warning_pct": 100.0
+     },
+     "raw_data": {
+      "data_limit": 1073741824,
+      "is_disabled": false,
+      "is_owner": true,
+      "role": "reseller",
+      "status": "active",
+      "total_users": 1,
+      "used_traffic": 1073741824,
+      "username": "zed"
+     },
+     "sold_limit_bytes": -1073741824,
+     "status": "active",
+     "status_code": "pamp_limited",
+     "status_color": "#f59e0b",
+     "status_label": "Limited",
+     "total_user_limit": 2147483648,
+     "total_user_limit_fmt": "2.00 GB",
+     "total_user_limit_gb": 2.0,
+     "total_user_used": 1073741824,
+     "total_user_used_fmt": "1.00 GB",
+     "total_user_used_gb": 1.0,
+     "usage_percent": 100.0,
+     "user_count": 1,
+     "username": "zed",
+     "users_count": 1
+    }
+   },
+   "calls": [
+    {
+     "body": "username=golden&password=golden",
+     "method": "POST",
+     "path": "/api/admin/token",
+     "query": {}
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/admins",
+     "query": {}
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "alice"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "bob"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "carol"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "dave"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "erin"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "frank"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "ivy"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "yuki"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "zed"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": null,
+     "method": "GET",
+     "path": "/api/users",
+     "query": {
+      "admin": [
+       "hank"
+      ],
+      "limit": [
+       "4096"
+      ]
+     }
+    },
+    {
+     "body": "username=golden&password=golden",
+     "method": "POST",
+     "path": "/api/admin/token",
+     "query": {}
+    }
+   ],
+   "dashboard": {
+    "active_count": 9,
+    "admin_count": 10,
+    "disabled_count": 1,
+    "near_limit_count": 4,
+    "over_limit_admins": [
+     {
+      "limit_fmt": "20.00 GB",
+      "pct": 105.0,
+      "state": "over",
+      "status_color": "#ef4444",
+      "status_label": "Disabled",
+      "used_fmt": "21.00 GB",
+      "username": "frank"
+     },
+     {
+      "limit_fmt": "1.00 GB",
+      "pct": 100.0,
+      "state": "over",
+      "status_color": "#f59e0b",
+      "status_label": "Limited",
+      "used_fmt": "1.00 GB",
+      "username": "zed"
+     },
+     {
+      "limit_fmt": "300.00 GB",
+      "pct": 83.3,
+      "state": "at_risk",
+      "status_color": "#10b981",
+      "status_label": "Active",
+      "used_fmt": "250.00 GB",
+      "username": "carol"
+     },
+     {
+      "limit_fmt": "50.00 GB",
+      "pct": 80.0,
+      "state": "at_risk",
+      "status_color": "#10b981",
+      "status_label": "Active",
+      "used_fmt": "40.00 GB",
+      "username": "ivy"
+     }
+    ],
+    "pamp_limited_count": 2,
+    "total_active": 4105,
+    "total_limit_fmt": "155.02 GB",
+    "total_remaining_fmt": "176.00 GB",
+    "total_used_fmt": "500.98 GB",
+    "total_users": 4112
+   },
+   "result": "Synced 10 admins.",
+   "result_state": "SUCCESS",
+   "snapshots": {
+    "alice": {
+     "count": 2,
+     "sum": 33285996553,
+     "users": [
+      [
+       "a1",
+       11811160064
+      ],
+      [
+       "a2",
+       21474836489
+      ]
+     ]
+    },
+    "bob": {
+     "count": 0,
+     "sum": 0,
+     "users": []
+    },
+    "carol": {
+     "count": 4,
+     "sum": 268435456003,
+     "users": [
+      [
+       "c1",
+       107374182400
+      ],
+      [
+       "c2",
+       161061273603
+      ],
+      [
+       "c3",
+       0
+      ],
+      [
+       "c4",
+       0
+      ]
+     ]
+    },
+    "dave": {
+     "count": 0,
+     "sum": 0,
+     "users": []
+    },
+    "erin": {
+     "count": 2,
+     "sum": 4294968196,
+     "users": [
+      [
+       "e-old",
+       4294967296
+      ],
+      [
+       "g0",
+       900
+      ]
+     ]
+    },
+    "frank": {
+     "count": 1,
+     "sum": 22548578304,
+     "users": [
+      [
+       "f1",
+       22548578304
+      ]
+     ]
+    },
+    "hank": {
+     "count": 1,
+     "sum": 1,
+     "users": [
+      [
+       "h1",
+       1
+      ]
+     ]
+    },
+    "ivy": {
+     "count": 1,
+     "sum": 42949673083,
+     "users": [
+      [
+       "i1",
+       42949673083
+      ]
+     ]
+    },
+    "yuki": {
+     "count": 1,
+     "sum": 2147483648,
+     "users": [
+      [
+       "y1",
+       2147483648
+      ]
+     ]
+    },
+    "zed": {
+     "count": 1,
+     "sum": 1073741824,
+     "users": [
+      [
+       "z1",
+       1073741824
+      ]
+     ]
+    }
+   },
+   "sync_logs": [
+    {
+     "admins_synced": 10,
+     "error_message": "",
+     "status": "success"
+    }
+   ]
+  }
+ ],
+ "source": {
+  "django": "4.2.16",
+  "pamp_version": "1.5.3"
+ }
+}

@@ -1,0 +1,894 @@
+{
+ "description": "PAMP v1.5.3 code paths: deleted users, fetch failure/timeout (skip), 4096 cap, empty/failed admin list, enforcement block/unblock/failed PUT, add/remove admins, unlimited, groups, rounding",
+ "initial": {
+  "admins": [
+   {
+    "username": "alice",
+    "has_data_limit": true,
+    "admin_limit_bytes": 107374182400,
+    "admin_remaining": 42949672960,
+    "total_user_limit": 96636764160,
+    "total_user_used": 64424509440,
+    "user_count": 3,
+    "deleted_users_used_bytes": 7516205113
+   },
+   {
+    "username": "bob",
+    "has_data_limit": true,
+    "admin_limit_bytes": 10737418240,
+    "admin_remaining": 1073741824,
+    "total_user_used": 9663676416
+   },
+   {
+    "username": "dave",
+    "has_data_limit": true,
+    "admin_limit_bytes": 35433480969,
+    "admin_remaining": 5,
+    "total_user_limit": 12,
+    "deleted_users_used_bytes": 999
+   },
+   {
+    "username": "erin",
+    "has_data_limit": false
+   },
+   {
+    "username": "gina"
+   },
+   {
+    "username": "yuki",
+    "has_data_limit": true,
+    "admin_limit_bytes": 5368709120,
+    "pamp_blocked": true
+   }
+  ],
+  "limits": [
+   {
+    "admin": "alice",
+    "limit_bytes": 107374182400,
+    "telegram_username": "@alice",
+    "support_telegram": "@help"
+   },
+   {
+    "admin": "bob",
+    "limit_bytes": 0,
+    "support_telegram": ""
+   }
+  ],
+  "snapshots": [
+   {
+    "admin": "alice",
+    "user": "a1",
+    "used": 10737418240
+   },
+   {
+    "admin": "alice",
+    "user": "a2",
+    "used": 21474836481
+   },
+   {
+    "admin": "alice",
+    "user": "a3",
+    "used": 3221225805
+   },
+   {
+    "admin": "dave",
+    "user": "d1",
+    "used": 5368709120
+   },
+   {
+    "admin": "dave",
+    "user": "d2",
+    "used": 6442450944
+   },
+   {
+    "admin": "erin",
+    "user": "e-old",
+    "used": 4294967296
+   },
+   {
+    "admin": "erin",
+    "user": "g0",
+    "used": 900
+   }
+  ],
+  "groups": [
+   {
+    "owner_username": "ivy",
+    "member_usernames": "alice, bob,ivy",
+    "note": "group"
+   }
+  ]
+ },
+ "rounds": [
+  {
+   "admins": {
+    "admins": [
+     {
+      "username": "alice",
+      "data_limit": 107374182400,
+      "used_traffic": 65498251281,
+      "total_users": 3,
+      "is_disabled": false,
+      "status": "active",
+      "role": "reseller"
+     },
+     {
+      "username": "bob",
+      "data_limit": 10737418240,
+      "used_traffic": 10737418241,
+      "total_users": 2,
+      "is_disabled": false,
+      "status": "active",
+      "role": "reseller"
+     },
+     {
+      "username": "carol",
+      "data_limit": null,
+      "used_traffic": 268435456003,
+      "total_users": 4,
+      "is_disabled": false,
+      "status": "active",
+      "role": "reseller"
+     },
+     {
+      "username": "dave",
+      "data_limit": 35433480969,
+      "used_traffic": 1073741824,
+      "total_users": 2,
+      "is_disabled": false,
+      "status": "active",
+      "role": "reseller"
+     },
+     {
+      "username": "erin",
+      "data_limit": 0,
+      "used_traffic": 123456789012,
+      "total_users": 4096,
+      "is_disabled": false,
+      "status": "active",
+      "role": "reseller"
+     },
+     {
+      "username": "frank",
+      "data_limit": 21474836480,
+      "used_traffic": 22548578304,
+      "total_users": 1,
+      "is_disabled": true,
+      "status": "active",
+      "role": "reseller"
+     },
+     {
+      "username": "gina",
+      "data_limit": 7516192768,
+      "used_traffic": 3221225472,
+      "total_users": 0,
+      "is_disabled": false,
+      "status": "active",
+      "role": "reseller"
+     },
+     {
+      "username": "ivy",
+      "data_limit": 53687091200,
+      "used_traffic": 42949673083,
+      "total_users": 1,
+      "is_disabled": false,
+      "status": "active",
+      "role": "reseller"
+     },
+     {
+      "username": "yuki",
+      "data_limit": 5368709120,
+      "used_traffic": 2147483648,
+      "total_users": 1,
+      "is_disabled": false,
+      "status": "active",
+      "role": "reseller"
+     },
+     {
+      "username": "zed",
+      "data_limit": 1073741824,
+      "used_traffic": 1073741824,
+      "total_users": 1,
+      "is_disabled": false,
+      "status": "active",
+      "role": "reseller",
+      "is_owner": true
+     }
+    ]
+   },
+   "users": {
+    "alice": [
+     {
+      "username": "a1",
+      "used_traffic": 10737418245,
+      "data_limit": 32212254720,
+      "status": "active"
+     },
+     {
+      "username": "a2",
+      "used_traffic": 21474836481,
+      "data_limit": null,
+      "status": "active"
+     },
+     {
+      "username": "a3",
+      "used_traffic": 3221225805,
+      "data_limit": 16106127360,
+      "status": "limited"
+     }
+    ],
+    "bob": [
+     {
+      "username": "b1",
+      "used_traffic": 5368709120,
+      "data_limit": 0,
+      "status": "disabled"
+     },
+     {
+      "username": "b2",
+      "used_traffic": 5368709121,
+      "data_limit": 6442450944,
+      "status": "expired"
+     }
+    ],
+    "carol": [
+     {
+      "username": "c1",
+      "used_traffic": 107374182400,
+      "data_limit": null,
+      "status": "active"
+     },
+     {
+      "username": "c2",
+      "used_traffic": 161061273603,
+      "data_limit": null,
+      "status": "on_hold"
+     },
+     {
+      "username": "c3",
+      "used_traffic": 0,
+      "data_limit": 1073741824,
+      "status": "weird"
+     },
+     {
+      "username": "c4",
+      "used_traffic": null,
+      "data_limit": null,
+      "status": "active"
+     }
+    ],
+    "dave": [
+     {
+      "username": "d1",
+      "used_traffic": 5368709120,
+      "data_limit": 8589934592,
+      "status": "active"
+     },
+     {
+      "username": "d2",
+      "used_traffic": 6442450944,
+      "data_limit": 9663676416,
+      "status": "active"
+     }
+    ],
+    "erin": {
+     "generate": 4096,
+     "prefix": "g",
+     "used": 1000,
+     "limit": 5000
+    },
+    "frank": [
+     {
+      "username": "f1",
+      "used_traffic": 22548578304,
+      "data_limit": 26843545600,
+      "status": "active"
+     }
+    ],
+    "gina": [],
+    "ivy": [
+     {
+      "username": "i1",
+      "used_traffic": 42949673083,
+      "data_limit": 64424509440,
+      "status": "active"
+     }
+    ],
+    "yuki": [
+     {
+      "username": "y1",
+      "used_traffic": 2147483648,
+      "data_limit": 4294967296,
+      "status": "active"
+     }
+    ],
+    "zed": [
+     {
+      "username": "z1",
+      "used_traffic": 1073741824,
+      "data_limit": 2147483648,
+      "status": "active"
+     }
+    ]
+   },
+   "put_status": {
+    "zed": 500
+   }
+  },
+  {
+   "admins": {
+    "admins": [
+     {
+      "username": "alice",
+      "data_limit": 107374182400,
+      "used_traffic": 65498251281,
+      "total_users": 3,
+      "is_disabled": false,
+      "status": "active",
+      "role": "reseller"
+     },
+     {
+      "username": "bob",
+      "data_limit": 10737418240,
+      "used_traffic": 10737418241,
+      "total_users": 2,
+      "is_disabled": false,
+      "status": "active",
+      "role": "reseller"
+     },
+     {
+      "username": "carol",
+      "data_limit": null,
+      "used_traffic": 268435456003,
+      "total_users": 4,
+      "is_disabled": false,
+      "status": "active",
+      "role": "reseller"
+     },
+     {
+      "username": "dave",
+      "data_limit": 35433480969,
+      "used_traffic": 1073741824,
+      "total_users": 2,
+      "is_disabled": false,
+      "status": "active",
+      "role": "reseller"
+     },
+     {
+      "username": "erin",
+      "data_limit": 0,
+      "used_traffic": 123456789012,
+      "total_users": 4096,
+      "is_disabled": false,
+      "status": "active",
+      "role": "reseller"
+     },
+     {
+      "username": "frank",
+      "data_limit": 21474836480,
+      "used_traffic": 22548578304,
+      "total_users": 1,
+      "is_disabled": true,
+      "status": "active",
+      "role": "reseller"
+     },
+     {
+      "username": "ivy",
+      "data_limit": 53687091200,
+      "used_traffic": 42949673083,
+      "total_users": 1,
+      "is_disabled": false,
+      "status": "active",
+      "role": "reseller"
+     },
+     {
+      "username": "yuki",
+      "data_limit": 5368709120,
+      "used_traffic": 2147483648,
+      "total_users": 1,
+      "is_disabled": false,
+      "status": "active",
+      "role": "reseller"
+     },
+     {
+      "username": "zed",
+      "data_limit": 1073741824,
+      "used_traffic": 1073741824,
+      "total_users": 1,
+      "is_disabled": false,
+      "status": "active",
+      "role": "reseller",
+      "is_owner": true
+     },
+     {
+      "username": "hank",
+      "data_limit": 2147483648,
+      "used_traffic": 1,
+      "total_users": 1,
+      "is_disabled": false,
+      "status": "active",
+      "role": "reseller"
+     }
+    ]
+   },
+   "users": {
+    "alice": [
+     {
+      "username": "a1",
+      "used_traffic": 11811160064,
+      "data_limit": 32212254720,
+      "status": "active"
+     },
+     {
+      "username": "a2",
+      "used_traffic": 21474836489,
+      "data_limit": null,
+      "status": "active"
+     }
+    ],
+    "bob": [],
+    "carol": [
+     {
+      "username": "c1",
+      "used_traffic": 107374182400,
+      "data_limit": null,
+      "status": "active"
+     },
+     {
+      "username": "c2",
+      "used_traffic": 161061273603,
+      "data_limit": null,
+      "status": "on_hold"
+     },
+     {
+      "username": "c3",
+      "used_traffic": 0,
+      "data_limit": 1073741824,
+      "status": "weird"
+     },
+     {
+      "username": "c4",
+      "used_traffic": null,
+      "data_limit": null,
+      "status": "active"
+     }
+    ],
+    "dave": {
+     "__status": 500
+    },
+    "erin": {
+     "generate": 4096,
+     "prefix": "g",
+     "used": 1000,
+     "limit": 5000
+    },
+    "frank": [
+     {
+      "username": "f1",
+      "used_traffic": 22548578304,
+      "data_limit": 26843545600,
+      "status": "active"
+     }
+    ],
+    "ivy": [
+     {
+      "username": "i1",
+      "used_traffic": 42949673083,
+      "data_limit": 64424509440,
+      "status": "active"
+     }
+    ],
+    "yuki": [
+     {
+      "username": "y1",
+      "used_traffic": 2147483648,
+      "data_limit": 4294967296,
+      "status": "active"
+     }
+    ],
+    "zed": [
+     {
+      "username": "z1",
+      "used_traffic": 1073741824,
+      "data_limit": 2147483648,
+      "status": "active"
+     }
+    ],
+    "hank": [
+     {
+      "username": "h1",
+      "used_traffic": 1,
+      "data_limit": 2147483648,
+      "status": "active"
+     }
+    ]
+   }
+  },
+  {
+   "admins": {
+    "admins": [
+     {
+      "username": "alice",
+      "data_limit": 107374182400,
+      "used_traffic": 65498251281,
+      "total_users": 3,
+      "is_disabled": false,
+      "status": "active",
+      "role": "reseller"
+     },
+     {
+      "username": "bob",
+      "data_limit": 53687091200,
+      "used_traffic": 10737418241,
+      "total_users": 2,
+      "is_disabled": false,
+      "status": "active",
+      "role": "reseller"
+     },
+     {
+      "username": "carol",
+      "data_limit": 322122547200,
+      "used_traffic": 268435456003,
+      "total_users": 4,
+      "is_disabled": false,
+      "status": "active",
+      "role": "reseller"
+     },
+     {
+      "username": "dave",
+      "data_limit": 35433480969,
+      "used_traffic": 1073741824,
+      "total_users": 2,
+      "is_disabled": false,
+      "status": "active",
+      "role": "reseller"
+     },
+     {
+      "username": "erin",
+      "data_limit": 0,
+      "used_traffic": 123456789012,
+      "total_users": 4096,
+      "is_disabled": false,
+      "status": "active",
+      "role": "reseller"
+     },
+     {
+      "username": "frank",
+      "data_limit": 21474836480,
+      "used_traffic": 22548578304,
+      "total_users": 1,
+      "is_disabled": true,
+      "status": "active",
+      "role": "reseller"
+     },
+     {
+      "username": "ivy",
+      "data_limit": 53687091200,
+      "used_traffic": 42949673083,
+      "total_users": 1,
+      "is_disabled": false,
+      "status": "active",
+      "role": "reseller"
+     },
+     {
+      "username": "yuki",
+      "data_limit": 5368709120,
+      "used_traffic": 2147483648,
+      "total_users": 1,
+      "is_disabled": false,
+      "status": "active",
+      "role": "reseller"
+     },
+     {
+      "username": "zed",
+      "data_limit": 1073741824,
+      "used_traffic": 1073741824,
+      "total_users": 1,
+      "is_disabled": false,
+      "status": "active",
+      "role": "reseller",
+      "is_owner": true
+     },
+     {
+      "username": "hank",
+      "data_limit": 2147483648,
+      "used_traffic": 1,
+      "total_users": 1,
+      "is_disabled": false,
+      "status": "active",
+      "role": "reseller"
+     }
+    ]
+   },
+   "users": {
+    "alice": [
+     {
+      "username": "a1",
+      "used_traffic": 11811160064,
+      "data_limit": 32212254720,
+      "status": "active"
+     },
+     {
+      "username": "a2",
+      "used_traffic": 21474836489,
+      "data_limit": null,
+      "status": "active"
+     }
+    ],
+    "bob": [],
+    "carol": [
+     {
+      "username": "c1",
+      "used_traffic": 107374182400,
+      "data_limit": null,
+      "status": "active"
+     },
+     {
+      "username": "c2",
+      "used_traffic": 161061273603,
+      "data_limit": null,
+      "status": "on_hold"
+     },
+     {
+      "username": "c3",
+      "used_traffic": 0,
+      "data_limit": 1073741824,
+      "status": "weird"
+     },
+     {
+      "username": "c4",
+      "used_traffic": null,
+      "data_limit": null,
+      "status": "active"
+     }
+    ],
+    "dave": {
+     "__error": "read timed out"
+    },
+    "erin": {
+     "generate": 4096,
+     "prefix": "g",
+     "used": 1000,
+     "limit": 5000
+    },
+    "frank": [
+     {
+      "username": "f1",
+      "used_traffic": 22548578304,
+      "data_limit": 26843545600,
+      "status": "active"
+     }
+    ],
+    "ivy": [
+     {
+      "username": "i1",
+      "used_traffic": 42949673083,
+      "data_limit": 64424509440,
+      "status": "active"
+     }
+    ],
+    "yuki": [
+     {
+      "username": "y1",
+      "used_traffic": 2147483648,
+      "data_limit": 4294967296,
+      "status": "active"
+     }
+    ],
+    "zed": [
+     {
+      "username": "z1",
+      "used_traffic": 1073741824,
+      "data_limit": 2147483648,
+      "status": "active"
+     }
+    ],
+    "hank": [
+     {
+      "username": "h1",
+      "used_traffic": 1,
+      "data_limit": 2147483648,
+      "status": "active"
+     }
+    ]
+   }
+  },
+  {
+   "admins": {
+    "admins": []
+   },
+   "users": {}
+  },
+  {
+   "admins": {
+    "__status": 502
+   },
+   "users": {}
+  },
+  {
+   "admins": [
+    {
+     "username": "alice",
+     "data_limit": 107374182400,
+     "used_traffic": 65498251281,
+     "total_users": 3,
+     "is_disabled": false,
+     "status": "active",
+     "role": "reseller"
+    },
+    {
+     "username": "bob",
+     "data_limit": 53687091200,
+     "used_traffic": 10737418241,
+     "total_users": 2,
+     "is_disabled": false,
+     "status": "active",
+     "role": "reseller"
+    },
+    {
+     "username": "carol",
+     "data_limit": 322122547200,
+     "used_traffic": 268435456003,
+     "total_users": 4,
+     "is_disabled": false,
+     "status": "active",
+     "role": "reseller"
+    },
+    {
+     "username": "dave",
+     "data_limit": 35433480969,
+     "used_traffic": 1073741824,
+     "total_users": 2,
+     "is_disabled": false,
+     "status": "active",
+     "role": "reseller"
+    },
+    {
+     "username": "erin",
+     "data_limit": 0,
+     "used_traffic": 123456789012,
+     "total_users": 4096,
+     "is_disabled": false,
+     "status": "active",
+     "role": "reseller"
+    },
+    {
+     "username": "frank",
+     "data_limit": 21474836480,
+     "used_traffic": 22548578304,
+     "total_users": 1,
+     "is_disabled": true,
+     "status": "active",
+     "role": "reseller"
+    },
+    {
+     "username": "ivy",
+     "data_limit": 53687091200,
+     "used_traffic": 42949673083,
+     "total_users": 1,
+     "is_disabled": false,
+     "status": "active",
+     "role": "reseller"
+    },
+    {
+     "username": "yuki",
+     "data_limit": 5368709120,
+     "used_traffic": 2147483648,
+     "total_users": 1,
+     "is_disabled": false,
+     "status": "active",
+     "role": "reseller"
+    },
+    {
+     "username": "zed",
+     "data_limit": 1073741824,
+     "used_traffic": 1073741824,
+     "total_users": 1,
+     "is_disabled": false,
+     "status": "active",
+     "role": "reseller",
+     "is_owner": true
+    },
+    {
+     "username": "hank",
+     "data_limit": 2147483648,
+     "used_traffic": 1,
+     "total_users": 1,
+     "is_disabled": false,
+     "status": "active",
+     "role": "reseller"
+    }
+   ],
+   "users": {
+    "alice": [
+     {
+      "username": "a1",
+      "used_traffic": 11811160064,
+      "data_limit": 32212254720,
+      "status": "active"
+     },
+     {
+      "username": "a2",
+      "used_traffic": 21474836489,
+      "data_limit": null,
+      "status": "active"
+     }
+    ],
+    "bob": [],
+    "carol": [
+     {
+      "username": "c1",
+      "used_traffic": 107374182400,
+      "data_limit": null,
+      "status": "active"
+     },
+     {
+      "username": "c2",
+      "used_traffic": 161061273603,
+      "data_limit": null,
+      "status": "on_hold"
+     },
+     {
+      "username": "c3",
+      "used_traffic": 0,
+      "data_limit": 1073741824,
+      "status": "weird"
+     },
+     {
+      "username": "c4",
+      "used_traffic": null,
+      "data_limit": null,
+      "status": "active"
+     }
+    ],
+    "dave": [],
+    "erin": {
+     "generate": 4096,
+     "prefix": "g",
+     "used": 1000,
+     "limit": 5000
+    },
+    "frank": [
+     {
+      "username": "f1",
+      "used_traffic": 22548578304,
+      "data_limit": 26843545600,
+      "status": "active"
+     }
+    ],
+    "ivy": [
+     {
+      "username": "i1",
+      "used_traffic": 42949673083,
+      "data_limit": 64424509440,
+      "status": "active"
+     }
+    ],
+    "yuki": [
+     {
+      "username": "y1",
+      "used_traffic": 2147483648,
+      "data_limit": 4294967296,
+      "status": "active"
+     }
+    ],
+    "zed": [
+     {
+      "username": "z1",
+      "used_traffic": 1073741824,
+      "data_limit": 2147483648,
+      "status": "active"
+     }
+    ],
+    "hank": [
+     {
+      "username": "h1",
+      "used_traffic": 1,
+      "data_limit": 2147483648,
+      "status": "active"
+     }
+    ]
+   }
+  }
+ ]
+}

@@ -36,6 +36,8 @@ PERMISSIONS = [
     ("services.manage", "Manage sold services (status, reset, revoke, create)"),
     ("services.delete", "Delete sold services"),
     ("users.delete", "Delete / restore users"),
+    ("agency.view", "Agency panel: view reseller admins"),
+    ("agency.manage", "Agency panel: limits, enable/disable, sync"),
 ]
 
 SUPPORT_PERMS = {"users.view", "payment.view", "payment.approve", "accounting.view", "monitoring.view"}
@@ -131,6 +133,11 @@ SETTINGS_DEFAULTS = [
     ("alert_volume_percent", "80", ValueType.INT),
     ("alert_expire_days", "3", ValueType.INT),
     ("ios_shortcut_icloud_url", "", ValueType.STR),
+    # agency panel (PAMP port): OFF until the cut-over from the Finland PAMP —
+    # never let two syncs run against one panel
+    ("agency_sync_enabled", "false", ValueType.BOOL),
+    ("agency_enforcement_enabled", "false", ValueType.BOOL),
+    ("agency_sync_interval_minutes", "15", ValueType.INT),
 ]
 
 PAGES = [
@@ -341,6 +348,25 @@ class Command(BaseCommand):
             defaults={
                 "task": "apps.telegram.tasks.run_backup_task",
                 "interval": backup_sched,
+                "kwargs": _json.dumps({}),
+                "enabled": True,
+            },
+        )
+
+        # agency panel (PAMP port): the task itself does nothing while the setting
+        # agency_sync_enabled is off (default) — Finland PAMP stays the only sync
+        agency_minutes = 15
+        s = Setting.objects.filter(key="agency_sync_interval_minutes").first()
+        if s:
+            agency_minutes = max(1, int(s.typed or 15))
+        agency_sched, _ = IntervalSchedule.objects.get_or_create(
+            every=agency_minutes, period=IntervalSchedule.MINUTES
+        )
+        PeriodicTask.objects.update_or_create(
+            name="agency: sync panel admins (PAMP)",
+            defaults={
+                "task": "apps.agency.tasks.sync_panel_admins",
+                "interval": agency_sched,
                 "kwargs": _json.dumps({}),
                 "enabled": True,
             },

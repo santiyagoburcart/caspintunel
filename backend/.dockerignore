@@ -15,3 +15,4 @@ mobile_shortcut/
 docs/
 real.png
 .pytest_cache/
+.golden_local/
