@@ -38,6 +38,7 @@ PERMISSIONS = [
     ("users.delete", "Delete / restore users"),
     ("agency.view", "Agency panel: view reseller admins"),
     ("agency.manage", "Agency panel: limits, enable/disable, sync"),
+    ("agency.accounting", "Agency panel: prices, charges, payments, statements"),
 ]
 
 SUPPORT_PERMS = {"users.view", "payment.view", "payment.approve", "accounting.view", "monitoring.view"}
@@ -138,6 +139,7 @@ SETTINGS_DEFAULTS = [
     ("agency_sync_enabled", "false", ValueType.BOOL),
     ("agency_enforcement_enabled", "false", ValueType.BOOL),
     ("agency_sync_interval_minutes", "15", ValueType.INT),
+    ("agency_portal_enabled", "false", ValueType.BOOL),
 ]
 
 PAGES = [

@@ -32,8 +32,10 @@ def _gate():
         raise PreCutover(PRE_CUTOVER)
 
 
-def set_limit(username: str, action: str, value_gb) -> tuple[bool, str]:
-    """PAMP set_limit: action set | add | reduce, value in GB (1024**3)."""
+def set_limit(username: str, action: str, value_gb, by: str = "") -> tuple[bool, str]:
+    """PAMP set_limit: action set | add | reduce, value in GB (1024**3).
+    caspintunel addition after PAMP's logic: an increase records a quota charge
+    in the ledger (ledger.record_quota_charge) — PAMP's numbers are untouched."""
     _gate()
     try:
         value_gb = float(value_gb or 0)
@@ -66,6 +68,9 @@ def set_limit(username: str, action: str, value_gb) -> tuple[bool, str]:
     panel_admin.has_data_limit = new_limit_bytes > 0
     panel_admin.admin_remaining = max(0, new_limit_bytes - panel_admin.admin_used_bytes)
     panel_admin.save(update_fields=['admin_limit_bytes', 'has_data_limit', 'admin_remaining'])
+
+    from .ledger import record_quota_charge
+    record_quota_charge(username, current_limit, new_limit_bytes, by=by)
 
     new_gb = new_limit_bytes / gb
     label = "Unlimited" if new_limit_bytes <= 0 else (

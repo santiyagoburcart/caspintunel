@@ -64,3 +64,28 @@ Telegram and UI settings. Refuses while `agency_sync_enabled` is on.
 (its own image and a throw-away MySQL); `./scripts/test.sh apps/agency` compares the agency app with them.
 `./scripts/agency-golden.sh real DUMP RESPONSES` does the same with real data (kept in
 `backend/.golden_local/`, never committed).
+
+## Reseller portal (`/agency/`, phase 3)
+
+Resellers sign in with their **PasarGuard admin username and password**, checked against the panel's
+`/api/admin/token` exactly like PAMP's `PanelAdminBackend`. They get their own 10-day session
+(`Authorization: Agency <token>`, only a SHA-256 stored in `agency_reseller_session`, revoked on logout) —
+never a customer JWT or staff token, and that token opens nothing but `/api/v1/agency/portal/`. Login is
+throttled (`auth`, 10/min per IP) plus a per-username lockout after 5 failures (15 min).
+A reseller sees PAMP's portal: their own numbers, block / 80 % warning states and support link; a group owner
+sees the group's accounts (PAMP's account groups). Off until `agency_portal_enabled` (Settings → Reseller
+portal) — until the cut-over its numbers are those of the last import.
+
+## Accounting ledger (phase 4, permission `agency.accounting`)
+
+Additive tables (`agency_admin_price`, `agency_ledger_entry`) — PAMP's numbers are only read.
+
+* **Price per GB** (Toman) per admin with history; a price applies from its `valid_from` date on.
+* **Quota charge (basis a)**: when a limit is raised through the agency panel (after the cut-over), a charge =
+  increase in GB (1024³) × the price valid that day, rounded half-up to whole tomans. An unlimited admin counts
+  as 0 (setting a limit on them charges the whole limit); lowering / removing a limit creates no credit; with no
+  price set the grant is still recorded (amount 0, noted).
+* Manual charges, signed adjustments, payments (card / cash / crypto / other); entries are never deleted —
+  **voided** with a reason. Balance = charges + adjustments − payments.
+* Statement per admin (Jalali dates, running balance), CSV export (UTF-8 BOM, Jalali dates), balance column in
+  the admin list, overview tab "حسابداری". Resellers see their own statement read-only (no prices, no staff names).

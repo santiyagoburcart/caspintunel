@@ -20,6 +20,7 @@ api_v1 = [
     path("notifications/", include("apps.notifications.urls")),
     path("", include("apps.settings_app.urls")),
     path("admin/", include("apps.adminpanel.urls")),
+    path("agency/", include("apps.agency.urls")),
 ]
 
 urlpatterns = [

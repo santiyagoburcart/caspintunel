@@ -6,6 +6,7 @@ import { useAuth } from '../lib/auth'
 import { jalali, digits } from '../lib/format'
 import { Alert, Spinner, Toggle } from '../components/ui'
 import { useConfirm } from '../components/ConfirmDialog'
+import { AgencyLedgerOverview, BalanceText, LedgerCard, LT } from './AgencyLedger'
 
 // Agency panel (PAMP port). Every number on these pages comes from the backend
 // (apps/agency: PAMP's own formulas); this file only formats and lays out.
@@ -16,6 +17,7 @@ const T = {
     tab_dash: 'داشبورد', tab_admins: 'نماینده‌ها', tab_groups: 'گروه‌ها', tab_logs: 'لاگ همگام‌سازی', tab_settings: 'تنظیمات',
     cutover: 'فعال پس از انتقال نهایی',
     cutover_note: 'PAMP فنلاند هنوز نسخهٔ اصلی است؛ این بخش فعلاً فقط‌خواندنی است و هیچ تغییری روی پنل اعمال نمی‌شود. داده‌ها از آخرین درون‌ریزی هستند.',
+    balance: 'بدهی', portal_set: 'پرتال نماینده‌ها', portal_set_d: 'نماینده‌ها با نام کاربری و رمز پنل پاسارگاد خود در /agency/ وارد می‌شوند و فقط اعداد خودشان را می‌بینند. تا انتقال نهایی، اعداد از آخرین درون‌ریزی است.',
     total_sold: 'حجم فروخته‌شده', used: 'مصرف‌شده', remaining: 'باقی‌مانده', hidden: 'ترافیک پنهان', admins: 'نماینده‌ها',
     sold_limit: 'Sold Limit', limit: 'سقف ادمین', usage: 'مصرف', users: 'کاربران', status: 'وضعیت', group: 'گروه',
     over_title: 'نزدیک یا بیش از سقف (≥80%)', over_none: 'هیچ نماینده‌ای به 80% سقف نرسیده است.',
@@ -43,6 +45,7 @@ const T = {
     tab_dash: 'Dashboard', tab_admins: 'Admins', tab_groups: 'Groups', tab_logs: 'Sync logs', tab_settings: 'Settings',
     cutover: 'Available after the final cut-over',
     cutover_note: 'The Finland PAMP is still the live instance; this section is read-only for now and changes nothing on the panel. Data is from the last import.',
+    balance: 'Balance', portal_set: 'Reseller portal', portal_set_d: 'Resellers sign in at /agency/ with their PasarGuard admin username and password and see only their own numbers. Until the cut-over the numbers are from the last import.',
     total_sold: 'Total Sold', used: 'Used', remaining: 'Remaining', hidden: 'Hidden traffic', admins: 'Admins',
     sold_limit: 'Sold Limit', limit: 'Admin limit', usage: 'Usage', users: 'Users', status: 'Status', group: 'Group',
     over_title: 'At or over the limit (≥80%)', over_none: 'No admin has reached 80% of their limit.',
@@ -73,7 +76,10 @@ const fmt = (v, s) => (v === 'Unlimited' ? s.unl : v)
 const B = ({ children }) => <bdi dir="ltr" className="ag-num">{children}</bdi>
 
 function Header({ s, switches }) {
+  const { can } = useAuth()
+  const { lang } = useI18n()
   const tabs = [['/agency', s.tab_dash, true], ['/agency/admins', s.tab_admins], ['/agency/groups', s.tab_groups],
+    ...(can('agency.accounting') ? [['/agency/ledger', (LT[lang] || LT.fa).tab]] : []),
     ['/agency/sync-logs', s.tab_logs], ['/agency/settings', s.tab_settings]]
   return (
     <>
@@ -217,7 +223,7 @@ export function AgencyAdmins() {
               <thead>
                 <tr>
                   <th>{s.admins}</th><th>{s.status}</th><th>{s.usage}</th><th>{s.total_sold}</th><th>{s.sold_limit}</th>
-                  <th>{s.hidden}</th><th>{s.remaining}</th><th>{s.used}</th>
+                  <th>{s.hidden}</th><th>{s.remaining}</th><th>{s.used}</th>{d.results[0]?.balance !== undefined && <th>{s.balance}</th>}
                 </tr>
               </thead>
               <tbody>
@@ -236,6 +242,7 @@ export function AgencyAdmins() {
                     <td data-label={s.hidden}><B>{r.hidden_fmt}</B></td>
                     <td data-label={s.remaining}><B>{fmt(r.remaining_fmt, s)}</B></td>
                     <td data-label={s.used}><B>{r.used_fmt}</B></td>
+                    {r.balance !== undefined && <td data-label={s.balance}><BalanceText value={r.balance} lang={lang} /></td>}
                   </tr>
                 ))}
               </tbody>
@@ -330,6 +337,8 @@ export function AgencyAdminDetail() {
         </div>
       </div>
 
+      {can('agency.accounting') && <LedgerCard username={d.username} />}
+
       <div className="card ag-card">
         <div className="ag-card-h"><h3>{s.snapshots}</h3><span className="ag-count">{s.snap_n.replace('{n}', digits(d.snapshots.count, lang))}</span></div>
         <div className="ag-table-wrap ag-snap">
@@ -364,6 +373,13 @@ function SetLimitForm({ s, box }) {
       </label>
     </div>
   )
+}
+
+// ------------------------------------------------------------------ accounting overview
+export function AgencyLedger() {
+  const [s] = useT()
+  const [dash] = useLoad('/admin/agency/')
+  return <AgencyLedgerOverview Header={<Header s={s} switches={dash?.switches} />} />
 }
 
 // ------------------------------------------------------------------ groups
@@ -494,6 +510,10 @@ export function AgencySettings() {
             <div><b>{s.set_enf}</b><p>{s.set_enf_d}</p></div>
             <Toggle checked={d.enforcement_enabled} disabled={!manage || !d.sync_enabled} onChange={(v) => toggleEnf(v)} label={s.set_enf} />
           </div>
+          <div className="ag-set-row">
+            <div><b>{s.portal_set}</b><p>{s.portal_set_d}</p></div>
+            <Toggle checked={!!d.portal_enabled} disabled={!manage} onChange={(v) => patch({ portal_enabled: v })} label={s.portal_set} />
+          </div>
           <form className="ag-set-row" onSubmit={(e) => { e.preventDefault(); patch({ sync_interval_minutes: interval }) }}>
             <label className="ag-set-int"><b>{s.set_interval}</b>
               <input className="input" dir="ltr" inputMode="numeric" value={interval} disabled={!manage}
@@ -514,7 +534,7 @@ const CSS = `
 .ag-tab { white-space: nowrap; padding: 7px 14px; border-radius: 999px; font-size: 13px; font-weight: 700; color: var(--c-text);
   border: 1px solid var(--c-border); text-decoration: none; }
 .ag-tab:hover { border-color: var(--c-primary); }
-.ag-tab.on { background: var(--c-primary); border-color: var(--c-primary); color: #fff; }
+.ag-tab.on { background: color-mix(in srgb, var(--c-primary) 82%, #000); border-color: color-mix(in srgb, var(--c-primary) 82%, #000); color: #fff; }
 .ag-cutover { display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 1.7;
   color: var(--c-warning-fg); background: color-mix(in srgb, var(--c-warning) 12%, transparent); border: 1px solid color-mix(in srgb, var(--c-warning) 30%, transparent); }
 .ag-cutover span { color: var(--c-text); }
@@ -557,7 +577,7 @@ const CSS = `
 .ag-fg-l { font-size: 12px; font-weight: 700; color: var(--c-muted-fg); }
 .ag-chip { height: 32px; padding: 0 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; white-space: nowrap; color: var(--c-text);
   border: 1px solid var(--c-border); background: transparent; display: inline-flex; align-items: center; gap: 6px; }
-.ag-chip.on { background: var(--c-primary); border-color: var(--c-primary); color: #fff; }
+.ag-chip.on { background: color-mix(in srgb, var(--c-primary) 82%, #000); border-color: color-mix(in srgb, var(--c-primary) 82%, #000); color: #fff; }
 .ag-chip-n { font-size: 11px; opacity: .85; }
 .ag-group { height: 34px; padding-block: 0; width: auto; min-width: 140px; }
 .ag-total { margin-inline-start: auto; font-size: 12.5px; font-weight: 600; color: var(--c-muted-fg); white-space: nowrap; }

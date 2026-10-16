@@ -37,6 +37,7 @@ def _switches() -> dict:
         "enforcement_enabled": bool(get_setting("agency_enforcement_enabled", False)),
         "sync_interval_minutes": int(get_setting("agency_sync_interval_minutes", 15) or 15),
         "writes_enabled": actions.writes_enabled(),
+        "portal_enabled": bool(get_setting("agency_portal_enabled", False)),
     }
 
 
@@ -72,6 +73,14 @@ class AgencyAdminListView(AdminAPIView):
             qs = qs.filter(Q(has_data_limit=False) | Q(admin_limit_bytes__lte=0))
         groups = list(AdminGroup.objects.all())
         rows = [api.admin_row(a, groups) for a in qs]
+        u = request.user
+        if getattr(u, "is_superuser", False) or (hasattr(u, "has_perm") and isinstance(getattr(u, "is_superadmin", None), bool)
+                                                and u.has_perm("agency.accounting")):
+            from apps.agency.ledger import balances
+
+            bal = balances()
+            for r in rows:
+                r["balance"] = bal.get(r["username"], 0)
         if p.get("status"):
             rows = [r for r in rows if r["status_code"] == p["status"]]
         if p.get("group"):
@@ -102,7 +111,8 @@ class AgencyAdminActionView(AdminAPIView):
             raise Http404
         d = request.data
         if action == "set-limit":
-            return _run(request, "agency.set_limit", a, actions.set_limit, username, d.get("action"), d.get("value_gb"))
+            return _run(request, "agency.set_limit", a, actions.set_limit, username, d.get("action"), d.get("value_gb"),
+                        getattr(request.user, "username", ""))
         if action == "remove-limit":
             return _run(request, "agency.remove_limit", a, actions.remove_limit, username)
         if action == "admin-action":
@@ -181,9 +191,12 @@ class AgencySettingsView(AdminAPIView):
         set_setting("agency_sync_enabled", sync, ValueType.BOOL)
         set_setting("agency_enforcement_enabled", enforce, ValueType.BOOL)
         set_setting("agency_sync_interval_minutes", minutes, ValueType.INT)
+        if "portal_enabled" in d:
+            set_setting("agency_portal_enabled", bool(d.get("portal_enabled")), ValueType.BOOL)
         _reschedule(minutes)
         write_audit(action="agency.settings", staff=request.user, target=None,
-                    detail={"sync_enabled": sync, "enforcement_enabled": enforce, "interval": minutes})
+                    detail={"sync_enabled": sync, "enforcement_enabled": enforce, "interval": minutes,
+                            "portal_enabled": d.get("portal_enabled")})
         return Response(_switches())
 
 
@@ -195,3 +208,109 @@ def _reschedule(minutes: int) -> None:
         if t.interval_id != sched.id:
             t.interval = sched
             t.save()          # save() (not update) so django-celery-beat picks the change up
+
+
+# ------------------------------------------------------------------ accounting ledger (agency.accounting)
+ACCOUNTING = ["agency.accounting"]
+
+
+def _date(value, field="date"):
+    from datetime import date
+
+    try:
+        return date.fromisoformat(str(value)) if value else None
+    except ValueError:
+        raise _Bad({field: ["use YYYY-MM-DD"]})
+
+
+class _Bad(Exception):
+    def __init__(self, payload):
+        self.payload = payload
+
+
+class AgencyLedgerOverviewView(AdminAPIView):
+    """GET agency/ledger/ — every admin with a balance or a price."""
+    perms_map = {"GET": ACCOUNTING}
+
+    def get(self, request):
+        from apps.agency import ledger
+        from apps.agency.models import AdminPrice, LedgerEntry
+
+        names = (set(PanelAdmin.objects.values_list("username", flat=True))
+                 | set(LedgerEntry.objects.values_list("admin_username", flat=True).distinct())
+                 | set(AdminPrice.objects.values_list("admin_username", flat=True).distinct()))
+        bal = ledger.balances()
+        rows = []
+        for n in sorted(names, key=str.lower):
+            p = ledger.price_at(n)
+            rows.append({"username": n, "balance": bal.get(n, 0), "price_per_gb": p.price_per_gb if p else None,
+                         "on_panel": PanelAdmin.objects.filter(username=n).exists()})
+        return Response({"results": rows, "total_balance": sum(bal.values()) if bal else 0})
+
+
+class AgencyLedgerView(AdminAPIView):
+    """GET statement · POST {price_per_gb, valid_from, note} to …/prices/ · POST entries to …/entries/"""
+    perms_map = {"GET": ACCOUNTING, "POST": ACCOUNTING}
+
+    def get(self, request, username):
+        from apps.agency import ledger
+
+        return Response(ledger.statement(username))
+
+    def post(self, request, username, what):
+        from apps.agency import ledger
+
+        d, by = request.data, request.user.username
+        try:
+            if what == "prices":
+                p = ledger.set_price(username, d.get("price_per_gb"), _date(d.get("valid_from"), "valid_from") or ledger.today(),
+                                     d.get("note", ""), by)
+                write_audit(action="agency.price_set", staff=request.user, target=None,
+                            detail={"admin": username, "price_per_gb": str(p.price_per_gb), "valid_from": str(p.valid_from)})
+            elif what == "entries":
+                e = ledger.add_entry(username, d.get("kind"), d.get("amount"), _date(d.get("date")) or ledger.today(),
+                                     method=d.get("method", ""), note=d.get("note", ""), by=by, gb=d.get("gb"))
+                write_audit(action=f"agency.ledger_{e.kind}", staff=request.user, target=e,
+                            detail={"admin": username, "amount": str(e.amount)})
+            else:
+                raise Http404
+        except _Bad as exc:
+            return Response(exc.payload, status=400)
+        except (ValueError, ArithmeticError) as exc:
+            return Response({"detail": str(exc) or "invalid value"}, status=400)
+        except Exception as exc:  # noqa: BLE001 — e.g. decimal.InvalidOperation on garbage input
+            if exc.__class__.__name__ == "InvalidOperation":
+                return Response({"detail": "invalid number"}, status=400)
+            raise
+        return Response(ledger.statement(username), status=201)
+
+
+class AgencyLedgerVoidView(AdminAPIView):
+    perms_map = {"POST": ACCOUNTING}
+
+    def post(self, request, entry_id):
+        from apps.agency import ledger
+        from apps.agency.models import LedgerEntry
+
+        try:
+            e = ledger.void(entry_id, request.data.get("reason", ""), request.user.username)
+        except LedgerEntry.DoesNotExist:
+            raise Http404
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        write_audit(action="agency.ledger_void", staff=request.user, target=e, detail={"reason": e.void_reason})
+        return Response(ledger.statement(e.admin_username))
+
+
+class AgencyLedgerExportView(AdminAPIView):
+    perms_map = {"GET": ACCOUNTING}
+
+    def get(self, request, username):
+        from django.http import HttpResponse
+
+        from apps.agency import ledger
+
+        resp = HttpResponse(ledger.statement_csv(username), content_type="text/csv; charset=utf-8")
+        safe = "".join(c for c in username if c.isalnum() or c in "-_") or "admin"
+        resp["Content-Disposition"] = f'attachment; filename="statement-{safe}.csv"'
+        return resp

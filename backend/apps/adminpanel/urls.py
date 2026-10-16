@@ -6,7 +6,8 @@ from .views.auth import StaffLoginView, StaffMeView, StaffRefreshView
 from .views.branding import QrPreviewView, SiteConfigView
 from .views.docs import DocsListView, DocsPageView
 from .views.agency import (AgencyAdminActionView, AgencyAdminDetailView, AgencyAdminListView, AgencyDashboardView,
-                           AgencyGroupsView, AgencySettingsView, AgencySyncLogsView, AgencySyncNowView)
+                           AgencyGroupsView, AgencyLedgerExportView, AgencyLedgerOverviewView, AgencyLedgerView,
+                           AgencyLedgerVoidView, AgencySettingsView, AgencySyncLogsView, AgencySyncNowView)
 from .views.catalog import (
     BankCardViewSet,
     PageViewSet,
@@ -80,6 +81,11 @@ urlpatterns = [
     path("agency/groups/<int:group_id>/", AgencyGroupsView.as_view(), name="admin-agency-group"),
     path("agency/sync-logs/", AgencySyncLogsView.as_view(), name="admin-agency-sync-logs"),
     path("agency/settings/", AgencySettingsView.as_view(), name="admin-agency-settings"),
+    path("agency/ledger/", AgencyLedgerOverviewView.as_view(), name="admin-agency-ledger"),
+    path("agency/ledger/entries/<int:entry_id>/void/", AgencyLedgerVoidView.as_view(), name="admin-agency-ledger-void"),
+    path("agency/ledger/<str:username>/export.csv", AgencyLedgerExportView.as_view(), name="admin-agency-ledger-export"),
+    path("agency/ledger/<str:username>/<str:what>/", AgencyLedgerView.as_view(), name="admin-agency-ledger-add"),
+    path("agency/ledger/<str:username>/", AgencyLedgerView.as_view(), name="admin-agency-ledger-admin"),
     path("docs/", DocsListView.as_view(), name="admin-docs"),
     path("docs/<str:slug>/", DocsPageView.as_view(), name="admin-docs-page"),
     path("dashboard/", DashboardView.as_view(), name="admin-dashboard"),

@@ -45,7 +45,7 @@ def test_dashboard_numbers_come_from_the_ported_code(data):
     assert d["admin_count"] == 3 and d["near_limit_count"] == ref["near_limit_count"]
     assert [o["username"] for o in d["over_limit"]] == [o["username"] for o in ref["over_limit_admins"]]
     assert d["switches"] == {"sync_enabled": False, "enforcement_enabled": False, "sync_interval_minutes": 15,
-                             "writes_enabled": False}
+                             "writes_enabled": False, "portal_enabled": False}
 
 
 def test_admin_list_and_detail_carry_enrich_values_unchanged(data):

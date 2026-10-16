@@ -291,3 +291,75 @@ class AdminGroup(models.Model):
         return cls.objects.filter(owner_username=username).first()
 
 
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# caspintunel additions (NOT from PAMP) — reseller portal sessions and the
+# accounting ledger. They only READ PAMP's numbers, never change them, and are
+# keyed by admin username so history survives an admin row being re-synced.
+# ═════════════════════════════════════════════════════════════════════════════
+class ResellerSession(models.Model):
+    """A reseller portal login (separate from customer JWTs and staff tokens).
+    Only the SHA-256 of the bearer token is stored."""
+    username = models.CharField(max_length=255, db_index=True)
+    key_hash = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    last_used_at = models.DateTimeField(null=True, blank=True)
+    ip = models.CharField(max_length=64, blank=True, default="")
+    revoked = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = "agency_reseller_session"
+
+
+class AdminPrice(models.Model):
+    """Price per GB (Toman) for one reseller admin; applies from valid_from on."""
+    admin_username = models.CharField(max_length=255, db_index=True)
+    price_per_gb = models.DecimalField(max_digits=12, decimal_places=0)
+    valid_from = models.DateField()
+    note = models.CharField(max_length=255, blank=True, default="")
+    created_by = models.CharField(max_length=150, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "agency_admin_price"
+        ordering = ("admin_username", "-valid_from", "-id")
+
+
+class LedgerEntry(models.Model):
+    """One line of a reseller's account. Charges / adjustments increase what the
+    reseller owes, payments decrease it. Entries are never deleted — a mistaken
+    one is voided (with a reason) and drops out of the balance."""
+    KIND_QUOTA = "quota_charge"      # automatic: limit raised through the agency panel
+    KIND_CHARGE = "manual_charge"
+    KIND_ADJUST = "adjustment"       # signed: + owes more, − owes less
+    KIND_PAYMENT = "payment"
+    KINDS = [(KIND_QUOTA, "Quota charge"), (KIND_CHARGE, "Manual charge"),
+             (KIND_ADJUST, "Adjustment"), (KIND_PAYMENT, "Payment")]
+    METHODS = [("card", "Card to card"), ("cash", "Cash"), ("crypto", "Crypto"), ("other", "Other")]
+
+    admin_username = models.CharField(max_length=255, db_index=True)
+    kind = models.CharField(max_length=16, choices=KINDS)
+    amount = models.DecimalField(max_digits=14, decimal_places=0, help_text="tomans; payments are positive")
+    date = models.DateField()
+    gb = models.DecimalField(max_digits=14, decimal_places=4, null=True, blank=True)
+    price_per_gb = models.DecimalField(max_digits=12, decimal_places=0, null=True, blank=True)
+    old_limit_bytes = models.BigIntegerField(null=True, blank=True)
+    new_limit_bytes = models.BigIntegerField(null=True, blank=True)
+    method = models.CharField(max_length=10, choices=METHODS, blank=True, default="")
+    note = models.CharField(max_length=255, blank=True, default="")
+    created_by = models.CharField(max_length=150, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    voided = models.BooleanField(default=False)
+    void_reason = models.CharField(max_length=255, blank=True, default="")
+
+    class Meta:
+        db_table = "agency_ledger_entry"
+        ordering = ("admin_username", "date", "id")
+        indexes = [models.Index(fields=["admin_username", "date"])]
+
+    @property
+    def signed_amount(self):
+        """+ = reseller owes more, − = owes less."""
+        return -self.amount if self.kind == self.KIND_PAYMENT else self.amount
