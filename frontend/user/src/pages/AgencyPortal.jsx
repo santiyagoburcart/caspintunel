@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
 import { useI18n } from '../lib/i18n'
-import { jalali } from '../lib/format'
+import { jalali, toman } from '../lib/format'
 
 // Reseller portal (PAMP's per-admin portal). Separate from the customer site:
 // own token ("Agency <token>"), own HTTP client — the customer JWT, its 401
@@ -27,11 +27,11 @@ const T = {
     username: 'نام کاربری پنل', password: 'رمز عبور', login: 'ورود', logout: 'خروج', wrong: 'نام کاربری یا رمز عبور اشتباه است.',
     closed: 'پرتال نمایندگان هنوز فعال نشده است.', error: 'خطا در ارتباط با سرور', not_found: 'حساب نمایندگی برای این نام کاربری پیدا نشد.',
     limit: 'سقف ادمین', total_sold: 'حجم فروخته‌شده', used: 'مصرف‌شده', remaining: 'باقی‌مانده', deleted: 'از کاربران حذف‌شده',
-    sold_limit: 'Sold Limit', hidden: 'ترافیک پنهان', usage: 'مصرف از سقف', users: 'کاربران', used_of: '{u} از {l}', numbers: 'جزئیات حجم', show_pw: 'نمایش رمز', hide_pw: 'پنهان کردن رمز', retry: 'تلاش دوباره', lang_switch: 'English',
+    sold_limit: 'Sold Limit', hidden: 'ترافیک پنهان', usage: 'مصرف (حجم فروخته‌شده)', users: 'کاربران',
     st_active: 'فعال', st_panel_disabled: 'غیرفعال', st_pamp_limited: 'محدود‌شده', unl: 'نامحدود',
     warn: 'به {p}% سقف خود رسیده‌اید — برای افزایش سقف با پشتیبانی تماس بگیرید.',
     blocked_disabled: 'دسترسی شما روی پنل غیرفعال است.', blocked_limited: 'سقف حجم شما تمام شده و حساب محدود شده است.',
-    support: 'پشتیبانی', balance: 'بدهی شما', statement: 'صورت‌حساب', none: 'هنوز گردشی ثبت نشده است.', show: 'صورت‌حساب', hide: 'بستن صورت‌حساب',
+    support: 'پشتیبانی', balance: 'بدهی شما', statement: 'صورت‌حساب', none: 'هنوز گردشی ثبت نشده است.', show: 'نمایش صورت‌حساب', hide: 'بستن',
     k_quota_charge: 'شارژ حجم', k_manual_charge: 'بدهکاری', k_adjustment: 'اصلاحیه', k_payment: 'پرداخت', running: 'مانده', voided: 'باطل‌شده',
     group: 'حساب‌های گروه شما', last_sync: 'آخرین به‌روزرسانی',
   },
@@ -40,33 +40,18 @@ const T = {
     username: 'Panel username', password: 'Password', login: 'Sign in', logout: 'Sign out', wrong: 'Wrong username or password.',
     closed: 'The reseller portal is not open yet.', error: 'Could not reach the server', not_found: 'No reseller account was found for this username.',
     limit: 'Admin limit', total_sold: 'Total Sold', used: 'Used', remaining: 'Remaining', deleted: 'From deleted users',
-    sold_limit: 'Sold Limit', hidden: 'Hidden traffic', usage: 'Usage of limit', users: 'Users', used_of: '{u} of {l}', numbers: 'Volume details', show_pw: 'Show password', hide_pw: 'Hide password', retry: 'Try again', lang_switch: 'فارسی',
+    sold_limit: 'Sold Limit', hidden: 'Hidden traffic', usage: 'Usage (sold volume)', users: 'Users',
     st_active: 'Active', st_panel_disabled: 'Disabled', st_pamp_limited: 'Limited', unl: 'Unlimited',
     warn: 'You have used {p}% of your limit — contact support to raise it.',
     blocked_disabled: 'Your access is disabled on the panel.', blocked_limited: 'Your volume limit is used up and the account is limited.',
-    support: 'Support', balance: 'You owe', statement: 'Statement', none: 'No entries yet.', show: 'Statement', hide: 'Hide statement',
+    support: 'Support', balance: 'You owe', statement: 'Statement', none: 'No entries yet.', show: 'Show statement', hide: 'Hide',
     k_quota_charge: 'Quota charge', k_manual_charge: 'Charge', k_adjustment: 'Adjustment', k_payment: 'Payment', running: 'Balance', voided: 'voided',
     group: 'Your group\'s accounts', last_sync: 'Last update',
   },
 }
-// "12.46 TB" → number + muted unit (formatting only)
-function Qty({ v, s }) {
-  if (v == null) return <span className="ap-muted">—</span>
-  if (v === 'Unlimited') return <span className="ap-muted">{s.unl}</span>
-  const m = String(v).match(/^([+-]?[\d.,]+)\s*([A-Za-z]+)$/)
-  if (!m) return <bdi dir="ltr" className="ap-num">{v}</bdi>
-  return <bdi dir="ltr" className="ap-num">{m[1]}<span className="ap-unit">{m[2]}</span></bdi>
-}
-function Money({ n, lang, signed }) {
-  const v = Number(n || 0)
-  return (
-    <bdi dir="ltr" className="ap-num" data-sign={signed ? (v > 0 ? 'owes' : v < 0 ? 'credit' : 'zero') : undefined}>
-      {v < 0 ? '−' : ''}{Math.abs(v).toLocaleString('en-US')}<span className="ap-unit">{lang === 'en' ? 'T' : 'تومان'}</span>
-    </bdi>
-  )
-}
-const toneOf = (n) => (n >= 90 ? 'high' : n >= 70 ? 'mid' : 'ok')
-const Spin = () => <span className="ap-spin" aria-hidden="true" />
+const fmt = (v, s) => (v === 'Unlimited' ? s.unl : v)
+const B = ({ children }) => <bdi dir="ltr" className="ap-num">{children}</bdi>
+const money = (n, lang) => (Number(n) < 0 ? '-' : '') + toman(Math.abs(Number(n || 0)), lang)
 
 export default function AgencyPortal() {
   const { lang, setLang } = useI18n()
@@ -75,10 +60,10 @@ export default function AgencyPortal() {
   const [data, setData] = useState(null)
   const [err, setErr] = useState('')
 
-  const load = () => { setErr(''); return http.get('/me/').then((r) => { setData(r.data); setErr('') }).catch((e) => {
+  const load = () => http.get('/me/').then((r) => { setData(r.data); setErr('') }).catch((e) => {
     if (e?.response?.status === 401) { store.set(null); setToken(null) }
     setErr(e?.response?.data?.code === 'portal_closed' ? s.closed : errText(e, s.error))
-  }) }
+  })
   useEffect(() => { if (token) load() }, [token])
   useEffect(() => { document.title = s.title }, [lang])
 
@@ -88,18 +73,18 @@ export default function AgencyPortal() {
     <div className="ap" dir={lang === 'fa' ? 'rtl' : 'ltr'}>
       <style>{CSS}</style>
       <header className="ap-top">
-        <span className="ap-brand">{s.title}</span>
+        <b>{s.title}</b>
         <div className="ap-top-r">
-          <button type="button" className="ap-btn ap-btn--ghost" onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')} lang={lang === 'fa' ? 'en' : 'fa'}>{s.lang_switch}</button>
-          {token && <button type="button" className="ap-btn ap-btn--ghost" onClick={logout}>{s.logout}</button>}
+          <button type="button" className="ap-lang" onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')}>{lang === 'fa' ? 'EN' : 'فا'}</button>
+          {token && <button type="button" className="ap-lang" onClick={logout}>{s.logout}</button>}
         </div>
       </header>
       <main className="ap-main">
         {!token ? <LoginForm s={s} onDone={(t) => { store.set(t); setToken(t) }} /> : (
           <>
-            {err && <div className="ap-alert" role="alert">{err} <button type="button" className="ap-btn ap-btn--ghost" onClick={load}>{s.retry}</button></div>}
-            {!data && !err && <div className="ap-skel" aria-busy="true"><span /><span /><span /><span /></div>}
-            {data?.mode === 'not_found' && <p className="ap-empty">{s.not_found}</p>}
+            {err && <div className="ap-alert" role="alert">{err}</div>}
+            {!data && !err && <div className="ap-spin" aria-busy="true" />}
+            {data?.mode === 'not_found' && <div className="ap-card ap-empty">{s.not_found}</div>}
             {data && data.mode === 'group' && <h2 className="ap-group">{s.group}</h2>}
             {data?.accounts.map((a) => <Account key={a.username} a={a} s={s} lang={lang} balance={data.balances[a.username]} />)}
           </>
@@ -112,13 +97,10 @@ export default function AgencyPortal() {
 function LoginForm({ s, onDone }) {
   const [u, setU] = useState('')
   const [p, setP] = useState('')
-  const [show, setShow] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const submit = async (e) => {
-    e.preventDefault()
-    if (!u.trim() || !p) { setErr(s.wrong); return }
-    setBusy(true); setErr('')
+    e.preventDefault(); setBusy(true); setErr('')
     try {
       const r = await http.post('/login/', { username: u.trim(), password: p })
       onDone(r.data.token)
@@ -128,23 +110,15 @@ function LoginForm({ s, onDone }) {
     } finally { setBusy(false) }
   }
   return (
-    <form className="ap-login" onSubmit={submit} noValidate>
+    <form className="ap-card ap-login" onSubmit={submit}>
       <h1>{s.title}</h1>
       <p>{s.sub}</p>
+      {err && <div className="ap-alert" role="alert">{err}</div>}
       <label htmlFor="ap-u">{s.username}</label>
-      <input id="ap-u" className="ap-input" dir="ltr" autoComplete="username" autoCapitalize="none" spellCheck="false" required value={u} onChange={(e) => setU(e.target.value)} aria-invalid={!!err} />
+      <input id="ap-u" className="ap-input" dir="ltr" autoComplete="username" required value={u} onChange={(e) => setU(e.target.value)} />
       <label htmlFor="ap-p">{s.password}</label>
-      <span className="ap-pw">
-        <input id="ap-p" className="ap-input" dir="ltr" type={show ? 'text' : 'password'} autoComplete="current-password" required value={p}
-          onChange={(e) => setP(e.target.value)} aria-invalid={!!err} aria-describedby={err ? 'ap-err' : undefined} />
-        <button type="button" className="ap-pw-t" onClick={() => setShow((v) => !v)} aria-pressed={show} aria-label={show ? s.hide_pw : s.show_pw}>
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-            <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" />{show && <path d="M4 4l16 16" />}
-          </svg>
-        </button>
-      </span>
-      {err && <p id="ap-err" className="ap-err" role="alert">{err}</p>}
-      <button className="ap-btn ap-btn--primary ap-btn--block" disabled={busy} aria-busy={busy || undefined}>{busy && <Spin />}{s.login}</button>
+      <input id="ap-p" className="ap-input" dir="ltr" type="password" autoComplete="current-password" required value={p} onChange={(e) => setP(e.target.value)} />
+      <button className="ap-btn" disabled={busy}>{busy ? '…' : s.login}</button>
     </form>
   )
 }
@@ -152,58 +126,40 @@ function LoginForm({ s, onDone }) {
 function Account({ a, s, lang, balance }) {
   const p = a.portal
   const [open, setOpen] = useState(false)
-  const pct = Number(a.usage_percent) || 0
+  const w = Math.min(Number(a.usage_percent) || 0, 100)      // bar width only
+  const tone = a.usage_percent >= 100 ? 'danger' : a.usage_percent >= 80 ? 'warning' : 'primary'
   const tg = (p.support_telegram || '').replace(/^@/, '')
-  const nums = [[s.limit, a.admin_limit_fmt], [s.total_sold, a.total_sold_fmt], [s.used, a.used_fmt], [s.remaining, a.remaining_fmt],
-    [s.sold_limit, a.sold_limit_fmt], [s.hidden, a.hidden_fmt], [s.deleted, a.deleted_used_fmt]]
-  const [u0, rest] = s.used_of.split('{u}'); const [mid, end] = rest.split('{l}')
+  const nums = [[s.limit, fmt(a.admin_limit_fmt, s)], [s.total_sold, a.total_sold_fmt], [s.used, a.used_fmt],
+    [s.remaining, fmt(a.remaining_fmt, s)], [s.sold_limit, a.sold_limit_fmt], [s.hidden, a.hidden_fmt], [s.deleted, a.deleted_used_fmt]]
   return (
-    <section className="ap-acc" aria-labelledby={`ap-${a.username}`}>
+    <section className="ap-card">
       <div className="ap-acc-h">
-        <h2 id={`ap-${a.username}`}><bdi>{a.username}</bdi></h2>
-        <span className="ap-status" data-st={a.status_code}><i aria-hidden="true" />{s['st_' + a.status_code] || a.status_code}</span>
+        <h2><bdi>{a.username}</bdi></h2>
+        <span className="ap-pill" data-st={a.status_code}>{s['st_' + a.status_code] || a.status_code}</span>
       </div>
       {p.is_blocked && (
-        <p className="ap-alert" role="alert">
+        <div className="ap-alert" role="alert">
           {p.block_reason === 'disabled' ? s.blocked_disabled : s.blocked_limited}
           {tg && <> · <a href={`https://t.me/${tg}`} target="_blank" rel="noreferrer">{s.support} <bdi dir="ltr">{p.support_telegram}</bdi></a></>}
-        </p>
-      )}
-      {!p.is_blocked && p.show_warning && <p className="ap-warn" role="status">{s.warn.replace('{p}', p.warning_pct)}</p>}
-
-      <div className="ap-hero">
-        <div>
-          <span className="ap-k">{s.remaining}</span>
-          <span className="ap-hero-v"><Qty v={a.remaining_fmt} s={s} /></span>
         </div>
-        {!a.is_unlimited && (
-          <div className="ap-usage" data-tone={toneOf(pct)}>
-            <div className="ap-usage-l"><span className="ap-k">{s.usage}</span><bdi dir="ltr" className="ap-num ap-pct">{pct}%</bdi></div>
-            <span className="ap-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(pct, 100)} aria-label={s.usage}>
-              <i style={{ inlineSize: `${Math.min(pct, 100)}%` }} />
-            </span>
-            <span className="ap-usage-s">{u0}<Qty v={a.used_fmt} s={s} />{mid}<Qty v={a.admin_limit_fmt} s={s} />{end}</span>
-          </div>
-        )}
-      </div>
-
-      <h3 className="ap-h3">{s.numbers}</h3>
-      <dl className="ap-list">
-        {nums.map(([k, v]) => <div key={k}><dt>{k}</dt><dd><Qty v={v} s={s} /></dd></div>)}
+      )}
+      {!p.is_blocked && p.show_warning && <div className="ap-warn" role="status">{s.warn.replace('{p}', p.warning_pct)}</div>}
+      {!a.is_unlimited && (
+        <div className="ap-usage">
+          <div className="ap-usage-l"><span>{s.usage}</span><B>{a.usage_percent}%</B></div>
+          <span className="ap-bar" data-tone={tone}><i style={{ width: `${w}%` }} /></span>
+        </div>
+      )}
+      <dl className="ap-nums">
+        {nums.map(([k, v]) => <div key={k}><dt>{k}</dt><dd><B>{v}</B></dd></div>)}
       </dl>
-
       <div className="ap-bal">
-        <div><span className="ap-k">{s.balance}</span><span className="ap-bal-v"><Money n={balance} lang={lang} signed /></span></div>
-        <button type="button" className="ap-btn ap-btn--tonal" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
-          {open ? s.hide : s.show}
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true" style={{ transform: open ? 'rotate(180deg)' : undefined }}><path d="M6 9l6 6 6-6" /></svg>
-        </button>
+        <span>{s.balance}</span>
+        <bdi dir="ltr" className="ap-num" data-sign={Number(balance) > 0 ? 'owes' : Number(balance) < 0 ? 'credit' : 'zero'}>{money(balance, lang)}</bdi>
+        <button type="button" className="ap-link" onClick={() => setOpen((v) => !v)} aria-expanded={open}>{open ? s.hide : s.show}</button>
       </div>
       {open && <Statement username={a.username} s={s} lang={lang} />}
-      <p className="ap-foot">
-        {a.last_synced_at && <>{s.last_sync}: <bdi dir="ltr">{jalali(a.last_synced_at, true, lang)}</bdi></>}
-        {tg && !p.is_blocked && <> · <a href={`https://t.me/${tg}`} target="_blank" rel="noreferrer">{s.support} <bdi dir="ltr">{p.support_telegram}</bdi></a></>}
-      </p>
+      {a.last_synced_at && <p className="ap-foot">{s.last_sync}: {jalali(a.last_synced_at, true, lang)}</p>}
     </section>
   )
 }
@@ -212,17 +168,20 @@ function Statement({ username, s, lang }) {
   const [st, setSt] = useState(null)
   const [err, setErr] = useState('')
   useEffect(() => { http.get('/statement/', { params: { admin: username } }).then((r) => setSt(r.data)).catch((e) => setErr(errText(e, s.error))) }, [username])
-  if (err) return <p className="ap-alert" role="alert">{err}</p>
-  if (!st) return <div className="ap-skel" aria-busy="true"><span /><span /></div>
-  if (!st.entries.length) return <p className="ap-empty">{s.none}</p>
+  if (err) return <div className="ap-alert">{err}</div>
+  if (!st) return <div className="ap-spin" aria-busy="true" />
+  if (!st.entries.length) return <p className="ap-foot">{s.none}</p>
   return (
     <ul className="ap-st">
       {[...st.entries].reverse().map((e) => (
         <li key={e.id} data-voided={e.voided || undefined}>
           <span className="ap-st-k" data-kind={e.kind}>{s['k_' + e.kind]}</span>
-          <span className="ap-st-a"><Money n={e.kind === 'payment' ? -Math.abs(Number(e.amount)) : e.signed} lang={lang} /></span>
-          <span className="ap-st-d"><bdi dir="ltr">{jalali(e.date, false, lang)}</bdi>{e.gb && <> · <bdi dir="ltr">{e.gb} GB</bdi></>}{e.note && <> · {e.note}</>}{e.voided && <> · {s.voided}</>}</span>
-          <span className="ap-st-r">{s.running} <Money n={e.balance} lang={lang} /></span>
+          <span className="ap-st-d">{jalali(e.date, false, lang)}</span>
+          <span className="ap-st-a"><B>{e.kind === 'payment' || Number(e.signed) < 0 ? '−' : '+'}{toman(Math.abs(Number(e.amount)), lang)}</B></span>
+          <span className="ap-st-r">{s.running}: <B>{money(e.balance, lang)}</B></span>
+          {(e.note || e.voided || e.gb) && (
+            <span className="ap-st-n">{e.gb && <bdi dir="ltr">{e.gb} GB</bdi>}{e.note && <> {e.note}</>}{e.voided && <> · {s.voided}</>}</span>
+          )}
         </li>
       ))}
     </ul>
@@ -230,104 +189,56 @@ function Statement({ username, s, lang }) {
 }
 
 const CSS = `
-.ap { min-height: 100dvh; background: var(--c-bg); color: var(--c-text); font-family: Vazirmatn, Inter, sans-serif; }
+.ap { min-height: 100vh; background: var(--c-bg); color: var(--c-text); font-family: Vazirmatn, Inter, sans-serif; }
 .ap[dir="ltr"] { font-family: Inter, Vazirmatn, sans-serif; }
 .ap-top { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  padding: 8px 16px; background: var(--c-bg); border-bottom: 1px solid var(--c-border); }
-.ap-brand { font-size: 14px; font-weight: 750; }
-.ap-top-r { display: flex; gap: 4px; }
-.ap-main { max-width: 600px; margin: 0 auto; padding: 24px 16px 48px; display: flex; flex-direction: column; gap: 40px; }
-.ap-num { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
-.ap-unit { font-family: Inter, Vazirmatn, sans-serif; font-size: .72em; font-weight: 500; color: var(--c-muted-fg); margin-inline-start: .3em; }
-.ap-muted { color: var(--c-muted-fg); }
-.ap-k { display: block; font-size: 12.5px; font-weight: 600; color: var(--c-muted-fg); }
-
-.ap-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 0 14px; border-radius: 10px; border: 0;
-  font: inherit; font-size: 13.5px; font-weight: 650; cursor: pointer; white-space: nowrap; transition: background-color .15s, color .15s; touch-action: manipulation; }
-.ap-btn:focus-visible, .ap-pw-t:focus-visible, .ap a:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 2px; }
-.ap-btn:disabled { opacity: .5; cursor: not-allowed; }
-.ap-btn--primary { background: color-mix(in srgb, var(--c-primary) 84%, #000); color: #fff; }
-.ap-btn--primary:hover:not(:disabled) { background: color-mix(in srgb, var(--c-primary) 72%, #000); }
-.ap-btn--primary:active:not(:disabled) { background: color-mix(in srgb, var(--c-primary) 62%, #000); }
-.ap-btn--tonal { background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary-fg); }
-.ap-btn--tonal:hover { background: color-mix(in srgb, var(--c-primary) 18%, transparent); }
-.ap-btn--ghost { background: transparent; color: var(--c-text); }
-.ap-btn--ghost:hover { background: color-mix(in srgb, var(--c-text) 7%, transparent); }
-.ap-btn--block { width: 100%; min-height: 48px; font-size: 15px; margin-top: 12px; }
-.ap-spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid currentColor; border-inline-end-color: transparent; animation: ap-r .7s linear infinite; }
-@keyframes ap-r { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .ap-spin, .ap-skel span { animation: none !important; } }
-
-.ap-login { display: flex; flex-direction: column; gap: 6px; margin-top: 6vh; max-width: 380px; width: 100%; align-self: center; }
-.ap-login h1 { font-size: 22px; font-weight: 800; letter-spacing: -.01em; }
-.ap-login > p { font-size: 13.5px; color: var(--c-muted-fg); margin-bottom: 14px; line-height: 1.7; }
-.ap-login label { font-size: 13px; font-weight: 650; margin-top: 8px; }
-.ap-input { width: 100%; height: 48px; border-radius: 12px; border: 1px solid var(--c-border); background: var(--c-surface); color: var(--c-text); padding: 0 14px; font-size: 16px; outline: none; }
-.ap-input:focus { border-color: var(--c-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-primary) 20%, transparent); }
-.ap-input[aria-invalid="true"] { border-color: var(--c-danger); }
-.ap-pw { position: relative; display: block; }
-.ap-pw .ap-input { padding-inline-end: 48px; }
-.ap[dir] .ap-pw .ap-input { padding-right: 48px; padding-left: 14px; }
-.ap-pw-t { position: absolute; top: 2px; right: 2px; width: 44px; height: 44px; display: grid; place-items: center; border: 0; border-radius: 10px; background: none; color: var(--c-muted-fg); cursor: pointer; }
-.ap-pw-t:hover { color: var(--c-text); }
-.ap-err { font-size: 13px; font-weight: 600; color: var(--c-danger-fg); margin-top: 4px; }
-
-.ap-alert, .ap-warn { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 10px 12px; border-radius: 10px; font-size: 13.5px; line-height: 1.7;
-  color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 9%, transparent); }
-.ap-warn { color: var(--c-warning-fg); background: color-mix(in srgb, var(--c-warning) 11%, transparent); }
-.ap-alert a, .ap-foot a { color: inherit; font-weight: 700; text-underline-offset: 3px; }
+  padding: 10px 16px; background: color-mix(in srgb, var(--c-bg) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--c-border); }
+.ap-top-r { display: flex; gap: 8px; }
+.ap-lang { min-height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--c-border); background: var(--c-surface); color: var(--c-text); font-weight: 700; font-size: 13px; }
+.ap-main { max-width: 640px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.ap-card { background: linear-gradient(var(--c-surface), var(--c-surface)), var(--c-bg); border: 1px solid var(--c-border); border-radius: 16px; padding: 16px; }
+.ap-login { display: flex; flex-direction: column; gap: 8px; margin-top: 8vh; }
+.ap-login h1 { font-size: 20px; font-weight: 800; }
+.ap-login p { font-size: 13px; color: var(--c-muted-fg); margin-bottom: 6px; }
+.ap-login label { font-size: 12.5px; font-weight: 700; margin-top: 4px; }
+.ap-input { height: 46px; border-radius: 12px; border: 1px solid var(--c-border); background: var(--c-surface); color: var(--c-text); padding: 0 12px; font-size: 16px; }
+.ap-input:focus { outline: 2px solid color-mix(in srgb, var(--c-primary) 45%, transparent); }
+.ap-btn { margin-top: 10px; min-height: 48px; border-radius: 12px; background: color-mix(in srgb, var(--c-primary) 82%, #000); color: #fff; font-weight: 800; font-size: 15px; border: 0; }
+.ap-btn:disabled { opacity: .6; }
+.ap-alert { padding: 10px 12px; border-radius: 12px; font-size: 13px; line-height: 1.7; color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 10%, transparent); margin: 6px 0; }
+.ap-alert a { color: inherit; font-weight: 700; }
+.ap-warn { padding: 10px 12px; border-radius: 12px; font-size: 13px; color: var(--c-warning-fg); background: color-mix(in srgb, var(--c-warning) 12%, transparent); margin: 6px 0; }
 .ap-empty { font-size: 14px; color: var(--c-muted-fg); }
-.ap-group { font-size: 13px; font-weight: 700; color: var(--c-muted-fg); margin-bottom: -24px; }
-
-.ap-acc { display: flex; flex-direction: column; gap: 16px; }
-.ap-acc + .ap-acc { border-top: 1px solid var(--c-border); padding-top: 32px; }
-.ap-acc-h { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
-.ap-acc-h h2 { font-size: 22px; font-weight: 800; overflow-wrap: anywhere; letter-spacing: -.01em; }
-.ap-status { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--c-text); white-space: nowrap; }
-.ap-status i { width: 8px; height: 8px; border-radius: 50%; background: var(--c-success); }
-.ap-status[data-st="panel_disabled"] i { background: var(--c-danger); }
-.ap-status[data-st="pamp_limited"] i { background: var(--c-warning); }
-
-.ap-hero { display: flex; flex-direction: column; gap: 18px; padding: 18px; border-radius: 14px; border: 1px solid var(--c-border);
-  background: linear-gradient(var(--c-surface), var(--c-surface)), var(--c-bg); }
-.ap-hero-v { display: block; font-size: 34px; font-weight: 800; line-height: 1.15; margin-top: 2px; letter-spacing: -.02em; }
-.ap-usage-l { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
-.ap-pct { font-size: 15px; font-weight: 750; }
-.ap-track { display: block; height: 8px; border-radius: 999px; overflow: hidden; background: color-mix(in srgb, var(--c-text) 10%, transparent); }
-.ap-track i { display: block; height: 100%; border-radius: inherit; background: #11AB53; }
-.ap-usage[data-tone="mid"] .ap-track i { background: #E8890C; }
-.ap-usage[data-tone="high"] .ap-track i { background: #DC2626; }
-.ap-usage[data-tone="mid"] .ap-pct { color: var(--c-warning-fg); }
-.ap-usage[data-tone="high"] .ap-pct { color: var(--c-danger-fg); }
-.ap-usage-s { display: block; font-size: 12.5px; color: var(--c-muted-fg); margin-top: 8px; }
-
-.ap-h3 { font-size: 13px; font-weight: 700; color: var(--c-muted-fg); margin-bottom: -8px; }
-.ap-list { display: flex; flex-direction: column; }
-.ap-list > div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--c-border); }
-.ap-list > div:first-child { border-top: 1px solid var(--c-border); }
-.ap-list dt { font-size: 14px; color: var(--c-muted-fg); }
-.ap-list dd { font-size: 15px; font-weight: 700; text-align: end; }
-
-.ap-bal { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 10px 16px; }
-.ap-bal-v { display: block; font-size: 22px; font-weight: 800; margin-top: 2px; }
-.ap-bal-v [data-sign="owes"] { color: var(--c-danger-fg); } .ap-bal-v [data-sign="credit"] { color: var(--c-success-fg); }
-.ap-st { display: flex; flex-direction: column; border-top: 1px solid var(--c-border); }
-.ap-st li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 10px 0; border-bottom: 1px solid var(--c-border); font-size: 13.5px; }
-.ap-st li[data-voided] { opacity: .55; } .ap-st li[data-voided] .ap-st-a { text-decoration: line-through; }
-.ap-st-k { font-weight: 650; }
-.ap-st-k[data-kind="payment"] { color: var(--c-success-fg); }
-.ap-st-a { font-weight: 750; text-align: end; }
-.ap-st-d, .ap-st-r { font-size: 12.5px; color: var(--c-muted-fg); }
-.ap-st-r { text-align: end; }
-.ap-foot { font-size: 12.5px; color: var(--c-muted-fg); }
-.ap-skel { display: flex; flex-direction: column; gap: 12px; }
-.ap-skel span { height: 18px; border-radius: 6px; background: color-mix(in srgb, var(--c-text) 8%, transparent); animation: ap-p 1.2s ease-in-out infinite; }
-.ap-skel span:nth-child(2n) { inline-size: 70%; }
-@keyframes ap-p { 50% { opacity: .5; } }
-@media (max-width: 480px) {
-  .ap-main { padding-top: 16px; gap: 32px; }
-  .ap-btn { min-height: 44px; }
-  .ap-hero { padding: 16px; } .ap-hero-v { font-size: 30px; }
-  .ap-bal .ap-btn { flex: 1 1 100%; }
-}
+.ap-group { font-size: 14px; font-weight: 800; color: var(--c-muted-fg); }
+.ap-acc-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.ap-acc-h h2 { font-size: 17px; font-weight: 800; overflow-wrap: anywhere; }
+.ap-pill { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; color: var(--c-success-fg); background: color-mix(in srgb, var(--c-success) 14%, transparent); white-space: nowrap; }
+.ap-pill[data-st="panel_disabled"] { color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 14%, transparent); }
+.ap-pill[data-st="pamp_limited"] { color: var(--c-warning-fg); background: color-mix(in srgb, var(--c-warning) 14%, transparent); }
+.ap-num { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.ap-usage { margin: 10px 0; }
+.ap-usage-l { display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 700; color: var(--c-muted-fg); margin-bottom: 6px; }
+.ap-bar { display: block; height: 10px; border-radius: 999px; background: color-mix(in srgb, var(--c-text-muted) 18%, transparent); overflow: hidden; }
+.ap-bar i { display: block; height: 100%; border-radius: inherit; background: var(--c-primary); }
+.ap-bar[data-tone="warning"] i { background: var(--c-warning); } .ap-bar[data-tone="danger"] i { background: var(--c-danger); }
+.ap-nums { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.ap-nums > div { padding: 10px 12px; border-radius: 12px; border: 1px solid var(--c-border); min-width: 0; }
+.ap-nums dt { font-size: 11.5px; font-weight: 600; color: var(--c-muted-fg); }
+.ap-nums dd { font-size: 16px; font-weight: 800; margin-top: 2px; overflow-wrap: anywhere; }
+.ap-bal { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--c-border); font-size: 13.5px; font-weight: 700; }
+.ap-bal .ap-num { font-size: 16px; font-weight: 800; }
+.ap-bal [data-sign="owes"] { color: var(--c-danger-fg); } .ap-bal [data-sign="credit"] { color: var(--c-success-fg); }
+.ap-link { margin-inline-start: auto; min-height: 40px; padding: 0 12px; border-radius: 10px; color: var(--c-primary-fg); font-weight: 700; font-size: 13px; background: transparent; border: 1px solid var(--c-border); }
+.ap-st { display: flex; flex-direction: column; margin-top: 8px; }
+.ap-st li { display: grid; grid-template-columns: auto 1fr auto; gap: 2px 10px; align-items: center; padding: 9px 0; border-top: 1px solid var(--c-border); font-size: 13px; }
+.ap-st li[data-voided] { opacity: .55; }
+.ap-st-k { font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; color: var(--c-primary-fg); background: color-mix(in srgb, var(--c-primary) 12%, transparent); }
+.ap-st-k[data-kind="payment"] { color: var(--c-success-fg); background: color-mix(in srgb, var(--c-success) 14%, transparent); }
+.ap-st-d { color: var(--c-muted-fg); font-size: 12.5px; }
+.ap-st-a { font-weight: 800; }
+.ap-st-r, .ap-st-n { grid-column: 1 / -1; font-size: 12px; color: var(--c-muted-fg); }
+.ap-foot { font-size: 12px; color: var(--c-muted-fg); margin-top: 10px; }
+.ap-spin { width: 28px; height: 28px; margin: 24px auto; border-radius: 50%; border: 3px solid var(--c-border); border-top-color: var(--c-primary); animation: ap-r 0.8s linear infinite; }
+@keyframes ap-r { to { transform: rotate(360deg); } }
+@media (min-width: 640px) { .ap-nums { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 `

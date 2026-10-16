@@ -3,7 +3,7 @@ code (models properties, enrich._enrich / portal_state / dashboard_numbers);
 this module only selects and names them — no arithmetic here."""
 from __future__ import annotations
 
-from .enrich import _enrich, dashboard_numbers, hidden_value, portal_state
+from .enrich import _enrich, dashboard_numbers, portal_state
 from .models import AdminGroup, PanelAdmin, SyncLog, UserTrafficSnapshot
 
 
@@ -34,10 +34,6 @@ def admin_row(a: PanelAdmin, groups=None) -> dict:
         "used_fmt": a.admin_used_fmt,
         "last_synced_at": a.last_synced_at,
         "groups": groups_of(a.username, groups),
-        # raw values for client-side SORTING only (the UI shows the *_fmt strings)
-        "sort": {"total_sold": a.total_user_limit, "used": a.total_user_used, "remaining": a.admin_remaining,
-                 "hidden": hidden_value(a), "sold_limit": e["sold_limit_value"], "usage": a.usage_percent,
-                 "users": a.user_count, "active": a.active_user_count, "limit": a.admin_limit_bytes},
     }
 
 
@@ -95,13 +91,3 @@ def dashboard() -> dict:
                        for o in d["over_limit_admins"]],
         "last_sync": sync_row(last) if last else None,
     }
-
-
-def portal_link() -> dict:
-    """The reseller-portal address — follows the configured portal path (docs/paths.md)."""
-    from apps.settings_app import paths
-    from apps.settings_app.models import SiteConfig
-
-    domain = (SiteConfig.load().site_domain or "").strip().strip("/")
-    path = paths.state()["portal"]
-    return {"path": path, "url": f"https://{domain}{path}/" if domain else f"{path}/"}

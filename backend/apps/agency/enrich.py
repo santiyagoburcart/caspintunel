@@ -27,11 +27,6 @@ def _fmt_bytes_signed(b: int) -> str:
     return f"{sign}{val:.2f} PB"
 
 
-def hidden_value(a) -> int:
-    """The unclamped hidden traffic exactly as _enrich computes it (for sorting only)."""
-    return a.total_user_limit - a.total_user_used - a.admin_remaining
-
-
 def _enrich(panel_admin):
     """Return context dict with all formatted values for portal/detail views."""
     a = panel_admin

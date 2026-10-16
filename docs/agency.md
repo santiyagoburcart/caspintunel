@@ -18,18 +18,9 @@ deleted traffic, sync now and group edits answer `409 pre_cutover` and the butto
 نهایی". They open when `agency_sync_enabled` is turned on — which the Settings page only accepts after typing
 `FINLAND-STOPPED` (that switch IS the cut-over). Enforcement can only be on while sync is on.
 
-Layout (1.13.0): one primary button per view, secondary actions in ⋯ menus (red only for destructive ones),
-data-first tables (sticky sortable headers incl. Total users / Active, density toggle, compact rows on phones),
-usage bars green < 70 % · orange 70–90 % · red ≥ 90 %. Shared building blocks: `frontend/admin/src/components/agency/kit.jsx`.
-The change-limit dialog calls `POST agency/admins/<username>/set-limit/preview/` (same arithmetic as `set_limit`
-and the same charge as the ledger records: new limit, remaining after, GB × price) before anything is applied.
-"Send to reseller" (admin detail) and Agency Settings show the portal link from `GET agency/portal-link/`
-(follows the configured portal path) with copy and a QR (`agency/portal-link/qr.png`).
-
 API: `GET /api/v1/admin/agency/` · `agency/admins/` · `agency/admins/<username>/` ·
 `POST agency/admins/<username>/{set-limit|remove-limit|admin-action|reset-deleted-traffic}/` ·
-`POST agency/sync-now/` · `agency/groups/` · `agency/sync-logs/` · `GET/PATCH agency/settings/` ·
-`POST agency/admins/<username>/set-limit/preview/` · `GET agency/portal-link/` · `agency/portal-link/qr.png`.
+`POST agency/sync-now/` · `agency/groups/` · `agency/sync-logs/` · `GET/PATCH agency/settings/`.
 
 ## Switches (all OFF by default)
 
