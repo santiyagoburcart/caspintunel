@@ -52,7 +52,13 @@ Copies admins, limits, user snapshots, sync logs and account groups 1:1 (same id
 imported: PAMP's Django users and sessions (resellers never become caspintunel users), its panel password,
 Telegram and UI settings. Refuses while `agency_sync_enabled` is on.
 
-## Cut-over (later, on your approval)
+## Cut-over — done 2026-10-16
+
+Finland PAMP: celery + celery-beat stopped (web/db/nginx up, nothing deleted). This server syncs every 10 min with enforcement; the portal is open at `https://aicaspin.ir/agency/`.
+
+**Rollback to Finland:** (1) here: Agency → Settings → turn off enforcement, sync and the portal — or `docker compose exec -T web python manage.py shell -c "from apps.settings_app.utils import set_setting; from apps.settings_app.models import ValueType; [set_setting(k, False, ValueType.BOOL) for k in ('agency_enforcement_enabled', 'agency_sync_enabled', 'agency_portal_enabled')]"`; (2) on Finland: `cd /opt/pamp && docker compose start celery celery-beat`. Never both on at once.
+
+## Cut-over steps (reference)
 
 1. Finland: stop `celery` + `celery-beat` (no more syncs).
 2. Fresh dump → `import_pamp_dump … --replace`.
