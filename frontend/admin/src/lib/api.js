@@ -1,3 +1,4 @@
+import { ADMIN_BASE } from './base'
 import axios from 'axios'
 
 const ACCESS = 'cta_access'
@@ -28,7 +29,7 @@ function sessionExpired() {
   tokens.clear()
   if (!location.pathname.endsWith('/login')) {
     try { sessionStorage.setItem(SESSION_EXPIRED_KEY, '1') } catch { /* private browsing */ }
-    location.href = '/panel/login'
+    location.href = `${ADMIN_BASE}/login`
   }
   return new Promise(() => {})
 }

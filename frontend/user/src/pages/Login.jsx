@@ -5,6 +5,7 @@ import { useI18n } from '../lib/i18n'
 import { useTheme } from '../theme/ThemeProvider'
 import { SESSION_EXPIRED_KEY } from '../lib/api'
 import { Alert, Field, PasswordField, Spinner } from '../components/ui'
+import { ADMIN_LINK } from '../lib/paths'
 import { CaspianBrand, CaspianAuthShell } from '../components/caspian'
 
 /* Shared auth wrapper — used by Register / ResetPassword / VerifyEmail too.
@@ -207,8 +208,7 @@ function CaspianLogin() {
         <Link to="/terms" className="csp-auth-footer-l">{t('rules')}</Link>
         <span>·</span>
         <Link to="/help" className="csp-auth-footer-l">{t('pages')}</Link>
-        <span>·</span>
-        <a href="/panel/" className="csp-auth-footer-l">{t('foot_admin')}</a>
+        {ADMIN_LINK && <><span>·</span><a href={ADMIN_LINK} className="csp-auth-footer-l">{t('foot_admin')}</a></>}
       </footer>
     </div>
   )

@@ -314,3 +314,35 @@ class AgencyLedgerExportView(AdminAPIView):
         safe = "".join(c for c in username if c.isalnum() or c in "-_") or "admin"
         resp["Content-Disposition"] = f'attachment; filename="statement-{safe}.csv"'
         return resp
+
+
+# ------------------------------------------------------------------ admin / portal paths (docs/paths.md)
+class PathsView(AdminAPIView):
+    """GET applied paths + pending request + last result · POST {admin, portal} → request
+    (applied by the host watcher within a minute). Superadmins only."""
+    perms_map = {"GET": ["settings.manage"], "POST": ["settings.manage"]}
+
+    def _superadmin(self, request):
+        return getattr(request.user, "is_superadmin", False) or getattr(request.user, "is_superuser", False)
+
+    def get(self, request):
+        from apps.settings_app import paths
+
+        return Response(paths.state())
+
+    def post(self, request):
+        from apps.settings_app import paths
+
+        if not self._superadmin(request):
+            return Response({"detail": "only a super admin can move the panel"}, status=403)
+        cur = paths.state()
+        admin = (request.data.get("admin") or cur["admin"]).strip().rstrip("/").lower()
+        portal = (request.data.get("portal") or cur["portal"]).strip().rstrip("/").lower()
+        errors = paths.validate(admin, portal)
+        if errors:
+            return Response(errors, status=400)
+        if admin == cur["admin"] and portal == cur["portal"]:
+            return Response({**cur, "detail": "nothing to change"})
+        req = paths.request_change(admin, portal, request.user.username)
+        write_audit(action="paths.change_requested", staff=request.user, target=None, detail=req)
+        return Response(paths.state(), status=202)

@@ -161,6 +161,7 @@ do_install() {
     echo "==> starting (offline, pre-built images)"
   else
     echo "==> building images"; compose build
+    "$ROOT/scripts/paths.sh" ensure || true   # admin / portal paths (docs/paths.md)
   fi
   compose up -d --remove-orphans
   echo "==> waiting for the database"; sleep 10

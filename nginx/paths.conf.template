@@ -1,0 +1,26 @@
+# GENERATED from nginx/paths.conf.template by nginx/render-paths.sh — do not edit.
+# Change with: Settings → Paths in the admin panel, or ./scripts/paths.sh (docs/paths.md).
+# admin=__ADMIN__ portal=__PORTAL__
+
+# read by the user site (portal route, admin link only while the admin path is the default)
+set $ct_portal_path "__PORTAL__";
+set $ct_admin_link "__ADMIN_LINK__";
+
+# admin SPA (built with relative assets): any base path → the container's /panel/,
+# <base> + meta tell the SPA where it lives; locked-down headers as for /panel before
+location = __ADMIN__ { return 301 __ADMIN__/; }
+location ~ ^__ADMIN__(?<ct_admin_rest>/.*)$ {
+    proxy_pass $spa_admin/panel$ct_admin_rest$is_args$args;
+    proxy_set_header Host $host;
+    proxy_set_header Accept-Encoding "";
+    sub_filter_types text/html;
+    sub_filter_once on;
+    sub_filter '<head>' '<head><base href="__ADMIN__/"><meta name="ct-admin-base" content="__ADMIN__">';
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=(), usb=()" always;
+    add_header Cross-Origin-Opener-Policy "same-origin" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'" always;
+}
+__OLD_ADMIN__

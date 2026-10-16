@@ -9,6 +9,7 @@
  * this phase only ships the components themselves, not any page wiring.
  */
 import { useRef } from 'react'
+import { ADMIN_LINK } from '../lib/paths'
 import { useI18n } from '../lib/i18n'
 
 let idSeq = 0
@@ -45,9 +46,9 @@ export function CaspianAuthShell({ title, children, hideAdminLink = false }) {
           </button>
         </div>
         {children}
-        {!hideAdminLink && (
+        {!hideAdminLink && ADMIN_LINK && (
           <div className="csp-authshell-back">
-            <a href="/panel/" className="csp-link">{t('foot_admin')}</a>
+            <a href={ADMIN_LINK} className="csp-link">{t('foot_admin')}</a>
           </div>
         )}
       </div>

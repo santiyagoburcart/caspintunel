@@ -122,6 +122,12 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   Finland PAMP (never two syncs on one panel). Resellers are NOT `accounts.User` rows.
 - Real PAMP data (dumps, recorded panel responses) lives only in `backups/pamp/` and `backend/.golden_local/`.
 
+## Paths (docs/paths.md)
+- The admin SPA must work under ANY base: build with relative assets, never hard-code `/panel` (use `lib/base.js`
+  ADMIN_BASE); the user site gets the portal path / admin link from nginx-injected metas (`lib/paths.js`).
+- nginx routing for both lives in the generated `nginx/paths/active.conf` (template + `render-paths.sh`); changes go
+  through `scripts/paths.sh` (nginx -t, reload, verify, rollback). Never edit active.conf by hand.
+
 ## Server migration (docs/migration.md)
 - `scripts/migrate-export.sh [--final|--resume]` (old server) → encrypted archive + manifest;
   `scripts/migrate-import.sh ARCHIVE | --start-workers | --status` (new server); `scripts/migrate-check.sh IP`

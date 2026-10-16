@@ -27,6 +27,14 @@ else
     echo "[nginx-entrypoint] no cert for '${DOMAIN:-<unset>}' — HTTP only"
 fi
 
+# admin / portal paths (docs/paths.md): scripts/paths.sh writes /etc/nginx/paths/active.conf;
+# on a fresh install it doesn't exist yet → the defaults (/panel, /agency)
+if [ -f /etc/nginx/paths.conf.template ] && [ ! -s /etc/nginx/paths/active.conf ]; then
+    mkdir -p /etc/nginx/paths
+    sh /etc/nginx/render-paths.sh /etc/nginx/paths.conf.template /panel /agency > /etc/nginx/paths/active.conf
+    echo "[nginx-entrypoint] paths: defaults /panel + /agency"
+fi
+
 # reload every 6h to pick up certbot renewals
 ( while :; do sleep 21600; nginx -s reload 2>/dev/null || true; done ) &
 

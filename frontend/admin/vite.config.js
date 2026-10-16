@@ -8,9 +8,11 @@ const allowedHosts = hosts.length
   ? [...new Set([...hosts, ...(domain ? [`.${domain}`] : [])])]
   : true
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [react()],
-  base: '/panel/',
+  // build: relative assets — nginx serves the panel under any path and injects <base> (docs/paths.md);
+  // dev server: /panel/
+  base: command === 'build' ? './' : '/panel/',
   server: {
     port: 5174,
     allowedHosts,
@@ -20,4 +22,4 @@ export default defineConfig({
     },
   },
   build: { outDir: 'dist', sourcemap: false },
-})
+}))

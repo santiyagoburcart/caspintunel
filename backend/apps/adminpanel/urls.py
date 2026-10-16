@@ -7,7 +7,7 @@ from .views.branding import QrPreviewView, SiteConfigView
 from .views.docs import DocsListView, DocsPageView
 from .views.agency import (AgencyAdminActionView, AgencyAdminDetailView, AgencyAdminListView, AgencyDashboardView,
                            AgencyGroupsView, AgencyLedgerExportView, AgencyLedgerOverviewView, AgencyLedgerView,
-                           AgencyLedgerVoidView, AgencySettingsView, AgencySyncLogsView, AgencySyncNowView)
+                           AgencyLedgerVoidView, AgencySettingsView, AgencySyncLogsView, AgencySyncNowView, PathsView)
 from .views.catalog import (
     BankCardViewSet,
     PageViewSet,
@@ -72,6 +72,7 @@ urlpatterns = [
     path("payments/<int:pk>/<str:action>/", PaymentDecisionView.as_view(), name="admin-payment-decision"),
     path("branding/", SiteConfigView.as_view(), name="admin-branding"),
     path("branding/qr-preview/", QrPreviewView.as_view(), name="admin-branding-qr-preview"),
+    path("paths/", PathsView.as_view(), name="admin-paths"),
     path("agency/", AgencyDashboardView.as_view(), name="admin-agency"),
     path("agency/admins/", AgencyAdminListView.as_view(), name="admin-agency-admins"),
     path("agency/admins/<str:username>/<str:action>/", AgencyAdminActionView.as_view(), name="admin-agency-action"),

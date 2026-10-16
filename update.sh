@@ -63,6 +63,8 @@ if [ -d .git ]; then
 fi
 
 echo "==> build"
+# admin / portal path config for nginx (keeps custom paths; follows template updates)
+[ "${1:-}" = "--dev" ] || "$ROOT/scripts/paths.sh" ensure || true
 $COMPOSE build
 
 if [ "${1:-}" = "--dev" ]; then

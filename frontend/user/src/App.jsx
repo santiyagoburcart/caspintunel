@@ -17,6 +17,7 @@ import Profile from './pages/Profile'
 import Help from './pages/Help'
 import Rules from './pages/Rules'
 import AgencyPortal from './pages/AgencyPortal'
+import { PORTAL_PATH } from './lib/paths'
 
 const TG_ROUTES = { store: '/store', dashboard: '/', history: '/history', help: '/help', rules: '/rules', profile: '/profile' }
 
@@ -121,8 +122,8 @@ export default function App() {
       {/* public copy of the rules — the sign-up checkbox links here (/rules needs a login) */}
       <Route path="/terms" element={<PublicTerms />} />
       {/* reseller portal (agency panel) — its own login and token, not a customer page */}
-      <Route path="/agency" element={<AgencyPortal />} />
-      <Route path="/agency/*" element={<AgencyPortal />} />
+      <Route path={PORTAL_PATH} element={<AgencyPortal />} />
+      <Route path={`${PORTAL_PATH}/*`} element={<AgencyPortal />} />
       <Route element={<Private><><TelegramStart /><Layout /></></Private>}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/store" element={<Store />} />

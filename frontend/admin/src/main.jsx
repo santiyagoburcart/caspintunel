@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App'
+import { ADMIN_BASE } from './lib/base'
 import { AuthProvider } from './lib/auth'
 import { LivePaymentsProvider } from './lib/livePayments'
 import { I18nProvider } from './lib/i18n'
@@ -27,7 +28,7 @@ import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <BrowserRouter basename="/panel">
+    <BrowserRouter basename={ADMIN_BASE}>
       <I18nProvider>
         <ThemeProvider>
           <ToastProvider>

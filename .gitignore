@@ -82,3 +82,5 @@ mail/
 !mobile_sms/release/
 !mobile_sms/release/*
 nginx/flags/maintenance
+nginx/paths/*
+!nginx/paths/README
