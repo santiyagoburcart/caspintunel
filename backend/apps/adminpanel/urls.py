@@ -7,7 +7,8 @@ from .views.branding import QrPreviewView, SiteConfigView
 from .views.docs import DocsListView, DocsPageView
 from .views.agency import (AgencyAdminActionView, AgencyAdminDetailView, AgencyAdminListView, AgencyDashboardView,
                            AgencyGroupsView, AgencyLedgerExportView, AgencyLedgerOverviewView, AgencyLedgerView,
-                           AgencyLedgerVoidView, AgencySettingsView, AgencySyncLogsView, AgencySyncNowView, PathsView)
+                           AgencyLedgerVoidView, AgencySettingsView, AgencySyncLogsView, AgencySyncNowView, PathsView,
+                           AgencyPortalLinkView, AgencySetLimitPreviewView)
 from .views.catalog import (
     BankCardViewSet,
     PageViewSet,
@@ -75,7 +76,10 @@ urlpatterns = [
     path("paths/", PathsView.as_view(), name="admin-paths"),
     path("agency/", AgencyDashboardView.as_view(), name="admin-agency"),
     path("agency/admins/", AgencyAdminListView.as_view(), name="admin-agency-admins"),
+    path("agency/admins/<str:username>/set-limit/preview/", AgencySetLimitPreviewView.as_view(), name="admin-agency-limit-preview"),
     path("agency/admins/<str:username>/<str:action>/", AgencyAdminActionView.as_view(), name="admin-agency-action"),
+    path("agency/portal-link/", AgencyPortalLinkView.as_view(), name="admin-agency-portal-link"),
+    path("agency/portal-link/qr.png", AgencyPortalLinkView.as_view(), {"fmt": "png"}, name="admin-agency-portal-qr"),
     path("agency/admins/<str:username>/", AgencyAdminDetailView.as_view(), name="admin-agency-admin"),
     path("agency/sync-now/", AgencySyncNowView.as_view(), name="admin-agency-sync-now"),
     path("agency/groups/", AgencyGroupsView.as_view(), name="admin-agency-groups"),

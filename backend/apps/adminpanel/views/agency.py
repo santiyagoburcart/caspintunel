@@ -346,3 +346,33 @@ class PathsView(AdminAPIView):
         req = paths.request_change(admin, portal, request.user.username)
         write_audit(action="paths.change_requested", staff=request.user, target=None, detail=req)
         return Response(paths.state(), status=202)
+
+
+# ------------------------------------------------------------------ set-limit preview · portal link
+class AgencySetLimitPreviewView(AdminAPIView):
+    """POST {action, value_gb} → what the change WOULD do (no panel call, nothing saved)."""
+    perms_map = {"POST": MANAGE}
+
+    def post(self, request, username):
+        try:
+            return Response(actions.preview_set_limit(username, request.data.get("action"), request.data.get("value_gb")))
+        except ValueError as exc:
+            return Response({"value_gb": [str(exc)]}, status=400)
+
+
+class AgencyPortalLinkView(AdminAPIView):
+    """GET → {path, url}; GET …/qr.png → plain QR of the url."""
+    perms_map = {"GET": VIEW}
+
+    def get(self, request, fmt=None):
+        link = api.portal_link()
+        if fmt == "png":
+            from django.http import HttpResponse
+
+            from apps.common import qrcard
+
+            img, _ = qrcard.compose(link["url"], None)
+            resp = HttpResponse(qrcard.to_png(img), content_type="image/png")
+            resp["Cache-Control"] = "private, no-store"
+            return resp
+        return Response(link)
