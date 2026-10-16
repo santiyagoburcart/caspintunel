@@ -5,6 +5,7 @@ import { useI18n } from '../lib/i18n'
 import { useAuth } from '../lib/auth'
 import { jalali, digits } from '../lib/format'
 import { Alert, Spinner, Toggle } from '../components/ui'
+import { copyToClipboard } from '../lib/clipboard'
 import { useConfirm } from '../components/ConfirmDialog'
 import { AgencyLedgerOverview, BalanceText, LedgerCard, LT } from './AgencyLedger'
 
@@ -39,6 +40,10 @@ const T = {
     set_interval: 'فاصلهٔ همگام‌سازی (دقیقه)', save: 'ذخیره', saved: 'ذخیره شد',
     cut_title: 'روشن کردن همگام‌سازی = انتقال نهایی', cut_msg: 'از این لحظه این سرور اعداد را از پنل می‌گیرد و عملیات‌ها فعال می‌شوند. دو همگام‌سازی هم‌زمان روی یک پنل اعداد را خراب می‌کند.',
     cut_reason: 'برای تأیید بنویسید: FINLAND-STOPPED', sync_off_title: 'خاموش کردن همگام‌سازی؟', enf_title: 'اعمال خودکار سقف روشن شود؟',
+    users_total: 'کل کاربران', users_active: 'فعال', users_sec: 'کاربران', sort_by: 'مرتب‌سازی بر اساس {c}',
+    portal_link: 'لینک پرتال نماینده‌ها', send_to: 'ارسال به نماینده', copy_link: 'کپی لینک', copy_msg: 'کپی پیام', show_qr: 'نمایش QR', hide_qr: 'بستن QR', copied: 'کپی شد', copy_fail: 'کپی نشد',
+    send_hint: 'این پیام را برای نماینده بفرستید؛ با نام کاربری و رمز پنل خودش وارد می‌شود.',
+    msg_tpl: 'پرتال نمایندگی:\n{url}\nنام کاربری: {u}\nرمز عبور: همان رمز پنل پاسارگاد شما',
   },
   en: {
     title: 'Agency Panel', sub: 'Reseller admins on the PasarGuard panel — calculated exactly like PAMP',
@@ -67,6 +72,10 @@ const T = {
     set_interval: 'Sync interval (minutes)', save: 'Save', saved: 'Saved',
     cut_title: 'Turning sync on = the final cut-over', cut_msg: 'From now on this server pulls the numbers from the panel and actions are enabled. Two syncs against one panel corrupt the numbers.',
     cut_reason: 'Type FINLAND-STOPPED to confirm', sync_off_title: 'Turn the sync off?', enf_title: 'Turn on automatic enforcement?',
+    users_total: 'Total users', users_active: 'Active', users_sec: 'Users', sort_by: 'Sort by {c}',
+    portal_link: 'Reseller portal link', send_to: 'Send to reseller', copy_link: 'Copy link', copy_msg: 'Copy message', show_qr: 'Show QR', hide_qr: 'Hide QR', copied: 'Copied', copy_fail: 'Could not copy',
+    send_hint: 'Send this to the reseller; they sign in with their own panel username and password.',
+    msg_tpl: 'Reseller portal:\n{url}\nUsername: {u}\nPassword: your PasarGuard panel password',
   },
 }
 
@@ -187,6 +196,18 @@ export function AgencyAdmins() {
   const qs = new URLSearchParams(Object.entries({ search: term, status: st, limit: lim, group: grp }).filter(([, v]) => v)).toString()
   const [d, err] = useLoad(`/admin/agency/admins/${qs ? '?' + qs : ''}`, [qs])
   const [dash] = useLoad('/admin/agency/')
+  const [sort, setSort] = useState({ k: '', dir: -1 })
+  const rows = useMemo(() => (!d ? [] : !sort.k ? d.results : [...d.results].sort((a, b) => (a[sort.k] - b[sort.k]) * sort.dir)), [d, sort])
+  const sortTh = (k, label) => {
+    const on = sort.k === k
+    return (
+      <th aria-sort={on ? (sort.dir === 1 ? 'ascending' : 'descending') : 'none'}>
+        <button type="button" className="ag-sort" onClick={() => setSort({ k, dir: on ? -sort.dir : -1 })} title={s.sort_by.replace('{c}', label)}>
+          {label}<span aria-hidden="true">{on ? (sort.dir === 1 ? ' ▲' : ' ▼') : ' ↕'}</span>
+        </button>
+      </th>
+    )
+  }
   const chip = (v, cur, set, label) => (
     <button type="button" key={v || 'all'} className={'ag-chip' + (cur === v ? ' on' : '')} aria-pressed={cur === v} onClick={() => set(v)}>{label}</button>
   )
@@ -223,11 +244,11 @@ export function AgencyAdmins() {
               <thead>
                 <tr>
                   <th>{s.admins}</th><th>{s.status}</th><th>{s.usage}</th><th>{s.total_sold}</th><th>{s.sold_limit}</th>
-                  <th>{s.hidden}</th><th>{s.remaining}</th><th>{s.used}</th>{d.results[0]?.balance !== undefined && <th>{s.balance}</th>}
+                  <th>{s.hidden}</th><th>{s.remaining}</th><th>{s.used}</th>{sortTh('user_count', s.users_total)}{sortTh('active_user_count', s.users_active)}{d.results[0]?.balance !== undefined && <th>{s.balance}</th>}
                 </tr>
               </thead>
               <tbody>
-                {d.results.map((r) => (
+                {rows.map((r) => (
                   <tr key={r.username}>
                     <td className="ag-t-name" data-label={s.admins}>
                       <Link to={`/agency/admins/${encodeURIComponent(r.username)}`}>{r.username}</Link>
@@ -242,6 +263,8 @@ export function AgencyAdmins() {
                     <td data-label={s.hidden}><B>{r.hidden_fmt}</B></td>
                     <td data-label={s.remaining}><B>{fmt(r.remaining_fmt, s)}</B></td>
                     <td data-label={s.used}><B>{r.used_fmt}</B></td>
+                    <td data-label={s.users_total}><B>{digits(r.user_count, lang)}</B></td>
+                    <td data-label={s.users_active}><B>{digits(r.active_user_count, lang)}</B></td>
                     {r.balance !== undefined && <td data-label={s.balance}><BalanceText value={r.balance} lang={lang} /></td>}
                   </tr>
                 ))}
@@ -316,14 +339,16 @@ export function AgencyAdminDetail() {
         <dl className="ag-nums">
           {nums.map(([k, v]) => <div key={k}><dt>{k}</dt><dd><B>{v}</B></dd></div>)}
         </dl>
-        <h3 className="ag-sec-h">{s.counts}</h3>
+        <h3 className="ag-sec-h">{s.users_sec}</h3>
         <dl className="ag-nums ag-nums--counts">
-          {['active', 'on_hold', 'limited', 'disabled', 'expired', 'total'].map((k) => (
+          {['total', 'active', 'on_hold', 'limited', 'disabled', 'expired'].map((k) => (
             <div key={k}><dt>{s['c_' + k]}</dt><dd><B>{digits(d.counts[k], lang)}</B></dd></div>
           ))}
         </dl>
         <p className="text-xs text-muted mt-2">{s.support}: <bdi dir="ltr">{p.support_telegram}</bdi> · {s.last_sync}: {d.last_synced_at ? jalali(d.last_synced_at, true, lang) : s.never}</p>
       </div>
+
+      <PortalLinkCard s={s} username={d.username} />
 
       <div className="card ag-card">
         <h3 className="ag-sec-h" style={{ marginTop: 0 }}>{s.actions}</h3>
@@ -371,6 +396,37 @@ function SetLimitForm({ s, box }) {
       <label><span>{s.gb}</span>
         <input className="input" dir="ltr" inputMode="decimal" value={gb} onChange={(e) => { setGb(e.target.value); box.gb = e.target.value }} />
       </label>
+    </div>
+  )
+}
+
+function PortalLinkCard({ s, username }) {
+  const [link] = useLoad('/admin/agency/portal-link/')
+  const [qr, setQr] = useState(null)
+  const [note, setNote] = useState('')
+  useEffect(() => () => { if (qr) URL.revokeObjectURL(qr) }, [qr])
+  const copy = async (text) => { setNote((await copyToClipboard(text)) ? s.copied : s.copy_fail) }
+  const toggleQr = async () => {
+    if (qr) { setQr(null); return }
+    try { const r = await api.get('/admin/agency/portal-link/qr.png', { responseType: 'blob' }); setQr(URL.createObjectURL(r.data)) } catch (e) { setNote(apiError(e)) }
+  }
+  const url = link?.url || ''
+  return (
+    <div className="card ag-card">
+      <h3 className="ag-sec-h" style={{ marginTop: 0 }}>{username ? s.send_to : s.portal_link}</h3>
+      <div className="ag-portal">
+        <div className="ag-portal-main">
+          <code dir="ltr" className="ag-portal-url">{url || '…'}</code>
+          {username && <p className="text-xs text-muted mt-2">{s.user}: <bdi dir="ltr">{username}</bdi> · {s.send_hint}</p>}
+          <div className="ag-actions mt-2">
+            {username && <button type="button" className="ag-act" disabled={!link} onClick={() => copy(s.msg_tpl.replace('{url}', url).replace('{u}', username))}>{s.copy_msg}</button>}
+            <button type="button" className="ag-act" disabled={!link} onClick={() => copy(url)}>{s.copy_link}</button>
+            <button type="button" className="ag-act" disabled={!link} onClick={toggleQr} aria-expanded={!!qr}>{qr ? s.hide_qr : s.show_qr}</button>
+          </div>
+          {note && <p className="text-xs text-muted mt-2" role="status">{note}</p>}
+        </div>
+        {qr && <img className="ag-portal-qr" src={qr} alt={`QR — ${url}`} width="140" height="140" />}
+      </div>
     </div>
   )
 }
@@ -523,6 +579,7 @@ export function AgencySettings() {
           </form>
         </div>
       )}
+      {d && <PortalLinkCard s={s} />}
     </div>
   )
 }
@@ -629,7 +686,14 @@ const CSS = `
 .ag-set-row p { font-size: 12.5px; color: var(--c-text-muted); margin-top: 2px; line-height: 1.7; }
 .ag-set-int { display: flex; align-items: center; gap: 12px; }
 .ag-set-int .input { width: 90px; }
+.ag-sort { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; white-space: nowrap; }
+.ag-sort:hover { color: var(--c-text); }
+.ag-portal { display: flex; gap: 14px; align-items: flex-start; }
+.ag-portal-main { flex: 1; min-width: 0; }
+.ag-portal-url { display: block; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 13px; padding: 8px 11px; border-radius: 10px; border: 1px solid var(--c-border); overflow-wrap: anywhere; }
+.ag-portal-qr { border-radius: 10px; background: #fff; padding: 6px; border: 1px solid var(--c-border); }
 @media (max-width: 767px) {
+  .ag-portal { flex-direction: column; }
   .ag-tab { min-height: 40px; display: inline-flex; align-items: center; }
   .ag-toolbar { flex-direction: column; align-items: stretch; flex-wrap: nowrap; padding: 10px; }
   .ag-search { flex: none; max-width: none; min-width: 0; }

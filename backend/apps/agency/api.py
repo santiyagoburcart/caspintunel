@@ -91,3 +91,13 @@ def dashboard() -> dict:
                        for o in d["over_limit_admins"]],
         "last_sync": sync_row(last) if last else None,
     }
+
+
+def portal_link() -> dict:
+    """The reseller-portal address — follows the configured portal path (docs/paths.md)."""
+    from apps.settings_app import paths
+    from apps.settings_app.models import SiteConfig
+
+    domain = (SiteConfig.load().site_domain or "").strip().strip("/")
+    path = paths.state()["portal"]
+    return {"path": path, "url": f"https://{domain}{path}/" if domain else f"{path}/"}

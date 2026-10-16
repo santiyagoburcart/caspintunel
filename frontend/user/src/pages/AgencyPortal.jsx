@@ -27,7 +27,7 @@ const T = {
     username: 'نام کاربری پنل', password: 'رمز عبور', login: 'ورود', logout: 'خروج', wrong: 'نام کاربری یا رمز عبور اشتباه است.',
     closed: 'پرتال نمایندگان هنوز فعال نشده است.', error: 'خطا در ارتباط با سرور', not_found: 'حساب نمایندگی برای این نام کاربری پیدا نشد.',
     limit: 'سقف ادمین', total_sold: 'حجم فروخته‌شده', used: 'مصرف‌شده', remaining: 'باقی‌مانده', deleted: 'از کاربران حذف‌شده',
-    sold_limit: 'Sold Limit', hidden: 'ترافیک پنهان', usage: 'مصرف (حجم فروخته‌شده)', users: 'کاربران',
+    sold_limit: 'Sold Limit', hidden: 'ترافیک پنهان', usage: 'مصرف از سقف', users: 'کاربران', used_of: '{u} از {l}',
     st_active: 'فعال', st_panel_disabled: 'غیرفعال', st_pamp_limited: 'محدود‌شده', unl: 'نامحدود',
     warn: 'به {p}% سقف خود رسیده‌اید — برای افزایش سقف با پشتیبانی تماس بگیرید.',
     blocked_disabled: 'دسترسی شما روی پنل غیرفعال است.', blocked_limited: 'سقف حجم شما تمام شده و حساب محدود شده است.',
@@ -40,7 +40,7 @@ const T = {
     username: 'Panel username', password: 'Password', login: 'Sign in', logout: 'Sign out', wrong: 'Wrong username or password.',
     closed: 'The reseller portal is not open yet.', error: 'Could not reach the server', not_found: 'No reseller account was found for this username.',
     limit: 'Admin limit', total_sold: 'Total Sold', used: 'Used', remaining: 'Remaining', deleted: 'From deleted users',
-    sold_limit: 'Sold Limit', hidden: 'Hidden traffic', usage: 'Usage (sold volume)', users: 'Users',
+    sold_limit: 'Sold Limit', hidden: 'Hidden traffic', usage: 'Usage of limit', users: 'Users', used_of: '{u} of {l}',
     st_active: 'Active', st_panel_disabled: 'Disabled', st_pamp_limited: 'Limited', unl: 'Unlimited',
     warn: 'You have used {p}% of your limit — contact support to raise it.',
     blocked_disabled: 'Your access is disabled on the panel.', blocked_limited: 'Your volume limit is used up and the account is limited.',
@@ -148,6 +148,7 @@ function Account({ a, s, lang, balance }) {
         <div className="ap-usage">
           <div className="ap-usage-l"><span>{s.usage}</span><B>{a.usage_percent}%</B></div>
           <span className="ap-bar" data-tone={tone}><i style={{ width: `${w}%` }} /></span>
+          <p className="ap-usage-s">{s.used_of.split('{u}')[0]}<B>{a.used_fmt}</B>{s.used_of.split('{u}')[1].split('{l}')[0]}<B>{fmt(a.admin_limit_fmt, s)}</B>{s.used_of.split('{l}')[1]}</p>
         </div>
       )}
       <dl className="ap-nums">
@@ -219,6 +220,7 @@ const CSS = `
 .ap-usage { margin: 10px 0; }
 .ap-usage-l { display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 700; color: var(--c-muted-fg); margin-bottom: 6px; }
 .ap-bar { display: block; height: 10px; border-radius: 999px; background: color-mix(in srgb, var(--c-text-muted) 18%, transparent); overflow: hidden; }
+.ap-usage-s { font-size: 12px; color: var(--c-muted-fg); margin-top: 6px; }
 .ap-bar i { display: block; height: 100%; border-radius: inherit; background: var(--c-primary); }
 .ap-bar[data-tone="warning"] i { background: var(--c-warning); } .ap-bar[data-tone="danger"] i { background: var(--c-danger); }
 .ap-nums { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }

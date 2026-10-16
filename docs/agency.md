@@ -20,7 +20,9 @@ deleted traffic, sync now and group edits answer `409 pre_cutover` and the butto
 
 API: `GET /api/v1/admin/agency/` · `agency/admins/` · `agency/admins/<username>/` ·
 `POST agency/admins/<username>/{set-limit|remove-limit|admin-action|reset-deleted-traffic}/` ·
-`POST agency/sync-now/` · `agency/groups/` · `agency/sync-logs/` · `GET/PATCH agency/settings/`.
+`POST agency/sync-now/` · `agency/groups/` · `agency/sync-logs/` · `GET/PATCH agency/settings/` ·
+`GET agency/portal-link/` + `agency/portal-link/qr.png` (portal address following the configured path; shown with
+copy + QR in Agency Settings and on each admin's page).
 
 ## Switches (all OFF by default)
 

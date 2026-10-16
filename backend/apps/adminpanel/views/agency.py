@@ -346,3 +346,21 @@ class PathsView(AdminAPIView):
         req = paths.request_change(admin, portal, request.user.username)
         write_audit(action="paths.change_requested", staff=request.user, target=None, detail=req)
         return Response(paths.state(), status=202)
+
+
+class AgencyPortalLinkView(AdminAPIView):
+    """GET → {path, url}; GET …/qr.png → plain QR of the url."""
+    perms_map = {"GET": VIEW}
+
+    def get(self, request, fmt=None):
+        link = api.portal_link()
+        if fmt == "png":
+            from django.http import HttpResponse
+
+            from apps.common import qrcard
+
+            img, _ = qrcard.compose(link["url"], None)
+            resp = HttpResponse(qrcard.to_png(img), content_type="image/png")
+            resp["Cache-Control"] = "private, no-store"
+            return resp
+        return Response(link)
