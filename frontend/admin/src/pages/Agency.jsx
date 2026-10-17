@@ -40,7 +40,7 @@ const T = {
     set_interval: 'فاصلهٔ همگام‌سازی (دقیقه)', save: 'ذخیره', saved: 'ذخیره شد',
     cut_title: 'روشن کردن همگام‌سازی = انتقال نهایی', cut_msg: 'از این لحظه این سرور اعداد را از پنل می‌گیرد و عملیات‌ها فعال می‌شوند. دو همگام‌سازی هم‌زمان روی یک پنل اعداد را خراب می‌کند.',
     cut_reason: 'برای تأیید بنویسید: FINLAND-STOPPED', sync_off_title: 'خاموش کردن همگام‌سازی؟', enf_title: 'اعمال خودکار سقف روشن شود؟',
-    users_total: 'کل کاربران', users_active: 'فعال', users_sec: 'کاربران', sort_by: 'مرتب‌سازی بر اساس {c}',
+    users_col: 'کاربران', users_on: 'فعال', users_sec: 'کاربران', sort_by: 'مرتب‌سازی بر اساس {c}',
     portal_link: 'لینک پرتال نماینده‌ها', send_to: 'ارسال به نماینده', copy_link: 'کپی لینک', copy_msg: 'کپی پیام', show_qr: 'نمایش QR', hide_qr: 'بستن QR', copied: 'کپی شد', copy_fail: 'کپی نشد',
     send_hint: 'این پیام را برای نماینده بفرستید؛ با نام کاربری و رمز پنل خودش وارد می‌شود.',
     msg_tpl: 'پرتال نمایندگی:\n{url}\nنام کاربری: {u}\nرمز عبور: همان رمز پنل پاسارگاد شما',
@@ -72,7 +72,7 @@ const T = {
     set_interval: 'Sync interval (minutes)', save: 'Save', saved: 'Saved',
     cut_title: 'Turning sync on = the final cut-over', cut_msg: 'From now on this server pulls the numbers from the panel and actions are enabled. Two syncs against one panel corrupt the numbers.',
     cut_reason: 'Type FINLAND-STOPPED to confirm', sync_off_title: 'Turn the sync off?', enf_title: 'Turn on automatic enforcement?',
-    users_total: 'Total users', users_active: 'Active', users_sec: 'Users', sort_by: 'Sort by {c}',
+    users_col: 'Users', users_on: 'on', users_sec: 'Users', sort_by: 'Sort by {c}',
     portal_link: 'Reseller portal link', send_to: 'Send to reseller', copy_link: 'Copy link', copy_msg: 'Copy message', show_qr: 'Show QR', hide_qr: 'Hide QR', copied: 'Copied', copy_fail: 'Could not copy',
     send_hint: 'Send this to the reseller; they sign in with their own panel username and password.',
     msg_tpl: 'Reseller portal:\n{url}\nUsername: {u}\nPassword: your PasarGuard panel password',
@@ -240,19 +240,19 @@ export function AgencyAdmins() {
       {d === null ? <div className="grid place-items-center py-16"><Spinner /></div> : d && (
         d.results.length === 0 ? <div className="card text-sm text-muted">{s.none}</div> : (
           <div className="card ag-table-wrap">
-            <table className="ag-table">
+            <table className="ag-table ag-admins">
               <thead>
                 <tr>
                   <th>{s.admins}</th><th>{s.status}</th><th>{s.usage}</th><th>{s.total_sold}</th><th>{s.sold_limit}</th>
-                  <th>{s.hidden}</th><th>{s.remaining}</th><th>{s.used}</th>{sortTh('user_count', s.users_total)}{sortTh('active_user_count', s.users_active)}{d.results[0]?.balance !== undefined && <th>{s.balance}</th>}
+                  <th className="ag-c-hid">{s.hidden}</th><th>{s.remaining}</th><th>{s.used}</th>{sortTh('user_count', s.users_col)}{d.results[0]?.balance !== undefined && <th>{s.balance}</th>}
                 </tr>
               </thead>
               <tbody>
                 {rows.map((r) => (
                   <tr key={r.username}>
                     <td className="ag-t-name" data-label={s.admins}>
-                      <Link to={`/agency/admins/${encodeURIComponent(r.username)}`}>{r.username}</Link>
-                      {r.groups.length > 0 && <span className="ag-t-grp">{r.groups.map((g) => g.owner).join('، ')}</span>}
+                      <Link to={`/agency/admins/${encodeURIComponent(r.username)}`} className="ag-t-nm" title={r.username}>{r.username}</Link>
+                      {r.groups.length > 0 && <span className="ag-t-grp" title={r.groups.map((g) => g.owner).join('، ')}>{r.groups.map((g) => g.owner).join('، ')}</span>}
                     </td>
                     <td className="ag-t-st" data-label={s.status}><StatusPill code={r.status_code} s={s} /></td>
                     <td className="ag-t-usage" data-label={s.usage}>
@@ -260,11 +260,14 @@ export function AgencyAdmins() {
                     </td>
                     <td data-label={s.total_sold}><B>{r.total_sold_fmt}</B></td>
                     <td data-label={s.sold_limit}><B><span data-sign={r.sold_limit_value > 0 ? 'pos' : r.sold_limit_value < 0 ? 'neg' : 'zero'} className="ag-sign">{r.sold_limit_fmt}</span></B></td>
-                    <td data-label={s.hidden}><B>{r.hidden_fmt}</B></td>
+                    <td className="ag-c-hid" data-label={s.hidden}><B>{r.hidden_fmt}</B></td>
                     <td data-label={s.remaining}><B>{fmt(r.remaining_fmt, s)}</B></td>
                     <td data-label={s.used}><B>{r.used_fmt}</B></td>
-                    <td data-label={s.users_total}><B>{digits(r.user_count, lang)}</B></td>
-                    <td data-label={s.users_active}><B>{digits(r.active_user_count, lang)}</B></td>
+                    <td data-label={s.users_col}>
+                      <span className="ag-users" title={['active', 'on_hold', 'limited', 'disabled', 'expired'].map((k) => `${s['c_' + k]}: ${digits(r.user_counts?.[k] ?? 0, lang)}`).join('\n')}>
+                        <B>{digits(r.user_count, lang)}</B><span className="ag-users-on"> / <B>{digits(r.active_user_count, lang)}</B> {s.users_on}</span>
+                      </span>
+                    </td>
                     {r.balance !== undefined && <td data-label={s.balance}><BalanceText value={r.balance} lang={lang} /></td>}
                   </tr>
                 ))}
@@ -647,6 +650,19 @@ const CSS = `
 .ag-t-name a:hover { color: var(--c-primary-fg); }
 .ag-t-grp { display: inline-block; margin-inline-start: 6px; font-size: 11px; padding: 1px 7px; border-radius: 999px; color: var(--c-muted-fg); background: color-mix(in srgb, var(--c-text-muted) 12%, transparent); }
 .ag-t-usage { min-width: 150px; }
+.ag-users { cursor: help; }
+.ag-users-on { color: var(--c-muted-fg); font-size: 11px; }
+/* admins list on desktop: fit the page without horizontal scroll */
+@media (min-width: 768px) {
+  .ag-admins th, .ag-admins td { padding: 9px 7px; }
+  .ag-admins th:first-child, .ag-admins td:first-child { padding-inline-start: 12px; }
+  .ag-admins th:last-child, .ag-admins td:last-child { padding-inline-end: 12px; }
+  .ag-admins .ag-t-name { max-width: 210px; }
+  .ag-admins .ag-t-nm { display: inline-block; max-width: 130px; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
+  .ag-admins .ag-t-grp { margin-inline-start: 4px; font-size: 10px; padding: 0 5px; max-width: 64px; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
+  .ag-admins .ag-t-usage { min-width: 0; }
+  .ag-admins .ag-t-usage .ag-bar { width: 48px; min-width: 48px; margin-inline-end: 6px; }
+}
 .ag-t-usage .ag-bar { display: inline-block; width: 80px; vertical-align: middle; margin-inline-end: 8px; }
 .ag-sign[data-sign="pos"] { color: var(--c-success-fg); } .ag-sign[data-sign="neg"] { color: var(--c-danger-fg); }
 .ag-back { font-size: 13px; color: var(--c-primary-fg); text-decoration: none; }

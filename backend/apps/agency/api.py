@@ -25,6 +25,8 @@ def admin_row(a: PanelAdmin, groups=None) -> dict:
         "usage_percent": a.usage_percent,
         "user_count": a.user_count,
         "active_user_count": a.active_user_count,
+        "user_counts": {"active": a.active_user_count, "on_hold": a.on_hold_users, "limited": a.limited_users,
+                        "disabled": a.disabled_users, "expired": a.expired_users},
         "admin_limit_fmt": a.admin_limit_fmt,
         "total_sold_fmt": a.total_user_limit_fmt,           # PAMP "Total Sold"
         "sold_limit_fmt": e["sold_limit_fmt"],

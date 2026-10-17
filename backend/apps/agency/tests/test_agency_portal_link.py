@@ -27,3 +27,12 @@ def test_portal_link_follows_the_configured_path(c, tmp_path, settings):
     assert c.get("/api/v1/admin/agency/portal-link/").json()["url"] == "https://aicaspin.ir/resellers/"
     r = c.get("/api/v1/admin/agency/portal-link/qr.png")
     assert r.status_code == 200 and r["Content-Type"] == "image/png" and Image.open(io.BytesIO(r.content)).size[0] > 100
+
+
+def test_admin_list_has_user_breakdown(c):
+    from apps.agency.models import PanelAdmin
+    PanelAdmin.objects.create(username="ali", user_count=13, active_user_count=12, on_hold_users=1, limited_users=2,
+                              disabled_users=3, expired_users=4)
+    row = c.get("/api/v1/admin/agency/admins/").json()["results"][0]
+    assert (row["user_count"], row["active_user_count"]) == (13, 12)
+    assert row["user_counts"] == {"active": 12, "on_hold": 1, "limited": 2, "disabled": 3, "expired": 4}
