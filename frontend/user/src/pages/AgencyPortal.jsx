@@ -178,7 +178,7 @@ function Statement({ username, s, lang }) {
         <li key={e.id} data-voided={e.voided || undefined}>
           <span className="ap-st-k" data-kind={e.kind}>{s['k_' + e.kind]}</span>
           <span className="ap-st-d">{jalali(e.date, false, lang)}</span>
-          <span className="ap-st-a"><B>{e.kind === 'payment' || Number(e.signed) < 0 ? '−' : '+'}{toman(Math.abs(Number(e.amount)), lang)}</B></span>
+          <span className="ap-st-a" data-sign={e.voided ? 'zero' : e.kind === 'payment' || Number(e.signed) < 0 ? 'credit' : 'owes'}><B>{e.kind === 'payment' || Number(e.signed) < 0 ? '−' : '+'}{toman(Math.abs(Number(e.amount)), lang)}</B></span>
           <span className="ap-st-r">{s.running}: <B>{money(e.balance, lang)}</B></span>
           {(e.note || e.voided || e.gb) && (
             <span className="ap-st-n">{e.gb && <bdi dir="ltr">{e.gb} GB</bdi>}{e.note && <> {e.note}</>}{e.voided && <> · {s.voided}</>}</span>
@@ -195,7 +195,8 @@ const CSS = `
 .ap-top { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 8px;
   padding: 10px 16px; background: color-mix(in srgb, var(--c-bg) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--c-border); }
 .ap-top-r { display: flex; gap: 8px; }
-.ap-lang { min-height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--c-border); background: var(--c-surface); color: var(--c-text); font-weight: 700; font-size: 13px; }
+.ap-lang { min-height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid transparent; background: color-mix(in srgb, var(--c-text-muted) 12%, transparent); color: var(--c-text); font-weight: 700; font-size: 13px; }
+.ap-lang:hover { background: color-mix(in srgb, var(--c-text-muted) 20%, transparent); }
 .ap-main { max-width: 640px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
 .ap-card { background: linear-gradient(var(--c-surface), var(--c-surface)), var(--c-bg); border: 1px solid var(--c-border); border-radius: 16px; padding: 16px; }
 .ap-login { display: flex; flex-direction: column; gap: 8px; margin-top: 8vh; }
@@ -229,8 +230,9 @@ const CSS = `
 .ap-nums dd { font-size: 16px; font-weight: 800; margin-top: 2px; overflow-wrap: anywhere; }
 .ap-bal { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--c-border); font-size: 13.5px; font-weight: 700; }
 .ap-bal .ap-num { font-size: 16px; font-weight: 800; }
-.ap-bal [data-sign="owes"] { color: var(--c-danger-fg); } .ap-bal [data-sign="credit"] { color: var(--c-success-fg); }
-.ap-link { margin-inline-start: auto; min-height: 40px; padding: 0 12px; border-radius: 10px; color: var(--c-primary-fg); font-weight: 700; font-size: 13px; background: transparent; border: 1px solid var(--c-border); }
+.ap-bal [data-sign="owes"] { color: var(--c-danger-fg); } .ap-bal [data-sign="credit"] { color: var(--c-success-fg); } .ap-bal [data-sign="zero"] { color: var(--c-muted-fg); }
+.ap-link { margin-inline-start: auto; min-height: 40px; padding: 0 12px; border-radius: 10px; color: var(--c-text); font-weight: 700; font-size: 13px; background: color-mix(in srgb, var(--c-text-muted) 12%, transparent); border: 1px solid transparent; }
+.ap-link:hover { background: color-mix(in srgb, var(--c-text-muted) 20%, transparent); }
 .ap-st { display: flex; flex-direction: column; margin-top: 8px; }
 .ap-st li { display: grid; grid-template-columns: auto 1fr auto; gap: 2px 10px; align-items: center; padding: 9px 0; border-top: 1px solid var(--c-border); font-size: 13px; }
 .ap-st li[data-voided] { opacity: .55; }
@@ -238,6 +240,7 @@ const CSS = `
 .ap-st-k[data-kind="payment"] { color: var(--c-success-fg); background: color-mix(in srgb, var(--c-success) 14%, transparent); }
 .ap-st-d { color: var(--c-muted-fg); font-size: 12.5px; }
 .ap-st-a { font-weight: 800; }
+.ap-st-a[data-sign="owes"] { color: var(--c-danger-fg); } .ap-st-a[data-sign="credit"] { color: var(--c-success-fg); } .ap-st-a[data-sign="zero"] { color: var(--c-muted-fg); }
 .ap-st-r, .ap-st-n { grid-column: 1 / -1; font-size: 12px; color: var(--c-muted-fg); }
 .ap-foot { font-size: 12px; color: var(--c-muted-fg); margin-top: 10px; }
 .ap-spin { width: 28px; height: 28px; margin: 24px auto; border-radius: 50%; border: 3px solid var(--c-border); border-top-color: var(--c-primary); animation: ap-r 0.8s linear infinite; }

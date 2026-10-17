@@ -141,11 +141,11 @@ export function LedgerCard({ username }) {
           </dl>
           <p className="lg-hint">{s.quota_note}</p>
           <div className="lg-actions">
-            <button type="button" className="ag-act" onClick={() => add('payment', s.add_payment, 'success')}>{s.add_payment}</button>
-            <button type="button" className="ag-act" onClick={() => add('manual_charge', s.add_charge)}>{s.add_charge}</button>
-            <button type="button" className="ag-act" onClick={() => add('adjustment', s.add_adjust, 'warning')}>{s.add_adjust}</button>
-            <button type="button" className="ag-act" onClick={() => add('price', s.add_price)}>{s.add_price}</button>
-            <button type="button" className="ag-act" onClick={exportCsv}>{s.export}</button>
+            <button type="button" className="ag-act" data-tone="success" onClick={() => add('payment', s.add_payment, 'success')}>{s.add_payment}</button>
+            <button type="button" className="ag-act" data-tone="warning" onClick={() => add('manual_charge', s.add_charge)}>{s.add_charge}</button>
+            <button type="button" className="ag-act" data-tone="warning" onClick={() => add('adjustment', s.add_adjust, 'warning')}>{s.add_adjust}</button>
+            <button type="button" className="ag-act" data-tone="neutral" onClick={() => add('price', s.add_price)}>{s.add_price}</button>
+            <button type="button" className="ag-act" data-tone="neutral" onClick={exportCsv}>{s.export}</button>
           </div>
           <h3 className="ag-sec-h">{s.entries}</h3>
           {st.entries.length === 0 ? <p className="ag-empty">{s.none}</p> : (
@@ -220,7 +220,7 @@ export function AgencyLedgerOverview({ Header }) {
 
 const LG_CSS = `
 .lg-bal { font-family: 'JetBrains Mono', ui-monospace, monospace; font-weight: 800; }
-.lg-bal[data-sign="owes"] { color: var(--c-danger-fg); } .lg-bal[data-sign="credit"] { color: var(--c-success-fg); }
+.lg-bal[data-sign="owes"] { color: var(--c-danger-fg); } .lg-bal[data-sign="credit"] { color: var(--c-success-fg); } .lg-bal[data-sign="zero"] { color: var(--c-muted-fg); }
 .lg-head-bal { font-size: 13px; font-weight: 700; }
 .lg-sum dd small { font-size: 11px; font-weight: 600; color: var(--c-muted-fg); }
 .lg-hint { font-size: 12px; color: var(--c-muted-fg); line-height: 1.7; margin: 8px 0; }
@@ -237,7 +237,9 @@ const LG_CSS = `
 .lg-amt { font-weight: 800; font-family: 'JetBrains Mono', ui-monospace, monospace; }
 .lg-run { font-size: 12px; color: var(--c-muted-fg); text-align: end; }
 .lg-meta { grid-column: 1 / -2; font-size: 12px; color: var(--c-muted-fg); overflow-wrap: anywhere; }
-.lg-void { grid-column: -2; font-size: 12px; font-weight: 700; color: var(--c-danger-fg); padding: 4px 8px; border-radius: 8px; justify-self: end; }
+.lg-void { grid-column: -2; font-size: 12px; font-weight: 700; color: var(--c-danger-fg); padding: 4px 8px; border-radius: 8px; justify-self: end;
+  background: color-mix(in srgb, var(--c-danger) 11%, transparent); border: 1px solid color-mix(in srgb, var(--c-danger) 30%, transparent); }
+.lg-void:hover { background: color-mix(in srgb, var(--c-danger) 19%, transparent); }
 .lg-prices { font-size: 12.5px; display: flex; flex-direction: column; gap: 4px; }
 .lg-form { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; margin-top: 10px; text-align: start; }
 .lg-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 700; }

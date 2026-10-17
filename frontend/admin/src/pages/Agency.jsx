@@ -317,13 +317,13 @@ export function AgencyAdminDetail() {
   ]
   const ACTIONS = [
     [s.a_set, setLimit, 'primary'],
-    [s.a_remove, () => act(s.a_remove, 'remove-limit', {}, 'warning')],
+    [s.a_remove, () => act(s.a_remove, 'remove-limit', {}, 'warning'), 'warning'],
     d.status === 'disabled'
-      ? [s.a_enable, () => act(s.a_enable, 'admin-action', { action: 'enable_admin' }, 'success')]
-      : [s.a_disable, () => act(s.a_disable, 'admin-action', { action: 'disable_admin' }, 'danger')],
-    [s.a_disable_users, () => act(s.a_disable_users, 'admin-action', { action: 'disable_users' }, 'danger')],
-    [s.a_enable_users, () => act(s.a_enable_users, 'admin-action', { action: 'enable_users' }, 'success')],
-    [s.a_reset, () => act(s.a_reset, 'reset-deleted-traffic', {}, 'danger')],
+      ? [s.a_enable, () => act(s.a_enable, 'admin-action', { action: 'enable_admin' }, 'success'), 'success']
+      : [s.a_disable, () => act(s.a_disable, 'admin-action', { action: 'disable_admin' }, 'danger'), 'danger'],
+    [s.a_disable_users, () => act(s.a_disable_users, 'admin-action', { action: 'disable_users' }, 'danger'), 'danger'],
+    [s.a_enable_users, () => act(s.a_enable_users, 'admin-action', { action: 'enable_users' }, 'success'), 'success'],
+    [s.a_reset, () => act(s.a_reset, 'reset-deleted-traffic', {}, 'danger'), 'danger'],
   ]
   return (
     <div className="ag space-y-4">
@@ -359,7 +359,7 @@ export function AgencyAdminDetail() {
         {msg && <Alert kind="success">{msg}</Alert>}
         <div className="ag-actions">
           {ACTIONS.map(([label, fn, tone]) => (
-            <button key={label} type="button" className={'ag-act' + (tone === 'danger' ? ' danger' : '')} disabled={!writable}
+            <button key={label} type="button" className="ag-act" data-tone={tone || 'neutral'} disabled={!writable}
               onClick={fn} title={!writable ? s.cutover : undefined}>{label}</button>
           ))}
         </div>
@@ -422,9 +422,9 @@ function PortalLinkCard({ s, username }) {
           <code dir="ltr" className="ag-portal-url">{url || '…'}</code>
           {username && <p className="text-xs text-muted mt-2">{s.user}: <bdi dir="ltr">{username}</bdi> · {s.send_hint}</p>}
           <div className="ag-actions mt-2">
-            {username && <button type="button" className="ag-act" disabled={!link} onClick={() => copy(s.msg_tpl.replace('{url}', url).replace('{u}', username))}>{s.copy_msg}</button>}
-            <button type="button" className="ag-act" disabled={!link} onClick={() => copy(url)}>{s.copy_link}</button>
-            <button type="button" className="ag-act" disabled={!link} onClick={toggleQr} aria-expanded={!!qr}>{qr ? s.hide_qr : s.show_qr}</button>
+            {username && <button type="button" className="ag-act" data-tone="neutral" disabled={!link} onClick={() => copy(s.msg_tpl.replace('{url}', url).replace('{u}', username))}>{s.copy_msg}</button>}
+            <button type="button" className="ag-act" data-tone="neutral" disabled={!link} onClick={() => copy(url)}>{s.copy_link}</button>
+            <button type="button" className="ag-act" data-tone="neutral" disabled={!link} onClick={toggleQr} aria-expanded={!!qr}>{qr ? s.hide_qr : s.show_qr}</button>
           </div>
           {note && <p className="text-xs text-muted mt-2" role="status">{note}</p>}
         </div>
@@ -578,7 +578,7 @@ export function AgencySettings() {
               <input className="input" dir="ltr" inputMode="numeric" value={interval} disabled={!manage}
                 onChange={(e) => setIntervalV(e.target.value)} aria-label={s.set_interval} />
             </label>
-            <button className="btn-primary text-sm" disabled={!manage}>{s.save}</button>
+            <button className="ag-act" data-tone="primary" disabled={!manage}>{s.save}</button>
           </form>
         </div>
       )}
@@ -681,6 +681,20 @@ const CSS = `
 .ag-act:hover:not(:disabled) { border-color: var(--c-primary); }
 .ag-act.danger { color: var(--c-danger-fg); }
 .ag-act:disabled { opacity: .5; cursor: not-allowed; }
+/* meaning by colour: primary = filled brand blue, success = money in / enable, warning = caution,
+   danger = destructive, neutral = soft gray. Text uses the contrast-safe --c-*-fg tokens. */
+.ag-act[data-tone] { border-color: transparent; transition: background-color .15s, border-color .15s; }
+.ag-act[data-tone="primary"] { background: color-mix(in srgb, var(--c-primary) 84%, #000); color: #fff; }
+.ag-act[data-tone="primary"]:hover:not(:disabled) { background: color-mix(in srgb, var(--c-primary) 70%, #000); border-color: transparent; }
+.ag-act[data-tone="success"] { color: var(--c-success-fg); background: color-mix(in srgb, var(--c-success) 13%, transparent); border-color: color-mix(in srgb, var(--c-success) 30%, transparent); }
+.ag-act[data-tone="warning"] { color: var(--c-warning-fg); background: color-mix(in srgb, var(--c-warning) 14%, transparent); border-color: color-mix(in srgb, var(--c-warning) 32%, transparent); }
+.ag-act[data-tone="danger"] { color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 11%, transparent); border-color: color-mix(in srgb, var(--c-danger) 30%, transparent); }
+.ag-act[data-tone="neutral"] { color: var(--c-text); background: color-mix(in srgb, var(--c-text-muted) 12%, transparent); }
+.ag-act[data-tone="success"]:hover:not(:disabled) { background: color-mix(in srgb, var(--c-success) 22%, transparent); border-color: color-mix(in srgb, var(--c-success) 45%, transparent); }
+.ag-act[data-tone="warning"]:hover:not(:disabled) { background: color-mix(in srgb, var(--c-warning) 24%, transparent); border-color: color-mix(in srgb, var(--c-warning) 48%, transparent); }
+.ag-act[data-tone="danger"]:hover:not(:disabled) { background: color-mix(in srgb, var(--c-danger) 19%, transparent); border-color: color-mix(in srgb, var(--c-danger) 45%, transparent); }
+.ag-act[data-tone="neutral"]:hover:not(:disabled) { background: color-mix(in srgb, var(--c-text-muted) 20%, transparent); border-color: transparent; }
+.ag-act:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 2px; }
 .ag-form { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; margin-top: 10px; }
 .ag-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 700; }
 .ag-snap { max-height: 360px; overflow-y: auto; border: 1px solid var(--c-border); border-radius: 10px; }
