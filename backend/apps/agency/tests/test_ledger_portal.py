@@ -209,3 +209,18 @@ def test_unknown_admin_gets_not_found_and_expired_sessions_fail():
     assert reseller(token).get("/api/v1/agency/portal/me/").json()["mode"] == "not_found"
     ResellerSession.objects.update(expires_at=ResellerSession.objects.get().created_at - timedelta(seconds=1))
     assert reseller(token).get("/api/v1/agency/portal/me/").status_code == 401
+
+
+def test_login_then_data_loads_with_production_throttles(settings):
+    """Regression: the test settings switch DRF throttles off, which hid a 500 on every
+    authenticated portal request in production (UserRateThrottle read request.user.pk)."""
+    from config.settings.base import REST_FRAMEWORK as PROD
+    settings.REST_FRAMEWORK = {**settings.REST_FRAMEWORK, "DEFAULT_THROTTLE_CLASSES": PROD["DEFAULT_THROTTLE_CLASSES"]}
+    set_setting("agency_portal_enabled", True, ValueType.BOOL)
+    token = portal_login().json()["token"]
+    c = reseller(token)
+    me = c.get("/api/v1/agency/portal/me/")
+    assert me.status_code == 200 and me.json()["accounts"][0]["username"] == "ali"
+    assert c.get("/api/v1/agency/portal/statement/?admin=ali").status_code == 200
+    assert c.post("/api/v1/agency/portal/logout/").status_code == 204
+    assert c.get("/api/v1/agency/portal/me/").status_code == 401

@@ -112,6 +112,8 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   10/min and `receipt` 20/hour. A new model feeding a public endpoint must be added to the signal list.
 - UI audits against the live server: keep concurrency low; never switch the live active theme
   (intercept `/api/v1/theme/` instead).
+- Test settings switch DRF throttles OFF. A custom `request.user` (e.g. the agency `Reseller`) must have a `pk` or
+  `UserRateThrottle` 500s in production only; test such endpoints with the production throttle classes.
 - Tests that call `transaction.on_commit` work need `@pytest.mark.django_db(transaction=True)` and a stubbed
   `fulfill_order.delay` (no panel in tests). Bot handler tests must stub `close_old_connections`.
 

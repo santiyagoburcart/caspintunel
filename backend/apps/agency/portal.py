@@ -78,6 +78,12 @@ class Reseller:
     def __init__(self, username: str, session: ResellerSession):
         self.username, self.session = username, session
 
+    @property
+    def pk(self) -> str:
+        # DRF's UserRateThrottle keys its bucket on request.user.pk; namespaced so a
+        # reseller never shares a bucket with a customer account (integer pks)
+        return f"agency:{self.username}"
+
 
 class ResellerTokenAuthentication(authentication.BaseAuthentication):
     keyword = "Agency"
