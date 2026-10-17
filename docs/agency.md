@@ -20,7 +20,7 @@ deleted traffic, sync now and group edits answer `409 pre_cutover` and the butto
 
 API: `GET /api/v1/admin/agency/` · `agency/admins/` · `agency/admins/<username>/` ·
 `POST agency/admins/<username>/{set-limit|remove-limit|admin-action|reset-deleted-traffic}/` ·
-`POST agency/sync-now/` · `agency/groups/` · `agency/sync-logs/` · `GET/PATCH agency/settings/` ·
+`POST agency/sync-now/` · `GET/POST agency/groups/` + `PUT/DELETE agency/groups/<id>/` · `agency/sync-logs/` · `GET/PATCH agency/settings/` ·
 `GET agency/portal-link/` + `agency/portal-link/qr.png` (portal address following the configured path; shown with
 copy + QR in Agency Settings and on each admin's page).
 
@@ -97,3 +97,15 @@ Additive tables (`agency_admin_price`, `agency_ledger_entry`) — PAMP's numbers
   **voided** with a reason. Balance = charges + adjustments − payments.
 * Statement per admin (Jalali dates, running balance), CSV export (UTF-8 BOM, Jalali dates), balance column in
   the admin list, overview tab "حسابداری". Resellers see their own statement read-only (no prices, no staff names).
+
+## Account groups (Agency → Groups, `agency.manage`)
+
+PAMP's account groups, managed from the panel: create (optional name, owner = main admin, members, note),
+edit (rename, change owner, add/remove members), delete (ConfirmDialog; accounts on the panel are untouched).
+Storage stays PAMP's (`owner_username` unique + comma-separated `member_usernames`), plus a `name` column
+(migration `agency.0003`, additive). Validation (`apps/agency/groups.py`): the owner and any NEW member must be
+existing panel admins, the owner is never a member, duplicates are dropped, one group per owner; a member that
+already left the panel may stay until removed. Each group shows its members (status, usage, Total Sold, Used,
+users) and combined numbers (sums of the members' synced values). The portal reads the same rows, so a change
+is what the owner sees on the next request (owner = group view; members and ex-owners = their own account).
+Writes follow the cut-over gate and are audited (`agency.group_created|updated|deleted`).

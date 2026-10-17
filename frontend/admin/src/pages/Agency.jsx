@@ -44,6 +44,11 @@ const T = {
     portal_link: 'لینک پرتال نماینده‌ها', send_to: 'ارسال به نماینده', copy_link: 'کپی لینک', copy_msg: 'کپی پیام', show_qr: 'نمایش QR', hide_qr: 'بستن QR', copied: 'کپی شد', copy_fail: 'کپی نشد',
     send_hint: 'این پیام را برای نماینده بفرستید؛ با نام کاربری و رمز پنل خودش وارد می‌شود.',
     msg_tpl: 'پرتال نمایندگی:\n{url}\nنام کاربری: {u}\nرمز عبور: همان رمز پنل پاسارگاد شما',
+    g_intro: 'مالک گروه در پرتال نماینده‌ها حساب‌های همهٔ اعضا را می‌بیند (فقط‌خواندنی)؛ اعضا فقط حساب خودشان را.', g_create: 'گروه جدید', g_edit: 'ویرایش', g_delete: 'حذف گروه',
+    g_group: 'گروه', g_name: 'نام گروه', g_name_ph: 'اختیاری — مثلاً شعبهٔ شمال', g_owner: 'ادمین اصلی (مالک)', g_owner_hint: 'این ادمین در پرتال همهٔ حساب‌های گروه را می‌بیند.',
+    g_member: 'عضو', g_search: 'جستجوی ادمین برای افزودن…', g_add_members: 'افزودن عضو', g_remove_member: 'حذف از گروه', g_remove: 'حذف', g_accounts: 'حساب‌ها',
+    g_delete_msg: 'فقط گروه حذف می‌شود؛ حساب‌ها روی پنل دست نمی‌خورند. مالک از این پس در پرتال فقط حساب خودش را می‌بیند.',
+    g_created: 'گروه ساخته شد', g_saved: 'گروه ذخیره شد', g_deleted: 'گروه حذف شد',
   },
   en: {
     title: 'Agency Panel', sub: 'Reseller admins on the PasarGuard panel — calculated exactly like PAMP',
@@ -76,6 +81,11 @@ const T = {
     portal_link: 'Reseller portal link', send_to: 'Send to reseller', copy_link: 'Copy link', copy_msg: 'Copy message', show_qr: 'Show QR', hide_qr: 'Hide QR', copied: 'Copied', copy_fail: 'Could not copy',
     send_hint: 'Send this to the reseller; they sign in with their own panel username and password.',
     msg_tpl: 'Reseller portal:\n{url}\nUsername: {u}\nPassword: your PasarGuard panel password',
+    g_intro: "The group owner sees every member account in the reseller portal (read-only); members see only their own.", g_create: 'New group', g_edit: 'Edit', g_delete: 'Delete group',
+    g_group: 'Group', g_name: 'Group name', g_name_ph: 'Optional — e.g. North branch', g_owner: 'Main admin (owner)', g_owner_hint: 'This admin sees all the group accounts in the portal.',
+    g_member: 'member', g_search: 'Search admins to add…', g_add_members: 'Add members', g_remove_member: 'Remove from group', g_remove: 'Remove', g_accounts: 'Accounts',
+    g_delete_msg: 'Only the group is deleted; the accounts on the panel are untouched. From now on the owner sees only their own account in the portal.',
+    g_created: 'Group created', g_saved: 'Group saved', g_deleted: 'Group deleted',
   },
 }
 
@@ -442,33 +452,183 @@ export function AgencyLedger() {
 }
 
 // ------------------------------------------------------------------ groups
+const GERR = {
+  fa: { owner_required: 'ادمین اصلی (مالک) را انتخاب کنید.', unknown_owner: 'این ادمین روی پنل نیست.', owner_taken: 'این ادمین مالک گروه دیگری است.',
+    unknown_member: 'این حساب‌ها روی پنل نیستند: {u}', not_found: 'این گروه دیگر وجود ندارد.' },
+  en: { owner_required: 'Choose the main admin (owner).', unknown_owner: 'That admin is not on the panel.', owner_taken: 'That admin already owns another group.',
+    unknown_member: 'These accounts are not on the panel: {u}', not_found: 'This group no longer exists.' },
+}
+const groupErr = (e, lang) => {
+  const d = e?.response?.data
+  const m = d?.code && (GERR[lang] || GERR.fa)[d.code]
+  return m ? m.replace('{u}', (d.usernames || []).join('، ')) : apiError(e)
+}
+
+function GroupForm({ s, all, init, box }) {
+  const [v, setV] = useState(() => ({ name: init?.name || '', owner: init?.owner || '', members: init?.members || [], note: init?.note || '' }))
+  const [q, setQ] = useState('')
+  useEffect(() => { Object.assign(box, v) }, [v])
+  const toggle = (u) => setV((x) => ({ ...x, members: x.members.includes(u) ? x.members.filter((m) => m !== u) : [...x.members, u] }))
+  const pool = [...new Set([...all, ...(init?.members || [])])].filter((u) => u !== v.owner && u.toLowerCase().includes(q.trim().toLowerCase()))
+  return (
+    <div className="ag-gform">
+      <label><span>{s.g_name}</span>
+        <input className="input" value={v.name} maxLength={100} onChange={(e) => setV({ ...v, name: e.target.value })} placeholder={s.g_name_ph} autoFocus />
+      </label>
+      <label><span>{s.g_owner} *</span>
+        <select className="input" value={v.owner} onChange={(e) => setV({ ...v, owner: e.target.value, members: v.members.filter((m) => m !== e.target.value) })}>
+          <option value="">—</option>
+          {[...new Set([...all, ...(init?.owner ? [init.owner] : [])])].map((u) => <option key={u} value={u}>{u}</option>)}
+        </select>
+        <small>{s.g_owner_hint}</small>
+      </label>
+      <div className="ag-gform-m">
+        <span className="ag-gform-l">{s.members} <b className="ag-count">{digits(v.members.length, 'en')}</b></span>
+        {v.members.length > 0 && (
+          <div className="ag-members">
+            {v.members.map((m) => (
+              <button key={m} type="button" className="ag-member ag-member--x" onClick={() => toggle(m)} title={s.g_remove_member} aria-label={`${s.g_remove_member}: ${m}`}>
+                <bdi>{m}</bdi> <span aria-hidden="true">×</span>
+              </button>
+            ))}
+          </div>
+        )}
+        <input className="input" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={s.g_search} aria-label={s.g_search} />
+        <div className="ag-gpick" role="group" aria-label={s.g_add_members}>
+          {pool.length === 0 ? <p className="text-xs text-muted">{s.none}</p> : pool.map((u) => (
+            <label key={u} className="ag-gpick-i">
+              <input type="checkbox" checked={v.members.includes(u)} onChange={() => toggle(u)} /> <bdi>{u}</bdi>
+            </label>
+          ))}
+        </div>
+      </div>
+      <label><span>{s.note}</span>
+        <input className="input" value={v.note} maxLength={200} onChange={(e) => setV({ ...v, note: e.target.value })} />
+      </label>
+    </div>
+  )
+}
+
 export function AgencyGroups() {
-  const [s] = useT()
-  const [d, err] = useLoad('/admin/agency/groups/')
+  const [s, lang] = useT()
+  const { can } = useAuth()
+  const confirm = useConfirm()
+  const [d, err, load] = useLoad('/admin/agency/groups/')
   const [dash] = useLoad('/admin/agency/')
+  const [admins] = useLoad('/admin/agency/admins/')
+  const [msg, setMsg] = useState('')
+  const writable = dash?.switches?.writes_enabled && can('agency.manage')
+  const all = (admins?.results || []).map((r) => r.username).sort((a, b) => a.localeCompare(b))
+  const title = (g) => g.name || g.owner
+
+  const edit = async (g) => {
+    const box = {}
+    setMsg('')
+    const ok = await confirm({
+      tone: 'primary', title: g ? s.g_edit : s.g_create, targetLabel: g ? s.g_group : undefined, targetId: g ? title(g) : undefined,
+      confirmLabel: s.save, content: <GroupForm s={s} all={all} init={g} box={box} />,
+      action: async () => {
+        if (!box.owner) throw new Error((GERR[lang] || GERR.fa).owner_required)
+        const body = { name: box.name, owner: box.owner, members: box.members, note: box.note }
+        try { g ? await api.put(`/admin/agency/groups/${g.id}/`, body) : await api.post('/admin/agency/groups/', body) } catch (e) { throw new Error(groupErr(e, lang)) }
+      },
+    })
+    if (ok) { setMsg(g ? s.g_saved : s.g_created); load() }
+  }
+  const remove = async (g) => {
+    setMsg('')
+    const ok = await confirm({
+      tone: 'danger', title: s.g_delete, targetLabel: s.g_group, targetId: title(g), confirmLabel: s.g_delete, message: s.g_delete_msg,
+      details: { rows: [[s.g_owner, g.owner], [s.members, g.members.join('، ') || '—']] },
+      action: async () => { try { await api.delete(`/admin/agency/groups/${g.id}/`) } catch (e) { throw new Error(groupErr(e, lang)) } },
+    })
+    if (ok) { setMsg(s.g_deleted); load() }
+  }
+  const dropMember = async (g, m) => {
+    setMsg('')
+    const ok = await confirm({
+      tone: 'danger', title: s.g_remove_member, targetLabel: s.g_group, targetId: title(g), confirmLabel: s.g_remove_member,
+      details: { rows: [[s.members, `${g.members.join('، ')} → ${g.members.filter((x) => x !== m).join('، ') || '—'}`]] },
+      action: async () => {
+        try { await api.put(`/admin/agency/groups/${g.id}/`, { name: g.name, owner: g.owner, note: g.note, members: g.members.filter((x) => x !== m) }) } catch (e) { throw new Error(groupErr(e, lang)) }
+      },
+    })
+    if (ok) { setMsg(s.g_saved); load() }
+  }
+
   return (
     <div className="ag space-y-4">
       <Header s={s} switches={dash?.switches} />
+      <div className="ag-gbar">
+        <p className="text-sm text-muted">{s.g_intro}</p>
+        {can('agency.manage') && (
+          <button type="button" className="ag-act" data-tone="primary" onClick={() => edit(null)} disabled={!writable || !admins} title={!writable ? s.cutover : undefined}>+ {s.g_create}</button>
+        )}
+      </div>
       <Alert>{err}</Alert>
+      {msg && <Alert kind="success">{msg}</Alert>}
       {d === null ? <div className="grid place-items-center py-16"><Spinner /></div> : d && (
-        d.results.length === 0 ? <div className="card text-sm text-muted">{s.groups_none}</div> : (
-          <div className="ag-groups">
-            {d.results.map((g) => (
-              <div key={g.id} className="card ag-card">
-                <div className="ag-card-h"><h3>{s.owner}: <Link to={`/agency/admins/${encodeURIComponent(g.owner)}`}><bdi>{g.owner}</bdi></Link></h3></div>
-                <div className="ag-members">
-                  <span className="text-xs text-muted">{s.members}:</span>
-                  {g.members.map((m) => (
-                    <Link key={m} to={`/agency/admins/${encodeURIComponent(m)}`} className="ag-member" data-missing={g.missing.includes(m) || undefined}>
-                      <bdi>{m}</bdi>{g.missing.includes(m) && <em> · {s.missing}</em>}
-                    </Link>
-                  ))}
-                </div>
-                {g.note && <p className="text-xs text-muted mt-2">{s.note}: {g.note}</p>}
+        d.results.length === 0 ? <div className="card text-sm text-muted">{s.groups_none}</div> : d.results.map((g) => (
+          <section key={g.id} className="card ag-card">
+            <div className="ag-card-h ag-gh">
+              <div className="ag-gh-t">
+                <h3><bdi>{title(g)}</bdi></h3>
+                <span className="ag-gh-o">{s.g_owner}: <Link to={`/agency/admins/${encodeURIComponent(g.owner)}`}><bdi>{g.owner}</bdi></Link></span>
               </div>
-            ))}
-          </div>
-        )
+              {can('agency.manage') && (
+                <div className="ag-actions">
+                  <button type="button" className="ag-act" data-tone="neutral" onClick={() => edit(g)} disabled={!writable}>{s.g_edit}</button>
+                  <button type="button" className="ag-act" data-tone="danger" onClick={() => remove(g)} disabled={!writable}>{s.g_delete}</button>
+                </div>
+              )}
+            </div>
+            <dl className="ag-nums ag-nums--counts">
+              <div><dt>{s.g_accounts}</dt><dd><B>{digits(g.totals.accounts, lang)}</B></dd></div>
+              <div><dt>{s.total_sold}</dt><dd><B>{g.totals.total_sold_fmt}</B></dd></div>
+              <div><dt>{s.used}</dt><dd><B>{g.totals.used_fmt}</B></dd></div>
+              <div><dt>{s.users_col}</dt><dd><B>{digits(g.totals.user_count, lang)}</B><span className="ag-users-on"> / <B>{digits(g.totals.active_user_count, lang)}</B> {s.users_on}</span></dd></div>
+            </dl>
+            {g.rows.length > 0 && (
+              <div className="ag-table-wrap mt-3">
+                <table className="ag-table ag-gtable">
+                  <thead><tr><th>{s.admins}</th><th>{s.status}</th><th>{s.usage}</th><th>{s.total_sold}</th><th>{s.used}</th><th>{s.users_col}</th>{can('agency.manage') && <th><span className="sr-only">{s.g_remove_member}</span></th>}</tr></thead>
+                  <tbody>
+                    {g.rows.map((r) => (
+                      <tr key={r.username}>
+                        <td className="ag-t-name" data-label={s.admins}>
+                          <Link to={`/agency/admins/${encodeURIComponent(r.username)}`}>{r.username}</Link>
+                          <span className="ag-t-grp" data-role={r.role}>{r.role === 'owner' ? s.owner : s.g_member}</span>
+                        </td>
+                        <td className="ag-t-st" data-label={s.status}><StatusPill code={r.status_code} s={s} /></td>
+                        <td className="ag-t-usage" data-label={s.usage}>{r.is_unlimited ? <span className="text-muted">{s.unl}</span> : <><UsageBar pct={r.usage_percent} /><B>{r.usage_percent}%</B></>}</td>
+                        <td data-label={s.total_sold}><B>{r.total_sold_fmt}</B></td>
+                        <td data-label={s.used}><B>{r.used_fmt}</B></td>
+                        <td data-label={s.users_col}><span><B>{digits(r.user_count, lang)}</B><span className="ag-users-on"> / <B>{digits(r.active_user_count, lang)}</B> {s.users_on}</span></span></td>
+                        {can('agency.manage') && (
+                          <td className="ag-gtable-x">
+                            {r.role === 'member' && <button type="button" className="ag-act ag-act--sm" data-tone="danger" disabled={!writable} onClick={() => dropMember(g, r.username)}>{s.g_remove}</button>}
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {g.missing.length > 0 && (
+              <div className="ag-members mt-2">
+                <span className="text-xs text-muted">{s.missing}:</span>
+                {g.missing.map((m) => (
+                  <span key={m} className="ag-member" data-missing>
+                    <bdi>{m}</bdi>
+                    {can('agency.manage') && g.members.includes(m) && <button type="button" className="ag-member-x" disabled={!writable} onClick={() => dropMember(g, m)} aria-label={`${s.g_remove_member}: ${m}`}>×</button>}
+                  </span>
+                ))}
+              </div>
+            )}
+            {g.note && <p className="text-xs text-muted mt-2">{s.note}: {g.note}</p>}
+          </section>
+        ))
       )}
     </div>
   )
@@ -722,8 +882,31 @@ const CSS = `
 .ag-portal-main { flex: 1; min-width: 0; }
 .ag-portal-url { display: block; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 13px; padding: 8px 11px; border-radius: 10px; border: 1px solid var(--c-border); overflow-wrap: anywhere; }
 .ag-portal-qr { border-radius: 10px; background: #fff; padding: 6px; border: 1px solid var(--c-border); }
+.ag-gbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.ag-gh { flex-wrap: wrap; align-items: flex-start; }
+.ag-gh-t { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ag-gh-t h3 { overflow-wrap: anywhere; }
+.ag-gh-o { font-size: 12px; color: var(--c-muted-fg); }
+.ag-gh-o a { color: var(--c-text); font-weight: 700; text-decoration: none; }
+.ag-t-grp[data-role="owner"] { color: var(--c-primary-fg); background: color-mix(in srgb, var(--c-primary) 12%, transparent); }
+.ag-gtable-x { text-align: end; width: 1%; }
+.ag-gh .ag-act, .ag-gbar .ag-act { white-space: nowrap; }
+.ag-act--sm { min-height: 30px; padding: 0 10px; font-size: 12px; }
+.ag-member--x { cursor: pointer; background: transparent; font: inherit; font-size: 12.5px; font-weight: 600; }
+.ag-member--x:hover { border-color: var(--c-danger); color: var(--c-danger-fg); }
+.ag-member-x { margin-inline-start: 4px; color: inherit; font-weight: 800; background: none; border: 0; cursor: pointer; }
+.ag-gform { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; text-align: start; }
+.ag-gform label, .ag-gform-m { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 700; }
+.ag-gform small { font-weight: 500; color: var(--c-muted-fg); }
+.ag-gform-l { display: inline-flex; align-items: center; gap: 6px; }
+.ag-gpick { max-height: 200px; overflow-y: auto; border: 1px solid var(--c-border); border-radius: 10px; padding: 4px; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); gap: 2px; }
+.ag-gpick-i { flex-direction: row !important; align-items: center; gap: 6px !important; padding: 6px 8px; border-radius: 8px; font-weight: 600 !important; font-size: 12.5px !important; cursor: pointer; }
+.ag-gpick-i:hover { background: color-mix(in srgb, var(--c-text-muted) 10%, transparent); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (max-width: 767px) {
   .ag-portal { flex-direction: column; }
+  .ag-gpick-i { min-height: 44px; } .ag-gform .input { font-size: 16px; height: 44px; } .ag-act--sm { min-height: 40px; }
+  .ag-table td.ag-gtable-x { grid-column: 1 / -1; width: auto; }
   .ag-tab { min-height: 40px; display: inline-flex; align-items: center; }
   .ag-toolbar { flex-direction: column; align-items: stretch; flex-wrap: nowrap; padding: 10px; }
   .ag-search { flex: none; max-width: none; min-width: 0; }

@@ -265,6 +265,8 @@ class AdminGroup(models.Model):
         help_text="Comma-separated list of admin usernames in this group")
     note = models.CharField(max_length=200, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    # caspintunel addition (PAMP groups have no name; blank = shown by owner)
+    name = models.CharField(max_length=100, blank=True, default="")
 
     class Meta:
         db_table = "agency_admin_group"

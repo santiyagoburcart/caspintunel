@@ -128,22 +128,49 @@ class AgencySyncNowView(AdminAPIView):
 
 
 class AgencyGroupsView(AdminAPIView):
-    perms_map = {"GET": VIEW, "POST": MANAGE, "DELETE": MANAGE}
+    """Account groups (PAMP). GET list · POST create · PUT <id> update (rename, owner,
+    members, note) · DELETE <id>."""
+    perms_map = {"GET": VIEW, "POST": MANAGE, "PUT": MANAGE, "DELETE": MANAGE}
 
-    def get(self, request):
-        names = set(PanelAdmin.objects.values_list("username", flat=True))
-        return Response({"results": [
-            {"id": g.id, "owner": g.owner_username, "members": g.get_members(), "note": g.note,
-             "created_at": g.created_at, "missing": [u for u in g.get_all_usernames() if u not in names]}
-            for g in AdminGroup.objects.order_by("owner_username")]})
+    def get(self, request, group_id=None):
+        return Response({"results": api.group_rows()})
 
-    def post(self, request):
+    def _save(self, request, group_id, audit_action):
+        from apps.agency import groups
+
         d = request.data
-        return _run(request, "agency.group_saved", None, actions.save_group, d.get("owner"), d.get("members"),
-                    d.get("note"))
+        try:
+            g = groups.upsert(group_id, owner=d.get("owner"), members=d.get("members"),
+                              name=d.get("name", ""), note=d.get("note", ""))
+        except actions.PreCutover as exc:
+            return Response({"detail": str(exc), "code": "pre_cutover"}, status=status.HTTP_409_CONFLICT)
+        except groups.GroupError as exc:
+            code, _, extra = str(exc).partition(":")
+            return Response({"code": code, "detail": code, "usernames": [u for u in extra.split(",") if u]},
+                            status=status.HTTP_404_NOT_FOUND if code == "not_found" else status.HTTP_400_BAD_REQUEST)
+        write_audit(action=audit_action, staff=request.user, target=g,
+                    detail={"owner": g.owner_username, "members": g.get_members(), "name": g.name})
+        return Response({"ok": True, "id": g.id}, status=status.HTTP_201_CREATED if group_id is None else 200)
+
+    def post(self, request, group_id=None):
+        return self._save(request, None, "agency.group_created")
+
+    def put(self, request, group_id=None):
+        return self._save(request, group_id, "agency.group_updated")
 
     def delete(self, request, group_id=None):
-        return _run(request, "agency.group_deleted", None, actions.delete_group, group_id)
+        from apps.agency import groups
+        from apps.agency.models import AdminGroup
+
+        g = AdminGroup.objects.filter(pk=group_id).first()
+        try:
+            if not g or not groups.delete(group_id):
+                return Response({"code": "not_found", "detail": "not_found"}, status=status.HTTP_404_NOT_FOUND)
+        except actions.PreCutover as exc:
+            return Response({"detail": str(exc), "code": "pre_cutover"}, status=status.HTTP_409_CONFLICT)
+        write_audit(action="agency.group_deleted", staff=request.user, target=g,
+                    detail={"owner": g.owner_username, "members": g.get_members(), "name": g.name})
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class AgencySyncLogsView(AdminAPIView):

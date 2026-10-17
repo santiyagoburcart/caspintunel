@@ -103,3 +103,30 @@ def portal_link() -> dict:
     domain = (SiteConfig.load().site_domain or "").strip().strip("/")
     path = paths.state()["portal"]
     return {"path": path, "url": f"https://{domain}{path}/" if domain else f"{path}/"}
+
+
+def group_rows() -> list[dict]:
+    """Account groups with their member rows and combined numbers (sums of the
+    members' synced values; formatted with PAMP's _fmt_bytes)."""
+    from .models import _fmt_bytes
+
+    groups = list(AdminGroup.objects.order_by("owner_username"))
+    admins = {a.username: a for a in PanelAdmin.objects.all()}
+    out = []
+    for g in groups:
+        names = g.get_all_usernames()
+        present = [admins[u] for u in names if u in admins]
+        out.append({
+            "id": g.id, "name": g.name, "owner": g.owner_username, "members": g.get_members(), "note": g.note,
+            "created_at": g.created_at, "missing": [u for u in names if u not in admins],
+            "rows": [{**admin_row(admins[u], groups), "role": "owner" if u == g.owner_username else "member"}
+                     for u in names if u in admins],
+            "totals": {
+                "accounts": len(names),
+                "total_sold_fmt": _fmt_bytes(sum(a.total_user_limit or 0 for a in present)),
+                "used_fmt": _fmt_bytes(sum(a.total_user_used or 0 for a in present)),
+                "user_count": sum(a.user_count or 0 for a in present),
+                "active_user_count": sum(a.active_user_count or 0 for a in present),
+            },
+        })
+    return out
