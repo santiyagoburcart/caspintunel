@@ -598,6 +598,7 @@ const CSS = `
 .pl-icon-btn:hover { color: var(--c-text); border-color: var(--c-primary); }
 
 .pl-wrap { overflow-x: auto; }
+@media (min-width: 768px) { .pl-table td { white-space: nowrap; } }
 .pl-table { width: 100%; min-width: 900px; border-collapse: collapse; font-size: 13px; }
 .pl-table thead th {
   text-align: start; font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: .03em;

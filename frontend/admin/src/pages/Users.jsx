@@ -489,15 +489,15 @@ export default function Users() {
                   <td data-label={t('active')} className="usr-c"><Toggle checked={r.is_active} onChange={() => toggle(r)} label={t('active')} /></td>
                   <td data-label={s.col_actions} className="usr-c">
                     <div className="usr-actions">
-                      <button type="button" className="usr-edit-btn" onClick={() => setModal({ row: r })}>
-                        <Ico d={I.edit} w={14} /> {t('edit')}
+                      <button type="button" className="usr-edit-btn" onClick={() => setModal({ row: r })} title={t('edit')} aria-label={t('edit')}>
+                        <Ico d={I.edit} w={14} /> <span className="usr-act-l">{t('edit')}</span>
                       </button>
-                      <Link to={`/users/${r.id}/orders`} className="usr-hist-btn" title={s.purchase_history}>
-                        <Ico d={I.bag} w={14} /> {s.purchase_history}
+                      <Link to={`/users/${r.id}/orders`} className="usr-hist-btn" title={s.purchase_history} aria-label={s.purchase_history}>
+                        <Ico d={I.bag} w={14} /> <span className="usr-act-l">{s.purchase_history}</span>
                       </Link>
                       {can('users.delete') && (
-                        <button type="button" className="usr-del-btn" onClick={() => removeUser(r)} title={s.delete_user}>
-                          <Ico d={I.trash} w={14} /> {s.delete_user}
+                        <button type="button" className="usr-del-btn" onClick={() => removeUser(r)} title={s.delete_user} aria-label={s.delete_user}>
+                          <Ico d={I.trash} w={14} /> <span className="usr-act-l">{s.delete_user}</span>
                         </button>
                       )}
                     </div>
@@ -599,6 +599,12 @@ const CSS = `
 .usr-icon-btn:disabled { opacity: .4; cursor: not-allowed; }
 
 .usr-wrap { overflow-x: auto; }
+@media (min-width: 768px) {
+  .usr-table td { white-space: nowrap; }
+  .usr-actions { flex-wrap: nowrap; gap: 4px; }
+  .usr-actions .usr-act-l { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .usr-actions > :is(.usr-edit-btn, .usr-hist-btn, .usr-del-btn) { width: 32px; height: 32px; padding: 0; justify-content: center; gap: 0; }
+}
 .usr-table { width: 100%; min-width: 900px; border-collapse: collapse; font-size: 13px; }
 .usr-table thead th {
   text-align: start; font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: .03em;

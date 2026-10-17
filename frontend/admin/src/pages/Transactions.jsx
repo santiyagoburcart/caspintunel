@@ -201,7 +201,7 @@ function TxTable({ s, t, lang }) {
                       <td data-label={s.type_col}>{s['type_' + r.order_type] || r.order_type || '—'}</td>
                       <td data-label={s.src_col}>{r.order_source === 'bot' ? s.src_bot : s.src_site}</td>
                       <td data-label={s.method}>{r.method ? enumLabel(t, 'm_', r.method) : '—'}</td>
-                      <td dir="ltr" className="tx-mono" data-label={s.card}>{groupCard(r.card)}</td>
+                      <td dir="ltr" className="tx-mono tx-card" data-label={s.card}>{groupCard(r.card)}</td>
                       <td data-label={s.confirmer}>{confirmer(r)}</td>
                       <td className="tx-mono tx-date" data-label={s.date}>{jalali(r.created_at, true, lang)}</td>
                       <td data-label={s.status}><Pill tone={ST_TONE[r.status]}>{s[r.status] || r.status}</Pill></td>
@@ -251,6 +251,7 @@ const CSS = `
 
 .tx-filter-on { color: var(--c-primary); border-color: var(--c-primary); }
 .tx-wrap { overflow-x: auto; }
+@media (min-width: 768px) { .tx-table tr.tx-row > td { white-space: nowrap; } .tx-card { white-space: nowrap; } }
 .tx-table { width: 100%; min-width: 760px; border-collapse: collapse; font-size: 13px; }
 .tx-table thead th {
   text-align: start; font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: .03em;

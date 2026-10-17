@@ -603,3 +603,8 @@ code, pre, kbd, samp { font-family: 'JetBrains Mono', ui-monospace, monospace !i
   :is(.acc-kpis, .cd-metrics, .int-metrics, .pl-stats, .tx-stats, .ag-kpis) :is([class$="-sub"], [class*="-sub "], [class*="-accent"]) { display: none !important; }
 }
 
+/* desktop: the content area uses the width next to the sidebar (capped at 1680px);
+   Agency pages keep their own width; phones (<768px) are unchanged */
+@media (min-width: 768px) {
+  .admin-main:not(.admin-main--agency) { max-width: 1680px; padding: 16px 24px; }
+}

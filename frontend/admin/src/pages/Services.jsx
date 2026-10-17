@@ -221,8 +221,8 @@ export default function Services() {
                     <span className="svc-user">{r.user}{r.user_deleted && <span className="svc-deleted-tag">{s.user_deleted}</span>}</span>
                     {r.user_telegram ? <span className="svc-sub" dir="ltr">@{r.user_telegram}</span> : (r.user_name ? <span className="svc-sub">{r.user_name}</span> : null)}
                   </td>
-                  <td data-label={s.col_plan}>{(lang === 'fa' ? r.plan : r.plan_en) || r.plan || '—'}</td>
-                  <td data-label={s.col_panel}>{r.panel_name || '—'}</td>
+                  <td data-label={s.col_plan}><span className="svc-ell" title={(lang === 'fa' ? r.plan : r.plan_en) || r.plan || ''}>{(lang === 'fa' ? r.plan : r.plan_en) || r.plan || '—'}</span></td>
+                  <td data-label={s.col_panel}><span className="svc-ell" title={r.panel_name || ''}>{r.panel_name || '—'}</span></td>
                   <td data-label={s.col_status}>
                     <StatusPill status={r.status} t={t} />
                   </td>
@@ -584,6 +584,10 @@ const CSS = `
 .svc-search .input { padding-inline-start: 34px; }
 
 .svc-wrap { overflow-x: auto; }
+@media (min-width: 768px) {
+  .svc-table td { white-space: nowrap; }
+  .svc-ell { display: inline-block; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+}
 .svc-table { width: 100%; min-width: 900px; border-collapse: collapse; font-size: 13px; }
 .svc-table thead th { text-align: start; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .03em;
   color: var(--c-text-muted); padding: 12px 14px; white-space: nowrap; border-bottom: 1px solid var(--c-border); }
