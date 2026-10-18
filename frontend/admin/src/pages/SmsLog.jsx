@@ -12,14 +12,14 @@ import { DataTable } from '../components/DataTable'
 const T = {
   fa: {
     h1: 'لاگ پیامک‌ها', sub: 'پیامک‌هایی که گوشیِ دریافت‌کنندهٔ پیامک بانک به سرور فرستاده و نتیجهٔ تطبیق هرکدام با سفارش‌ها',
-    all: 'همه', matched: 'تطبیق‌یافته', unmatched: 'تطبیق‌نیافته', mismatch: 'مغایرت مبلغ', mismatch_pill: 'مغایرت مبلغ — بررسی دستی', rial: 'ریال', toman_u: 'تومان',
+    all: 'همه', matched: 'تطبیق‌یافته', unmatched: 'تطبیق‌نیافته', mismatch: 'مغایرت مبلغ', mismatch_pill: 'مغایرت مبلغ — بررسی دستی', mm_less: 'مبلغ نامطابق: کمتر از فاکتور', mm_more: 'مبلغ نامطابق: بیشتر از فاکتور', mm_order: 'سفارش', rial: 'ریال', toman_u: 'تومان',
     time: 'زمان', sender: 'فرستنده', device: 'دستگاه', amount: 'مبلغ یافت‌شده', result: 'نتیجه', text: 'متن (شماره‌ها پوشانده شده)',
     ok: 'سفارش', none: 'تطبیق نشد', empty: 'پیامکی ثبت نشده است', more: 'بیشتر', unknown: 'نامشخص',
     hint: 'اگر پیامکی اینجا نیست، گوشی چیزی به سرور نفرستاده است (اتوماسیون/اپ را بررسی کنید). اگر هست، ستون «نتیجه» دلیل را می‌گوید.',
   },
   en: {
     h1: 'SMS log', sub: 'SMS the bank-SMS phone forwarded to the server, and how each was matched to an order',
-    all: 'All', matched: 'Matched', unmatched: 'Not matched', mismatch: 'Amount mismatch', mismatch_pill: 'Amount mismatch — check by hand', rial: 'Rial', toman_u: 'Toman',
+    all: 'All', matched: 'Matched', unmatched: 'Not matched', mismatch: 'Amount mismatch', mismatch_pill: 'Amount mismatch — check by hand', mm_less: 'Amount mismatch: LESS than the invoice', mm_more: 'Amount mismatch: MORE than the invoice', mm_order: 'order', rial: 'Rial', toman_u: 'Toman',
     time: 'Time', sender: 'Sender', device: 'Device', amount: 'Amount found', result: 'Result', text: 'Text (numbers masked)',
     ok: 'Order', none: 'Not matched', empty: 'No SMS recorded yet', more: 'Load more', unknown: 'unknown',
     hint: 'If an SMS is missing here, the phone never sent it (check the automation / app). If it is here, "Result" says why.',
@@ -83,6 +83,8 @@ export default function SmsLog() {
                 <div className="smsl-res">
                   {r.matched_order
                     ? <span className="smsl-pill smsl-pill--ok">{s.ok} #{r.matched_order}</span>
+                    : r.mismatch_order
+                      ? <span className="smsl-pill smsl-pill--bad">{r.mismatch_kind === 'more' ? s.mm_more : s.mm_less} · {s.mm_order} #{r.mismatch_order}{r.mismatch_invoice != null && <> · <bdi dir="ltr">{toman(r.mismatch_invoice, lang)}</bdi></>}</span>
                     : (r.note || '').startsWith('amount mismatch')
                       ? <span className="smsl-pill smsl-pill--bad">{s.mismatch_pill}</span>
                       : <span className="smsl-pill smsl-pill--no">{s.none}</span>}

@@ -21,6 +21,7 @@ const T = {
     load_fail: 'دریافت فهرست ناموفق بود', src_site: 'سایت', src_bot: 'ربات',
     deposit_card: 'واریز به کارت', customer_card: 'کارت اعلام‌شده توسط کاربر',
     tab_all: 'همه', tab_receipt: 'دارای فیش', tab_active: 'در انتظار', tab_expired: 'منقضی',
+    mm_less: 'مبلغ نامطابق: کمتر از فاکتور', mm_more: 'مبلغ نامطابق: بیشتر از فاکتور', mm_sms: 'پیامک بانک', mm_invoice: 'فاکتور', mm_diff: 'اختلاف', mm_hint: 'خودکار تأیید نشد — پس از بررسی، تأیید یا رد کنید.',
     expired_note: 'مهلت رزرو مبلغ یکتا به پایان رسیده است.',
     none_tab: 'موردی در این دسته نیست',
     live_on: 'به‌روزرسانی زنده', live_off: 'اتصال زنده قطع است — تا وصل شدن دوباره، صف هر 15 ثانیه خودکار به‌روز می‌شود',
@@ -37,6 +38,7 @@ const T = {
     load_fail: 'Failed to load the queue', src_site: 'Website', src_bot: 'Bot',
     deposit_card: 'Deposited to card', customer_card: 'Card the customer selected',
     tab_all: 'All', tab_receipt: 'Has receipt', tab_active: 'Waiting', tab_expired: 'Expired',
+    mm_less: 'Amount mismatch: LESS than the invoice', mm_more: 'Amount mismatch: MORE than the invoice', mm_sms: 'Bank SMS', mm_invoice: 'Invoice', mm_diff: 'Difference', mm_hint: 'Not auto-approved — check, then approve or reject.',
     expired_note: 'The unique-amount reservation window has elapsed.',
     none_tab: 'Nothing in this tab',
     live_on: 'Live updates', live_off: 'Live connection lost — the queue auto-refreshes every 15 s until it reconnects',
@@ -213,6 +215,16 @@ export default function Payments() {
               </div>
             </div>
             {isExpired(p) && <div className="pq-exp-note">{s.expired_note}</div>}
+            {p.sms_mismatch && (
+              <div className="pq-mm" data-kind={p.sms_mismatch.kind} role="status">
+                <b>{p.sms_mismatch.kind === 'less' ? s.mm_less : s.mm_more}</b>
+                <span>{s.mm_sms}: <bdi dir="ltr" className="mono-num">{p.sms_mismatch.sms_amount != null ? toman(p.sms_mismatch.sms_amount, lang) : `${Number(p.sms_mismatch.sms_raw || 0).toLocaleString('en-US')} ${p.sms_mismatch.sms_unit}`}</bdi>
+                  {' · '}{s.mm_invoice}: <bdi dir="ltr" className="mono-num">{toman(p.sms_mismatch.invoice_amount, lang)}</bdi>
+                  {p.sms_mismatch.sms_amount != null && <>{' · '}{s.mm_diff}: <bdi dir="ltr" className="mono-num">{(Number(p.sms_mismatch.sms_amount) - Number(p.sms_mismatch.invoice_amount) > 0 ? '+' : '') + toman(Number(p.sms_mismatch.sms_amount) - Number(p.sms_mismatch.invoice_amount), lang)}</bdi></>}
+                </span>
+                <small>{s.mm_hint}</small>
+              </div>
+            )}
             {p.bank_card_number && (
               <div className="pq-customer-card">
                 {s.customer_card}: <b className="mono-num" dir="ltr">{p.bank_card_number}</b>
@@ -273,6 +285,10 @@ const CSS = `
 .pq-tab-n { font-size: 11px; font-weight: 700; padding: 0 6px; min-width: 18px; text-align: center; border-radius: 999px;
   background: color-mix(in srgb, currentColor 22%, transparent); font-family: 'JetBrains Mono', monospace; }
 .pq-card--exp { border-color: color-mix(in srgb, var(--c-warning) 40%, var(--c-border)); }
+.pq-mm { display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-radius: 10px; font-size: 12.5px; line-height: 1.7;
+  color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 10%, transparent); border: 1px solid color-mix(in srgb, var(--c-danger) 30%, transparent); }
+.pq-mm[data-kind="more"] { color: var(--c-warning-fg); background: color-mix(in srgb, var(--c-warning) 12%, transparent); border-color: color-mix(in srgb, var(--c-warning) 34%, transparent); }
+.pq-mm span { color: var(--c-text); } .pq-mm small { color: var(--c-muted-fg); font-size: 11.5px; }
 .pq-exp-tag { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap;
   background: color-mix(in srgb, var(--c-warning) 16%, transparent); color: var(--c-warning-fg); }
 .pq-exp-note { font-size: 11.5px; color: var(--c-warning-fg); background: color-mix(in srgb, var(--c-warning) 10%, transparent);

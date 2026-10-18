@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { api, tokens } from './api'
 import { useAuth } from './auth'
+import { useI18n } from './i18n'
+import { useToast } from '../components/Toast'
 
 /**
  * Live feed for the payments queue (backend: apps.notifications.live).
@@ -23,6 +25,19 @@ export function LivePaymentsProvider({ children }) {
   const [pendingCount, setPendingCount] = useState(null)
   const [connected, setConnected] = useState(false)
   const listeners = useRef(new Set())
+  const toast = useToast()
+  const { lang } = useI18n()
+  const notify = useRef(null)
+  notify.current = (msg) => {
+    // a deposit SMS close to an open invoice but not equal: never approved, needs a person
+    if (msg.event !== 'sms_mismatch') return
+    const n = (v) => Number(v || 0).toLocaleString('en-US')
+    const fa = lang === 'fa'
+    const what = msg.kind === 'more' ? (fa ? 'بیشتر از فاکتور' : 'MORE than the invoice') : (fa ? 'کمتر از فاکتور' : 'LESS than the invoice')
+    toast.error(fa
+      ? `مبلغ نامطابق در پیامک (${what}) — سفارش #${msg.order_id}: پیامک ${n(msg.sms_amount)} تومان، فاکتور ${n(msg.invoice_amount)} تومان. در صف پرداخت بررسی کنید.`
+      : `SMS amount mismatch (${what}) — order #${msg.order_id}: SMS ${n(msg.sms_amount)} T, invoice ${n(msg.invoice_amount)} T. Review it in the payment queue.`)
+  }
 
   const refreshCount = useCallback(() => {
     api.get('/admin/payments/pending/')
@@ -61,6 +76,7 @@ export function LivePaymentsProvider({ children }) {
         let msg
         try { msg = JSON.parse(ev.data) } catch { return }
         if (typeof msg.pending_count === 'number') setPendingCount(msg.pending_count)
+        try { notify.current?.(msg) } catch { /* ignore */ }
         listeners.current.forEach((fn) => { try { fn(msg) } catch { /* ignore */ } })
       }
       ws.onclose = async (ev) => {

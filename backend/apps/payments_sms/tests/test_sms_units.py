@@ -67,7 +67,9 @@ def test_incident_rial_sms_with_the_invoice_number_is_not_approved(device, sourc
     order = make_order(175662)
     data = post(device, BLU.format(amount="175,662"))          # 175,662 RIAL = 17,566.2 T
     assert data["matched"] is False and data["reason"] == "amount mismatch"
-    assert status(order) == OrderStatus.PENDING_PAYMENT and not Payment.objects.exists()
+    # never approved: only a PENDING review payment (v1.14: near misses go to the Payments queue)
+    assert status(order) == OrderStatus.PENDING_PAYMENT
+    assert list(Payment.objects.values_list("status", "method")) == [("pending", "sms_mismatch")]
     msg = SmsMessage.objects.get()
     assert msg.note.startswith("amount mismatch") and f"order #{order.id}" in msg.note
     assert msg.parsed_raw == 175662 and msg.parsed_unit == RIAL and msg.parsed_amount is None
@@ -77,7 +79,8 @@ def test_one_tenth_underpayment_never_approves(device, source):
     order = make_order(175660)
     data = post(device, BLU.format(amount="175,660"))          # 17,566 T paid for a 175,660 T invoice
     assert data["matched"] is False and data["reason"] == "amount mismatch"
-    assert status(order) == OrderStatus.PENDING_PAYMENT and not Payment.objects.exists()
+    assert status(order) == OrderStatus.PENDING_PAYMENT
+    assert not Payment.objects.filter(status="approved").exists()
 
 
 def test_exact_rial_amount_approves_the_toman_invoice(device, source):

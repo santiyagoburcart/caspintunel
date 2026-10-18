@@ -458,13 +458,22 @@ class AdminPendingPaymentSerializer(serializers.ModelSerializer):
     bank_card_number = serializers.CharField(source="bank_card.card_number", read_only=True, default=None)
     bank_card_holder = serializers.CharField(source="bank_card.holder_name", read_only=True, default=None)
     bank_card_bank = serializers.CharField(source="bank_card.bank_name", read_only=True, default=None)
+    sms_mismatch = serializers.SerializerMethodField()
 
     class Meta:
         model = Payment
         fields = ("id", "order_id", "user", "user_telegram", "plan_name", "order_type",
                   "order_source", "account_name", "method", "amount", "status",
                   "receipt_url", "reject_reason", "created_at",
-                  "bank_card", "bank_card_number", "bank_card_holder", "bank_card_bank")
+                  "bank_card", "bank_card_number", "bank_card_holder", "bank_card_bank", "sms_mismatch")
+
+    def get_sms_mismatch(self, obj) -> dict | None:
+        """A deposit SMS that is close to this invoice but not equal (never auto-approved)."""
+        m = obj.sms_message
+        if m is None or m.mismatch_order_id != obj.order_id or not m.mismatch_kind:
+            return None
+        return {"kind": m.mismatch_kind, "sms_id": m.id, "sms_amount": m.parsed_amount, "sms_raw": m.parsed_raw,
+                "sms_unit": m.parsed_unit, "invoice_amount": obj.order.amount_unique, "received_at": m.received_at}
 
     def get_receipt_url(self, obj) -> str | None:
         # authenticated endpoint (ReceiptFileView), never a public media path
@@ -663,11 +672,15 @@ class AdminSmsLogSerializer(serializers.ModelSerializer):
     source = serializers.CharField(source="sms_source.phone_number", default="", read_only=True)
     matched_order = serializers.IntegerField(source="matched_order_id", read_only=True)
     matched_order_status = serializers.CharField(source="matched_order.status", default=None, read_only=True)
+    mismatch_order = serializers.IntegerField(source="mismatch_order_id", read_only=True)
+    mismatch_invoice = serializers.DecimalField(source="mismatch_order.amount_unique", max_digits=12, decimal_places=0,
+                                                default=None, read_only=True)
 
     class Meta:
         model = SmsMessage
         fields = ("id", "received_at", "device", "sender", "source", "text", "parsed_amount",
-                  "parsed_raw", "parsed_unit", "matched_order", "matched_order_status", "note")
+                  "parsed_raw", "parsed_unit", "matched_order", "matched_order_status", "note",
+                  "mismatch_order", "mismatch_kind", "mismatch_invoice")
         read_only_fields = fields
 
     def get_text(self, obj) -> str:

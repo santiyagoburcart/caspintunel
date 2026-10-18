@@ -54,6 +54,8 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   SMS (ریال/تومان/Rial/IRR/Toman), else `SmsSource.amount_unit` (default Rial); converted to tomans ONCE. An order
   auto-confirms only when that equals `amount_unique` exactly. Never add tolerance or ×10/÷10 retries — unit
   look-alikes are logged as "amount mismatch" (SMS log filter) and never approved. (Incident 2026-10-15, order #46.)
+  A deposit within ±20 % of an open invoice (or equal only after ×10/÷10) is linked to it (`SmsMessage.mismatch_order` +
+  `less`/`more`) and gets a PENDING `sms_mismatch` payment for manual review (Payments queue, live `sms_mismatch` event).
 - Panel operations: **panel first, then read the account back and mirror it** (`apply_user_to_service`);
   only send changed fields (`update_service`). Never delete a panel account when "disable" is meant.
 - Users are **soft-deleted** only (`apps/accounts/deletion.py`); hard `DELETE /admin/users/<id>/` is 405

@@ -6,6 +6,7 @@ import { jalali, toman } from '../lib/format'
 import { toISO, todayCell } from '../lib/jalaliCalendar'
 import { Alert, Spinner } from '../components/ui'
 import { useConfirm } from '../components/ConfirmDialog'
+import { Ic } from '../components/AgencyIcons'
 
 // Agency accounting (caspintunel addition — never changes PAMP's numbers).
 // Amounts and balances come from the server; this file only formats.
@@ -127,7 +128,7 @@ export function LedgerCard({ username }) {
     <div className="card ag-card lg">
       <style>{LG_CSS}</style>
       <div className="ag-card-h">
-        <h3>{s.title}</h3>
+        <h3 className="ag-sh" data-ac="green"><Ic n="wallet" size={15} />{s.title}</h3>
         {st && <span className="lg-head-bal">{s.balance}: <BalanceText value={st.balance} lang={lang} /></span>}
       </div>
       <Alert>{err}</Alert>
@@ -141,13 +142,13 @@ export function LedgerCard({ username }) {
           </dl>
           <p className="lg-hint">{s.quota_note}</p>
           <div className="lg-actions">
-            <button type="button" className="ag-act" data-tone="success" onClick={() => add('payment', s.add_payment, 'success')}>{s.add_payment}</button>
-            <button type="button" className="ag-act" data-tone="warning" onClick={() => add('manual_charge', s.add_charge)}>{s.add_charge}</button>
-            <button type="button" className="ag-act" data-tone="warning" onClick={() => add('adjustment', s.add_adjust, 'warning')}>{s.add_adjust}</button>
-            <button type="button" className="ag-act" data-tone="neutral" onClick={() => add('price', s.add_price)}>{s.add_price}</button>
-            <button type="button" className="ag-act" data-tone="neutral" onClick={exportCsv}>{s.export}</button>
+            <button type="button" className="ag-act" data-tone="success" onClick={() => add('payment', s.add_payment, 'success')}><Ic n="money" />{s.add_payment}</button>
+            <button type="button" className="ag-act" data-tone="warning" onClick={() => add('manual_charge', s.add_charge)}><Ic n="plus" />{s.add_charge}</button>
+            <button type="button" className="ag-act" data-tone="warning" onClick={() => add('adjustment', s.add_adjust, 'warning')}><Ic n="sliders" />{s.add_adjust}</button>
+            <button type="button" className="ag-act" data-tone="neutral" onClick={() => add('price', s.add_price)}><Ic n="tag" />{s.add_price}</button>
+            <button type="button" className="ag-act" data-tone="neutral" onClick={exportCsv}><Ic n="download" />{s.export}</button>
           </div>
-          <h3 className="ag-sec-h">{s.entries}</h3>
+          <h3 className="ag-sec-h ag-sh" data-ac="blue"><Ic n="doc" size={15} />{s.entries}</h3>
           {st.entries.length === 0 ? <p className="ag-empty">{s.none}</p> : (
             <ul className="lg-list">
               {[...st.entries].reverse().map((e) => (
@@ -162,14 +163,14 @@ export function LedgerCard({ username }) {
                     {e.method && <> · {s['m_' + e.method]}</>}{e.note && <> · {e.note}</>}{e.created_by && <> · {e.created_by}</>}
                     {e.voided && <> · <b>{s.voided}</b>: {e.void_reason}</>}
                   </span>
-                  {!e.voided && <button type="button" className="lg-void" onClick={() => voidEntry(e)}>{s.void}</button>}
+                  {!e.voided && <button type="button" className="lg-void" onClick={() => voidEntry(e)}><Ic n="x" size={13} />{s.void}</button>}
                 </li>
               ))}
             </ul>
           )}
           {st.prices.length > 0 && (
             <>
-              <h3 className="ag-sec-h">{s.prices}</h3>
+              <h3 className="ag-sec-h ag-sh" data-ac="orange"><Ic n="tag" size={15} />{s.prices}</h3>
               <ul className="lg-prices">
                 {st.prices.map((p) => <li key={p.id}><bdi dir="ltr">{toman(p.price_per_gb, lang)}</bdi> · {s.from} {jalali(p.valid_from, false, lang)}{p.note && ` · ${p.note}`}{p.created_by && ` · ${p.created_by}`}</li>)}
               </ul>
@@ -197,7 +198,7 @@ export function AgencyLedgerOverview({ Header }) {
           <div className="card ag-card lg-total"><span>{s.total}</span><BalanceText value={d.total_balance} lang={lang} /></div>
           <div className="card ag-table-wrap">
             <table className="ag-table">
-              <thead><tr><th>{s.overview}</th><th>{s.price}</th><th>{s.balance}</th></tr></thead>
+              <thead><tr><th><span className="ag-th" data-ac="blue"><Ic n="user" size={13} />{s.overview}</span></th><th><span className="ag-th" data-ac="orange"><Ic n="tag" size={13} />{s.price}</span></th><th><span className="ag-th" data-ac="red"><Ic n="wallet" size={13} />{s.balance}</span></th></tr></thead>
               <tbody>
                 {d.results.map((r) => (
                   <tr key={r.username}>
@@ -237,7 +238,7 @@ const LG_CSS = `
 .lg-amt { font-weight: 800; font-family: 'JetBrains Mono', ui-monospace, monospace; }
 .lg-run { font-size: 12px; color: var(--c-muted-fg); text-align: end; }
 .lg-meta { grid-column: 1 / -2; font-size: 12px; color: var(--c-muted-fg); overflow-wrap: anywhere; }
-.lg-void { grid-column: -2; font-size: 12px; font-weight: 700; color: var(--c-danger-fg); padding: 4px 8px; border-radius: 8px; justify-self: end;
+.lg-void { display: inline-flex; align-items: center; gap: 4px; grid-column: -2; font-size: 12px; font-weight: 700; color: var(--c-danger-fg); padding: 4px 8px; border-radius: 8px; justify-self: end;
   background: color-mix(in srgb, var(--c-danger) 11%, transparent); border: 1px solid color-mix(in srgb, var(--c-danger) 30%, transparent); }
 .lg-void:hover { background: color-mix(in srgb, var(--c-danger) 19%, transparent); }
 .lg-prices { font-size: 12.5px; display: flex; flex-direction: column; gap: 4px; }

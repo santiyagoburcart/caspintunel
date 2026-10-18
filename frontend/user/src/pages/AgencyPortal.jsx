@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import axios from 'axios'
 import { useI18n } from '../lib/i18n'
 import { jalali, toman } from '../lib/format'
+import { ACCENT_CSS, Ic } from '../components/AgencyIcons'
 
 // Reseller portal (PAMP's per-admin portal). Separate from the customer site:
 // own token ("Agency <token>"), own HTTP client — the customer JWT, its 401
@@ -71,12 +72,12 @@ export default function AgencyPortal() {
 
   return (
     <div className="ap" dir={lang === 'fa' ? 'rtl' : 'ltr'}>
-      <style>{CSS}</style>
+      <style>{ACCENT_CSS + CSS}</style>
       <header className="ap-top">
         <b>{s.title}</b>
         <div className="ap-top-r">
-          <button type="button" className="ap-lang" onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')}>{lang === 'fa' ? 'EN' : 'فا'}</button>
-          {token && <button type="button" className="ap-lang" onClick={logout}>{s.logout}</button>}
+          <button type="button" className="ap-lang" onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')}><Ic n="globe" />{lang === 'fa' ? 'EN' : 'فا'}</button>
+          {token && <button type="button" className="ap-lang" onClick={logout}><Ic n="logout" />{s.logout}</button>}
         </div>
       </header>
       <main className="ap-main">
@@ -118,7 +119,7 @@ function LoginForm({ s, onDone }) {
       <input id="ap-u" className="ap-input" dir="ltr" autoComplete="username" required value={u} onChange={(e) => setU(e.target.value)} />
       <label htmlFor="ap-p">{s.password}</label>
       <input id="ap-p" className="ap-input" dir="ltr" type="password" autoComplete="current-password" required value={p} onChange={(e) => setP(e.target.value)} />
-      <button className="ap-btn" disabled={busy}>{busy ? '…' : s.login}</button>
+      <button className="ap-btn" disabled={busy}>{busy ? <span className="ap-btn-spin" aria-hidden="true" /> : <Ic n="login" size={17} />}{s.login}</button>
     </form>
   )
 }
@@ -129,8 +130,9 @@ function Account({ a, s, lang, balance }) {
   const w = Math.min(Number(a.usage_percent) || 0, 100)      // bar width only
   const tone = a.usage_percent >= 100 ? 'danger' : a.usage_percent >= 80 ? 'warning' : 'primary'
   const tg = (p.support_telegram || '').replace(/^@/, '')
-  const nums = [[s.limit, fmt(a.admin_limit_fmt, s)], [s.total_sold, a.total_sold_fmt], [s.used, a.used_fmt],
-    [s.remaining, fmt(a.remaining_fmt, s)], [s.sold_limit, a.sold_limit_fmt], [s.hidden, a.hidden_fmt], [s.deleted, a.deleted_used_fmt]]
+  const nums = [[s.limit, fmt(a.admin_limit_fmt, s), 'cyan', 'limit'], [s.total_sold, a.total_sold_fmt, 'blue', 'sold'], [s.used, a.used_fmt, 'purple', 'used'],
+    [s.remaining, fmt(a.remaining_fmt, s), 'green', 'remaining'], [s.sold_limit, a.sold_limit_fmt, 'cyan', 'limit'], [s.hidden, a.hidden_fmt, 'orange', 'hidden'],
+    [s.deleted, a.deleted_used_fmt, 'gray', 'trash']]
   return (
     <section className="ap-card">
       <div className="ap-acc-h">
@@ -152,12 +154,12 @@ function Account({ a, s, lang, balance }) {
         </div>
       )}
       <dl className="ap-nums">
-        {nums.map(([k, v]) => <div key={k}><dt>{k}</dt><dd><B>{v}</B></dd></div>)}
+        {nums.map(([k, v, ac, ic]) => <div key={k} data-ac={ac}><dt><Ic n={ic} size={13} />{k}</dt><dd><B>{v}</B></dd></div>)}
       </dl>
       <div className="ap-bal">
         <span>{s.balance}</span>
         <bdi dir="ltr" className="ap-num" data-sign={Number(balance) > 0 ? 'owes' : Number(balance) < 0 ? 'credit' : 'zero'}>{money(balance, lang)}</bdi>
-        <button type="button" className="ap-link" onClick={() => setOpen((v) => !v)} aria-expanded={open}>{open ? s.hide : s.show}</button>
+        <button type="button" className="ap-link" onClick={() => setOpen((v) => !v)} aria-expanded={open}><Ic n="doc" />{open ? s.hide : s.show}</button>
       </div>
       {open && <Statement username={a.username} s={s} lang={lang} />}
       {a.last_synced_at && <p className="ap-foot">{s.last_sync}: {jalali(a.last_synced_at, true, lang)}</p>}
@@ -214,7 +216,7 @@ const CSS = `
 .ap-group { font-size: 14px; font-weight: 800; color: var(--c-muted-fg); }
 .ap-acc-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
 .ap-acc-h h2 { font-size: 17px; font-weight: 800; overflow-wrap: anywhere; }
-.ap-pill { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; color: var(--c-success-fg); background: color-mix(in srgb, var(--c-success) 14%, transparent); white-space: nowrap; }
+.ap-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; color: var(--c-success-fg); background: color-mix(in srgb, var(--c-success) 14%, transparent); white-space: nowrap; }
 .ap-pill[data-st="panel_disabled"] { color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 14%, transparent); }
 .ap-pill[data-st="pamp_limited"] { color: var(--c-warning-fg); background: color-mix(in srgb, var(--c-warning) 14%, transparent); }
 .ap-num { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
@@ -225,8 +227,9 @@ const CSS = `
 .ap-bar i { display: block; height: 100%; border-radius: inherit; background: var(--c-primary); }
 .ap-bar[data-tone="warning"] i { background: var(--c-warning); } .ap-bar[data-tone="danger"] i { background: var(--c-danger); }
 .ap-nums { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
-.ap-nums > div { padding: 10px 12px; border-radius: 12px; border: 1px solid var(--c-border); min-width: 0; }
-.ap-nums dt { font-size: 11.5px; font-weight: 600; color: var(--c-muted-fg); }
+.ap-nums > div { padding: 10px 12px; border-radius: 12px; border: 1px solid var(--c-border); min-width: 0; border-top: 3px solid var(--ac, var(--c-border)); }
+.ap-nums dt { font-size: 11.5px; font-weight: 600; color: var(--c-muted-fg); display: flex; align-items: center; gap: 5px; }
+.ap-nums dt .agi { color: var(--ac); }
 .ap-nums dd { font-size: 16px; font-weight: 800; margin-top: 2px; overflow-wrap: anywhere; }
 .ap-bal { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--c-border); font-size: 13.5px; font-weight: 700; }
 .ap-bal .ap-num { font-size: 16px; font-weight: 800; }
@@ -246,4 +249,12 @@ const CSS = `
 .ap-spin { width: 28px; height: 28px; margin: 24px auto; border-radius: 50%; border: 3px solid var(--c-border); border-top-color: var(--c-primary); animation: ap-r 0.8s linear infinite; }
 @keyframes ap-r { to { transform: rotate(360deg); } }
 @media (min-width: 640px) { .ap-nums { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.ap-pill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.ap-lang, .ap-link, .ap-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: background-color .15s, transform .08s; }
+.ap-lang:active, .ap-link:active, .ap-btn:active:not(:disabled) { transform: translateY(1px) scale(.98); }
+.ap-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--c-primary) 70%, #000); }
+.ap-btn:active:not(:disabled) { background: color-mix(in srgb, var(--c-primary) 60%, #000); }
+.ap-btn:focus-visible, .ap-lang:focus-visible, .ap-link:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 2px; }
+.ap-btn-spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid currentColor; border-inline-end-color: transparent; animation: ap-r .7s linear infinite; }
+.ap-st li:hover { background: color-mix(in srgb, var(--c-primary) 4%, transparent); }
 `

@@ -2,9 +2,14 @@
 
 The SMS amount is converted to tomans ONCE, with an explicit unit (parsing.py),
 and an order is auto-confirmed only when that amount is EXACTLY its invoice
-amount. No tolerance and no ×10 / ÷10 retries: an SMS whose amount equals an
-open invoice only after a unit change (175,662 Rial vs a 175,662 Toman invoice)
-is logged as "amount mismatch" for manual review and never approved.
+amount — not 1 toman less or more. No tolerance and no ×10 / ÷10 retries.
+
+A deposit that is CLOSE to an open invoice (within ±20 %, or equal to it only
+after a ×10 / ÷10 unit change) is never approved either: it is linked to that
+order for manual review (SmsMessage.mismatch_order + "less"/"more"), the order
+gets a pending "sms_mismatch" payment so it shows in the Payments queue (and
+does not expire), and admins get a live notification. Same endpoint for the
+iPhone Shortcut and the Android app.
 """
 from __future__ import annotations
 
@@ -108,13 +113,10 @@ def ingest_sms(*, device, raw_text: str, sender: str | None = None, received_at=
         )
         _note(msg, f"matched order #{payment.order_id} ({payment.amount} T, SMS {amount.describe()}) — auto-confirmed")
         return msg, result
-    suspect = unit_mismatch_order(amount)
+    suspect = near_order(amount)
     if suspect is not None:
-        result["reason"] = "amount mismatch"
-        _note(msg, f"amount mismatch — NOT approved, review by hand: SMS {amount.describe()}, "
-                   f"order #{suspect.id} expects {suspect.amount_unique:,} T")
-        log.warning("SMS %s: amount mismatch with order %s (%s vs %s T) — not approved",
-                    msg.id, suspect.id, amount.describe(), suspect.amount_unique)
+        kind = flag_mismatch(msg, suspect, amount)
+        result.update(reason="amount mismatch", mismatch=kind, order_id=suspect.id)
         return msg, result
     result["reason"] = "no pending order matches the amount in this SMS"
     _note(msg, _why_unmatched(amount))
@@ -128,6 +130,61 @@ def _note(msg: SmsMessage, text: str) -> None:
 
 def _whole(values) -> list:
     return sorted({v for v in values if v > 0 and v == v.to_integral_value()})
+
+
+NEAR_RATIO = Decimal("0.20")
+
+
+def near_order(amount: SmsAmount | None) -> Order | None:
+    """The open (pending-payment) order this deposit is close to but does not
+    equal: the ×10 / ÷10 unit case first, else the closest invoice within ±20 %."""
+    if amount is None or amount.toman <= 0:
+        return None
+    unit = unit_mismatch_order(amount)
+    if unit is not None:
+        return unit
+    t = Decimal(amount.toman)
+    lo, hi = t / (1 + NEAR_RATIO), t / (1 - NEAR_RATIO)      # |t - invoice| <= 20 % of the invoice
+    best = None
+    for o in Order.objects.filter(status=OrderStatus.PENDING_PAYMENT, amount_unique__gte=lo.to_integral_value() - 1,
+                                  amount_unique__lte=hi.to_integral_value() + 1).order_by("-created_at"):
+        inv = Decimal(o.amount_unique)
+        if inv <= 0 or inv == t or abs(t - inv) > inv * NEAR_RATIO:
+            continue
+        if best is None or abs(t - inv) < abs(t - Decimal(best.amount_unique)):
+            best = o
+    return best
+
+
+def flag_mismatch(msg: SmsMessage, order: Order, amount: SmsAmount) -> str:
+    """Link a near-miss deposit to its order for manual review. NEVER approves:
+    a pending "sms_mismatch" payment puts the order in the Payments queue (an
+    existing pending receipt just gets the SMS attached), and admins are told live."""
+    from apps.notifications.live import push_payments_event
+
+    from .services import default_bank_card
+
+    kind = "less" if Decimal(amount.toman) < Decimal(order.amount_unique) else "more"
+    msg.mismatch_order, msg.mismatch_kind = order, kind
+    msg.save(update_fields=["mismatch_order", "mismatch_kind"])
+    word = "LESS" if kind == "less" else "MORE"
+    _note(msg, f"amount mismatch — {word} than invoice, NOT approved, review by hand: SMS {amount.describe()}, "
+               f"order #{order.id} expects {order.amount_unique:,} T")
+    payment = Payment.objects.select_for_update().filter(order=order).first()
+    if payment is None:
+        payment = Payment.objects.create(order=order, method=PaymentMethod.SMS_MISMATCH, amount=order.amount_unique,
+                                         status=PaymentStatus.PENDING, sms_message=msg, bank_card=default_bank_card())
+    elif payment.status == PaymentStatus.PENDING and payment.sms_message_id is None:
+        payment.sms_message = msg
+        payment.save(update_fields=["sms_message", "updated_at"])
+    write_audit(action="payment.sms_amount_mismatch", target=payment,
+                detail={"sms_message": msg.id, "order": order.id, "kind": kind,
+                        "sms_toman": str(amount.toman), "invoice": str(order.amount_unique)})
+    push_payments_event("sms_mismatch", order_id=order.id, payment_id=payment.id, kind=kind,
+                        sms_amount=str(amount.toman), invoice_amount=str(order.amount_unique))
+    log.warning("SMS %s: amount %s than order %s (%s vs %s T) — not approved",
+                msg.id, kind, order.id, amount.describe(), order.amount_unique)
+    return kind
 
 
 def unit_mismatch_order(amount: SmsAmount | None) -> Order | None:

@@ -7,6 +7,7 @@ import { jalali, digits } from '../lib/format'
 import { Alert, Spinner, Toggle } from '../components/ui'
 import { copyToClipboard } from '../lib/clipboard'
 import { useConfirm } from '../components/ConfirmDialog'
+import { ACCENT_CSS, Ic } from '../components/AgencyIcons'
 import { AgencyLedgerOverview, BalanceText, LedgerCard, LT } from './AgencyLedger'
 
 // Agency panel (PAMP port). Every number on these pages comes from the backend
@@ -102,7 +103,7 @@ function Header({ s, switches }) {
     ['/agency/sync-logs', s.tab_logs], ['/agency/settings', s.tab_settings]]
   return (
     <>
-      <style>{CSS}</style>
+      <style>{ACCENT_CSS + CSS}</style>
       <div className="ag-head">
         <h1 className="text-lg font-bold">{s.title}</h1>
         <p className="text-sm text-muted mt-1">{s.sub}</p>
@@ -127,6 +128,11 @@ function useLoad(url, deps = []) {
   return [data, err, load]
 }
 
+// table header with a small coloured icon
+const TH = ({ i, ac, children, className }) => <th className={className}><span className="ag-th" data-ac={ac}><Ic n={i} size={13} />{children}</span></th>
+// section header with a small coloured icon
+const SecH = ({ i, ac, children, style }) => <h3 className="ag-sec-h ag-sh" data-ac={ac} style={style}><Ic n={i} size={15} />{children}</h3>
+
 function StatusPill({ code, s }) {
   return <span className="ag-pill" data-st={code}>{s['st_' + code] || code}</span>
 }
@@ -149,16 +155,16 @@ export function AgencyDashboard() {
       {d === null ? <div className="grid place-items-center py-16"><Spinner /></div> : d && (
         <>
           <div className="ag-kpis">
-            <Kpi label={s.total_sold} value={d.total_sold_fmt} tone="#1464BA" />
-            <Kpi label={s.used} value={d.total_used_fmt} tone="#7C3AED" />
-            <Kpi label={s.remaining} value={d.total_remaining_fmt} tone="#11AB53" />
-            <Kpi label={s.hidden} value={d.total_hidden_fmt} tone="#D97706" />
-            <Kpi label={s.admins} value={digits(d.admin_count, lang)} tone="#0891B2"
+            <Kpi label={s.total_sold} value={d.total_sold_fmt} ac="blue" icon="sold" />
+            <Kpi label={s.used} value={d.total_used_fmt} ac="purple" icon="used" />
+            <Kpi label={s.remaining} value={d.total_remaining_fmt} ac="green" icon="remaining" />
+            <Kpi label={s.hidden} value={d.total_hidden_fmt} ac="orange" icon="hidden" />
+            <Kpi label={s.admins} value={digits(d.admin_count, lang)} ac="gray" icon="users"
               sub={`${digits(d.active_count, lang)} ${s.active_n} · ${digits(d.disabled_count, lang)} ${s.disabled_n} · ${digits(d.pamp_limited_count, lang)} ${s.limited_n}`} />
           </div>
           <div className="card ag-card">
             <div className="ag-card-h">
-              <h3>{s.over_title}</h3>
+              <h3 className="ag-sh" data-ac="orange"><Ic n="alert" size={15} />{s.over_title}</h3>
               <span className="ag-count">{digits(d.near_limit_count, lang)}</span>
             </div>
             {d.over_limit.length === 0 ? <p className="ag-empty">{s.over_none}</p> : (
@@ -184,9 +190,10 @@ export function AgencyDashboard() {
   )
 }
 
-function Kpi({ label, value, tone, sub }) {
+function Kpi({ label, value, ac, icon, sub }) {
   return (
-    <div className="card ag-kpi" style={{ '--tone': tone }}>
+    <div className="card ag-kpi" data-ac={ac}>
+      <span className="ag-kpi-ico"><Ic n={icon} size={16} /></span>
       <span className="ag-kpi-l">{label}</span>
       <span className="ag-kpi-val"><B>{value}</B></span>
       {sub && <span className="ag-kpi-sub">{sub}</span>}
@@ -212,8 +219,8 @@ export function AgencyAdmins() {
     const on = sort.k === k
     return (
       <th aria-sort={on ? (sort.dir === 1 ? 'ascending' : 'descending') : 'none'}>
-        <button type="button" className="ag-sort" onClick={() => setSort({ k, dir: on ? -sort.dir : -1 })} title={s.sort_by.replace('{c}', label)}>
-          {label}<span aria-hidden="true">{on ? (sort.dir === 1 ? ' ▲' : ' ▼') : ' ↕'}</span>
+        <button type="button" className="ag-sort ag-th" data-ac="blue" onClick={() => setSort({ k, dir: on ? -sort.dir : -1 })} title={s.sort_by.replace('{c}', label)}>
+          <Ic n="users" size={13} />{label}<span aria-hidden="true">{on ? (sort.dir === 1 ? ' ▲' : ' ▼') : ' ↕'}</span>
         </button>
       </th>
     )
@@ -253,8 +260,8 @@ export function AgencyAdmins() {
             <table className="ag-table ag-admins">
               <thead>
                 <tr>
-                  <th>{s.admins}</th><th>{s.status}</th><th>{s.usage}</th><th>{s.total_sold}</th><th>{s.sold_limit}</th>
-                  <th className="ag-c-hid">{s.hidden}</th><th>{s.remaining}</th><th>{s.used}</th>{sortTh('user_count', s.users_col)}{d.results[0]?.balance !== undefined && <th>{s.balance}</th>}
+                  <TH i="user" ac="blue">{s.admins}</TH><TH i="status" ac="green">{s.status}</TH><TH i="usage" ac="orange">{s.usage}</TH><TH i="sold" ac="blue">{s.total_sold}</TH><TH i="limit" ac="cyan">{s.sold_limit}</TH>
+                  <TH className="ag-c-hid" i="hidden" ac="orange">{s.hidden}</TH><TH i="remaining" ac="green">{s.remaining}</TH><TH i="used" ac="purple">{s.used}</TH>{sortTh('user_count', s.users_col)}{d.results[0]?.balance !== undefined && <TH i="wallet" ac="red">{s.balance}</TH>}
                 </tr>
               </thead>
               <tbody>
@@ -326,14 +333,14 @@ export function AgencyAdminDetail() {
     [s.hidden_clamped, d.hidden_traffic_clamped_fmt], [s.deleted, d.deleted_used_fmt], [s.usage, `${d.usage_percent}%`],
   ]
   const ACTIONS = [
-    [s.a_set, setLimit, 'primary'],
-    [s.a_remove, () => act(s.a_remove, 'remove-limit', {}, 'warning'), 'warning'],
+    [s.a_set, setLimit, 'primary', 'gauge'],
+    [s.a_remove, () => act(s.a_remove, 'remove-limit', {}, 'warning'), 'warning', 'infinity'],
     d.status === 'disabled'
-      ? [s.a_enable, () => act(s.a_enable, 'admin-action', { action: 'enable_admin' }, 'success'), 'success']
-      : [s.a_disable, () => act(s.a_disable, 'admin-action', { action: 'disable_admin' }, 'danger'), 'danger'],
-    [s.a_disable_users, () => act(s.a_disable_users, 'admin-action', { action: 'disable_users' }, 'danger'), 'danger'],
-    [s.a_enable_users, () => act(s.a_enable_users, 'admin-action', { action: 'enable_users' }, 'success'), 'success'],
-    [s.a_reset, () => act(s.a_reset, 'reset-deleted-traffic', {}, 'danger'), 'danger'],
+      ? [s.a_enable, () => act(s.a_enable, 'admin-action', { action: 'enable_admin' }, 'success'), 'success', 'power']
+      : [s.a_disable, () => act(s.a_disable, 'admin-action', { action: 'disable_admin' }, 'danger'), 'danger', 'power'],
+    [s.a_disable_users, () => act(s.a_disable_users, 'admin-action', { action: 'disable_users' }, 'danger'), 'danger', 'users'],
+    [s.a_enable_users, () => act(s.a_enable_users, 'admin-action', { action: 'enable_users' }, 'success'), 'success', 'users'],
+    [s.a_reset, () => act(s.a_reset, 'reset-deleted-traffic', {}, 'danger'), 'danger', 'reset'],
   ]
   return (
     <div className="ag space-y-4">
@@ -348,14 +355,14 @@ export function AgencyAdminDetail() {
         {!d.is_unlimited && <div className="ag-detail-bar"><UsageBar pct={d.usage_percent} /><B>{d.usage_percent}%</B></div>}
         {p.show_warning && <Alert kind="warning">{s.warn80.replace('{p}', p.warning_pct)}</Alert>}
         {p.is_blocked && <Alert>{p.block_reason === 'disabled' ? s.blocked_panel : s.blocked_pamp}</Alert>}
-        <h3 className="ag-sec-h">{s.detail_numbers}</h3>
+        <SecH i="list" ac="blue">{s.detail_numbers}</SecH>
         <dl className="ag-nums">
           {nums.map(([k, v]) => <div key={k}><dt>{k}</dt><dd><B>{v}</B></dd></div>)}
         </dl>
-        <h3 className="ag-sec-h">{s.users_sec}</h3>
+        <SecH i="users" ac="purple">{s.users_sec}</SecH>
         <dl className="ag-nums ag-nums--counts">
           {['total', 'active', 'on_hold', 'limited', 'disabled', 'expired'].map((k) => (
-            <div key={k}><dt>{s['c_' + k]}</dt><dd><B>{digits(d.counts[k], lang)}</B></dd></div>
+            <div key={k} data-k={k}><dt>{s['c_' + k]}</dt><dd><B>{digits(d.counts[k], lang)}</B></dd></div>
           ))}
         </dl>
         <p className="text-xs text-muted mt-2">{s.support}: <bdi dir="ltr">{p.support_telegram}</bdi> · {s.last_sync}: {d.last_synced_at ? jalali(d.last_synced_at, true, lang) : s.never}</p>
@@ -364,13 +371,13 @@ export function AgencyAdminDetail() {
       <PortalLinkCard s={s} username={d.username} />
 
       <div className="card ag-card">
-        <h3 className="ag-sec-h" style={{ marginTop: 0 }}>{s.actions}</h3>
+        <SecH i="sliders" ac="orange" style={{ marginTop: 0 }}>{s.actions}</SecH>
         {!writable && <p className="ag-locked">{s.cutover}</p>}
         {msg && <Alert kind="success">{msg}</Alert>}
         <div className="ag-actions">
-          {ACTIONS.map(([label, fn, tone]) => (
+          {ACTIONS.map(([label, fn, tone, icon]) => (
             <button key={label} type="button" className="ag-act" data-tone={tone || 'neutral'} disabled={!writable}
-              onClick={fn} title={!writable ? s.cutover : undefined}>{label}</button>
+              onClick={fn} title={!writable ? s.cutover : undefined}><Ic n={icon} />{label}</button>
           ))}
         </div>
       </div>
@@ -378,10 +385,10 @@ export function AgencyAdminDetail() {
       {can('agency.accounting') && <LedgerCard username={d.username} />}
 
       <div className="card ag-card">
-        <div className="ag-card-h"><h3>{s.snapshots}</h3><span className="ag-count">{s.snap_n.replace('{n}', digits(d.snapshots.count, lang))}</span></div>
+        <div className="ag-card-h"><h3 className="ag-sh" data-ac="cyan"><Ic n="clock" size={15} />{s.snapshots}</h3><span className="ag-count">{s.snap_n.replace('{n}', digits(d.snapshots.count, lang))}</span></div>
         <div className="ag-table-wrap ag-snap">
           <table className="ag-table ag-table--plain">
-            <thead><tr><th>{s.user}</th><th>{s.used}</th><th>{s.last_seen}</th></tr></thead>
+            <thead><tr><TH i="user" ac="blue">{s.user}</TH><TH i="used" ac="purple">{s.used}</TH><TH i="clock" ac="gray">{s.last_seen}</TH></tr></thead>
             <tbody>{d.snapshots.rows.map((r) => (
               <tr key={r.user}><td data-label={s.user}><bdi>{r.user}</bdi></td><td data-label={s.used}><B>{r.used_fmt}</B></td><td data-label={s.last_seen}>{jalali(r.last_seen, true, lang)}</td></tr>
             ))}</tbody>
@@ -389,7 +396,7 @@ export function AgencyAdminDetail() {
         </div>
       </div>
       <div className="card ag-card">
-        <h3 className="ag-sec-h" style={{ marginTop: 0 }}>{s.recent_syncs}</h3>
+        <SecH i="sync" ac="green" style={{ marginTop: 0 }}>{s.recent_syncs}</SecH>
         <SyncRows rows={d.recent_syncs} s={s} lang={lang} />
       </div>
     </div>
@@ -426,15 +433,15 @@ function PortalLinkCard({ s, username }) {
   const url = link?.url || ''
   return (
     <div className="card ag-card">
-      <h3 className="ag-sec-h" style={{ marginTop: 0 }}>{username ? s.send_to : s.portal_link}</h3>
+      <SecH i="link" ac="blue" style={{ marginTop: 0 }}>{username ? s.send_to : s.portal_link}</SecH>
       <div className="ag-portal">
         <div className="ag-portal-main">
           <code dir="ltr" className="ag-portal-url">{url || '…'}</code>
           {username && <p className="text-xs text-muted mt-2">{s.user}: <bdi dir="ltr">{username}</bdi> · {s.send_hint}</p>}
           <div className="ag-actions mt-2">
-            {username && <button type="button" className="ag-act" data-tone="neutral" disabled={!link} onClick={() => copy(s.msg_tpl.replace('{url}', url).replace('{u}', username))}>{s.copy_msg}</button>}
-            <button type="button" className="ag-act" data-tone="neutral" disabled={!link} onClick={() => copy(url)}>{s.copy_link}</button>
-            <button type="button" className="ag-act" data-tone="neutral" disabled={!link} onClick={toggleQr} aria-expanded={!!qr}>{qr ? s.hide_qr : s.show_qr}</button>
+            {username && <button type="button" className="ag-act" data-tone="neutral" disabled={!link} onClick={() => copy(s.msg_tpl.replace('{url}', url).replace('{u}', username))}><Ic n="copy" />{s.copy_msg}</button>}
+            <button type="button" className="ag-act" data-tone="neutral" disabled={!link} onClick={() => copy(url)}><Ic n="link" />{s.copy_link}</button>
+            <button type="button" className="ag-act" data-tone="neutral" disabled={!link} onClick={toggleQr} aria-expanded={!!qr}><Ic n="qr" />{qr ? s.hide_qr : s.show_qr}</button>
           </div>
           {note && <p className="text-xs text-muted mt-2" role="status">{note}</p>}
         </div>
@@ -562,7 +569,7 @@ export function AgencyGroups() {
       <div className="ag-gbar">
         <p className="text-sm text-muted">{s.g_intro}</p>
         {can('agency.manage') && (
-          <button type="button" className="ag-act" data-tone="primary" onClick={() => edit(null)} disabled={!writable || !admins} title={!writable ? s.cutover : undefined}>+ {s.g_create}</button>
+          <button type="button" className="ag-act" data-tone="primary" onClick={() => edit(null)} disabled={!writable || !admins} title={!writable ? s.cutover : undefined}><Ic n="plus" />{s.g_create}</button>
         )}
       </div>
       <Alert>{err}</Alert>
@@ -572,13 +579,13 @@ export function AgencyGroups() {
           <section key={g.id} className="card ag-card">
             <div className="ag-card-h ag-gh">
               <div className="ag-gh-t">
-                <h3><bdi>{title(g)}</bdi></h3>
+                <h3 className="ag-sh" data-ac="purple"><Ic n="users" size={15} /><bdi>{title(g)}</bdi></h3>
                 <span className="ag-gh-o">{s.g_owner}: <Link to={`/agency/admins/${encodeURIComponent(g.owner)}`}><bdi>{g.owner}</bdi></Link></span>
               </div>
               {can('agency.manage') && (
                 <div className="ag-actions">
-                  <button type="button" className="ag-act" data-tone="neutral" onClick={() => edit(g)} disabled={!writable}>{s.g_edit}</button>
-                  <button type="button" className="ag-act" data-tone="danger" onClick={() => remove(g)} disabled={!writable}>{s.g_delete}</button>
+                  <button type="button" className="ag-act" data-tone="neutral" onClick={() => edit(g)} disabled={!writable}><Ic n="edit" />{s.g_edit}</button>
+                  <button type="button" className="ag-act" data-tone="danger" onClick={() => remove(g)} disabled={!writable}><Ic n="trash" />{s.g_delete}</button>
                 </div>
               )}
             </div>
@@ -591,7 +598,7 @@ export function AgencyGroups() {
             {g.rows.length > 0 && (
               <div className="ag-table-wrap mt-3">
                 <table className="ag-table ag-gtable">
-                  <thead><tr><th>{s.admins}</th><th>{s.status}</th><th>{s.usage}</th><th>{s.total_sold}</th><th>{s.used}</th><th>{s.users_col}</th>{can('agency.manage') && <th><span className="sr-only">{s.g_remove_member}</span></th>}</tr></thead>
+                  <thead><tr><TH i="user" ac="blue">{s.admins}</TH><TH i="status" ac="green">{s.status}</TH><TH i="usage" ac="orange">{s.usage}</TH><TH i="sold" ac="blue">{s.total_sold}</TH><TH i="used" ac="purple">{s.used}</TH><TH i="users" ac="blue">{s.users_col}</TH>{can('agency.manage') && <th><span className="sr-only">{s.g_remove_member}</span></th>}</tr></thead>
                   <tbody>
                     {g.rows.map((r) => (
                       <tr key={r.username}>
@@ -606,7 +613,7 @@ export function AgencyGroups() {
                         <td data-label={s.users_col}><span><B>{digits(r.user_count, lang)}</B><span className="ag-users-on"> / <B>{digits(r.active_user_count, lang)}</B> {s.users_on}</span></span></td>
                         {can('agency.manage') && (
                           <td className="ag-gtable-x">
-                            {r.role === 'member' && <button type="button" className="ag-act ag-act--sm" data-tone="danger" disabled={!writable} onClick={() => dropMember(g, r.username)}>{s.g_remove}</button>}
+                            {r.role === 'member' && <button type="button" className="ag-act ag-act--sm" data-tone="danger" disabled={!writable} onClick={() => dropMember(g, r.username)}><Ic n="x" size={13} />{s.g_remove}</button>}
                           </td>
                         )}
                       </tr>
@@ -676,7 +683,7 @@ export function AgencySyncLogs() {
       {rows === null ? <div className="grid place-items-center py-16"><Spinner /></div> : (
         <div className="card ag-card">
           <SyncRows rows={rows} s={s} lang={lang} />
-          {meta?.next != null && <div className="flex justify-center mt-3"><button type="button" className="btn-ghost" onClick={() => load(meta.next)}>{s.more}</button></div>}
+          {meta?.next != null && <div className="flex justify-center mt-3"><button type="button" className="ag-act" data-tone="neutral" onClick={() => load(meta.next)}><Ic n="more" />{s.more}</button></div>}
         </div>
       )}
     </div>
@@ -738,7 +745,7 @@ export function AgencySettings() {
               <input className="input" dir="ltr" inputMode="numeric" value={interval} disabled={!manage}
                 onChange={(e) => setIntervalV(e.target.value)} aria-label={s.set_interval} />
             </label>
-            <button className="ag-act" data-tone="primary" disabled={!manage}>{s.save}</button>
+            <button className="ag-act" data-tone="primary" disabled={!manage}><Ic n="check" />{s.save}</button>
           </form>
         </div>
       )}
@@ -760,7 +767,8 @@ const CSS = `
 .ag-cutover span { color: var(--c-text); }
 .ag-num { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
 .ag-kpis { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); }
-.ag-kpi { display: flex; flex-direction: column; gap: 6px; border-top: 3px solid var(--tone); padding: 14px 16px; min-width: 0; }
+.ag-kpi { display: flex; flex-direction: column; gap: 6px; border-top: 3px solid var(--ac); padding: 14px 16px; min-width: 0; }
+.ag-kpi-l { padding-inline-end: 34px; }
 .ag-kpi-l { font-size: 12px; font-weight: 700; color: var(--c-muted-fg); }
 .ag-kpi-val { font-size: 22px; font-weight: 800; line-height: 1.2; }
 .ag-kpi-sub { font-size: 11.5px; color: var(--c-muted-fg); }
@@ -782,7 +790,7 @@ const CSS = `
 .ag-bar i { display: block; height: 100%; border-radius: inherit; background: var(--c-primary); }
 .ag-bar[data-tone="warning"] i { background: var(--c-warning); }
 .ag-bar[data-tone="danger"] i { background: var(--c-danger); }
-.ag-pill { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; white-space: nowrap;
+.ag-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; white-space: nowrap;
   color: var(--c-success-fg); background: color-mix(in srgb, var(--c-success) 14%, transparent); }
 .ag-pill[data-st="panel_disabled"] { color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 14%, transparent); }
 .ag-pill[data-st="pamp_limited"] { color: var(--c-warning-fg); background: color-mix(in srgb, var(--c-warning) 14%, transparent); }
@@ -903,6 +911,26 @@ const CSS = `
 .ag-gpick-i { flex-direction: row !important; align-items: center; gap: 6px !important; padding: 6px 8px; border-radius: 8px; font-weight: 600 !important; font-size: 12.5px !important; cursor: pointer; }
 .ag-gpick-i:hover { background: color-mix(in srgb, var(--c-text-muted) 10%, transparent); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* v1.14 polish: accents, icons, dots, hover/pressed — layout and sizes unchanged */
+.ag-kpi { position: relative; border-top-color: var(--ac) !important; }
+.ag-kpi-ico { position: absolute; top: 12px; inset-inline-end: 12px; width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center;
+  color: var(--ac); background: color-mix(in srgb, var(--ac) 13%, transparent); }
+.ag-th { display: inline-flex; align-items: center; gap: 5px; }
+.ag-th .agi { color: var(--ac); }
+.ag-sh { display: flex; align-items: center; gap: 7px; }
+.ag-sh .agi { color: var(--ac); }
+.ag-pill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.ag-table tbody tr { transition: background-color .12s; }
+.ag-table tbody tr:hover > td { background: color-mix(in srgb, var(--c-primary) 5%, transparent); }
+.ag-nums--counts > div[data-k="active"] dd { color: var(--c-success-fg); }
+.ag-nums--counts > div[data-k="on_hold"] dd { color: var(--c-primary-fg); }
+.ag-nums--counts > div[data-k="limited"] dd { color: var(--c-warning-fg); }
+.ag-nums--counts > div[data-k="disabled"] dd { color: var(--c-danger-fg); }
+.ag-nums--counts > div[data-k="expired"] dd { color: var(--c-muted-fg); }
+.ag-act { display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: background-color .15s, border-color .15s, transform .08s; }
+.ag-act:active:not(:disabled) { transform: translateY(1px) scale(.98); }
+.ag-act[data-tone="primary"]:active:not(:disabled) { background: color-mix(in srgb, var(--c-primary) 60%, #000); }
 @media (max-width: 767px) {
   .ag-portal { flex-direction: column; }
   .ag-gpick-i { min-height: 44px; } .ag-gform .input { font-size: 16px; height: 44px; } .ag-act--sm { min-height: 40px; }

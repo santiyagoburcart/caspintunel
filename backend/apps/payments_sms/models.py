@@ -87,6 +87,12 @@ class SmsMessage(models.Model):
     matched_order = models.ForeignKey(
         "orders.Order", null=True, blank=True, on_delete=models.SET_NULL, related_name="sms_messages"
     )
+    # a deposit close to (but not exactly) an open invoice: never approved, linked
+    # here for manual review — kind "less" / "more" than the invoice
+    mismatch_order = models.ForeignKey(
+        "orders.Order", null=True, blank=True, on_delete=models.SET_NULL, related_name="sms_mismatches"
+    )
+    mismatch_kind = models.CharField(max_length=4, blank=True, default="", db_default="")
     # why it matched / did not match — shown in the admin SMS log
     note = models.CharField(max_length=255, blank=True, default="")
     received_at = models.DateTimeField(auto_now_add=True)
@@ -105,6 +111,7 @@ class SmsMessage(models.Model):
 class PaymentMethod(models.TextChoices):
     CARD_MANUAL = "card_manual", "Card-to-card (manual)"
     SMS_AUTO = "sms_auto", "SMS auto-match"
+    SMS_MISMATCH = "sms_mismatch", "SMS — amount mismatch (manual review)"
     GATEWAY = "gateway", "Gateway"
 
 

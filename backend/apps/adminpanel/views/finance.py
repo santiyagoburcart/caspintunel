@@ -99,7 +99,7 @@ class PendingPaymentsView(AdminAPIView):
     def get(self, request):
         qs = (
             Payment.objects.filter(status=PaymentStatus.PENDING)
-            .select_related("order", "order__user", "order__plan", "bank_card")
+            .select_related("order", "order__user", "order__plan", "bank_card", "sms_message")
             .order_by("created_at")
         )
         data = AdminPendingPaymentSerializer(qs, many=True, context={"request": request}).data
@@ -250,13 +250,16 @@ class SmsLogViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     def get_queryset(self):
         from apps.payments_sms.models import SmsMessage
 
-        qs = SmsMessage.objects.select_related("device", "sms_source", "matched_order").order_by("-received_at", "-id")
+        qs = (SmsMessage.objects.select_related("device", "sms_source", "matched_order", "mismatch_order")
+              .order_by("-received_at", "-id"))
         m = self.request.query_params.get("matched")
         if m in ("1", "true"):
             qs = qs.filter(matched_order__isnull=False)
         elif m in ("0", "false"):
             qs = qs.filter(matched_order__isnull=True)
         elif m == "mismatch":                 # unit / amount mismatches waiting for a manual check
-            qs = qs.filter(matched_order__isnull=True, note__startswith="amount mismatch")
+            from django.db.models import Q
+
+            qs = qs.filter(Q(mismatch_order__isnull=False) | Q(note__startswith="amount mismatch"), matched_order__isnull=True)
         return qs
 
