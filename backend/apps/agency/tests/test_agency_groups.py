@@ -60,7 +60,8 @@ def test_create_rename_change_members_and_delete_with_portal_visibility():
     assert portal_me("ali") == ("group", ["ali", "bea"]) and portal_me("bea") == ("single", ["bea"])
 
     row = c.get(URL).json()["results"][0]
-    assert row["totals"] == {"accounts": 2, "total_sold_fmt": "150.00 GB", "used_fmt": "60.00 GB", "user_count": 15, "active_user_count": 10}
+    assert row["totals"] == {"accounts": 2, "total_sold_fmt": "150.00 GB", "used_fmt": "60.00 GB", "user_count": 15, "active_user_count": 10,
+                             "total_sold_bytes": 150 * GB, "used_bytes": 60 * GB}
     assert [(m["username"], m["role"]) for m in row["rows"]] == [("ali", "owner"), ("bea", "member")]
 
     # rename + add/remove members
