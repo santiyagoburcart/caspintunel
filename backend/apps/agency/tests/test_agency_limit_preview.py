@@ -65,3 +65,20 @@ def test_branding_logo_and_favicon_uploads_give_a_reason(c):
     assert r.status_code == 400 and "512" in r.json()["favicon"][0]
     r = c.patch("/api/v1/admin/branding/", {"support_telegram": "@help"}, format="multipart")
     assert r.status_code == 200
+
+
+def test_volume_bytes_match_the_formatted_values(c):
+    from apps.agency.enrich import _enrich
+    from apps.agency.models import _fmt_bytes
+
+    a = PanelAdmin.objects.get(username="ali")
+    row = c.get("/api/v1/admin/agency/admins/ali/").json()
+    b = row["bytes"]
+    assert b["limit"] == a.admin_limit_bytes and _fmt_bytes(b["limit"]) == row["admin_limit_fmt"]
+    assert _fmt_bytes(b["total_sold"]) == row["total_sold_fmt"] and _fmt_bytes(b["used"]) == row["used_fmt"]
+    assert _fmt_bytes(b["remaining"]) == row["remaining_fmt"] and _fmt_bytes(b["hidden"]) == _enrich(a)["hidden_traffic_fmt"]
+    assert b["sold_limit"] == _enrich(a)["sold_limit_value"] and _fmt_bytes(b["deleted"]) == row["deleted_used_fmt"]
+    d = c.get("/api/v1/admin/agency/").json()
+    assert _fmt_bytes(d["bytes"]["total_sold"]) == d["total_sold_fmt"] and _fmt_bytes(d["bytes"]["hidden"]) == d["total_hidden_fmt"]
+    p = c.post(URL + "preview/", {"action": "set", "value_gb": 2048}, format="json").json()
+    assert p["new_limit_bytes"] == 2 * 1024 * GB and p["remaining_after_bytes"] == 2 * 1024 * GB - 400 * GB

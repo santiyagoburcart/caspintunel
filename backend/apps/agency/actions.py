@@ -64,6 +64,7 @@ def preview_set_limit(username: str, action: str, value_gb) -> dict:
     q = quote_quota_charge(username, old, new)
     return {"old_limit_fmt": fmt(old), "new_limit_fmt": fmt(new), "old_limit_bytes": old, "new_limit_bytes": new,
             "remaining_after_fmt": fmt(max(0, new - a.admin_used_bytes)) if new > 0 else "Unlimited",
+            "remaining_after_bytes": max(0, new - a.admin_used_bytes) if new > 0 else None,
             "charge": q}
 
 

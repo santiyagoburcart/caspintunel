@@ -12,6 +12,19 @@ def groups_of(username: str, groups=None) -> list[dict]:
     return [{"id": g.id, "owner": g.owner_username} for g in groups if username in g.get_all_usernames()]
 
 
+def volume_bytes(a: PanelAdmin, e: dict) -> dict:
+    """Raw bytes behind each *_fmt volume (same expressions; None = shown as Unlimited)
+    so the UI can add the GB figure next to a TB value without re-deriving it."""
+    return {
+        "limit": a.admin_limit_bytes if a.has_data_limit else None,
+        "total_sold": a.total_user_limit, "used": a.total_user_used,
+        "remaining": a.admin_remaining if a.has_data_limit else None,
+        "sold_limit": e["sold_limit_value"],
+        "hidden": a.total_user_limit - a.total_user_used - a.admin_remaining,      # = e["hidden_traffic_fmt"]
+        "hidden_clamped": a.hidden_traffic, "deleted": e["deleted_used_bytes"],
+    }
+
+
 def admin_row(a: PanelAdmin, groups=None) -> dict:
     e = _enrich(a)
     return {
@@ -36,6 +49,7 @@ def admin_row(a: PanelAdmin, groups=None) -> dict:
         "used_fmt": a.admin_used_fmt,
         "last_synced_at": a.last_synced_at,
         "groups": groups_of(a.username, groups),
+        "bytes": volume_bytes(a, e),
     }
 
 
@@ -80,6 +94,11 @@ def sync_row(s: SyncLog) -> dict:
             "duration_seconds": s.duration_seconds, "created_at": s.created_at}
 
 
+def _over_row(o: dict) -> dict:
+    a = PanelAdmin.objects.get(username=o["username"])
+    return {**o, "status_code": a.status_code, "limit_bytes": a.admin_limit_bytes, "used_bytes": a.admin_used_bytes}
+
+
 def dashboard() -> dict:
     d = dashboard_numbers()
     last = SyncLog.objects.order_by("-id").first()
@@ -89,8 +108,9 @@ def dashboard() -> dict:
         "total_sold_fmt": d["total_limit_fmt"], "total_used_fmt": d["total_used_fmt"],
         "total_remaining_fmt": d["total_remaining_fmt"], "total_hidden_fmt": d["total_hidden_fmt"],
         "total_users": d["total_users"], "total_active": d["total_active"],
-        "over_limit": [{**o, "status_code": PanelAdmin.objects.get(username=o["username"]).status_code}
-                       for o in d["over_limit_admins"]],
+        "bytes": {"total_sold": d["total_limit"], "used": d["total_used"], "remaining": d["total_remaining"],
+                  "hidden": d["total_hidden"]},
+        "over_limit": [_over_row(o) for o in d["over_limit_admins"]],
         "last_sync": sync_row(last) if last else None,
     }
 
@@ -125,6 +145,8 @@ def group_rows() -> list[dict]:
                 "accounts": len(names),
                 "total_sold_fmt": _fmt_bytes(sum(a.total_user_limit or 0 for a in present)),
                 "used_fmt": _fmt_bytes(sum(a.total_user_used or 0 for a in present)),
+                "total_sold_bytes": sum(a.total_user_limit or 0 for a in present),
+                "used_bytes": sum(a.total_user_used or 0 for a in present),
                 "user_count": sum(a.user_count or 0 for a in present),
                 "active_user_count": sum(a.active_user_count or 0 for a in present),
             },

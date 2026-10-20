@@ -96,6 +96,12 @@ const useT = () => { const { lang } = useI18n(); return [T[lang] || T.fa, lang] 
 // backend strings are PAMP's ("1.23 TB", "Unlimited") — only translate the word
 const fmt = (v, s) => (v === 'Unlimited' ? s.unl : v)
 const B = ({ children }) => <bdi dir="ltr" className="ag-num">{children}</bdi>
+// the GB figure next to a TB value (1 TB = 1024 GB, PAMP's units), from the raw bytes
+// the server sends; nothing under 1 TB or for Unlimited. `block` = on its own small line.
+const TB_BYTES = 1024 ** 4
+const gbOf = (b, signed) => { const n = Math.round(Number(b) / 1024 ** 3); return `${signed && n > 0 ? '+' : ''}${n.toLocaleString('en-US')} GB` }
+const GB = ({ b, block, signed }) => (b == null || Math.abs(Number(b)) < TB_BYTES ? null
+  : <bdi dir="ltr" className={'ag-gb' + (block ? ' ag-gb--block' : '')}>{gbOf(b, signed)}</bdi>)
 
 function Header({ s, switches }) {
   const { can } = useAuth()
@@ -157,10 +163,10 @@ export function AgencyDashboard() {
       {d === null ? <div className="grid place-items-center py-16"><Spinner /></div> : d && (
         <>
           <div className="ag-kpis">
-            <Kpi label={s.total_sold} value={d.total_sold_fmt} ac="blue" icon="sold" />
-            <Kpi label={s.used} value={d.total_used_fmt} ac="purple" icon="used" />
-            <Kpi label={s.remaining} value={d.total_remaining_fmt} ac="green" icon="remaining" />
-            <Kpi label={s.hidden} value={d.total_hidden_fmt} ac="orange" icon="hidden" />
+            <Kpi label={s.total_sold} value={d.total_sold_fmt} b={d.bytes?.total_sold} ac="blue" icon="sold" />
+            <Kpi label={s.used} value={d.total_used_fmt} b={d.bytes?.used} ac="purple" icon="used" />
+            <Kpi label={s.remaining} value={d.total_remaining_fmt} b={d.bytes?.remaining} ac="green" icon="remaining" />
+            <Kpi label={s.hidden} value={d.total_hidden_fmt} b={d.bytes?.hidden} ac="orange" icon="hidden" />
             <Kpi label={s.admins} value={digits(d.admin_count, lang)} ac="gray" icon="users"
               sub={`${digits(d.active_count, lang)} ${s.active_n} · ${digits(d.disabled_count, lang)} ${s.disabled_n} · ${digits(d.pamp_limited_count, lang)} ${s.limited_n}`} />
           </div>
@@ -177,7 +183,7 @@ export function AgencyDashboard() {
                     <span className="ag-over-tag" data-state={o.state}>{o.state === 'over' ? s.over : s.at_risk}</span>
                     <UsageBar pct={o.pct} />
                     <span className="ag-over-pct"><B>{o.pct}%</B></span>
-                    <span className="ag-over-sub"><B>{o.used_fmt}</B> / <B>{o.limit_fmt}</B></span>
+                    <span className="ag-over-sub"><B>{o.used_fmt}</B><GB b={o.used_bytes} /> / <B>{o.limit_fmt}</B><GB b={o.limit_bytes} /></span>
                   </li>
                 ))}
               </ul>
@@ -192,12 +198,12 @@ export function AgencyDashboard() {
   )
 }
 
-function Kpi({ label, value, ac, icon, sub }) {
+function Kpi({ label, value, b, ac, icon, sub }) {
   return (
     <div className="card ag-kpi" data-ac={ac}>
       <span className="ag-kpi-ico"><Ic n={icon} size={16} /></span>
       <span className="ag-kpi-l">{label}</span>
-      <span className="ag-kpi-val"><B>{value}</B></span>
+      <span className="ag-kpi-val"><B>{value}</B><GB b={b} /></span>
       {sub && <span className="ag-kpi-sub">{sub}</span>}
     </div>
   )
@@ -275,13 +281,13 @@ export function AgencyAdmins() {
                     </td>
                     <td className="ag-t-st" data-label={s.status}><StatusPill code={r.status_code} s={s} /></td>
                     <td className="ag-t-usage" data-label={s.usage}>
-                      {r.is_unlimited ? <span className="text-muted">{s.unl}</span> : <><UsageBar pct={r.usage_percent} /><B>{r.usage_percent}%</B></>}
+                      {r.is_unlimited ? <span className="text-muted">{s.unl}</span> : <><UsageBar pct={r.usage_percent} /><B>{r.usage_percent}%</B><span className="ag-lim" title={s.limit}>/ <B>{r.admin_limit_fmt}</B><GB b={r.bytes?.limit} block /></span></>}
                     </td>
-                    <td data-label={s.total_sold}><B>{r.total_sold_fmt}</B></td>
-                    <td data-label={s.sold_limit}><B><span data-sign={r.sold_limit_value > 0 ? 'pos' : r.sold_limit_value < 0 ? 'neg' : 'zero'} className="ag-sign">{r.sold_limit_fmt}</span></B></td>
-                    <td className="ag-c-hid" data-label={s.hidden}><B>{r.hidden_fmt}</B></td>
-                    <td data-label={s.remaining}><B>{fmt(r.remaining_fmt, s)}</B></td>
-                    <td data-label={s.used}><B>{r.used_fmt}</B></td>
+                    <td data-label={s.total_sold}><B>{r.total_sold_fmt}</B><GB b={r.bytes?.total_sold} block /></td>
+                    <td data-label={s.sold_limit}><B><span data-sign={r.sold_limit_value > 0 ? 'pos' : r.sold_limit_value < 0 ? 'neg' : 'zero'} className="ag-sign">{r.sold_limit_fmt}</span></B><GB b={r.bytes?.sold_limit} block signed /></td>
+                    <td className="ag-c-hid" data-label={s.hidden}><B>{r.hidden_fmt}</B><GB b={r.bytes?.hidden} block /></td>
+                    <td data-label={s.remaining}><B>{fmt(r.remaining_fmt, s)}</B><GB b={r.bytes?.remaining} block /></td>
+                    <td data-label={s.used}><B>{r.used_fmt}</B><GB b={r.bytes?.used} block /></td>
                     <td data-label={s.users_col}>
                       <span className="ag-users" title={['active', 'on_hold', 'limited', 'disabled', 'expired'].map((k) => `${s['c_' + k]}: ${digits(r.user_counts?.[k] ?? 0, lang)}`).join('\n')}>
                         <B>{digits(r.user_count, lang)}</B><span className="ag-users-on"> / <B>{digits(r.active_user_count, lang)}</B> {s.users_on}</span>
@@ -325,7 +331,7 @@ export function AgencyAdminDetail() {
   const setLimit = () => {
     const box = {}
     act(s.a_set, 'set-limit', () => (box.ready ? { action: box.mode, value_gb: box.gb } : false), 'primary',
-      <SetLimitForm s={s} lang={lang} username={username} current={fmt(d.admin_limit_fmt, s)} box={box} />)
+      <SetLimitForm s={s} lang={lang} username={username} current={fmt(d.admin_limit_fmt, s)} currentBytes={d.bytes?.limit} box={box} />)
   }
 
   if (d === null) return <div className="ag"><Header s={s} /><div className="grid place-items-center py-16"><Spinner /></div></div>
@@ -333,9 +339,9 @@ export function AgencyAdminDetail() {
   const p = d.portal
   const usageAc = d.is_unlimited ? 'gray' : d.usage_percent >= 100 ? 'red' : d.usage_percent >= 80 ? 'orange' : 'green'   // same thresholds as the bar
   const nums = [
-    [s.limit, fmt(d.admin_limit_fmt, s), 'blue'], [s.total_sold, d.total_sold_fmt, 'blue'], [s.used, d.used_fmt, 'purple'],
-    [s.remaining, fmt(d.remaining_fmt, s), 'green'], [s.sold_limit, d.sold_limit_fmt, 'cyan'], [s.hidden, d.hidden_fmt, 'orange'],
-    [s.hidden_clamped, d.hidden_traffic_clamped_fmt, 'orange'], [s.deleted, d.deleted_used_fmt, 'orange'], [s.usage, `${d.usage_percent}%`, usageAc],
+    [s.limit, fmt(d.admin_limit_fmt, s), 'blue', d.bytes?.limit], [s.total_sold, d.total_sold_fmt, 'blue', d.bytes?.total_sold], [s.used, d.used_fmt, 'purple', d.bytes?.used],
+    [s.remaining, fmt(d.remaining_fmt, s), 'green', d.bytes?.remaining], [s.sold_limit, d.sold_limit_fmt, 'cyan', d.bytes?.sold_limit, true], [s.hidden, d.hidden_fmt, 'orange', d.bytes?.hidden],
+    [s.hidden_clamped, d.hidden_traffic_clamped_fmt, 'orange', d.bytes?.hidden_clamped], [s.deleted, d.deleted_used_fmt, 'orange', d.bytes?.deleted], [s.usage, `${d.usage_percent}%`, usageAc],
   ]
   const ACTIONS = [
     [s.a_set, setLimit, 'primary', 'gauge'],
@@ -362,7 +368,7 @@ export function AgencyAdminDetail() {
         {p.is_blocked && <Alert>{p.block_reason === 'disabled' ? s.blocked_panel : s.blocked_pamp}</Alert>}
         <SecH i="list" ac="blue">{s.detail_numbers}</SecH>
         <dl className="ag-nums">
-          {nums.map(([k, v, ac]) => <div key={k} data-ac={ac}><dt>{k}</dt><dd><B>{v}</B></dd></div>)}
+          {nums.map(([k, v, ac, b, signed]) => <div key={k} data-ac={ac}><dt>{k}</dt><dd><B>{v}</B><GB b={b} signed={signed} /></dd></div>)}
         </dl>
         <SecH i="users" ac="purple">{s.users_sec}</SecH>
         <dl className="ag-nums ag-nums--counts">
@@ -383,7 +389,7 @@ export function AgencyAdminDetail() {
             </a>
           )}
         </div>
-        <p className="ag-limits-cur">{s.cur_limit}: <b><B>{fmt(d.admin_limit_fmt, s)}</B></b>{!d.is_unlimited && <> · {s.usage}: <B>{d.usage_percent}%</B></>}</p>
+        <p className="ag-limits-cur">{s.cur_limit}: <b><B>{fmt(d.admin_limit_fmt, s)}</B></b><GB b={d.bytes?.limit} />{!d.is_unlimited && <> · {s.usage}: <B>{d.usage_percent}%</B></>}</p>
         {!writable && <p className="ag-locked">{s.cutover}</p>}
         {msg && <Alert kind="success">{msg}</Alert>}
         <div className="ag-actions">
@@ -418,7 +424,7 @@ export function AgencyAdminDetail() {
   )
 }
 
-function SetLimitForm({ s, lang, username, current, box }) {
+function SetLimitForm({ s, lang, username, current, currentBytes, box }) {
   const [mode, setMode] = useState('set')
   const [unit, setUnit] = useState('GB')
   const [val, setVal] = useState('')
@@ -442,9 +448,10 @@ function SetLimitForm({ s, lang, username, current, box }) {
     return () => clearTimeout(h)
   }, [mode, unit, val])
   const money = (n) => `${Number(n || 0).toLocaleString('en-US')} ${lang === 'en' ? 'T' : 'تومان'}`
+  const typed = Number(val.replace(/[۰-۹]/g, (c) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(c)).replace(/[٠-٩]/g, (c) => '٠١٢٣٤٥٦٧٨٩'.indexOf(c)).replace(/[,٬\s]/g, '')) || 0
   return (
     <div className="ag-form ag-form--limit">
-      <p className="ag-form-cur">{s.cur_limit}: <B>{current}</B></p>
+      <p className="ag-form-cur">{s.cur_limit}: <B>{current}</B><GB b={currentBytes} /></p>
       <label><span>{s.mode}</span>
         <select className="input" value={mode} onChange={(e) => setMode(e.target.value)}>
           <option value="set">{s.m_set}</option><option value="add">{s.m_add}</option><option value="reduce">{s.m_reduce}</option>
@@ -458,12 +465,13 @@ function SetLimitForm({ s, lang, username, current, box }) {
           <select className="input" value={unit} onChange={(e) => setUnit(e.target.value)}><option>GB</option><option>TB</option></select>
         </label>
       </div>
+      {typed > 0 && !err && <p className="ag-form-conv"><B>{unit === 'TB' ? `${typed.toLocaleString('en-US')} TB = ${(typed * 1024).toLocaleString('en-US', { maximumFractionDigits: 2 })} GB` : `${typed.toLocaleString('en-US')} GB = ${(typed / 1024).toLocaleString('en-US', { maximumFractionDigits: 3 })} TB`}</B></p>}
       {err && <p className="ag-form-err" role="alert">{err}</p>}
       {busy && !err && <p className="text-xs text-muted">{s.p_wait}</p>}
       {p && !err && (
         <dl className="ag-preview" aria-live="polite">
-          <div><dt>{s.p_old_new}</dt><dd><B>{fmt(p.old_limit_fmt, s)}</B> {lang === 'fa' ? '←' : '→'} <b><B>{fmt(p.new_limit_fmt, s)}</B></b></dd></div>
-          <div><dt>{s.p_remaining}</dt><dd><B>{fmt(p.remaining_after_fmt, s)}</B></dd></div>
+          <div><dt>{s.p_old_new}</dt><dd><B>{fmt(p.old_limit_fmt, s)}</B><GB b={p.old_limit_bytes > 0 ? p.old_limit_bytes : null} /> {lang === 'fa' ? '←' : '→'} <b><B>{fmt(p.new_limit_fmt, s)}</B></b><GB b={p.new_limit_bytes > 0 ? p.new_limit_bytes : null} /></dd></div>
+          <div><dt>{s.p_remaining}</dt><dd><B>{fmt(p.remaining_after_fmt, s)}</B><GB b={p.remaining_after_bytes} /></dd></div>
           <div><dt>{s.p_charge}</dt><dd>{!p.charge ? <span className="text-muted">{s.p_no_charge}</span> : (
             <><B>{Number(p.charge.gb).toLocaleString('en-US', { maximumFractionDigits: 2 })} GB</B> × <B>{p.charge.price_per_gb != null ? money(p.charge.price_per_gb) : '—'}</B> = <b><B>{money(p.charge.amount)}</B></b>
               {p.charge.price_per_gb == null && <small className="ag-form-err">{s.p_no_price}</small>}</>
@@ -645,8 +653,8 @@ export function AgencyGroups() {
             </div>
             <dl className="ag-nums ag-nums--counts">
               <div><dt>{s.g_accounts}</dt><dd><B>{digits(g.totals.accounts, lang)}</B></dd></div>
-              <div><dt>{s.total_sold}</dt><dd><B>{g.totals.total_sold_fmt}</B></dd></div>
-              <div><dt>{s.used}</dt><dd><B>{g.totals.used_fmt}</B></dd></div>
+              <div><dt>{s.total_sold}</dt><dd><B>{g.totals.total_sold_fmt}</B><GB b={g.totals.total_sold_bytes} /></dd></div>
+              <div><dt>{s.used}</dt><dd><B>{g.totals.used_fmt}</B><GB b={g.totals.used_bytes} /></dd></div>
               <div><dt>{s.users_col}</dt><dd><B>{digits(g.totals.user_count, lang)}</B><span className="ag-users-on"> / <B>{digits(g.totals.active_user_count, lang)}</B> {s.users_on}</span></dd></div>
             </dl>
             {g.rows.length > 0 && (
@@ -662,8 +670,8 @@ export function AgencyGroups() {
                         </td>
                         <td className="ag-t-st" data-label={s.status}><StatusPill code={r.status_code} s={s} /></td>
                         <td className="ag-t-usage" data-label={s.usage}>{r.is_unlimited ? <span className="text-muted">{s.unl}</span> : <><UsageBar pct={r.usage_percent} /><B>{r.usage_percent}%</B></>}</td>
-                        <td data-label={s.total_sold}><B>{r.total_sold_fmt}</B></td>
-                        <td data-label={s.used}><B>{r.used_fmt}</B></td>
+                        <td data-label={s.total_sold}><B>{r.total_sold_fmt}</B><GB b={r.bytes?.total_sold} block /></td>
+                        <td data-label={s.used}><B>{r.used_fmt}</B><GB b={r.bytes?.used} block /></td>
                         <td data-label={s.users_col}><span><B>{digits(r.user_count, lang)}</B><span className="ag-users-on"> / <B>{digits(r.active_user_count, lang)}</B> {s.users_on}</span></span></td>
                         {can('agency.manage') && (
                           <td className="ag-gtable-x">
@@ -1005,6 +1013,17 @@ const CSS = `
 .ag-nums--counts > div[data-k="on_hold"] { --ac: var(--ac-blue); } .ag-nums--counts > div[data-k="limited"] { --ac: var(--ac-orange); }
 .ag-nums--counts > div[data-k="disabled"] { --ac: var(--ac-red); } .ag-nums--counts > div[data-k="expired"] { --ac: var(--ac-gray); }
 .ag-kpi { border-top-color: var(--ac) !important; }
+
+/* v1.15.1: GB next to TB values */
+.ag-gb { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: .72em; font-weight: 500; color: var(--c-muted-fg); margin: 0 6px; white-space: nowrap; }   /* dir=ltr span: margin on both sides works in RTL too */
+.ag-gb--block { display: block; margin: 0; font-size: 11px; line-height: 1.3; }
+.ag-kpi-val { white-space: nowrap; }
+.ag-kpi-val .ag-gb { display: block; margin: 2px 0 0; font-size: 12.5px; font-weight: 600; line-height: 1.3; }
+.ag-lim { display: block; font-size: 11px; color: var(--c-muted-fg); margin-top: 2px; white-space: nowrap; }
+.ag-lim .ag-gb { font-size: 10.5px; }
+.ag-form-conv { font-size: 12px; color: var(--c-muted-fg); margin-top: -4px; }
+/* narrow desktops: Hidden traffic (mirror of Sold Limit, still on the detail page) makes room for the GB lines */
+@media (min-width: 768px) and (max-width: 1365px) { .ag-admins .ag-c-hid { display: none; } }
 @media (max-width: 767px) {
   .ag-portal { flex-direction: column; }
   .ag-gpick-i { min-height: 44px; } .ag-gform .input { font-size: 16px; height: 44px; } .ag-act--sm { min-height: 40px; }

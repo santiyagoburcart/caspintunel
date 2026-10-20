@@ -53,6 +53,12 @@ const T = {
 }
 const fmt = (v, s) => (v === 'Unlimited' ? s.unl : v)
 const B = ({ children }) => <bdi dir="ltr" className="ap-num">{children}</bdi>
+// GB figure next to a TB value (1 TB = 1024 GB), from the raw bytes; none under 1 TB
+const GB = ({ b, signed }) => {
+  if (b == null || Math.abs(Number(b)) < 1024 ** 4) return null
+  const n = Math.round(Number(b) / 1024 ** 3)
+  return <bdi dir="ltr" className="ap-gb">{`${signed && n > 0 ? '+' : ''}${n.toLocaleString('en-US')} GB`}</bdi>
+}
 const money = (n, lang) => (Number(n) < 0 ? '-' : '') + toman(Math.abs(Number(n || 0)), lang)
 
 export default function AgencyPortal() {
@@ -137,9 +143,10 @@ function Account({ a, s, lang, balance }) {
   const w = Math.min(Number(a.usage_percent) || 0, 100)      // bar width only
   const tone = a.usage_percent >= 100 ? 'danger' : a.usage_percent >= 80 ? 'warning' : 'primary'
   const tg = (p.support_telegram || '').replace(/^@/, '')
-  const nums = [[s.limit, fmt(a.admin_limit_fmt, s), 'cyan', 'limit'], [s.total_sold, a.total_sold_fmt, 'blue', 'sold'], [s.used, a.used_fmt, 'purple', 'used'],
-    [s.remaining, fmt(a.remaining_fmt, s), 'green', 'remaining'], [s.sold_limit, a.sold_limit_fmt, 'cyan', 'limit'], [s.hidden, a.hidden_fmt, 'orange', 'hidden'],
-    [s.deleted, a.deleted_used_fmt, 'gray', 'trash']]
+  const by = a.bytes || {}
+  const nums = [[s.limit, fmt(a.admin_limit_fmt, s), 'cyan', 'limit', by.limit], [s.total_sold, a.total_sold_fmt, 'blue', 'sold', by.total_sold], [s.used, a.used_fmt, 'purple', 'used', by.used],
+    [s.remaining, fmt(a.remaining_fmt, s), 'green', 'remaining', by.remaining], [s.sold_limit, a.sold_limit_fmt, 'cyan', 'limit', by.sold_limit, true], [s.hidden, a.hidden_fmt, 'orange', 'hidden', by.hidden],
+    [s.deleted, a.deleted_used_fmt, 'gray', 'trash', by.deleted]]
   return (
     <section className="ap-card">
       <div className="ap-acc-h">
@@ -157,11 +164,11 @@ function Account({ a, s, lang, balance }) {
         <div className="ap-usage">
           <div className="ap-usage-l"><span>{s.usage}</span><B>{a.usage_percent}%</B></div>
           <span className="ap-bar" data-tone={tone}><i style={{ width: `${w}%` }} /></span>
-          <p className="ap-usage-s">{s.used_of.split('{u}')[0]}<B>{a.used_fmt}</B>{s.used_of.split('{u}')[1].split('{l}')[0]}<B>{fmt(a.admin_limit_fmt, s)}</B>{s.used_of.split('{l}')[1]}</p>
+          <p className="ap-usage-s">{s.used_of.split('{u}')[0]}<B>{a.used_fmt}</B><GB b={by.used} />{s.used_of.split('{u}')[1].split('{l}')[0]}<B>{fmt(a.admin_limit_fmt, s)}</B><GB b={by.limit} />{s.used_of.split('{l}')[1]}</p>
         </div>
       )}
       <dl className="ap-nums">
-        {nums.map(([k, v, ac, ic]) => <div key={k} data-ac={ac}><dt><Ic n={ic} size={13} />{k}</dt><dd><B>{v}</B></dd></div>)}
+        {nums.map(([k, v, ac, ic, b, signed]) => <div key={k} data-ac={ac}><dt><Ic n={ic} size={13} />{k}</dt><dd><B>{v}</B><GB b={b} signed={signed} /></dd></div>)}
       </dl>
       <div className="ap-bal">
         <span>{s.balance}</span>
@@ -265,4 +272,6 @@ const CSS = `
 .ap-btn:focus-visible, .ap-lang:focus-visible, .ap-link:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 2px; }
 .ap-btn-spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid currentColor; border-inline-end-color: transparent; animation: ap-r .7s linear infinite; }
 .ap-st li:hover { background: color-mix(in srgb, var(--c-primary) 4%, transparent); }
+.ap-gb { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: .74em; font-weight: 500; color: var(--c-muted-fg); margin: 0 6px; white-space: nowrap; }
+.ap-nums dd .ap-gb { display: block; margin: 0; font-size: 11.5px; margin-top: 1px; }
 `
