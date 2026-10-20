@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App'
+import FeedbackBridge from './components/FeedbackBridge'
 import { ADMIN_BASE } from './lib/base'
 import { AuthProvider } from './lib/auth'
 import { LivePaymentsProvider } from './lib/livePayments'
@@ -32,6 +33,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <I18nProvider>
         <ThemeProvider>
           <ToastProvider>
+            <FeedbackBridge />
             <ConfirmProvider>
             <AuthProvider>
               <LivePaymentsProvider>

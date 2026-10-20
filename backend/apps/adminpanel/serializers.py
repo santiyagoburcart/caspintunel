@@ -516,6 +516,30 @@ class SiteConfigSerializer(serializers.ModelSerializer):
                   "meta_description", "updated_at")
         read_only_fields = ("updated_at",)
 
+    # logo / favicon: images only, small (the error text is shown in the panel as is)
+    _LOGO_TYPES = {".png": "PNG", ".jpg": "JPG", ".jpeg": "JPG", ".webp": "WEBP", ".svg": "SVG"}
+    _ICON_TYPES = {".png": "PNG", ".ico": "ICO", ".svg": "SVG"}
+
+    @staticmethod
+    def _check_file(f, types, max_kb, what):
+        import os
+
+        if not f:
+            return f
+        ext = os.path.splitext(getattr(f, "name", "") or "")[1].lower()
+        if ext not in types:
+            allowed = ", ".join(sorted(set(types.values())))
+            raise serializers.ValidationError(f"فرمت فایل {what} مجاز نیست — فقط {allowed} / Unsupported {what} file type — {allowed} only")
+        if getattr(f, "size", 0) > max_kb * 1024:
+            raise serializers.ValidationError(f"حجم فایل {what} بیش از {max_kb} کیلوبایت است / The {what} file is larger than {max_kb} KB")
+        return f
+
+    def validate_logo(self, f):
+        return self._check_file(f, self._LOGO_TYPES, 2048, "logo")
+
+    def validate_favicon(self, f):
+        return self._check_file(f, self._ICON_TYPES, 512, "favicon")
+
     def validate_qr_background(self, value):
         from apps.common import qrcard
 

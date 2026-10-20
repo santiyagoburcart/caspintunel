@@ -3,6 +3,7 @@ import axios from 'axios'
 import { useI18n } from '../lib/i18n'
 import { jalali, toman } from '../lib/format'
 import { ACCENT_CSS, Ic } from '../components/AgencyIcons'
+import { useToast } from '../components/Toast'
 
 // Reseller portal (PAMP's per-admin portal). Separate from the customer site:
 // own token ("Agency <token>"), own HTTP client — the customer JWT, its 401
@@ -34,7 +35,7 @@ const T = {
     blocked_disabled: 'دسترسی شما روی پنل غیرفعال است.', blocked_limited: 'سقف حجم شما تمام شده و حساب محدود شده است.',
     support: 'پشتیبانی', balance: 'بدهی شما', statement: 'صورت‌حساب', none: 'هنوز گردشی ثبت نشده است.', show: 'نمایش صورت‌حساب', hide: 'بستن',
     k_quota_charge: 'شارژ حجم', k_manual_charge: 'بدهکاری', k_adjustment: 'اصلاحیه', k_payment: 'پرداخت', running: 'مانده', voided: 'باطل‌شده',
-    group: 'حساب‌های گروه شما', last_sync: 'آخرین به‌روزرسانی',
+    group: 'حساب‌های گروه شما', last_sync: 'آخرین به‌روزرسانی', welcome: 'خوش آمدید', bye: 'از پرتال خارج شدید', net: 'ارتباط با سرور برقرار نشد — اینترنت را بررسی کنید.', expired: 'نشست شما تمام شده — دوباره وارد شوید.', locked: 'به‌دلیل تلاش‌های ناموفق، ورود موقتاً بسته شده است — چند دقیقه بعد تلاش کنید.',
   },
   en: {
     title: 'Reseller portal', sub: 'Sign in with your PasarGuard panel username and password',
@@ -47,7 +48,7 @@ const T = {
     blocked_disabled: 'Your access is disabled on the panel.', blocked_limited: 'Your volume limit is used up and the account is limited.',
     support: 'Support', balance: 'You owe', statement: 'Statement', none: 'No entries yet.', show: 'Show statement', hide: 'Hide',
     k_quota_charge: 'Quota charge', k_manual_charge: 'Charge', k_adjustment: 'Adjustment', k_payment: 'Payment', running: 'Balance', voided: 'voided',
-    group: 'Your group\'s accounts', last_sync: 'Last update',
+    group: 'Your group\'s accounts', last_sync: 'Last update', welcome: 'Welcome', bye: 'You signed out of the portal', net: 'Could not reach the server — check your connection.', expired: 'Your session ended — please sign in again.', locked: 'Too many failed attempts — sign-in is paused for a few minutes.',
   },
 }
 const fmt = (v, s) => (v === 'Unlimited' ? s.unl : v)
@@ -60,15 +61,17 @@ export default function AgencyPortal() {
   const [token, setToken] = useState(store.get())
   const [data, setData] = useState(null)
   const [err, setErr] = useState('')
+  const toast = useToast()
 
   const load = () => http.get('/me/').then((r) => { setData(r.data); setErr('') }).catch((e) => {
-    if (e?.response?.status === 401) { store.set(null); setToken(null) }
-    setErr(e?.response?.data?.code === 'portal_closed' ? s.closed : errText(e, s.error))
+    if (e?.response?.status === 401) { store.set(null); setToken(null); toast.error(s.expired); return }
+    const m = e?.response?.data?.code === 'portal_closed' ? s.closed : !e?.response ? s.net : errText(e, s.error)
+    setErr(m); toast.error(m)
   })
   useEffect(() => { if (token) load() }, [token])
   useEffect(() => { document.title = s.title }, [lang])
 
-  const logout = async () => { try { await http.post('/logout/') } catch { /* already gone */ } store.set(null); setToken(null); setData(null) }
+  const logout = async () => { try { await http.post('/logout/') } catch { /* already gone */ } store.set(null); setToken(null); setData(null); toast.success(s.bye) }
 
   return (
     <div className="ap" dir={lang === 'fa' ? 'rtl' : 'ltr'}>
@@ -100,14 +103,18 @@ function LoginForm({ s, onDone }) {
   const [p, setP] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  const toast = useToast()
   const submit = async (e) => {
     e.preventDefault(); setBusy(true); setErr('')
     try {
       const r = await http.post('/login/', { username: u.trim(), password: p })
+      toast.success(s.welcome)
       onDone(r.data.token)
     } catch (e2) {
       const st = e2?.response?.status
-      setErr(e2?.response?.data?.code === 'portal_closed' ? s.closed : st === 400 ? s.wrong : errText(e2, s.error))
+      const m = e2?.response?.data?.code === 'portal_closed' ? s.closed : st === 400 ? s.wrong : st === 429 ? s.locked
+        : !e2?.response ? s.net : errText(e2, s.error)
+      setErr(m); toast.error(m)
     } finally { setBusy(false) }
   }
   return (
@@ -170,7 +177,8 @@ function Account({ a, s, lang, balance }) {
 function Statement({ username, s, lang }) {
   const [st, setSt] = useState(null)
   const [err, setErr] = useState('')
-  useEffect(() => { http.get('/statement/', { params: { admin: username } }).then((r) => setSt(r.data)).catch((e) => setErr(errText(e, s.error))) }, [username])
+  const toast = useToast()
+  useEffect(() => { http.get('/statement/', { params: { admin: username } }).then((r) => setSt(r.data)).catch((e) => { const m = errText(e, s.error); setErr(m); toast.error(m) }) }, [username])
   if (err) return <div className="ap-alert">{err}</div>
   if (!st) return <div className="ap-spin" aria-busy="true" />
   if (!st.entries.length) return <p className="ap-foot">{s.none}</p>

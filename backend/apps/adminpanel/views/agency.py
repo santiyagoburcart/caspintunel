@@ -375,6 +375,17 @@ class PathsView(AdminAPIView):
         return Response(paths.state(), status=202)
 
 
+class AgencySetLimitPreviewView(AdminAPIView):
+    """POST {action, value_gb} → what the change WOULD do (no panel call, nothing saved)."""
+    perms_map = {"POST": MANAGE}
+
+    def post(self, request, username):
+        try:
+            return Response(actions.preview_set_limit(username, request.data.get("action"), request.data.get("value_gb")))
+        except ValueError as exc:
+            return Response({"value_gb": [str(exc)]}, status=400)
+
+
 class AgencyPortalLinkView(AdminAPIView):
     """GET → {path, url}; GET …/qr.png → plain QR of the url."""
     perms_map = {"GET": VIEW}

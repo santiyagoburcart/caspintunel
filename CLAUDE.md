@@ -78,6 +78,8 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   (`user/src/lib/phone.js`, `accounts/phone.py`, `payments_sms/parsing.py`). Themes: Caspian (light/dark), Midnight Aurora, Royal Frost. Colours come from
   `var(--c-*)` except these **fixed** tokens: toggles `--toggle-on #11AB53` / `--toggle-off` dark gray;
   ConfirmDialog tone colours (danger red, success #11AB53, primary #1464BA, warning amber).
+- **Every action gives feedback**: admin `lib/api.js` reports each POST/PUT/PATCH/DELETE to `components/FeedbackBridge.jsx`
+  (toast success / real failure reason). Pass `{ quiet: true }` only for non-actions (login, live previews).
 - **One popup for everything**: `components/ConfirmDialog.jsx` (identical in both SPAs) + `useConfirm()`.
   Never use `window.confirm/alert/prompt`. **One copy helper**: `lib/clipboard.js::copyToClipboard`.
 - Fonts are bundled (`@fontsource`, no CDN): fa = Vazirmatn, en = Inter, `<code>` = JetBrains Mono.

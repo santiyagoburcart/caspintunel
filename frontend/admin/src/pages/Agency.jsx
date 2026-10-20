@@ -30,8 +30,9 @@ const T = {
     detail_numbers: 'اعداد PAMP', deleted: 'از کاربران حذف‌شده', hidden_clamped: 'پنهان (حداقل صفر)', counts: 'کاربران بر اساس وضعیت',
     c_active: 'فعال', c_on_hold: 'در انتظار', c_limited: 'اتمام حجم', c_disabled: 'غیرفعال', c_expired: 'منقضی', c_total: 'کل',
     warn80: 'به {p}% سقف رسیده است', blocked_pamp: 'توسط PAMP محدود شده', blocked_panel: 'روی پنل غیرفعال است',
-    actions: 'عملیات', a_set: 'تنظیم سقف', a_remove: 'حذف سقف (نامحدود)', a_disable: 'غیرفعال کردن ادمین', a_enable: 'فعال کردن ادمین',
-    a_disable_users: 'غیرفعال کردن همهٔ کاربرانش', a_enable_users: 'فعال کردن همهٔ کاربرانش', a_reset: 'صفر کردن ترافیک کاربران حذف‌شده',
+    actions: 'محدودیت‌ها و عملیات', a_set: 'تعیین / تغییر سقف', a_remove: 'حذف سقف', a_disable: 'غیرفعال‌سازی ادمین', a_enable: 'فعال‌سازی ادمین',
+    a_disable_users: 'غیرفعال‌سازی همه کاربران', a_enable_users: 'فعال‌سازی همه کاربران', a_reset: 'ریست ترافیک حذف‌شده‌ها',
+    cur_limit: 'سقف فعلی', statement_link: 'صورت‌حساب این نماینده', unit: 'واحد', amount: 'مقدار', p_old_new: 'سقف', p_remaining: 'باقی‌مانده پس از تغییر', p_charge: 'شارژ حساب', p_no_charge: 'بدون شارژ (افزایش نیست)', p_no_price: 'برای امروز قیمتی ثبت نشده — شارژ با مبلغ 0 ثبت می‌شود', p_wait: 'در حال محاسبه…', v_positive: 'یک عدد مثبت وارد کنید', d_reset: 'شمارندهٔ «از کاربران حذف‌شده» صفر می‌شود و حجم فروخته‌شده در همگام‌سازی بعدی کم می‌شود.', d_disable_users: 'همهٔ کاربران این ادمین روی پنل غیرفعال می‌شوند.', d_disable: 'دسترسی این ادمین به پنل بسته می‌شود؛ کاربرانش دست نمی‌خورند.', d_remove: 'سقف این ادمین برداشته می‌شود (نامحدود).',
     gb: 'گیگابایت', mode: 'نوع', m_set: 'تنظیم روی', m_add: 'افزودن', m_reduce: 'کاهش', confirm_go: 'تأیید',
     snapshots: 'آخرین مصرف کاربران (اسنپ‌شات)', snap_n: '{n} کاربر', user: 'کاربر', last_seen: 'آخرین بررسی', recent_syncs: 'همگام‌سازی‌های اخیر',
     support: 'پشتیبانی', groups_none: 'گروهی تعریف نشده است.', owner: 'مالک', members: 'اعضا', note: 'یادداشت', missing: 'روی پنل نیست',
@@ -67,8 +68,9 @@ const T = {
     detail_numbers: 'PAMP numbers', deleted: 'From deleted users', hidden_clamped: 'Hidden (min 0)', counts: 'Users by status',
     c_active: 'Active', c_on_hold: 'On hold', c_limited: 'Data used up', c_disabled: 'Disabled', c_expired: 'Expired', c_total: 'Total',
     warn80: 'reached {p}% of the limit', blocked_pamp: 'Limited by PAMP', blocked_panel: 'Disabled on the panel',
-    actions: 'Actions', a_set: 'Set limit', a_remove: 'Remove limit (unlimited)', a_disable: 'Disable admin', a_enable: 'Enable admin',
-    a_disable_users: 'Disable all their users', a_enable_users: 'Enable all their users', a_reset: 'Reset deleted-users traffic',
+    actions: 'Limits & actions', a_set: 'Set / change limit', a_remove: 'Remove limit', a_disable: 'Disable admin', a_enable: 'Enable admin',
+    a_disable_users: 'Disable all users', a_enable_users: 'Enable all users', a_reset: 'Reset deleted traffic',
+    cur_limit: 'Current limit', statement_link: "This admin's statement", unit: 'Unit', amount: 'Amount', p_old_new: 'Limit', p_remaining: 'Remaining after', p_charge: 'Account charge', p_no_charge: 'No charge (not an increase)', p_no_price: 'No price set for today — the charge is recorded at 0', p_wait: 'Calculating…', v_positive: 'Enter a positive number', d_reset: 'The "from deleted users" counter goes to 0; Total Sold drops at the next sync.', d_disable_users: "All of this admin's users are disabled on the panel.", d_disable: 'This admin loses panel access; their users keep working.', d_remove: "This admin's limit is removed (unlimited).",
     gb: 'GB', mode: 'Mode', m_set: 'Set to', m_add: 'Add', m_reduce: 'Reduce', confirm_go: 'Confirm',
     snapshots: 'Last known user usage (snapshot)', snap_n: '{n} users', user: 'User', last_seen: 'Last seen', recent_syncs: 'Recent syncs',
     support: 'Support', groups_none: 'No groups defined.', owner: 'Owner', members: 'Members', note: 'Note', missing: 'not on the panel',
@@ -307,12 +309,13 @@ export function AgencyAdminDetail() {
   const [msg, setMsg] = useState('')
   const writable = d?.switches?.writes_enabled && can('agency.manage')
 
-  const act = async (title, path, body, tone = 'warning', content) => {
+  const act = async (title, path, body, tone = 'warning', content, message) => {
     setMsg('')
     const ok = await confirm({
-      tone, title, targetLabel: username, confirmLabel: s.confirm_go, content,
+      tone, title, targetLabel: username, confirmLabel: s.confirm_go, content, message,
       action: async () => {
         const b = typeof body === 'function' ? body() : body
+        if (b === false) throw new Error(s.v_positive)
         const r = await api.post(`/admin/agency/admins/${encodeURIComponent(username)}/${path}/`, b)
         setMsg(r.data.message)
       },
@@ -320,27 +323,29 @@ export function AgencyAdminDetail() {
     if (ok) load()
   }
   const setLimit = () => {
-    const box = { mode: 'set', gb: '' }
-    act(s.a_set, 'set-limit', () => ({ action: box.mode, value_gb: box.gb }), 'primary', <SetLimitForm s={s} box={box} />)
+    const box = {}
+    act(s.a_set, 'set-limit', () => (box.ready ? { action: box.mode, value_gb: box.gb } : false), 'primary',
+      <SetLimitForm s={s} lang={lang} username={username} current={fmt(d.admin_limit_fmt, s)} box={box} />)
   }
 
   if (d === null) return <div className="ag"><Header s={s} /><div className="grid place-items-center py-16"><Spinner /></div></div>
   if (!d) return <div className="ag space-y-4"><Header s={s} /><Alert>{err}</Alert></div>
   const p = d.portal
+  const usageAc = d.is_unlimited ? 'gray' : d.usage_percent >= 100 ? 'red' : d.usage_percent >= 80 ? 'orange' : 'green'   // same thresholds as the bar
   const nums = [
-    [s.limit, fmt(d.admin_limit_fmt, s)], [s.total_sold, d.total_sold_fmt], [s.used, d.used_fmt],
-    [s.remaining, fmt(d.remaining_fmt, s)], [s.sold_limit, d.sold_limit_fmt], [s.hidden, d.hidden_fmt],
-    [s.hidden_clamped, d.hidden_traffic_clamped_fmt], [s.deleted, d.deleted_used_fmt], [s.usage, `${d.usage_percent}%`],
+    [s.limit, fmt(d.admin_limit_fmt, s), 'blue'], [s.total_sold, d.total_sold_fmt, 'blue'], [s.used, d.used_fmt, 'purple'],
+    [s.remaining, fmt(d.remaining_fmt, s), 'green'], [s.sold_limit, d.sold_limit_fmt, 'cyan'], [s.hidden, d.hidden_fmt, 'orange'],
+    [s.hidden_clamped, d.hidden_traffic_clamped_fmt, 'orange'], [s.deleted, d.deleted_used_fmt, 'orange'], [s.usage, `${d.usage_percent}%`, usageAc],
   ]
   const ACTIONS = [
     [s.a_set, setLimit, 'primary', 'gauge'],
-    [s.a_remove, () => act(s.a_remove, 'remove-limit', {}, 'warning'), 'warning', 'infinity'],
+    [s.a_remove, () => act(s.a_remove, 'remove-limit', {}, 'warning', null, `${s.d_remove} ${s.cur_limit}: ${fmt(d.admin_limit_fmt, s)}`), 'warning', 'infinity'],
     d.status === 'disabled'
       ? [s.a_enable, () => act(s.a_enable, 'admin-action', { action: 'enable_admin' }, 'success'), 'success', 'power']
-      : [s.a_disable, () => act(s.a_disable, 'admin-action', { action: 'disable_admin' }, 'danger'), 'danger', 'power'],
-    [s.a_disable_users, () => act(s.a_disable_users, 'admin-action', { action: 'disable_users' }, 'danger'), 'danger', 'users'],
+      : [s.a_disable, () => act(s.a_disable, 'admin-action', { action: 'disable_admin' }, 'danger', null, s.d_disable), 'danger', 'power'],
+    [s.a_disable_users, () => act(s.a_disable_users, 'admin-action', { action: 'disable_users' }, 'danger', null, `${s.d_disable_users} (${digits(d.counts.total, lang)})`), 'danger', 'users'],
     [s.a_enable_users, () => act(s.a_enable_users, 'admin-action', { action: 'enable_users' }, 'success'), 'success', 'users'],
-    [s.a_reset, () => act(s.a_reset, 'reset-deleted-traffic', {}, 'danger'), 'danger', 'reset'],
+    [s.a_reset, () => act(s.a_reset, 'reset-deleted-traffic', {}, 'danger', null, `${s.d_reset} (${d.deleted_used_fmt} → 0 B)`), 'danger', 'reset'],
   ]
   return (
     <div className="ag space-y-4">
@@ -357,7 +362,7 @@ export function AgencyAdminDetail() {
         {p.is_blocked && <Alert>{p.block_reason === 'disabled' ? s.blocked_panel : s.blocked_pamp}</Alert>}
         <SecH i="list" ac="blue">{s.detail_numbers}</SecH>
         <dl className="ag-nums">
-          {nums.map(([k, v]) => <div key={k}><dt>{k}</dt><dd><B>{v}</B></dd></div>)}
+          {nums.map(([k, v, ac]) => <div key={k} data-ac={ac}><dt>{k}</dt><dd><B>{v}</B></dd></div>)}
         </dl>
         <SecH i="users" ac="purple">{s.users_sec}</SecH>
         <dl className="ag-nums ag-nums--counts">
@@ -368,10 +373,17 @@ export function AgencyAdminDetail() {
         <p className="text-xs text-muted mt-2">{s.support}: <bdi dir="ltr">{p.support_telegram}</bdi> · {s.last_sync}: {d.last_synced_at ? jalali(d.last_synced_at, true, lang) : s.never}</p>
       </div>
 
-      <PortalLinkCard s={s} username={d.username} />
-
-      <div className="card ag-card">
-        <SecH i="sliders" ac="orange" style={{ marginTop: 0 }}>{s.actions}</SecH>
+      <div className="card ag-card ag-limits">
+        <div className="ag-card-h">
+          <SecH i="gauge" ac="blue" style={{ margin: 0 }}>{s.actions}</SecH>
+          {can('agency.accounting') && (
+            <a href="#accounting" className="ag-act ag-act--sm" data-tone="neutral"
+              onClick={(e) => { e.preventDefault(); document.getElementById('accounting')?.scrollIntoView({ behavior: 'smooth' }) }}>
+              <Ic n="doc" size={13} />{s.statement_link}
+            </a>
+          )}
+        </div>
+        <p className="ag-limits-cur">{s.cur_limit}: <b><B>{fmt(d.admin_limit_fmt, s)}</B></b>{!d.is_unlimited && <> · {s.usage}: <B>{d.usage_percent}%</B></>}</p>
         {!writable && <p className="ag-locked">{s.cutover}</p>}
         {msg && <Alert kind="success">{msg}</Alert>}
         <div className="ag-actions">
@@ -382,7 +394,10 @@ export function AgencyAdminDetail() {
         </div>
       </div>
 
-      {can('agency.accounting') && <LedgerCard username={d.username} />}
+      <PortalLinkCard s={s} username={d.username} />
+
+
+      {can('agency.accounting') && <div id="accounting" className="ag-anchor"><LedgerCard username={d.username} /></div>}
 
       <div className="card ag-card">
         <div className="ag-card-h"><h3 className="ag-sh" data-ac="cyan"><Ic n="clock" size={15} />{s.snapshots}</h3><span className="ag-count">{s.snap_n.replace('{n}', digits(d.snapshots.count, lang))}</span></div>
@@ -403,19 +418,58 @@ export function AgencyAdminDetail() {
   )
 }
 
-function SetLimitForm({ s, box }) {
-  const [mode, setMode] = useState(box.mode)
-  const [gb, setGb] = useState('')
+function SetLimitForm({ s, lang, username, current, box }) {
+  const [mode, setMode] = useState('set')
+  const [unit, setUnit] = useState('GB')
+  const [val, setVal] = useState('')
+  const [p, setP] = useState(null)
+  const [err, setErr] = useState('')
+  const [busy, setBusy] = useState(false)
+  useEffect(() => {
+    box.ready = false
+    const raw = val.replace(/[۰-۹]/g, (c) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(c)).replace(/[٠-٩]/g, (c) => '٠١٢٣٤٥٦٧٨٩'.indexOf(c)).replace(/[,٬\s]/g, '')
+    setP(null)
+    if (!raw) { setErr(''); return }
+    if (!/^\d+(\.\d+)?$/.test(raw) || Number(raw) <= 0) { setErr(s.v_positive); return }
+    const gb = unit === 'TB' ? Number(raw) * 1024 : Number(raw)
+    setErr(''); setBusy(true)
+    const h = setTimeout(() => {
+      api.post(`/admin/agency/admins/${encodeURIComponent(username)}/set-limit/preview/`, { action: mode, value_gb: gb }, { quiet: true })
+        .then((r) => { setP(r.data); Object.assign(box, { mode, gb, ready: true }) })
+        .catch((e) => setErr(apiError(e)))
+        .finally(() => setBusy(false))
+    }, 300)
+    return () => clearTimeout(h)
+  }, [mode, unit, val])
+  const money = (n) => `${Number(n || 0).toLocaleString('en-US')} ${lang === 'en' ? 'T' : 'تومان'}`
   return (
-    <div className="ag-form">
+    <div className="ag-form ag-form--limit">
+      <p className="ag-form-cur">{s.cur_limit}: <B>{current}</B></p>
       <label><span>{s.mode}</span>
-        <select className="input" value={mode} onChange={(e) => { setMode(e.target.value); box.mode = e.target.value }}>
+        <select className="input" value={mode} onChange={(e) => setMode(e.target.value)}>
           <option value="set">{s.m_set}</option><option value="add">{s.m_add}</option><option value="reduce">{s.m_reduce}</option>
         </select>
       </label>
-      <label><span>{s.gb}</span>
-        <input className="input" dir="ltr" inputMode="decimal" value={gb} onChange={(e) => { setGb(e.target.value); box.gb = e.target.value }} />
-      </label>
+      <div className="ag-form-amt">
+        <label><span>{s.amount}</span>
+          <input className="input" dir="ltr" inputMode="decimal" value={val} onChange={(e) => setVal(e.target.value)} aria-invalid={!!err} autoFocus />
+        </label>
+        <label><span>{s.unit}</span>
+          <select className="input" value={unit} onChange={(e) => setUnit(e.target.value)}><option>GB</option><option>TB</option></select>
+        </label>
+      </div>
+      {err && <p className="ag-form-err" role="alert">{err}</p>}
+      {busy && !err && <p className="text-xs text-muted">{s.p_wait}</p>}
+      {p && !err && (
+        <dl className="ag-preview" aria-live="polite">
+          <div><dt>{s.p_old_new}</dt><dd><B>{fmt(p.old_limit_fmt, s)}</B> {lang === 'fa' ? '←' : '→'} <b><B>{fmt(p.new_limit_fmt, s)}</B></b></dd></div>
+          <div><dt>{s.p_remaining}</dt><dd><B>{fmt(p.remaining_after_fmt, s)}</B></dd></div>
+          <div><dt>{s.p_charge}</dt><dd>{!p.charge ? <span className="text-muted">{s.p_no_charge}</span> : (
+            <><B>{Number(p.charge.gb).toLocaleString('en-US', { maximumFractionDigits: 2 })} GB</B> × <B>{p.charge.price_per_gb != null ? money(p.charge.price_per_gb) : '—'}</B> = <b><B>{money(p.charge.amount)}</B></b>
+              {p.charge.price_per_gb == null && <small className="ag-form-err">{s.p_no_price}</small>}</>
+          )}</dd></div>
+        </dl>
+      )}
     </div>
   )
 }
@@ -931,6 +985,26 @@ const CSS = `
 .ag-act { display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: background-color .15s, border-color .15s, transform .08s; }
 .ag-act:active:not(:disabled) { transform: translateY(1px) scale(.98); }
 .ag-act[data-tone="primary"]:active:not(:disabled) { background: color-mix(in srgb, var(--c-primary) 60%, #000); }
+
+/* v1.15: limits section, limit form, tinted cards */
+.ag-limits .ag-card-h { flex-wrap: wrap; }
+.ag-limits-cur { font-size: 13px; color: var(--c-muted-fg); margin: -2px 0 10px; }
+.ag-limits-cur b { color: var(--c-text); }
+.ag-anchor { scroll-margin-top: 80px; }
+.ag-form--limit { grid-template-columns: 1fr; }
+.ag-form-cur { font-size: 12.5px; color: var(--c-muted-fg); }
+.ag-form-amt { display: grid; grid-template-columns: minmax(0, 1fr) 96px; gap: 10px; }
+.ag-form-err { display: block; font-size: 12px; font-weight: 600; color: var(--c-danger-fg); }
+.ag-preview { display: flex; flex-direction: column; border-top: 1px solid var(--c-border); margin-top: 4px; }
+.ag-preview > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; padding: 8px 0; border-bottom: 1px solid var(--c-border); font-size: 13px; }
+.ag-preview dt { color: var(--c-muted-fg); }
+.ag-kpi, .ag-nums > div[data-ac], .ag-nums--counts > div[data-k] {
+  background-image: linear-gradient(color-mix(in srgb, var(--ac) 11%, transparent), color-mix(in srgb, var(--ac) 11%, transparent));
+  border-color: color-mix(in srgb, var(--ac) 32%, var(--c-border)) !important; }
+.ag-nums--counts > div[data-k="total"] { --ac: var(--ac-purple); } .ag-nums--counts > div[data-k="active"] { --ac: var(--ac-green); }
+.ag-nums--counts > div[data-k="on_hold"] { --ac: var(--ac-blue); } .ag-nums--counts > div[data-k="limited"] { --ac: var(--ac-orange); }
+.ag-nums--counts > div[data-k="disabled"] { --ac: var(--ac-red); } .ag-nums--counts > div[data-k="expired"] { --ac: var(--ac-gray); }
+.ag-kpi { border-top-color: var(--ac) !important; }
 @media (max-width: 767px) {
   .ag-portal { flex-direction: column; }
   .ag-gpick-i { min-height: 44px; } .ag-gform .input { font-size: 16px; height: 44px; } .ag-act--sm { min-height: 40px; }

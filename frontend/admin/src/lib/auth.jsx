@@ -17,7 +17,7 @@ export function AuthProvider({ children }) {
   useEffect(() => { refreshMe() }, [])
 
   const login = async (username, password) => {
-    const { data } = await api.post('/admin/auth/login/', { username, password })
+    const { data } = await api.post('/admin/auth/login/', { username, password }, { quiet: true })
     tokens.set(data)
     setStaff(data.staff)
     return data.staff

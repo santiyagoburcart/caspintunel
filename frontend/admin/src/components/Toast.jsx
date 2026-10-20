@@ -18,7 +18,7 @@ export function ToastProvider({ children }) {
     clearTimer()
     setToast({ kind, message })
     if (kind !== 'loading') {
-      timerRef.current = setTimeout(() => setToast(null), 3000)
+      timerRef.current = setTimeout(() => setToast(null), kind === 'error' ? 6000 : 3000)   // reasons need time to read
     }
   }, [])
 

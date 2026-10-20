@@ -132,7 +132,6 @@ function NavLinks({ items, t, onNavigate }) {
 }
 
 function LegacyLayout() {
-  const { pathname } = useLocation()
   const { staff, logout, can } = useAuth()
   const { t, lang, setLang } = useI18n()
   const { mode, toggle, locked, config } = useTheme()
@@ -191,7 +190,7 @@ function LegacyLayout() {
           </span>
           <button className="btn-ghost shrink-0" onClick={() => { logout(); go('/login') }}>{t('logout')}</button>
         </header>
-        <main className={`admin-main mx-auto max-w-6xl p-3${pathname.startsWith('/agency') ? ' admin-main--agency' : ''}`}><Outlet /></main>
+        <main className={`admin-main mx-auto max-w-6xl p-3`}><Outlet /></main>
       </div>
     </div>
   )
@@ -348,7 +347,7 @@ function CaspianLayout() {
           <button className="csp-tb-btn" onClick={() => { logout(); go('/login') }}>{t('logout')}</button>
         </header>
 
-        <main className={`csp-content admin-main mx-auto max-w-6xl p-3${pathname.startsWith('/agency') ? ' admin-main--agency' : ''}`}><Outlet /></main>
+        <main className={`csp-content admin-main mx-auto max-w-6xl p-3`}><Outlet /></main>
       </div>
 
       {/* mobile bottom nav (≤767px) — 5 tabs, the payments queue is the raised

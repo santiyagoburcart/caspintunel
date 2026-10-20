@@ -17,6 +17,17 @@ export const tokens = {
 
 export const api = axios.create({ baseURL: '/api/v1' })
 
+// Feedback for every action: each POST/PUT/PATCH/DELETE through `api` reports its
+// outcome to <FeedbackBridge> (a toast: success, or the real failure reason).
+// Pass `{ quiet: true }` in the request config for calls that are not user
+// actions (login, live previews). A page toast shown afterwards replaces it.
+export const feedback = { emit: null }
+const MUTATING = new Set(['post', 'put', 'patch', 'delete'])
+const report = (cfg, payload) => {
+  if (!cfg || cfg.quiet || !MUTATING.has((cfg.method || '').toLowerCase())) return
+  try { feedback.emit?.({ method: cfg.method.toLowerCase(), url: cfg.url || '', ...payload }) } catch { /* never break a request */ }
+}
+
 api.interceptors.request.use((cfg) => {
   if (tokens.access) cfg.headers.Authorization = `Bearer ${tokens.access}`
   return cfg
@@ -36,7 +47,7 @@ function sessionExpired() {
 
 let refreshing = null
 api.interceptors.response.use(
-  (r) => r,
+  (r) => { report(r.config, { ok: true, data: r.data, status: r.status }); return r },
   async (error) => {
     const { response, config } = error
     if (response?.status === 401 && config && !config._retry) {
@@ -59,9 +70,33 @@ api.interceptors.response.use(
       // at all falls through to the plain reject below (normal logged-out 401)
       if (tokens.access) return sessionExpired()
     }
+    report(config, { ok: false, error })
     return Promise.reject(error)
   },
 )
+
+/** The real reason of a failed request, for people: field errors with their field,
+ * file-size / network / server failures in words (fa / en). */
+export function failureReason(e, lang = 'fa') {
+  const fa = lang !== 'en'
+  const st = e?.response?.status
+  const d = e?.response?.data
+  if (!e?.response) return fa ? 'ارتباط با سرور برقرار نشد — اینترنت یا سرور را بررسی کنید.' : 'Could not reach the server — check the connection.'
+  if (st === 413) return fa ? 'حجم فایل بیش از حد مجاز است (حداکثر 15 مگابایت).' : 'The file is too large (max 15 MB).'
+  if (st === 415) return fa ? 'نوع فایل پشتیبانی نمی‌شود.' : 'Unsupported file type.'
+  if (st === 403) return (d && typeof d.detail === 'string' && d.detail) || (fa ? 'اجازهٔ این کار را ندارید.' : 'You do not have permission for this.')
+  if (d && typeof d === 'object' && !Array.isArray(d)) {
+    if (typeof d.detail === 'string') return d.detail
+    if (typeof d.message === 'string' && d.ok === false) return d.message
+    const parts = Object.entries(d).filter(([k]) => k !== 'code').slice(0, 2).map(([k, v]) => {
+      const msg = Array.isArray(v) ? v.map((x) => (typeof x === 'object' ? JSON.stringify(x) : x)).join(' ') : (typeof v === 'object' ? JSON.stringify(v) : String(v))
+      return k === 'non_field_errors' ? msg : `${k}: ${msg}`
+    })
+    if (parts.length) return parts.join(' · ')
+  }
+  if (typeof d === 'string' && d.length < 200 && !d.trim().startsWith('<')) return d
+  return fa ? `خطای سرور (${st}) — دوباره تلاش کنید.` : `Server error (${st}) — please try again.`
+}
 
 export function apiError(e, fallback = 'خطایی رخ داد') {
   const d = e?.response?.data

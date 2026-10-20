@@ -32,6 +32,41 @@ def _gate():
         raise PreCutover(PRE_CUTOVER)
 
 
+def new_limit_for(current_limit: int, action: str, value_gb: float):
+    """PAMP set_limit's arithmetic, verbatim (None = unknown action)."""
+    gb = 1024 ** 3
+    if action == 'set':
+        return int(value_gb * gb)
+    elif action == 'add':
+        return int(current_limit + value_gb * gb)
+    elif action == 'reduce':
+        return max(0, int(current_limit - value_gb * gb))
+    return None
+
+
+def preview_set_limit(username: str, action: str, value_gb) -> dict:
+    """What set_limit WOULD do — no panel call, nothing saved. For the confirm dialog."""
+    from .ledger import quote_quota_charge
+    from .models import _fmt_bytes
+
+    try:
+        value_gb = float(value_gb or 0)
+    except (TypeError, ValueError):
+        raise ValueError("Invalid value")
+    if value_gb < 0:
+        raise ValueError("Invalid value")
+    a = get_object_or_404(PanelAdmin, username=username)
+    old = a.admin_limit_bytes or 0
+    new = new_limit_for(old, action, value_gb)
+    if new is None:
+        raise ValueError("Unknown action")
+    fmt = lambda b: "Unlimited" if b <= 0 else _fmt_bytes(b)
+    q = quote_quota_charge(username, old, new)
+    return {"old_limit_fmt": fmt(old), "new_limit_fmt": fmt(new), "old_limit_bytes": old, "new_limit_bytes": new,
+            "remaining_after_fmt": fmt(max(0, new - a.admin_used_bytes)) if new > 0 else "Unlimited",
+            "charge": q}
+
+
 def set_limit(username: str, action: str, value_gb, by: str = "") -> tuple[bool, str]:
     """PAMP set_limit: action set | add | reduce, value in GB (1024**3).
     caspintunel addition after PAMP's logic: an increase records a quota charge
@@ -51,13 +86,8 @@ def set_limit(username: str, action: str, value_gb, by: str = "") -> tuple[bool,
     current_limit = panel_admin.admin_limit_bytes or 0
     gb = 1024 ** 3
 
-    if action == 'set':
-        new_limit_bytes = int(value_gb * gb)
-    elif action == 'add':
-        new_limit_bytes = int(current_limit + value_gb * gb)
-    elif action == 'reduce':
-        new_limit_bytes = max(0, int(current_limit - value_gb * gb))
-    else:
+    new_limit_bytes = new_limit_for(current_limit, action, value_gb)
+    if new_limit_bytes is None:
         return False, "Unknown action"
 
     success, message = client.set_admin_data_limit(username, new_limit_bytes)

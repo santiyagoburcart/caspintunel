@@ -50,6 +50,17 @@ def _round(x: Decimal) -> Decimal:
     return x.quantize(Decimal(1), rounding=ROUND_HALF_UP)
 
 
+def quote_quota_charge(username: str, old_limit_bytes: int, new_limit_bytes: int) -> dict | None:
+    """The charge an increase would create today (None = no charge)."""
+    old, new = int(old_limit_bytes or 0), int(new_limit_bytes or 0)
+    if new <= old:
+        return None
+    gb = Decimal(new - old) / GB
+    price = price_at(username, today())
+    return {"gb": gb.quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP), "price_per_gb": price.price_per_gb if price else None,
+            "amount": _round(gb * price.price_per_gb) if price else Decimal(0)}
+
+
 def record_quota_charge(username: str, old_limit_bytes: int, new_limit_bytes: int, by: str = "") -> LedgerEntry | None:
     """Called after a successful limit change on the panel. Only an increase charges."""
     old, new = int(old_limit_bytes or 0), int(new_limit_bytes or 0)
