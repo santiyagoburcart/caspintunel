@@ -13,12 +13,16 @@ from django.utils import timezone
 
 from apps.ops.models import BackupLog, BackupStatus
 
+from .client import redact_token
 from .config import backup_client, get_bot_config
 from .models import BotType
 
 log = logging.getLogger("caspintunel")
 
 BACKUP_DIR = Path(os.environ.get("BACKUP_DIR", "/app/backups"))
+# Bot API (api.telegram.org) refuses uploads above 50 MB; bigger dumps go in parts
+TELEGRAM_UPLOAD_LIMIT = 50 * 1000 * 1000
+PART_SIZE = 45 * 1024 * 1024
 
 
 def _dump_database(target: Path) -> int:
@@ -60,19 +64,56 @@ def run_database_backup() -> BackupLog:
         )
 
     entry = BackupLog.objects.create(filename=filename, size=size, status=BackupStatus.OK)
+    send_backup_file(entry, path)
+    return entry
 
+
+def _split(path: Path) -> list[Path]:
+    """Cut `path` into PART_SIZE pieces next to it (`<name>.part01` …).
+    Restore: `cat <name>.part* > <name>`."""
+    parts = []
+    with open(path, "rb") as fin:
+        i = 0
+        while chunk := fin.read(PART_SIZE):
+            i += 1
+            part = path.with_name(f"{path.name}.part{i:02d}")
+            part.write_bytes(chunk)
+            parts.append(part)
+    return parts
+
+
+def send_backup_file(entry: BackupLog, path: Path) -> bool:
+    """Upload one backup to the backup chat; `sent_to_telegram` is set only
+    when Telegram accepted every byte (all parts). Never raises."""
     cfg = get_bot_config(BotType.BACKUP)
     client = backup_client()
-    if client and cfg and cfg.backup_chat_id:
-        try:
-            client.send_document(cfg.backup_chat_id, str(path), caption=filename)
-            entry.sent_to_telegram = True
-            entry.save(update_fields=["sent_to_telegram"])
-        except Exception as exc:  # noqa: BLE001 - telegram outage must not fail the backup
-            entry.error = f"send failed: {exc}"[:240]
-            entry.save(update_fields=["error"])
-            log.warning("backup send to telegram failed: %s", exc)
-    else:
-        log.info("backup bot not configured — kept %s locally only", filename)
+    if not (client and cfg and cfg.backup_chat_id):
+        log.info("backup bot not configured — kept %s locally only", entry.filename)
+        return False
 
-    return entry
+    parts: list[Path] = []
+    try:
+        if path.stat().st_size <= TELEGRAM_UPLOAD_LIMIT:
+            client.send_document(cfg.backup_chat_id, str(path), caption=entry.filename)
+        else:
+            # over the Bot API upload cap: send it in pieces, never drop it
+            parts = _split(path)
+            for i, part in enumerate(parts, 1):
+                client.send_document(
+                    cfg.backup_chat_id, str(part),
+                    caption=f"{entry.filename} · part {i}/{len(parts)} · "
+                            f"join: cat {entry.filename}.part* > {entry.filename}",
+                )
+    except Exception as exc:  # noqa: BLE001 - telegram outage must not fail the backup
+        entry.error = redact_token(f"send failed: {exc}")[:240]
+        entry.save(update_fields=["error"])
+        log.warning("backup send to telegram failed: %s", redact_token(exc))
+        return False
+    finally:
+        for part in parts:
+            part.unlink(missing_ok=True)
+
+    entry.sent_to_telegram = True
+    entry.error = ""
+    entry.save(update_fields=["sent_to_telegram", "error"])
+    return True

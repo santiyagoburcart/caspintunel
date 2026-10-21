@@ -597,7 +597,8 @@ class ResourceStatSerializer(serializers.ModelSerializer):
 class BackupLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = BackupLog
-        fields = ("id", "filename", "size", "status", "sent_to_telegram", "error", "created_at")
+        fields = ("id", "filename", "size", "status", "sent_to_telegram", "error", "created_at",
+                  "local_deleted_at")
 
 
 class AdminServiceSerializer(serializers.ModelSerializer):

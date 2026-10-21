@@ -12,6 +12,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from apps.ops.models import BackupLog, HealthCheck, HealthTarget, ResourceStat
+from apps.ops.retention import storage_snapshot
 
 from .. import hostnet
 from ..permissions import StaffPermission
@@ -88,6 +89,7 @@ class MonitoringView(AdminAPIView):
             "backups": BackupLogSerializer(
                 BackupLog.objects.order_by("-created_at")[:6], many=True
             ).data,
+            "storage": storage_snapshot(),
         })
 
 

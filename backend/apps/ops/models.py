@@ -18,6 +18,8 @@ class BackupLog(models.Model):
     sent_to_telegram = models.BooleanField(default=False)
     error = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    # set when retention removed the local file (only ever after a confirmed send)
+    local_deleted_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = "backup_log"
@@ -25,6 +27,22 @@ class BackupLog(models.Model):
 
     def __str__(self) -> str:
         return self.filename
+
+
+class CleanupRun(models.Model):
+    """One run of the local-backup retention (`apps/ops/retention.py`)."""
+
+    ran_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    freed_bytes = models.BigIntegerField(default=0)
+    # {"db_backups": n, "pre_update": n, "migration": n, "log_rows": n, "resent": n}
+    deleted = models.JSONField(default=dict)
+    # files that were kept on purpose (unsent / no delivery record)
+    warnings = models.JSONField(default=list)
+    alerted = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = "cleanup_run"
+        ordering = ("-ran_at",)
 
 
 class HealthTarget(models.TextChoices):

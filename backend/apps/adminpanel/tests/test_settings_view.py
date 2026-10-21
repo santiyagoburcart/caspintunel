@@ -70,3 +70,11 @@ def test_public_config_exposes_display_mode(api):
     assert api.get("/api/v1/config/").data["product_display_mode"] == "grouped"
     set_setting("product_display_mode", "flat", "str")
     assert api.get("/api/v1/config/").data["product_display_mode"] == "flat"
+
+
+def test_backup_retention_days_default_and_clamp(boss):
+    r = boss.get("/api/v1/admin/settings/")
+    row = next(s for s in r.data["settings"] if s["key"] == "backup_retention_days")
+    assert row["value"] == 2
+    boss.put("/api/v1/admin/settings/", {"backup_retention_days": 0}, format="json")
+    assert get_setting("backup_retention_days") == 1

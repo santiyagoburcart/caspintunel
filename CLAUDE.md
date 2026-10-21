@@ -9,6 +9,8 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
 - Panel = **PasarGuard v5.3.0 over HTTP only** (`apps/panel/client.py`), never vendored.
   Verified live: `GET /api/users?search=&limit=` → `{"users":[…],"total":n}`; user objects carry
   `hwid_limit` (null = unlimited), `group_ids`, `note`, `on_hold_expire_duration`, `admin`.
+- **PRODUCTION = this Finland server** (host `ubuntu-4gb-hel1-2`, `46.62.192.189`), migrated
+  from `66.245.203.63` on 2026-10-21 (`docs/migration.md`). Every command here touches the live site.
 - **This server runs PROD** (`docker-compose.yml` + `docker-compose.prod.yml`; `.env` sets `COMPOSE_FILE`
   so plain `docker compose …` means prod): nginx → built SPAs, gunicorn (`web`), daphne (`/ws/`), celery
   worker/beat, both bots. Code is **baked into images** — a backend/frontend change is live only after
@@ -21,6 +23,11 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   `:rollback`, then pulls/builds/ups. **Rollback: `./update.sh --rollback`** (images only; restore the dump
   if a migration must be undone). Build images only through `update.sh`: with the containerd image store a
   manual `docker compose build` drops the previous image, so there is nothing left to tag.
+- **Local backup retention** (`apps/ops/retention.py`, hourly beat `prune_backups_task`, `manage.py cleanup_backups
+  [--dry-run]`): DB backups are deleted after `backup_retention_days` (Settings → Backup, default 2) ONLY when
+  `BackupLog.sent_to_telegram`; unsent ones are re-sent, else kept + alerted (backup chat, Monitoring); the newest
+  2 always stay. Uploads > 50 MB go in parts. `pre-update-*` keep 3, `backups/migration/*` 7 days; Docker leftovers:
+  `scripts/docker-cleanup.sh` (run by `update.sh`; keeps `:latest` + `:rollback`). Never delete an unsent backup.
 - Prod `web` does NOT migrate/collectstatic on boot (`RUN_MIGRATIONS=0`, dev still does); `update.sh` and
   `install.sh` run them. `seed` must stay idempotent and must never overwrite admin-panel values.
 - Tests: **only** `./scripts/test.sh [pytest args]` — isolated stack (`docker-compose.test.yml`, project

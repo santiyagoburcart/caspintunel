@@ -6,13 +6,23 @@
   on the entry, never fatal.
 - Interval = `backup_interval_minutes` setting; changing it live re-schedules the
   beat task (signal on `Setting` save).
-- Retention: `prune_backups_task` deletes files + logs older than `BACKUP_RETENTION_DAYS`.
+- Retention (`apps/ops/retention.py`, hourly `prune_backups_task`, or
+  `docker compose exec celery_worker python manage.py cleanup_backups [--dry-run]`):
+  - DB backups: deleted after **Settings → Backup → Keep local copies (days)** (default 2) — only
+    once Telegram confirmed the upload (`sent_to_telegram`). Unsent ones are re-sent hourly; if that
+    fails they stay and the backup chat gets an alert (at most every 6 h). The newest 2 always stay.
+  - Dumps above Telegram's 50 MB bot limit are sent as `<name>.partNN` pieces
+    (`cat <name>.part* > <name>` to join); a failed piece = not sent.
+  - `backups/pre-update-*.sql.gz` (update.sh): newest 3 stay. `backups/migration/*`: deleted after 7 days.
+  - Docker: `scripts/docker-cleanup.sh` (end of every `update.sh`) removes untagged images and build
+    cache unused for 72 h; `:latest` + `:rollback` (= the previous release) stay.
+  - Monitoring → "Disk & cleanup" shows disk usage, what `backups/` holds, the last run and kept files.
 - Manual: panel → Monitoring → "Run backup", or
   `docker compose exec celery_worker python -c "from apps.telegram.backup import run_database_backup; run_database_backup()"`
 - Restore: `gunzip < backups/x.sql.gz | docker compose exec -T db mysql -u root -p<root> caspintunel`
 
 ## Monitoring
-- Panel → Monitoring: 9 health targets, CPU/RAM/disk gauges, backup list, version/update.
+- Panel → Monitoring: 9 health targets, CPU/RAM/disk gauges, disk & cleanup, backup list, version/update.
 - Health probes run every 2 min (`health_check` rows); resources every 5 min.
 - Bots report a Redis heartbeat from a daemon thread — "alive" even while idling
   without a token.

@@ -82,6 +82,108 @@ function fmtBytes(n) {
   return `${v.toFixed(v >= 10 || i === 0 ? 0 : 1)} ${u[i]}`
 }
 
+// ---- storage & backup retention (apps/ops/retention.py) — shared by both variants
+const ST = {
+  fa: {
+    title: 'فضای دیسک و پاک‌سازی', sub: '(نگهداری بک‌آپ محلی)',
+    disk: 'دیسک سرور', free: 'آزاد', local: 'بک‌آپ‌های محلی', keep: 'نگهداری',
+    days: 'روز', unsent: 'ارسال‌نشده به تلگرام', pre: 'دامپ‌های پیش از به‌روزرسانی',
+    mig: 'آرشیو مهاجرت', last: 'آخرین پاک‌سازی', never: 'هنوز اجرا نشده',
+    freed: 'آزاد شد', deleted: 'حذف', resent: 'ارسال مجدد', kept: 'نگه داشته شد (تحویل به تلگرام تأیید نشده):',
+    r_not_sent: 'ارسال نشده', r_no_record: 'بدون سابقه', r_delete_failed: 'حذف ناموفق',
+  },
+  en: {
+    title: 'DISK & CLEANUP', sub: '(local backup retention)',
+    disk: 'Server disk', free: 'free', local: 'Local backups', keep: 'keep',
+    days: 'days', unsent: 'Not sent to Telegram', pre: 'Pre-update dumps',
+    mig: 'Migration archives', last: 'Last cleanup', never: 'not run yet',
+    freed: 'freed', deleted: 'deleted', resent: 'resent', kept: 'Kept (Telegram delivery not confirmed):',
+    r_not_sent: 'not sent', r_no_record: 'no record', r_delete_failed: 'delete failed',
+  },
+}
+
+function StorageRows({ st, lang }) {
+  const t = ST[lang] || ST.fa
+  const d = (v) => D(v, lang)
+  const sz = (n) => fmtBytes(n) ?? '—'
+  const disk = st.disk
+  const bk = st.backups
+  const last = st.last_cleanup
+  const del = last?.deleted || {}
+  const removed = (del.db_backups || 0) + (del.pre_update || 0) + (del.migration || 0)
+  const warn = disk && disk.percent >= 85
+  return (
+    <div className="stg">
+      {disk && (
+        <div className="stg-disk">
+          <div className="stg-row">
+            <span className="k">{t.disk}</span>
+            <span className={'v mono-num' + (warn ? ' bad' : '')}>{sz(disk.used)} / {sz(disk.total)} · {d(disk.percent)}%</span>
+          </div>
+          <div className="stg-bar"><i className={warn ? 'bad' : ''} style={{ width: `${Math.min(disk.percent || 0, 100)}%` }} /></div>
+          <div className="stg-row sm"><span className="k" /><span className="v mono-num">{sz(disk.free)} {t.free}</span></div>
+        </div>
+      )}
+      {bk && (
+        <>
+          <div className="stg-row">
+            <span className="k">{t.local} <span className="dim">({t.keep} {d(st.retention_days)} {t.days})</span></span>
+            <span className="v mono-num">{d(bk.db_count)} · {sz(bk.db_bytes)}</span>
+          </div>
+          <div className="stg-row">
+            <span className="k">{t.unsent}</span>
+            <span className={'v mono-num' + (bk.unsent_count ? ' bad' : '')}>{d(bk.unsent_count)}</span>
+          </div>
+          <div className="stg-row">
+            <span className="k">{t.pre}</span>
+            <span className="v mono-num">{d(bk.pre_update_count)} · {sz(bk.pre_update_bytes)}</span>
+          </div>
+          <div className="stg-row">
+            <span className="k">{t.mig}</span>
+            <span className="v mono-num">{sz(bk.migration_bytes)}</span>
+          </div>
+        </>
+      )}
+      <div className="stg-row">
+        <span className="k">{t.last}</span>
+        <span className="v mono-num">
+          {last
+            ? `${relTime(last.ran_at, lang)} · ${t.freed} ${sz(last.freed_bytes)} · ${t.deleted} ${d(removed)}${del.resent ? ` · ${t.resent} ${d(del.resent)}` : ''}`
+            : t.never}
+        </span>
+      </div>
+      {last?.warning_count > 0 && (
+        <div className="stg-warn">
+          <div>{t.kept} {d(last.warning_count)}</div>
+          {last.warnings.slice(0, 5).map((w) => (
+            <div className="fn mono-num" key={w.file}>{w.file} · {t['r_' + w.reason] || w.reason}</div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const STG_CSS = `
+.stg { display:flex; flex-direction:column; gap:2px; }
+.stg-row { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:10px; padding:8px 0;
+  border-bottom:1px solid var(--cm-divider, var(--c-border)); font-size:13px; }
+.stg-row.sm { border-bottom:0; padding-top:4px; font-size:11px; }
+.stg-row .k { color:var(--cm-text2, var(--c-text)); min-width:0; }
+.stg-row .k .dim, .stg-row.sm .v { color:var(--cm-dim, var(--c-text-muted)); font-size:11px; }
+.stg-row .v { white-space:nowrap; text-align:end; color:var(--cm-text, var(--c-text)); font-weight:600; }
+.stg-row .v.bad { color:var(--c-danger); }
+.stg-disk { padding-bottom:4px; border-bottom:1px solid var(--cm-divider, var(--c-border)); }
+.stg-disk .stg-row:first-child { border-bottom:0; }
+.stg-bar { height:8px; border-radius:999px; background:var(--cm-well, var(--c-border)); overflow:hidden; }
+.stg-bar i { display:block; height:100%; border-radius:inherit; background:var(--cm-accent, var(--c-primary)); }
+.stg-bar i.bad { background:var(--c-danger); }
+.stg-warn { margin-top:10px; padding:10px 12px; border-radius:10px; font-size:12px;
+  color:var(--c-danger-fg, var(--c-danger)); background:color-mix(in srgb, var(--c-danger) 10%, transparent); }
+.stg-warn .fn { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; opacity:.9; margin-top:2px; }
+@media (max-width:480px){ .stg-row { grid-template-columns:1fr; gap:2px; } .stg-row .v { text-align:start; white-space:normal; } }
+`
+
 function fmtDur(sec, m, d) {
   if (sec == null) return '—'
   const dd = Math.floor(sec / 86400)
@@ -432,6 +534,17 @@ function LegacyMonitoring() {
                 )
               })}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---- disk & cleanup ---- */}
+      {data.storage && (
+        <div className="grid r1">
+          <div className="card">
+            <style>{STG_CSS}</style>
+            <div className="title">{(ST[lang] || ST.fa).title}</div>
+            <StorageRows st={data.storage} lang={lang} />
           </div>
         </div>
       )}
@@ -1155,6 +1268,15 @@ function CaspianMonitoring() {
               </div>
               <CmIpList m={m} srv={srv} showIp={showIp} onToggle={() => setShowIp((s) => !s)} lang={lang} />
             </div>
+          </section>
+        )}
+
+        {/* ================= DISK & CLEANUP ================= */}
+        {data.storage && (
+          <section className="cm-card">
+            <style>{STG_CSS}</style>
+            <div className="cm-h2-row"><h2 className="cm-h2">{ST[lang]?.title || ST.fa.title}</h2><span className="cm-h2-fa">{(ST[lang] || ST.fa).sub}</span></div>
+            <StorageRows st={data.storage} lang={lang} />
           </section>
         )}
 

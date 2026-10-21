@@ -59,7 +59,7 @@ const HUB = {
     alerts: { t: 'هشدارها', d: 'آستانهٔ هشدار حجم و انقضا' },
     unique_amount: { t: 'مبلغ تصادفی', d: 'بازهٔ مبلغ افزودهٔ خودکار کارت‌به‌کارت' },
     requirements: { t: 'الزامات', d: 'تأیید ایمیل، کد معرف و عضویت اجباری' },
-    backup: { t: 'بک‌آپ و پشتیبان‌گیری', d: 'فاصلهٔ زمانی پشتیبان‌گیری خودکار' },
+    backup: { t: 'بک‌آپ و پشتیبان‌گیری', d: 'فاصلهٔ پشتیبان‌گیری و مدت نگهداری محلی' },
     branding: { t: 'برندینگ', d: 'لوگو، فاویکون، نام و دامنهٔ سامانه' },
     roles: { t: 'نقش‌ها', d: 'تعریف سطوح دسترسی و حساب‌های ادمین' },
     pages: { t: 'صفحات', d: 'سوالات متداول و شرایط استفاده' },
@@ -91,7 +91,7 @@ const HUB = {
     alerts: { t: 'Alerts', d: 'Volume and expiry warning thresholds' },
     unique_amount: { t: 'Unique amount', d: 'Auto-added card-to-card amount range' },
     requirements: { t: 'Requirements', d: 'Email verification, referral, forced join' },
-    backup: { t: 'Backup & scheduling', d: 'Automatic backup interval' },
+    backup: { t: 'Backup & scheduling', d: 'Backup interval and local retention' },
     branding: { t: 'Branding', d: 'Logo, favicon, name and domain' },
     roles: { t: 'Roles', d: 'Define access levels and admin accounts' },
     pages: { t: 'Pages', d: 'FAQ and terms of use' },
@@ -232,7 +232,7 @@ const T = {
     card_h: 'پرداخت و کارت‌به‌کارت', card_sub: 'زمان رزرو فاکتور و بازهٔ مبلغ افزودهٔ خودکار برای تأیید پرداخت',
     alerts_h: 'هشدارها', alerts_sub: 'آستانهٔ هشدار حجم و تعداد روزهای باقی‌مانده تا انقضا',
     sync_h: 'همگام‌سازی سرویس‌ها', sync_sub: 'فاصلهٔ خواندن خودکار وضعیت سرویس‌ها از پنل‌های پاسارگارد',
-    backup_h: 'بک‌آپ و پشتیبان‌گیری', backup_sub: 'فاصلهٔ زمانی پشتیبان‌گیری خودکار از پایگاه‌داده — همچنین در صفحهٔ ربات‌های تلگرام قابل تنظیم است',
+    backup_h: 'بک‌آپ و پشتیبان‌گیری', backup_sub: 'فاصلهٔ پشتیبان‌گیری خودکار (در صفحهٔ ربات‌های تلگرام هم قابل تنظیم است) و مدت نگهداری نسخه‌های محلی — نسخه‌ای که تحویلش به تلگرام تأیید نشده هرگز پاک نمی‌شود',
     toggles_h: 'الزامات', toggles_sub: 'قوانین ثبت‌نام و ورود کاربران به سایت و ربات',
     display_h: 'نمایش', display_sub: 'زبان پیش‌فرض سامانه و شیوهٔ نمایش محصولات به خریداران',
     reset: 'بازنشانی مقادیر', save: 'ذخیرهٔ تغییرات',
@@ -272,7 +272,7 @@ const T = {
     card_h: 'Payment & card-to-card', card_sub: 'Invoice reservation window and the auto-added amount range used to confirm payments',
     alerts_h: 'Alerts', alerts_sub: 'Volume warning threshold and days-before-expiry notice',
     sync_h: 'Service sync', sync_sub: 'How often service status is auto-read from the Pasargad panels',
-    backup_h: 'Backup & scheduling', backup_sub: 'How often the database is auto-backed up — also editable on the Telegram Bots page',
+    backup_h: 'Backup & scheduling', backup_sub: 'How often the database is backed up (also on the Telegram Bots page) and how long local copies stay — a backup Telegram has not confirmed is never deleted',
     toggles_h: 'Requirements', toggles_sub: 'Rules for how users register and sign in on the site and the bot',
     display_h: 'Display', display_sub: 'Default system language and how products are shown to buyers',
     reset: 'Reset values', save: 'Save changes',
@@ -312,6 +312,7 @@ const T = {
 const HINT = {
   fa: {
     backup_interval_minutes: 'پیش‌فرض: 1440 (24 ساعت)',
+    backup_retention_days: 'پیش‌فرض: 2 — همیشه دست‌کم 2 نسخهٔ آخر می‌ماند',
     unique_amount_reservation_minutes: 'زمان انقضای فاکتور کارت‌به‌کارت',
     unique_amount_min: 'کف مبلغ افزوده — تومان',
     unique_amount_max: 'سقف مبلغ افزوده — تومان',
@@ -321,6 +322,7 @@ const HINT = {
   },
   en: {
     backup_interval_minutes: 'default: 1440 (24h)',
+    backup_retention_days: 'default: 2 — the latest 2 copies always stay',
     unique_amount_reservation_minutes: 'card-to-card invoice expiry',
     unique_amount_min: 'floor of the added amount — toman',
     unique_amount_max: 'ceiling of the added amount — toman',
@@ -330,7 +332,7 @@ const HINT = {
   },
 }
 const RANGE = {
-  backup_interval_minutes: [5, 43200], unique_amount_reservation_minutes: [5, 720],
+  backup_interval_minutes: [5, 43200], backup_retention_days: [1, 365], unique_amount_reservation_minutes: [5, 720],
   unique_amount_min: [1, 100000], unique_amount_max: [1, 100000],
   alert_volume_percent: [1, 100], alert_expire_days: [1, 60],
   service_sync_interval_minutes: [1, 1440],
@@ -763,7 +765,7 @@ export default function Settings() {
   // together, alert thresholds and the sync/backup intervals are distinct concerns
   const AMOUNT_KEYS = ['unique_amount_reservation_minutes', 'unique_amount_min', 'unique_amount_max']
   const SYNC_KEYS = ['service_sync_interval_minutes']
-  const BACKUP_KEYS = ['backup_interval_minutes']
+  const BACKUP_KEYS = ['backup_interval_minutes', 'backup_retention_days']
   const amountNums = nums.filter((x) => AMOUNT_KEYS.includes(x.key))
   const alertNums = nums.filter((x) => !AMOUNT_KEYS.includes(x.key) && !SYNC_KEYS.includes(x.key) && !BACKUP_KEYS.includes(x.key))
   const syncNums = nums.filter((x) => SYNC_KEYS.includes(x.key))

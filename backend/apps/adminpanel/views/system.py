@@ -19,6 +19,8 @@ log = logging.getLogger("caspintunel")
 EDITABLE_SETTINGS = [
     # key, type, default, min, max  (min/max advisory, enforced for ints)
     ("backup_interval_minutes", "int", 1440, 5, 43200),
+    # local copies only; a backup is deleted only after Telegram confirmed it
+    ("backup_retention_days", "int", 2, 1, 365),
     ("service_sync_interval_minutes", "int", 60, 1, 1440),
     ("unique_amount_reservation_minutes", "int", 30, 5, 720),
     ("unique_amount_min", "int", 200, 1, 100000),

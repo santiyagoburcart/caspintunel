@@ -40,6 +40,10 @@ if [ "${1:-}" != "--dev" ]; then
     || { echo "!! DB dump failed — aborting update"; exit 1; }
   chmod 600 "$ROOT/backups/pre-update-$stamp.sql.gz"
   echo "   backups/pre-update-$stamp.sql.gz"
+  # retention: the newest 3 pre-update dumps stay (this one included)
+  ls -1t "$ROOT"/backups/pre-update-*.sql.gz 2>/dev/null | tail -n +4 | while read -r old; do
+    rm -f -- "$old" && echo "   removed old $(basename "$old")"
+  done || true
   for svc in $APP_SERVICES; do
     cid=$($COMPOSE ps -q "$svc" 2>/dev/null || true)
     [ -n "$cid" ] || continue
@@ -131,5 +135,8 @@ $COMPOSE exec -T nginx nginx -t >/dev/null 2>&1 && $COMPOSE exec -T nginx nginx 
 
 # clear the panel's update sentinel if present
 rm -f "$ROOT/backups/.update-requested" || true
+
+# old release images / build cache (keeps :latest + :rollback)
+"$ROOT/scripts/docker-cleanup.sh" || true
 
 echo "==> now on version: $(cat VERSION)"

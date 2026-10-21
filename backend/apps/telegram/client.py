@@ -9,6 +9,7 @@ Telegram outage here never propagates to the site or panel — callers catch
 from __future__ import annotations
 
 import logging
+import re
 
 import requests
 
@@ -21,6 +22,15 @@ class TelegramError(Exception):
     pass
 
 
+_TOKEN_IN_URL = re.compile(r"/bot\d+:[A-Za-z0-9_-]+")
+
+
+def redact_token(text: str) -> str:
+    """requests puts the full URL (= the bot token) into connection errors;
+    those strings end up in logs and BackupLog.error — strip the token."""
+    return _TOKEN_IN_URL.sub("/bot<token>", str(text))
+
+
 class TelegramClient:
     def __init__(self, token: str, proxy_url: str | None = None, timeout: int = 20):
         self._base = f"https://api.telegram.org/bot{token}"
@@ -29,13 +39,14 @@ class TelegramClient:
         if proxy_url:
             self._session.proxies = {"http": proxy_url, "https": proxy_url}
 
-    def _call(self, method: str, *, files=None, **params):
+    def _call(self, method: str, *, files=None, http_timeout=None, **params):
         try:
             resp = self._session.post(
-                f"{self._base}/{method}", data=params, files=files, timeout=self._timeout
+                f"{self._base}/{method}", data=params, files=files,
+                timeout=http_timeout or self._timeout,
             )
         except requests.RequestException as exc:
-            raise TelegramError(f"{method}: network error: {exc}") from exc
+            raise TelegramError(f"{method}: network error: {redact_token(exc)}") from exc
         try:
             body = resp.json()
         except ValueError:
@@ -64,9 +75,10 @@ class TelegramClient:
             params["parse_mode"] = parse_mode
         return self._call("sendPhoto", files={"photo": (filename, photo_bytes, "image/png")}, **params)
 
-    def send_document(self, chat_id, file_path: str, *, caption=None):
+    def send_document(self, chat_id, file_path: str, *, caption=None, http_timeout=180):
+        # uploads of a few MB regularly needed more than the default 20 s
         with open(file_path, "rb") as fh:
-            return self._call("sendDocument", files={"document": fh},
+            return self._call("sendDocument", files={"document": fh}, http_timeout=http_timeout,
                               chat_id=chat_id, caption=caption or "")
 
     def get_chat_member(self, chat_id, user_id) -> dict:

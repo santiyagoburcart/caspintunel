@@ -348,7 +348,6 @@ RESOURCE_DISK_PATH = env("RESOURCE_DISK_PATH", default="/")
 # external echo service and cached; set explicitly for offline/air-gapped hosts.
 SERVER_IP = env("SERVER_IP", default="")
 BOT_HEARTBEAT_TTL = env.int("BOT_HEARTBEAT_TTL", default=180)  # seconds
-BACKUP_RETENTION_DAYS = env.int("BACKUP_RETENTION_DAYS", default=14)
 
 # ---------------------------------------------------------------------------
 # Self-update (panel "update" button)

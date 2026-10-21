@@ -1,11 +1,6 @@
 import logging
-import os
-import time
-from pathlib import Path
 
 from celery import shared_task
-from django.conf import settings
-from django.utils import timezone
 
 log = logging.getLogger("caspintunel")
 
@@ -35,21 +30,10 @@ def service_alerts_task():
 
 @shared_task
 def prune_backups_task():
-    """Delete backup files (and their logs) older than BACKUP_RETENTION_DAYS."""
-    from apps.ops.models import BackupLog
-    from apps.telegram.backup import BACKUP_DIR
+    """Local backup retention (apps/ops/retention.py). Name kept for beat."""
+    from .retention import run_cleanup
 
-    cutoff = timezone.now() - timezone.timedelta(days=settings.BACKUP_RETENTION_DAYS)
-    removed = 0
-    for entry in BackupLog.objects.filter(created_at__lt=cutoff):
-        path = Path(BACKUP_DIR) / entry.filename
-        try:
-            path.unlink(missing_ok=True)
-        except OSError as exc:  # noqa: BLE001
-            log.warning("prune: could not delete %s: %s", path, exc)
-        entry.delete()
-        removed += 1
-    return {"pruned": removed}
+    return run_cleanup()
 
 
 @shared_task

@@ -392,7 +392,7 @@ class Command(BaseCommand):
             ("ops: health checks", "apps.ops.tasks.health_check_task", 2),
             ("ops: resource sample", "apps.ops.tasks.resource_sample_task", 5),
             ("ops: service alerts", "apps.ops.tasks.service_alerts_task", 30),
-            ("ops: prune old backups", "apps.ops.tasks.prune_backups_task", 1440),
+            ("ops: prune old backups", "apps.ops.tasks.prune_backups_task", 60),
         ]
         for name, task_path, every in monitoring:
             sched, _ = IntervalSchedule.objects.get_or_create(

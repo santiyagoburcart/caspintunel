@@ -61,3 +61,14 @@ def test_dashboard_includes_health_and_resources(boss):
     r = boss.get("/api/v1/admin/dashboard/")
     assert r.data["health"]["up"] == 1
     assert r.data["resources"]["cpu_percent"] == 42
+
+
+def test_monitoring_snapshot_has_storage(boss, tmp_path, monkeypatch):
+    from apps.telegram import backup as backup_mod
+
+    monkeypatch.setattr(backup_mod, "BACKUP_DIR", tmp_path)
+    r = boss.get("/api/v1/admin/monitoring/")
+    assert r.status_code == 200
+    st = r.data["storage"]
+    assert st["disk"]["total"] > 0 and st["retention_days"] == 2
+    assert st["backups"]["db_count"] == 0 and st["last_cleanup"] is None
