@@ -7,6 +7,7 @@ import { toISO, todayCell } from '../lib/jalaliCalendar'
 import { Alert, Spinner } from '../components/ui'
 import { useConfirm } from '../components/ConfirmDialog'
 import { Ic } from '../components/AgencyIcons'
+import { AgencyReports } from './AgencyReports'
 
 // Agency accounting (caspintunel addition — never changes PAMP's numbers).
 // Amounts and balances come from the server; this file only formats.
@@ -195,6 +196,7 @@ export function AgencyLedgerOverview({ Header }) {
       <Alert>{err}</Alert>
       {d === null ? <div className="grid place-items-center py-16"><Spinner /></div> : d && (
         <>
+          <AgencyReports />
           <div className="card ag-card lg-total"><span>{s.total}</span><BalanceText value={d.total_balance} lang={lang} /></div>
           <div className="card ag-table-wrap">
             <table className="ag-table">

@@ -329,6 +329,74 @@ class AgencyLedgerVoidView(AdminAPIView):
         return Response(ledger.statement(e.admin_username))
 
 
+def _jdate_param(v):
+    """ISO (2026-10-21) or Jalali (1405/07/29) → date; None when missing/invalid."""
+    import datetime as _dt
+
+    import jdatetime
+
+    if not v:
+        return None
+    v = str(v).strip()
+    try:
+        if "/" in v:
+            y, m, d = (int(x) for x in v.split("/"))
+            return jdatetime.date(y, m, d).togregorian() if y < 1700 else _dt.date(y, m, d)
+        return _dt.date.fromisoformat(v)
+    except (ValueError, TypeError):
+        return None
+
+
+def _export(rows, fmt, name, lang):
+    from django.http import HttpResponse
+
+    from apps.agency import reports
+    from apps.common import xlsx
+
+    if fmt == "xlsx":
+        resp = HttpResponse(xlsx.build(rows, sheet=name, rtl=lang == "fa", widths=[22] + [18] * (len(rows[0]) - 1)),
+                            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        resp["Content-Disposition"] = f'attachment; filename="{name}.xlsx"'
+    else:
+        resp = HttpResponse(reports.to_csv(rows), content_type="text/csv; charset=utf-8")
+        resp["Content-Disposition"] = f'attachment; filename="{name}.csv"'
+    return resp
+
+
+class AgencyLedgerReportView(AdminAPIView):
+    """Accounting reports from the ledger (read-only).
+    GET report/overview/?from=&to=  ·  report/monthly/[?export=csv|xlsx]  ·  report/monthly/<jy>/<jm>/[?export=]"""
+    perms_map = {"GET": ACCOUNTING}
+
+    def get(self, request, what, jy=None, jm=None):
+        import datetime as _dt
+
+        from apps.agency import reports
+
+        lang = "en" if request.query_params.get("lang") == "en" else "fa"
+        fmt = request.query_params.get("export")          # not "format": DRF reserves it
+        if what == "overview":
+            today = _dt.date.today()
+            frm = _jdate_param(request.query_params.get("from")) or today.replace(day=1)
+            to = _jdate_param(request.query_params.get("to")) or today
+            if frm > to:
+                frm, to = to, frm
+            if (to - frm).days > 3660:
+                return Response({"detail": "range too long (max 10 years)"}, status=400)
+            return Response(reports.overview(frm, to))
+        if what == "monthly" and jy is None:
+            if fmt in ("csv", "xlsx"):
+                return _export(reports.monthly_rows(lang), fmt, "agency-monthly", lang)
+            return Response({"results": reports.monthly()})
+        if what == "monthly":
+            if not (1300 <= int(jy) <= 1600 and 1 <= int(jm) <= 12):
+                return Response({"detail": "invalid month"}, status=400)
+            if fmt in ("csv", "xlsx"):
+                return _export(reports.breakdown_rows(int(jy), int(jm), lang), fmt, f"agency-{jy}-{int(jm):02d}", lang)
+            return Response(reports.month_breakdown(int(jy), int(jm)))
+        return Response({"detail": "not found"}, status=404)
+
+
 class AgencyLedgerExportView(AdminAPIView):
     perms_map = {"GET": ACCOUNTING}
 

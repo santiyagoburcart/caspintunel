@@ -15,7 +15,7 @@ import { AgencyLedgerOverview, BalanceText, LedgerCard, LT } from './AgencyLedge
 
 const T = {
   fa: {
-    title: 'پنل نمایندگی', sub: 'ادمین‌های نماینده روی پنل پاسارگاد — محاسبات عیناً مانند PAMP',
+    title: 'پنل نمایندگی', sub: 'ادمین‌های نماینده روی پنل پاسارگاد',
     tab_dash: 'داشبورد', tab_admins: 'نماینده‌ها', tab_groups: 'گروه‌ها', tab_logs: 'لاگ همگام‌سازی', tab_settings: 'تنظیمات',
     cutover: 'فعال پس از انتقال نهایی',
     cutover_note: 'PAMP فنلاند هنوز نسخهٔ اصلی است؛ این بخش فعلاً فقط‌خواندنی است و هیچ تغییری روی پنل اعمال نمی‌شود. داده‌ها از آخرین درون‌ریزی هستند.',
@@ -53,7 +53,7 @@ const T = {
     g_created: 'گروه ساخته شد', g_saved: 'گروه ذخیره شد', g_deleted: 'گروه حذف شد',
   },
   en: {
-    title: 'Agency Panel', sub: 'Reseller admins on the PasarGuard panel — calculated exactly like PAMP',
+    title: 'Agency Panel', sub: 'Reseller admins on the PasarGuard panel',
     tab_dash: 'Dashboard', tab_admins: 'Admins', tab_groups: 'Groups', tab_logs: 'Sync logs', tab_settings: 'Settings',
     cutover: 'Available after the final cut-over',
     cutover_note: 'The Finland PAMP is still the live instance; this section is read-only for now and changes nothing on the panel. Data is from the last import.',
