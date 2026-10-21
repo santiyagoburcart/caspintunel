@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { useLivePayments } from '../lib/livePayments'
@@ -131,12 +131,64 @@ function NavLinks({ items, t, onNavigate }) {
   )
 }
 
+// ---- collapsible desktop sidebar (≥768px; phones keep the bottom nav) -----------------
+// ≥1280px: docked, toggled by ☰, remembered per browser. 768–1279px: starts closed and
+// opens as an overlay drawer (tap outside / Esc / picking a page closes it).
+const NAV_KEY = 'cta_nav_open'
+const WIDE_Q = '(min-width: 1280px)'
+function useSideNav() {
+  const [wide, setWide] = useState(() => typeof window !== 'undefined' && window.matchMedia(WIDE_Q).matches)
+  const [docked, setDocked] = useState(() => { try { return localStorage.getItem(NAV_KEY) !== '0' } catch { return true } })
+  const [drawer, setDrawer] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia(WIDE_Q)
+    const on = () => { setWide(mq.matches); setDrawer(false) }
+    mq.addEventListener ? mq.addEventListener('change', on) : mq.addListener(on)
+    return () => { mq.removeEventListener ? mq.removeEventListener('change', on) : mq.removeListener(on) }
+  }, [])
+  const open = wide ? docked : drawer
+  const toggle = useCallback(() => {
+    if (wide) setDocked((v) => { const n = !v; try { localStorage.setItem(NAV_KEY, n ? '1' : '0') } catch { /* private mode */ } return n })
+    else setDrawer((v) => !v)
+  }, [wide])
+  const closeDrawer = useCallback(() => setDrawer(false), [])
+  useEffect(() => {                      // Esc closes the overlay drawer
+    if (wide || !drawer) return undefined
+    const k = (e) => { if (e.key === 'Escape') setDrawer(false) }
+    document.addEventListener('keydown', k)
+    return () => document.removeEventListener('keydown', k)
+  }, [wide, drawer])
+  return { wide, open, overlay: !wide && drawer, toggle, closeDrawer }
+}
+
+// hidden sidebar must not be reachable with Tab / screen readers
+function useInert(ref, inert) {
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    if (inert) el.setAttribute('inert', ''); else el.removeAttribute('inert')
+  }, [ref, inert])
+}
+
+function MenuButton({ open, onClick, t, className }) {
+  return (
+    <button type="button" className={className} onClick={onClick} aria-expanded={open} aria-controls="admin-sidebar"
+      aria-label={open ? t('menu_close') : t('menu_open')} title={open ? t('menu_close') : t('menu_open')}>
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+        <path d="M4 6h16M4 12h16M4 18h16" />
+      </svg>
+    </button>
+  )
+}
+
 function LegacyLayout() {
   const { staff, logout, can } = useAuth()
   const { t, lang, setLang } = useI18n()
   const { mode, toggle, locked, config } = useTheme()
   const go = useNavigate()
   const [open, setOpen] = useState(false)
+  const side = useSideNav()
+  const closeAll = () => { setOpen(false); side.closeDrawer() }
 
   const items = nav.filter(([, , p]) => !p || can(p))
   const brand = (lang === 'fa' ? config?.site_name_fa : config?.site_name_en) || (lang === 'fa' ? 'کسپین' : 'caspin')
@@ -156,30 +208,31 @@ function LegacyLayout() {
   return (
     <div className="min-h-full aurora md:flex">
       {/* desktop sidebar — always visible from md up */}
-      <aside className="admin-side glass m-3 hidden w-56 shrink-0 self-start overflow-y-auto p-3 md:block">
+      <aside id="admin-sidebar" className={`admin-side glass m-3 hidden w-56 shrink-0 self-start overflow-y-auto p-3 ${side.wide && side.open ? 'md:block' : ''}`}>
         <Brand />
         <NavLinks items={items} t={t} />
       </aside>
 
       {/* mobile drawer */}
-      {open && (
-        <div className="fixed inset-0 z-30 md:hidden" onClick={() => setOpen(false)}>
+      {(open || side.overlay) && (
+        <div className={`fixed inset-0 z-30 ${side.overlay ? '' : 'md:hidden'}`} onClick={closeAll}>
           <div className="absolute inset-0 bg-black/40" />
           <aside
             className="admin-side glass absolute inset-y-0 start-0 w-64 max-w-[80vw] overflow-y-auto p-3"
             onClick={(e) => e.stopPropagation()}
           >
             <Brand>
-              <button className="btn-ghost ms-auto shrink-0" onClick={() => setOpen(false)} aria-label="close">✕</button>
+              <button className="btn-ghost ms-auto shrink-0" onClick={closeAll} aria-label={t('menu_close')}>✕</button>
             </Brand>
-            <NavLinks items={items} t={t} onNavigate={() => setOpen(false)} />
+            <NavLinks items={items} t={t} onNavigate={closeAll} />
           </aside>
         </div>
       )}
 
       <div className="min-w-0 flex-1">
         <header className="glass m-3 flex items-center gap-2 px-3 py-2 text-sm sm:px-4">
-          <button className="btn-ghost shrink-0 md:hidden" onClick={() => setOpen(true)} aria-label="menu">☰</button>
+          <button className="btn-ghost shrink-0 md:hidden" onClick={() => setOpen(true)} aria-label={t('menu_open')} aria-expanded={open}>☰</button>
+          <MenuButton className="btn-ghost shrink-0 hidden md:inline-flex" open={side.open} onClick={side.toggle} t={t} />
           {/* the active theme can lock the whole site to one mode (e.g. Royal Frost is light-only) */}
           {!locked && (
             <button className="btn-ghost shrink-0 hidden md:inline-flex" onClick={toggle}>{mode === 'dark' ? '☀️' : '🌙'}</button>
@@ -270,6 +323,9 @@ function CaspianLayout() {
   const { pendingCount } = useLivePayments()
   const go = useNavigate()
   const { pathname } = useLocation()
+  const side = useSideNav()
+  const railRef = useRef(null)
+  useInert(railRef, !side.open)
 
   const groups = CASPIAN_GROUPS.map(([g, items]) => [g, items.filter(([, , p]) => !p || can(p))])
   const botnav = CASPIAN_BOTNAV.filter(([, , p]) => !p || can(p))
@@ -287,13 +343,14 @@ function CaspianLayout() {
   }
 
   return (
-    <div className="csp-shell">
+    <div className={`csp-shell ${side.open ? 'nav-open' : 'nav-closed'}${side.wide ? '' : ' nav-overlay'}`}>
       <style>{CASPIAN_CSS}</style>
 
-      {/* desktop rail — start side (right for fa/RTL, left for en/LTR) */}
-      <aside className="csp-rail">
-        <CaspianNav groups={groups} t={t} brand={brand} logo={config?.logo} />
+      {/* desktop rail — start side (right for fa/RTL, left for en/LTR); collapsible with ☰ */}
+      <aside className="csp-rail" id="admin-sidebar" ref={railRef} aria-label={t('menu_open')}>
+        <CaspianNav groups={groups} t={t} brand={brand} logo={config?.logo} onNavigate={side.wide ? undefined : side.closeDrawer} />
       </aside>
+      {side.overlay && <div className="csp-backdrop" onClick={side.closeDrawer} aria-hidden="true" />}
 
       <div className="csp-main">
         {/* mobile top bar (≤767px): brand on tab roots, back + page title on
@@ -333,6 +390,7 @@ function CaspianLayout() {
 
         {/* desktop top bar (≥768px) */}
         <header className="csp-topbar">
+          <MenuButton className="csp-tb-btn csp-tb-ico csp-tb-menu" open={side.open} onClick={side.toggle} t={t} />
           {!locked && (
             <button className="csp-tb-btn csp-tb-ico" onClick={toggle} aria-label="theme">
               <SideIcon name={mode === 'dark' ? 'sun' : 'moon'} />
@@ -389,6 +447,18 @@ const CASPIAN_CSS = `
 /* ---- rail + drawer share .csp-side (the visual surface) ---- */
 .csp-rail { position: fixed; inset-block: 0; inset-inline-start: 0; width: 18rem; z-index: 40; display: none; }
 @media (min-width: 768px) { .csp-rail { display: block; } }
+/* collapsible sidebar: closed = off-canvas (content takes the width); <1280px = overlay drawer */
+@media (min-width: 768px) {
+  .csp-rail { transition: transform .24s ease, visibility .24s; }
+  .csp-main { transition: padding-inline-start .24s ease; }
+  .csp-shell.nav-closed .csp-rail { transform: translateX(-100%); visibility: hidden; }
+  [dir="rtl"] .csp-shell.nav-closed .csp-rail { transform: translateX(100%); }
+  .csp-shell.nav-closed .csp-main, .csp-shell.nav-overlay .csp-main { padding-inline-start: 0; }
+  .csp-shell.nav-overlay.nav-open .csp-rail { box-shadow: 0 12px 48px rgb(0 0 0 / .28); }
+  .csp-backdrop { position: fixed; inset: 0; z-index: 39; background: rgb(0 0 0 / .35); }
+  .csp-tb-menu:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 2px; }
+}
+@media (prefers-reduced-motion: reduce) { .csp-rail, .csp-main { transition: none !important; } }
 
 .csp-side {
   height: 100%; display: flex; flex-direction: column; overflow-y: auto;

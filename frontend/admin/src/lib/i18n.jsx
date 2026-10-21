@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 
 const dict = {
   fa: {
+    menu_open: 'باز کردن منو', menu_close: 'بستن منو',
     login: 'ورود', logout: 'خروج', username: 'نام کاربری', password: 'رمز عبور',
     full_menu: 'منوی کامل',
     dashboard: 'داشبورد', users: 'کاربران', services: 'سرویس‌ها', plans: 'پلن‌ها', payments: 'پرداخت‌ها',
@@ -148,6 +149,7 @@ const dict = {
     txd_rotate: 'چرخش', txd_zoom_in: 'بزرگ‌نمایی', txd_zoom_out: 'کوچک‌نمایی', txd_reset: 'بازنشانی', txd_close: 'بستن',
   },
   en: {
+    menu_open: 'Open menu', menu_close: 'Close menu',
     login: 'Login', logout: 'Logout', username: 'Username', password: 'Password',
     full_menu: 'More',
     dashboard: 'Dashboard', users: 'Users', services: 'Services', plans: 'Plans', payments: 'Payments',
