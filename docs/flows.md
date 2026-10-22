@@ -356,7 +356,37 @@ sequenceDiagram
     Note over Bot: no customer account is created for this message
 ```
 
-## 10. Deploy (`./update.sh`)
+## 10. CRM inactivity follow-up
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant B as celery_beat (hourly)
+    participant W as celery_worker
+    participant DB as MySQL
+    actor C as Customer
+    actor S as Staff (crm.manage)
+
+    Note over W,DB: service sync keeps Service.online_at from PasarGuard
+    B->>W: crm_detect_task
+    W->>DB: services synced < 24 h: active + no connection for N days → no_connection case,<br/>on hold / never connected N hours after purchase → never_connected case (one open per service)
+    W->>DB: stage → at_risk (CrmEvent)
+    opt crm_auto_message on, inactive N days
+        W-->>C: friendly message (site + bot) from the template, once per case
+    end
+    C->>DB: opens a "Connection problem" ticket → linked to the open case
+    S->>DB: queue "نیاز به پیگیری" → case: reason, notes, assignee
+    alt help the customer
+        S-->>C: message from a template (site / bot / email)
+        S->>DB: or open a ticket on their behalf (linked to the case)
+    end
+    S->>DB: close with outcome resolved / still inactive / lost
+    loop next runs
+        W->>DB: the service connected again → case closed (resolved, by the system), stage recomputed
+    end
+```
+
+## 11. Deploy (`./update.sh`)
 
 ```mermaid
 sequenceDiagram

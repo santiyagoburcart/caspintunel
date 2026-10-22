@@ -44,13 +44,15 @@ PERMISSIONS = [
     ("tickets.assign", "Tickets: assign to staff"),
     ("tickets.close", "Tickets: close / reopen"),
     ("tickets.manage_topics", "Tickets: topics, settings, staff topic scopes"),
+    ("crm.view", "CRM: customer 360, follow-up queue, leads, reports"),
+    ("crm.manage", "CRM: cases, messages, notes, owners, stages, settings"),
 ]
 
 SUPPORT_PERMS = {"users.view", "payment.view", "payment.approve", "accounting.view", "monitoring.view"}
 
 # "Ticketing": tickets only. Permissions are set when the role is first created —
 # an admin's later edits to it are kept.
-TICKETING_PERMS = {"tickets.view", "tickets.reply", "tickets.assign", "tickets.close"}
+TICKETING_PERMS = {"tickets.view", "tickets.reply", "tickets.assign", "tickets.close", "crm.view"}
 
 MIDNIGHT_AURORA = {
     "dark": {
@@ -402,6 +404,15 @@ class Command(BaseCommand):
             },
         )
 
+        PeriodicTask.objects.update_or_create(
+            name="crm: inactivity detection + stages",
+            defaults={
+                "task": "apps.crm.tasks.crm_detect_task",
+                "interval": hourly,
+                "kwargs": _json.dumps({}),
+                "enabled": True,
+            },
+        )
         PeriodicTask.objects.update_or_create(
             name="tickets: auto-close stale",
             defaults={

@@ -168,6 +168,28 @@ def user_reopen(ticket, user) -> Ticket:
 
 # --- staff side ------------------------------------------------------------
 @transaction.atomic
+def open_for_user(user, staff, *, topic_id, subject, body, files=()) -> Ticket:
+    """Staff opens a ticket on the customer's behalf (e.g. from a CRM case): the
+    first message is from staff, the ticket waits for the customer, no topic gate
+    or open limit (they guard what customers may open themselves)."""
+    topic = TicketTopic.objects.filter(pk=topic_id).first()
+    if topic is None:
+        raise TicketError("unknown topic", "topic")
+    subject = (subject or "").strip()
+    if not subject:
+        raise TicketError("subject is required", "subject")
+    ticket = Ticket.objects.create(user=user, topic=topic, subject=subject[:150], source=Channel.SITE,
+                                   status=TicketStatus.AWAITING_USER, assigned_to=staff, first_response_at=timezone.now())
+    ticket.number = str(100000 + ticket.id)
+    ticket.save(update_fields=["number"])
+    msg = _add_message(ticket, body=body, files=files, staff=staff, channel=Channel.PANEL)
+    _event(ticket, EventKind.CREATED, staff=staff, message=msg)
+    write_audit(action="ticket.opened_for_user", staff=staff, target=ticket, detail={"user": user.id})
+    notify.queue("staff_reply", ticket.id, msg.id)
+    return ticket
+
+
+@transaction.atomic
 def staff_reply(ticket, staff, *, body, files=(), internal=False, channel=Channel.PANEL) -> TicketMessage:
     ticket = Ticket.objects.select_for_update().get(pk=ticket.pk)
     msg = _add_message(ticket, body=body, files=files, staff=staff, channel=channel, internal=internal)

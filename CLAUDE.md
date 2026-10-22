@@ -156,6 +156,11 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   BEFORE `_user()` in `sales_bot` (no customer account, no customer gate). Live customer updates go over the
   existing `/ws/notifications/` socket (`ticket.event`; the bell re-emits it as the `ct:ticket` window event).
 
+## CRM (apps/crm, docs/architecture.md#crm)
+- Stage / detection / case rules live in `crm/services.py`; every change writes a `CrmEvent` (timeline). Detection only
+  trusts services synced in the last 24 h. Staff-opened tickets go through `tickets.services.open_for_user`.
+- Messages to customers always via `notify_user` (site / bot / email); templates use `{name} {username} {service} {site} {guide}`.
+
 ## Paths (docs/paths.md)
 - The admin SPA must work under ANY base: build with relative assets, never hard-code `/panel` (use `lib/base.js`
   ADMIN_BASE); the user site gets the portal path / admin link from nginx-injected metas (`lib/paths.js`).

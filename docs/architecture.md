@@ -127,6 +127,7 @@ SHA-256 stored).
 | `ops` | `HealthCheck` / `ResourceStat` / `BackupLog` / `CleanupRun`, health probes, `psutil` sampling, service alerts, **backup retention** (`retention.py`), beat-interval reconcile, Cloudflare `configure_dns` |
 | `agency` | **Agency panel** — 1:1 port of PAMP v1.5.3: `PanelAdmin` (reseller admins), `AdminLimit`, `UserTrafficSnapshot`, `SyncLog`, `AdminGroup`; sync + deleted-user tracking + enforcement; reseller portal (`ResellerSession`); accounting (`AdminPrice`, `LedgerEntry`, reports) ([agency.md](agency.md)) |
 | `tickets` | **support tickets** — `TicketTopic` (+ staff topic scopes), `Ticket`, `TicketMessage`, `TicketAttachment`, `TicketEvent`; rules in `services.py` (active-service gate, open limit, reopen window, auto-close), notifications in `notify.py`, staff Telegram linking (`staff_link.py`), user API `/api/v1/tickets/`, staff API `/api/v1/admin/tickets/`, WebSocket `/ws/admin/tickets/` |
+| `crm` | **CRM** — `CustomerProfile` (lifecycle stage + manual override, owner, tags), notes, `FollowUpCase` (inactivity / lead / manual, reason, outcome, linked ticket), `CaseReason`, `MessageTemplate`, `CrmEvent` (timeline); stage rules + detection in `services.py`, hourly beat, links connection-problem tickets to open cases (`signals.py`); staff API `/api/v1/admin/crm/` |
 | `adminpanel` | operator API under `/api/v1/admin/` — staff JWT + `StaffPermission` (`perms_map` / `action_perms`), every management endpoint, SMS log, system/update, read-only `docs/*.md` for the Documentation page |
 
 ## Async — Celery beat schedule
@@ -148,6 +149,7 @@ setting is saved (`apps/ops/schedule.py`).
 | ops: resource sample | `ops.tasks.resource_sample_task` | 5 min |
 | ops: service alerts | `ops.tasks.service_alerts_task` (volume / expiry warnings) | 30 min |
 | ops: prune old backups | `ops.tasks.prune_backups_task` → `retention.run_cleanup` | 60 min |
+| crm: inactivity detection + stages | `crm.tasks.crm_detect_task` (cases, auto-close on reconnect, optional friendly message, stage refresh) | 60 min |
 | tickets: auto-close stale | `tickets.tasks.auto_close_tickets_task` (awaiting the customer for `tickets_auto_close_days`) | 60 min |
 
 On-demand tasks: `fulfill_order`, `provision_service_task`, `renew_service_task`,
@@ -278,6 +280,41 @@ photo), assign to me, close / reopen; staff updates never create a customer
 account and skip the customer gate. Staff screens are Persian. Attachments: ≤ 3 per message, ≤ 5 MB, JPEG / PNG / GIF /
 WebP (decoded with Pillow) or PDF, type sniffed from the bytes, stored under a
 random name in `media/tickets/`.
+
+## CRM
+
+**Customer 360** (`/panel/crm/customers/<id>`, from Users and from the ticket
+side panel): profile (contact, source, Telegram, signup, referrer), services
+(status, usage, expiry, last connection), orders / payments and LTV (sum of
+approved payments; payments only with `payment.view`), tickets, notifications
+sent, notes, tags, owner, follow-up cases, and one merged activity timeline
+(orders, payments, tickets, notifications, stage changes and staff actions).
+
+**Lifecycle stage** (computed hourly and on view; a manual override wins):
+lead (never bought) · new (first purchase ≤ `crm_new_days`) · active ·
+at_risk (open inactivity case, expiry ≤ `crm_at_risk_days`, or
+≥ `crm_at_risk_usage_pct` used) · expired · churned (no live service for
+`crm_churn_days`) · won_back (live again after expired / churned, for
+`crm_won_back_days`). Every change is a `CrmEvent`.
+
+**Inactivity detection** (hourly; only services synced in the last 24 h —
+`online_at` comes from PasarGuard on every service sync): active service
+without a connection for `crm_inactive_days` (3) → `no_connection` case; on
+hold / never connected `crm_never_connected_hours` (48) after purchase →
+`never_connected` case; one open case per service; the case closes itself
+(outcome resolved, by the system) when the service connects again. Optional
+friendly message after `crm_auto_message_days` (setting `crm_auto_message`,
+off by default; template, `{guide}` link). A ticket opened in the
+"Connection problem" topic joins the customer's open case.
+
+**Follow-up queue** (`/panel/crm`, "نیاز به پیگیری"): reason from a
+configurable list, notes, assignee, outcome (resolved / still inactive / lost);
+actions: send a message via site / bot / email from editable templates, open a
+ticket on the customer's behalf (`tickets.services.open_for_user`, linked to
+the case), close. **Leads**: registered users who never bought, with
+pre-purchase ticket count, last activity, follow-up. **Reports**: open cases,
+opened per period, reasons, outcomes, time to resolve, customers per stage.
+Permissions `crm.view` (also given to the Ticketing role) and `crm.manage`.
 
 ## Frontends
 

@@ -456,7 +456,93 @@ erDiagram
 | `ticket_attachment` | Validated image / PDF files of a message; served only through the API. |
 | `ticket_event` | Full history: every reply, assignment, status / priority change, close and reopen with the actor and old → new value. |
 
-## 6. Notifications (`notifications`)
+## 6. CRM (`crm`)
+
+```mermaid
+erDiagram
+    user ||--o| crm_customer_profile : "stage, owner"
+    staff |o--o{ crm_customer_profile : "owner"
+    crm_customer_profile }o--o{ crm_tag : "crm_profile_tag"
+    user ||--o{ crm_customer_note : "notes"
+    user ||--o{ crm_followup_case : "cases"
+    service |o--o{ crm_followup_case : "inactive service"
+    crm_case_reason |o--o{ crm_followup_case : "reason"
+    ticket |o--o{ crm_followup_case : "linked ticket"
+    staff |o--o{ crm_followup_case : "assigned_to / closed_by"
+    user ||--o{ crm_event : "timeline"
+    crm_followup_case |o--o{ crm_event : "case events"
+
+    crm_customer_profile {
+        bigint id PK
+        bigint user_id FK
+        string stage "lead | new | active | at_risk | expired | churned | won_back"
+        string stage_override "manual, wins over stage"
+        datetime stage_changed_at
+        bigint owner_id FK
+    }
+    crm_tag {
+        bigint id PK
+        string name UK
+        string color
+    }
+    crm_customer_note {
+        bigint id PK
+        bigint user_id FK
+        bigint staff_id FK
+        text body
+    }
+    crm_followup_case {
+        bigint id PK
+        bigint user_id FK
+        bigint service_id FK
+        string kind "no_connection | never_connected | lead | manual"
+        string status "open | closed"
+        string outcome "resolved | still_inactive | lost"
+        bigint reason_id FK
+        text notes
+        bigint assigned_to_id FK
+        bigint ticket_id FK
+        datetime last_online_at
+        datetime inactive_since
+        datetime auto_message_at
+        datetime opened_at
+        datetime closed_at
+        bool closed_by_system
+    }
+    crm_case_reason {
+        bigint id PK
+        string name_fa
+        string name_en
+        bool is_active
+    }
+    crm_message_template {
+        bigint id PK
+        string title
+        text body_fa "placeholders {name} {username} {service} {site} {guide}"
+        text body_en
+        bool is_active
+    }
+    crm_event {
+        bigint id PK
+        bigint user_id FK
+        string kind "stage | owner | tags | note | case_opened | case_updated | case_closed | message | ticket"
+        string actor_label
+        json detail
+        bigint case_id FK
+    }
+```
+
+| Table | Description |
+|---|---|
+| `crm_customer_profile` | CRM data per customer: computed lifecycle stage (+ manual override), owner, tags. |
+| `crm_tag` / `crm_profile_tag` | Free tags (name + colour) on customers. |
+| `crm_customer_note` | Internal staff notes about a customer. |
+| `crm_followup_case` | A "needs follow-up" case: detected inactivity (no connection / never connected), lead or manual; reason, notes, assignee, outcome, linked ticket. |
+| `crm_case_reason` | Configurable inactivity reasons (seeded: app not installed, config / setup, filtering / ISP, device, no need now, price, other). |
+| `crm_message_template` | Editable follow-up messages (seeded: help connecting). |
+| `crm_event` | Timeline of stage changes and staff actions (merged with orders, payments, tickets and notifications on the 360 page). |
+
+## 7. Notifications (`notifications`)
 
 ```mermaid
 erDiagram
@@ -494,7 +580,7 @@ erDiagram
 | `notification` | A message to one user (event) or everyone (broadcast), with the channels to use and an optional `link` the bell opens (ticket replies → the chat). |
 | `notification_delivery` | One delivery attempt per recipient and channel; a failing channel never blocks the others. |
 
-## 7. Settings, CMS, Telegram and ops (`settings_app`, `telegram`, `ops`)
+## 8. Settings, CMS, Telegram and ops (`settings_app`, `telegram`, `ops`)
 
 ```mermaid
 erDiagram
@@ -596,7 +682,7 @@ erDiagram
 
 | Table | Description |
 |---|---|
-| `setting` | Typed key/value runtime settings (intervals, unique-amount range, alert thresholds, agency switches, retention, ticket limits, …) edited in the panel. |
+| `setting` | Typed key/value runtime settings (intervals, unique-amount range, alert thresholds, agency switches, retention, ticket limits, CRM thresholds, …) edited in the panel. |
 | `site_config` | Branding singleton: names, domain, logo / favicon, bot texts, support contacts, QR background. |
 | `theme` | Colour themes; exactly one active. |
 | `page` | CMS pages (rules, tutorial, FAQ) in fa/en. |

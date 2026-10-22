@@ -286,7 +286,7 @@ def test_seed_registers_auto_close_task_and_ticketing_role():
     assert PeriodicTask.objects.get(name="tickets: auto-close stale").task == "apps.tickets.tasks.auto_close_tickets_task"
     role = Role.objects.get(name="Ticketing")
     assert set(role.permissions.values_list("code", flat=True)) == {"tickets.view", "tickets.reply",
-                                                                     "tickets.assign", "tickets.close"}
+                                                                     "tickets.assign", "tickets.close", "crm.view"}
     # an admin's edit to the role survives the next seed
     role.permissions.remove(Permission.objects.get(code="tickets.close"))
     call_command("seed")

@@ -22,7 +22,7 @@ const T = {
     no_saved: 'پاسخ آماده‌ای برای این موضوع نیست', attach: 'پیوست', status: 'وضعیت', priority: 'اولویت', assignee: 'مسئول',
     unassigned: '— بدون مسئول —', close: 'بستن', reopen: 'بازگشایی', close_q: 'تیکت بسته شود؟', customer: 'مشتری',
     services: 'سرویس‌ها', payments: 'آخرین پرداخت‌ها', other_tickets: 'تیکت‌های دیگر', no_perm_pay: 'دسترسی مشاهدهٔ پرداخت ندارید',
-    crm_soon: 'نمای کامل مشتری (CRM) در فاز بعد', none_short: '—', internal: 'یادداشت داخلی', open_customer: 'مشتری',
+    crm_soon: 'نمای کامل مشتری: دسترسی CRM لازم است', crm_open: 'نمای کامل مشتری (CRM)', none_short: '—', internal: 'یادداشت داخلی', open_customer: 'مشتری',
     telegram: 'تلگرام من', tg_title: 'اتصال تلگرام برای اعلان تیکت‌ها', tg_linked: 'تلگرام شما متصل است.',
     tg_unlink: 'قطع اتصال', tg_get: 'دریافت کد اتصال', tg_steps: 'لینک زیر را در تلگرام باز کنید (یا دستور را برای ربات بفرستید). کد 10 دقیقه اعتبار دارد.',
     copy: 'کپی', copied: 'کپی شد', topics: 'موضوعات و پاسخ‌های آماده', file_big: 'هر فایل حداکثر 5 مگابایت', file_type: 'فقط عکس یا PDF',
@@ -42,7 +42,7 @@ const T = {
     no_saved: 'No saved replies for this topic', attach: 'Attach', status: 'Status', priority: 'Priority', assignee: 'Assignee',
     unassigned: '— unassigned —', close: 'Close', reopen: 'Reopen', close_q: 'Close this ticket?', customer: 'Customer',
     services: 'Services', payments: 'Recent payments', other_tickets: 'Other tickets', no_perm_pay: 'No permission to view payments',
-    crm_soon: 'Full customer view (CRM) comes in the next phase', none_short: '—', internal: 'Internal note', open_customer: 'Customer',
+    crm_soon: 'Customer 360 needs the CRM permission', crm_open: 'Customer 360 (CRM)', none_short: '—', internal: 'Internal note', open_customer: 'Customer',
     telegram: 'My Telegram', tg_title: 'Link Telegram for ticket alerts', tg_linked: 'Your Telegram is linked.',
     tg_unlink: 'Unlink', tg_get: 'Get a link code', tg_steps: 'Open the link below in Telegram (or send the command to the bot). The code is valid for 10 minutes.',
     copy: 'Copy', copied: 'Copied', topics: 'Topics & saved replies', file_big: 'Each file up to 5 MB', file_type: 'Images or PDF only',
@@ -473,6 +473,7 @@ function TicketPane({ id, s, lang, onChanged }) {
 
 // ============================ customer side panel ===================================
 function CustomerPanel({ id, s, lang, onClose }) {
+  const { can } = useAuth()
   const [d, setD] = useState(null)
   const go = useNavigate()
   useEffect(() => { api.get(`/admin/tickets/${id}/customer/`).then((r) => setD(r.data)).catch(() => setD(false)) }, [id])
@@ -517,7 +518,8 @@ function CustomerPanel({ id, s, lang, onClose }) {
             <button key={x.id} type="button" className="ti-side-item ti-side-link" onClick={() => go(`/tickets/${x.id}`)}>
               <span className="truncate">#{x.number} {x.subject}</span><Chip tone={ST_TONE[x.status]}>{s.st[x.status]}</Chip>
             </button>))}
-          <p className="ti-crm">{s.crm_soon}</p>
+          {can('crm.view') ? <Link className="btn-primary text-sm ti-crm-link" to={`/crm/customers/${d.user.id}`}>{s.crm_open}</Link>
+            : <p className="ti-crm">{s.crm_soon}</p>}
         </div>
       )}
     </aside>
@@ -677,6 +679,7 @@ const CSS = `
   border: 1px solid var(--c-border); background: none; color: var(--c-text); text-align: start; font-size: 12.5px; }
 .ti-side-link { cursor: pointer; }
 .ti-side-link:hover { border-color: var(--c-primary); }
+.ti-crm-link { margin-top: 8px; text-align: center; }
 .ti-crm { margin-top: 8px; padding: 8px 10px; border-radius: 10px; font-size: 11.5px; color: var(--c-text-muted); border: 1px dashed var(--c-border); }
 .ti-lightbox { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 16px; background: rgba(0,0,0,.86); }
 .ti-lightbox img { max-width: 100%; max-height: 100%; border-radius: 10px; }

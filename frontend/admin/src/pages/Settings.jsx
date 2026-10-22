@@ -75,6 +75,7 @@ const HUB = {
     deleted: { t: 'کاربران حذف‌شده', d: 'بایگانی کاربران حذف‌شده و بازگردانی' },
     agency: { t: 'پنل نمایندگی', d: 'ادمین‌های نماینده، حجم فروخته‌شده و محدودیت‌ها' },
     tickets: { t: 'تیکت‌ها', d: 'صندوق تیکت‌های پشتیبانی کاربران' },
+    crm: { t: 'مشتریان (CRM)', d: 'نمای کامل مشتری، پیگیری عدم استفاده، سرنخ‌ها' },
     ticket_topics: { t: 'موضوعات تیکت', d: 'موضوعات، پاسخ‌های آماده و تنظیمات تیکت' },
     paths: { t: 'مسیرها', d: 'آدرس پنل مدیریت و پرتال نماینده‌ها' },
     notifications: { t: 'اطلاعیه‌ها', d: 'ارسال پیام همگانی به سایت، ربات و ایمیل' },
@@ -109,6 +110,7 @@ const HUB = {
     deleted: { t: 'Deleted users', d: 'Archive of deleted users and restore' },
     agency: { t: 'Agency panel', d: 'Reseller admins, sold volume and limits' },
     tickets: { t: 'Tickets', d: 'Customer support ticket inbox' },
+    crm: { t: 'Customers (CRM)', d: 'Customer 360, inactivity follow-up, leads' },
     ticket_topics: { t: 'Ticket topics', d: 'Topics, saved replies and ticket settings' },
     paths: { t: 'Paths', d: 'Admin panel and reseller portal addresses' },
     notifications: { t: 'Notifications', d: 'Broadcast to site, bot and email' },
@@ -133,7 +135,7 @@ const HUB_COLOR = {
   pages: '#64748B',
   transactions: '#11AB53', sms_log: '#1464BA', accounting: '#11AB53', cards: '#11AB53',
   apps: '#0891B2', plans: '#1464BA', deleted: 'var(--c-danger)', notifications: '#7C3AED',
-  tickets: '#7C3AED', ticket_topics: '#7C3AED',
+  tickets: '#7C3AED', ticket_topics: '#7C3AED', crm: '#0891B2',
   monitoring: '#0891B2', sync: '#1464BA', display: '#64748B', docs: '#64748B', agency: '#7C3AED', paths: '#D97706',
 }
 

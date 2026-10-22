@@ -11,7 +11,7 @@ desktop + 390 px) and **must update [architecture.md](architecture.md),
 | 1 | Ticketing core — models, rules, RBAC + scopes, notifications, API — **done (v1.16.0)** | — |
 | 2 | Ticketing UIs — customer chat (site + bot, synced), staff inbox — **done (v1.17.0)** | 1 |
 | A | Agency improvements — toasts, PasarGuard admin CRUD, admin detail tabs — **done (v1.18.0)** | — |
-| 3 | CRM — customer 360, inactivity + reasons | 1–2 |
+| 3 | CRM — customer 360, inactivity + reasons — **done (v1.19.0)** | 1–2 |
 | 4 | Retention — warnings, win-back queue | 3 |
 | 5 | CRM accounting — LTV, renewal / churn reports | 3, 4 |
 
@@ -92,6 +92,10 @@ verbatim (golden test) — changes go around them, never into them.
   one long page, with the selected tab in the URL; tabs usable on phones.
 
 ## Phase 3 — CRM
+
+**Done in v1.19.0** (see [architecture.md](architecture.md#crm)): customer 360, lifecycle stages with override, owner, tags, notes,
+timeline; inactivity detection from PasarGuard connection data with a follow-up queue, reasons, outcomes, messages from
+templates, tickets on the customer's behalf, optional automatic message; leads list; reports. Original plan:
 
 - **Customer 360** page: profile, services (status, usage, expiry), orders and
   payments, tickets, notifications sent, source (site / bot / referral),

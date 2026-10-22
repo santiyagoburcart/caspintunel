@@ -39,7 +39,7 @@ const T = {
     ph_fullname: 'مثال: علی احمدی', ph_username: 'user_identifier',
     saving: 'در حال ثبت...', created_ok: 'کاربر جدید ساخته شد', updated_ok: 'تغییرات ذخیره شد',
     lang_fa: 'فارسی', lang_en: 'انگلیسی',
-    purchase_history: 'سوابق خرید',
+    purchase_history: 'سوابق خرید', c360: 'نمای کامل مشتری (CRM)',
     deleted_users: 'کاربران حذف‌شده', delete_user: 'حذف کاربر',
   },
   en: {
@@ -73,7 +73,7 @@ const T = {
     ph_fullname: 'e.g. Ali Ahmadi', ph_username: 'user_identifier',
     saving: 'Saving…', created_ok: 'New user created', updated_ok: 'Changes saved',
     lang_fa: 'Persian', lang_en: 'English',
-    purchase_history: 'Purchase history',
+    purchase_history: 'Purchase history', c360: 'Customer 360 (CRM)',
     deleted_users: 'Deleted users', delete_user: 'Delete user',
   },
 }
@@ -495,6 +495,11 @@ export default function Users() {
                       <Link to={`/users/${r.id}/orders`} className="usr-hist-btn" title={s.purchase_history} aria-label={s.purchase_history}>
                         <Ico d={I.bag} w={14} /> <span className="usr-act-l">{s.purchase_history}</span>
                       </Link>
+                      {can('crm.view') && (
+                        <Link to={`/crm/customers/${r.id}`} className="usr-hist-btn" title={s.c360} aria-label={s.c360}>
+                          <Ico d={I.users} w={14} /> <span className="usr-act-l">CRM</span>
+                        </Link>
+                      )}
                       {can('users.delete') && (
                         <button type="button" className="usr-del-btn" onClick={() => removeUser(r)} title={s.delete_user} aria-label={s.delete_user}>
                           <Ico d={I.trash} w={14} /> <span className="usr-act-l">{s.delete_user}</span>
