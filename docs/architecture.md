@@ -82,9 +82,9 @@ flowchart TD
     m -->|yes| m503[503 page<br/>ACME still served]
     m -->|no| r{path}
     r -->|/api/ · /admin/| web[web — gunicorn → Django]
-    r -->|/ws/| daphne[daphne — Channels]
+    r -->|/ws/ — notifications, admin payments, admin tickets| daphne[daphne — Channels]
     r -->|/static/| static[static volume]
-    r -->|/media/| media[media volume<br/>receipts + apps → 404]
+    r -->|/media/| media[media volume<br/>receipts, tickets, apps → 404]
     r -->|/_protected_media/| prot[internal only<br/>X-Accel-Redirect from the API]
     r -->|admin path, default /panel/| fa[frontend_admin<br/>+ injected base href]
     r -->|portal path, default /agency/| fu
@@ -102,8 +102,9 @@ flowchart TD
 - Admin and portal paths are configurable (Settings → Paths, [paths.md](paths.md)).
   The admin SPA is built with relative assets; nginx injects `<base href>` and
   `ct-admin-base`. The user site gets the portal path from an nginx-injected meta.
-- Receipts are never public: the API checks access, then `X-Accel-Redirect`
-  to `/_protected_media/` (no-store).
+- Receipts and ticket attachments are never public (`/media/receipts/`,
+  `/media/tickets/`, `/media/apps/` → 404): the API checks access, then
+  `X-Accel-Redirect` to `/_protected_media/` (no-store).
 
 Token audiences: customer JWT (`Authorization: Bearer`), staff JWT (separate
 `Staff` model, `tv` claim = `token_version`), SMS device token
@@ -125,6 +126,7 @@ SHA-256 stored).
 | `settings_app` | `Setting` (typed KV), `SiteConfig` (branding singleton), `Theme`, `Page` (CMS), `AppRelease` (operator apps), `EmailSettings`, iPhone Shortcut builder, `paths` (admin / portal paths), `seed` |
 | `ops` | `HealthCheck` / `ResourceStat` / `BackupLog` / `CleanupRun`, health probes, `psutil` sampling, service alerts, **backup retention** (`retention.py`), beat-interval reconcile, Cloudflare `configure_dns` |
 | `agency` | **Agency panel** — 1:1 port of PAMP v1.5.3: `PanelAdmin` (reseller admins), `AdminLimit`, `UserTrafficSnapshot`, `SyncLog`, `AdminGroup`; sync + deleted-user tracking + enforcement; reseller portal (`ResellerSession`); accounting (`AdminPrice`, `LedgerEntry`, reports) ([agency.md](agency.md)) |
+| `tickets` | **support tickets** — `TicketTopic` (+ staff topic scopes), `Ticket`, `TicketMessage`, `TicketAttachment`, `TicketEvent`; rules in `services.py` (active-service gate, open limit, reopen window, auto-close), notifications in `notify.py`, staff Telegram linking (`staff_link.py`), user API `/api/v1/tickets/`, staff API `/api/v1/admin/tickets/`, WebSocket `/ws/admin/tickets/` |
 | `adminpanel` | operator API under `/api/v1/admin/` — staff JWT + `StaffPermission` (`perms_map` / `action_perms`), every management endpoint, SMS log, system/update, read-only `docs/*.md` for the Documentation page |
 
 ## Async — Celery beat schedule
@@ -146,10 +148,12 @@ setting is saved (`apps/ops/schedule.py`).
 | ops: resource sample | `ops.tasks.resource_sample_task` | 5 min |
 | ops: service alerts | `ops.tasks.service_alerts_task` (volume / expiry warnings) | 30 min |
 | ops: prune old backups | `ops.tasks.prune_backups_task` → `retention.run_cleanup` | 60 min |
+| tickets: auto-close stale | `tickets.tasks.auto_close_tickets_task` (awaiting the customer for `tickets_auto_close_days`) | 60 min |
 
 On-demand tasks: `fulfill_order`, `provision_service_task`, `renew_service_task`,
 `sync_service_task`, `apply_scheduled_renewal_task`,
-`deliver_notification_task`, `reconcile_backup_schedule_task`. Panel tasks
+`deliver_notification_task`, `reconcile_backup_schedule_task`,
+`notify_ticket_task` (ticket notifications, queued on commit). Panel tasks
 retry on `PanelUnavailable`; a permanent `PanelError` is audited and flagged.
 
 ## Bots
@@ -168,6 +172,10 @@ retry on `PanelUnavailable`; a permanent `PanelError` is audited and flagged.
   the backup chat (`sendDocument`, > 50 MB split into `.partNN`) plus retention
   alerts; the `bot_backup` process only answers `/id` (chat id) and `/backup`
   (backup now).
+- **Staff linking:** a staff member asks the panel for a one-time code and opens
+  `t.me/<bot>?start=staff-<CODE>`; the sales bot links that Telegram account to
+  the `Staff` row (`telegram_id`) for ticket DMs — handled before any customer
+  account logic, so no customer is created.
 - Tokens are stored encrypted in `TelegramConfig`; an optional proxy URL per bot.
 
 ## PasarGuard integration
@@ -198,6 +206,39 @@ Cut-over from the Finland PAMP happened on 2026-10-16; the old PAMP has its
 workers stopped (rollback steps in [agency.md](agency.md)). Never run two syncs
 against one panel.
 
+## Ticketing
+
+Customers open tickets from the site (and, from Phase 2, the bot) in a
+**topic**. Topics with `requires_active_service = false` ("pre-purchase") are
+open to everyone; the rest only to users with an `active` or `on_hold`
+service — enforced in the API. Limits (settings, `tickets.manage_topics`):
+`tickets_max_open_per_user` (3), `tickets_auto_close_days` (7, for tickets
+awaiting the customer), `tickets_reopen_days` (7).
+
+Statuses: `open` → `awaiting_admin` (customer wrote) ⇄ `awaiting_user` (staff
+answered) · `on_hold` · `closed` (by the user, staff or the auto-close).
+Answering a closed ticket as staff reopens it; the first staff reply sets
+`first_response_at` and assigns an unassigned ticket to the replier. Internal
+notes are staff-only. Every change is a `TicketEvent` (actor, old → new) and
+staff changes also go to `AuditLog`.
+
+RBAC: `tickets.view`, `tickets.reply` (incl. status / priority / internal
+notes), `tickets.assign`, `tickets.close` (close / reopen),
+`tickets.manage_topics` (topics, settings, scopes); seeded role **Ticketing**
+(view, reply, assign, close). **Topic scopes**: a staff member linked to some
+topics sees and answers only those (everything else is 404); no topic = all;
+superadmins always see all.
+
+Notifications (`notify.py`, Celery, after commit): staff reply → customer on
+site (real-time bell), bot and email (`notify_user`); closed / auto-closed →
+site. New ticket / customer reply → the assignee, or — if unassigned — every
+staff member whose permission + scope cover the topic: real-time event with
+their badge count (`/ws/admin/tickets/`, tickets open / awaiting admin that
+are unassigned or theirs), bot DM if their Telegram is linked, email if
+`Staff.email` is set. Attachments: ≤ 3 per message, ≤ 5 MB, JPEG / PNG / GIF /
+WebP (decoded with Pillow) or PDF, type sniffed from the bytes, stored under a
+random name in `media/tickets/`.
+
 ## Frontends
 
 React 18 + Vite + Tailwind. Themes from `/api/v1/theme/` (Caspian light/dark —
@@ -214,6 +255,9 @@ Inter, JetBrains Mono) and every asset bundled, no CDN.
   its own route (`/panel/settings/<section>`).
 - One `ConfirmDialog`, one toast feedback bridge for every write, Jalali dates,
   Latin digits.
+- Documentation page (`/panel/docs`) renders ```` ```mermaid ```` blocks with
+  the bundled `mermaid` library (lazy chunk, `securityLevel: strict`, no CDN).
+- Ticket UIs (customer chat, staff inbox) arrive in Phase 2; Phase 1 ships the API.
 
 ## Host jobs (outside Docker)
 

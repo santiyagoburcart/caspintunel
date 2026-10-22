@@ -8,13 +8,27 @@ desktop + 390 px) and **must update [architecture.md](architecture.md),
 | Phase | Theme | Depends on |
 |---|---|---|
 | 0 | Documentation refresh (architecture, ERD, flows, roadmap) — **done (v1.15.8)** | — |
-| 1–2 | Ticketing (site + bot, synced) | — |
-| A | Agency improvements | — (runs in parallel) |
+| 1 | Ticketing core — models, rules, RBAC + scopes, notifications, API — **done (v1.16.0)** | — |
+| 2 | Ticketing UIs — customer chat (site + bot, synced), staff inbox | 1 |
+| A | Agency improvements — toasts, PasarGuard admin CRUD, admin detail tabs | — (runs in parallel) |
 | 3 | CRM — customer 360, inactivity + reasons | 1–2 |
 | 4 | Retention — warnings, win-back queue | 3 |
 | 5 | CRM accounting — LTV, renewal / churn reports | 3, 4 |
 
 ## Phases 1–2 — Ticketing
+
+**Phase 1 (done, v1.16.0)** — backend only: app `tickets` (topics with
+active-service gate, tickets, messages + attachments, events), limits and
+auto-close / reopen settings, RBAC (`tickets.view|reply|assign|close|manage_topics`,
+role "Ticketing"), per-staff topic scopes, notifications (customer: site / bot /
+email; staff: real-time badge, bot DM after linking Telegram, email), user and
+staff API. See [architecture.md](architecture.md#ticketing), [erd.md](erd.md),
+[flows.md](flows.md).
+
+**Phase 2 (next)** — the user-facing parts below: Telegram-like chat on the
+site and in the bot (synced), the staff inbox, topic / scope / settings
+screens, Telegram link button for staff, reports.
+
 
 One ticket system used from the **site** and the **sales bot**, kept in sync:
 a reply written in either place shows up in both.
@@ -49,10 +63,22 @@ a reply written in either place shows up in both.
 
 ## Phase A — Agency improvements
 
-Improvements to the agency panel and reseller portal. **Scope to be agreed
-with the owner** before work starts; each item becomes its own release. Fixed
-constraint: the PAMP formulas, sync order and enforcement stay verbatim
-(golden test) — changes go around them, never into them.
+Improvements to the agency panel and reseller portal; each item is its own
+release. Fixed constraint: the PAMP formulas, sync order and enforcement stay
+verbatim (golden test) — changes go around them, never into them.
+
+- **Global toasts, top-centre and animated** — one toast system for the whole
+  admin panel (and the reseller portal): shown top-centre on every screen size,
+  slide / fade in and out (reduced-motion respected), stacked, success / error /
+  info tones, same placement in fa and en.
+- **Create / edit / delete PasarGuard admins from the Agency Panel** with every
+  field the PasarGuard admin API accepts — the field list is taken from the
+  live panel's API schema when this is built, not from memory — panel first then read
+  back and mirror, confirmation for delete, audited; the next sync stays the
+  source of truth for the numbers.
+- **Admin detail split into tabs** — e.g. Overview (numbers, limit), Limits &
+  actions, Users, Accounting / statement, History (snapshots, syncs) — instead of
+  one long page, with the selected tab in the URL; tabs usable on phones.
 
 ## Phase 3 — CRM
 

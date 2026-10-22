@@ -139,6 +139,11 @@ class Staff(TimeStampedModel):
     # Every staff JWT carries this as "tv"; a token whose tv differs is dead.
     # Bumped on password change and by `manage.py revoke_staff_sessions`.
     token_version = models.PositiveIntegerField(default=1)
+    # ticketing notifications (apps/tickets): optional email, and the Telegram
+    # account linked from the panel with a one-time code sent to the sales bot
+    email = models.EmailField(blank=True, default="")
+    telegram_id = models.BigIntegerField(null=True, blank=True, unique=True)
+    telegram_linked_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = "staff"

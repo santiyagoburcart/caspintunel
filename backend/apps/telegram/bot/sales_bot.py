@@ -37,6 +37,22 @@ from . import keyboards as kb
 from . import screens as sc
 from .texts import tr
 
+STAFF_LINK_PREFIX = "staff-"
+
+
+def staff_link_reply(code: str, telegram_id: int) -> str:
+    """/start staff-<CODE>: link this Telegram to a panel staff account (ticket DMs)."""
+    from apps.tickets.staff_link import redeem
+
+    result = redeem(code, telegram_id)
+    return {
+        "linked": "✅ حساب تلگرام شما به حساب مدیریت متصل شد. اعلان تیکت‌ها اینجا ارسال می‌شود.\n"
+                  "✅ Your Telegram is now linked to your admin account. Ticket notifications will arrive here.",
+        "taken": "⚠️ این حساب تلگرام قبلاً به ادمین دیگری متصل شده است.\n"
+                 "⚠️ This Telegram account is already linked to another admin.",
+    }.get(result, "⛔️ کد نامعتبر است یا منقضی شده — از پنل یک کد جدید بگیرید.\n"
+                  "⛔️ The code is invalid or expired — get a new one from the panel.")
+
 log = logging.getLogger("caspintunel")
 STATE_TTL = 30 * 60
 
@@ -236,8 +252,12 @@ def _register(bot: telebot.TeleBot):
     @bot.message_handler(commands=["start"])
     def start(msg):
         close_old_connections()
-        user, created, password = _user(msg.from_user)
         payload = (msg.text or "").split(maxsplit=1)[1] if len((msg.text or "").split()) > 1 else ""
+        if payload.startswith(STAFF_LINK_PREFIX):
+            # staff linking their Telegram for ticket DMs — never creates a customer account
+            bot.send_message(msg.chat.id, staff_link_reply(payload[len(STAFF_LINK_PREFIX):], msg.from_user.id))
+            return
+        user, created, password = _user(msg.from_user)
         if created and payload:
             _apply_referral(user, payload)
         clear_state(msg.from_user.id)

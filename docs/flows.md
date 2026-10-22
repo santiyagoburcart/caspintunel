@@ -1,8 +1,7 @@
 # Flows
 
 Sequence diagrams of the main business and operations flows, as implemented.
-Mermaid source (rendered on GitHub; shown as diagram source in the admin
-Documentation page). Function names point at the code.
+Mermaid (rendered on GitHub and in the admin Documentation page). Function names point at the code.
 
 Related: [architecture.md](architecture.md) · [erd.md](erd.md).
 
@@ -228,7 +227,79 @@ sequenceDiagram
     API-->>T: JWT pair — the SPA never shows a login form inside Telegram
 ```
 
-## 7. Deploy (`./update.sh`)
+## 7. Ticket lifecycle and notifications
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor C as Customer
+    participant API as web /tickets/
+    participant DB as MySQL
+    participant W as celery_worker (notify)
+    participant WS as daphne /ws/admin/tickets/
+    actor S as Staff (scope covers topic)
+
+    C->>API: GET /tickets/topics/
+    API-->>C: active topics — without an active / on-hold service only pre-purchase ones
+    C->>API: POST /tickets/ (topic, subject, body, ≤3 files)
+    API->>API: topic active? needs active service? open tickets < limit?<br/>files: sniffed type, Pillow decode, ≤5 MB
+    API->>DB: Ticket(open, number) + message + attachments + event created
+    API-)W: notify new_ticket (on commit)
+    W->>WS: event + badge to each staff in scope (or the assignee)
+    W-->>S: bot DM if Telegram linked, email if set
+    S->>API: GET /admin/tickets/ (inbox, only scoped topics) → detail (marks read)
+    alt internal note
+        S->>API: POST reply internal=true
+        API->>DB: staff-only message + event internal_note (status unchanged)
+    else answer
+        S->>API: POST /admin/tickets/{id}/reply/
+        API->>DB: status awaiting_user, first_response_at, auto-assign to the replier,<br/>event staff_replied, AuditLog
+        API-)W: notify staff_reply
+        W-->>C: site bell (real-time) + bot message + email
+    end
+    C->>API: POST /tickets/{id}/reply/
+    API->>DB: status awaiting_admin, event user_replied
+    API-)W: notify user_reply → assignee only
+    opt staff
+        S->>API: assign (target must cover the topic) · status · priority
+        API->>DB: event + AuditLog
+    end
+    loop beat every hour
+        W->>DB: awaiting_user longer than tickets_auto_close_days → closed (system), event auto_closed
+        W-->>C: site notification
+    end
+    C->>API: POST /tickets/{id}/reopen/ (within tickets_reopen_days, under the open limit)
+    API->>DB: status awaiting_admin, event reopened
+```
+
+## 8. Staff Telegram linking
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor S as Staff
+    participant P as Panel API /admin/tickets/telegram-link/
+    participant R as Redis cache
+    participant T as Telegram
+    participant Bot as bot_sales
+    participant DB as MySQL
+
+    S->>P: POST (logged in)
+    P->>R: sha256(code) → staff id, 10 min
+    P-->>S: code + deep link t.me/<bot>?start=staff-CODE
+    S->>T: opens the link (or sends /start staff-CODE)
+    T->>Bot: /start staff-CODE
+    Bot->>R: look up and delete the code (single use)
+    alt valid and this Telegram not linked to another staff
+        Bot->>DB: Staff.telegram_id, telegram_linked_at + AuditLog
+        Bot-->>S: linked ✅
+    else
+        Bot-->>S: invalid / expired / already linked
+    end
+    Note over Bot: no customer account is created for this message
+```
+
+## 9. Deploy (`./update.sh`)
 
 ```mermaid
 sequenceDiagram

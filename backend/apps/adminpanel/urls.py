@@ -93,6 +93,7 @@ urlpatterns = [
     path("agency/ledger/<str:username>/export.csv", AgencyLedgerExportView.as_view(), name="admin-agency-ledger-export"),
     path("agency/ledger/<str:username>/<str:what>/", AgencyLedgerView.as_view(), name="admin-agency-ledger-add"),
     path("agency/ledger/<str:username>/", AgencyLedgerView.as_view(), name="admin-agency-ledger-admin"),
+    path("tickets/", include("apps.tickets.admin_urls")),
     path("docs/", DocsListView.as_view(), name="admin-docs"),
     path("docs/<str:slug>/", DocsPageView.as_view(), name="admin-docs-page"),
     path("dashboard/", DashboardView.as_view(), name="admin-dashboard"),

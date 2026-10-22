@@ -39,9 +39,18 @@ PERMISSIONS = [
     ("agency.view", "Agency panel: view reseller admins"),
     ("agency.manage", "Agency panel: limits, enable/disable, sync"),
     ("agency.accounting", "Agency panel: prices, charges, payments, statements"),
+    ("tickets.view", "Tickets: see the inbox (within the topic scope)"),
+    ("tickets.reply", "Tickets: reply, internal notes, status, priority"),
+    ("tickets.assign", "Tickets: assign to staff"),
+    ("tickets.close", "Tickets: close / reopen"),
+    ("tickets.manage_topics", "Tickets: topics, settings, staff topic scopes"),
 ]
 
 SUPPORT_PERMS = {"users.view", "payment.view", "payment.approve", "accounting.view", "monitoring.view"}
+
+# "Ticketing": tickets only. Permissions are set when the role is first created —
+# an admin's later edits to it are kept.
+TICKETING_PERMS = {"tickets.view", "tickets.reply", "tickets.assign", "tickets.close"}
 
 MIDNIGHT_AURORA = {
     "dark": {
@@ -212,6 +221,12 @@ class Command(BaseCommand):
         )
         support_role.permissions.set([perms[c] for c in SUPPORT_PERMS])
 
+        ticketing_role, created = Role.objects.get_or_create(
+            name="Ticketing", defaults={"description": "Support tickets only"}
+        )
+        if created:
+            ticketing_role.permissions.set([perms[c] for c in TICKETING_PERMS])
+
         # --- themes ---
         # `seed` re-runs on every container start / update, so `is_active` must
         # only be set when a theme row is first created — otherwise re-running
@@ -381,6 +396,16 @@ class Command(BaseCommand):
             name="telegram: sync required-channel member counts",
             defaults={
                 "task": "apps.telegram.tasks.sync_required_channels_task",
+                "interval": hourly,
+                "kwargs": _json.dumps({}),
+                "enabled": True,
+            },
+        )
+
+        PeriodicTask.objects.update_or_create(
+            name="tickets: auto-close stale",
+            defaults={
+                "task": "apps.tickets.tasks.auto_close_tickets_task",
                 "interval": hourly,
                 "kwargs": _json.dumps({}),
                 "enabled": True,

@@ -1,8 +1,9 @@
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api, apiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 import { Alert, Spinner } from '../components/ui'
+import { useTheme } from '../theme/ThemeProvider'
 
 const T = {
   fa: {
@@ -19,7 +20,43 @@ const T = {
 
 const slugify = (s) => s.toLowerCase().replace(/[`*_[\]()]/g, '').trim().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '')
 
-// --- tiny markdown → React (no HTML is ever injected) ------------------------------
+// --- Mermaid diagrams (```mermaid blocks) ------------------------------------------
+// The library is bundled (npm `mermaid`, its own lazy chunk — no CDN) and loaded only
+// when a page has a diagram. securityLevel "strict": labels are escaped and no
+// script / click handlers run, so the SVG it returns is the only HTML this page
+// injects. A diagram that fails to parse falls back to its source.
+let mermaidLib = null
+function loadMermaid() {
+  if (!mermaidLib) mermaidLib = import('mermaid').then((m) => m.default)
+  return mermaidLib
+}
+let diagramSeq = 0
+
+function Mermaid({ code }) {
+  const { mode } = useTheme()
+  const [svg, setSvg] = useState(null)
+  const [failed, setFailed] = useState(false)
+  const id = useRef(`dc-mmd-${++diagramSeq}`)
+  useEffect(() => {
+    let live = true
+    setFailed(false)
+    loadMermaid()
+      .then(async (mermaid) => {
+        mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: mode === 'dark' ? 'dark' : 'default',
+          fontFamily: 'Inter, Vazirmatn, sans-serif' })
+        const { svg: out } = await mermaid.render(`${id.current}-${mode}`, code)
+        if (live) setSvg(out)
+      })
+      .catch(() => { if (live) setFailed(true) })
+    return () => { live = false }
+  }, [code, mode])
+  if (failed) return <pre className="dc-pre" dir="ltr"><code>{code}</code></pre>
+  if (!svg) return <div className="dc-mmd dc-mmd--wait" dir="ltr"><Spinner /></div>
+  // eslint-disable-next-line react/no-danger
+  return <div className="dc-mmd" dir="ltr" dangerouslySetInnerHTML={{ __html: svg }} />
+}
+
+// --- tiny markdown → React (no HTML is injected except Mermaid's SVG) ------------------------------
 function inline(text, key = 'i') {
   const out = []
   const re = /(`[^`]+`)|(\*\*[^*]+\*\*)|(\[[^\]]+\]\([^)\s]+\))|(\*[^*\s][^*]*\*)|(https?:\/\/[^\s)<]+)/g
@@ -56,9 +93,10 @@ function parse(md) {
   while (i < lines.length) {
     const l = lines[i]
     if (/^```/.test(l)) {
+      const lang = l.slice(3).trim().toLowerCase()
       const body = []; i++
       while (i < lines.length && !/^```/.test(lines[i])) body.push(lines[i++])
-      i++; blocks.push({ t: 'code', body: body.join('\n') }); continue
+      i++; blocks.push({ t: lang === 'mermaid' ? 'mermaid' : 'code', body: body.join('\n') }); continue
     }
     const h = l.match(/^(#{1,4})\s+(.*)$/)
     if (h) { blocks.push({ t: 'h', level: h[1].length, text: h[2].trim() }); i++; continue }
@@ -111,6 +149,7 @@ function Markdown({ blocks }) {
       return <H key={k} id={slugify(b.text)} className={`dc-h dc-h${b.level}`}>{inline(b.text, k)}</H>
     }
     if (b.t === 'code') return <pre key={k} className="dc-pre" dir="ltr"><code>{b.body}</code></pre>
+    if (b.t === 'mermaid') return <Mermaid key={k} code={b.body} />
     if (b.t === 'hr') return <hr key={k} className="dc-hr" />
     if (b.t === 'quote') return <blockquote key={k} className="dc-quote">{inline(b.text, k)}</blockquote>
     if (b.t === 'table') return (
@@ -278,6 +317,10 @@ const CSS = `
 .dc-list { list-style: disc; } ol.dc-list { list-style: decimal; }
 .dc-list li { margin: 3px 0; }
 .dc-li-sub { margin-left: 18px !important; list-style: circle; }
+.dc-mmd { margin: 12px 0; padding: 12px; border: 1px solid var(--c-border); border-radius: 12px; overflow-x: auto;
+  background: var(--c-bg); text-align: center; }
+.dc-mmd svg { max-width: 100%; height: auto; }
+.dc-mmd--wait { display: grid; place-items: center; min-height: 120px; }
 .dc-quote { margin: 10px 0; padding: 8px 12px; border-left: 3px solid var(--c-primary); background: color-mix(in srgb, var(--c-primary) 7%, transparent); border-radius: 0 8px 8px 0; }
 .dc-hr { border: 0; border-top: 1px solid var(--c-border); margin: 16px 0; }
 .dc-table-wrap { overflow-x: auto; margin: 10px 0; }

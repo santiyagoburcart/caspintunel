@@ -334,8 +334,13 @@ class StaffSerializer(serializers.ModelSerializer):
     class Meta:
         model = Staff
         fields = ("id", "username", "password", "role", "role_name",
-                  "is_active", "is_superadmin", "last_login", "created_at")
+                  "is_active", "is_superadmin", "last_login", "created_at", "email", "telegram_linked")
         read_only_fields = ("last_login", "created_at")
+
+    telegram_linked = serializers.SerializerMethodField()
+
+    def get_telegram_linked(self, obj) -> bool:
+        return obj.telegram_id is not None
 
     def validate(self, attrs):
         if not self.instance and not attrs.get("password"):

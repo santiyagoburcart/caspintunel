@@ -80,6 +80,7 @@ LOCAL_APPS = [
     "apps.ops",
     "apps.adminpanel",
     "apps.agency",
+    "apps.tickets",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -214,6 +215,7 @@ REST_FRAMEWORK = {
         "public_read": "600/min",  # /config/ /theme/ /pages/ /plans/ (cached 60s)
         "auth": "10/min",          # login / register / password-reset / OTP
         "receipt": "20/hour",      # receipt upload
+        "ticket": "60/hour",       # open a ticket / reply (per account)
         "sms_ingest": "240/min",   # SMS bridge app / iPhone shortcut
     },
     # nginx hands Django exactly one trusted client address in X-Forwarded-For

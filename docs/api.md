@@ -27,6 +27,10 @@ WebSockets: `/ws/notifications/?token=<customer JWT>` (live site notifications) 
   `GET /orders/{id}/checkout/` (resume an open invoice — survives leaving the browser for the bank app)
 - `GET /payments/cards/` · `POST /payments/receipt/` (multipart) · `GET /payments/{id}/receipt/` (owner or staff only)
 - `GET /notifications/` · `POST /notifications/{id}/read/` · `POST /notifications/read-all/` · `GET /notifications/unread-count/`
+- Tickets: `GET /tickets/topics/` (topics I may use + `has_active_service`) · `GET /tickets/?status=open|closed` ·
+  `POST /tickets/` (multipart: `topic`, `subject`, `body`, `attachments[]` ≤ 3 × 5 MB JPEG/PNG/GIF/WebP/PDF, `service?`, `order?`;
+  throttle `ticket` 60/h) · `GET /tickets/{id}/` (marks support replies read) · `POST /tickets/{id}/reply/` · `/close/` · `/reopen/` ·
+  `GET /tickets/attachments/{id}/` (owner or scoped staff only)
 
 ## SMS device (Android app / iPhone shortcut, `X-Device-Token`)
 - `POST /payments/sms/inbound/` `{text, sender?, received_at?}` → parse amount → auto-match an order
@@ -50,3 +54,4 @@ WebSockets: `/ws/notifications/?token=<customer JWT>` (live site notifications) 
 | RBAC | `roles/` · `permissions/` · `staff/` |
 | docs | `docs/` (list) · `docs/{slug}/` (markdown, secrets masked) — perm `settings.manage` |
 | SMS log | `sms-log/?matched=0` or `1` (masked text + reason) — perm `payment.view` |
+| **tickets** | `tickets/?status=active|<s,s>&topic=&priority=&assigned=me|none|<id>&q=&source=&offset=` (inbox, `status_counts`, `badge`) · `tickets/badge/` · `tickets/{id}/` (messages incl. internal notes + events) · `{id}/reply/` (multipart, `internal`) · `{id}/assign/` · `{id}/assignable/` · `{id}/status/` · `{id}/priority/` — perms `tickets.view|reply|assign|close`, always within the staff topic scope · `tickets/topics/` (+ `{id}/`) · `tickets/settings/` · `tickets/staff-scopes/` (+ `{id}/`) — `tickets.manage_topics` · `tickets/telegram-link/` (GET / POST code / DELETE — any staff, for themselves). WebSocket `/ws/admin/tickets/?token=` (events + badge) |

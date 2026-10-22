@@ -139,6 +139,16 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   stopped. Never run two syncs on one panel (rollback steps in docs/agency.md). Resellers are NOT `accounts.User` rows.
 - Real PAMP data (dumps, recorded panel responses) lives only in `backups/pamp/` and `backend/.golden_local/`.
 
+## Tickets (apps/tickets, docs/architecture.md#ticketing)
+- Every state change goes through `tickets/services.py` (event + audit + `notify.queue` on commit) — never edit
+  `Ticket.status` directly. The active-service gate and open-ticket limit are enforced there, not in the UI.
+- Staff ticket endpoints always start from `rules.staff_queryset(staff)` (topic scope; out of scope = 404).
+  No scope rows = all topics; superadmin = all. Customers never see internal notes or staff names.
+- Attachments: `rules.check_attachments` (sniffed type + Pillow decode, ≤ 3 × 5 MB), random file names under
+  `media/tickets/` (nginx 404s it), served by `AttachmentFileView` only. A new private media folder needs the
+  same nginx rule in `nginx/prod.conf` + `nginx/conf.d/caspintunel.conf`.
+- Staff Telegram link = `/start staff-<CODE>` in the sales bot, handled before `ensure_bot_user`.
+
 ## Paths (docs/paths.md)
 - The admin SPA must work under ANY base: build with relative assets, never hard-code `/panel` (use `lib/base.js`
   ADMIN_BASE); the user site gets the portal path / admin link from nginx-injected metas (`lib/paths.js`).

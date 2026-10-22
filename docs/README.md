@@ -22,8 +22,8 @@
 
 These pages are also readable in the admin panel → **Documentation** (`/panel/docs`,
 permission `settings.manage`): rendered read-only with a table of contents and search.
-Mermaid diagrams (in `architecture.md`, `erd.md`, `flows.md`) render on GitHub; the
-panel shows their source as code blocks.
+Mermaid diagrams (```` ```mermaid ```` blocks in `architecture.md`, `erd.md`, `flows.md`) are drawn in the panel
+too — the library is bundled with the admin SPA (lazy chunk, no CDN); a diagram that fails to parse shows its source.
 Only `docs/*.md` is served; a `NAME=value` line whose name looks like a secret
 (`*PASSWORD*`, `*TOKEN*`, `*SECRET*`, `*_KEY`) is masked unless it is a placeholder.
 

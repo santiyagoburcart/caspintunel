@@ -45,6 +45,7 @@ expect "admin API needs staff login"    "401 403"     "$BASE/api/v1/admin/paymen
 expect "SMS device API reachable (rejects a request without a device token)" "401 403" \
        "$BASE/api/v1/payments/sms/ping/"
 expect "receipts are not public"        "404"         "$BASE/media/receipts/"
+expect "ticket files are not public"    "404"         "$BASE/media/tickets/"
 # WebSocket: the upgrade must reach daphne (101, or 403 because no token was sent);
 # a 502/504 means daphne is down
 expect "WebSocket /ws/notifications/ reaches daphne" "101 403" \

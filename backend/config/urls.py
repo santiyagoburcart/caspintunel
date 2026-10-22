@@ -21,6 +21,7 @@ api_v1 = [
     path("", include("apps.settings_app.urls")),
     path("admin/", include("apps.adminpanel.urls")),
     path("agency/", include("apps.agency.urls")),
+    path("tickets/", include("apps.tickets.urls")),
 ]
 
 urlpatterns = [

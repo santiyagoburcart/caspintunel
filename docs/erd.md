@@ -1,7 +1,7 @@
 # Data model (ERD)
 
 Every table of the application, grouped by area, as Mermaid ER diagrams (rendered
-on GitHub; shown as diagram source in the admin Documentation page). Diagrams
+on GitHub and in the admin Documentation page). Diagrams
 list the key columns only; the models in `backend/apps/*/models.py` are the
 source of truth. Table names are the real MySQL names.
 
@@ -47,6 +47,9 @@ erDiagram
         bigint role_id FK
         bool is_superadmin
         int token_version "JWT tv claim"
+        string email "ticket notifications"
+        bigint telegram_id UK "linked via the sales bot"
+        datetime telegram_linked_at
     }
     role {
         bigint id PK
@@ -84,7 +87,7 @@ erDiagram
 | Table | Description |
 |---|---|
 | `user` | Customer account (site, bot or legacy import). Soft-deleted only; excluded from lists, stats and renewals once `deleted_at` is set. |
-| `staff` | Admin-panel operator — a separate model from `user`, with its own JWT; `token_version` ends all sessions when bumped. |
+| `staff` | Admin-panel operator — a separate model from `user`, with its own JWT; `token_version` ends all sessions when bumped. Optional `email` and linked `telegram_id` receive ticket notifications. |
 | `role` / `permission` / `role_permission` | RBAC: roles bundle permission codes (`users.view`, `payment.approve`, `agency.view`, `agency.accounting`, `settings.email`, …). Super-admins bypass checks. |
 | `staff_revoked_token` | Spent / revoked staff refresh tokens (by `jti`) until they expire. |
 | `deleted_user_archive` | Full snapshot of a user taken right before a soft delete; restore writes `restored_at/_by`. |
@@ -355,7 +358,93 @@ erDiagram
 | `agency_admin_price` | Price per GB for an admin from a date on. |
 | `agency_ledger_entry` | The reseller's account: automatic quota charges on limit increases, manual charges, signed adjustments, payments; voidable, never deleted. Balance = charges − payments. |
 
-## 5. Notifications (`notifications`)
+## 5. Tickets (`tickets`)
+
+```mermaid
+erDiagram
+    user ||--o{ ticket : "opens"
+    ticket_topic ||--o{ ticket : "topic"
+    staff |o--o{ ticket : "assigned_to / closed_by"
+    service |o--o{ ticket : "related service"
+    order |o--o{ ticket : "related order"
+    ticket ||--o{ ticket_message : "conversation"
+    ticket_message ||--o{ ticket_attachment : "files"
+    ticket ||--o{ ticket_event : "history"
+    staff }o--o{ ticket_topic : "ticket_staff_topic (scope)"
+    user |o--o{ ticket_message : "author_user"
+    staff |o--o{ ticket_message : "author_staff"
+
+    ticket_topic {
+        bigint id PK
+        string name_fa
+        string name_en
+        string description_fa
+        string description_en
+        bool requires_active_service "false = pre-purchase"
+        bool is_active
+        int sort_order
+    }
+    ticket {
+        bigint id PK
+        string number UK "100000 + id"
+        bigint user_id FK
+        bigint topic_id FK
+        string subject
+        string status "open | awaiting_admin | awaiting_user | on_hold | closed"
+        string priority "low | normal | high | urgent"
+        bigint assigned_to_id FK
+        bigint service_id FK
+        bigint order_id FK
+        string source "site | bot"
+        datetime first_response_at
+        datetime last_activity_at
+        datetime status_changed_at "auto-close clock"
+        bigint closed_by_id FK
+        string closed_by_kind "user | staff | system"
+        datetime closed_at
+    }
+    ticket_message {
+        bigint id PK
+        bigint ticket_id FK
+        bigint author_user_id FK
+        bigint author_staff_id FK
+        text body
+        bool is_internal "staff-only note"
+        string channel "site | bot | panel"
+        datetime read_by_user_at
+        datetime read_by_staff_at
+    }
+    ticket_attachment {
+        bigint id PK
+        bigint message_id FK
+        string file "media/tickets/, random name, private"
+        string original_name
+        string content_type "image/* or application/pdf"
+        int size
+    }
+    ticket_event {
+        bigint id PK
+        bigint ticket_id FK
+        string kind "created | user_replied | staff_replied | internal_note | assigned | status | priority | closed | reopened | auto_closed"
+        bigint actor_user_id FK
+        bigint actor_staff_id FK
+        string actor_label "kept if the actor is deleted"
+        string old_value
+        string new_value
+        bigint message_id FK
+    }
+```
+
+| Table | Description |
+|---|---|
+| `ticket_topic` | Ticket categories, editable in the panel. Seeded once (migration): Pre-purchase questions (open to everyone), Payment problem, Connection problem, Renewal & upgrade, Other. |
+| `ticket_staff_topic` | Staff topic scopes: a staff member with rows here sees only those topics; none = all. |
+| `ticket` | One support conversation of a customer, with status, priority, owner (assignee), optional related service / order, first-response and activity times, and who closed it. |
+| `ticket_message` | A message from the customer or staff (or a staff-only internal note), with per-side read times. |
+| `ticket_attachment` | Validated image / PDF files of a message; served only through the API. |
+| `ticket_event` | Full history: every reply, assignment, status / priority change, close and reopen with the actor and old → new value. |
+
+## 6. Notifications (`notifications`)
 
 ```mermaid
 erDiagram
@@ -392,7 +481,7 @@ erDiagram
 | `notification` | A message to one user (event) or everyone (broadcast), with the channels to use. |
 | `notification_delivery` | One delivery attempt per recipient and channel; a failing channel never blocks the others. |
 
-## 6. Settings, CMS, Telegram and ops (`settings_app`, `telegram`, `ops`)
+## 7. Settings, CMS, Telegram and ops (`settings_app`, `telegram`, `ops`)
 
 ```mermaid
 erDiagram
@@ -494,7 +583,7 @@ erDiagram
 
 | Table | Description |
 |---|---|
-| `setting` | Typed key/value runtime settings (intervals, unique-amount range, alert thresholds, agency switches, retention, …) edited in the panel. |
+| `setting` | Typed key/value runtime settings (intervals, unique-amount range, alert thresholds, agency switches, retention, ticket limits, …) edited in the panel. |
 | `site_config` | Branding singleton: names, domain, logo / favicon, bot texts, support contacts, QR background. |
 | `theme` | Colour themes; exactly one active. |
 | `page` | CMS pages (rules, tutorial, FAQ) in fa/en. |
