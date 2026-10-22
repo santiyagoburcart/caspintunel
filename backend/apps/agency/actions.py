@@ -16,7 +16,7 @@ from django.utils import timezone
 from .models import AdminGroup, PanelAdmin
 from .tasks import sync_enabled
 
-PRE_CUTOVER = "available after the final cut-over from the Finland PAMP"
+PRE_CUTOVER = "available after the final cut-over of the agency sync"
 
 
 class PreCutover(Exception):
@@ -30,6 +30,17 @@ def writes_enabled() -> bool:
 def _gate():
     if not writes_enabled():
         raise PreCutover(PRE_CUTOVER)
+
+
+def gb_label(b: int) -> str:
+    """A limit as the operator types it: exact GB first, TB after it
+    ("5,200 GB (5.08 TB)"); 1 GB = 1024**3 as everywhere here."""
+    from .models import _fmt_bytes
+
+    if not b or b <= 0:
+        return "Unlimited"
+    gb = f"{b / 1024 ** 3:,.2f}".rstrip("0").rstrip(".")
+    return f"{gb} GB" + (f" ({_fmt_bytes(b)})" if b >= 1024 ** 4 else "")
 
 
 def new_limit_for(current_limit: int, action: str, value_gb: float):
@@ -103,11 +114,7 @@ def set_limit(username: str, action: str, value_gb, by: str = "") -> tuple[bool,
     from .ledger import record_quota_charge
     record_quota_charge(username, current_limit, new_limit_bytes, by=by)
 
-    new_gb = new_limit_bytes / gb
-    label = "Unlimited" if new_limit_bytes <= 0 else (
-        f"{new_gb:.0f} GB" if new_gb < 1000 else f"{new_gb / 1000:.1f} TB"
-    )
-    return True, f"Limit set to {label} — {message}"
+    return True, f"Limit set to {gb_label(new_limit_bytes)} — {message}"
 
 
 def remove_limit(username: str) -> tuple[bool, str]:

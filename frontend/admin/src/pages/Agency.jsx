@@ -18,7 +18,7 @@ const T = {
     title: 'پنل نمایندگی', sub: 'ادمین‌های نماینده روی پنل پاسارگاد',
     tab_dash: 'داشبورد', tab_admins: 'نماینده‌ها', tab_groups: 'گروه‌ها', tab_logs: 'لاگ همگام‌سازی', tab_settings: 'تنظیمات',
     cutover: 'فعال پس از انتقال نهایی',
-    cutover_note: 'PAMP فنلاند هنوز نسخهٔ اصلی است؛ این بخش فعلاً فقط‌خواندنی است و هیچ تغییری روی پنل اعمال نمی‌شود. داده‌ها از آخرین درون‌ریزی هستند.',
+    cutover_note: 'همگام‌سازی این بخش هنوز روشن نشده است؛ این بخش فعلاً فقط‌خواندنی است و هیچ تغییری روی پنل اعمال نمی‌شود. داده‌ها از آخرین درون‌ریزی هستند.',
     balance: 'بدهی', portal_set: 'پرتال نماینده‌ها', portal_set_d: 'نماینده‌ها با نام کاربری و رمز پنل پاسارگاد خود در /agency/ وارد می‌شوند و فقط اعداد خودشان را می‌بینند. تا انتقال نهایی، اعداد از آخرین درون‌ریزی است.',
     total_sold: 'حجم فروخته‌شده', used: 'مصرف‌شده', remaining: 'باقی‌مانده', hidden: 'ترافیک پنهان', admins: 'نماینده‌ها',
     sold_limit: 'Sold Limit', limit: 'سقف ادمین', usage: 'مصرف', users: 'کاربران', status: 'وضعیت', group: 'گروه',
@@ -27,9 +27,9 @@ const T = {
     last_sync: 'آخرین همگام‌سازی', never: 'هرگز', active_n: 'فعال', disabled_n: 'غیرفعال', limited_n: 'محدود', near_n: 'نزدیک سقف',
     search: 'جستجوی نام نماینده…', clear: 'پاک کردن جستجو', all: 'همه', f_status: 'وضعیت', f_limit: 'سقف', limited: 'سقف‌دار', unlimited: 'نامحدود',
     any_group: 'همهٔ گروه‌ها', n_admins: '{n} نماینده', none: 'نماینده‌ای پیدا نشد.', back: 'بازگشت به فهرست', unl: 'نامحدود',
-    detail_numbers: 'اعداد PAMP', deleted: 'از کاربران حذف‌شده', hidden_clamped: 'پنهان (حداقل صفر)', counts: 'کاربران بر اساس وضعیت',
+    detail_numbers: 'سقف ادمین', deleted: 'از کاربران حذف‌شده', hidden_clamped: 'پنهان (حداقل صفر)', counts: 'کاربران بر اساس وضعیت',
     c_active: 'فعال', c_on_hold: 'در انتظار', c_limited: 'اتمام حجم', c_disabled: 'غیرفعال', c_expired: 'منقضی', c_total: 'کل',
-    warn80: 'به {p}% سقف رسیده است', blocked_pamp: 'توسط PAMP محدود شده', blocked_panel: 'روی پنل غیرفعال است',
+    warn80: 'به {p}% سقف رسیده است', blocked_pamp: 'به‌دلیل رسیدن به سقف محدود شده', blocked_panel: 'روی پنل غیرفعال است',
     actions: 'محدودیت‌ها و عملیات', a_set: 'تعیین / تغییر سقف', a_remove: 'حذف سقف', a_disable: 'غیرفعال‌سازی ادمین', a_enable: 'فعال‌سازی ادمین',
     a_disable_users: 'غیرفعال‌سازی همه کاربران', a_enable_users: 'فعال‌سازی همه کاربران', a_reset: 'ریست ترافیک حذف‌شده‌ها',
     cur_limit: 'سقف فعلی', statement_link: 'صورت‌حساب این نماینده', unit: 'واحد', amount: 'مقدار', p_old_new: 'سقف', p_remaining: 'باقی‌مانده پس از تغییر', p_charge: 'شارژ حساب', p_no_charge: 'بدون شارژ (افزایش نیست)', p_no_price: 'برای امروز قیمتی ثبت نشده — شارژ با مبلغ 0 ثبت می‌شود', p_wait: 'در حال محاسبه…', v_positive: 'یک عدد مثبت وارد کنید', d_reset: 'شمارندهٔ «از کاربران حذف‌شده» صفر می‌شود و حجم فروخته‌شده در همگام‌سازی بعدی کم می‌شود.', d_disable_users: 'همهٔ کاربران این ادمین روی پنل غیرفعال می‌شوند.', d_disable: 'دسترسی این ادمین به پنل بسته می‌شود؛ کاربرانش دست نمی‌خورند.', d_remove: 'سقف این ادمین برداشته می‌شود (نامحدود).',
@@ -37,7 +37,7 @@ const T = {
     snapshots: 'آخرین مصرف کاربران (اسنپ‌شات)', snap_n: '{n} کاربر', user: 'کاربر', last_seen: 'آخرین بررسی', recent_syncs: 'همگام‌سازی‌های اخیر',
     support: 'پشتیبانی', groups_none: 'گروهی تعریف نشده است.', owner: 'مالک', members: 'اعضا', note: 'یادداشت', missing: 'روی پنل نیست',
     logs_none: 'لاگی ثبت نشده است.', s_success: 'موفق', s_partial: 'ناقص', s_failed: 'ناموفق', synced: 'ادمین', duration: 'مدت', error: 'خطا', more: 'بیشتر',
-    set_sync: 'همگام‌سازی خودکار', set_sync_d: 'هر چند دقیقه اعداد را از پنل می‌گیرد. روشن کردن آن یعنی انتقال نهایی — اول همگام‌سازی PAMP فنلاند را متوقف کنید.',
+    set_sync: 'همگام‌سازی خودکار', set_sync_d: 'هر چند دقیقه اعداد را از پنل می‌گیرد. روشن کردن آن یعنی انتقال نهایی — اول همگام‌سازی قبلی را متوقف کنید.',
     set_enf: 'اعمال سقف خودکار', set_enf_d: 'ادمینی که به 100% سقف برسد روی پنل غیرفعال و پس از افزایش سقف دوباره فعال می‌شود. فقط وقتی همگام‌سازی روشن است.',
     set_interval: 'فاصلهٔ همگام‌سازی (دقیقه)', save: 'ذخیره', saved: 'ذخیره شد',
     cut_title: 'روشن کردن همگام‌سازی = انتقال نهایی', cut_msg: 'از این لحظه این سرور اعداد را از پنل می‌گیرد و عملیات‌ها فعال می‌شوند. دو همگام‌سازی هم‌زمان روی یک پنل اعداد را خراب می‌کند.',
@@ -56,7 +56,7 @@ const T = {
     title: 'Agency Panel', sub: 'Reseller admins on the PasarGuard panel',
     tab_dash: 'Dashboard', tab_admins: 'Admins', tab_groups: 'Groups', tab_logs: 'Sync logs', tab_settings: 'Settings',
     cutover: 'Available after the final cut-over',
-    cutover_note: 'The Finland PAMP is still the live instance; this section is read-only for now and changes nothing on the panel. Data is from the last import.',
+    cutover_note: 'Sync for this section is not on yet; it is read-only for now and changes nothing on the panel. Data is from the last import.',
     balance: 'Balance', portal_set: 'Reseller portal', portal_set_d: 'Resellers sign in at /agency/ with their PasarGuard admin username and password and see only their own numbers. Until the cut-over the numbers are from the last import.',
     total_sold: 'Total Sold', used: 'Used', remaining: 'Remaining', hidden: 'Hidden traffic', admins: 'Admins',
     sold_limit: 'Sold Limit', limit: 'Admin limit', usage: 'Usage', users: 'Users', status: 'Status', group: 'Group',
@@ -65,9 +65,9 @@ const T = {
     last_sync: 'Last sync', never: 'never', active_n: 'active', disabled_n: 'disabled', limited_n: 'limited', near_n: 'near limit',
     search: 'Search admin name…', clear: 'Clear search', all: 'All', f_status: 'Status', f_limit: 'Limit', limited: 'Limited', unlimited: 'Unlimited',
     any_group: 'All groups', n_admins: '{n} admins', none: 'No admin found.', back: 'Back to the list', unl: 'Unlimited',
-    detail_numbers: 'PAMP numbers', deleted: 'From deleted users', hidden_clamped: 'Hidden (min 0)', counts: 'Users by status',
+    detail_numbers: 'Admin limit', deleted: 'From deleted users', hidden_clamped: 'Hidden (min 0)', counts: 'Users by status',
     c_active: 'Active', c_on_hold: 'On hold', c_limited: 'Data used up', c_disabled: 'Disabled', c_expired: 'Expired', c_total: 'Total',
-    warn80: 'reached {p}% of the limit', blocked_pamp: 'Limited by PAMP', blocked_panel: 'Disabled on the panel',
+    warn80: 'reached {p}% of the limit', blocked_pamp: 'Limited: the admin limit was reached', blocked_panel: 'Disabled on the panel',
     actions: 'Limits & actions', a_set: 'Set / change limit', a_remove: 'Remove limit', a_disable: 'Disable admin', a_enable: 'Enable admin',
     a_disable_users: 'Disable all users', a_enable_users: 'Enable all users', a_reset: 'Reset deleted traffic',
     cur_limit: 'Current limit', statement_link: "This admin's statement", unit: 'Unit', amount: 'Amount', p_old_new: 'Limit', p_remaining: 'Remaining after', p_charge: 'Account charge', p_no_charge: 'No charge (not an increase)', p_no_price: 'No price set for today — the charge is recorded at 0', p_wait: 'Calculating…', v_positive: 'Enter a positive number', d_reset: 'The "from deleted users" counter goes to 0; Total Sold drops at the next sync.', d_disable_users: "All of this admin's users are disabled on the panel.", d_disable: 'This admin loses panel access; their users keep working.', d_remove: "This admin's limit is removed (unlimited).",
@@ -75,7 +75,7 @@ const T = {
     snapshots: 'Last known user usage (snapshot)', snap_n: '{n} users', user: 'User', last_seen: 'Last seen', recent_syncs: 'Recent syncs',
     support: 'Support', groups_none: 'No groups defined.', owner: 'Owner', members: 'Members', note: 'Note', missing: 'not on the panel',
     logs_none: 'No sync logged yet.', s_success: 'Success', s_partial: 'Partial', s_failed: 'Failed', synced: 'admins', duration: 'Duration', error: 'Error', more: 'Load more',
-    set_sync: 'Automatic sync', set_sync_d: 'Pulls the numbers from the panel every few minutes. Turning it on IS the final cut-over — stop the Finland PAMP sync first.',
+    set_sync: 'Automatic sync', set_sync_d: 'Pulls the numbers from the panel every few minutes. Turning it on IS the final cut-over — stop the previous sync first.',
     set_enf: 'Automatic limit enforcement', set_enf_d: 'An admin at 100% of their limit is disabled on the panel and re-enabled once the limit is raised. Only while sync is on.',
     set_interval: 'Sync interval (minutes)', save: 'Save', saved: 'Saved',
     cut_title: 'Turning sync on = the final cut-over', cut_msg: 'From now on this server pulls the numbers from the panel and actions are enabled. Two syncs against one panel corrupt the numbers.',
@@ -102,6 +102,15 @@ const TB_BYTES = 1024 ** 4
 const gbOf = (b, signed) => { const n = Math.round(Number(b) / 1024 ** 3); return `${signed && n > 0 ? '+' : ''}${n.toLocaleString('en-US')} GB` }
 const GB = ({ b, block, signed }) => (b == null || Math.abs(Number(b)) < TB_BYTES ? null
   : <bdi dir="ltr" className={'ag-gb' + (block ? ' ag-gb--block' : '')}>{gbOf(b, signed)}</bdi>)
+// an admin limit reads in exact GB ("5,200 GB"); the server's TB figure ("5.08 TB") is the
+// small secondary text from 1 TB up. b = limit bytes (null/0 = Unlimited), tb = its *_fmt.
+const gbExact = (b) => `${(Number(b) / 1024 ** 3).toLocaleString('en-US', { maximumFractionDigits: 2 })} GB`
+const limitText = (b, tb, s) => (!(Number(b) > 0) ? s.unl : gbExact(b) + (Number(b) >= TB_BYTES && tb ? ` (${tb})` : ''))
+const Lim = ({ b, tb, s, block, strong }) => {
+  if (!(Number(b) > 0)) return <B>{s.unl}</B>
+  const main = <B>{gbExact(b)}</B>
+  return <>{strong ? <b>{main}</b> : main}{Number(b) >= TB_BYTES && tb && <bdi dir="ltr" className={'ag-gb' + (block ? ' ag-gb--block' : '')}>{tb}</bdi>}</>
+}
 
 function Header({ s, switches }) {
   const { can } = useAuth()
@@ -183,7 +192,7 @@ export function AgencyDashboard() {
                     <span className="ag-over-tag" data-state={o.state}>{o.state === 'over' ? s.over : s.at_risk}</span>
                     <UsageBar pct={o.pct} />
                     <span className="ag-over-pct"><B>{o.pct}%</B></span>
-                    <span className="ag-over-sub"><B>{o.used_fmt}</B><GB b={o.used_bytes} /> / <B>{o.limit_fmt}</B><GB b={o.limit_bytes} /></span>
+                    <span className="ag-over-sub"><B>{o.used_fmt}</B><GB b={o.used_bytes} /> / <Lim b={o.limit_bytes} tb={o.limit_fmt} s={s} /></span>
                   </li>
                 ))}
               </ul>
@@ -281,7 +290,7 @@ export function AgencyAdmins() {
                     </td>
                     <td className="ag-t-st" data-label={s.status}><StatusPill code={r.status_code} s={s} /></td>
                     <td className="ag-t-usage" data-label={s.usage}>
-                      {r.is_unlimited ? <span className="text-muted">{s.unl}</span> : <><UsageBar pct={r.usage_percent} /><B>{r.usage_percent}%</B><span className="ag-lim" title={s.limit}>/ <B>{r.admin_limit_fmt}</B><GB b={r.bytes?.limit} block /></span></>}
+                      {r.is_unlimited ? <span className="text-muted">{s.unl}</span> : <><UsageBar pct={r.usage_percent} /><B>{r.usage_percent}%</B><span className="ag-lim" title={s.limit}>/ <Lim b={r.bytes?.limit} tb={r.admin_limit_fmt} s={s} block /></span></>}
                     </td>
                     <td data-label={s.total_sold}><B>{r.total_sold_fmt}</B><GB b={r.bytes?.total_sold} block /></td>
                     <td data-label={s.sold_limit}><B><span data-sign={r.sold_limit_value > 0 ? 'pos' : r.sold_limit_value < 0 ? 'neg' : 'zero'} className="ag-sign">{r.sold_limit_fmt}</span></B><GB b={r.bytes?.sold_limit} block signed /></td>
@@ -323,7 +332,7 @@ export function AgencyAdminDetail() {
         const b = typeof body === 'function' ? body() : body
         if (b === false) throw new Error(s.v_positive)
         const r = await api.post(`/admin/agency/admins/${encodeURIComponent(username)}/${path}/`, b)
-        setMsg(r.data.message)
+        setMsg(lang === 'fa' && r.data.message_fa ? r.data.message_fa : r.data.message)
       },
     })
     if (ok) load()
@@ -331,7 +340,7 @@ export function AgencyAdminDetail() {
   const setLimit = () => {
     const box = {}
     act(s.a_set, 'set-limit', () => (box.ready ? { action: box.mode, value_gb: box.gb } : false), 'primary',
-      <SetLimitForm s={s} lang={lang} username={username} current={fmt(d.admin_limit_fmt, s)} currentBytes={d.bytes?.limit} box={box} />)
+      <SetLimitForm s={s} lang={lang} username={username} current={d.admin_limit_fmt} currentBytes={d.bytes?.limit} box={box} />)
   }
 
   if (d === null) return <div className="ag"><Header s={s} /><div className="grid place-items-center py-16"><Spinner /></div></div>
@@ -339,13 +348,13 @@ export function AgencyAdminDetail() {
   const p = d.portal
   const usageAc = d.is_unlimited ? 'gray' : d.usage_percent >= 100 ? 'red' : d.usage_percent >= 80 ? 'orange' : 'green'   // same thresholds as the bar
   const nums = [
-    [s.limit, fmt(d.admin_limit_fmt, s), 'blue', d.bytes?.limit], [s.total_sold, d.total_sold_fmt, 'blue', d.bytes?.total_sold], [s.used, d.used_fmt, 'purple', d.bytes?.used],
+    [s.limit, <Lim b={d.bytes?.limit} tb={d.admin_limit_fmt} s={s} />, 'blue'], [s.total_sold, d.total_sold_fmt, 'blue', d.bytes?.total_sold], [s.used, d.used_fmt, 'purple', d.bytes?.used],
     [s.remaining, fmt(d.remaining_fmt, s), 'green', d.bytes?.remaining], [s.sold_limit, d.sold_limit_fmt, 'cyan', d.bytes?.sold_limit, true], [s.hidden, d.hidden_fmt, 'orange', d.bytes?.hidden],
     [s.hidden_clamped, d.hidden_traffic_clamped_fmt, 'orange', d.bytes?.hidden_clamped], [s.deleted, d.deleted_used_fmt, 'orange', d.bytes?.deleted], [s.usage, `${d.usage_percent}%`, usageAc],
   ]
   const ACTIONS = [
     [s.a_set, setLimit, 'primary', 'gauge'],
-    [s.a_remove, () => act(s.a_remove, 'remove-limit', {}, 'warning', null, `${s.d_remove} ${s.cur_limit}: ${fmt(d.admin_limit_fmt, s)}`), 'warning', 'infinity'],
+    [s.a_remove, () => act(s.a_remove, 'remove-limit', {}, 'warning', null, `${s.d_remove} ${s.cur_limit}: ${limitText(d.bytes?.limit, d.admin_limit_fmt, s)}`), 'warning', 'infinity'],
     d.status === 'disabled'
       ? [s.a_enable, () => act(s.a_enable, 'admin-action', { action: 'enable_admin' }, 'success'), 'success', 'power']
       : [s.a_disable, () => act(s.a_disable, 'admin-action', { action: 'disable_admin' }, 'danger', null, s.d_disable), 'danger', 'power'],
@@ -368,7 +377,7 @@ export function AgencyAdminDetail() {
         {p.is_blocked && <Alert>{p.block_reason === 'disabled' ? s.blocked_panel : s.blocked_pamp}</Alert>}
         <SecH i="list" ac="blue">{s.detail_numbers}</SecH>
         <dl className="ag-nums">
-          {nums.map(([k, v, ac, b, signed]) => <div key={k} data-ac={ac}><dt>{k}</dt><dd><B>{v}</B><GB b={b} signed={signed} /></dd></div>)}
+          {nums.map(([k, v, ac, b, signed]) => <div key={k} data-ac={ac}><dt>{k}</dt><dd>{typeof v === 'string' ? <><B>{v}</B><GB b={b} signed={signed} /></> : v}</dd></div>)}
         </dl>
         <SecH i="users" ac="purple">{s.users_sec}</SecH>
         <dl className="ag-nums ag-nums--counts">
@@ -389,7 +398,7 @@ export function AgencyAdminDetail() {
             </a>
           )}
         </div>
-        <p className="ag-limits-cur">{s.cur_limit}: <b><B>{fmt(d.admin_limit_fmt, s)}</B></b><GB b={d.bytes?.limit} />{!d.is_unlimited && <> · {s.usage}: <B>{d.usage_percent}%</B></>}</p>
+        <p className="ag-limits-cur">{s.cur_limit}: <Lim b={d.bytes?.limit} tb={d.admin_limit_fmt} s={s} strong />{!d.is_unlimited && <> · {s.usage}: <B>{d.usage_percent}%</B></>}</p>
         {!writable && <p className="ag-locked">{s.cutover}</p>}
         {msg && <Alert kind="success">{msg}</Alert>}
         <div className="ag-actions">
@@ -451,7 +460,7 @@ function SetLimitForm({ s, lang, username, current, currentBytes, box }) {
   const typed = Number(val.replace(/[۰-۹]/g, (c) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(c)).replace(/[٠-٩]/g, (c) => '٠١٢٣٤٥٦٧٨٩'.indexOf(c)).replace(/[,٬\s]/g, '')) || 0
   return (
     <div className="ag-form ag-form--limit">
-      <p className="ag-form-cur">{s.cur_limit}: <B>{current}</B><GB b={currentBytes} /></p>
+      <p className="ag-form-cur">{s.cur_limit}: <Lim b={currentBytes} tb={current} s={s} /></p>
       <label><span>{s.mode}</span>
         <select className="input" value={mode} onChange={(e) => setMode(e.target.value)}>
           <option value="set">{s.m_set}</option><option value="add">{s.m_add}</option><option value="reduce">{s.m_reduce}</option>
@@ -470,7 +479,7 @@ function SetLimitForm({ s, lang, username, current, currentBytes, box }) {
       {busy && !err && <p className="text-xs text-muted">{s.p_wait}</p>}
       {p && !err && (
         <dl className="ag-preview" aria-live="polite">
-          <div><dt>{s.p_old_new}</dt><dd><B>{fmt(p.old_limit_fmt, s)}</B><GB b={p.old_limit_bytes > 0 ? p.old_limit_bytes : null} /> {lang === 'fa' ? '←' : '→'} <b><B>{fmt(p.new_limit_fmt, s)}</B></b><GB b={p.new_limit_bytes > 0 ? p.new_limit_bytes : null} /></dd></div>
+          <div><dt>{s.p_old_new}</dt><dd><Lim b={p.old_limit_bytes} tb={p.old_limit_fmt} s={s} /> {lang === 'fa' ? '←' : '→'} <Lim b={p.new_limit_bytes} tb={p.new_limit_fmt} s={s} strong /></dd></div>
           <div><dt>{s.p_remaining}</dt><dd><B>{fmt(p.remaining_after_fmt, s)}</B><GB b={p.remaining_after_bytes} /></dd></div>
           <div><dt>{s.p_charge}</dt><dd>{!p.charge ? <span className="text-muted">{s.p_no_charge}</span> : (
             <><B>{Number(p.charge.gb).toLocaleString('en-US', { maximumFractionDigits: 2 })} GB</B> × <B>{p.charge.price_per_gb != null ? money(p.charge.price_per_gb) : '—'}</B> = <b><B>{money(p.charge.amount)}</B></b>

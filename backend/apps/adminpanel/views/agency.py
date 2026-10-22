@@ -111,8 +111,15 @@ class AgencyAdminActionView(AdminAPIView):
             raise Http404
         d = request.data
         if action == "set-limit":
-            return _run(request, "agency.set_limit", a, actions.set_limit, username, d.get("action"), d.get("value_gb"),
-                        getattr(request.user, "username", ""))
+            r = _run(request, "agency.set_limit", a, actions.set_limit, username, d.get("action"), d.get("value_gb"),
+                     getattr(request.user, "username", ""))
+            if r.status_code == 200:
+                a.refresh_from_db()
+                r.data["new_limit_bytes"] = a.admin_limit_bytes
+                label = actions.gb_label(a.admin_limit_bytes)
+                r.data["message_fa"] = ("سقف ادمین برداشته شد (نامحدود)" if label == "Unlimited"
+                                        else f"سقف ادمین روی {label} تنظیم شد")
+            return r
         if action == "remove-limit":
             return _run(request, "agency.remove_limit", a, actions.remove_limit, username)
         if action == "admin-action":
@@ -208,7 +215,7 @@ class AgencySettingsView(AdminAPIView):
             return Response({"enforcement_enabled": ["needs sync to be on"]}, status=400)
         if sync and not cur["sync_enabled"] and d.get("confirm") != "FINLAND-STOPPED":
             # turning the sync on IS the cut-over: the Finland PAMP must be stopped first
-            return Response({"sync_enabled": ["confirm that the Finland PAMP sync is stopped"]}, status=400)
+            return Response({"sync_enabled": ["confirm that the previous sync is stopped"]}, status=400)
         try:
             minutes = int(d.get("sync_interval_minutes", cur["sync_interval_minutes"]))
         except (TypeError, ValueError):

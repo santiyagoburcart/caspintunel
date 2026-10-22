@@ -21,8 +21,10 @@ export default function FeedbackBridge() {
         toast.error(data.message || data.error || data.detail || failureReason({ response: { status: 200, data } }, lang)); return
       }
       const server = data && typeof data === 'object' && typeof data.message === 'string' && data.message.length < 160 ? data.message : null
+      // a server message in Persian (message_fa) is shown in fa too
+      const serverFa = data && typeof data === 'object' && typeof data.message_fa === 'string' ? data.message_fa : null
       const generic = method === 'delete' ? w.deleted : /\/(test|run|sync|send|activate|restore|reset|revoke|status|approve|reject|void)\b|test\/?$/.test(url) ? w.done : w.saved
-      toast.success(lang === 'en' && server ? server : generic)
+      toast.success(lang === 'en' ? (server || generic) : (serverFa || generic))
     }
     return () => { feedback.emit = null }
   }, [lang, toast])

@@ -12,6 +12,9 @@ import { AgencyReports } from './AgencyReports'
 // Agency accounting (caspintunel addition — never changes PAMP's numbers).
 // Amounts and balances come from the server; this file only formats.
 
+// a limit in exact GB ("5,200 GB"), as the operator types it; 0 / missing keeps the server text
+const limGB = (b, f) => (Number(b) > 0 ? `${(Number(b) / 1024 ** 3).toLocaleString('en-US', { maximumFractionDigits: 2 })} GB` : f)
+
 export const LT = {
   fa: {
     tab: 'حسابداری', title: 'حساب نماینده', overview: 'بدهی نماینده‌ها', total: 'جمع بدهی', balance: 'بدهی',
@@ -159,7 +162,7 @@ export function LedgerCard({ username }) {
                   <span className="lg-amt"><bdi dir="ltr">{e.kind === 'payment' ? '−' : e.signed < 0 ? '−' : '+'}{toman(Math.abs(Number(e.amount)), lang)}</bdi></span>
                   <span className="lg-run">{s.running}: <BalanceText value={e.balance} lang={lang} /></span>
                   <span className="lg-meta">
-                    {e.kind === 'quota_charge' && e.new_limit_fmt && <bdi dir="ltr">{s.limit_change.replace('{a}', e.old_limit_fmt).replace('{b}', e.new_limit_fmt)}</bdi>}
+                    {e.kind === 'quota_charge' && e.new_limit_fmt && <bdi dir="ltr">{s.limit_change.replace('{a}', limGB(e.old_limit_bytes, e.old_limit_fmt)).replace('{b}', limGB(e.new_limit_bytes, e.new_limit_fmt))}</bdi>}
                     {e.gb && <> · <bdi dir="ltr">{e.gb} GB</bdi></>}{e.price_per_gb && <> × <bdi dir="ltr">{toman(e.price_per_gb, lang)}</bdi></>}
                     {e.method && <> · {s['m_' + e.method]}</>}{e.note && <> · {e.note}</>}{e.created_by && <> · {e.created_by}</>}
                     {e.voided && <> · <b>{s.voided}</b>: {e.void_reason}</>}

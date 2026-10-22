@@ -93,8 +93,33 @@ def test_after_cutover_set_limit_follows_pamp(data):
     r = client(is_superadmin=True).post("/api/v1/admin/agency/admins/ali/set-limit/",
                                         {"action": "add", "value_gb": 50}, format="json")
     assert r.status_code == 200 and r.json()["message"].startswith("Limit set to 150 GB")
+    assert r.json()["new_limit_bytes"] == 150 * GB and r.json()["message_fa"] == "سقف ادمین روی 150 GB تنظیم شد"
     data.refresh_from_db()
     assert data.admin_limit_bytes == 150 * GB and data.admin_remaining == 150 * GB - 90 * GB
+
+
+@responses.activate
+def test_set_limit_in_gb_is_reported_in_gb(data):
+    """A limit typed in GB comes back as that exact GB figure (TB only as the secondary text)."""
+    set_setting("agency_sync_enabled", True, ValueType.BOOL)
+    responses.add("POST", f"{BASE}/api/admin/token", json={"access_token": "t"})
+    responses.add("PUT", f"{BASE}/api/admin/ali", json={})
+    r = client(is_superadmin=True).post("/api/v1/admin/agency/admins/ali/set-limit/",
+                                        {"action": "set", "value_gb": 5200}, format="json")
+    assert r.status_code == 200, r.content
+    assert r.json()["message"].startswith("Limit set to 5,200 GB (5.08 TB)")
+    assert r.json()["message_fa"] == "سقف ادمین روی 5,200 GB (5.08 TB) تنظیم شد"
+    assert r.json()["new_limit_bytes"] == 5200 * GB
+
+
+def test_gb_label():
+    from apps.agency.actions import gb_label
+
+    assert gb_label(0) == "Unlimited" and gb_label(-1) == "Unlimited"
+    assert gb_label(150 * GB) == "150 GB"
+    assert gb_label(5200 * GB) == "5,200 GB (5.08 TB)"
+    assert gb_label(1024 * GB) == "1,024 GB (1.00 TB)"
+    assert gb_label(int(2.5 * GB)) == "2.5 GB"
 
 
 def test_permissions(data):

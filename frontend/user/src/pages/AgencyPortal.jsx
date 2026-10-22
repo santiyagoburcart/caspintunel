@@ -59,6 +59,12 @@ const GB = ({ b, signed }) => {
   const n = Math.round(Number(b) / 1024 ** 3)
   return <bdi dir="ltr" className="ap-gb">{`${signed && n > 0 ? '+' : ''}${n.toLocaleString('en-US')} GB`}</bdi>
 }
+// the admin limit reads in exact GB ("5,200 GB"); the server's TB figure is the small
+// secondary text from 1 TB up. b = limit bytes (null/0 = Unlimited), tb = its *_fmt.
+const Lim = ({ b, tb, s }) => {
+  if (!(Number(b) > 0)) return <B>{s.unl}</B>
+  return <><B>{`${(Number(b) / 1024 ** 3).toLocaleString('en-US', { maximumFractionDigits: 2 })} GB`}</B>{Number(b) >= 1024 ** 4 && tb && <bdi dir="ltr" className="ap-gb">{tb}</bdi>}</>
+}
 const money = (n, lang) => (Number(n) < 0 ? '-' : '') + toman(Math.abs(Number(n || 0)), lang)
 
 export default function AgencyPortal() {
@@ -144,7 +150,7 @@ function Account({ a, s, lang, balance }) {
   const tone = a.usage_percent >= 100 ? 'danger' : a.usage_percent >= 80 ? 'warning' : 'primary'
   const tg = (p.support_telegram || '').replace(/^@/, '')
   const by = a.bytes || {}
-  const nums = [[s.limit, fmt(a.admin_limit_fmt, s), 'cyan', 'limit', by.limit], [s.total_sold, a.total_sold_fmt, 'blue', 'sold', by.total_sold], [s.used, a.used_fmt, 'purple', 'used', by.used],
+  const nums = [[s.limit, <Lim b={by.limit} tb={a.admin_limit_fmt} s={s} />, 'cyan', 'limit'], [s.total_sold, a.total_sold_fmt, 'blue', 'sold', by.total_sold], [s.used, a.used_fmt, 'purple', 'used', by.used],
     [s.remaining, fmt(a.remaining_fmt, s), 'green', 'remaining', by.remaining], [s.sold_limit, a.sold_limit_fmt, 'cyan', 'limit', by.sold_limit, true], [s.hidden, a.hidden_fmt, 'orange', 'hidden', by.hidden],
     [s.deleted, a.deleted_used_fmt, 'gray', 'trash', by.deleted]]
   return (
@@ -164,11 +170,11 @@ function Account({ a, s, lang, balance }) {
         <div className="ap-usage">
           <div className="ap-usage-l"><span>{s.usage}</span><B>{a.usage_percent}%</B></div>
           <span className="ap-bar" data-tone={tone}><i style={{ width: `${w}%` }} /></span>
-          <p className="ap-usage-s">{s.used_of.split('{u}')[0]}<B>{a.used_fmt}</B><GB b={by.used} />{s.used_of.split('{u}')[1].split('{l}')[0]}<B>{fmt(a.admin_limit_fmt, s)}</B><GB b={by.limit} />{s.used_of.split('{l}')[1]}</p>
+          <p className="ap-usage-s">{s.used_of.split('{u}')[0]}<B>{a.used_fmt}</B><GB b={by.used} />{s.used_of.split('{u}')[1].split('{l}')[0]}<Lim b={by.limit} tb={a.admin_limit_fmt} s={s} />{s.used_of.split('{l}')[1]}</p>
         </div>
       )}
       <dl className="ap-nums">
-        {nums.map(([k, v, ac, ic, b, signed]) => <div key={k} data-ac={ac}><dt><Ic n={ic} size={13} />{k}</dt><dd><B>{v}</B><GB b={b} signed={signed} /></dd></div>)}
+        {nums.map(([k, v, ac, ic, b, signed]) => <div key={k} data-ac={ac}><dt><Ic n={ic} size={13} />{k}</dt><dd>{typeof v === 'string' ? <><B>{v}</B><GB b={b} signed={signed} /></> : v}</dd></div>)}
       </dl>
       <div className="ap-bal">
         <span>{s.balance}</span>
