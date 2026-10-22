@@ -829,6 +829,11 @@ const CSS = `
 .ag-head { margin-bottom: 2px; }
 .ag-tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
 .ag-tabs::-webkit-scrollbar { display: none; }
+/* phones: every sub-tab visible at once (a hidden-scrollbar strip pushed Sync logs / Settings off-screen) */
+@media (max-width: 767px) {
+  .ag-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: visible; }
+  .ag-tabs .ag-tab { justify-content: center; text-align: center; padding: 8px 6px; min-width: 0; overflow: hidden; }
+}
 .ag-tab { white-space: nowrap; padding: 7px 14px; border-radius: 999px; font-size: 13px; font-weight: 700; color: var(--c-text);
   border: 1px solid var(--c-border); text-decoration: none; }
 .ag-tab:hover { border-color: var(--c-primary); }

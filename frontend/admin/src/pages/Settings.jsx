@@ -8,6 +8,7 @@ import { Alert, Field, Spinner, Toggle } from '../components/ui'
 import { useToast } from '../components/Toast'
 import { copyToClipboard } from '../lib/clipboard'
 import { useDeleteConfirm } from '../lib/confirmDelete'
+import { CASPIAN_BOTNAV, CASPIAN_GROUPS, NAV_ICONS } from '../components/adminNav'
 
 function HubIco({ d, w = 18 }) {
   return (
@@ -77,7 +78,7 @@ const HUB = {
     monitoring: { t: 'مانیتورینگ', d: 'سلامت سرویس‌ها، منابع سرور و بک‌آپ‌ها' },
     sync: { t: 'همگام‌سازی سرویس‌ها', d: 'فاصلهٔ همگام‌سازی خودکار با پنل' },
     display: { t: 'زبان و نمایش', d: 'زبان پیش‌فرض و نحوهٔ نمایش محصولات' },
-    g_finance: 'مالی', g_users: 'کاربران و فروش', g_system: 'سامانه و اتصال‌ها', g_config: 'تنظیمات عمومی', g_account: 'حساب',
+    g_config: 'تنظیمات عمومی', g_account: 'حساب',
     logout: 'خروج از حساب مدیریت',
   },
   en: {
@@ -109,7 +110,7 @@ const HUB = {
     monitoring: { t: 'Monitoring', d: 'Service health, server resources and backups' },
     sync: { t: 'Service sync', d: 'Automatic panel sync interval' },
     display: { t: 'Language & display', d: 'Default language and product display mode' },
-    g_finance: 'Finance', g_users: 'Users & sales', g_system: 'System & connections', g_config: 'General settings', g_account: 'Account',
+    g_config: 'General settings', g_account: 'Account',
     logout: 'Log out of the admin account',
   },
 }
@@ -130,44 +131,30 @@ const HUB_COLOR = {
   monitoring: '#0891B2', sync: '#1464BA', display: '#64748B', docs: '#64748B', agency: '#7C3AED', paths: '#D97706',
 }
 
-// the mobile index of every admin page that isn't a bottom-nav tab, grouped
-// like the desktop sidebar. [group, [[route-or-hash, i18n-key, permission]]]
+// the mobile index of every admin page that isn't a bottom-nav tab — built
+// from the desktop sidebar's own list (components/adminNav.js), so it has the
+// same groups, order, icons and permission rules. Deleted users (a Users
+// sub-page) and the General settings sections are mobile-only extras.
+// [route, text-key, permission, desktop-icon | null]
+const BOTTOM_TABS = new Set(CASPIAN_BOTNAV.map(([to]) => to))
+const HUB_TEXT = { panel_link: 'panel', email_settings: 'email' }   // desktop i18n key → HUB text key
+const HUB_EXTRA = { nav_group_users: [['/users/deleted', 'deleted', 'users.view', null]] }
+const SETTINGS_SECTIONS = ['g_config', [
+  ['/settings/sms-devices', 'sms_devices', 'settings.manage', null],
+  ['/settings/sms-sources', 'sms_sources', 'settings.manage', null],
+  ['/settings/unique-amount', 'unique_amount', 'settings.manage', null],
+  ['/settings/alerts', 'alerts', 'settings.manage', null],
+  ['/settings/sync', 'sync', 'settings.manage', null],
+  ['/settings/backup', 'backup', 'settings.manage', null],
+  ['/settings/requirements', 'requirements', 'settings.manage', null],
+  ['/settings/display', 'display', 'settings.manage', null],
+]]
 const HUB_GROUPS = [
-  ['g_finance', [
-    ['/transactions', 'transactions', 'payment.view'],
-    ['/sms-log', 'sms_log', 'payment.view'],
-    ['/accounting', 'accounting', 'accounting.view'],
-    ['/cards', 'cards', 'payment.view'],
-  ]],
-  ['g_users', [
-    ['/plans', 'plans', 'plans.manage'],
-    ['/users/deleted', 'deleted', 'users.view'],
-    ['/agency', 'agency', 'agency.view'],
-    ['/notifications', 'notifications', 'broadcast.send'],
-  ]],
-  ['g_system', [
-    ['/monitoring', 'monitoring', 'monitoring.view'],
-    ['/panel-link', 'panel', 'settings.manage'],
-    ['/bots', 'bots', 'bots.manage'],
-    ['/settings/email', 'email', 'settings.email'],
-    ['/apps', 'apps', 'settings.manage'],
-    ['/branding', 'branding', 'settings.manage'],
-    ['/themes', 'themes', 'themes.manage'],
-    ['/pages', 'pages', 'pages.manage'],
-    ['/roles', 'roles', 'roles.manage'],
-    ['/docs', 'docs', 'settings.manage'],
-  ]],
-  ['g_config', [
-    ['/settings/sms-devices', 'sms_devices', 'settings.manage'],
-    ['/settings/sms-sources', 'sms_sources', 'settings.manage'],
-    ['/settings/unique-amount', 'unique_amount', 'settings.manage'],
-    ['/settings/alerts', 'alerts', 'settings.manage'],
-    ['/settings/sync', 'sync', 'settings.manage'],
-    ['/settings/backup', 'backup', 'settings.manage'],
-    ['/settings/requirements', 'requirements', 'settings.manage'],
-    ['/settings/display', 'display', 'settings.manage'],
-    ['/settings/paths', 'paths', 'settings.manage'],
-  ]],
+  ...CASPIAN_GROUPS.map(([g, items]) => [g, [
+    ...items.filter(([to]) => !BOTTOM_TABS.has(to)).map(([to, key, p, icon]) => [to, HUB_TEXT[key] || key, p, icon]),
+    ...(HUB_EXTRA[g] || []),
+  ]]),
+  SETTINGS_SECTIONS,
 ]
 
 // sections of the settings <form> (saved with the sticky bar); the SMS
@@ -178,7 +165,7 @@ const FORM_SECTIONS = ['unique-amount', 'alerts', 'sync', 'backup', 'requirement
 const SOLO_SECTIONS = [...FORM_SECTIONS, 'sms-devices', 'sms-sources']
 
 function SettingsHub() {
-  const { lang } = useI18n()
+  const { t, lang } = useI18n()
   const { logout, can } = useAuth()
   const go = useNavigate()
   const h = HUB[lang] || HUB.fa
@@ -192,14 +179,14 @@ function SettingsHub() {
       </div>
       {groups.map(([g, items]) => (
         <section key={g} className="st-hub-group">
-          <h3 className="st-hub-gh">{h[g]}</h3>
+          <h3 className="st-hub-gh">{h[g] || t(g)}</h3>
           <div className="card p-0 st-hub-list">
-            {items.map(([to, key]) => {
+            {items.map(([to, key, , icon]) => {
               const c = HUB_COLOR[key] || '#64748B'
               return (
                 <Link key={to} to={to} className="st-hub-item">
                   <span className="st-hub-ico" style={{ background: `color-mix(in srgb, ${c} 14%, transparent)`, color: c }}>
-                    <HubIco d={HUB_ICONS[key]} />
+                    <HubIco d={icon ? <path d={NAV_ICONS[icon]} /> : HUB_ICONS[key]} />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block font-semibold text-sm">{h[key].t}</span>
