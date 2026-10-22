@@ -14,7 +14,7 @@ import TransactionDetail from './pages/TransactionDetail'
 import SmsLog from './pages/SmsLog'
 import Docs from './pages/Docs'
 import PathsSettings from './pages/PathsSettings'
-import { AgencyAdminDetail, AgencyAdmins, AgencyDashboard, AgencyGroups, AgencyLedger, AgencySettings, AgencySyncLogs } from './pages/Agency'
+import { AgencyAdminDetail, AgencyAdminNew, AgencyAdmins, AgencyDashboard, AgencyGroups, AgencyLedger, AgencySettings, AgencySyncLogs } from './pages/Agency'
 import Accounting from './pages/Accounting'
 import Tickets from './pages/Tickets'
 import TicketTopics from './pages/TicketTopics'
@@ -71,7 +71,9 @@ export default function App() {
         <Route path="/roles" element={<Roles />} />
         <Route path="/agency" element={<AgencyDashboard />} />
         <Route path="/agency/admins" element={<AgencyAdmins />} />
+        <Route path="/agency/admins/new" element={<AgencyAdminNew />} />
         <Route path="/agency/admins/:username" element={<AgencyAdminDetail />} />
+        <Route path="/agency/admins/:username/:tab" element={<AgencyAdminDetail />} />
         <Route path="/agency/groups" element={<AgencyGroups />} />
         <Route path="/agency/ledger" element={<AgencyLedger />} />
         <Route path="/agency/sync-logs" element={<AgencySyncLogs />} />

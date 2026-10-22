@@ -6,7 +6,7 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
 ## Stack & layout
 - Django 5.2 + DRF + Celery + Channels (Redis) + **MySQL 8 in prod** · React 18 + Vite + Tailwind SPAs:
   `frontend/user` at `/`, `frontend/admin` at `/panel/` (Vite `base:/panel/`).
-- Panel = **PasarGuard v5.3.0 over HTTP only** (`apps/panel/client.py`), never vendored.
+- Panel = **PasarGuard v5.4.1 over HTTP only** (public schema: `<panel>/openapi.json` — read field lists from it, never from memory) (`apps/panel/client.py`), never vendored.
   Verified live: `GET /api/users?search=&limit=` → `{"users":[…],"total":n}`; user objects carry
   `hwid_limit` (null = unlimited), `group_ids`, `note`, `on_hold_expire_duration`, `admin`.
 - **PRODUCTION = this Finland server** (host `ubuntu-4gb-hel1-2`, `46.62.192.189`), migrated
@@ -86,7 +86,8 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   `var(--c-*)` except these **fixed** tokens: toggles `--toggle-on #11AB53` / `--toggle-off` dark gray;
   ConfirmDialog tone colours (danger red, success #11AB53, primary #1464BA, warning amber).
 - **Every action gives feedback**: admin `lib/api.js` reports each POST/PUT/PATCH/DELETE to `components/FeedbackBridge.jsx`
-  (toast success / real failure reason). Pass `{ quiet: true }` only for non-actions (login, live previews).
+  (toast success / real failure reason). The toast (`components/Toast.jsx`, identical in both SPAs) is the ONLY result
+  display — no inline "saved" bars. Pass `{ quiet: true }` only for non-actions (login, live previews).
 - **One popup for everything**: `components/ConfirmDialog.jsx` (identical in both SPAs) + `useConfirm()`.
   Never use `window.confirm/alert/prompt`. **One copy helper**: `lib/clipboard.js::copyToClipboard`.
 - Fonts are bundled (`@fontsource`, no CDN): fa = Vazirmatn, en = Inter, `<code>` = JetBrains Mono.
@@ -138,6 +139,8 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
 - Cut-over done 2026-10-16: sync (10 min) + enforcement + portal are ON here; the Finland PAMP has its workers
   stopped. Never run two syncs on one panel (rollback steps in docs/agency.md). Resellers are NOT `accounts.User` rows.
 - Real PAMP data (dumps, recorded panel responses) lives only in `backups/pamp/` and `backend/.golden_local/`.
+- PasarGuard admin create / edit / delete = `apps/agency/admin_crud.py` on `PasarGuardClient` (never edit the PAMP files
+  for it). 5.4 has roles, not `is_sudo`. Passwords are returned once to the UI and never audited / stored.
 
 ## Tickets (apps/tickets, docs/architecture.md#ticketing)
 - Every state change goes through `tickets/services.py` (event + audit + `notify.queue` on commit) — never edit

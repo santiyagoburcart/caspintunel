@@ -195,6 +195,37 @@ sequenceDiagram
     R->>W: portal: usage, limit, statement + balance
 ```
 
+## 5b. Create a PasarGuard admin from the Agency panel
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor A as Admin (agency.manage)
+    participant UI as /panel/agency/admins/new
+    participant API as web agency/panel-admins/
+    participant PG as PasarGuard (picked panel)
+    participant DB as MySQL
+
+    UI->>API: GET options/?panel=
+    API->>PG: GET /api/admin-roles/simple, /api/admin-role/{id}, /api/groups/simple, /api/user_templates/simple
+    API-->>UI: panels + roles (owner flag, allowed groups / templates, limits)
+    A->>UI: username, password (generator), role, contact, subscription, notifications, overrides, variables, note, limit + price + group
+    UI->>API: POST (validated: username, password ≥ 8, role, ids, URLs)
+    API->>PG: POST /api/admin (AdminCreate)
+    PG-->>API: created (409 → "already exists")
+    API->>PG: GET /api/admins?username= (read back)
+    opt the agency panel
+        API->>DB: PanelAdmin row (next sync fills the PAMP numbers)
+        API->>DB: AdminPrice + LedgerEntry quota_charge (limit × price) · group member
+    end
+    API->>DB: AuditLog agency.admin_created (no password)
+    API-->>UI: send-to-reseller card: portal link + username + password (once) + toast
+```
+
+Edit (`PATCH`, only changed fields, password reset shown once) and delete
+(`DELETE`, typed username; local row + group membership removed, ledger kept)
+follow the same panel-first rule.
+
 ## 6. Bot and Mini App login
 
 ```mermaid

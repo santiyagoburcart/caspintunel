@@ -504,32 +504,6 @@ body {
 [data-theme-style="caspian"] .csp-link:hover { text-decoration: underline; }
 
 /* ===== global success/error/loading popup — shared across all pages/themes ===== */
-.gtoast-backdrop {
-  position: fixed; inset: 0; z-index: 300; display: grid; place-items: center;
-  background: color-mix(in srgb, #0b1220 20%, transparent);
-  animation: gtoast-fade .15s ease;
-}
-.gtoast {
-  display: flex; align-items: center; gap: 10px; padding: 14px 22px; border-radius: 16px;
-  background: var(--c-surface); border: 1px solid var(--c-border); color: var(--c-text);
-  box-shadow: 0 20px 50px -12px rgba(0, 0, 0, .35); font-size: 14px; font-weight: 600;
-  cursor: pointer; max-width: min(90vw, 360px); animation: gtoast-pop .18s ease;
-}
-.gtoast-ico {
-  width: 24px; height: 24px; flex-shrink: 0; display: grid; place-items: center;
-  border-radius: 50%; font-size: 12px; font-weight: 800; color: #fff;
-}
-.gtoast--success .gtoast-ico { background: var(--c-success); }
-.gtoast--error .gtoast-ico { background: var(--c-danger); }
-.gtoast--loading .gtoast-ico { background: transparent; }
-.gtoast-spin {
-  width: 18px; height: 18px; border-radius: 50%;
-  border: 2px solid color-mix(in srgb, var(--c-primary) 30%, transparent);
-  border-top-color: var(--c-primary); animation: gtoast-spin .7s linear infinite;
-}
-@keyframes gtoast-spin { to { transform: rotate(360deg); } }
-@keyframes gtoast-pop { from { transform: scale(.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-@keyframes gtoast-fade { from { opacity: 0; } to { opacity: 1; } }
 
 
 /* ---- one font per language (overrides every per-theme / per-page font) ----

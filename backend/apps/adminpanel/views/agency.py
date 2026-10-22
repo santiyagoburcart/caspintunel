@@ -477,3 +477,100 @@ class AgencyPortalLinkView(AdminAPIView):
             resp["Cache-Control"] = "private, no-store"
             return resp
         return Response(link)
+
+
+# --- PasarGuard admin create / edit / delete (apps/agency/admin_crud.py) ---------------
+def _crud_error(exc):
+    from apps.agency.admin_crud import AdminCrudError
+
+    if isinstance(exc, actions.PreCutover):
+        return Response({"detail": str(exc), "code": "pre_cutover"}, status=status.HTTP_409_CONFLICT)
+    if isinstance(exc, AdminCrudError):
+        code = 409 if exc.code == "exists" else 404 if exc.code == "not_found" else \
+            502 if exc.code in ("panel_error", "panel_refused") else 400
+        return Response({"detail": str(exc), "code": exc.code, "field": exc.field}, status=code)
+    raise exc
+
+
+class AgencyPanelAdminOptionsView(AdminAPIView):
+    """Panels to create on + the chosen panel's roles (with the groups / templates
+    each role allows) read live from PasarGuard."""
+    perms_map = {"GET": MANAGE}
+
+    def get(self, request):
+        from apps.agency import admin_crud as C
+
+        try:
+            panel = C.panel_for(request.query_params.get("panel"))
+            opts = C.options(panel)
+        except Exception as exc:  # noqa: BLE001
+            return _crud_error(exc)
+        return Response({
+            "panels": [{"id": p.id, "name": p.name, "agency": C.is_agency_panel(p)} for p in C.panels()],
+            "panel": panel.id, **opts,
+            "agency_groups": [{"id": g.id, "name": g.name or g.owner_username, "owner": g.owner_username}
+                              for g in AdminGroup.objects.order_by("owner_username")],
+            "writes_enabled": actions.writes_enabled(),
+        })
+
+
+class AgencyPanelAdminCreateView(AdminAPIView):
+    perms_map = {"POST": MANAGE}
+
+    def post(self, request):
+        from apps.agency import admin_crud as C
+
+        data = request.data or {}
+        if data.get("price_per_gb") not in (None, "") and not request.user.has_perm("agency.accounting"):
+            return Response({"detail": "setting a price needs agency.accounting", "code": "forbidden"}, status=403)
+        try:
+            panel = C.panel_for(data.get("panel"))
+            out = C.create(panel, data, by=request.user.username)
+        except Exception as exc:  # noqa: BLE001
+            return _crud_error(exc)
+        write_audit(action="agency.admin_created", staff=request.user, target=None, detail={
+            "username": out["username"], "panel": panel.name, "role_id": data.get("role_id"),
+            "limit_bytes": out["limit_bytes"], "charge": out["charge"], "group": out["group"]})   # never the password
+        return Response({**out, "ok": True, "message": f"Admin {out['username']} created",
+                         "message_fa": f"ادمین {out['username']} ساخته شد"}, status=201)
+
+
+class AgencyPanelAdminView(AdminAPIView):
+    perms_map = {"GET": MANAGE, "PATCH": MANAGE, "DELETE": MANAGE}
+
+    def get(self, request, username):
+        from apps.agency import admin_crud as C
+
+        try:
+            panel = C.panel_for(request.query_params.get("panel"))
+            return Response(C.editable_view(C.get_admin(panel, username)))
+        except Exception as exc:  # noqa: BLE001
+            return _crud_error(exc)
+
+    def patch(self, request, username):
+        from apps.agency import admin_crud as C
+
+        data = request.data or {}
+        try:
+            panel = C.panel_for(data.get("panel"))
+            out = C.modify(panel, username, data)
+        except Exception as exc:  # noqa: BLE001
+            return _crud_error(exc)
+        write_audit(action="agency.admin_updated", staff=request.user, target=None,
+                    detail={"username": username, "panel": panel.name, "fields": out["changed"],
+                            "password_reset": out["password_changed"]})
+        return Response({**out, "ok": True, "message": "Admin settings saved on the panel",
+                         "message_fa": "تنظیمات ادمین روی پنل ذخیره شد"})
+
+    def delete(self, request, username):
+        from apps.agency import admin_crud as C
+
+        data = request.data or {}
+        try:
+            panel = C.panel_for(data.get("panel") or request.query_params.get("panel"))
+            C.delete(panel, username, data.get("confirm") or request.query_params.get("confirm", ""))
+        except Exception as exc:  # noqa: BLE001
+            return _crud_error(exc)
+        write_audit(action="agency.admin_deleted", staff=request.user, target=None,
+                    detail={"username": username, "panel": panel.name})
+        return Response({"ok": True, "message": f"Admin {username} deleted", "message_fa": f"ادمین {username} حذف شد"})

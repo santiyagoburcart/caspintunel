@@ -181,7 +181,8 @@ retry on `PanelUnavailable`; a permanent `PanelError` is audited and flagged.
 
 ## PasarGuard integration
 
-- **HTTP API only** (`apps/panel/client.py`, PasarGuard v5.3); none of its AGPL
+- **HTTP API only** (`apps/panel/client.py`, PasarGuard **5.4.1** live — its schema is public at
+  `<panel>/openapi.json`); none of its AGPL
   source is in this repo. Admin token cached encrypted on the `Panel` row,
   refreshed on 401.
 - Rule: **panel first, then read the account back and mirror it**
@@ -202,6 +203,21 @@ empty list) → **enforcement** (disable an admin at ≥ 100 % of their limit,
 re-enable below it) → `SyncLog`. The formulas are verbatim PAMP and proven
 equal by `tests/test_golden.py`. Raising a limit through the panel UI writes a
 **quota charge** to the ledger at the admin's price per GB on that date.
+
+**Admin create / edit / delete** (`apps/agency/admin_crud.py`, caspintunel
+addition — the PAMP port stays verbatim): every field of the panel's
+`AdminCreate` / `AdminModify` schema — username, password, **role** (5.4
+replaced `is_sudo` with roles; owner roles = the old sudo; the groups /
+templates an admin may use come from the role's `access` and are read live),
+status, Telegram id, Discord webhook, subscription domain / title / template,
+support URL, custom variables, panel notifications, per-admin limit overrides,
+note. Panel picker when several panels are active (only the agency panel is
+tracked locally). On create, optionally: initial limit → quota charge at a
+price per GB (`agency.accounting`), membership of an account group; the reply
+carries the password once for the "send to reseller" card. Delete needs the
+typed username, removes the local row and group membership, keeps the ledger.
+Endpoints `agency/panel-admins/` (+ `options/`, `<username>/` GET / PATCH /
+DELETE), permission `agency.manage`, cut-over gate, audited without passwords.
 
 Cut-over from the Finland PAMP happened on 2026-10-16; the old PAMP has its
 workers stopped (rollback steps in [agency.md](agency.md)). Never run two syncs
@@ -277,8 +293,17 @@ Inter, JetBrains Mono) and every asset bundled, no CDN.
   from the same list as the sidebar (`components/adminNav.js` — same groups,
   icons, permissions), plus Deleted users and the settings sections, each with
   its own route (`/panel/settings/<section>`).
-- One `ConfirmDialog`, one toast feedback bridge for every write, Jalali dates,
-  Latin digits.
+- One `ConfirmDialog`, one **toast** for every write (`components/Toast.jsx`,
+  identical in both SPAs, fed by `FeedbackBridge` in the admin): top centre, a
+  self-drawing check / X, a countdown ring (success 4 s, error 6 s; hover /
+  focus pauses, click / Esc closes), reduced-motion aware — no inline result
+  bars. Jalali dates, Latin digits.
+- Agency admin detail = tabs in the URL (`/agency/admins/<u>/<tab>`: overview ·
+  limits · settings · accounting · send); `/agency/admins/new` is a full-page,
+  sectioned create form.
+- SPA caching: `index.html` is served `Cache-Control: no-cache`, hashed
+  `/assets/` `immutable` for a year (each SPA's `nginx.conf`) — a deploy reaches
+  every browser on the next load.
 - Documentation page (`/panel/docs`) renders ```` ```mermaid ```` blocks with
   the bundled `mermaid` library (lazy chunk, `securityLevel: strict`, no CDN).
 - **Tickets — customer site** (`pages/Tickets.jsx`): list (status chip, topic,

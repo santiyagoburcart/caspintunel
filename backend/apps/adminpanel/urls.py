@@ -8,7 +8,8 @@ from .views.docs import DocsListView, DocsPageView
 from .views.agency import (AgencyAdminActionView, AgencyAdminDetailView, AgencyAdminListView, AgencyDashboardView,
                            AgencyGroupsView, AgencyLedgerExportView, AgencyLedgerOverviewView, AgencyLedgerView,
                            AgencyLedgerVoidView, AgencySettingsView, AgencySyncLogsView, AgencySyncNowView, PathsView,
-                           AgencyPortalLinkView, AgencySetLimitPreviewView, AgencyLedgerReportView)
+                           AgencyPortalLinkView, AgencySetLimitPreviewView, AgencyLedgerReportView,
+                           AgencyPanelAdminCreateView, AgencyPanelAdminOptionsView, AgencyPanelAdminView)
 from .views.catalog import (
     BankCardViewSet,
     PageViewSet,
@@ -76,6 +77,9 @@ urlpatterns = [
     path("paths/", PathsView.as_view(), name="admin-paths"),
     path("agency/", AgencyDashboardView.as_view(), name="admin-agency"),
     path("agency/admins/", AgencyAdminListView.as_view(), name="admin-agency-admins"),
+    path("agency/panel-admins/options/", AgencyPanelAdminOptionsView.as_view(), name="admin-agency-panel-admin-options"),
+    path("agency/panel-admins/", AgencyPanelAdminCreateView.as_view(), name="admin-agency-panel-admin-create"),
+    path("agency/panel-admins/<str:username>/", AgencyPanelAdminView.as_view(), name="admin-agency-panel-admin"),
     path("agency/admins/<str:username>/set-limit/preview/", AgencySetLimitPreviewView.as_view(), name="admin-agency-limit-preview"),
     path("agency/admins/<str:username>/<str:action>/", AgencyAdminActionView.as_view(), name="admin-agency-action"),
     path("agency/portal-link/", AgencyPortalLinkView.as_view(), name="admin-agency-portal-link"),

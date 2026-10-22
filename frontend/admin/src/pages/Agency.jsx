@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, NavLink, useParams } from 'react-router-dom'
+import { Link, NavLink, useNavigate, useParams } from 'react-router-dom'
 import { api, apiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 import { useAuth } from '../lib/auth'
@@ -7,8 +7,10 @@ import { jalali, digits } from '../lib/format'
 import { Alert, Spinner, Toggle } from '../components/ui'
 import { copyToClipboard } from '../lib/clipboard'
 import { useConfirm } from '../components/ConfirmDialog'
+import { useToast } from '../components/Toast'
 import { ACCENT_CSS, Ic } from '../components/AgencyIcons'
 import { AgencyLedgerOverview, BalanceText, LedgerCard, LT } from './AgencyLedger'
+import { AdminSettingsTab, AgencyAdminCreate } from './AgencyAdminForms'
 
 // Agency panel (PAMP port). Every number on these pages comes from the backend
 // (apps/agency: PAMP's own formulas); this file only formats and lays out.
@@ -51,6 +53,8 @@ const T = {
     g_member: 'عضو', g_search: 'جستجوی ادمین برای افزودن…', g_add_members: 'افزودن عضو', g_remove_member: 'حذف از گروه', g_remove: 'حذف', g_accounts: 'حساب‌ها',
     g_delete_msg: 'فقط گروه حذف می‌شود؛ حساب‌ها روی پنل دست نمی‌خورند. مالک از این پس در پرتال فقط حساب خودش را می‌بیند.',
     g_created: 'گروه ساخته شد', g_saved: 'گروه ذخیره شد', g_deleted: 'گروه حذف شد',
+    new_admin: 'ساخت ادمین', t_overview: 'نمای کلی', t_limits: 'محدودیت‌ها و عملیات', t_settings: 'تنظیمات', t_accounting: 'حسابداری', t_send: 'ارسال به نماینده',
+    history: 'سوابق', send_pw_note: 'رمز ورود همان رمز پنل این ادمین است. برای رمز تازه از تب «تنظیمات» → تغییر رمز عبور استفاده کنید؛ رمز جدید همان‌جا یک بار نمایش داده می‌شود.',
   },
   en: {
     title: 'Agency Panel', sub: 'Reseller admins on the PasarGuard panel',
@@ -89,6 +93,8 @@ const T = {
     g_member: 'member', g_search: 'Search admins to add…', g_add_members: 'Add members', g_remove_member: 'Remove from group', g_remove: 'Remove', g_accounts: 'Accounts',
     g_delete_msg: 'Only the group is deleted; the accounts on the panel are untouched. From now on the owner sees only their own account in the portal.',
     g_created: 'Group created', g_saved: 'Group saved', g_deleted: 'Group deleted',
+    new_admin: 'New admin', t_overview: 'Overview', t_limits: 'Limits & actions', t_settings: 'Settings', t_accounting: 'Accounting', t_send: 'Send to reseller',
+    history: 'History', send_pw_note: "The password is the admin's panel password. For a fresh one use Settings → Change password; the new password is shown there once.",
   },
 }
 
@@ -221,6 +227,7 @@ function Kpi({ label, value, b, ac, icon, sub }) {
 // ------------------------------------------------------------------ admins list
 export function AgencyAdmins() {
   const [s, lang] = useT()
+  const { can } = useAuth()
   const [q, setQ] = useState('')
   const [st, setSt] = useState('')
   const [lim, setLim] = useState('')
@@ -248,6 +255,11 @@ export function AgencyAdmins() {
   return (
     <div className="ag space-y-4">
       <Header s={s} switches={dash?.switches} />
+      {can('agency.manage') && (
+        <div className="ag-listbar">
+          <Link to="/agency/admins/new" className="ag-act ag-new" data-tone="primary"><Ic n="plus" />{s.new_admin}</Link>
+        </div>
+      )}
       <div className="card ag-toolbar">
         <div className="ag-search">
           <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
@@ -315,24 +327,30 @@ export function AgencyAdmins() {
 }
 
 // ------------------------------------------------------------------ admin detail
+const DETAIL_TABS = ['overview', 'limits', 'settings', 'accounting', 'send']
+
+export function AgencyAdminNew() {
+  const [s] = useT()
+  const [dash] = useLoad('/admin/agency/')
+  return <AgencyAdminCreate Header={<Header s={s} switches={dash?.switches} />} />
+}
+
 export function AgencyAdminDetail() {
   const [s, lang] = useT()
-  const { username } = useParams()
+  const { username, tab: rawTab } = useParams()
+  const go = useNavigate()
   const { can } = useAuth()
   const confirm = useConfirm()
   const [d, err, load] = useLoad(`/admin/agency/admins/${encodeURIComponent(username)}/`, [username])
-  const [msg, setMsg] = useState('')
   const writable = d?.switches?.writes_enabled && can('agency.manage')
 
   const act = async (title, path, body, tone = 'warning', content, message) => {
-    setMsg('')
     const ok = await confirm({
       tone, title, targetLabel: username, confirmLabel: s.confirm_go, content, message,
       action: async () => {
         const b = typeof body === 'function' ? body() : body
         if (b === false) throw new Error(s.v_positive)
-        const r = await api.post(`/admin/agency/admins/${encodeURIComponent(username)}/${path}/`, b)
-        setMsg(lang === 'fa' && r.data.message_fa ? r.data.message_fa : r.data.message)
+        await api.post(`/admin/agency/admins/${encodeURIComponent(username)}/${path}/`, b)   // result → toast (FeedbackBridge)
       },
     })
     if (ok) load()
@@ -362,16 +380,30 @@ export function AgencyAdminDetail() {
     [s.a_enable_users, () => act(s.a_enable_users, 'admin-action', { action: 'enable_users' }, 'success'), 'success', 'users'],
     [s.a_reset, () => act(s.a_reset, 'reset-deleted-traffic', {}, 'danger', null, `${s.d_reset} (${d.deleted_used_fmt} → 0 B)`), 'danger', 'reset'],
   ]
+  const tabs = DETAIL_TABS.filter((k) => (k === 'settings' ? can('agency.manage') : k === 'accounting' ? can('agency.accounting') : true))
+  const tab = tabs.includes(rawTab) ? rawTab : 'overview'
+  const base = `/agency/admins/${encodeURIComponent(username)}`
+  const label = { overview: s.t_overview, limits: s.t_limits, settings: s.t_settings, accounting: s.t_accounting, send: s.t_send }
+  const icon = { overview: 'list', limits: 'gauge', settings: 'sliders', accounting: 'wallet', send: 'link' }
   return (
     <div className="ag space-y-4">
       <Header s={s} switches={d.switches} />
       <Link to="/agency/admins" className="ag-back">← {s.back}</Link>
+      <div className="ag-dhead">
+        <h2 className="font-bold text-base"><bdi>{d.username}</bdi></h2>
+        <StatusPill code={d.status_code} s={s} />
+        <span className="ag-dhead-lim">{s.limit}: <Lim b={d.bytes?.limit} tb={d.admin_limit_fmt} s={s} />{!d.is_unlimited && <> · <B>{d.usage_percent}%</B></>}</span>
+      </div>
+      <nav className="ag-dtabs" role="tablist" aria-label={d.username}>
+        {tabs.map((k) => (
+          <NavLink key={k} to={k === 'overview' ? base : `${base}/${k}`} end role="tab" aria-selected={tab === k}
+            className={'ag-dtab' + (tab === k ? ' on' : '')}><Ic n={icon[k]} size={14} />{label[k]}</NavLink>
+        ))}
+      </nav>
+
+      {tab === 'overview' && <>
       <div className="card ag-card">
-        <div className="ag-detail-h">
-          <h2 className="font-bold text-base"><bdi>{d.username}</bdi></h2>
-          <StatusPill code={d.status_code} s={s} />
-          {d.groups.map((g) => <span key={g.id} className="ag-t-grp">{g.owner}</span>)}
-        </div>
+        {d.groups.length > 0 && <div className="ag-detail-h">{d.groups.map((g) => <span key={g.id} className="ag-t-grp">{g.owner}</span>)}</div>}
         {!d.is_unlimited && <div className="ag-detail-bar"><UsageBar pct={d.usage_percent} /><B>{d.usage_percent}%</B></div>}
         {p.show_warning && <Alert kind="warning">{s.warn80.replace('{p}', p.warning_pct)}</Alert>}
         {p.is_blocked && <Alert>{p.block_reason === 'disabled' ? s.blocked_panel : s.blocked_pamp}</Alert>}
@@ -388,32 +420,33 @@ export function AgencyAdminDetail() {
         <p className="text-xs text-muted mt-2">{s.support}: <bdi dir="ltr">{p.support_telegram}</bdi> · {s.last_sync}: {d.last_synced_at ? jalali(d.last_synced_at, true, lang) : s.never}</p>
       </div>
 
-      <div className="card ag-card ag-limits">
+      </>}
+
+      {tab === 'limits' && <div className="card ag-card ag-limits">
         <div className="ag-card-h">
           <SecH i="gauge" ac="blue" style={{ margin: 0 }}>{s.actions}</SecH>
           {can('agency.accounting') && (
-            <a href="#accounting" className="ag-act ag-act--sm" data-tone="neutral"
-              onClick={(e) => { e.preventDefault(); document.getElementById('accounting')?.scrollIntoView({ behavior: 'smooth' }) }}>
-              <Ic n="doc" size={13} />{s.statement_link}
-            </a>
+            <Link to={`${base}/accounting`} className="ag-act ag-act--sm" data-tone="neutral"><Ic n="doc" size={13} />{s.statement_link}</Link>
           )}
         </div>
         <p className="ag-limits-cur">{s.cur_limit}: <Lim b={d.bytes?.limit} tb={d.admin_limit_fmt} s={s} strong />{!d.is_unlimited && <> · {s.usage}: <B>{d.usage_percent}%</B></>}</p>
         {!writable && <p className="ag-locked">{s.cutover}</p>}
-        {msg && <Alert kind="success">{msg}</Alert>}
         <div className="ag-actions">
           {ACTIONS.map(([label, fn, tone, icon]) => (
             <button key={label} type="button" className="ag-act" data-tone={tone || 'neutral'} disabled={!writable}
               onClick={fn} title={!writable ? s.cutover : undefined}><Ic n={icon} />{label}</button>
           ))}
         </div>
-      </div>
+      </div>}
 
-      <PortalLinkCard s={s} username={d.username} />
+      {tab === 'settings' && <AdminSettingsTab username={d.username} writable={writable} onDeleted={() => go('/agency/admins')} />}
+      {tab === 'accounting' && <LedgerCard username={d.username} />}
+      {tab === 'send' && <>
+        <PortalLinkCard s={s} username={d.username} />
+        <p className="ag-note card ag-card text-sm text-muted">{s.send_pw_note}</p>
+      </>}
 
-
-      {can('agency.accounting') && <div id="accounting" className="ag-anchor"><LedgerCard username={d.username} /></div>}
-
+      {tab === 'overview' && <>
       <div className="card ag-card">
         <div className="ag-card-h"><h3 className="ag-sh" data-ac="cyan"><Ic n="clock" size={15} />{s.snapshots}</h3><span className="ag-count">{s.snap_n.replace('{n}', digits(d.snapshots.count, lang))}</span></div>
         <div className="ag-table-wrap ag-snap">
@@ -429,6 +462,7 @@ export function AgencyAdminDetail() {
         <SecH i="sync" ac="green" style={{ marginTop: 0 }}>{s.recent_syncs}</SecH>
         <SyncRows rows={d.recent_syncs} s={s} lang={lang} />
       </div>
+      </>}
     </div>
   )
 }
@@ -594,14 +628,13 @@ export function AgencyGroups() {
   const [d, err, load] = useLoad('/admin/agency/groups/')
   const [dash] = useLoad('/admin/agency/')
   const [admins] = useLoad('/admin/agency/admins/')
-  const [msg, setMsg] = useState('')
+  const toast = useToast()
   const writable = dash?.switches?.writes_enabled && can('agency.manage')
   const all = (admins?.results || []).map((r) => r.username).sort((a, b) => a.localeCompare(b))
   const title = (g) => g.name || g.owner
 
   const edit = async (g) => {
     const box = {}
-    setMsg('')
     const ok = await confirm({
       tone: 'primary', title: g ? s.g_edit : s.g_create, targetLabel: g ? s.g_group : undefined, targetId: g ? title(g) : undefined,
       confirmLabel: s.save, content: <GroupForm s={s} all={all} init={g} box={box} />,
@@ -611,19 +644,17 @@ export function AgencyGroups() {
         try { g ? await api.put(`/admin/agency/groups/${g.id}/`, body) : await api.post('/admin/agency/groups/', body) } catch (e) { throw new Error(groupErr(e, lang)) }
       },
     })
-    if (ok) { setMsg(g ? s.g_saved : s.g_created); load() }
+    if (ok) { toast.success(g ? s.g_saved : s.g_created); load() }
   }
   const remove = async (g) => {
-    setMsg('')
     const ok = await confirm({
       tone: 'danger', title: s.g_delete, targetLabel: s.g_group, targetId: title(g), confirmLabel: s.g_delete, message: s.g_delete_msg,
       details: { rows: [[s.g_owner, g.owner], [s.members, g.members.join('، ') || '—']] },
       action: async () => { try { await api.delete(`/admin/agency/groups/${g.id}/`) } catch (e) { throw new Error(groupErr(e, lang)) } },
     })
-    if (ok) { setMsg(s.g_deleted); load() }
+    if (ok) { toast.success(s.g_deleted); load() }
   }
   const dropMember = async (g, m) => {
-    setMsg('')
     const ok = await confirm({
       tone: 'danger', title: s.g_remove_member, targetLabel: s.g_group, targetId: title(g), confirmLabel: s.g_remove_member,
       details: { rows: [[s.members, `${g.members.join('، ')} → ${g.members.filter((x) => x !== m).join('، ') || '—'}`]] },
@@ -631,7 +662,7 @@ export function AgencyGroups() {
         try { await api.put(`/admin/agency/groups/${g.id}/`, { name: g.name, owner: g.owner, note: g.note, members: g.members.filter((x) => x !== m) }) } catch (e) { throw new Error(groupErr(e, lang)) }
       },
     })
-    if (ok) { setMsg(s.g_saved); load() }
+    if (ok) { toast.success(s.g_saved); load() }
   }
 
   return (
@@ -644,7 +675,6 @@ export function AgencyGroups() {
         )}
       </div>
       <Alert>{err}</Alert>
-      {msg && <Alert kind="success">{msg}</Alert>}
       {d === null ? <div className="grid place-items-center py-16"><Spinner /></div> : d && (
         d.results.length === 0 ? <div className="card text-sm text-muted">{s.groups_none}</div> : d.results.map((g) => (
           <section key={g.id} className="card ag-card">
@@ -768,14 +798,14 @@ export function AgencySettings() {
   const confirm = useConfirm()
   const [d, err, load] = useLoad('/admin/agency/settings/')
   const [interval, setIntervalV] = useState('')
-  const [msg, setMsg] = useState('')
+  const toast = useToast()
   const [e2, setE2] = useState('')
   useEffect(() => { if (d) setIntervalV(String(d.sync_interval_minutes)) }, [d])
   const manage = can('agency.manage')
 
   const patch = async (body) => {
-    setMsg(''); setE2('')
-    try { await api.patch('/admin/agency/settings/', body); setMsg(s.saved); load() } catch (e) { setE2(apiError(e)) }
+    setE2('')
+    try { await api.patch('/admin/agency/settings/', body); toast.success(s.saved); load() } catch (e) { setE2(apiError(e)) }
   }
   const toggleSync = async (on) => {
     if (on) {
@@ -796,7 +826,6 @@ export function AgencySettings() {
     <div className="ag space-y-4">
       <Header s={s} switches={d || undefined} />
       <Alert>{err || e2}</Alert>
-      {msg && <Alert kind="success">{msg}</Alert>}
       {d === null ? <div className="grid place-items-center py-16"><Spinner /></div> : d && (
         <div className="card ag-card ag-settings">
           <div className="ag-set-row">
@@ -826,6 +855,22 @@ export function AgencySettings() {
 }
 
 const CSS = `
+.ag-listbar { display: flex; justify-content: flex-end; }
+.ag-new { min-height: 40px; padding-inline: 16px; font-size: 13.5px; text-decoration: none; }
+.ag-dhead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ag-dhead-lim { font-size: 12.5px; color: var(--c-text-muted); margin-inline-start: auto; }
+.ag-dtabs { display: flex; gap: 4px; overflow-x: auto; padding: 4px; border-radius: 14px; border: 1px solid var(--c-border); background: var(--c-surface); scrollbar-width: thin; }
+.ag-dtab { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 700;
+  color: var(--c-text-muted); text-decoration: none; white-space: nowrap; }
+.ag-dtab:hover { color: var(--c-text); background: color-mix(in srgb, var(--c-primary) 6%, transparent); }
+.ag-dtab.on { color: #fff; background: color-mix(in srgb, var(--c-primary) 85%, #000); }
+@media (max-width: 767px) {
+  .ag-dtabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); overflow: visible; }
+  .ag-dtab { justify-content: center; padding: 8px 6px; font-size: 12px; flex-direction: column; gap: 3px; text-align: center; white-space: normal; line-height: 1.3; }
+  .ag-dhead-lim { margin-inline-start: 0; width: 100%; }
+  .ag-listbar .ag-new { width: 100%; justify-content: center; }
+}
+
 .ag-head { margin-bottom: 2px; }
 .ag-tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
 .ag-tabs::-webkit-scrollbar { display: none; }

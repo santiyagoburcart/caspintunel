@@ -10,7 +10,7 @@ desktop + 390 px) and **must update [architecture.md](architecture.md),
 | 0 | Documentation refresh (architecture, ERD, flows, roadmap) — **done (v1.15.8)** | — |
 | 1 | Ticketing core — models, rules, RBAC + scopes, notifications, API — **done (v1.16.0)** | — |
 | 2 | Ticketing UIs — customer chat (site + bot, synced), staff inbox — **done (v1.17.0)** | 1 |
-| A | Agency improvements — toasts, PasarGuard admin CRUD, admin detail tabs | — (runs in parallel) |
+| A | Agency improvements — toasts, PasarGuard admin CRUD, admin detail tabs — **done (v1.18.0)** | — |
 | 3 | CRM — customer 360, inactivity + reasons | 1–2 |
 | 4 | Retention — warnings, win-back queue | 3 |
 | 5 | CRM accounting — LTV, renewal / churn reports | 3, 4 |
@@ -68,6 +68,11 @@ a reply written in either place shows up in both.
   notifications, reports (first response time, resolution time per admin).
 
 ## Phase A — Agency improvements
+
+**Done in v1.18.0.** Notes from building it: PasarGuard 5.4.1 has no `is_sudo`
+— admins get a role (owner roles = sudo), and allowed groups / user templates
+belong to the role, so the create form shows the live role list with what each
+role allows instead of per-admin group lists.
 
 Improvements to the agency panel and reseller portal; each item is its own
 release. Fixed constraint: the PAMP formulas, sync order and enforcement stay
