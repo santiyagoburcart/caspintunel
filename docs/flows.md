@@ -420,7 +420,27 @@ sequenceDiagram
     S->>DB: otherwise: close as lost with a reason
 ```
 
-## 12. Deploy (`./update.sh`)
+## 12. Analytics (read-only)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor A as Admin (accounting.view + crm.view)
+    participant UI as /panel/analytics
+    participant API as web crm/analytics/<what>/
+    participant DB as MySQL
+
+    A->>UI: overview · finance · retention · support, period (preset or Jalali range)
+    UI->>API: GET ?preset= | ?from=&to=
+    API->>DB: approved payments (revenue), orders (coverage, discounts), services, CRM profiles / cases, ticket events
+    Note over API: computed on request — nothing is written
+    API-->>UI: figures + series (Jalali months)
+    A->>UI: Export
+    UI->>API: GET financial/?export=csv|xlsx&lang=
+    API-->>A: file (UTF-8 BOM CSV / RTL Excel in fa)
+```
+
+## 13. Deploy (`./update.sh`)
 
 ```mermaid
 sequenceDiagram

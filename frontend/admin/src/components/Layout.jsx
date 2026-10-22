@@ -20,6 +20,7 @@ const nav = [
   ['/transactions', 'transactions', 'payment.view'],
   ['/sms-log', 'sms_log', 'payment.view'],
   ['/accounting', 'accounting', 'accounting.view'],
+  ['/analytics', 'analytics', 'accounting.view'],
   ['/cards', 'cards', 'payment.view'],
   ['/monitoring', 'monitoring', 'monitoring.view'],
   ['/panel-link', 'panel_link', 'settings.manage'],
@@ -224,7 +225,7 @@ function CaspianNav({ groups, t, brand, logo, onNavigate }) {
 // inner-page titles for the mobile top bar (first match wins, so sub-paths go first)
 const MOBILE_TITLES = [
   ['/settings/email', 'email_settings'], ['/settings/paths', 'paths'],
-  ['/tickets/topics', 'ticket_topics'], ['/tickets', 'tickets'], ['/crm', 'crm'],
+  ['/tickets/topics', 'ticket_topics'], ['/tickets', 'tickets'], ['/crm', 'crm'], ['/analytics', 'analytics'],
   ['/users/deleted', 'deleted_users'], ['/users', 'users'], ['/agency', 'agency'], ['/services', 'services'], ['/plans', 'plans'],
   ['/payments', 'nav_pay_queue'], ['/transactions', 'transactions'], ['/sms-log', 'sms_log'], ['/accounting', 'accounting'],
   ['/cards', 'cards'], ['/monitoring', 'monitoring'], ['/panel-link', 'panel_link'], ['/bots', 'bots'],

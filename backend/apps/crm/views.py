@@ -664,3 +664,49 @@ class RetentionReportView(_Staff):
         except ValueError:
             days = 30
         return Response(report(days))
+
+
+
+# --- analytics (phase 5) ------------------------------------------------------------------
+ANALYTICS = ["accounting.view", "crm.view"]
+
+
+class AnalyticsView(_Staff):
+    """GET analytics/<what>/ — overview | financial | retention | tickets (period: ?preset= or ?from=&to=)
+    · ?export=csv|xlsx on financial (with the retention tables) → a file."""
+
+    def get_permissions(self):
+        self.perms_map = {"GET": ["crm.view", "tickets.view"] if self.kwargs.get("what") == "tickets" else ANALYTICS}
+        return super().get_permissions()
+
+    def get(self, request, what):
+        from django.http import HttpResponse
+
+        from . import analytics as A
+
+        start, end, preset = A.parse_period(request.query_params)
+        if what == "overview":
+            return Response(A.overview())
+        if what == "financial":
+            fin = A.financial(start, end)
+            exp = request.query_params.get("export")
+            if exp in ("csv", "xlsx"):
+                lang = request.query_params.get("lang", "fa")
+                rows = A.export_rows(fin, A.retention(start, end), lang)
+                name = f"crm-financial-{A._rng(start, end)['from'].replace('/', '')}-{A._rng(start, end)['to'].replace('/', '')}"
+                if exp == "csv":
+                    resp = HttpResponse(A.to_csv(rows), content_type="text/csv; charset=utf-8")
+                    resp["Content-Disposition"] = f'attachment; filename="{name}.csv"'
+                    return resp
+                from apps.common.xlsx import build
+
+                resp = HttpResponse(build(rows, sheet="CRM", rtl=lang != "en"),
+                                    content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                resp["Content-Disposition"] = f'attachment; filename="{name}.xlsx"'
+                return resp
+            return Response({"range": A._rng(start, end), "preset": preset, **fin})
+        if what == "retention":
+            return Response({"range": A._rng(start, end), "preset": preset, **A.retention(start, end)})
+        if what == "tickets":
+            return Response({"range": A._rng(start, end), "preset": preset, **A.tickets(start, end)})
+        return Response({"detail": "unknown report"}, status=404)

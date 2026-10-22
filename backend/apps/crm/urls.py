@@ -22,6 +22,7 @@ urlpatterns = [
     path("leads/", v.LeadsView.as_view(), name="crm-leads"),
     path("staff/", v.StaffListView.as_view(), name="crm-staff"),
     path("reports/", v.ReportsView.as_view(), name="crm-reports"),
+    path("analytics/<str:what>/", v.AnalyticsView.as_view(), name="crm-analytics"),
     path("settings/", v.SettingsView.as_view(), name="crm-settings"),
     path("reasons/", v.ReasonsView.as_view(), name="crm-reasons"),
     path("reasons/<int:pk>/", v.ReasonDetailView.as_view(), name="crm-reason"),

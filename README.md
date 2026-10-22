@@ -21,7 +21,7 @@ See **[docs/](docs/)** — [install](docs/install.md) · [offline](docs/offline.
 [operations](docs/operations.md) · [server migration](docs/migration.md) · [paths](docs/paths.md) · [agency](docs/agency.md) · [bots](docs/bots.md) · [development](docs/development.md).
 The same pages are readable in the admin panel → **Documentation**.
 
-Planned next: CRM accounting — see [docs/roadmap.md](docs/roadmap.md).
+All roadmap phases are built — see [docs/roadmap.md](docs/roadmap.md).
 
 ## Features
 
@@ -36,6 +36,7 @@ Planned next: CRM accounting — see [docs/roadmap.md](docs/roadmap.md).
 - **Agency panel** — PasarGuard reseller admins (1:1 port of PAMP v1.5.3) + **create / edit / delete admins on the panel** (every API field, roles, price + quota charge, send-to-reseller card), tabbed admin pages: limits in GB, usage / sold / hidden / deleted-users traffic, enforcement, account groups, sync logs; **reseller portal** (`/agency/`, panel login); **accounting** (price per GB, automatic quota charges, payments, statements, period / monthly reports, CSV + Excel)
 - **CRM** — customer 360 (profile, services, LTV, tickets, notes, tags, owner, activity timeline), automatic lifecycle stages (lead → churned / won back), **inactivity detection** from PasarGuard connection data with a follow-up queue (reasons, outcomes, template messages, tickets on the customer's behalf, optional automatic message), leads, reports
 - **Retention** — configurable pre-expiry warnings (data % / days left, quiet hours, one-click renew on site / bot / email), win-back queue (discount codes at checkout, automatic won-back with recovered revenue), retention reports
+- **Business analytics** — overview dashboard with trends, customer finance (LTV, AOV, ARPU, new vs returning, by plan / channel / card, discount cost, CSV / Excel), retention (churn, renewal, cohorts, lifetime, top LTV), support performance per staff and topic
 - Configurable admin-panel and portal **paths** (Settings → Paths)
 - **Ticketing** — Telegram-like chat on the site and in the sales bot (synced), staff inbox (split view, internal notes, saved replies, timeline, customer panel, live badge), staff ticket handling from Telegram; topics (pre-purchase open to everyone, the rest to anyone who ever bought), attachments, internal notes, assignment, priorities, full history, auto-close / reopen, **Ticketing role + per-staff topic scopes**, notifications to customers (site / bot / email) and staff (live badge, Telegram DM after linking, email)
 - Fully responsive admin on phones — bottom nav with the payment queue in the centre, compact record cards, every desktop page reachable from the Settings index

@@ -351,6 +351,29 @@ reason. Optional automatic first win-back message (off by default).
 services, win-back rate, revenue recovered, top reasons, discount codes issued
 / used (`crm/retention/report/`).
 
+## Analytics (CRM accounting)
+
+`/panel/analytics` (`apps/crm/analytics.py`, read-only — no payment, agency or
+ledger calculation changes; `accounting.view` + `crm.view`, the support tab
+`crm.view` + `tickets.view`):
+
+- **Business overview**: revenue this Jalali month vs the same part of last
+  month, active customers, at-risk / expired / churned, win-back rate, open
+  tickets and follow-ups, average first response, 12-month / 12-week trend
+  charts (revenue, new customers, active customers, tickets).
+- **Customer finance** (period presets or a Jalali range; CSV / Excel export):
+  revenue (= approved payments, as the Accounting page), AOV, ARPU (revenue ÷
+  paying customers), new vs returning revenue, revenue per month, by plan, by
+  channel (site / bot / panel), by bank card, discount cost (codes used),
+  average LTV.
+- **Retention**: churn and renewal rate per month, first-purchase cohorts
+  (% active in the following months), average customer lifetime, top
+  customers by LTV. "Active in a month" = a paid new / renew order whose plan
+  period covers it (orders are the only history of service periods).
+- **Support**: per staff — tickets handled, replies, average first response
+  (credited to the first replier), resolved + average resolution, reopened;
+  per topic — opened, closed, first response.
+
 ## Frontends
 
 React 18 + Vite + Tailwind. Themes from `/api/v1/theme/` (Caspian light/dark —

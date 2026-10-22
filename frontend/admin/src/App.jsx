@@ -18,6 +18,7 @@ import { AgencyAdminDetail, AgencyAdminNew, AgencyAdmins, AgencyDashboard, Agenc
 import Accounting from './pages/Accounting'
 import Tickets from './pages/Tickets'
 import TicketTopics from './pages/TicketTopics'
+import Analytics from './pages/Analytics'
 import { CrmCase, CrmLeads, CrmQueue, CrmReports, CrmSettings, CrmWinback, Customer360 } from './pages/Crm'
 import Cards from './pages/Cards'
 import Monitoring from './pages/Monitoring'
@@ -82,6 +83,8 @@ export default function App() {
         <Route path="/tickets" element={<Tickets />} />
         <Route path="/tickets/topics" element={<TicketTopics />} />
         <Route path="/tickets/:id" element={<Tickets />} />
+        <Route path="/analytics" element={<Analytics />} />
+        <Route path="/analytics/:tab" element={<Analytics />} />
         <Route path="/crm" element={<CrmQueue />} />
         <Route path="/crm/cases/:id" element={<CrmCase />} />
         <Route path="/crm/customers/:id" element={<Customer360 />} />

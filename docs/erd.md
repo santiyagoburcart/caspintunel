@@ -590,6 +590,8 @@ erDiagram
 | `crm_service_end` | When a service was first seen expired / used up (drives the win-back grace period). |
 | `crm_discount_code` | Single-use win-back discount codes: percent, expiry, the reserving order and when it was used. |
 
+Analytics (Phase 5, `crm/analytics.py`) adds no tables — it reads payments, orders, services, CRM and ticket tables.
+
 `crm_case_reason` and `crm_message_template` have a `category` (inactivity / winback); `order.discount_amount` holds the discount taken off `amount`.
 
 ## 7. Notifications (`notifications`)

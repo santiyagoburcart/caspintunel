@@ -160,6 +160,8 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
 - Stage / detection / case rules live in `crm/services.py`; every change writes a `CrmEvent` (timeline). Detection only
   trusts services synced in the last 24 h. Staff-opened tickets go through `tickets.services.open_for_user`.
 - Messages to customers always via `notify_user` (site / bot / email); templates use `{name} {username} {service} {site} {guide}`.
+- Analytics (`crm/analytics.py`) is read-only: revenue = approved payments by confirmed_at (same as Accounting); never write
+  from it and never change payment / agency / ledger calculations for a report.
 - Retention (`crm/retention.py`): warnings are unique per (service, kind, threshold, period_key) — never send one outside
   `run_warnings` / `deliver_pending`; channels are tracked per warning (quiet hours). The old `ops.alerts` only runs when
   `retention_warnings_enabled` is off. Discount codes: `create_order(discount_code=…)` → `retention.check_code`; used on paid.

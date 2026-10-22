@@ -134,6 +134,7 @@ export default function Accounting() {
             <p className="mt-1 text-sm text-muted">{s.sub}</p>
           </div>
         </div>
+        <Link to="/analytics/finance" className="btn-ghost text-sm acc-an-link">{lang === 'en' ? 'Customer analytics →' : 'تحلیل مالی مشتریان ←'}</Link>
       </div>
 
       <div className="card acc-toolbar">

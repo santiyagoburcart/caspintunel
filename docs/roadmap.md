@@ -9,11 +9,11 @@ desktop + 390 px) and **must update [architecture.md](architecture.md),
 |---|---|---|
 | 0 | Documentation refresh (architecture, ERD, flows, roadmap) — **done (v1.15.8)** | — |
 | 1 | Ticketing core — models, rules, RBAC + scopes, notifications, API — **done (v1.16.0)** | — |
-| 2 | Ticketing UIs — customer chat (site + bot, synced), staff inbox — **done (v1.17.0)** | 1 |
+| 2 | Ticketing UIs — customer chat (site + bot, synced), staff inbox — **done (v1.17.0)**; response-time reports in v1.21.0 | 1 |
 | A | Agency improvements — toasts, PasarGuard admin CRUD, admin detail tabs — **done (v1.18.0)** | — |
 | 3 | CRM — customer 360, inactivity + reasons — **done (v1.19.0)** | 1–2 |
 | 4 | Retention — warnings, win-back queue — **done (v1.20.0)** | 3 |
-| 5 | CRM accounting — LTV, renewal / churn reports | 3, 4 |
+| 5 | CRM accounting — LTV, renewal / churn reports — **done (v1.21.0)** | 3, 4 |
 
 ## Phases 1–2 — Ticketing
 
@@ -126,6 +126,10 @@ retention reports. Original plan:
 - Measured: renewal rate after a warning, win-back success rate.
 
 ## Phase 5 — CRM accounting
+
+**Done in v1.21.0** (see [architecture.md](architecture.md#analytics-crm-accounting)): business overview, customer finance
+(LTV, AOV, ARPU, new vs returning, by plan / channel / card, discount cost, export), retention analytics (churn, renewal,
+cohorts, lifetime, top LTV) and support performance per staff / topic. All planned phases are now built. Original plan:
 
 - **LTV** per customer and per acquisition source (total paid, number of
   orders, months active).
