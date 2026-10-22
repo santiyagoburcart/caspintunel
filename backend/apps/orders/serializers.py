@@ -19,7 +19,7 @@ class OrderSerializer(serializers.ModelSerializer):
         fields = (
             "id", "type", "status", "plan", "plan_name", "plan_name_en", "service",
             "requested_account_name", "custom_volume_gb",
-            "amount", "amount_unique", "unique_expire_at",
+            "amount", "discount_amount", "amount_unique", "unique_expire_at",
             "payment_status", "payment_method", "receipt_url",
             "reject_reason", "source", "created_at",
         )
@@ -49,6 +49,7 @@ class OrderCreateSerializer(serializers.Serializer):
     requested_account_name = serializers.RegexField(r"^[A-Za-z0-9_.\-]{2,64}$", required=False, allow_blank=True)
     custom_volume_gb = serializers.IntegerField(required=False, min_value=1)
     service = serializers.IntegerField(required=False)
+    discount_code = serializers.CharField(required=False, allow_blank=True, max_length=16)
     # accepted once at sign-up (User.terms_accepted_at); kept only so older
     # clients that still send it don't break
     terms_accepted = serializers.BooleanField(write_only=True, required=False)
@@ -71,6 +72,7 @@ class OrderCreateSerializer(serializers.Serializer):
                 custom_volume_gb=validated.get("custom_volume_gb"),
                 service_id=validated.get("service"),
                 source=self.context.get("source", "site"),
+                discount_code=validated.get("discount_code") or None,
             )
         except OrderError as exc:
             raise serializers.ValidationError(str(exc))

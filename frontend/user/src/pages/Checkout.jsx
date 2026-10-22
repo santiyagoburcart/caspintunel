@@ -47,6 +47,8 @@ export default function Checkout() {
   const [chosenPlan, setChosenPlan] = useState(planId || '')
   const [accountName, setAccountName] = useState('')
   const [customGb, setCustomGb] = useState(preGb || '')
+  const [code, setCode] = useState(sp.get('code') || '')
+  const [showCode, setShowCode] = useState(!!sp.get('code'))
   const [order, setOrder] = useState(null)
   const [instructions, setInstructions] = useState(null)
   const [service, setService] = useState(null)
@@ -170,6 +172,7 @@ export default function Checkout() {
         ? { plan: Number(chosenPlan), type: 'renew', service: Number(renewId) }
         : { plan: Number(chosenPlan), type: 'new', requested_account_name: accountName || undefined,
             custom_volume_gb: customGb ? Number(customGb) : undefined }
+      if (code.trim()) body.discount_code = code.trim().toUpperCase()
       const { data } = await api.post('/orders/', body)
       showOrder(data)
       if (data.reused) toast.success(t('order_resumed'))
@@ -289,6 +292,18 @@ export default function Checkout() {
           <CustomVolumePicker plan={plan} value={customGb} onChange={setCustomGb} t={t} lang={lang} />
         )}
 
+        <div className="ckt-code">
+          {showCode ? (
+            <Field label={lang === 'en' ? 'Discount code' : 'کد تخفیف'}>
+              <input className="input" dir="ltr" maxLength={16} value={code} autoComplete="off"
+                onChange={(e) => setCode(e.target.value.replace(/\s/g, ''))} placeholder="WB…" />
+            </Field>
+          ) : (
+            <button type="button" className="ckt-code-toggle" onClick={() => setShowCode(true)}>
+              {lang === 'en' ? 'Have a discount code?' : 'کد تخفیف دارید؟'}
+            </button>
+          )}
+        </div>
 
         <button className="btn-primary w-full"
           disabled={busy || !chosenPlan || (!renewId && !accountName.trim())
@@ -460,6 +475,11 @@ export default function Checkout() {
           <div className="ckt-amount rounded-xl p-3 text-center" style={{ background: 'color-mix(in srgb, var(--c-primary) 12%, transparent)' }}>
             <div className="ckt-amount-l text-sm text-muted">{t('amount')}</div>
             <div className="ckt-amount-v text-2xl font-bold" style={{ color: 'var(--c-primary)' }}>{toman(order.amount_unique ?? instructions?.amount_to_pay, lang)}</div>
+            {Number(order.discount_amount) > 0 && (
+              <div className="ckt-discount text-sm mt-1" style={{ color: 'var(--c-success-fg, var(--c-success))' }}>
+                {lang === 'en' ? 'Discount applied' : 'تخفیف اعمال شد'}: −{toman(order.discount_amount, lang)}
+              </div>
+            )}
             <div className="ckt-amount-h text-xs text-muted">{t('pay_exact')}</div>
           </div>
 
@@ -597,6 +617,7 @@ const CHECKOUT_CSS = `
 .ckt-terms input { margin-top: 3px; flex-shrink: 0; width: 16px; height: 16px; accent-color: var(--c-primary); cursor: pointer; }
 .ckt-terms-link { color: var(--c-primary); font-weight: 600; }
 .ckt-terms-link:hover { text-decoration: underline; }
+.ckt-code-toggle { padding: 0; border: 0; background: none; color: var(--c-primary); font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .ckt-renew-banner {
   display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 12px;
   background: color-mix(in srgb, var(--c-warning) 14%, transparent);

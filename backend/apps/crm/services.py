@@ -212,7 +212,7 @@ def _auto_messages(now) -> int:
 
 def default_template():
     tid = setting("crm_auto_message_template")
-    qs = MessageTemplate.objects.filter(is_active=True)
+    qs = MessageTemplate.objects.filter(is_active=True, category="inactivity")
     return (qs.filter(pk=tid).first() if tid else None) or qs.first()
 
 

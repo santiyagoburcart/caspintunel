@@ -12,7 +12,7 @@ desktop + 390 px) and **must update [architecture.md](architecture.md),
 | 2 | Ticketing UIs — customer chat (site + bot, synced), staff inbox — **done (v1.17.0)** | 1 |
 | A | Agency improvements — toasts, PasarGuard admin CRUD, admin detail tabs — **done (v1.18.0)** | — |
 | 3 | CRM — customer 360, inactivity + reasons — **done (v1.19.0)** | 1–2 |
-| 4 | Retention — warnings, win-back queue | 3 |
+| 4 | Retention — warnings, win-back queue — **done (v1.20.0)** | 3 |
 | 5 | CRM accounting — LTV, renewal / churn reports | 3, 4 |
 
 ## Phases 1–2 — Ticketing
@@ -111,6 +111,10 @@ templates, tickets on the customer's behalf, optional automatic message; leads l
   360 page; a ticket can be tagged with a churn reason.
 
 ## Phase 4 — Retention
+
+**Done in v1.20.0** (see [architecture.md](architecture.md#retention)): configurable pre-expiry warnings with quiet hours,
+per-threshold templates and one-click renew; win-back queue with discount codes, auto won-back and revenue recovered;
+retention reports. Original plan:
 
 - **Configurable warnings:** expiry (days before) and volume (percent used)
   thresholds, multiple steps, channels (site / bot / email) and texts in fa/en,

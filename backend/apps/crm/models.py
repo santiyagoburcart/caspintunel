@@ -57,8 +57,14 @@ class CustomerNote(models.Model):
         ordering = ("-created_at",)
 
 
+class Category(models.TextChoices):
+    INACTIVITY = "inactivity", "Inactivity follow-up"
+    WINBACK = "winback", "Win-back (not renewing)"
+
+
 class CaseReason(models.Model):
-    """Why a customer is inactive — configurable list."""
+    """Configurable reason lists: why a customer is inactive / why they did not renew."""
+    category = models.CharField(max_length=12, choices=Category.choices, default=Category.INACTIVITY)
     name_fa = models.CharField(max_length=80)
     name_en = models.CharField(max_length=80)
     is_active = models.BooleanField(default=True)
@@ -74,6 +80,7 @@ class CaseKind(models.TextChoices):
     NEVER_CONNECTED = "never_connected", "Purchased, never connected"
     LEAD = "lead", "Lead follow-up"
     MANUAL = "manual", "Manual"
+    WINBACK = "winback", "Win-back (expired / used up, not renewed)"
 
 
 class CaseStatus(models.TextChoices):
@@ -85,6 +92,7 @@ class Outcome(models.TextChoices):
     RESOLVED = "resolved", "Resolved"
     STILL_INACTIVE = "still_inactive", "Still inactive"
     LOST = "lost", "Lost"
+    WON_BACK = "won_back", "Won back (renewed)"
 
 
 class FollowUpCase(models.Model):
@@ -105,6 +113,9 @@ class FollowUpCase(models.Model):
     closed_at = models.DateTimeField(null=True, blank=True)
     closed_by = models.ForeignKey("accounts.Staff", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     closed_by_system = models.BooleanField(default=False)
+    # win-back: when the service ended, and what came back (approved payments after the case opened)
+    ended_at = models.DateTimeField(null=True, blank=True)
+    recovered_amount = models.DecimalField(max_digits=12, decimal_places=0, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -114,7 +125,9 @@ class FollowUpCase(models.Model):
 
 
 class MessageTemplate(models.Model):
-    """Editable message for follow-ups (rendered with {name}, {username}, {service}, {site}, {guide})."""
+    """Editable message for follow-ups (rendered with {name}, {username}, {service}, {site}, {guide},
+    and for win-back also {renew}, {code}, {percent}, {code_expires})."""
+    category = models.CharField(max_length=12, choices=Category.choices, default=Category.INACTIVITY)
     title = models.CharField(max_length=80)
     body_fa = models.TextField()
     body_en = models.TextField(blank=True, default="")
@@ -136,6 +149,7 @@ class EventKind(models.TextChoices):
     CASE_CLOSED = "case_closed", "Case closed"
     MESSAGE = "message", "Message sent"
     TICKET = "ticket", "Ticket opened / linked"
+    DISCOUNT = "discount", "Discount code issued"
 
 
 class CrmEvent(models.Model):
@@ -149,3 +163,82 @@ class CrmEvent(models.Model):
     class Meta:
         db_table = "crm_event"
         ordering = ("-created_at", "-id")
+
+
+# --- retention (phase 4) ------------------------------------------------------------
+class WarningKind(models.TextChoices):
+    DATA = "data", "Data used (%)"
+    TIME = "time", "Days left"
+
+
+class WarningRule(models.Model):
+    """A pre-expiry warning threshold with its own message (fa / en). Variables:
+    {name} {service} {remaining_gb} {remaining_days} {renew}."""
+    kind = models.CharField(max_length=4, choices=WarningKind.choices)
+    threshold = models.PositiveIntegerField(help_text="percent used (data) or days left (time)")
+    is_active = models.BooleanField(default=True)
+    title_fa = models.CharField(max_length=120)
+    title_en = models.CharField(max_length=120, blank=True, default="")
+    body_fa = models.TextField()
+    body_en = models.TextField(blank=True, default="")
+
+    class Meta:
+        db_table = "crm_warning_rule"
+        ordering = ("kind", "-threshold")
+        constraints = [models.UniqueConstraint(fields=["kind", "threshold"], name="crm_warning_rule_unique")]
+
+
+class ServiceWarning(models.Model):
+    """One warning for one service period (period_key changes when the service is renewed)
+    — the unique constraint makes it impossible to send the same threshold twice. Each
+    channel is recorded separately, so a retry only sends the channels still missing;
+    bot / email wait for `due_at` during quiet hours."""
+    service = models.ForeignKey("panel.Service", on_delete=models.CASCADE, related_name="warnings")
+    rule = models.ForeignKey(WarningRule, null=True, on_delete=models.SET_NULL, related_name="sent")
+    kind = models.CharField(max_length=4, choices=WarningKind.choices)
+    threshold = models.PositiveIntegerField()
+    period_key = models.CharField(max_length=64)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    due_at = models.DateTimeField(default=timezone.now)          # bot / email not before this (quiet hours)
+    site_sent_at = models.DateTimeField(null=True, blank=True)
+    bot_sent_at = models.DateTimeField(null=True, blank=True)
+    email_sent_at = models.DateTimeField(null=True, blank=True)
+    bot_error = models.CharField(max_length=200, blank=True, default="")
+    email_error = models.CharField(max_length=200, blank=True, default="")
+    notification = models.ForeignKey("notifications.Notification", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    renewed_at = models.DateTimeField(null=True, blank=True)     # a renewal / new purchase followed within the window
+
+    class Meta:
+        db_table = "crm_service_warning"
+        ordering = ("-created_at",)
+        constraints = [models.UniqueConstraint(fields=["service", "kind", "threshold", "period_key"], name="crm_service_warning_once")]
+
+
+class ServiceEndMark(models.Model):
+    """When a service was first seen expired / used up (the panel does not say when
+    data ran out). Removed once the service is live again."""
+    service = models.OneToOneField("panel.Service", on_delete=models.CASCADE, related_name="crm_end")
+    status = models.CharField(max_length=10)
+    ended_at = models.DateTimeField()
+
+    class Meta:
+        db_table = "crm_service_end"
+
+
+class DiscountCode(models.Model):
+    """Single-use win-back discount for one customer: percent off the plan price at
+    checkout, until expires_at. Reserved by an order at creation, used when that
+    order is paid."""
+    code = models.CharField(max_length=16, unique=True)
+    user = models.ForeignKey("accounts.User", on_delete=models.CASCADE, related_name="discount_codes")
+    percent = models.PositiveSmallIntegerField()
+    expires_at = models.DateTimeField()
+    case = models.ForeignKey(FollowUpCase, null=True, blank=True, on_delete=models.SET_NULL, related_name="discounts")
+    order = models.ForeignKey("orders.Order", null=True, blank=True, on_delete=models.SET_NULL, related_name="discount_codes")
+    used_at = models.DateTimeField(null=True, blank=True)
+    created_by = models.CharField(max_length=64, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "crm_discount_code"
+        ordering = ("-created_at",)

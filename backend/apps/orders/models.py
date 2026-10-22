@@ -42,6 +42,8 @@ class Order(TimeStampedModel):
     custom_volume_gb = models.IntegerField(null=True, blank=True)
 
     amount = models.DecimalField(max_digits=12, decimal_places=0, help_text="base amount, tomans")
+    # win-back discount (apps.crm.DiscountCode) already taken off `amount`; 0 = none
+    discount_amount = models.DecimalField(max_digits=12, decimal_places=0, default=0)
     amount_unique = models.DecimalField(
         max_digits=12, decimal_places=0, help_text="amount + unique surcharge (200..1500)"
     )

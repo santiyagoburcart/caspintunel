@@ -147,9 +147,9 @@ setting is saved (`apps/ops/schedule.py`).
 | telegram: required-channel member counts | `telegram.tasks.sync_required_channels_task` | 60 min |
 | ops: health checks | `ops.tasks.health_check_task` | 2 min |
 | ops: resource sample | `ops.tasks.resource_sample_task` | 5 min |
-| ops: service alerts | `ops.tasks.service_alerts_task` (volume / expiry warnings) | 30 min |
+| ops: service alerts | `ops.tasks.service_alerts_task` → `crm.retention.run_warnings` (pre-expiry warnings; the old fixed alert only when `retention_warnings_enabled` is off) | 30 min |
 | ops: prune old backups | `ops.tasks.prune_backups_task` → `retention.run_cleanup` | 60 min |
-| crm: inactivity detection + stages | `crm.tasks.crm_detect_task` (cases, auto-close on reconnect, optional friendly message, stage refresh) | 60 min |
+| crm: inactivity detection + stages | `crm.tasks.crm_detect_task` (inactivity cases, auto-close on reconnect, optional friendly message, win-back queue + auto won-back, stage refresh) | 60 min |
 | tickets: auto-close stale | `tickets.tasks.auto_close_tickets_task` (awaiting the customer for `tickets_auto_close_days`) | 60 min |
 
 On-demand tasks: `fulfill_order`, `provision_service_task`, `renew_service_task`,
@@ -315,6 +315,41 @@ the case), close. **Leads**: registered users who never bought, with
 pre-purchase ticket count, last activity, follow-up. **Reports**: open cases,
 opened per period, reasons, outcomes, time to resolve, customers per stage.
 Permissions `crm.view` (also given to the Ticketing role) and `crm.manage`.
+
+## Retention
+
+**Pre-expiry warnings** (`apps/crm/retention.py`, every 30 min): `WarningRule`
+rows (defaults: data 80 % and 95 % used, 3 days and 1 day left), each with its
+own fa / en title + message (`{name} {service} {remaining_gb}
+{remaining_days} {renew}`). A `ServiceWarning` is stored per (service, kind,
+threshold, period) — the period key is the service's expiry + volume, so it
+changes on renewal — which makes a duplicate impossible; if several thresholds
+are passed at once only the most urgent is sent (the others are recorded as
+skipped). Channels are recorded one by one: site bell at once (links to
+`/renew/<service>`), bot (with a 🔄 renew button → the bot's renew screen) and
+email wait until the quiet hours end (`retention_quiet_start/end`, Tehran,
+default 00:00–08:00); a retry only sends a channel still missing. A renewal /
+new purchase within `retention_conversion_days` marks the warning converted.
+Warnings appear on the Customer 360 timeline. The old fixed volume / expiry
+alert (`ops.alerts`) only runs when `retention_warnings_enabled` is off.
+
+**Win-back queue** ("بازگشت مشتری", `/panel/crm/winback`, `crm.view` — incl.
+the Ticketing role): a service first seen expired / used up gets a
+`ServiceEndMark`; after `retention_grace_hours` (24) without becoming live, and
+when the customer has no other live service, a `winback` case opens (plan,
+LTV, last connection, open tickets / cases). Actions: win-back message from
+templates (site / bot / email; `{renew} {code} {percent} {code_expires}`),
+single-use discount code (`DiscountCode`: percent, expiry, one active per
+customer, reserved by the order at checkout, used when that order is paid —
+`Order.discount_amount`), ticket on their behalf, reason for not renewing
+(own reason list), owner. Live again within `retention_winback_days` (14) →
+closed automatically as **won_back** with the recovered revenue (approved
+payments since the case opened); otherwise staff close it as lost with a
+reason. Optional automatic first win-back message (off by default).
+
+**Reports**: warnings sent per threshold and renewals after them, ended
+services, win-back rate, revenue recovered, top reasons, discount codes issued
+/ used (`crm/retention/report/`).
 
 ## Frontends
 

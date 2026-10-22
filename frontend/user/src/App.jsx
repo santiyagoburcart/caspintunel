@@ -15,6 +15,7 @@ import Checkout from './pages/Checkout'
 import History from './pages/History'
 import Profile from './pages/Profile'
 import { TicketChat, TicketNew, TicketsList } from './pages/Tickets'
+import Renew from './pages/Renew'
 import Help from './pages/Help'
 import Rules from './pages/Rules'
 import AgencyPortal from './pages/AgencyPortal'
@@ -133,6 +134,7 @@ export default function App() {
         <Route path="/rules" element={<Rules />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/help" element={<Help />} />
+        <Route path="/renew/:id" element={<Renew />} />
         <Route path="/tickets" element={<TicketsList />} />
         <Route path="/tickets/new" element={<TicketNew />} />
         <Route path="/tickets/:id" element={<TicketChat />} />

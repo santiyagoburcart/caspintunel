@@ -11,11 +11,21 @@ import { useConfirm } from '../components/ConfirmDialog'
 const T = {
   fa: {
     title: 'CRM', sub: 'مشتریان، پیگیری عدم استفاده و سرنخ‌ها',
-    t_queue: 'نیاز به پیگیری', t_leads: 'سرنخ‌ها', t_reports: 'گزارش‌ها', t_settings: 'تنظیمات',
+    t_queue: 'نیاز به پیگیری', t_winback: 'بازگشت مشتری', t_leads: 'سرنخ‌ها', t_reports: 'گزارش‌ها', t_settings: 'تنظیمات',
+    plan: 'پلن', ltv_s: 'LTV', ended: 'پایان سرویس', open_tk: 'تیکت باز', open_cs: 'پیگیری باز', recovered: 'درآمد بازگشتی',
+    discount: 'کد تخفیف تمدید', d_percent: 'درصد', d_days: 'اعتبار (روز)', d_issue: 'ساخت کد', d_active: 'کد فعال', until: 'تا',
+    wb_hint: 'تمدید یا خرید دوباره در بازه‌ٔ تعیین‌شده، پرونده را خودکار «بازگشته» می‌بندد.',
+    r_ret: 'نگهداشت مشتری', r_warn: 'هشدارهای ارسالی', r_conv: 'تمدید پس از هشدار', r_expired: 'سرویس‌های تمام‌شده (الان)', r_ended: 'تمام‌شده در بازه',
+    r_wb_rate: 'نرخ بازگشت', r_wb_open: 'پرونده‌های بازگشت باز', r_recovered: 'درآمد بازگشتی', r_top: 'دلایل تمدید نکردن', r_codes: 'کدهای تخفیف (ساخته / استفاده)',
+    w_data: 'مصرف حجم', w_time: 'روز مانده', warn_rules: 'هشدارهای قبل از اتمام', warn_vars: 'متغیرها: {name} {service} {remaining_gb} {remaining_days} {renew}',
+    ret: 'نگهداشت و بازگشت', ret_on: 'ارسال هشدارهای قبل از اتمام', quiet: 'ساعات سکوت ربات و ایمیل (تهران)', q_from: 'از', q_to: 'تا',
+    grace: 'مهلت قبل از ورود به صف بازگشت (ساعت)', wb_days: 'بازهٔ «بازگشته» پس از باز شدن (روز)', conv_days: 'تمدید پس از هشدار حساب شود تا (روز)',
+    disc_pct: 'درصد پیش‌فرض کد تخفیف', disc_days: 'اعتبار پیش‌فرض کد (روز)', auto_wb: 'پیام خودکار اول بازگشت پس از مهلت', category: 'دسته',
+    cat: { inactivity: 'پیگیری عدم استفاده', winback: 'بازگشت مشتری' }, kind_l: 'نوع', threshold: 'آستانه',
     open: 'باز', closed: 'بسته', all_kinds: 'همهٔ انواع', all_reasons: 'همهٔ دلایل', no_reason: 'بدون دلیل', anyone: 'همه', me: 'سپرده به من', none: 'بدون مسئول',
     search: 'جستجو: کاربر، تلفن، سرویس…', empty: 'موردی نیست.', more: 'بیشتر', back: 'بازگشت',
-    k: { no_connection: 'بدون اتصال', never_connected: 'هرگز وصل نشده', lead: 'سرنخ', manual: 'دستی' },
-    oc: { resolved: 'حل شد', still_inactive: 'هنوز غیرفعال', lost: 'از دست رفت' },
+    k: { no_connection: 'بدون اتصال', never_connected: 'هرگز وصل نشده', lead: 'سرنخ', manual: 'دستی', winback: 'بازگشت مشتری' },
+    oc: { resolved: 'حل شد', still_inactive: 'هنوز غیرفعال', lost: 'از دست رفت', won_back: 'بازگشت (تمدید کرد)' },
     stg: { lead: 'سرنخ', new: 'جدید', active: 'فعال', at_risk: 'در خطر', expired: 'منقضی', churned: 'ریزش', won_back: 'بازگشته' },
     svc: { active: 'فعال', on_hold: 'در انتظار اتصال', limited: 'حجم تمام', expired: 'منقضی', disabled: 'غیرفعال', pending: 'در حال ساخت' },
     last_conn: 'آخرین اتصال', never: 'هرگز', since: 'غیرفعال از', opened: 'باز شده', service: 'سرویس', customer: 'مشتری', c360: 'نمای کامل مشتری',
@@ -38,15 +48,25 @@ const T = {
     vars: 'متغیرها: {name} {username} {service} {site} {guide}', ev: 'رویداد',
     tl: { signup: 'ثبت‌نام', order: 'سفارش', payment: 'پرداخت', ticket: 'تیکت', ticket_closed: 'بسته شدن تیکت', notification: 'اعلان',
       crm_stage: 'تغییر مرحله', crm_owner: 'تغییر مالک', crm_tags: 'برچسب‌ها', crm_note: 'یادداشت', crm_case_opened: 'پرونده باز شد',
-      crm_case_updated: 'پرونده به‌روز شد', crm_case_closed: 'پرونده بسته شد', crm_message: 'پیام ارسال شد', crm_ticket: 'تیکت مرتبط' },
+      crm_case_updated: 'پرونده به‌روز شد', crm_case_closed: 'پرونده بسته شد', crm_message: 'پیام ارسال شد', crm_ticket: 'تیکت مرتبط', crm_discount: 'کد تخفیف', warning: 'هشدار قبل از اتمام' },
   },
   en: {
     title: 'CRM', sub: 'Customers, inactivity follow-up and leads',
-    t_queue: 'Needs follow-up', t_leads: 'Leads', t_reports: 'Reports', t_settings: 'Settings',
+    t_queue: 'Needs follow-up', t_winback: 'Win-back', t_leads: 'Leads', t_reports: 'Reports', t_settings: 'Settings',
+    plan: 'Plan', ltv_s: 'LTV', ended: 'Service ended', open_tk: 'Open tickets', open_cs: 'Open cases', recovered: 'Recovered revenue',
+    discount: 'Renewal discount code', d_percent: 'Percent', d_days: 'Valid (days)', d_issue: 'Create code', d_active: 'Active code', until: 'until',
+    wb_hint: 'Renewing or buying again within the window closes the case as “won back” automatically.',
+    r_ret: 'Retention', r_warn: 'Warnings sent', r_conv: 'Renewed after a warning', r_expired: 'Ended services (now)', r_ended: 'Ended in period',
+    r_wb_rate: 'Win-back rate', r_wb_open: 'Open win-back cases', r_recovered: 'Revenue recovered', r_top: 'Top reasons for not renewing', r_codes: 'Discount codes (issued / used)',
+    w_data: 'Data used', w_time: 'Days left', warn_rules: 'Pre-expiry warnings', warn_vars: 'Variables: {name} {service} {remaining_gb} {remaining_days} {renew}',
+    ret: 'Retention & win-back', ret_on: 'Send pre-expiry warnings', quiet: 'Quiet hours for bot & email (Tehran)', q_from: 'from', q_to: 'to',
+    grace: 'Grace before the win-back queue (hours)', wb_days: '“Won back” window after opening (days)', conv_days: 'Count a renewal after a warning within (days)',
+    disc_pct: 'Default discount percent', disc_days: 'Default code validity (days)', auto_wb: 'Automatic first win-back message after the grace', category: 'Category',
+    cat: { inactivity: 'Inactivity follow-up', winback: 'Win-back' }, kind_l: 'Kind', threshold: 'Threshold',
     open: 'Open', closed: 'Closed', all_kinds: 'All kinds', all_reasons: 'All reasons', no_reason: 'No reason', anyone: 'Anyone', me: 'Assigned to me', none: 'Unassigned',
     search: 'Search: user, phone, service…', empty: 'Nothing here.', more: 'More', back: 'Back',
-    k: { no_connection: 'No connection', never_connected: 'Never connected', lead: 'Lead', manual: 'Manual' },
-    oc: { resolved: 'Resolved', still_inactive: 'Still inactive', lost: 'Lost' },
+    k: { no_connection: 'No connection', never_connected: 'Never connected', lead: 'Lead', manual: 'Manual', winback: 'Win-back' },
+    oc: { resolved: 'Resolved', still_inactive: 'Still inactive', lost: 'Lost', won_back: 'Won back (renewed)' },
     stg: { lead: 'Lead', new: 'New', active: 'Active', at_risk: 'At risk', expired: 'Expired', churned: 'Churned', won_back: 'Won back' },
     svc: { active: 'Active', on_hold: 'Waiting for first connection', limited: 'Used up', expired: 'Expired', disabled: 'Disabled', pending: 'Creating' },
     last_conn: 'Last connection', never: 'never', since: 'Inactive since', opened: 'Opened', service: 'Service', customer: 'Customer', c360: 'Customer 360',
@@ -69,7 +89,7 @@ const T = {
     vars: 'Variables: {name} {username} {service} {site} {guide}', ev: 'Event',
     tl: { signup: 'Signed up', order: 'Order', payment: 'Payment', ticket: 'Ticket', ticket_closed: 'Ticket closed', notification: 'Notification',
       crm_stage: 'Stage changed', crm_owner: 'Owner changed', crm_tags: 'Tags', crm_note: 'Note', crm_case_opened: 'Case opened',
-      crm_case_updated: 'Case updated', crm_case_closed: 'Case closed', crm_message: 'Message sent', crm_ticket: 'Ticket linked' },
+      crm_case_updated: 'Case updated', crm_case_closed: 'Case closed', crm_message: 'Message sent', crm_ticket: 'Ticket linked', crm_discount: 'Discount code', warning: 'Pre-expiry warning' },
   },
 }
 const STAGE_TONE = { lead: 'muted', new: 'primary', active: 'success', at_risk: 'warning', expired: 'danger', churned: 'danger', won_back: 'success' }
@@ -87,7 +107,7 @@ function Chip({ tone = 'muted', children }) { return <span className={`cr-chip c
 export function CrmHeader() {
   const [s] = useT()
   const { can } = useAuth()
-  const tabs = [['/crm', s.t_queue, true], ['/crm/leads', s.t_leads], ['/crm/reports', s.t_reports], ...(can('crm.manage') ? [['/crm/settings', s.t_settings]] : [])]
+  const tabs = [['/crm', s.t_queue, true], ['/crm/winback', s.t_winback], ['/crm/leads', s.t_leads], ['/crm/reports', s.t_reports], ...(can('crm.manage') ? [['/crm/settings', s.t_settings]] : [])]
   return (
     <>
       <style>{CSS}</style>
@@ -118,7 +138,7 @@ export function CrmQueue() {
       <CrmHeader />
       {d?.open_counts && (
         <div className="cr-kpis">
-          {Object.entries(d.open_counts).map(([k, n]) => (
+          {Object.entries(d.open_counts).filter(([k]) => k !== 'winback').map(([k, n]) => (
             <button key={k} type="button" className={'cr-kpi' + (f.kind === k ? ' on' : '')} onClick={() => set('kind', f.kind === k ? '' : k)}>
               <b dir="ltr">{n}</b><span>{s.k[k]}</span></button>
           ))}
@@ -162,15 +182,72 @@ export function CrmQueue() {
   )
 }
 
+// ============================== win-back queue ====================================
+export function CrmWinback() {
+  const [s, lang] = useT()
+  const go = useNavigate()
+  const [f, setF] = useState({ status: 'open', reason: '', assigned: '', q: '' })
+  const [q, setQ] = useState('')
+  useEffect(() => { const t = setTimeout(() => setF((x) => ({ ...x, q })), 300); return () => clearTimeout(t) }, [q])
+  const qs = new URLSearchParams(Object.entries({ ...f, kind: 'winback' }).filter(([, v]) => v)).toString()
+  const [d] = useGet(`/admin/crm/cases/?${qs}`, [qs])
+  const [reasons] = useGet('/admin/crm/reasons/?category=winback')
+  const set = (k, v) => setF((x) => ({ ...x, [k]: v }))
+  return (
+    <div className="cr space-y-4">
+      <CrmHeader />
+      <p className="cr-sub">{s.wb_hint}</p>
+      <div className="card cr-filters">
+        <input className="input" value={q} onChange={(e) => setQ(e.target.value)} placeholder={s.search} />
+        <select className="input" value={f.status} onChange={(e) => set('status', e.target.value)}><option value="open">{s.open}</option><option value="closed">{s.closed}</option></select>
+        <select className="input" value={f.reason} onChange={(e) => set('reason', e.target.value)}>
+          <option value="">{s.all_reasons}</option><option value="none">{s.no_reason}</option>
+          {(reasons || []).map((r) => <option key={r.id} value={r.id}>{rname(r, lang)}</option>)}
+        </select>
+        <select className="input" value={f.assigned} onChange={(e) => set('assigned', e.target.value)}>
+          <option value="">{s.anyone}</option><option value="me">{s.me}</option><option value="none">{s.none}</option>
+        </select>
+      </div>
+      {d === null ? <div className="grid place-items-center py-12"><Spinner /></div> : !d || d.results.length === 0 ? <div className="card text-center text-muted py-8">{s.empty}</div> : (
+        <div className="cr-cards">
+          {d.results.map((c) => (
+            <button key={c.id} type="button" className="card cr-case" onClick={() => go(`/crm/cases/${c.id}`)}>
+              <span className="cr-case-top"><b className="truncate">{c.user.name || c.user.username}</b>
+                {c.outcome ? <Chip tone={c.outcome === 'won_back' ? 'success' : 'danger'}>{s.oc[c.outcome]}</Chip> : <Chip tone="warning">{s.t_winback}</Chip>}</span>
+              <span className="cr-case-meta" dir="ltr">{c.user.username}{c.service ? ` · ${c.service.panel_username}` : ''}</span>
+              <span className="cr-case-row">
+                <span>{s.plan}: <b>{c.plan ? (lang === 'en' ? c.plan.name_en : c.plan.name_fa) : '—'}</b></span>
+                <span>{s.ltv_s}: <b>{toman(c.ltv, lang)}</b></span>
+              </span>
+              <span className="cr-case-row">
+                <span>{s.ended}: {c.ended_at ? relTime(c.ended_at, lang) : '—'}</span>
+                {c.service && <span>{s.last_conn}: {lastConn(c.service, s, lang)}</span>}
+              </span>
+              <span className="cr-case-row">
+                {c.open_tickets > 0 && <Chip tone="primary">{s.open_tk}: {c.open_tickets}</Chip>}
+                {c.open_cases > 0 && <Chip tone="warning">{s.open_cs}: {c.open_cases}</Chip>}
+                {c.discount && <Chip tone="success">{c.discount.code} · {c.discount.percent}%</Chip>}
+                {c.reason && <Chip>{rname(c.reason, lang)}</Chip>}
+                {c.recovered_amount != null && <Chip tone="success">{toman(c.recovered_amount, lang)}</Chip>}
+                {c.assigned_to && <span className="cr-who">{c.assigned_to.display_name || c.assigned_to.username}</span>}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ================================ case ==========================================
-function MessageBox({ s, lang, userId, post }) {
+function MessageBox({ s, lang, userId, post, category = 'inactivity' }) {
   const [tpls] = useGet('/admin/crm/templates/')
   const [tpl, setTpl] = useState('')
   const [body, setBody] = useState('')
   const [ch, setCh] = useState({ via_site: true, via_bot: true, via_email: false })
   const pick = async (id) => {
     setTpl(id)
-    if (!id) return
+    if (!id || category === 'winback') return
     const r = await api.get(`/admin/crm/customers/${userId}/templates/${id}/preview/`)
     setBody(lang === 'en' ? r.data.body_en : r.data.body_fa)
   }
@@ -179,13 +256,14 @@ function MessageBox({ s, lang, userId, post }) {
       <h4>{s.msg}</h4>
       <select className="input" value={tpl} onChange={(e) => pick(e.target.value)}>
         <option value="">{s.custom}</option>
-        {(tpls || []).filter((t) => t.is_active).map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
+        {(tpls || []).filter((t) => t.is_active && t.category === category).map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
       </select>
       <textarea className="input" rows={5} value={body} onChange={(e) => setBody(e.target.value)} />
       <div className="cr-checks">
         {['via_site', 'via_bot', 'via_email'].map((k) => <label key={k}><Toggle checked={ch[k]} onChange={(v) => setCh({ ...ch, [k]: v })} label={s[k]} />{s[k]}</label>)}
       </div>
-      <button type="button" className="btn-primary text-sm" disabled={!body.trim()} onClick={async () => { await post({ body_fa: body, body_en: body, ...ch }); setBody(''); setTpl('') }}>{s.send}</button>
+      <button type="button" className="btn-primary text-sm" disabled={!body.trim() && !(category === 'winback' && tpl)}
+        onClick={async () => { await post(body.trim() ? { body_fa: body, body_en: body, ...ch } : { template: tpl, ...ch }); setBody(''); setTpl('') }}>{s.send}</button>
     </div>
   )
 }
@@ -202,14 +280,17 @@ export function CrmCase() {
   const [notes, setNotes] = useState(null)
   const [tk, setTk] = useState({ subject: '', body: '', topic: '' })
   const manage = can('crm.manage')
+  const [disc, setDisc] = useState({ percent: '', days: '' })
   useEffect(() => { if (c) setNotes(c.notes) }, [c?.id])
   const patch = async (body) => { await api.patch(`/admin/crm/cases/${id}/`, body); load() }
   const closeCase = () => {
     let outcome = 'resolved'
+    const opts = c.kind === 'winback' ? ['lost', 'won_back'] : ['resolved', 'still_inactive', 'lost']
+    outcome = opts[0]
     confirm({ tone: 'primary', title: s.close_case, confirmLabel: s.close_case,
       content: <label className="cr-fld"><span className="label">{s.outcome}</span>
-        <select className="input" defaultValue="resolved" onChange={(e) => { outcome = e.target.value }}>
-          {Object.entries(s.oc).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>,
+        <select className="input" defaultValue={opts[0]} onChange={(e) => { outcome = e.target.value }}>
+          {opts.map((k) => <option key={k} value={k}>{s.oc[k]}</option>)}</select></label>,
       action: async () => { await api.post(`/admin/crm/cases/${id}/close/`, { outcome }); await load() } })
   }
   if (c === null) return <div className="cr"><CrmHeader /><div className="grid place-items-center py-12"><Spinner /></div></div>
@@ -231,6 +312,17 @@ export function CrmCase() {
       </div>
       <div className="cr-grid2">
         <section className="card space-y-3">
+          {c.kind === 'winback' && (
+            <dl className="cr-kv">
+              <dt>{s.plan}</dt><dd>{c.plan ? (lang === 'en' ? c.plan.name_en : c.plan.name_fa) : '—'}</dd>
+              <dt>{s.ltv_s}</dt><dd><b>{toman(c.ltv, lang)}</b></dd>
+              <dt>{s.ended}</dt><dd>{c.ended_at ? jalali(c.ended_at, true, lang) : '—'}</dd>
+              <dt>{s.open_tk}</dt><dd>{c.open_tickets ?? 0}</dd>
+              <dt>{s.open_cs}</dt><dd>{c.open_cases ?? 0}</dd>
+              {c.recovered_amount != null && <><dt>{s.recovered}</dt><dd>{toman(c.recovered_amount, lang)}</dd></>}
+            </dl>
+          )}
+          {c.kind === 'winback' && <p className="cr-sub">{s.wb_hint}</p>}
           {c.service && (
             <dl className="cr-kv">
               <dt>{s.service}</dt><dd dir="ltr">{c.service.panel_username}</dd>
@@ -244,7 +336,7 @@ export function CrmCase() {
           <label className="cr-fld"><span className="label">{s.reason}</span>
             <select className="input" value={c.reason?.id || ''} disabled={!manage} onChange={(e) => patch({ reason: e.target.value || null })}>
               <option value="">{s.no_reason}</option>
-              {(reasons || []).filter((r) => r.is_active || r.id === c.reason?.id).map((r) => <option key={r.id} value={r.id}>{rname(r, lang)}</option>)}
+              {(reasons || []).filter((r) => (r.category === (c.kind === 'winback' ? 'winback' : 'inactivity') && r.is_active) || r.id === c.reason?.id).map((r) => <option key={r.id} value={r.id}>{rname(r, lang)}</option>)}
             </select></label>
           <label className="cr-fld"><span className="label">{s.assigned}</span>
             <select className="input" value={c.assigned_to?.id || ''} disabled={!manage} onChange={(e) => patch({ assigned_to: e.target.value || null })}>
@@ -259,7 +351,18 @@ export function CrmCase() {
           </div>}
         </section>
         <section className="space-y-3">
-          {manage && open && <div className="card"><MessageBox s={s} lang={lang} userId={c.user.id} post={(b) => api.post(`/admin/crm/cases/${id}/message/`, b).then(load)} /></div>}
+          {c.kind === 'winback' && (
+            <div className="card cr-box">
+              <h4>{s.discount}</h4>
+              {c.discount ? <p><b dir="ltr" className="cr-code">{c.discount.code}</b> · {c.discount.percent}% · {s.until} {jalali(c.discount.expires_at, false, lang)}</p>
+                : manage && open ? <div className="cr-form">
+                  <label className="cr-fld"><span className="label">{s.d_percent}</span><input className="input" type="number" dir="ltr" placeholder="10" value={disc.percent} onChange={(e) => setDisc({ ...disc, percent: e.target.value })} /></label>
+                  <label className="cr-fld"><span className="label">{s.d_days}</span><input className="input" type="number" dir="ltr" placeholder="7" value={disc.days} onChange={(e) => setDisc({ ...disc, days: e.target.value })} /></label>
+                  <div className="cr-fld" style={{ justifyContent: 'flex-end' }}><button type="button" className="btn-primary text-sm" onClick={() => api.post(`/admin/crm/cases/${id}/discount/`, { percent: disc.percent || undefined, days: disc.days || undefined }).then(load)}>{s.d_issue}</button></div>
+                </div> : <span className="text-muted text-sm">—</span>}
+            </div>
+          )}
+          {manage && open && <div className="card"><MessageBox s={s} lang={lang} userId={c.user.id} category={c.kind === 'winback' ? 'winback' : 'inactivity'} post={(b) => api.post(`/admin/crm/cases/${id}/message/`, b).then(load)} /></div>}
           <div className="card cr-box">
             <h4>{s.ticket}</h4>
             {c.ticket ? <Link className="btn-ghost text-sm" to={`/tickets/${c.ticket.id}`}>{s.linked_ticket}: #{c.ticket.number}</Link>
@@ -299,6 +402,8 @@ function tlText(x, s, lang) {
     case 'crm_case_opened': return s.k[x.case_kind] || ''
     case 'crm_case_closed': return s.oc[x.outcome] || ''
     case 'crm_ticket': return `#${x.ticket}`
+    case 'crm_discount': return `${x.code} · ${x.percent}%`
+    case 'warning': return `${x.service} · ${x.warn_kind === 'data' ? `${x.threshold}% ${s.w_data}` : `${x.threshold} ${s.w_time}`} · ${(x.channels || []).join(', ')}${x.renewed ? ' · ✓' : ''}`
     default: return x.source || ''
   }
 }
@@ -454,6 +559,7 @@ export function CrmReports() {
   const [s, lang] = useT()
   const [days, setDays] = useState(30)
   const [d] = useGet(`/admin/crm/reports/?days=${days}`, [days])
+  const [rt] = useGet(`/admin/crm/retention/report/?days=${days}`, [days])
   const bar = (n, max) => <span className="cr-bar"><i style={{ width: `${max ? Math.round((n / max) * 100) : 0}%` }} /></span>
   const reasonMax = Math.max(1, ...(d?.by_reason || []).map((x) => x.count))
   const stageMax = Math.max(1, ...Object.values(d?.stages || { a: 1 }))
@@ -477,6 +583,27 @@ export function CrmReports() {
             <h4>{s.r_open}</h4>
             {Object.entries(d.open_now).map(([k, n]) => <div key={k} className="cr-rep"><span>{s.k[k]}</span><b dir="ltr">{n}</b></div>)}</section>
         </div>
+        {rt && <>
+          <h3 className="font-bold mt-2">{s.r_ret}</h3>
+          <div className="cr-kpis">
+            <div className="cr-kpi"><b dir="ltr">{rt.warnings_total}</b><span>{s.r_warn}</span></div>
+            <div className="cr-kpi"><b dir="ltr">{rt.renewed_after_warning}{rt.warnings_total ? ` (${Math.round(rt.renewed_after_warning * 100 / rt.warnings_total)}%)` : ''}</b><span>{s.r_conv}</span></div>
+            <div className="cr-kpi"><b dir="ltr">{rt.expired_now}</b><span>{s.r_expired}</span></div>
+            <div className="cr-kpi"><b dir="ltr">{rt.ended_in_period}</b><span>{s.r_ended}</span></div>
+            <div className="cr-kpi"><b dir="ltr">{rt.winback_rate == null ? '—' : `${rt.winback_rate}%`}</b><span>{s.r_wb_rate} ({rt.won_back} / {rt.won_back + rt.lost})</span></div>
+            <div className="cr-kpi"><b dir="ltr">{rt.winback_open}</b><span>{s.r_wb_open}</span></div>
+            <div className="cr-kpi"><b>{toman(rt.recovered, lang)}</b><span>{s.r_recovered}</span></div>
+            <div className="cr-kpi"><b dir="ltr">{rt.codes_issued} / {rt.codes_used}</b><span>{s.r_codes}</span></div>
+          </div>
+          <div className="cr-grid2">
+            <section className="card space-y-2"><h4>{s.r_warn}</h4>
+              {rt.warnings.map((w) => <div key={w.kind + w.threshold} className="cr-rep"><span>{w.kind === 'data' ? `${s.w_data} ${w.threshold}%` : `${w.threshold} ${s.w_time}`}</span>
+                {bar(w.renewed, Math.max(1, w.sent))}<b dir="ltr">{w.renewed}/{w.sent}</b></div>)}</section>
+            <section className="card space-y-2"><h4>{s.r_top}</h4>
+              {rt.top_reasons.length === 0 ? <p className="cr-sub">—</p> : rt.top_reasons.map((r) => <div key={r.id} className="cr-rep"><span>{lang === 'en' ? r.name_en : r.name_fa}</span>
+                {bar(r.count, rt.top_reasons[0].count)}<b dir="ltr">{r.count}</b></div>)}</section>
+          </div>
+        </>}
         <section className="card space-y-2"><h4>{s.r_stages}</h4>
           {Object.entries(s.stg).map(([k, l]) => <div key={k} className="cr-rep"><span>{l}</span>{bar(d.stages[k] || 0, stageMax)}<b dir="ltr">{d.stages[k] || 0}</b></div>)}</section>
       </>}
@@ -496,6 +623,11 @@ function SimpleList({ s, url, fields, title, render }) {
       {f && <form className="cr-box" onSubmit={save}>
         {fields.map(([k, label, d, kind]) => kind === 'bool'
           ? <label key={k} className="cr-checks"><Toggle checked={!!f[k]} onChange={(v) => setF({ ...f, [k]: v })} label={label} />{label}</label>
+          : kind === 'category' ? <select key={k} className="input" value={f[k] || 'inactivity'} onChange={(e) => setF({ ...f, [k]: e.target.value })}>
+            {Object.entries(s.cat).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
+          : kind === 'wkind' ? <select key={k} className="input" value={f[k] || 'data'} onChange={(e) => setF({ ...f, [k]: e.target.value })}>
+            <option value="data">{s.w_data} (%)</option><option value="time">{s.w_time}</option></select>
+          : kind === 'num' ? <input key={k} className="input" type="number" dir="ltr" placeholder={label} value={f[k] ?? ''} onChange={(e) => setF({ ...f, [k]: e.target.value })} />
           : kind === 'text' ? <textarea key={k} className="input" rows={4} placeholder={label} value={f[k] ?? ''} onChange={(e) => setF({ ...f, [k]: e.target.value })} />
             : <input key={k} className="input" type={kind === 'color' ? 'color' : 'text'} placeholder={label} value={f[k] ?? ''} onChange={(e) => setF({ ...f, [k]: e.target.value })} />)}
         <div className="cr-actions"><button type="button" className="btn-ghost text-sm" onClick={() => setF(null)}>×</button><button className="btn-primary text-sm">{s.save}</button></div>
@@ -507,6 +639,35 @@ function SimpleList({ s, url, fields, title, render }) {
           <button type="button" className="btn-ghost text-xs" onClick={() => confirm({ tone: 'danger', title: s.del, action: async () => { await api.delete(`${url}${r.id}/`); load() } })}>{s.del}</button>
         </div>
       ))}
+    </section>
+  )
+}
+
+function RetentionSettings({ s, tpls }) {
+  const [cfg, load] = useGet('/admin/crm/retention/settings/')
+  const save = async (b) => { await api.patch('/admin/crm/retention/settings/', b); load() }
+  if (!cfg) return null
+  const st = cfg.settings
+  const num = (k, label) => (
+    <label key={k} className="cr-fld"><span className="label">{label}</span>
+      <input className="input" type="number" dir="ltr" defaultValue={st[k]} onBlur={(e) => Number(e.target.value) !== st[k] && save({ [k]: e.target.value })} /></label>
+  )
+  const hm = (k, label) => (
+    <label key={k} className="cr-fld"><span className="label">{label}</span>
+      <input className="input" type="time" dir="ltr" defaultValue={st[k]} onBlur={(e) => e.target.value !== st[k] && save({ [k]: e.target.value })} /></label>
+  )
+  return (
+    <section className="card space-y-3"><h4>{s.ret}</h4>
+      <label className="cr-checks"><Toggle checked={st.retention_warnings_enabled} onChange={(v) => save({ retention_warnings_enabled: v })} label={s.ret_on} />{s.ret_on}</label>
+      <div className="cr-form">
+        <div className="cr-fld"><span className="label">{s.quiet}</span><div className="cr-form">{hm('retention_quiet_start', s.q_from)}{hm('retention_quiet_end', s.q_to)}</div></div>
+        {num('retention_grace_hours', s.grace)}{num('retention_winback_days', s.wb_days)}{num('retention_conversion_days', s.conv_days)}
+        {num('retention_discount_percent', s.disc_pct)}{num('retention_discount_days', s.disc_days)}
+      </div>
+      <label className="cr-checks"><Toggle checked={st.retention_auto_winback} onChange={(v) => save({ retention_auto_winback: v })} label={s.auto_wb} />{s.auto_wb}</label>
+      <label className="cr-fld"><span className="label">{s.s_auto_tpl}</span>
+        <select className="input" value={st.retention_auto_winback_template || ''} onChange={(e) => save({ retention_auto_winback_template: e.target.value || 0 })}>
+          <option value="">—</option>{(tpls || []).filter((t) => t.category === 'winback').map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}</select></label>
     </section>
   )
 }
@@ -533,20 +694,26 @@ export function CrmSettings() {
         <div className="cr-form">{num('crm_auto_message_days', s.s_auto_days)}
           <label className="cr-fld"><span className="label">{s.s_auto_tpl}</span>
             <select className="input" value={st.crm_auto_message_template || ''} onChange={(e) => save({ crm_auto_message_template: e.target.value || 0 })}>
-              <option value="">—</option>{(tpls || []).map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}</select></label>
+              <option value="">—</option>{(tpls || []).filter((t) => t.category !== 'winback').map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}</select></label>
           <label className="cr-fld"><span className="label">{s.s_guide}</span>
             <input className="input" dir="ltr" defaultValue={st.crm_guide_url} placeholder="https://…/help" onBlur={(e) => e.target.value !== st.crm_guide_url && save({ crm_guide_url: e.target.value })} /></label></div>
       </section>
       <div className="cr-grid2">
         <SimpleList s={s} url="/admin/crm/reasons/" title={s.reasons}
-          fields={[['name_fa', 'فارسی', ''], ['name_en', 'English', ''], ['is_active', s.active, true, 'bool']]}
-          render={(r) => <>{lang === 'en' ? r.name_en : r.name_fa} {!r.is_active && <Chip>×</Chip>} <span className="cr-sub">({r.used})</span></>} />
+          fields={[['category', s.category, 'inactivity', 'category'], ['name_fa', 'فارسی', ''], ['name_en', 'English', ''], ['is_active', s.active, true, 'bool']]}
+          render={(r) => <>{lang === 'en' ? r.name_en : r.name_fa} <Chip tone={r.category === 'winback' ? 'warning' : 'primary'}>{s.cat[r.category]}</Chip> {!r.is_active && <Chip>×</Chip>} <span className="cr-sub">({r.used})</span></>} />
         <SimpleList s={s} url="/admin/crm/tags/" title={s.tags_h} fields={[['name', 'name', ''], ['color', 'color', '#1464BA', 'color']]}
           render={(t) => <span className="cr-tag on" style={{ '--tag': t.color }}>{t.name}</span>} />
       </div>
-      <SimpleList s={s} url="/admin/crm/templates/" title={`${s.templates} — ${s.vars}`}
-        fields={[['title', s.subject, ''], ['body_fa', 'فارسی', '', 'text'], ['body_en', 'English', '', 'text'], ['is_active', s.active, true, 'bool']]}
-        render={(t) => <><b>{t.title}</b><span className="cr-sub block">{(lang === 'en' ? t.body_en || t.body_fa : t.body_fa).slice(0, 140)}</span></>} />
+      <RetentionSettings s={s} tpls={tpls} />
+      <SimpleList s={s} url="/admin/crm/warning-rules/" title={`${s.warn_rules} — ${s.warn_vars}`}
+        fields={[['kind', s.kind_l, 'data', 'wkind'], ['threshold', s.threshold, '', 'num'], ['title_fa', 'عنوان فارسی', ''], ['title_en', 'English title', ''],
+          ['body_fa', 'فارسی', '', 'text'], ['body_en', 'English', '', 'text'], ['is_active', s.active, true, 'bool']]}
+        render={(w) => <><b>{w.kind === 'data' ? `${s.w_data} ${w.threshold}%` : `${w.threshold} ${s.w_time}`}</b> {!w.is_active && <Chip>×</Chip>}
+          <span className="cr-sub"> ({w.sent})</span><span className="cr-sub block">{(lang === 'en' ? w.body_en || w.body_fa : w.body_fa).slice(0, 140)}</span></>} />
+      <SimpleList s={s} url="/admin/crm/templates/" title={`${s.templates} — ${s.vars} {renew} {code} {percent} {code_expires}`}
+        fields={[['category', s.category, 'inactivity', 'category'], ['title', s.subject, ''], ['body_fa', 'فارسی', '', 'text'], ['body_en', 'English', '', 'text'], ['is_active', s.active, true, 'bool']]}
+        render={(t) => <><b>{t.title}</b> <Chip tone={t.category === 'winback' ? 'warning' : 'primary'}>{s.cat[t.category]}</Chip><span className="cr-sub block">{(lang === 'en' ? t.body_en || t.body_fa : t.body_fa).slice(0, 140)}</span></>} />
     </div>
   )
 }
@@ -606,5 +773,6 @@ const CSS = `
 .cr-seg button.on { background: var(--c-primary); color: #fff; }
 .cr-rep { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 2fr) 40px; gap: 8px; align-items: center; font-size: 12.5px; }
 .cr-bar { height: 8px; border-radius: 999px; background: color-mix(in srgb, var(--c-text-muted) 14%, transparent); overflow: hidden; }
+.cr-code { font-family: 'JetBrains Mono', monospace; font-size: 15px; letter-spacing: .05em; }
 .cr-bar i { display: block; height: 100%; background: var(--c-primary); border-radius: 999px; }
 `

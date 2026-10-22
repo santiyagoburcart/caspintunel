@@ -386,7 +386,41 @@ sequenceDiagram
     end
 ```
 
-## 11. Deploy (`./update.sh`)
+## 11. Pre-expiry warning and win-back
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant B as celery_beat
+    participant W as celery_worker (crm.retention)
+    participant DB as MySQL
+    actor C as Customer
+    actor S as Staff (crm.manage)
+
+    B->>W: every 30 min: run_warnings
+    W->>DB: due thresholds (data % / days left) → ServiceWarning (unique per service period)
+    W-->>C: site bell now (→ /renew/<service>)
+    alt quiet hours (default 00:00–08:00 Tehran)
+        W->>DB: bot / email due at the end of the quiet hours
+    else
+        W-->>C: bot message with 🔄 renew button + email
+    end
+    C->>DB: renews within N days → warning converted
+    Note over W,DB: hourly: run_winback
+    W->>DB: service expired / used up → ServiceEndMark
+    W->>DB: still ended after the grace (24 h), no other live service → winback case
+    opt auto first message (off by default)
+        W-->>C: win-back message (renew link)
+    end
+    S->>DB: queue "بازگشت مشتری": reason, owner, notes
+    S->>DB: discount code (percent, N days, one per customer)
+    S-->>C: win-back message from a template with {renew} {code} {percent}
+    C->>DB: checkout with the code → order amount −percent (code reserved), paid → code used
+    W->>DB: live again within the window → case closed won_back + recovered revenue
+    S->>DB: otherwise: close as lost with a reason
+```
+
+## 12. Deploy (`./update.sh`)
 
 ```mermaid
 sequenceDiagram

@@ -23,6 +23,13 @@ def resource_sample_task():
 
 @shared_task
 def service_alerts_task():
+    """Pre-expiry warnings (apps.crm.retention: configurable thresholds, quiet hours,
+    one per threshold per service period, renew button). The old fixed alert
+    (ops.alerts.run_service_alerts) only runs when the retention warnings are off."""
+    from apps.crm.retention import run_warnings, setting
+
+    if setting("retention_warnings_enabled"):
+        return run_warnings()
     from .alerts import run_service_alerts
 
     return run_service_alerts()

@@ -73,8 +73,18 @@ def create_order(
     custom_volume_gb: int | None = None,
     service_id: int | None = None,
     source: str = "site",
+    discount_code: str | None = None,
 ) -> Order:
     expire_stale_reservations()
+    dc = None
+    if discount_code:
+        # win-back discount (apps.crm): single-use, this customer's, not expired
+        from apps.crm.retention import RetentionError, check_code
+
+        try:
+            dc = check_code(user, discount_code)
+        except RetentionError as exc:
+            raise OrderError(str(exc)) from exc
 
     plan = Plan.objects.filter(pk=plan_id, is_active=True).select_related("panel").first()
     if not plan:
@@ -115,6 +125,11 @@ def create_order(
         amount = plan.final_price
         custom_volume_gb = None
     amount = Decimal(amount)
+    discount_amount = Decimal(0)
+    if dc is not None:
+        from apps.crm.retention import discounted
+
+        amount, discount_amount = discounted(amount, dc.percent)
 
     # A customer who leaves the invoice (e.g. switches to the bank app) and
     # submits the same purchase again must get the SAME order and unique
@@ -124,6 +139,9 @@ def create_order(
         user=user, plan=plan, order_type=order_type, service=service,
         requested_account_name=requested_account_name, custom_volume_gb=custom_volume_gb,
     )
+    if existing is not None and dc is not None and not existing.discount_amount and not hasattr(existing, "payment"):
+        _drop_reservation(existing)          # same purchase again, now with a code: a fresh, discounted invoice
+        existing = None
     if existing is not None:
         existing.reused = True
         return existing
@@ -132,16 +150,28 @@ def create_order(
         user=user, plan=plan, service=service, type=order_type,
         requested_account_name=requested_account_name if order_type == OrderType.NEW else None,
         custom_volume_gb=custom_volume_gb,
-        amount=amount, status=OrderStatus.PENDING_PAYMENT,
+        amount=amount, discount_amount=discount_amount, status=OrderStatus.PENDING_PAYMENT,
         unique_expire_at=_reservation_deadline(), source=source,
     )
     _assign_unique_amount(order, amount)
+    if dc is not None:
+        old = dc.order
+        if old is not None and old.id != order.id and old.status == OrderStatus.PENDING_PAYMENT and not hasattr(old, "payment"):
+            _drop_reservation(old)            # one code, one open invoice
+        dc.order = order
+        dc.save(update_fields=["order"])
     order.reused = False
     write_audit(action="order.created", target=order, detail={"amount": str(amount)})
     from apps.notifications.live import push_payments_event
 
     push_payments_event("order_created", order_id=order.id)
     return order
+
+
+def _drop_reservation(order: Order) -> None:
+    order.status = OrderStatus.EXPIRED
+    order.sync_unique_lock()
+    order.save(update_fields=["status", "amount_unique_lock", "updated_at"])
 
 
 def _reusable_pending_order(*, user, plan, order_type, service, requested_account_name, custom_volume_gb):

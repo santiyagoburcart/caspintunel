@@ -470,6 +470,12 @@ erDiagram
     ticket |o--o{ crm_followup_case : "linked ticket"
     staff |o--o{ crm_followup_case : "assigned_to / closed_by"
     user ||--o{ crm_event : "timeline"
+    crm_warning_rule |o--o{ crm_service_warning : "rule"
+    service ||--o{ crm_service_warning : "warnings (once per period)"
+    service ||--o| crm_service_end : "ended (expired / used up)"
+    user ||--o{ crm_discount_code : "win-back codes"
+    crm_followup_case |o--o{ crm_discount_code : "issued from"
+    order |o--o{ crm_discount_code : "reserved by"
     crm_followup_case |o--o{ crm_event : "case events"
 
     crm_customer_profile {
@@ -495,9 +501,11 @@ erDiagram
         bigint id PK
         bigint user_id FK
         bigint service_id FK
-        string kind "no_connection | never_connected | lead | manual"
+        string kind "no_connection | never_connected | lead | manual | winback"
         string status "open | closed"
-        string outcome "resolved | still_inactive | lost"
+        string outcome "resolved | still_inactive | lost | won_back"
+        datetime ended_at "win-back"
+        decimal recovered_amount "win-back"
         bigint reason_id FK
         text notes
         bigint assigned_to_id FK
@@ -522,6 +530,42 @@ erDiagram
         text body_en
         bool is_active
     }
+    crm_warning_rule {
+        bigint id PK
+        string kind "data | time"
+        int threshold "percent used / days left"
+        bool is_active
+        string title_fa
+        text body_fa
+    }
+    crm_service_warning {
+        bigint id PK
+        bigint service_id FK
+        string kind
+        int threshold
+        string period_key "expiry + volume: changes on renewal"
+        datetime due_at "bot / email not before (quiet hours)"
+        datetime site_sent_at
+        datetime bot_sent_at
+        datetime email_sent_at
+        datetime renewed_at "converted"
+    }
+    crm_service_end {
+        bigint id PK
+        bigint service_id FK
+        string status "expired | limited"
+        datetime ended_at
+    }
+    crm_discount_code {
+        bigint id PK
+        string code UK
+        bigint user_id FK
+        int percent
+        datetime expires_at
+        bigint case_id FK
+        bigint order_id FK "reserved by"
+        datetime used_at
+    }
     crm_event {
         bigint id PK
         bigint user_id FK
@@ -541,6 +585,12 @@ erDiagram
 | `crm_case_reason` | Configurable inactivity reasons (seeded: app not installed, config / setup, filtering / ISP, device, no need now, price, other). |
 | `crm_message_template` | Editable follow-up messages (seeded: help connecting). |
 | `crm_event` | Timeline of stage changes and staff actions (merged with orders, payments, tickets and notifications on the 360 page). |
+| `crm_warning_rule` | Pre-expiry warning thresholds (data % / days left) with their fa / en messages. |
+| `crm_service_warning` | One warning per service, threshold and period, with per-channel send times (quiet hours) and conversion. |
+| `crm_service_end` | When a service was first seen expired / used up (drives the win-back grace period). |
+| `crm_discount_code` | Single-use win-back discount codes: percent, expiry, the reserving order and when it was used. |
+
+`crm_case_reason` and `crm_message_template` have a `category` (inactivity / winback); `order.discount_amount` holds the discount taken off `amount`.
 
 ## 7. Notifications (`notifications`)
 

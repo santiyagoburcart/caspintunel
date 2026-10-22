@@ -51,7 +51,9 @@ PAGE = 50
 def _err(exc):
     from apps.tickets.services import TicketError
 
-    if isinstance(exc, (S.CrmError, TicketError)):
+    from .retention import RetentionError
+
+    if isinstance(exc, (S.CrmError, TicketError, RetentionError)):
         return Response({"detail": str(exc), "code": exc.code}, status=exc.status)
     raise exc
 
@@ -90,7 +92,10 @@ def _service_row(s) -> dict:
 
 def case_row(c) -> dict:
     u = c.user
+    plan = c.service.current_plan if c.service and c.service.current_plan_id else None
     return {
+        "plan": {"name_fa": plan.name_fa, "name_en": plan.name_en} if plan else None,
+        "ended_at": c.ended_at, "recovered_amount": str(c.recovered_amount) if c.recovered_amount is not None else None,
         "id": c.id, "kind": c.kind, "status": c.status, "outcome": c.outcome,
         "reason": {"id": c.reason_id, "name_fa": c.reason.name_fa, "name_en": c.reason.name_en} if c.reason else None,
         "notes": c.notes, "assigned_to": _staff_row(c.assigned_to),
@@ -104,6 +109,17 @@ def case_row(c) -> dict:
 
 def _cases_qs():
     return FollowUpCase.objects.select_related("user", "service", "service__current_plan", "reason", "assigned_to", "ticket", "closed_by")
+
+
+def _winback_extras(c) -> dict:
+    """Queue context for a win-back item: LTV, open tickets / cases, the active discount code."""
+    from .retention import active_code
+
+    u = c.user
+    code = active_code(u)
+    return {"ltv": str(S.ltv(u)), "open_tickets": u.tickets.exclude(status="closed").count(),
+            "open_cases": FollowUpCase.objects.filter(user=u, status=CaseStatus.OPEN).exclude(pk=c.pk).count(),
+            "discount": {"code": code.code, "percent": code.percent, "expires_at": code.expires_at} if code else None}
 
 
 # --- customer 360 ------------------------------------------------------------------------
@@ -191,6 +207,13 @@ def timeline(u, *, limit=150) -> list:
             items.append({"at": t.closed_at, "kind": "ticket_closed", "ticket": t.id, "number": t.number, "by": t.closed_by_kind})
     for n in u.notifications.order_by("-created_at")[:limit]:
         items.append({"at": n.created_at, "kind": "notification", "title": n.title, "title_en": n.title_en})
+    from .models import ServiceWarning
+
+    for w in ServiceWarning.objects.filter(service__user=u).exclude(bot_error__startswith="skipped").select_related("service")[:limit]:
+        items.append({"at": w.created_at, "kind": "warning", "warn_kind": w.kind, "threshold": w.threshold,
+                      "service": w.service.panel_username, "renewed": bool(w.renewed_at),
+                      "channels": [c for c, t in (("site", w.site_sent_at), ("bot", w.bot_sent_at if not w.bot_error else None),
+                                                  ("email", w.email_sent_at if not w.email_error else None)) if t]})
     for e in CrmEvent.objects.filter(user=u)[:limit]:
         items.append({"at": e.created_at, "kind": "crm_" + e.kind, "actor": e.actor_label, "case": e.case_id, **e.detail})
     items.sort(key=lambda x: x["at"], reverse=True)
@@ -276,6 +299,8 @@ class CasesView(_Staff):
             qs = qs.filter(status=st)
         if p.get("kind"):
             qs = qs.filter(kind=p["kind"])
+        else:
+            qs = qs.exclude(kind=CaseKind.WINBACK)          # win-back has its own queue
         if p.get("reason"):
             qs = qs.filter(reason_id=p["reason"]) if p["reason"] != "none" else qs.filter(reason__isnull=True)
         a = p.get("assigned", "")
@@ -297,7 +322,8 @@ class CasesView(_Staff):
         counts = dict(FollowUpCase.objects.filter(status=CaseStatus.OPEN).values_list("kind").annotate(n=Count("id")).values_list("kind", "n"))
         return Response({"count": total, "next": off + PAGE if off + PAGE < total else None,
                          "open_counts": {k: counts.get(k, 0) for k in CaseKind.values},
-                         "results": [case_row(c) for c in qs.order_by("-opened_at")[off:off + PAGE]]})
+                         "results": [{**case_row(c), **(_winback_extras(c) if c.kind == CaseKind.WINBACK else {})}
+                                     for c in qs.order_by("-opened_at")[off:off + PAGE]]})
 
 
 class CaseView(_Staff):
@@ -305,7 +331,7 @@ class CaseView(_Staff):
 
     def get(self, request, pk):
         c = get_object_or_404(_cases_qs(), pk=pk)
-        return Response({**case_row(c), "events": [{"id": e.id, "kind": e.kind, "actor": e.actor_label, "detail": e.detail,
+        return Response({**case_row(c), **(_winback_extras(c) if c.kind == CaseKind.WINBACK else {}), "events": [{"id": e.id, "kind": e.kind, "actor": e.actor_label, "detail": e.detail,
                                                      "created_at": e.created_at} for e in c.events.all()]})
 
     def patch(self, request, pk):
@@ -345,7 +371,36 @@ class CaseMessageView(_Staff):
 
     def post(self, request, pk):
         c = get_object_or_404(_cases_qs(), pk=pk)
-        return _send(request, c.user, c)
+        if c.kind != CaseKind.WINBACK:
+            return _send(request, c.user, c)
+        from .retention import send_winback
+
+        d = request.data or {}
+        tpl = MessageTemplate.objects.filter(pk=d["template"]).first() if d.get("template") else None
+        try:
+            send_winback(c, request.user, template=tpl if not d.get("body_fa") else None, body_fa=d.get("body_fa") or "",
+                         body_en=d.get("body_en") or "", via_site=_truthy(d.get("via_site", True)),
+                         via_bot=_truthy(d.get("via_bot", True)), via_email=_truthy(d.get("via_email", False)))
+        except Exception as exc:  # noqa: BLE001
+            return _err(exc)
+        return Response({"ok": True, "message": "Message sent", "message_fa": "پیام ارسال شد"})
+
+
+class CaseDiscountView(_Staff):
+    perms_map = {"POST": MANAGE}
+
+    def post(self, request, pk):
+        from .retention import RetentionError, issue_code
+
+        c = get_object_or_404(_cases_qs(), pk=pk)
+        d = request.data or {}
+        try:
+            dc = issue_code(c, request.user, percent=d.get("percent"), days=d.get("days"))
+        except RetentionError as exc:
+            return Response({"detail": str(exc), "code": exc.code}, status=exc.status)
+        return Response({"code": dc.code, "percent": dc.percent, "expires_at": dc.expires_at,
+                         "message": f"Discount code {dc.code} ({dc.percent}%) created", "message_fa": f"کد تخفیف {dc.code} ({dc.percent}٪) ساخته شد"},
+                        status=201)
 
 
 class CaseTicketView(_Staff):
@@ -471,7 +526,11 @@ def _crud(model, fields, row):
         perms_map = {"GET": VIEW, "POST": MANAGE}
 
         def get(self, request):
-            return Response([row(x) for x in model.objects.all()])
+            qs = model.objects.all()
+            cat = request.query_params.get("category")
+            if cat and "category" in fields:
+                qs = qs.filter(category=cat)
+            return Response([row(x) for x in qs])
 
         def post(self, request):
             data = {f: request.data.get(f) for f in fields if f in request.data}
@@ -483,10 +542,11 @@ def _crud(model, fields, row):
             req = [f for f, kind in fields.items() if kind == "req"]
             if any(not str(data.get(f) or "").strip() for f in req):
                 return Response({"detail": f"required: {', '.join(req)}", "code": "invalid"}, status=400)
-            from django.db import IntegrityError
+            from django.db import IntegrityError, transaction
 
             try:
-                obj = model.objects.create(**data)
+                with transaction.atomic():
+                    obj = model.objects.create(**data)
             except IntegrityError:
                 return Response({"detail": "already exists", "code": "exists"}, status=409)
             write_audit(action=f"crm.{model._meta.model_name}_created", staff=request.user, target=obj)
@@ -504,7 +564,13 @@ def _crud(model, fields, row):
                     if kind == "req" and not v.strip():
                         return Response({"detail": f"{f} is required", "code": "invalid"}, status=400)
                     setattr(obj, f, v)
-            obj.save()
+            from django.db import IntegrityError, transaction
+
+            try:
+                with transaction.atomic():
+                    obj.save()
+            except IntegrityError:
+                return Response({"detail": "already exists", "code": "exists"}, status=409)
             write_audit(action=f"crm.{model._meta.model_name}_updated", staff=request.user, target=obj)
             return Response(row(obj))
 
@@ -519,12 +585,13 @@ def _crud(model, fields, row):
     return ListView, DetailView
 
 
-ReasonsView, ReasonDetailView = _crud(CaseReason, {"name_fa": "req", "name_en": "req", "is_active": "bool", "sort_order": "int"},
-                                      lambda r: {"id": r.id, "name_fa": r.name_fa, "name_en": r.name_en, "is_active": r.is_active,
+ReasonsView, ReasonDetailView = _crud(CaseReason, {"name_fa": "req", "name_en": "req", "is_active": "bool", "sort_order": "int",
+                                                  "category": "str"},
+                                      lambda r: {"id": r.id, "category": r.category, "name_fa": r.name_fa, "name_en": r.name_en, "is_active": r.is_active,
                                                  "sort_order": r.sort_order, "used": r.cases.count()})
 TemplatesView, TemplateDetailView = _crud(MessageTemplate, {"title": "req", "body_fa": "req", "body_en": "str", "is_active": "bool",
-                                                            "sort_order": "int"},
-                                          lambda t: {"id": t.id, "title": t.title, "body_fa": t.body_fa, "body_en": t.body_en,
+                                                            "sort_order": "int", "category": "str"},
+                                          lambda t: {"id": t.id, "category": t.category, "title": t.title, "body_fa": t.body_fa, "body_en": t.body_en,
                                                      "is_active": t.is_active, "sort_order": t.sort_order})
 TagsView, TagDetailView = _crud(Tag, {"name": "req", "color": "str"}, lambda t: {"id": t.id, "name": t.name, "color": t.color})
 
@@ -536,3 +603,64 @@ class StaffListView(_Staff):
     def get(self, request):
         return Response([_staff_row(s) for s in Staff.objects.filter(is_active=True).select_related("role")
                          if s.is_superadmin or s.has_perm("crm.view")])
+
+
+
+# --- retention (phase 4) -------------------------------------------------------------
+from .models import WarningRule  # noqa: E402
+
+WarningRulesView, WarningRuleDetailView = _crud(
+    WarningRule, {"kind": "req", "threshold": "int", "is_active": "bool", "title_fa": "req", "title_en": "str", "body_fa": "req",
+                  "body_en": "str"},
+    lambda w: {"id": w.id, "kind": w.kind, "threshold": w.threshold, "is_active": w.is_active, "title_fa": w.title_fa,
+               "title_en": w.title_en, "body_fa": w.body_fa, "body_en": w.body_en, "sent": w.sent.count()})
+
+
+class RetentionSettingsView(_Staff):
+    perms_map = {"GET": VIEW, "PATCH": MANAGE}
+
+    def get(self, request):
+        from . import retention as R
+
+        return Response({"settings": R.all_settings()})
+
+    def patch(self, request):
+        from . import retention as R
+
+        d = request.data or {}
+        changed = {}
+        for k, _d, lo, hi in R.INT_SETTINGS:
+            if k in d:
+                try:
+                    v = max(lo, min(hi, int(d[k] or 0)))
+                except (TypeError, ValueError):
+                    return Response({"detail": f"{k} must be a number", "code": "invalid"}, status=400)
+                set_setting(k, v, ValueType.INT)
+                changed[k] = v
+        for k, _d in R.BOOL_SETTINGS:
+            if k in d:
+                set_setting(k, _truthy(d[k]), ValueType.BOOL)
+                changed[k] = _truthy(d[k])
+        for k, _d in R.STR_SETTINGS:
+            if k in d:
+                v = str(d[k] or "").strip()
+                if v and R._hm(v) is None:
+                    return Response({"detail": f"{k} must be HH:MM", "code": "invalid"}, status=400)
+                set_setting(k, v, ValueType.STR)
+                changed[k] = v
+        if changed:
+            write_audit(action="crm.retention_settings", staff=request.user, detail=changed)
+        return Response({"settings": R.all_settings()})
+
+
+class RetentionReportView(_Staff):
+    perms_map = {"GET": VIEW}
+
+    def get(self, request):
+        from .retention import report
+
+        try:
+            days = int(request.query_params.get("days", 30))
+        except ValueError:
+            days = 30
+        return Response(report(days))

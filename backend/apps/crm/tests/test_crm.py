@@ -169,10 +169,10 @@ def test_case_actions_reason_message_ticket_close(panel, django_capture_on_commi
     case = FollowUpCase.objects.get()
     agent = staff("agent", ["crm.view", "crm.manage", "tickets.view"])
     c = client_for(agent)
-    reason = CaseReason.objects.get(name_en="App not installed")
+    reason = CaseReason.objects.get(name_en="App not installed", category="inactivity")
     r = c.patch(f"/api/v1/admin/crm/cases/{case.id}/", {"reason": reason.id, "notes": "called, no app", "assigned_to": agent.id}, format="json")
     assert r.json()["reason"]["name_en"] == "App not installed" and r.json()["assigned_to"]["username"] == "agent"
-    tpl = MessageTemplate.objects.get()
+    tpl = MessageTemplate.objects.get(category="inactivity")
     r = c.post(f"/api/v1/admin/crm/cases/{case.id}/message/", {"template": tpl.id, "via_site": True, "via_bot": False}, format="json")
     assert r.status_code == 200
     body = NotificationDelivery.objects.filter(user=u).last().notification.body
@@ -243,7 +243,7 @@ def test_reports(panel):
     buy(u, panel, online=NOW() - timedelta(days=5))
     S.detect_inactivity()
     case = FollowUpCase.objects.get()
-    S.update_case(case, None, reason_id=CaseReason.objects.get(name_en="Price").id)
+    S.update_case(case, None, reason_id=CaseReason.objects.get(name_en="Price", category="inactivity").id)
     S.close(case, None, "lost")
     d = client_for(staff("v", ["crm.view"])).get("/api/v1/admin/crm/reports/?days=30").json()
     assert d["opened"] == 1 and d["outcomes"] == {"lost": 1} and d["by_reason"][0]["reason"]["name_en"] == "Price"
@@ -256,11 +256,11 @@ def test_settings_reasons_templates(panel):
     assert s.status_code == 400
     s = c.patch("/api/v1/admin/crm/settings/", {"crm_inactive_days": 999, "crm_auto_message": True}, format="json").json()["settings"]
     assert s["crm_inactive_days"] == 60 and s["crm_auto_message"] is True
-    assert len(c.get("/api/v1/admin/crm/reasons/").json()) == 7
+    assert len(c.get("/api/v1/admin/crm/reasons/?category=inactivity").json()) == 7
     assert [x["username"] for x in c.get("/api/v1/admin/crm/staff/").json()] == ["m"]
     r = c.post("/api/v1/admin/crm/reasons/", {"name_fa": "زمان", "name_en": "Time"}, format="json")
     assert r.status_code == 201
-    used = CaseReason.objects.get(name_en="Price")
+    used = CaseReason.objects.get(name_en="Price", category="inactivity")
     FollowUpCase.objects.create(user=customer(), kind="manual", reason=used)
     assert c.delete(f"/api/v1/admin/crm/reasons/{used.id}/").status_code == 409
     assert c.delete(f"/api/v1/admin/crm/reasons/{r.json()['id']}/").status_code == 204
