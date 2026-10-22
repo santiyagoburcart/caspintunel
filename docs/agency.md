@@ -7,13 +7,15 @@ Phase 1 = backend + data import; phase 2 = admin UI. Porting map: `backend/apps/
 
 ## Admin UI (`/panel/agency`, permission `agency.view`)
 
-Dashboard (PAMP totals: Total Sold, Used, Remaining, Hidden, admins; the ≥80 % list) · Admins (search,
+Dashboard (Total Sold, Used, Remaining, Hidden, admins; the ≥80 % list) · Admins (search,
 status / limit / group filters, usage bar, Total Sold, Sold Limit, Hidden, Remaining) · admin detail (every
-PAMP number, user counts, snapshots, recent syncs, actions) · Groups · Sync logs · Settings (sync,
+PAMP number, user counts, snapshots, recent syncs, actions) · Groups · Accounting (`agency.accounting`) · Sync logs · Settings (sync,
 enforcement, interval; `agency.manage`). Every number comes from the backend (`apps/agency/api.py` only
 selects values computed by the ported code); the pages only format them.
+Admin limits read in exact GB first ("5,200 GB", 1 GB = 1024³) with TB as the small secondary text; the
+detail page section is "سقف ادمین / Admin limit".
 
-**Until the cut-over every write is off**: set/remove limit, enable/disable admin or all their users, reset
+**Cut-over gate** (open since 2026-10-16 — writes are live): while `agency_sync_enabled` is off, every write is off: set/remove limit, enable/disable admin or all their users, reset
 deleted traffic, sync now and group edits answer `409 pre_cutover` and the buttons show "فعال پس از انتقال
 نهایی". They open when `agency_sync_enabled` is turned on — which the Settings page only accepts after typing
 `FINLAND-STOPPED` (that switch IS the cut-over). Enforcement can only be on while sync is on.

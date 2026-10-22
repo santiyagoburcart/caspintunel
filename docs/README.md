@@ -5,7 +5,10 @@
 | [install.md](install.md) | one-command menu installer (install / update / uninstall) |
 | [offline.md](offline.md) | air-gapped install — pre-built images, manual TLS |
 | [deploy.md](deploy.md) | server layout, TLS (auto + manual), DNS/mail, the update button |
-| [architecture.md](architecture.md) | how the system is put together |
+| [architecture.md](architecture.md) | how the system is put together: containers, request flow, Celery schedule, bots, PasarGuard, agency sync, host jobs, backups, deploy, production server |
+| [erd.md](erd.md) | data model — Mermaid ER diagrams per app + every table explained |
+| [flows.md](flows.md) | sequence diagrams: purchase + card-to-card + SMS auto-confirm, renewal, provisioning, agency sync + ledger, bot / Mini App login, deploy |
+| [roadmap.md](roadmap.md) | planned phases: ticketing, agency, CRM, retention, CRM accounting |
 | [api.md](api.md) | API surface overview (full spec at `/api/schema/`, UI at `/api/docs/`) |
 | [operations.md](operations.md) | day-2: backups, monitoring, alerts, user delete/restore, SMS devices & apps, common tasks |
 | [migration.md](migration.md) · [فارسی](migration-fa.md) | moving to a new server: export / import scripts, pre-DNS test, runbook, rollback, server specs |
@@ -19,6 +22,8 @@
 
 These pages are also readable in the admin panel → **Documentation** (`/panel/docs`,
 permission `settings.manage`): rendered read-only with a table of contents and search.
+Mermaid diagrams (in `architecture.md`, `erd.md`, `flows.md`) render on GitHub; the
+panel shows their source as code blocks.
 Only `docs/*.md` is served; a `NAME=value` line whose name looks like a secret
 (`*PASSWORD*`, `*TOKEN*`, `*SECRET*`, `*_KEY`) is masked unless it is a placeholder.
 

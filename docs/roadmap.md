@@ -1,0 +1,90 @@
+# Roadmap
+
+Planned phases after v1.15.x. Nothing on this page is built yet. Each phase
+ships as its own releases (tests on the isolated stack, fa/en, light/dark,
+desktop + 390 px) and **must update [architecture.md](architecture.md),
+[erd.md](erd.md) and [flows.md](flows.md)** in the same release.
+
+| Phase | Theme | Depends on |
+|---|---|---|
+| 0 | Documentation refresh (architecture, ERD, flows, roadmap) — **done (v1.15.8)** | — |
+| 1–2 | Ticketing (site + bot, synced) | — |
+| A | Agency improvements | — (runs in parallel) |
+| 3 | CRM — customer 360, inactivity + reasons | 1–2 |
+| 4 | Retention — warnings, win-back queue | 3 |
+| 5 | CRM accounting — LTV, renewal / churn reports | 3, 4 |
+
+## Phases 1–2 — Ticketing
+
+One ticket system used from the **site** and the **sales bot**, kept in sync:
+a reply written in either place shows up in both.
+
+- **Topics are configurable** in the panel (name fa/en, active, order, who may
+  use it). Example: sales question, payment problem, connection problem,
+  renewal.
+- **Pre-purchase rule:** a user without an active service may only open
+  tickets in topics marked *pre-purchase* (e.g. "questions before buying").
+  Users with an active service get every active topic.
+- **Ticketing role** with **per-admin topic scopes**: a staff member sees and
+  answers only the topics assigned to them; supervisors see all.
+- **Chat UI like Telegram**, mobile-first: message bubbles, timestamps (Jalali),
+  read state, attachments (images, with the same private-media rules as
+  receipts), quick replies; the admin side is an inbox with filters (topic,
+  status, assignee, waiting for us / waiting for customer).
+- **Notifications** on new tickets and replies through the existing channels:
+  site (WebSocket + bell), bot message, email — per-user channel rules as in
+  `notify_user`.
+- **Accountability:** every ticket keeps who replied, who assigned (to whom)
+  and who closed / reopened it, with timestamps (`AuditLog` + ticket events),
+  so response time per admin can be measured.
+- Statuses: open → waiting on customer / waiting on staff → closed (reopen
+  allowed for N days).
+- Data model sketch (to be finalised in erd.md): `ticket_topic`,
+  `ticket` (user, topic, status, assignee, opened_via site/bot),
+  `ticket_message` (author user | staff, body, attachment, via),
+  `ticket_event` (assigned / closed / reopened / topic changed, by staff),
+  `staff_topic_scope`.
+- Phase 1 = backend + site + admin inbox; phase 2 = bot parity + sync,
+  notifications, reports (first response time, resolution time per admin).
+
+## Phase A — Agency improvements
+
+Improvements to the agency panel and reseller portal. **Scope to be agreed
+with the owner** before work starts; each item becomes its own release. Fixed
+constraint: the PAMP formulas, sync order and enforcement stay verbatim
+(golden test) — changes go around them, never into them.
+
+## Phase 3 — CRM
+
+- **Customer 360** page: profile, services (status, usage, expiry), orders and
+  payments, tickets, notifications sent, source (site / bot / referral),
+  lifetime value (from phase 5), notes and tags.
+- **Inactivity detection:** customers whose service expired / ran out and was
+  not renewed within N days, or who have not connected for N days (from
+  service `online_at` sync) — a list with filters.
+- **Reason tracking:** staff (or the customer via a short bot / site survey)
+  record why a customer left or stopped using the service (configurable reason
+  list: price, speed, moved to another provider, no longer needed, …), with
+  history.
+- **Linked to tickets:** a customer's tickets and their outcomes appear on the
+  360 page; a ticket can be tagged with a churn reason.
+
+## Phase 4 — Retention
+
+- **Configurable warnings:** expiry (days before) and volume (percent used)
+  thresholds, multiple steps, channels (site / bot / email) and texts in fa/en,
+  replacing the fixed thresholds of today's `service_alerts_task`.
+- **Win-back queue for expired customers:** a worklist of recently expired /
+  inactive customers (from phase 3) with suggested action (renewal link,
+  discount code, contact), assignment to staff, outcome tracking (renewed /
+  declined + reason / no answer).
+- Measured: renewal rate after a warning, win-back success rate.
+
+## Phase 5 — CRM accounting
+
+- **LTV** per customer and per acquisition source (total paid, number of
+  orders, months active).
+- **Renewal / churn reports** per Jalali month: active base, new, renewed,
+  churned, churn reasons, revenue from renewals vs new sales; export CSV /
+  Excel like the agency reports.
+- Cohorts by first-purchase month.

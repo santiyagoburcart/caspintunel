@@ -91,7 +91,7 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   Never use `window.confirm/alert/prompt`. **One copy helper**: `lib/clipboard.js::copyToClipboard`.
 - Fonts are bundled (`@fontsource`, no CDN): fa = Vazirmatn, en = Inter, `<code>` = JetBrains Mono.
 - Mobile (≤767px, Caspian admin): bottom nav + Settings page = index of every page not in the bottom nav.
-  A new admin page must be reachable from the sidebar **and** that index (+ `MOBILE_TITLES`).
+  Sidebar and that index both come from `components/adminNav.js` — add a new admin page there (+ `MOBILE_TITLES`).
   Phone density: record-grid cards (not stacked tables), KPI tiles 2 per row, subtitles hidden, inputs 16px,
   targets ≥44px. Badge/pill **text** uses `--c-*-fg` (contrast-safe); "expired" is always `muted` gray.
 - Subscription QR = `apps/common/qrcard.py::qr_card_png` everywhere (bot, site modal, downloads): never
@@ -99,6 +99,10 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   JPEGs (`qr_backgrounds/generate.py`) or the Branding upload. Bot support IDs/text live in `SiteConfig`.
 - Admin "Documentation" serves only `docs/*.md` (secret-looking `NAME=value` lines masked). Keep docs free
   of real values; new docs show up automatically.
+- **Docs rule — every phase / release that changes models, services, Celery tasks, containers, host jobs or a
+  user-visible flow updates `docs/architecture.md`, `docs/erd.md` (Mermaid ER + table list) and `docs/flows.md`
+  (Mermaid sequence diagrams) in the same commit**, plus `docs/roadmap.md` when a planned phase starts or ships.
+  Write only what the code does (check enum values / schedules in the code, never from memory).
 - The rejected Liquid Glass refresh is archived at tag `archive/ui-refresh-liquid-glass` — don't copy from it.
 
 ## Gotchas (learned the hard way)
@@ -131,8 +135,8 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
 ## Agency panel (apps/agency, docs/agency.md)
 - 1:1 port of PAMP v1.5.3 (reseller admins). Formulas, sync order and enforcement are VERBATIM (PORTING.md);
   `tests/test_golden.py` compares them with the ORIGINAL PAMP code — never "improve" them here.
-- `agency_sync_enabled` / `agency_enforcement_enabled` stay OFF until the owner approves the cut-over from the
-  Finland PAMP (never two syncs on one panel). Resellers are NOT `accounts.User` rows.
+- Cut-over done 2026-10-16: sync (10 min) + enforcement + portal are ON here; the Finland PAMP has its workers
+  stopped. Never run two syncs on one panel (rollback steps in docs/agency.md). Resellers are NOT `accounts.User` rows.
 - Real PAMP data (dumps, recorded panel responses) lives only in `backups/pamp/` and `backend/.golden_local/`.
 
 ## Paths (docs/paths.md)

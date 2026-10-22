@@ -1,67 +1,266 @@
 # Architecture
 
-API-first Django. One backend, versioned API (`/api/v1/`, JWT), multiple
-independent frontends. Jalali calendar in the presentation layer (UTC stored).
-Bilingual fa/en.
+API-first Django. One backend, versioned API (`/api/v1/`, JWT), several
+independent frontends (user site, admin panel, reseller portal, Telegram bots,
+operator phone tools). Jalali calendar in the presentation layer (UTC stored).
+Bilingual fa/en, Latin digits everywhere.
+
+Related: [erd.md](erd.md) (data model) · [flows.md](flows.md) (sequence diagrams) ·
+[roadmap.md](roadmap.md) (planned phases) · [deploy.md](deploy.md) · [operations.md](operations.md).
+
+> **Rule:** every phase that changes models, services, tasks, containers or a
+> user-visible flow updates `architecture.md`, `erd.md` and `flows.md` in the
+> same release (see `CLAUDE.md`).
+
+## Production server
+
+| | |
+|---|---|
+| Location | Finland (Hetzner, Helsinki), host `ubuntu-4gb-hel1-2` |
+| Public IP | `46.62.192.189` — `aicaspin.ir`, `www.aicaspin.ir`, `mail.aicaspin.ir` (Cloudflare DNS, DNS-only, TTL Auto) |
+| Since | 2026-10-21, migrated from the previous server with the migration toolkit ([migration.md](migration.md)) |
+| Compose | `docker-compose.yml` + `docker-compose.prod.yml` (selected by `COMPOSE_FILE` in `.env`) |
+| Also on the host | two PasarGuard **node** containers (`hel-tun1`, `hel-cdn1`) and `x-ui` — VPN data plane, **not** part of this project; never restarted by `update.sh` |
+| Docker daemon | `live-restore: true`, json-file logs capped at 10 MB × 3 per container; journald capped at 200 MB |
+
+Secrets live only in `.env` (git-ignored) and in encrypted DB fields — none
+are written in these docs.
+
+## Containers (production)
+
+```mermaid
+flowchart LR
+    client([Browser / Telegram WebView / phone app]) -->|443 TLS| nginx
+    subgraph compose[docker compose project caspintunel]
+        nginx[nginx<br/>TLS, routing, CSP,<br/>maintenance switch]
+        web[web<br/>gunicorn ×3<br/>Django + DRF]
+        daphne[daphne<br/>ASGI WebSockets]
+        fu[frontend_user<br/>nginx + built SPA]
+        fa[frontend_admin<br/>nginx + built SPA]
+        worker[celery_worker]
+        beat[celery_beat<br/>DatabaseScheduler]
+        sales[bot_sales<br/>long polling]
+        backup[bot_backup<br/>long polling]
+        db[(db<br/>MySQL 8)]
+        redis[(redis 7<br/>broker, cache,<br/>channel layer)]
+        mail[mailserver<br/>SMTP only]
+        certbot[certbot]
+        pma[phpmyadmin<br/>127.0.0.1 only]
+    end
+    nginx --> web & daphne & fu & fa
+    web & daphne & worker & beat & sales & backup --> db
+    web & daphne & worker & beat & sales & backup --> redis
+    worker -->|HTTP API| pg[(PasarGuard panel)]
+    web -->|HTTP API| pg
+    sales & backup & worker -->|Bot API| tg[(Telegram)]
+    worker --> mail
+```
+
+| Service | Image | Role |
+|---|---|---|
+| `nginx` | own (`nginx/`) | TLS (Let's Encrypt or manual cert), routing below, security headers / two CSPs, `nginx/flags/maintenance` → 503, admin + portal paths from `nginx/paths/active.conf` |
+| `web` | `caspintunel-backend` | gunicorn, 3 workers, Django + DRF (`/api/`, `/admin/`), healthcheck `/api/v1/health/` |
+| `daphne` | `caspintunel-backend` | ASGI for `/ws/` (Channels; Redis channel layer) |
+| `frontend_user` | `caspintunel-frontend-user` | built user SPA (also the Mini App and the reseller portal at `/agency/`) |
+| `frontend_admin` | `caspintunel-frontend-admin` | built admin SPA, served under the admin path (default `/panel/`) |
+| `celery_worker` | `caspintunel-backend` | all async work (provisioning, sync, backups, notifications, agency sync) |
+| `celery_beat` | `caspintunel-backend` | periodic tasks, stored in the DB (`django_celery_beat`) |
+| `bot_sales` | `caspintunel-backend` | `manage.py run_sales_bot` (pyTelegramBotAPI, long polling) |
+| `bot_backup` | `caspintunel-backend` | `manage.py run_backup_bot` (backup chat commands, long polling) |
+| `db` | `mysql:8.0` | the only database |
+| `redis` | `redis:7-alpine` | Celery broker, Django cache (public-config cache, bot state, rate limits), Channels layer |
+| `mailserver` | docker-mailserver 14 | `SMTP_ONLY=1`, outbound relay ([email-relay.md](email-relay.md)) |
+| `certbot` | `certbot/certbot` | certificate renewal (webroot) |
+| `phpmyadmin` | phpmyadmin | bound to `127.0.0.1` only (SSH tunnel) |
+
+## Request flow
+
+```mermaid
+flowchart TD
+    req[HTTPS request] --> tls[nginx TLS vhost<br/>→ plain vhost on 127.0.0.1<br/>X-Forwarded-Proto, X-Real-IP]
+    tls --> m{maintenance flag?}
+    m -->|yes| m503[503 page<br/>ACME still served]
+    m -->|no| r{path}
+    r -->|/api/ · /admin/| web[web — gunicorn → Django]
+    r -->|/ws/| daphne[daphne — Channels]
+    r -->|/static/| static[static volume]
+    r -->|/media/| media[media volume<br/>receipts + apps → 404]
+    r -->|/_protected_media/| prot[internal only<br/>X-Accel-Redirect from the API]
+    r -->|admin path, default /panel/| fa[frontend_admin<br/>+ injected base href]
+    r -->|portal path, default /agency/| fu
+    r -->|everything else| fu[frontend_user]
+```
+
+- Upstreams are nginx **variables** with `resolver 127.0.0.11 valid=2s`, so
+  during a rolling deploy nginx balances over old + new containers and retries
+  (`proxy_next_upstream`, 3 tries).
+- Django gets exactly **one** trusted client IP (`$client_ip`; `X-Forwarded-For`
+  overwritten) and DRF uses `NUM_PROXIES = 1`.
+- Two CSPs: `/api`, `/admin`, admin path → locked down (`frame-ancestors 'none'`);
+  the user site may be framed by Telegram (Mini App) and loads nothing from a CDN
+  (the Telegram SDK is bundled).
+- Admin and portal paths are configurable (Settings → Paths, [paths.md](paths.md)).
+  The admin SPA is built with relative assets; nginx injects `<base href>` and
+  `ct-admin-base`. The user site gets the portal path from an nginx-injected meta.
+- Receipts are never public: the API checks access, then `X-Accel-Redirect`
+  to `/_protected_media/` (no-store).
+
+Token audiences: customer JWT (`Authorization: Bearer`), staff JWT (separate
+`Staff` model, `tv` claim = `token_version`), SMS device token
+(`X-Device-Token`), reseller session (`Authorization: Agency <token>`, only a
+SHA-256 stored).
 
 ## Backend apps (`backend/apps/`)
 
 | App | Responsibility |
 |-----|----------------|
-| `common` | base model, encrypted fields (`FIELD_ENCRYPTION_KEY` / Fernet), Jalali helpers, audit log, `DynamicAllowedHostsMiddleware`, health/root views, `mail.DynamicEmailBackend`, `public_cache`, **`qrcard`** (subscription QR on the active background; bundled backgrounds in `qr_backgrounds/`) |
-| `accounts` | customer `User` (`AUTH_USER_MODEL`), independent RBAC — `Permission` / `Role` / `Staff`; JWT auth (password-hash claim revokes sessions), registration (terms accepted at sign-up), phone normalization / Iran-only rule, outage-aware email verification, 3-path password reset, legacy import, bot↔site account merge, **soft delete + `DeletedUserArchive`** snapshot / restore (`accounts/deletion.py`) |
-| `panel` | multi-panel `Panel` + `PasarGuardClient` (token cache, typed errors), `Service`, payload mappers, idempotent provision/renew/sync, scheduled renewals (reset / carry-over), admin full edit (status, volume, expiry, groups, note, HWID limit), manual create + **link an existing panel account**, retry-safe Celery tasks, `Service` read API + QR |
-| `plans` | `Plan` (fixed / custom-volume), `group_ids` per plan with panel-default fallback |
-| `orders` | `Order` (new / renew / add-on / manual / imported), atomic unique-amount reservation (`amount_unique_lock`), checkout resume, `fulfill_order` + `retry_unfulfilled_orders` tasks |
-| `payments_sms` | `BankCard`, `Payment`, card-to-card flow; `SmsSource` / `SmsAppDevice` / `SmsMessage`, `SmsDeviceAuthentication`, rial-aware parser, auto-match engine |
-| `notifications` | `Notification` / `NotificationDelivery`, `dispatch.notify_user` (per-channel isolated: site / email / bot), Channels WebSockets: customer notifications + staff live payments queue |
-| `telegram` | `TelegramClient` (raw API, proxy), `ensure_bot_user`, forced-channel + phone gate (asked again on any message), sales bot (pyTelegramBotAPI; pure `bot/screens.py` + fa/en `bot/texts.py`, messages edited in place; every service is sent as a QR photo with the subscription link as tap-to-copy `<code>`; see [bots.md](bots.md)), Mini App auto-login, backup bot, `run_database_backup` |
-| `settings_app` | `Setting` (typed KV), `SiteConfig` (branding singleton — names, domain, logo, site + bot support contacts/message, QR background), `Theme`, `Page`, **`AppRelease`** (operator apps served from this server), `shortcut.py` (builds the iPhone Shortcut from `mobile_shortcut/` at download time); public config/theme/pages endpoints; interval-reconcile signal |
-| `ops` | `HealthCheck` / `ResourceStat` / `BackupLog`, health probes, `psutil` sampling, service alerts, Cloudflare `configure_dns` |
-| `adminpanel` | the operator API under `/api/v1/admin/` — Staff JWT + `StaffPermission`, all management endpoints, SMS log, read-only `docs/*.md` for the Documentation page |
+| `common` | base model, encrypted fields (`FIELD_ENCRYPTION_KEY` / Fernet), Jalali helpers, `AuditLog` + `write_audit`, `DynamicAllowedHostsMiddleware`, health/root views, `mail.DynamicEmailBackend`, `public_cache`, `qrcard` (subscription QR on the active background), `xlsx` (Excel export without a dependency) |
+| `accounts` | customer `User` (`AUTH_USER_MODEL`), independent RBAC — `Permission` / `Role` / `Staff`; JWT auth (password-hash claim revokes sessions), registration, phone normalization / Iran-only rule, email verification, 3-path password reset, legacy import, bot↔site account merge, Mini App initData validation, **soft delete + `DeletedUserArchive`** |
+| `panel` | multi-panel `Panel` + `PasarGuardClient` (token cache, typed errors), `Service`, payload mappers, idempotent provision / renew / sync, scheduled renewals (reset / carry-over), admin full edit, manual create, link an existing panel account |
+| `plans` | `Plan` (fixed / custom-volume), `group_ids` per plan with panel-default fallback, renewal mode + carry-over |
+| `orders` | `Order` (new / renew / add-on / manual / imported), atomic unique-amount reservation (`amount_unique_lock`), checkout resume, `ScheduledRenewal`, `fulfill_order` + `retry_unfulfilled_orders` |
+| `payments_sms` | `BankCard`, `Payment`, card-to-card receipts, `SmsSource` / `SmsAppDevice` / `SmsMessage`, unit-aware parser, **exact-match auto-confirm + near-miss review** (`matching.py`), `approve_payment` / `reject_payment` |
+| `notifications` | `Notification` / `NotificationDelivery`, `dispatch.notify_user` (site / bot / email, each channel isolated), WebSockets: customer notifications + staff live payments queue |
+| `telegram` | `TelegramClient`, `ensure_bot_user`, forced-channel + phone gate, sales bot (pure `bot/screens.py` + fa/en `bot/texts.py`), backup bot + `run_database_backup`, channel member stats ([bots.md](bots.md)) |
+| `settings_app` | `Setting` (typed KV), `SiteConfig` (branding singleton), `Theme`, `Page` (CMS), `AppRelease` (operator apps), `EmailSettings`, iPhone Shortcut builder, `paths` (admin / portal paths), `seed` |
+| `ops` | `HealthCheck` / `ResourceStat` / `BackupLog` / `CleanupRun`, health probes, `psutil` sampling, service alerts, **backup retention** (`retention.py`), beat-interval reconcile, Cloudflare `configure_dns` |
+| `agency` | **Agency panel** — 1:1 port of PAMP v1.5.3: `PanelAdmin` (reseller admins), `AdminLimit`, `UserTrafficSnapshot`, `SyncLog`, `AdminGroup`; sync + deleted-user tracking + enforcement; reseller portal (`ResellerSession`); accounting (`AdminPrice`, `LedgerEntry`, reports) ([agency.md](agency.md)) |
+| `adminpanel` | operator API under `/api/v1/admin/` — staff JWT + `StaffPermission` (`perms_map` / `action_perms`), every management endpoint, SMS log, system/update, read-only `docs/*.md` for the Documentation page |
 
-## Async
+## Async — Celery beat schedule
 
-Celery + Redis. Beat schedule (created by `seed`, DB scheduler):
-panel sync (`service_sync_interval_minutes`) · reservation expiry (5 m) · due scheduled renewals (5 m) ·
-retry unfulfilled paid orders (10 m) · DB backup (`backup_interval_minutes`) ·
-channel member counts (60 m) · health (2 m) · resources (5 m) · service alerts (30 m) ·
-prune old backups (24 h).
+Defined by `manage.py seed` (idempotent, runs on every update) and stored in
+the DB scheduler. Two intervals follow settings and are reconciled when the
+setting is saved (`apps/ops/schedule.py`).
 
-## Frontends (`frontend/user`, `frontend/admin`)
+| Periodic task | Task | Every |
+|---|---|---|
+| panel: sync all services | `panel.tasks.sync_all_services` → one `sync_service_task` per live service | `service_sync_interval_minutes` (default 60) |
+| orders: expire stale reservations | `orders.tasks.expire_stale_reservations_task` | 5 min |
+| panel: apply due scheduled renewals | `panel.tasks.apply_due_scheduled_renewals` | 5 min |
+| orders: retry unfulfilled | `orders.tasks.retry_unfulfilled_orders` (paid > 2 min, not provisioned) | 10 min |
+| ops: database backup | `telegram.tasks.run_backup_task` | `backup_interval_minutes` (default 1440) |
+| agency: sync panel admins | `agency.tasks.sync_panel_admins` (no-op while `agency_sync_enabled` is off; enforcement inside, gated by `agency_enforcement_enabled`) | `agency_sync_interval_minutes` (seed default 15; production 10) |
+| telegram: required-channel member counts | `telegram.tasks.sync_required_channels_task` | 60 min |
+| ops: health checks | `ops.tasks.health_check_task` | 2 min |
+| ops: resource sample | `ops.tasks.resource_sample_task` | 5 min |
+| ops: service alerts | `ops.tasks.service_alerts_task` (volume / expiry warnings) | 30 min |
+| ops: prune old backups | `ops.tasks.prune_backups_task` → `retention.run_cleanup` | 60 min |
 
-React + Vite + Tailwind SPAs, themes driven by `/api/v1/theme/` (Midnight Aurora,
-Royal Frost, Caspian). **Offline-safe:** every font and asset is bundled at build
-time (`@fontsource`) — nothing is loaded from a CDN, so the site works on a server
-with only Iranian/national internet. Fonts: Persian UI = **Vazirmatn** everywhere,
-English UI = **Inter** (Vazirmatn fallback), JetBrains Mono only for `<code>`.
-One shared `ConfirmDialog` (bottom sheet on phones) for every confirmation.
-Badge/pill text uses contrast-safe `--c-*-fg` tokens; *expired* is neutral gray.
-Phones: 16 px inputs, ≥ 44 px targets, compact record-grid cards instead of tables.
-Admin on phones (Caspian): bottom nav = dashboard · users · payment queue (centre,
-live badge) · services · settings; Settings is the index of every other page, each
-settings section has its own route (`/panel/settings/<section>`).
+On-demand tasks: `fulfill_order`, `provision_service_task`, `renew_service_task`,
+`sync_service_task`, `apply_scheduled_renewal_task`,
+`deliver_notification_task`, `reconcile_backup_schedule_task`. Panel tasks
+retry on `PanelUnavailable`; a permanent `PanelError` is audited and flagged.
 
-## Money flow
+## Bots
 
-`create_order` → unique surcharge 200–1500 tomans reserved (30 m) → pay the exact
-amount → **SMS auto-match** (`Payment.confirmed_by=system`) **or** receipt upload
-+ admin approve → `order.paid` → `fulfill_order` (create/renew on panel, retry on
-`PanelUnavailable`) → `order.completed` + "service ready" notification.
+- **Sales bot** (`bot_sales`): site parity — buy / renew / custom volume /
+  receipt upload / services (each as a QR photo + tap-to-copy link) / purchase
+  history / account / rules / guide / support message. Gate: forced channels +
+  shared phone (asked again on any message). First contact creates a site
+  account with a random username + password (`ensure_bot_user`); a contact
+  that matches an existing site phone merges into that account. Screens are
+  pure functions; the router edits the current message; typed steps live in
+  Redis (`tgbot:state:<tg_id>`).
+- **Mini App**: the user SPA inside Telegram; `POST /auth/telegram/miniapp/`
+  validates initData with the sales-bot token ([telegram-miniapp.md](telegram-miniapp.md)).
+- **Backup bot** (separate token and chat): the beat task sends each DB dump to
+  the backup chat (`sendDocument`, > 50 MB split into `.partNN`) plus retention
+  alerts; the `bot_backup` process only answers `/id` (chat id) and `/backup`
+  (backup now).
+- Tokens are stored encrypted in `TelegramConfig`; an optional proxy URL per bot.
 
-Timed plans use panel **On-Hold** (`status="on_hold"` + `on_hold_expire_duration`)
-so the clock starts on the user's first connection. Renewal keeps the same panel
-username and subscription URL.
+## PasarGuard integration
 
-## Deploy
+- **HTTP API only** (`apps/panel/client.py`, PasarGuard v5.3); none of its AGPL
+  source is in this repo. Admin token cached encrypted on the `Panel` row,
+  refreshed on 401.
+- Rule: **panel first, then read the account back and mirror it**
+  (`apply_user_to_service`); send only changed fields. Never delete a panel
+  account where "disable" is meant.
+- Timed plans start **On-Hold** (`on_hold_expire_duration`), so the clock
+  starts at first connection. Renewal keeps the same username + subscription URL.
+- The agency app has its own client (`apps/agency/panel_api.py`, PAMP's) for
+  `/api/admins`, `/api/users` and admin enable/disable.
 
-Production runs the code baked into images (`docker-compose.yml` +
-`docker-compose.prod.yml`, selected by `COMPOSE_FILE` in `.env`). `./update.sh`
-backs up the DB, builds, migrates once and swaps web/daphne/SPAs one by one
-behind healthchecks; see [deploy.md](deploy.md).
+## Agency sync
+
+Every interval (when `agency_sync_enabled`): fetch all panel admins and their
+users → update `PanelAdmin` counters → deleted-user tracking from
+`UserTrafficSnapshot` (skipped on a truncated or failed user list — the v1.5.3
+fix) → preserve sold volume → remove admins gone from the panel (never on an
+empty list) → **enforcement** (disable an admin at ≥ 100 % of their limit,
+re-enable below it) → `SyncLog`. The formulas are verbatim PAMP and proven
+equal by `tests/test_golden.py`. Raising a limit through the panel UI writes a
+**quota charge** to the ledger at the admin's price per GB on that date.
+
+Cut-over from the Finland PAMP happened on 2026-10-16; the old PAMP has its
+workers stopped (rollback steps in [agency.md](agency.md)). Never run two syncs
+against one panel.
+
+## Frontends
+
+React 18 + Vite + Tailwind. Themes from `/api/v1/theme/` (Caspian light/dark —
+production, Midnight Aurora, Royal Frost). **Offline-safe:** fonts (Vazirmatn,
+Inter, JetBrains Mono) and every asset bundled, no CDN.
+
+- `frontend/user` — customer site, Telegram Mini App, reseller portal (`/agency/`).
+- `frontend/admin` — admin panel. Desktop: grouped collapsible sidebar
+  (≥ 1280 px docked, 768–1279 px overlay drawer). Phones (≤ 767 px, Caspian):
+  bottom nav = dashboard · users · payment queue (centre, live badge) ·
+  services · settings; **Settings is the index of every other page**, built
+  from the same list as the sidebar (`components/adminNav.js` — same groups,
+  icons, permissions), plus Deleted users and the settings sections, each with
+  its own route (`/panel/settings/<section>`).
+- One `ConfirmDialog`, one toast feedback bridge for every write, Jalali dates,
+  Latin digits.
+
+## Host jobs (outside Docker)
+
+| Schedule | Job |
+|---|---|
+| every minute | `scripts/paths.sh apply-request` — applies an admin/portal path change requested from the panel (nginx -t, reload, verify, rollback) |
+| every 2 min | `scripts/watch-update.sh --prod` — runs `update.sh` when the panel's **Update** button left a sentinel |
+| acme.sh / certbot timers | TLS renewal |
+
+## Backups
+
+- `run_database_backup` (beat, `backup_interval_minutes`): single-transaction
+  `mysqldump` → `backups/<project>-<ts>.sql.gz` → `BackupLog` → sent to the
+  backup chat.
+- **Retention** (`apps/ops/retention.py`, hourly; `manage.py cleanup_backups
+  [--dry-run]`): a local dump older than `backup_retention_days` (default 2) is
+  deleted **only if `sent_to_telegram`**; unsent ones are re-sent (≤ 6 per run)
+  or kept and alerted; the newest 2 always stay. `pre-update-*` keep 3,
+  `backups/migration/*` 7 days. Each run → `CleanupRun` (shown on Monitoring).
+- `update.sh` dumps the DB to `backups/pre-update-<ver>-<ts>.sql.gz` before
+  every deploy.
+
+## Deploy and rollback
+
+Production runs the code baked into images. `./update.sh`:
+
+1. safety net: DB dump + tag the running app images `:rollback`;
+2. `git pull`, build the images;
+3. one-off container of the **new** image: `migrate` + `seed` +
+   `collectstatic` while the old release keeps serving (migrations must stay
+   backward compatible: add now, drop next release);
+4. **rolling** swap of `web`, `daphne`, `frontend_user`, `frontend_admin`:
+   the new container starts next to the old one, waits for its healthcheck,
+   then the old one is removed;
+5. plain recreate of the rest (celery, bots, mail, nginx) only where the image
+   or config changed — bots and beat never run twice;
+6. nginx reload, Docker cleanup (keeps `:latest` + `:rollback`).
+
+`./update.sh --rollback` puts the `:rollback` images back (restore the
+pre-update dump if a migration must be undone). The panel **Update** button
+goes through the same script via `watch-update.sh`. Details: [deploy.md](deploy.md).
 
 ## Security posture
 
-See `LICENSE` (proprietary) and `docs/operations.md`. Secrets live only in `.env`
-(git-ignored); panel password, bot tokens and the panel API token are encrypted
-at rest. Three token audiences: customer JWT, staff JWT, per-device SMS token.
+Secrets only in `.env`; panel password, bot tokens, panel API token and SMTP
+password encrypted at rest. Throttles: anon 180/min, user 600/min, public reads
+600/min (+ 60 s Redis cache), `auth` 10/min, receipts 20/hour. Every staff write
+that matters → `AuditLog`. Payments become approved only through
+`approve_payment`; SMS amounts match **exactly** (no tolerance). See
+`LICENSE` (proprietary) and [operations.md](operations.md).
