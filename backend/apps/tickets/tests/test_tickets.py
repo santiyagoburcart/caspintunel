@@ -76,6 +76,21 @@ def open_via_api(u, topic, **extra):
     return user_client(u).post("/api/v1/tickets/", data, format="multipart")
 
 
+class BotLog(list):
+    def __init__(self, msgs, markups):
+        super().__init__()
+        self._msgs, self.markups = msgs, markups
+
+    def __iter__(self):
+        return iter(self._msgs)
+
+    def __len__(self):
+        return len(self._msgs)
+
+    def __getitem__(self, i):
+        return self._msgs[i]
+
+
 @pytest.fixture
 def pushes(monkeypatch):
     sent = []
@@ -85,41 +100,50 @@ def pushes(monkeypatch):
 
 @pytest.fixture
 def bot(monkeypatch):
-    msgs = []
+    msgs, markups = [], []
 
     class Fake:
         def send_message(self, chat_id, text, **kw):
             msgs.append((chat_id, text))
+            markups.append(kw.get("reply_markup"))
 
         def get_me(self):
             return {"username": "caspin_bot"}
 
     monkeypatch.setattr("apps.telegram.config.sales_client", lambda: Fake())
-    return msgs
+    return BotLog(msgs, markups)
 
 
 # --- topics + the active-service rule ------------------------------------------
-def test_seeded_topics_and_only_pre_purchase_without_service(topics):
+def test_seeded_topics_and_only_pre_purchase_without_any_service(topics):
     assert TicketTopic.objects.count() == 5
     assert list(TicketTopic.objects.filter(requires_active_service=False).values_list("name_fa", flat=True)) \
         == ["سوالات قبل از خرید"]
     r = user_client(customer()).get("/api/v1/tickets/topics/").json()
-    assert r["has_active_service"] is False and [t["name_en"] for t in r["topics"]] == ["Pre-purchase questions"]
+    assert r["has_service"] is False and r["renew_hint"] is None
+    avail = {t["name_en"]: (t["available"], t["reason"]) for t in r["topics"]}
+    assert avail["Pre-purchase questions"] == (True, "") and avail["Connection problem"] == (False, "needs_service")
     r = user_client(customer("bea", active=True)).get("/api/v1/tickets/topics/").json()
-    assert r["has_active_service"] is True and len(r["topics"]) == 5
+    assert r["has_active_service"] is True and all(t["available"] for t in r["topics"]) and len(r["topics"]) == 5
 
 
-def test_api_refuses_service_topic_without_active_service(topics):
+def test_never_purchased_refused_but_expired_customers_get_every_topic(topics):
     u = customer()
     r = open_via_api(u, topics["conn"])
-    assert r.status_code == 403 and r.json()["code"] == "needs_active_service"
+    assert r.status_code == 403 and r.json()["code"] == "needs_service"
     assert not Ticket.objects.exists()
-    # an expired service is not an active one
-    Service.objects.create(user=u, panel=Panel.objects.create(name="p", base_url="https://p.test",
-                                                              admin_username="a", admin_password_enc="x"),
-                           panel_username="old", status="expired")
-    assert open_via_api(u, topics["conn"]).status_code == 403
-    assert open_via_api(u, topics["pre"]).status_code == 201
+    # an expired (or used-up) service still makes you a customer — all topics, plus a renew hint
+    svc = Service.objects.create(user=u, panel=Panel.objects.create(name="p", base_url="https://p.test",
+                                                                    admin_username="a", admin_password_enc="x"),
+                                 panel_username="old", status="expired")
+    r = user_client(u).get("/api/v1/tickets/topics/").json()
+    assert r["has_service"] is True and r["has_active_service"] is False
+    assert r["renew_hint"] == {"service_id": svc.id, "panel_username": "old", "status": "expired"}
+    assert all(t["available"] for t in r["topics"])
+    assert open_via_api(u, topics["conn"]).status_code == 201
+    svc.status = "active"
+    svc.save()
+    assert user_client(u).get("/api/v1/tickets/topics/").json()["renew_hint"] is None
 
 
 def test_inactive_topic_refused(topics):
@@ -167,9 +191,10 @@ def test_reply_cycle_statuses_first_response_and_auto_assign(topics, pushes, bot
     assert r.status_code == 201
     t.refresh_from_db()
     assert t.status == TicketStatus.AWAITING_USER and t.first_response_at and t.assigned_to == s
-    # the customer is notified on site + bot + email
+    # the customer is notified on site + email (bell links to the chat) and in the bot with buttons
     channels = set(NotificationDelivery.objects.filter(user=u).values_list("channel", flat=True))
-    assert channels == {"site", "bot", "email"}
+    assert channels == {"site", "email"}
+    assert NotificationDelivery.objects.filter(user=u).first().notification.link == f"/tickets/{t.id}"
     assert any(chat == 555 and t.number in text for chat, text in bot)
 
     with django_capture_on_commit_callbacks(execute=True):

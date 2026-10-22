@@ -21,7 +21,7 @@ See **[docs/](docs/)** — [install](docs/install.md) · [offline](docs/offline.
 [operations](docs/operations.md) · [server migration](docs/migration.md) · [paths](docs/paths.md) · [agency](docs/agency.md) · [bots](docs/bots.md) · [development](docs/development.md).
 The same pages are readable in the admin panel → **Documentation**.
 
-Planned next: ticketing UIs, agency improvements, CRM, retention, CRM accounting — see [docs/roadmap.md](docs/roadmap.md).
+Planned next: agency improvements, CRM, retention, CRM accounting — see [docs/roadmap.md](docs/roadmap.md).
 
 ## Features
 
@@ -35,7 +35,7 @@ Planned next: ticketing UIs, agency improvements, CRM, retention, CRM accounting
 - Admin panel — users (soft delete + deleted-users archive / restore), services (full edit incl. HWID limit, manual create, link an existing panel account), plans, **live payments queue** (WebSocket), **Jalali accounting**, per-card deposit report, broadcast, dynamic branding, roles/RBAC, CMS pages, themes, **Apps & tools** (Android SMS app + iPhone shortcut downloaded from the server)
 - **Agency panel** — PasarGuard reseller admins (1:1 port of PAMP v1.5.3): limits in GB, usage / sold / hidden / deleted-users traffic, enforcement, account groups, sync logs; **reseller portal** (`/agency/`, panel login); **accounting** (price per GB, automatic quota charges, payments, statements, period / monthly reports, CSV + Excel)
 - Configurable admin-panel and portal **paths** (Settings → Paths)
-- **Ticketing** (Phase 1: backend + API) — topics (pre-purchase topics open to everyone, the rest need an active service), attachments, internal notes, assignment, priorities, full history, auto-close / reopen, **Ticketing role + per-staff topic scopes**, notifications to customers (site / bot / email) and staff (live badge, Telegram DM after linking, email)
+- **Ticketing** — Telegram-like chat on the site and in the sales bot (synced), staff inbox (split view, internal notes, saved replies, timeline, customer panel, live badge), staff ticket handling from Telegram; topics (pre-purchase open to everyone, the rest to anyone who ever bought), attachments, internal notes, assignment, priorities, full history, auto-close / reopen, **Ticketing role + per-staff topic scopes**, notifications to customers (site / bot / email) and staff (live badge, Telegram DM after linking, email)
 - Fully responsive admin on phones — bottom nav with the payment queue in the centre, compact record cards, every desktop page reachable from the Settings index
 - In-panel **Documentation** page (this repo's `docs/`, rendered read-only with contents + search, Mermaid diagrams drawn with a bundled library)
 - Offline-safe frontends — all fonts (Vazirmatn / Inter) and assets bundled, no CDN

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useNavigate } from 'react-router-dom'
 import { api, tokens } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 import { timeAgo } from '../lib/format'
@@ -9,6 +10,7 @@ const TYPE_ICON = {
   service_ready: 'M5 13l4 4L19 7',
   volume_warning: 'M12 9v4m0 4h.01M10.3 3.9L2.7 17a2 2 0 001.7 3h15.2a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z',
   expiry_warning: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
+  ticket: 'M8 10h8M8 14h5M21 12c0 4.4-4 8-9 8-1.4 0-2.8-.3-4-.8L3 20l1.3-3.9C3.5 14.9 3 13.5 3 12c0-4.4 4-8 9-8s9 3.6 9 8z',
   admin_broadcast: 'M11 5.9V4a1 1 0 011.6-.8l7 5.3a1 1 0 010 1.6l-7 5.3A1 1 0 0111 14.9v-1.8C6 13.1 3 15 1 18c0-5.5 3-10.5 10-12.1z',
   broadcast: 'M11 5.9V4a1 1 0 011.6-.8l7 5.3a1 1 0 010 1.6l-7 5.3A1 1 0 0111 14.9v-1.8C6 13.1 3 15 1 18c0-5.5 3-10.5 10-12.1z',
 }
@@ -42,6 +44,7 @@ export default function NotificationBell({ className = '' }) {
   const boxRef = useRef(null)
   const panelRef = useRef(null)
   const isMobile = useIsMobile()
+  const go = useNavigate()
 
   const loadList = () => {
     api.get('/notifications/').then(({ data }) => setItems(data.results || data)).catch(() => {})
@@ -64,6 +67,9 @@ export default function NotificationBell({ className = '' }) {
       ws.onmessage = (ev) => {
         try {
           const data = JSON.parse(ev.data)
+          // a ticket of mine changed: the open ticket pages refetch (pages/Tickets.jsx)
+          if (data.ticket_event) { window.dispatchEvent(new CustomEvent('ct:ticket', { detail: data.ticket_event })); return }
+          if (!data.notification) return
           setItems((prev) => [data.notification, ...prev].slice(0, 20))
           setUnread((u) => data.unread_count ?? u + 1)
         } catch { /* ignore malformed frame */ }
@@ -132,7 +138,7 @@ export default function NotificationBell({ className = '' }) {
           const text = lang === 'en' && n.body_en ? n.body_en : n.body
           return (
             <button key={n.id} className={`ct-nbell-item ${n.is_read ? '' : 'is-unread'}`}
-              onClick={() => markRead(n)}>
+              onClick={() => { markRead(n); if (n.link) { setOpen(false); go(n.link) } }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
                 strokeLinecap="round" strokeLinejoin="round" className="ct-nbell-item-icon" aria-hidden="true">
                 <path d={TYPE_ICON[n.type] || DEFAULT_ICON} />

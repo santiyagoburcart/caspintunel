@@ -9,6 +9,7 @@ class NotificationType(models.TextChoices):
     VOLUME_WARNING = "volume_warning", "Volume warning"
     EXPIRY_WARNING = "expiry_warning", "Expiry warning"
     ADMIN_BROADCAST = "admin_broadcast", "Admin broadcast"
+    TICKET = "ticket", "Ticket update"
 
 
 class Notification(models.Model):
@@ -25,6 +26,8 @@ class Notification(models.Model):
         "accounts.User", null=True, blank=True, on_delete=models.CASCADE,
         related_name="notifications", help_text="null = broadcast",
     )
+    # where the bell item leads on the user site (e.g. "/tickets/12"), empty = nowhere
+    link = models.CharField(max_length=200, blank=True, default="")
     via_site = models.BooleanField(default=True)
     via_bot = models.BooleanField(default=False)
     via_email = models.BooleanField(default=False)

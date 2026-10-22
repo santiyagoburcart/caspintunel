@@ -16,6 +16,8 @@ import Docs from './pages/Docs'
 import PathsSettings from './pages/PathsSettings'
 import { AgencyAdminDetail, AgencyAdmins, AgencyDashboard, AgencyGroups, AgencyLedger, AgencySettings, AgencySyncLogs } from './pages/Agency'
 import Accounting from './pages/Accounting'
+import Tickets from './pages/Tickets'
+import TicketTopics from './pages/TicketTopics'
 import Cards from './pages/Cards'
 import Monitoring from './pages/Monitoring'
 import Services from './pages/Services'
@@ -74,6 +76,9 @@ export default function App() {
         <Route path="/agency/ledger" element={<AgencyLedger />} />
         <Route path="/agency/sync-logs" element={<AgencySyncLogs />} />
         <Route path="/agency/settings" element={<AgencySettings />} />
+        <Route path="/tickets" element={<Tickets />} />
+        <Route path="/tickets/topics" element={<TicketTopics />} />
+        <Route path="/tickets/:id" element={<Tickets />} />
         <Route path="/docs" element={<Docs />} />
         <Route path="/docs/:slug" element={<Docs />} />
       </Route>

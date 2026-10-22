@@ -46,10 +46,24 @@ class _UserView(APIView):
 
 
 class TopicsView(_UserView):
-    @extend_schema(summary="Topics I can open a ticket in")
+    @extend_schema(summary="Active topics, each with `available` (+ `reason` when locked) and the renew hint")
     def get(self, request):
-        return Response({"has_active_service": rules.has_active_service(request.user),
-                         "topics": TopicSerializer(rules.topics_for_user(request.user), many=True).data})
+        from .models import TicketTopic
+
+        u = request.user
+        allowed = set(rules.topics_for_user(u).values_list("id", flat=True))
+        topics = []
+        for tp in TicketTopic.objects.filter(is_active=True):
+            row = TopicSerializer(tp).data
+            row["available"] = tp.id in allowed
+            row["reason"] = "" if tp.id in allowed else "needs_service"
+            topics.append(row)
+        hint = rules.renew_hint(u)
+        return Response({
+            "has_service": rules.has_any_service(u), "has_active_service": rules.has_active_service(u),
+            "renew_hint": {"service_id": hint.id, "panel_username": hint.panel_username, "status": hint.status} if hint else None,
+            "topics": topics,
+        })
 
 
 class TicketListView(_UserView):

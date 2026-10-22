@@ -9,7 +9,7 @@ desktop + 390 px) and **must update [architecture.md](architecture.md),
 |---|---|---|
 | 0 | Documentation refresh (architecture, ERD, flows, roadmap) — **done (v1.15.8)** | — |
 | 1 | Ticketing core — models, rules, RBAC + scopes, notifications, API — **done (v1.16.0)** | — |
-| 2 | Ticketing UIs — customer chat (site + bot, synced), staff inbox | 1 |
+| 2 | Ticketing UIs — customer chat (site + bot, synced), staff inbox — **done (v1.17.0)** | 1 |
 | A | Agency improvements — toasts, PasarGuard admin CRUD, admin detail tabs | — (runs in parallel) |
 | 3 | CRM — customer 360, inactivity + reasons | 1–2 |
 | 4 | Retention — warnings, win-back queue | 3 |
@@ -25,9 +25,15 @@ email; staff: real-time badge, bot DM after linking Telegram, email), user and
 staff API. See [architecture.md](architecture.md#ticketing), [erd.md](erd.md),
 [flows.md](flows.md).
 
-**Phase 2 (next)** — the user-facing parts below: Telegram-like chat on the
-site and in the bot (synced), the staff inbox, topic / scope / settings
-screens, Telegram link button for staff, reports.
+**Phase 2 (done, v1.17.0)** — Telegram-like customer chat on the site and in
+the sales bot (synced), staff inbox (split view, internal notes, saved replies,
+timeline, customer side panel), topics / saved replies / settings page, staff
+topic scopes + display name + email in Roles, "My Telegram" link code, live
+badge (sidebar, Settings index, mobile Settings tab), staff ticket handling in
+the bot. Rule change: anyone who ever had a service may use every topic; only
+never-purchased users are limited to pre-purchase; an expired-service hint with
+"renew" above the form. Still open from the original list: response-time
+reports per admin (first response / resolution) — candidate for Phase 3 / 5.
 
 
 One ticket system used from the **site** and the **sales bot**, kept in sync:

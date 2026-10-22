@@ -9,6 +9,7 @@ import { useToast } from '../components/Toast'
 import { copyToClipboard } from '../lib/clipboard'
 import { useDeleteConfirm } from '../lib/confirmDelete'
 import { CASPIAN_BOTNAV, CASPIAN_GROUPS, NAV_ICONS } from '../components/adminNav'
+import { useLiveTickets } from '../lib/liveTickets'
 
 function HubIco({ d, w = 18 }) {
   return (
@@ -73,6 +74,8 @@ const HUB = {
     plans: { t: 'پلن‌ها', d: 'ساخت و ویرایش پلن‌های فروش' },
     deleted: { t: 'کاربران حذف‌شده', d: 'بایگانی کاربران حذف‌شده و بازگردانی' },
     agency: { t: 'پنل نمایندگی', d: 'ادمین‌های نماینده، حجم فروخته‌شده و محدودیت‌ها' },
+    tickets: { t: 'تیکت‌ها', d: 'صندوق تیکت‌های پشتیبانی کاربران' },
+    ticket_topics: { t: 'موضوعات تیکت', d: 'موضوعات، پاسخ‌های آماده و تنظیمات تیکت' },
     paths: { t: 'مسیرها', d: 'آدرس پنل مدیریت و پرتال نماینده‌ها' },
     notifications: { t: 'اطلاعیه‌ها', d: 'ارسال پیام همگانی به سایت، ربات و ایمیل' },
     monitoring: { t: 'مانیتورینگ', d: 'سلامت سرویس‌ها، منابع سرور و بک‌آپ‌ها' },
@@ -105,6 +108,8 @@ const HUB = {
     plans: { t: 'Plans', d: 'Create and edit the plans on sale' },
     deleted: { t: 'Deleted users', d: 'Archive of deleted users and restore' },
     agency: { t: 'Agency panel', d: 'Reseller admins, sold volume and limits' },
+    tickets: { t: 'Tickets', d: 'Customer support ticket inbox' },
+    ticket_topics: { t: 'Ticket topics', d: 'Topics, saved replies and ticket settings' },
     paths: { t: 'Paths', d: 'Admin panel and reseller portal addresses' },
     notifications: { t: 'Notifications', d: 'Broadcast to site, bot and email' },
     monitoring: { t: 'Monitoring', d: 'Service health, server resources and backups' },
@@ -128,6 +133,7 @@ const HUB_COLOR = {
   pages: '#64748B',
   transactions: '#11AB53', sms_log: '#1464BA', accounting: '#11AB53', cards: '#11AB53',
   apps: '#0891B2', plans: '#1464BA', deleted: 'var(--c-danger)', notifications: '#7C3AED',
+  tickets: '#7C3AED', ticket_topics: '#7C3AED',
   monitoring: '#0891B2', sync: '#1464BA', display: '#64748B', docs: '#64748B', agency: '#7C3AED', paths: '#D97706',
 }
 
@@ -167,6 +173,7 @@ const SOLO_SECTIONS = [...FORM_SECTIONS, 'sms-devices', 'sms-sources']
 function SettingsHub() {
   const { t, lang } = useI18n()
   const { logout, can } = useAuth()
+  const { badge } = useLiveTickets()
   const go = useNavigate()
   const h = HUB[lang] || HUB.fa
   const groups = HUB_GROUPS.map(([g, items]) => [g, items.filter(([, , p]) => !p || can(p))]).filter(([, items]) => items.length)
@@ -192,6 +199,7 @@ function SettingsHub() {
                     <span className="block font-semibold text-sm">{h[key].t}</span>
                     <span className="block text-xs text-muted mt-0.5 truncate">{h[key].d}</span>
                   </span>
+                  {to === '/tickets' && badge > 0 && <span className="nav-pending-badge">{badge > 99 ? '99+' : badge}</span>}
                   <span className="st-hub-chev"><HubIco d={HUB_ICONS.chevron} w={16} /></span>
                 </Link>
               )

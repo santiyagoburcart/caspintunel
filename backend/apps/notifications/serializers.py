@@ -12,11 +12,12 @@ class NotificationDeliverySerializer(serializers.ModelSerializer):
     body = serializers.CharField(source="notification.body", read_only=True)
     body_en = serializers.CharField(source="notification.body_en", read_only=True)
     created_at = serializers.DateTimeField(source="notification.created_at", read_only=True)
+    link = serializers.CharField(source="notification.link", read_only=True)
     is_read = serializers.SerializerMethodField()
 
     class Meta:
         model = NotificationDelivery
-        fields = ("id", "type", "title", "title_en", "body", "body_en", "created_at", "is_read")
+        fields = ("id", "type", "title", "title_en", "body", "body_en", "created_at", "is_read", "link")
 
     def get_is_read(self, obj) -> bool:
         return obj.status == DeliveryStatus.READ

@@ -89,8 +89,9 @@ def open_ticket(user, *, topic_id, subject, body, files=(), service_id=None, ord
     topic = TicketTopic.objects.filter(pk=topic_id, is_active=True).first()
     if topic is None:
         raise TicketError("unknown or inactive topic", "topic")
-    if topic.requires_active_service and not rules.has_active_service(user):
-        raise TicketError("this topic is only for customers with an active service", "needs_active_service", 403)
+    if topic.requires_active_service and not rules.has_any_service(user):
+        raise TicketError("this topic is for customers — before your first purchase use the pre-purchase topic",
+                          "needs_service", 403)
     subject = (subject or "").strip()
     if not subject:
         raise TicketError("subject is required", "subject")
@@ -144,6 +145,7 @@ def user_close(ticket, user) -> Ticket:
         return ticket
     _close(ticket, kind=ClosedBy.USER, user=user)
     ticket.save()
+    notify.queue("changed", ticket.id, None)
     return ticket
 
 
@@ -166,15 +168,16 @@ def user_reopen(ticket, user) -> Ticket:
 
 # --- staff side ------------------------------------------------------------
 @transaction.atomic
-def staff_reply(ticket, staff, *, body, files=(), internal=False) -> TicketMessage:
+def staff_reply(ticket, staff, *, body, files=(), internal=False, channel=Channel.PANEL) -> TicketMessage:
     ticket = Ticket.objects.select_for_update().get(pk=ticket.pk)
-    msg = _add_message(ticket, body=body, files=files, staff=staff, channel=Channel.PANEL, internal=internal)
+    msg = _add_message(ticket, body=body, files=files, staff=staff, channel=channel, internal=internal)
     mark_read(ticket, by_user=False)         # whoever writes in the ticket has read the customer's messages
     now = timezone.now()
     if internal:
         _event(ticket, EventKind.INTERNAL_NOTE, staff=staff, message=msg)
         write_audit(action="ticket.internal_note", staff=staff, target=ticket, detail={"message": msg.id})
         ticket.save(update_fields=["updated_at"])
+        notify.queue("changed", ticket.id, msg.id)          # live refresh for other staff only
         return msg
     if ticket.is_closed:                      # answering a closed ticket reopens it
         _reopen(ticket, staff=staff)
@@ -208,8 +211,8 @@ def assign(ticket, staff, assignee) -> Ticket:
     _event(ticket, EventKind.ASSIGNED, staff=staff, old=old, new=assignee.username if assignee else "")
     write_audit(action="ticket.assigned", staff=staff, target=ticket,
                 detail={"from": old, "to": assignee.username if assignee else None})
-    if assignee is not None and assignee.id != staff.id:
-        notify.queue("assigned", ticket.id, None)
+    # an alert for the new owner; assigning yourself / unassigning only refreshes live views
+    notify.queue("assigned" if assignee is not None and assignee.id != staff.id else "changed", ticket.id, None)
     return ticket
 
 
@@ -228,8 +231,7 @@ def set_status(ticket, staff, status) -> Ticket:
         _set_status(ticket, status, staff=staff)
     ticket.save()
     write_audit(action="ticket.status", staff=staff, target=ticket, detail={"status": status})
-    if status == TicketStatus.CLOSED:
-        notify.queue("closed", ticket.id, None)
+    notify.queue("closed" if status == TicketStatus.CLOSED else "changed", ticket.id, None)
     return ticket
 
 
@@ -244,6 +246,7 @@ def set_priority(ticket, staff, priority) -> Ticket:
     ticket.save(update_fields=["priority", "updated_at"])
     _event(ticket, EventKind.PRIORITY, staff=staff, old=old, new=priority)
     write_audit(action="ticket.priority", staff=staff, target=ticket, detail={"from": old, "to": priority})
+    notify.queue("changed", ticket.id, None)
     return ticket
 
 

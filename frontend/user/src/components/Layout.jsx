@@ -11,6 +11,7 @@ const links = [
   ['/', 'dashboard'],
   ['/store', 'store'],
   ['/history', 'history'],
+  ['/tickets', 'tickets'],
   ['/rules', 'rules'],
   ['/profile', 'profile'],
   ['/help', 'pages'],
@@ -118,7 +119,7 @@ function CaspianLayout() {
   const brand = lang === 'fa' ? (config?.site_name_fa || 'کسپین تانل') : (config?.site_name_en || 'caspintunel')
 
   const NavItems = ({ onClick }) => links.map(([to, key]) => (
-    <NavLink key={to} to={to} end onClick={onClick}
+    <NavLink key={to} to={to} end={to !== '/tickets'} onClick={onClick}
       className={({ isActive }) => 'csp-nav-link' + (isActive ? ' csp-nav-link--on' : '')}>
       {t(key)}
     </NavLink>

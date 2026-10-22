@@ -142,6 +142,8 @@ class Staff(TimeStampedModel):
     # ticketing notifications (apps/tickets): optional email, and the Telegram
     # account linked from the panel with a one-time code sent to the sales bot
     email = models.EmailField(blank=True, default="")
+    # shown to customers on ticket replies when the setting tickets_show_staff_name is on
+    display_name = models.CharField(max_length=60, blank=True, default="")
     telegram_id = models.BigIntegerField(null=True, blank=True, unique=True)
     telegram_linked_at = models.DateTimeField(null=True, blank=True)
 

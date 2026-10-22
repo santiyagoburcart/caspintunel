@@ -172,6 +172,7 @@ retry on `PanelUnavailable`; a permanent `PanelError` is audited and flagged.
   the backup chat (`sendDocument`, > 50 MB split into `.partNN`) plus retention
   alerts; the `bot_backup` process only answers `/id` (chat id) and `/backup`
   (backup now).
+- **Tickets:** customer `tk:*` and staff `st:*` flows — see [Ticketing](#ticketing).
 - **Staff linking:** a staff member asks the panel for a one-time code and opens
   `t.me/<bot>?start=staff-<CODE>`; the sales bot links that Telegram account to
   the `Staff` row (`telegram_id`) for ticket DMs — handled before any customer
@@ -208,12 +209,19 @@ against one panel.
 
 ## Ticketing
 
-Customers open tickets from the site (and, from Phase 2, the bot) in a
-**topic**. Topics with `requires_active_service = false` ("pre-purchase") are
-open to everyone; the rest only to users with an `active` or `on_hold`
-service — enforced in the API. Limits (settings, `tickets.manage_topics`):
-`tickets_max_open_per_user` (3), `tickets_auto_close_days` (7, for tickets
-awaiting the customer), `tickets_reopen_days` (7).
+Customers open tickets from the **site** (`/tickets`) or the **sales bot**
+(🎫 menu) — both go through `tickets/services.py`, so a reply written in one
+place shows in the other. Topic gate (enforced in the API): topics with
+`requires_active_service = false` ("pre-purchase") are open to everyone; the
+rest to anyone who **ever had a service** (expired / used-up included — only
+never-purchased users are limited to pre-purchase). When all of a user's
+services are expired / used up, the new-ticket form and the bot show a
+"service expired — renew" hint (`GET /tickets/topics/` → `renew_hint`), and
+the ticket can still be sent. "سایر / Other" + a free subject covers anything
+else. Limits (settings, `tickets.manage_topics`): `tickets_max_open_per_user`
+(3), `tickets_auto_close_days` (7, for tickets awaiting the customer),
+`tickets_reopen_days` (7), `tickets_show_staff_name` (off → customers see
+"پشتیبانی"; on → the staff member's `display_name`).
 
 Statuses: `open` → `awaiting_admin` (customer wrote) ⇄ `awaiting_user` (staff
 answered) · `on_hold` · `closed` (by the user, staff or the auto-close).
@@ -229,13 +237,29 @@ notes), `tickets.assign`, `tickets.close` (close / reopen),
 topics sees and answers only those (everything else is 404); no topic = all;
 superadmins always see all.
 
-Notifications (`notify.py`, Celery, after commit): staff reply → customer on
-site (real-time bell), bot and email (`notify_user`); closed / auto-closed →
-site. New ticket / customer reply → the assignee, or — if unassigned — every
-staff member whose permission + scope cover the topic: real-time event with
-their badge count (`/ws/admin/tickets/`, tickets open / awaiting admin that
-are unassigned or theirs), bot DM if their Telegram is linked, email if
-`Staff.email` is set. Attachments: ≤ 3 per message, ≤ 5 MB, JPEG / PNG / GIF /
+Notifications (`notify.py`, Celery, after commit): staff reply → customer
+site bell (real-time, `Notification.link` = `/tickets/<id>`) + email, and a
+sales-bot message with **Reply / Open** buttons; closed / auto-closed → site.
+New ticket / customer reply / assignment → the assignee, or — if unassigned —
+every staff member whose permission + scope cover the topic: bot DM with
+**Reply / Open / Assign to me / Close** buttons (Telegram linked) and email
+(`Staff.email`). Every change also pushes a live event: to the customer's
+notification socket (`ticket.event` → the open chat refetches; never for
+internal notes) and to each scoped staff socket `/ws/admin/tickets/` with
+their badge count (open / awaiting admin, unassigned or theirs).
+
+Saved replies (`CannedReply`, per topic or general) are offered in the staff
+composer; the inbox side panel shows the customer (services, last payments —
+only with `payment.view` — and other tickets), a placeholder for the Phase 3
+CRM.
+
+**Bot** (`apps/tickets/bot.py`, routed from `sales_bot`): customers —
+`tk:home` → new ticket (allowed topics as buttons → subject → message, text or
+photo / PDF), my tickets (paginated), a ticket (last 8 messages, Reply / Close
+/ Reopen). Linked staff — `/tickets` or "📥 Tickets (staff)": inbox
+(open / mine, paginated, scope-limited), a ticket, reply (force-reply, text or
+photo), assign to me, close / reopen; staff updates never create a customer
+account and skip the customer gate. Staff screens are Persian. Attachments: ≤ 3 per message, ≤ 5 MB, JPEG / PNG / GIF /
 WebP (decoded with Pillow) or PDF, type sniffed from the bytes, stored under a
 random name in `media/tickets/`.
 
@@ -257,7 +281,20 @@ Inter, JetBrains Mono) and every asset bundled, no CDN.
   Latin digits.
 - Documentation page (`/panel/docs`) renders ```` ```mermaid ```` blocks with
   the bundled `mermaid` library (lazy chunk, `securityLevel: strict`, no CDN).
-- Ticket UIs (customer chat, staff inbox) arrive in Phase 2; Phase 1 ships the API.
+- **Tickets — customer site** (`pages/Tickets.jsx`): list (status chip, topic,
+  last message, unread badge, Jalali time), new ticket (topic cards, locked
+  ones with the reason, renew hint, optional related service, attachments),
+  full-height chat (bubbles, date separators, read ticks, image lightbox, PDF
+  chips, sticky composer, closed banner with reopen); live via the bell's
+  socket (`ct:ticket` window event) + 30 s poll.
+- **Tickets — admin** (`pages/Tickets.jsx`, `pages/TicketTopics.jsx`): split
+  view on desktop (list · chat · customer panel), one pane at a time on phones;
+  filters (status, topic, priority, assignee, search), reply / internal note
+  (visually distinct), saved replies, attachments, assign / status / priority /
+  close / reopen, timeline of events; Topics & saved replies & settings page;
+  staff topic scopes, display name and email in Roles → staff; "My Telegram"
+  link code from the inbox. Live badge (`lib/liveTickets.jsx`) on the sidebar
+  item, the Settings-index item and the mobile Settings tab.
 
 ## Host jobs (outside Docker)
 

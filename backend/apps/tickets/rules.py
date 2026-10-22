@@ -13,6 +13,10 @@ SETTINGS = [
     ("tickets_reopen_days", 7, 0, 90),            # a user may reopen a closed ticket within N days (0 = never)
 ]
 _SPEC = {k: (d, lo, hi) for k, d, lo, hi in SETTINGS}
+# key, default
+BOOL_SETTINGS = [
+    ("tickets_show_staff_name", False),   # customers see the staff display name instead of "Support"
+]
 
 
 def setting(key: str) -> int:
@@ -23,15 +27,39 @@ def setting(key: str) -> int:
         return default
 
 
+def bool_setting(key: str) -> bool:
+    default = dict(BOOL_SETTINGS)[key]
+    value = get_setting(key, default)
+    return value if isinstance(value, bool) else str(value).lower() in ("1", "true", "yes", "on")
+
+
 def all_settings() -> dict:
-    return {k: setting(k) for k, *_ in SETTINGS}
+    return {**{k: setting(k) for k, *_ in SETTINGS}, **{k: bool_setting(k) for k, _ in BOOL_SETTINGS}}
 
 
-# --- who has an "active service" (gate for topics with requires_active_service) ---
+# --- the topic gate ---------------------------------------------------------------
+# Topics with requires_active_service=True are for customers: anyone who EVER had a
+# service (expired / used up included). Only never-purchased users are limited to
+# the pre-purchase topics. (Field name kept from Phase 1; migrations stay additive.)
+LIVE = ("active", "on_hold")
+
+
+def has_any_service(user) -> bool:
+    from apps.panel.models import Service
+
+    return Service.objects.filter(user=user).exists()
+
+
 def has_active_service(user) -> bool:
-    from apps.panel.models import Service, ServiceStatus
+    return user.services.filter(status__in=LIVE).exists()
 
-    return Service.objects.filter(user=user, status__in=(ServiceStatus.ACTIVE, ServiceStatus.ON_HOLD)).exists()
+
+def renew_hint(user):
+    """The service to offer "renew" for when the user has services but none is live."""
+    svcs = user.services.order_by("-expire_at", "-id")
+    if not svcs.exists() or svcs.filter(status__in=LIVE).exists():
+        return None
+    return svcs.first()
 
 
 def topics_for_user(user):
@@ -39,7 +67,7 @@ def topics_for_user(user):
     from .models import TicketTopic
 
     qs = TicketTopic.objects.filter(is_active=True)
-    if not has_active_service(user):
+    if not has_any_service(user):
         qs = qs.filter(requires_active_service=False)
     return qs
 

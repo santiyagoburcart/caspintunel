@@ -48,6 +48,7 @@ erDiagram
         bool is_superadmin
         int token_version "JWT tv claim"
         string email "ticket notifications"
+        string display_name "shown to customers if enabled"
         bigint telegram_id UK "linked via the sales bot"
         datetime telegram_linked_at
     }
@@ -371,6 +372,7 @@ erDiagram
     ticket_message ||--o{ ticket_attachment : "files"
     ticket ||--o{ ticket_event : "history"
     staff }o--o{ ticket_topic : "ticket_staff_topic (scope)"
+    ticket_topic |o--o{ ticket_canned_reply : "saved replies (null = all topics)"
     user |o--o{ ticket_message : "author_user"
     staff |o--o{ ticket_message : "author_staff"
 
@@ -380,7 +382,7 @@ erDiagram
         string name_en
         string description_fa
         string description_en
-        bool requires_active_service "false = pre-purchase"
+        bool requires_active_service "true = anyone who ever had a service, false = pre-purchase (everyone)"
         bool is_active
         int sort_order
     }
@@ -422,6 +424,15 @@ erDiagram
         string content_type "image/* or application/pdf"
         int size
     }
+    ticket_canned_reply {
+        bigint id PK
+        string title
+        text body
+        bigint topic_id FK
+        bool is_active
+        int sort_order
+        string created_by
+    }
     ticket_event {
         bigint id PK
         bigint ticket_id FK
@@ -437,7 +448,8 @@ erDiagram
 
 | Table | Description |
 |---|---|
-| `ticket_topic` | Ticket categories, editable in the panel. Seeded once (migration): Pre-purchase questions (open to everyone), Payment problem, Connection problem, Renewal & upgrade, Other. |
+| `ticket_topic` | Ticket categories, editable in the panel. Seeded once (migration): Pre-purchase questions (open to everyone), Payment problem, Connection problem, Renewal & upgrade, Other (customers = anyone who ever had a service). |
+| `ticket_canned_reply` | Saved replies for the staff composer, per topic or for all topics. |
 | `ticket_staff_topic` | Staff topic scopes: a staff member with rows here sees only those topics; none = all. |
 | `ticket` | One support conversation of a customer, with status, priority, owner (assignee), optional related service / order, first-response and activity times, and who closed it. |
 | `ticket_message` | A message from the customer or staff (or a staff-only internal note), with per-side read times. |
@@ -455,12 +467,13 @@ erDiagram
 
     notification {
         bigint id PK
-        string type "event | broadcast | order_confirmed | service_ready | volume_warning | expiry_warning | admin_broadcast"
+        string type "event | broadcast | order_confirmed | service_ready | volume_warning | expiry_warning | admin_broadcast | ticket"
         string title
         text body
         string title_en
         text body_en
         bigint target_user_id FK
+        string link "user-site path, e.g. /tickets/12"
         bool via_site
         bool via_bot
         bool via_email
@@ -478,7 +491,7 @@ erDiagram
 
 | Table | Description |
 |---|---|
-| `notification` | A message to one user (event) or everyone (broadcast), with the channels to use. |
+| `notification` | A message to one user (event) or everyone (broadcast), with the channels to use and an optional `link` the bell opens (ticket replies → the chat). |
 | `notification_delivery` | One delivery attempt per recipient and channel; a failing channel never blocks the others. |
 
 ## 7. Settings, CMS, Telegram and ops (`settings_app`, `telegram`, `ops`)

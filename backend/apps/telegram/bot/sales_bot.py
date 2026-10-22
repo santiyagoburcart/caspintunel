@@ -36,6 +36,7 @@ from ..shop import buy_new, order_awaiting_receipt, renew, submit_bot_receipt
 from . import keyboards as kb
 from . import screens as sc
 from .texts import tr
+from apps.tickets import bot as tbot
 
 STAFF_LINK_PREFIX = "staff-"
 
@@ -268,11 +269,32 @@ def _register(bot: telebot.TeleBot):
         if _enforce_gate(bot, msg.chat.id, user, msg.from_user.id):
             render(bot, msg.chat.id, sc.main_menu(user))
 
+    @bot.message_handler(commands=["tickets"])
+    def tickets_cmd(msg):
+        close_old_connections()
+        staff = tbot.staff_for(msg.from_user.id)
+        if staff is not None:                       # linked staff: the staff inbox, no customer account
+            clear_state(msg.from_user.id)
+            return render(bot, msg.chat.id, tbot.staff_list(staff))
+        user, *_ = _user(msg.from_user)
+        if _enforce_gate(bot, msg.chat.id, user, msg.from_user.id):
+            clear_state(msg.from_user.id)
+            render(bot, msg.chat.id, tbot.home(user))
+
     @bot.message_handler(content_types=["photo", "document"])
     def receipt_photo(msg):
         close_old_connections()
+        st = get_state(msg.from_user.id)
+        if st.get("awaiting") == "st_reply":
+            staff = tbot.staff_for(msg.from_user.id)
+            if staff is not None:
+                return _ticket_file(bot, msg, staff=staff, st=st)
         user, *_ = _user(msg.from_user)
         if not _phone_gate(bot, msg.chat.id, user):
+            return
+        if st.get("awaiting") in ("tk_body", "tk_reply"):
+            if _enforce_gate(bot, msg.chat.id, user, msg.from_user.id):
+                _ticket_file(bot, msg, user=user, st=st)
             return
         order = sc.open_order(user) or order_awaiting_receipt(user)
         if not order:
@@ -327,6 +349,17 @@ def _register(bot: telebot.TeleBot):
             bot.answer_callback_query(c.id)      # stop the client spinner right away
         except Exception:  # noqa: BLE001
             pass
+        if (c.data or "").startswith("st:"):
+            staff = tbot.staff_for(c.from_user.id)
+            if staff is None:
+                return bot.send_message(c.message.chat.id, "⛔️ این حساب تلگرام به یک ادمین فعال با دسترسی تیکت متصل نیست.")
+            try:
+                tbot.route_staff(bot, c.message.chat.id, c.message, staff, c.from_user.id, c.data.split(":"),
+                                 render=render, set_state=set_state, clear_state=clear_state)
+            except Exception as exc:  # noqa: BLE001
+                log.exception("staff callback %s failed: %s", c.data, exc)
+                bot.send_message(c.message.chat.id, "⚠️ مشکلی پیش آمد.")
+            return
         user, *_ = _user(c.from_user)
         data = c.data or ""
         chat_id, msg, tg = c.message.chat.id, c.message, c.from_user.id
@@ -355,6 +388,12 @@ def _register(bot: telebot.TeleBot):
     ])
     def fallback(msg):
         close_old_connections()
+        st = get_state(msg.from_user.id)
+        if st.get("awaiting") == "st_reply" and msg.content_type == "text" and not (msg.text or "").startswith("/"):
+            staff = tbot.staff_for(msg.from_user.id)
+            if staff is not None:
+                return tbot.handle_staff_input(bot, msg.chat.id, staff, msg.from_user.id, st,
+                                               text=(msg.text or "").strip(), render=render, clear_state=clear_state)
         user, *_ = _user(msg.from_user)
         if not _enforce_gate(bot, msg.chat.id, user, msg.from_user.id):
             return
@@ -366,9 +405,36 @@ def _register(bot: telebot.TeleBot):
         render(bot, msg.chat.id, sc.main_menu(user))
 
 
+def _ticket_file(bot, msg, *, st, user=None, staff=None) -> None:
+    """A photo / image / PDF sent while writing a ticket message → attachment (caption = text)."""
+    if getattr(msg, "photo", None):
+        file_id, name, mime = msg.photo[-1].file_id, "photo.jpg", "image/jpeg"
+    elif getattr(msg, "document", None):
+        doc = msg.document
+        file_id, name, mime = doc.file_id, doc.file_name or "file", doc.mime_type or ""
+    else:
+        return
+    try:
+        info = bot.get_file(file_id)
+        data = bot.download_file(info.file_path)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("ticket file download failed: %s", exc)
+        return bot.send_message(msg.chat.id, "⚠️ دریافت فایل ممکن نشد. / Could not download the file.")
+    upload = tbot.upload_from_bot(data, name, mime)
+    caption = (getattr(msg, "caption", None) or "").strip()
+    if staff is not None:
+        return tbot.handle_staff_input(bot, msg.chat.id, staff, msg.from_user.id, st, text=caption, file=upload,
+                                       render=render, clear_state=clear_state)
+    return tbot.handle_user_input(bot, msg.chat.id, user, msg.from_user.id, st, text=caption, file=upload,
+                                  render=render, set_state=set_state, clear_state=clear_state)
+
+
 def _route(bot, chat_id, msg, user, tg, data: str) -> None:
     parts = data.split(":")
     head = parts[0]
+    if head == "tk":
+        return tbot.route_user(bot, chat_id, msg, user, tg, parts,
+                               render=render, set_state=set_state, clear_state=clear_state)
     if head == "m":
         action = parts[1] if len(parts) > 1 else "home"
         page = int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 0
@@ -460,6 +526,9 @@ def _typed(bot, msg, user, awaiting: str) -> None:
     """Typed input for the step the user is on."""
     tg, chat_id, text = msg.from_user.id, msg.chat.id, (msg.text or "").strip()
     st = get_state(tg)
+    if awaiting in ("tk_subject", "tk_body", "tk_reply"):
+        return tbot.handle_user_input(bot, chat_id, user, tg, st, text=text,
+                                      render=render, set_state=set_state, clear_state=clear_state)
     if awaiting == "gb":
         plan = Plan.objects.filter(pk=st.get("plan"), is_active=True).first()
         if not plan:

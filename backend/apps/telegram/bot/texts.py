@@ -12,6 +12,8 @@ T: dict[str, tuple[str, str]] = {
     "btn_rules": ("📜 قوانین", "📜 Rules"),
     "btn_guide": ("📚 راهنمای اتصال", "📚 Connection guide"),
     "btn_support": ("💬 پشتیبانی", "💬 Support"),
+    "btn_tickets": ("🎫 پشتیبانی / تیکت‌ها", "🎫 Support / tickets"),
+    "btn_staff_tickets": ("📥 تیکت‌ها (پرسنل)", "📥 Tickets (staff)"),
     "btn_app": ("🌐 ورود به مینی‌اپ", "🌐 Open the mini app"),
     "btn_site": ("🌐 ورود به سایت", "🌐 Open the website"),
     "btn_open_order": ("🧾 ادامهٔ سفارش باز #{id}", "🧾 Continue open order #{id}"),

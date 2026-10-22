@@ -36,6 +36,10 @@ class NotificationConsumer(AsyncWebsocketConsumer):
             "unread_count": event["unread_count"],
         }))
 
+    async def ticket_event(self, event):
+        # a ticket of this user changed (apps.tickets.notify) — the open chat refetches
+        await self.send(text_data=json.dumps({"ticket_event": event["payload"]}))
+
 
 @database_sync_to_async
 def _staff_from_token(token: str):

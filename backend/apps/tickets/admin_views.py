@@ -15,7 +15,7 @@ from apps.settings_app.models import ValueType
 from apps.settings_app.utils import set_setting
 
 from . import notify, rules, services, staff_link
-from .models import Ticket, TicketStatus, TicketTopic
+from .models import CannedReply, Ticket, TicketStatus, TicketTopic
 from .serializers import StaffTicketDetailSerializer, StaffTicketSerializer, TopicAdminSerializer
 from .views import error
 
@@ -250,6 +250,11 @@ class SettingsView(_StaffView):
     @extend_schema(summary="Update ticket settings")
     def patch(self, request):
         changed = {}
+        for key, _default in rules.BOOL_SETTINGS:
+            if key in request.data:
+                val = request.data[key] is True or str(request.data[key]).lower() in ("1", "true", "yes", "on")
+                set_setting(key, val, ValueType.BOOL)
+                changed[key] = val
         for key, _default, lo, hi in rules.SETTINGS:
             if key in request.data:
                 try:
@@ -322,3 +327,124 @@ class TelegramLinkView(_StaffView):
             write_audit(action="staff.telegram_unlinked", staff=s, target=s)
         return Response({"linked": False})
 
+
+
+class TicketStaffView(_StaffView):
+    perms_map = {"GET": ["tickets.view"]}
+
+    @extend_schema(summary="Staff who handle tickets (for the inbox 'assigned to' filter)")
+    def get(self, request):
+        from apps.accounts.models import Staff as S
+
+        out = []
+        for s in S.objects.filter(is_active=True).select_related("role"):
+            if s.is_superadmin or s.has_perm("tickets.view"):
+                out.append({"id": s.id, "username": s.username, "display_name": s.display_name})
+        return Response(out)
+
+
+class CustomerView(_TicketView):
+    perms_map = {"GET": ["tickets.view"]}
+
+    @extend_schema(summary="Side panel: the ticket's customer — services, recent payments (payment.view), tickets")
+    def get(self, request, pk):
+        t = self.ticket(request, pk)
+        u = t.user
+        services_ = [{"id": s.id, "panel_username": s.panel_username, "status": s.status, "data_used": s.data_used,
+                      "data_limit": s.data_limit, "expire_at": s.expire_at, "plan": s.current_plan.name_fa if s.current_plan else None,
+                      "plan_en": s.current_plan.name_en if s.current_plan else None}
+                     for s in u.services.select_related("current_plan").order_by("-id")[:10]]
+        payments = None
+        if request.user.has_perm("payment.view"):
+            from apps.payments_sms.models import Payment
+
+            payments = [{"id": p.id, "order": p.order_id, "amount": str(p.amount), "status": p.status, "method": p.method,
+                         "created_at": p.created_at}
+                        for p in Payment.objects.filter(order__user=u).order_by("-created_at")[:5]]
+        others = rules.staff_queryset(request.user).filter(user=u).exclude(pk=t.pk).order_by("-last_activity_at")
+        return Response({
+            "user": {"id": u.id, "username": u.username, "name": u.name, "phone": u.phone, "email": u.email,
+                     "telegram_username": u.telegram_username, "telegram": bool(u.telegram_id),
+                     "created_at": u.created_at, "language": u.language},
+            "services": services_,
+            "payments": payments,          # null = no payment.view permission
+            "tickets": [{"id": x.id, "number": x.number, "subject": x.subject, "status": x.status,
+                         "last_activity_at": x.last_activity_at} for x in others[:10]],
+            "open_tickets": others.exclude(status=TicketStatus.CLOSED).count(),
+        })
+
+
+def _canned_data(data, partial=False):
+    out = {}
+    for k in ("title", "body"):
+        if k in data:
+            out[k] = str(data.get(k) or "").strip()
+    if not partial and not (out.get("title") and out.get("body")):
+        raise services.TicketError("title and body are required", "invalid")
+    if "topic" in data:
+        tid = data.get("topic")
+        out["topic"] = TicketTopic.objects.filter(pk=tid).first() if tid not in (None, "", "null") else None
+        if tid not in (None, "", "null") and out["topic"] is None:
+            raise services.TicketError("unknown topic", "topic")
+    if "is_active" in data:
+        out["is_active"] = data.get("is_active") is True or str(data.get("is_active")).lower() in ("1", "true", "yes", "on")
+    if "sort_order" in data:
+        try:
+            out["sort_order"] = int(data.get("sort_order"))
+        except (TypeError, ValueError):
+            pass
+    return out
+
+
+def _canned_row(c) -> dict:
+    return {"id": c.id, "title": c.title, "body": c.body, "topic": c.topic_id, "is_active": c.is_active,
+            "sort_order": c.sort_order}
+
+
+class CannedRepliesView(_StaffView):
+    perms_map = {"GET": ["tickets.reply"], "POST": ["tickets.manage_topics"]}
+
+    @extend_schema(summary="Saved replies (?topic=<id> → that topic's + general ones, active only; ?all=1 for managers)")
+    def get(self, request):
+        qs = CannedReply.objects.all()
+        if request.query_params.get("all") != "1" or not request.user.has_perm("tickets.manage_topics"):
+            qs = qs.filter(is_active=True)
+        topic = request.query_params.get("topic")
+        if topic and topic.isdigit():
+            qs = qs.filter(Q(topic_id=int(topic)) | Q(topic__isnull=True))
+        return Response([_canned_row(c) for c in qs])
+
+    @extend_schema(summary="Create a saved reply")
+    def post(self, request):
+        try:
+            c = CannedReply.objects.create(created_by=request.user.username, **_canned_data(request.data))
+        except services.TicketError as exc:
+            return error(exc)
+        write_audit(action="ticket.canned_created", staff=request.user, target=c)
+        return Response(_canned_row(c), status=201)
+
+
+class CannedReplyDetailView(_StaffView):
+    perms_map = {"PATCH": ["tickets.manage_topics"], "PUT": ["tickets.manage_topics"], "DELETE": ["tickets.manage_topics"]}
+
+    @extend_schema(summary="Edit a saved reply")
+    def patch(self, request, pk):
+        c = get_object_or_404(CannedReply, pk=pk)
+        try:
+            fields = _canned_data(request.data, partial=True)
+        except services.TicketError as exc:
+            return error(exc)
+        for k, v in fields.items():
+            setattr(c, k, v)
+        c.save()
+        write_audit(action="ticket.canned_updated", staff=request.user, target=c)
+        return Response(_canned_row(c))
+
+    put = patch
+
+    @extend_schema(summary="Delete a saved reply")
+    def delete(self, request, pk):
+        c = get_object_or_404(CannedReply, pk=pk)
+        write_audit(action="ticket.canned_deleted", staff=request.user, target=c, detail={"title": c.title})
+        c.delete()
+        return Response(status=204)

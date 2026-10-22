@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { useLivePayments } from '../lib/livePayments'
+import { useLiveTickets } from '../lib/liveTickets'
 import { useI18n } from '../lib/i18n'
 import { useTheme } from '../theme/ThemeProvider'
 import { CASPIAN_BOTNAV, CASPIAN_GROUPS, NAV_ICONS } from './adminNav'
@@ -11,6 +12,7 @@ const nav = [
   ['/', 'dashboard', null],
   ['/users', 'users', 'users.view'],
   ['/agency', 'agency', 'agency.view'],
+  ['/tickets', 'tickets', 'tickets.view'],
   ['/services', 'services', 'monitoring.view'],
   ['/plans', 'plans', 'plans.manage'],
   ['/payments', 'payments', 'payment.view'],
@@ -30,6 +32,7 @@ const nav = [
   ['/pages', 'pages', 'pages.manage'],
   ['/themes', 'themes', 'themes.manage'],
   ['/roles', 'roles', 'roles.manage'],
+  ['/tickets/topics', 'ticket_topics', 'tickets.manage_topics'],
   ['/docs', 'docs', 'settings.manage'],
 ]
 
@@ -46,8 +49,10 @@ function SideIcon({ name }) {
 /** live pending-payments count on the Payments nav entry */
 function PendingBadge({ to }) {
   const { pendingCount } = useLivePayments()
-  if (to !== '/payments' || !pendingCount) return null
-  return <span className="nav-pending-badge" aria-label={`${pendingCount}`}>{pendingCount > 99 ? '99+' : pendingCount}</span>
+  const { badge } = useLiveTickets()
+  const n = to === '/payments' ? pendingCount : to === '/tickets' ? badge : 0
+  if (!n) return null
+  return <span className="nav-pending-badge" aria-label={`${n}`}>{n > 99 ? '99+' : n}</span>
 }
 
 function NavLinks({ items, t, onNavigate }) {
@@ -218,6 +223,7 @@ function CaspianNav({ groups, t, brand, logo, onNavigate }) {
 // inner-page titles for the mobile top bar (first match wins, so sub-paths go first)
 const MOBILE_TITLES = [
   ['/settings/email', 'email_settings'], ['/settings/paths', 'paths'],
+  ['/tickets/topics', 'ticket_topics'], ['/tickets', 'tickets'],
   ['/users/deleted', 'deleted_users'], ['/users', 'users'], ['/agency', 'agency'], ['/services', 'services'], ['/plans', 'plans'],
   ['/payments', 'nav_pay_queue'], ['/transactions', 'transactions'], ['/sms-log', 'sms_log'], ['/accounting', 'accounting'],
   ['/cards', 'cards'], ['/monitoring', 'monitoring'], ['/panel-link', 'panel_link'], ['/bots', 'bots'],
@@ -240,6 +246,7 @@ function CaspianLayout() {
   const { t, lang, setLang } = useI18n()
   const { mode, toggle, locked, config } = useTheme()
   const { pendingCount } = useLivePayments()
+  const { badge: ticketBadge } = useLiveTickets()
   const go = useNavigate()
   const { pathname } = useLocation()
   const side = useSideNav()
@@ -333,7 +340,9 @@ function CaspianLayout() {
       <nav className="csp-botnav" style={{ '--csp-bn-n': botnav.length }}>
         {botnav.map(([to, key, , icon, centre]) => {
           const on = tab === to
-          const badge = to === '/payments' && pendingCount > 0 ? pendingCount : null
+          // tickets live in the Settings index on phones — its tab carries the ticket badge
+          const badge = to === '/payments' && pendingCount > 0 ? pendingCount
+            : to === '/settings' && ticketBadge > 0 ? ticketBadge : null
           return (
             <NavLink key={to} to={to} end={to === '/'} aria-current={on ? 'page' : undefined}
               className={'csp-bn-item' + (on ? ' on' : '') + (centre ? ' csp-bn-centre' : '')}>

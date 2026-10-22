@@ -13,6 +13,7 @@ export const CASPIAN_GROUPS = [
   ['nav_group_users', [
     ['/users', 'users', 'users.view', 'users'],
     ['/agency', 'agency', 'agency.view', 'agency'],
+    ['/tickets', 'tickets', 'tickets.view', 'tickets'],
     ['/services', 'services', 'monitoring.view', 'services'],
     ['/plans', 'plans', 'plans.manage', 'plans'],
   ]],
@@ -34,6 +35,7 @@ export const CASPIAN_GROUPS = [
     ['/pages', 'pages', 'pages.manage', 'pages'],
     ['/themes', 'themes', 'themes.manage', 'themes'],
     ['/roles', 'roles', 'roles.manage', 'roles'],
+    ['/tickets/topics', 'ticket_topics', 'tickets.manage_topics', 'ticketTopics'],
     ['/docs', 'docs', 'settings.manage', 'docs'],
   ]],
 ]
@@ -41,6 +43,8 @@ export const CASPIAN_GROUPS = [
 // Heroicons-style outline paths (self-hosted, no icon font / CDN) — chosen to
 // echo the reference's Material Symbols intent.
 export const NAV_ICONS = {
+  tickets: 'M8.625 9.75a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375m-13.5 3.01c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 01.778-.332 48.294 48.294 0 005.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z',
+  ticketTopics: 'M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3zM6 6h.008v.008H6V6z',
   brand: 'M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z',
   sun: 'M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z',
   moon: 'M21.752 15.002A9.72 9.72 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z',

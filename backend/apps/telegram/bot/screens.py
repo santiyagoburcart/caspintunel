@@ -4,6 +4,7 @@ No Telegram I/O here (testable with the DB only); `sales_bot` renders a
 screen by editing the current message in place.
 
 callback_data (all ≤ 64 bytes; old buttons still in users' chats keep working):
+  tk:* tickets (apps/tickets/bot.py)  st:* staff tickets
   m:home  m:buy  m:svcs[:page]  m:history[:page]  m:acc  m:rules  m:guide  m:help  m:pwd  m:lang
   c:<i> category  p:<plan> plan  pb:<plan> buy  t:ok accept rules
   o:<order> invoice  o:<order>:st status
@@ -129,6 +130,11 @@ def main_menu(user) -> Screen:
         [_b(tr(user, "btn_history"), "m:history"), _b(tr(user, "btn_acc"), "m:acc")],
         [_b(tr(user, "btn_rules"), "m:rules"), _b(tr(user, "btn_guide"), "m:guide")],
     ]
+    rows.append([_b(tr(user, "btn_tickets"), "tk:home")])
+    from apps.accounts.models import Staff
+
+    if user.telegram_id and Staff.objects.filter(telegram_id=user.telegram_id, is_active=True).exists():
+        rows.append([_b(tr(user, "btn_staff_tickets"), "st:l:o:0")])
     last = [_b(tr(user, "btn_support"), "m:help")]
     app = miniapp_url()
     if app:

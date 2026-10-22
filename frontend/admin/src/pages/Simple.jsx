@@ -4,6 +4,7 @@ import { useI18n } from '../lib/i18n'
 import { digits } from '../lib/format'
 import { Alert, Spinner, Toggle } from '../components/ui'
 import { useDeleteConfirm } from '../lib/confirmDelete'
+import { useAuth } from '../lib/auth'
 
 function useList(url) {
   const [rows, setRows] = useState(null)
@@ -36,6 +37,9 @@ const I = {
 }
 
 const SHARED_CSS = `
+.sm-scope { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0; }
+.sm-scope-chip { padding: 6px 11px; border-radius: 999px; font-size: 12.5px; font-weight: 600; border: 1px solid var(--c-border); background: none; color: var(--c-text); cursor: pointer; }
+.sm-scope-chip.on { background: var(--c-primary); border-color: var(--c-primary); color: #fff; }
 .sm-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between; }
 .sm-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .sm-count-badge { font-size: 11px; font-weight: 600; padding: 2px 10px; border-radius: 999px; background: color-mix(in srgb, var(--c-text-muted) 14%, transparent); color: var(--c-muted-fg); white-space: nowrap; }
@@ -518,6 +522,11 @@ const R = {
     c_name: 'نام', c_desc: 'توضیح', c_perms: 'دسترسی‌ها', c_role: 'نقش', c_active: 'فعال', c_actions: 'عملیات', c_username: 'نام کاربری',
     role_modal_new: 'ایجاد نقش دسترسی جدید', role_modal_edit: 'ویرایش نقش: {n}',
     staff_modal_new: 'افزودن کارمند جدید', staff_modal_edit: 'ویرایش کارمند: {n}',
+    display_name: 'نام نمایشی', display_name_hint: '— اگر در تنظیمات تیکت فعال باشد به کاربر نشان داده می‌شود',
+    staff_email: 'ایمیل', staff_email_hint: '— برای اعلان تیکت‌ها (اختیاری)',
+    tg_on: 'تلگرام این کارمند برای اعلان تیکت‌ها متصل است.', tg_off: 'تلگرام متصل نیست — خود کارمند از صفحهٔ تیکت‌ها (دکمهٔ تلگرام) کد اتصال می‌گیرد.',
+    ticket_scope: 'موضوعات تیکت', ticket_scope_hint: '— محدود کردن این کارمند به موضوعات انتخاب‌شده',
+    scope_all: 'هیچ موضوعی انتخاب نشده = همهٔ موضوعات', scope_some: 'فقط {n} موضوع انتخاب‌شده',
     pick_perms: 'انتخاب دسترسی‌های مجاز',
     pw_edit_hint: '(فقط برای تغییر وارد شود)',
     super: 'ابرمدیر', super_hint: 'دسترسی کامل به همهٔ بخش‌ها',
@@ -531,6 +540,11 @@ const R = {
     c_name: 'Name', c_desc: 'Description', c_perms: 'Permissions', c_role: 'Role', c_active: 'Active', c_actions: 'Actions', c_username: 'Username',
     role_modal_new: 'Create a new access role', role_modal_edit: 'Edit role: {n}',
     staff_modal_new: 'Add a new staff member', staff_modal_edit: 'Edit staff: {n}',
+    display_name: 'Display name', display_name_hint: '— shown to users when enabled in ticket settings',
+    staff_email: 'Email', staff_email_hint: '— for ticket notifications (optional)',
+    tg_on: 'This staff member’s Telegram is linked for ticket alerts.', tg_off: 'Telegram not linked — the staff member gets a link code on the Tickets page (Telegram button).',
+    ticket_scope: 'Ticket topics', ticket_scope_hint: '— limit this staff member to the selected topics',
+    scope_all: 'None selected = every topic', scope_some: 'Only the {n} selected topic(s)',
     pick_perms: 'Select the allowed permissions',
     pw_edit_hint: '(fill only to change)',
     super: 'Superadmin', super_hint: 'Full access to every section',
@@ -616,9 +630,22 @@ function RoleModal({ row, perms, s, t, lang, onClose, onSaved }) {
 
 function StaffModal({ row, roles, s, t, onClose, onSaved }) {
   const editing = !!row
+  const { can } = useAuth()
+  const { lang } = useI18n()
+  const manageScopes = can('tickets.manage_topics')
   const [f, setF] = useState(() => (row
-    ? { id: row.id, username: row.username, password: '', role: row.role || '', is_active: row.is_active, is_superadmin: row.is_superadmin }
-    : { ...blankStaff }))
+    ? { id: row.id, username: row.username, password: '', role: row.role || '', is_active: row.is_active, is_superadmin: row.is_superadmin,
+      display_name: row.display_name || '', email: row.email || '' }
+    : { ...blankStaff, display_name: '', email: '' }))
+  const [topics, setTopics] = useState([])
+  const [scope, setScope] = useState(null)        // topic ids; [] = every topic
+  useEffect(() => {
+    if (!manageScopes) return
+    api.get('/admin/tickets/topics/').then((r) => setTopics(r.data)).catch(() => {})
+    if (row) api.get('/admin/tickets/staff-scopes/').then((r) => setScope((r.data.find((x) => x.id === row.id) || {}).topic_ids || []))
+      .catch(() => setScope([]))
+    else setScope([])
+  }, [])
   const [showPw, setShowPw] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
@@ -628,8 +655,8 @@ function StaffModal({ row, roles, s, t, onClose, onSaved }) {
     if (editing && !body.password) delete body.password
     if (!body.role) body.role = null
     try {
-      if (editing) await api.patch(`/admin/staff/${row.id}/`, body)
-      else await api.post('/admin/staff/', body)
+      const saved = editing ? (await api.patch(`/admin/staff/${row.id}/`, body)).data : (await api.post('/admin/staff/', body)).data
+      if (manageScopes && scope !== null) await api.put(`/admin/tickets/staff-scopes/${saved.id}/`, { topic_ids: scope }, { quiet: true })
       onSaved()
     } catch (e2) { setErr(apiError(e2)) } finally { setBusy(false) }
   }
@@ -664,6 +691,32 @@ function StaffModal({ row, roles, s, t, onClose, onSaved }) {
               {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
             </select>
           </label>
+          <label className="sm-fld">
+            <span className="label">{s.display_name} <span className="sm-hint">{s.display_name_hint}</span></span>
+            <input className="input" maxLength={60} value={f.display_name} onChange={(e) => setF({ ...f, display_name: e.target.value })} />
+          </label>
+          <label className="sm-fld">
+            <span className="label">{s.staff_email} <span className="sm-hint">{s.staff_email_hint}</span></span>
+            <input className="input" type="email" dir="ltr" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />
+          </label>
+          {editing && <p className="sm-hint">✈️ {row.telegram_linked ? s.tg_on : s.tg_off}</p>}
+          {manageScopes && scope !== null && (
+            <div className="sm-fld">
+              <span className="label">{s.ticket_scope} <span className="sm-hint">{s.ticket_scope_hint}</span></span>
+              <div className="sm-scope">
+                {topics.map((tp) => {
+                  const on = scope.includes(tp.id)
+                  return (
+                    <button key={tp.id} type="button" aria-pressed={on} className={'sm-scope-chip' + (on ? ' on' : '')}
+                      onClick={() => setScope(on ? scope.filter((x) => x !== tp.id) : [...scope, tp.id])}>
+                      {on ? '✓ ' : ''}{lang === 'en' ? tp.name_en : tp.name_fa}
+                    </button>
+                  )
+                })}
+              </div>
+              <span className="sm-hint">{scope.length ? s.scope_some.replace('{n}', scope.length) : s.scope_all}</span>
+            </div>
+          )}
           <div className="flex flex-col gap-2.5">
             <label className="sm-toggle-row">
               <Toggle checked={f.is_active} onChange={(v) => setF({ ...f, is_active: v })} label={t('active')} /> {t('active')}

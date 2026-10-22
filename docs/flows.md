@@ -240,7 +240,7 @@ sequenceDiagram
     actor S as Staff (scope covers topic)
 
     C->>API: GET /tickets/topics/
-    API-->>C: active topics — without an active / on-hold service only pre-purchase ones
+    API-->>C: topics with available / locked + renew hint (never purchased → only pre-purchase)
     C->>API: POST /tickets/ (topic, subject, body, ≤3 files)
     API->>API: topic active? needs active service? open tickets < limit?<br/>files: sniffed type, Pillow decode, ≤5 MB
     API->>DB: Ticket(open, number) + message + attachments + event created
@@ -255,7 +255,7 @@ sequenceDiagram
         S->>API: POST /admin/tickets/{id}/reply/
         API->>DB: status awaiting_user, first_response_at, auto-assign to the replier,<br/>event staff_replied, AuditLog
         API-)W: notify staff_reply
-        W-->>C: site bell (real-time) + bot message + email
+        W-->>C: site bell (real-time, links to the chat) + email + bot message with Reply / Open
     end
     C->>API: POST /tickets/{id}/reply/
     API->>DB: status awaiting_admin, event user_replied
@@ -272,7 +272,33 @@ sequenceDiagram
     API->>DB: status awaiting_admin, event reopened
 ```
 
-## 8. Staff Telegram linking
+## 8. Tickets in the bot
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor C as Customer (Telegram)
+    participant Bot as bot_sales
+    participant Svc as tickets.services
+    participant W as celery_worker (notify)
+    actor S as Staff (linked Telegram)
+
+    C->>Bot: 🎫 Support / tickets → New ticket
+    Bot-->>C: allowed topics as buttons (+ renew hint if all services expired)
+    C->>Bot: topic → subject (typed) → message (text or photo / PDF)
+    Bot->>Svc: open_ticket(channel=bot) — same rules as the site
+    Svc-)W: new_ticket
+    W-->>S: DM: #number + Reply · Open · Assign to me · Close
+    S->>Bot: Assign to me / Reply (force-reply) → text or photo
+    Note over Bot: staff callbacks st:* skip the customer gate,<br/>scope + permission checked, no customer account
+    Bot->>Svc: staff_reply(channel=bot)
+    Svc-)W: staff_reply
+    W-->>C: bot message with Reply / Open + site bell + email
+    C->>Bot: Reply → text / photo → user_reply(channel=bot)
+    C->>Bot: Close / Reopen
+```
+
+## 9. Staff Telegram linking
 
 ```mermaid
 sequenceDiagram
@@ -299,7 +325,7 @@ sequenceDiagram
     Note over Bot: no customer account is created for this message
 ```
 
-## 9. Deploy (`./update.sh`)
+## 10. Deploy (`./update.sh`)
 
 ```mermaid
 sequenceDiagram

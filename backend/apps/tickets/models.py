@@ -135,6 +135,23 @@ class TicketAttachment(models.Model):
         ordering = ("id",)
 
 
+class CannedReply(models.Model):
+    """Saved reply for the staff composer; `topic` null = offered for every topic."""
+    title = models.CharField(max_length=80)
+    body = models.TextField()
+    topic = models.ForeignKey(TicketTopic, null=True, blank=True, on_delete=models.CASCADE,
+                              related_name="canned_replies")
+    is_active = models.BooleanField(default=True)
+    sort_order = models.IntegerField(default=0)
+    created_by = models.CharField(max_length=64, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "ticket_canned_reply"
+        ordering = ("sort_order", "id")
+
+
 class EventKind(models.TextChoices):
     CREATED = "created", "Created"
     USER_REPLIED = "user_replied", "User replied"

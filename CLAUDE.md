@@ -148,6 +148,10 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   `media/tickets/` (nginx 404s it), served by `AttachmentFileView` only. A new private media folder needs the
   same nginx rule in `nginx/prod.conf` + `nginx/conf.d/caspintunel.conf`.
 - Staff Telegram link = `/start staff-<CODE>` in the sales bot, handled before `ensure_bot_user`.
+- Topic gate = `rules.has_any_service` (EVER had a service); `renew_hint` only drives the "expired — renew" hint.
+- Bot: customer flows `tk:*`, staff flows `st:*` (`apps/tickets/bot.py`). Staff callbacks / typed `st_reply` are handled
+  BEFORE `_user()` in `sales_bot` (no customer account, no customer gate). Live customer updates go over the
+  existing `/ws/notifications/` socket (`ticket.event`; the bell re-emits it as the `ct:ticket` window event).
 
 ## Paths (docs/paths.md)
 - The admin SPA must work under ANY base: build with relative assets, never hard-code `/panel` (use `lib/base.js`

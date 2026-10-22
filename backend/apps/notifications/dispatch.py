@@ -82,6 +82,7 @@ def _deliver_site(user, note: Notification, delivery: NotificationDelivery) -> t
                     "body_en": note.body_en,
                     "created_at": note.created_at.isoformat(),
                     "is_read": False,
+                    "link": note.link,
                 },
                 "unread_count": _unread_site_count(user),
             },
@@ -95,9 +96,9 @@ def _deliver_site(user, note: Notification, delivery: NotificationDelivery) -> t
 def notify_user(user, *, title: str, body: str, title_en: str = "", body_en: str = "",
                 ntype: str = NotificationType.EVENT,
                 via_site: bool = True, via_bot: bool = False, via_email: bool = False,
-                notification: Notification | None = None, staff=None) -> Notification:
+                notification: Notification | None = None, staff=None, link: str = "") -> Notification:
     note = notification or Notification.objects.create(
-        type=ntype, title=title, body=body, title_en=title_en, body_en=body_en,
+        type=ntype, title=title, body=body, title_en=title_en, body_en=body_en, link=link,
         target_user=user, via_site=via_site, via_bot=via_bot, via_email=via_email, created_by_staff=staff,
     )
 
