@@ -84,3 +84,8 @@ mail/
 nginx/flags/maintenance
 nginx/paths/*
 !nginx/paths/README
+
+# ---- domain wizard (scripts/domain.sh) ----
+.domain-state/
+nginx/domain/*
+!nginx/domain/README

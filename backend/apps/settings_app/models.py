@@ -192,3 +192,68 @@ class EmailSettings(models.Model):
     def load(cls) -> "EmailSettings":
         obj, _ = cls.objects.get_or_create(pk=1)
         return obj
+
+
+class DomainConfig(models.Model):
+    """Settings → Domain & Cloudflare (single row). The Cloudflare token is
+    write-only: stored encrypted, never returned by the API (.env
+    CLOUDFLARE_API_TOKEN stays the fallback)."""
+
+    cloudflare_token = EncryptedTextField(blank=True, help_text="stored encrypted at rest; never returned by the API")
+    token_updated_at = models.DateTimeField(null=True, blank=True)
+    token_updated_by = models.CharField(max_length=150, blank=True)
+    last_test = models.JSONField(default=dict, blank=True)   # last "Test" result (no secrets)
+    transition_days = models.PositiveSmallIntegerField(default=14)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "domain_config"
+        verbose_name = verbose_name_plural = "domain config"
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def load(cls) -> "DomainConfig":
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+
+class DomainChange(models.Model):
+    """One run of the domain-change wizard (docs/domain.md). `steps` holds a
+    status per step: {key: {state, message, at, detail}}."""
+
+    class Status(models.TextChoices):
+        DRAFT = "draft", "draft"              # entered, DNS / TLS in progress
+        APPLYING = "applying", "applying"     # host is switching
+        TRANSITION = "transition", "transition"   # live on the new domain, old one redirects
+        DONE = "done", "done"                 # old domain removed
+        FAILED = "failed", "failed"           # apply failed (rolled back by the host)
+        ROLLED_BACK = "rolled_back", "rolled back"
+        CANCELLED = "cancelled", "cancelled"
+
+    old_domain = models.CharField(max_length=253)
+    new_domain = models.CharField(max_length=253)
+    include_www = models.BooleanField(default=True)
+    mode = models.CharField(max_length=12, default="cloudflare")   # cloudflare | manual
+    zone_id = models.CharField(max_length=64, blank=True)
+    zone_name = models.CharField(max_length=253, blank=True)
+    server_ip = models.CharField(max_length=45, blank=True)
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.DRAFT, db_index=True)
+    steps = models.JSONField(default=dict, blank=True)
+    checklist = models.JSONField(default=dict, blank=True)
+    transition_days = models.PositiveSmallIntegerField(default=14)
+    old_until = models.DateTimeField(null=True, blank=True)
+    created_by = models.CharField(max_length=150, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    applied_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "domain_change"
+        ordering = ("-created_at",)
+
+    def __str__(self) -> str:
+        return f"{self.old_domain} → {self.new_domain} ({self.status})"

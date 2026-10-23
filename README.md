@@ -18,7 +18,7 @@ Production runs on a server in Finland. Update a running server with `./update.s
 
 See **[docs/](docs/)** — [install](docs/install.md) · [offline](docs/offline.md) ·
 [deploy](docs/deploy.md) · [architecture](docs/architecture.md) · [data model](docs/erd.md) · [flows](docs/flows.md) · [roadmap](docs/roadmap.md) · [api](docs/api.md) ·
-[operations](docs/operations.md) · [server migration](docs/migration.md) · [paths](docs/paths.md) · [agency](docs/agency.md) · [bots](docs/bots.md) · [development](docs/development.md).
+[operations](docs/operations.md) · [server migration](docs/migration.md) · [paths](docs/paths.md) · [domain](docs/domain.md) · [agency](docs/agency.md) · [bots](docs/bots.md) · [development](docs/development.md).
 The same pages are readable in the admin panel → **Documentation**.
 
 All roadmap phases are built — see [docs/roadmap.md](docs/roadmap.md).
@@ -38,6 +38,7 @@ All roadmap phases are built — see [docs/roadmap.md](docs/roadmap.md).
 - **Retention** — configurable pre-expiry warnings (data % / days left, quiet hours, one-click renew on site / bot / email), win-back queue (discount codes at checkout, automatic won-back with recovered revenue), retention reports
 - **Business analytics** — overview dashboard with trends, customer finance (LTV, AOV, ARPU, new vs returning, by plan / channel / card, discount cost, CSV / Excel), retention (churn, renewal, cohorts, lifetime, top LTV), support performance per staff and topic
 - Configurable admin-panel and portal **paths** (Settings → Paths)
+- **Domain & Cloudflare** (Settings, super admin): encrypted Cloudflare token, a step-by-step domain-change wizard with automatic rollback, a 301 transition for the old domain and `./scripts/domain.sh` recovery
 - **Ticketing** — Telegram-like chat on the site and in the sales bot (synced), staff inbox (split view, internal notes, saved replies, timeline, customer panel, live badge), staff ticket handling from Telegram; topics (pre-purchase open to everyone, the rest to anyone who ever bought), attachments, internal notes, assignment, priorities, full history, auto-close / reopen, **Ticketing role + per-staff topic scopes**, notifications to customers (site / bot / email) and staff (live badge, Telegram DM after linking, email)
 - Fully responsive admin on phones — bottom nav with the payment queue in the centre, compact record cards, every desktop page reachable from the Settings index
 - In-panel **Documentation** page (this repo's `docs/`, rendered read-only with contents + search, Mermaid diagrams drawn with a bundled library)

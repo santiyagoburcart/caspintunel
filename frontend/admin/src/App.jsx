@@ -14,6 +14,7 @@ import TransactionDetail from './pages/TransactionDetail'
 import SmsLog from './pages/SmsLog'
 import Docs from './pages/Docs'
 import PathsSettings from './pages/PathsSettings'
+import DomainSettings from './pages/DomainSettings'
 import { AgencyAdminDetail, AgencyAdminNew, AgencyAdmins, AgencyDashboard, AgencyGroups, AgencyLedger, AgencySettings, AgencySyncLogs } from './pages/Agency'
 import Accounting from './pages/Accounting'
 import Tickets from './pages/Tickets'
@@ -65,6 +66,7 @@ export default function App() {
         <Route path="/settings" element={<Settings />} />
         <Route path="/settings/email" element={<EmailSettings />} />
         <Route path="/settings/paths" element={<PathsSettings />} />
+        <Route path="/settings/domain" element={<DomainSettings />} />
         <Route path="/settings/:section" element={<Settings />} />
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/apps" element={<Apps />} />

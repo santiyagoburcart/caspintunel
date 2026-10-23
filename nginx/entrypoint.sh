@@ -1,7 +1,8 @@
 #!/bin/sh
 # Enable the HTTPS vhost when a cert is available. Precedence:
 #   1. manually-uploaded pair  /etc/nginx/manual-certs/{fullchain,privkey}.pem
-#   2. Let's Encrypt           /etc/letsencrypt/live/<domain>/{fullchain,privkey}.pem
+#   2. domain wizard config    /etc/nginx/domain/active.conf (scripts/domain.sh)
+#   3. Let's Encrypt           /etc/letsencrypt/live/<domain>/{fullchain,privkey}.pem
 # A missing cert never stops nginx — it just serves HTTP.
 set -e
 
@@ -18,7 +19,12 @@ elif [ -n "$DOMAIN" ] && [ -s "$LE_CERT" ] && [ -s "$LE_KEY" ]; then
     CERT="$LE_CERT"; KEY="$LE_KEY"; SRC="Let's Encrypt"
 fi
 
-if [ -n "${CERT:-}" ]; then
+# a domain set by the domain wizard (scripts/domain.sh, docs/domain.md) wins over
+# the .env domain: its generated config holds the new domain + the old one's redirect
+if [ "${SRC:-}" != "manual upload" ] && [ -s /etc/nginx/domain/active.conf ]; then
+    echo 'include /etc/nginx/domain/active.conf;' > "$OUT"
+    echo "[nginx-entrypoint] HTTPS from the domain wizard (/etc/nginx/domain/active.conf)"
+elif [ -n "${CERT:-}" ]; then
     export SSL_DOMAIN="${DOMAIN:-_}" SSL_CERT="$CERT" SSL_KEY="$KEY"
     envsubst '${SSL_DOMAIN} ${SSL_CERT} ${SSL_KEY}' < /etc/nginx/ssl.conf.template > "$OUT"
     echo "[nginx-entrypoint] HTTPS enabled for '${DOMAIN:-*}' ($SRC)"

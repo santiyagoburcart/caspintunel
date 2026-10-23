@@ -1,9 +1,30 @@
-"""Tiny Cloudflare DNS client — only what `configure_dns` needs (idempotent upsert)."""
+"""Tiny Cloudflare DNS client — what `configure_dns` and the domain wizard need
+(token check, zones, idempotent upsert)."""
 from __future__ import annotations
 
 import requests
+from django.conf import settings
 
 API = "https://api.cloudflare.com/client/v4"
+
+
+def api_base() -> str:
+    """settings.CLOUDFLARE_API_BASE (the throw-away domain test points it at a mock)."""
+    return (getattr(settings, "CLOUDFLARE_API_BASE", "") or API).rstrip("/")
+
+
+def configured_token() -> tuple[str, str]:
+    """(token, source): the token saved in the panel (encrypted) wins, .env is the fallback."""
+    try:
+        from apps.settings_app.models import DomainConfig
+
+        tok = (DomainConfig.load().cloudflare_token or "").strip()
+        if tok:
+            return tok, "panel"
+    except Exception:  # noqa: BLE001 — table missing during a migration, key problems …
+        pass
+    tok = (getattr(settings, "CLOUDFLARE_API_TOKEN", "") or "").strip()
+    return (tok, "env") if tok else ("", "")
 
 
 class CloudflareError(Exception):
@@ -16,14 +37,33 @@ class Cloudflare:
         self._s.headers.update({"Authorization": f"Bearer {token}"})
 
     def _req(self, method, path, **kw):
-        r = self._s.request(method, f"{API}{path}", timeout=20, **kw)
-        body = r.json()
+        try:
+            r = self._s.request(method, f"{api_base()}{path}", timeout=20, **kw)
+        except requests.RequestException as exc:
+            raise CloudflareError(f"Cloudflare API unreachable: {exc.__class__.__name__}") from exc
+        try:
+            body = r.json()
+        except ValueError:
+            raise CloudflareError(f"{method} {path}: HTTP {r.status_code}, not JSON") from None
         if not body.get("success"):
-            raise CloudflareError(f"{method} {path}: {body.get('errors')}")
+            errs = body.get("errors") or []
+            msg = "; ".join(f"{e.get('code')}: {e.get('message')}" for e in errs if isinstance(e, dict)) or f"HTTP {r.status_code}"
+            raise CloudflareError(msg)
         return body["result"]
 
     def verify(self) -> dict:
         return self._req("GET", "/user/tokens/verify")
+
+    def zones(self) -> list[dict]:
+        """Every zone the token can see, with the permissions Cloudflare reports for it."""
+        out, page = [], 1
+        while page <= 20:
+            res = self._req("GET", "/zones", params={"per_page": 50, "page": page})
+            out += res
+            if len(res) < 50:
+                break
+            page += 1
+        return out
 
     def zone_id(self, name: str) -> str:
         res = self._req("GET", "/zones", params={"name": name})

@@ -25,7 +25,7 @@ from pathlib import Path
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
-from apps.ops.cloudflare import Cloudflare, CloudflareError
+from apps.ops.cloudflare import Cloudflare, CloudflareError, configured_token
 
 KEY_DIR = Path(settings.BASE_DIR) / "mail-keys"
 
@@ -45,9 +45,9 @@ class Command(BaseCommand):
         parser.add_argument("--dkim-selector", default="default")
 
     def handle(self, *args, **o):
-        token = getattr(settings, "CLOUDFLARE_API_TOKEN", "")
+        token, _src = configured_token()   # panel (Settings → Domain & Cloudflare) first, then .env
         if not token:
-            raise CommandError("CLOUDFLARE_API_TOKEN is not set")
+            raise CommandError("no Cloudflare token: save one in the panel or set CLOUDFLARE_API_TOKEN")
         ip = o["server_ip"] or _detect_ip()
         if not ip:
             raise CommandError("could not determine the server IP — pass --server-ip")

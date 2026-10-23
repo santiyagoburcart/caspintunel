@@ -5,6 +5,7 @@ from .views.apps import AppReleaseDetailView, AppReleaseDownloadView, AppRelease
 from .views.auth import StaffLoginView, StaffMeView, StaffRefreshView
 from .views.branding import QrPreviewView, SiteConfigView
 from .views.docs import DocsListView, DocsPageView
+from .views.domain import DomainRollbackView, DomainSettingsView, DomainStartView, DomainStepView, DomainTokenView, DomainView
 from .views.agency import (AgencyAdminActionView, AgencyAdminDetailView, AgencyAdminListView, AgencyDashboardView,
                            AgencyGroupsView, AgencyLedgerExportView, AgencyLedgerOverviewView, AgencyLedgerView,
                            AgencyLedgerVoidView, AgencySettingsView, AgencySyncLogsView, AgencySyncNowView, PathsView,
@@ -75,6 +76,13 @@ urlpatterns = [
     path("branding/", SiteConfigView.as_view(), name="admin-branding"),
     path("branding/qr-preview/", QrPreviewView.as_view(), name="admin-branding-qr-preview"),
     path("paths/", PathsView.as_view(), name="admin-paths"),
+    path("domain/", DomainView.as_view(), name="admin-domain"),
+    path("domain/token/", DomainTokenView.as_view(), name="admin-domain-token"),
+    path("domain/token/test/", DomainTokenView.as_view(), {"test": True}, name="admin-domain-token-test"),
+    path("domain/settings/", DomainSettingsView.as_view(), name="admin-domain-settings"),
+    path("domain/start/", DomainStartView.as_view(), name="admin-domain-start"),
+    path("domain/rollback/", DomainRollbackView.as_view(), name="admin-domain-rollback"),
+    path("domain/<int:pk>/<str:step>/", DomainStepView.as_view(), name="admin-domain-step"),
     path("agency/", AgencyDashboardView.as_view(), name="admin-agency"),
     path("agency/admins/", AgencyAdminListView.as_view(), name="admin-agency-admins"),
     path("agency/panel-admins/options/", AgencyPanelAdminOptionsView.as_view(), name="admin-agency-panel-admin-options"),

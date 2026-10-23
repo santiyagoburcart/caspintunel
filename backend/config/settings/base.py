@@ -365,6 +365,10 @@ UPDATE_SENTINEL_PATH = env("UPDATE_SENTINEL_PATH", default="/app/backups/.update
 
 CLOUDFLARE_API_TOKEN = env("CLOUDFLARE_API_TOKEN", default="")
 CLOUDFLARE_ZONE = env("CLOUDFLARE_ZONE", default=DOMAIN)
+CLOUDFLARE_API_BASE = env("CLOUDFLARE_API_BASE", default="https://api.cloudflare.com/client/v4")
+# domain wizard (docs/domain.md): public DNS-over-HTTPS resolvers used to check
+# that a new domain points at this server (JSON API, like Let's Encrypt sees it)
+DOMAIN_DOH_URLS = env.list("DOMAIN_DOH_URLS", default=["https://cloudflare-dns.com/dns-query", "https://dns.google/resolve"])
 
 GITHUB_TOKEN = env("GITHUB_TOKEN", default="")
 GITHUB_REPO = env("GITHUB_REPO", default="caspintunel")

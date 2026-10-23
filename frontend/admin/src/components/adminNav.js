@@ -31,6 +31,7 @@ export const CASPIAN_GROUPS = [
     ['/settings', 'settings', 'settings.manage', 'settings'],
     ['/settings/email', 'email_settings', 'settings.email', 'mail'],
     ['/settings/paths', 'paths', 'settings.manage', 'panel'],
+    ['/settings/domain', 'domain_cf', 'superadmin', 'domain'],   // 'superadmin': no role grants it
     ['/bots', 'bots', 'bots.manage', 'bots'],
     ['/apps', 'apps', 'settings.manage', 'apps'],
     ['/notifications', 'notifications', 'broadcast.send', 'notifications'],
@@ -45,6 +46,7 @@ export const CASPIAN_GROUPS = [
 // Heroicons-style outline paths (self-hosted, no icon font / CDN) — chosen to
 // echo the reference's Material Symbols intent.
 export const NAV_ICONS = {
+  domain: 'M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418',
   analytics: 'M3 3v18h18M7 15l4-4 3 3 5-6',
   crm: 'M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198v.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197M6 18.719a5.971 5.971 0 01.94-3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zM9 12.75l1.5 1.5 3-3',
   tickets: 'M8.625 9.75a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375m-13.5 3.01c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 01.778-.332 48.294 48.294 0 005.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z',

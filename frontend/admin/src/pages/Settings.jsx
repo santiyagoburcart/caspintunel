@@ -79,6 +79,7 @@ const HUB = {
     analytics: { t: 'تحلیل کسب‌وکار', d: 'نمای کلی، مالی مشتریان، نگهداشت و عملکرد پشتیبانی' },
     ticket_topics: { t: 'موضوعات تیکت', d: 'موضوعات، پاسخ‌های آماده و تنظیمات تیکت' },
     paths: { t: 'مسیرها', d: 'آدرس پنل مدیریت و پرتال نماینده‌ها' },
+    domain: { t: 'دامنه و Cloudflare', d: 'توکن Cloudflare و تغییر دامنهٔ سایت' },
     notifications: { t: 'اطلاعیه‌ها', d: 'ارسال پیام همگانی به سایت، ربات و ایمیل' },
     monitoring: { t: 'مانیتورینگ', d: 'سلامت سرویس‌ها، منابع سرور و بک‌آپ‌ها' },
     sync: { t: 'همگام‌سازی سرویس‌ها', d: 'فاصلهٔ همگام‌سازی خودکار با پنل' },
@@ -115,6 +116,7 @@ const HUB = {
     analytics: { t: 'Business analytics', d: 'Overview, customer finance, retention and support performance' },
     ticket_topics: { t: 'Ticket topics', d: 'Topics, saved replies and ticket settings' },
     paths: { t: 'Paths', d: 'Admin panel and reseller portal addresses' },
+    domain: { t: 'Domain & Cloudflare', d: 'Cloudflare token and changing the site domain' },
     notifications: { t: 'Notifications', d: 'Broadcast to site, bot and email' },
     monitoring: { t: 'Monitoring', d: 'Service health, server resources and backups' },
     sync: { t: 'Service sync', d: 'Automatic panel sync interval' },
@@ -138,7 +140,7 @@ const HUB_COLOR = {
   transactions: '#11AB53', sms_log: '#1464BA', accounting: '#11AB53', cards: '#11AB53',
   apps: '#0891B2', plans: '#1464BA', deleted: 'var(--c-danger)', notifications: '#7C3AED',
   tickets: '#7C3AED', ticket_topics: '#7C3AED', crm: '#0891B2', analytics: '#11AB53',
-  monitoring: '#0891B2', sync: '#1464BA', display: '#64748B', docs: '#64748B', agency: '#7C3AED', paths: '#D97706',
+  monitoring: '#0891B2', sync: '#1464BA', display: '#64748B', docs: '#64748B', agency: '#7C3AED', paths: '#D97706', domain: '#0891B2',
 }
 
 // the mobile index of every admin page that isn't a bottom-nav tab — built
@@ -147,7 +149,7 @@ const HUB_COLOR = {
 // sub-page) and the General settings sections are mobile-only extras.
 // [route, text-key, permission, desktop-icon | null]
 const BOTTOM_TABS = new Set(CASPIAN_BOTNAV.map(([to]) => to))
-const HUB_TEXT = { panel_link: 'panel', email_settings: 'email' }   // desktop i18n key → HUB text key
+const HUB_TEXT = { panel_link: 'panel', email_settings: 'email', domain_cf: 'domain' }   // desktop i18n key → HUB text key
 const HUB_EXTRA = { nav_group_users: [['/users/deleted', 'deleted', 'users.view', null]] }
 const SETTINGS_SECTIONS = ['g_config', [
   ['/settings/sms-devices', 'sms_devices', 'settings.manage', null],

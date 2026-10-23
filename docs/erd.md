@@ -681,6 +681,24 @@ erDiagram
         datetime last_success_at
         text last_error
     }
+    domain_config {
+        bigint id PK "single row"
+        text cloudflare_token "enc, write-only"
+        json last_test
+        int transition_days
+    }
+    domain_change {
+        bigint id PK
+        string old_domain
+        string new_domain
+        bool include_www
+        string mode "cloudflare | manual"
+        string zone_name
+        string status "draft | applying | transition | done | rolled_back | cancelled"
+        json steps "state per step"
+        json checklist
+        datetime old_until
+    }
     telegram_config {
         bigint id PK
         string bot_type "sales | backup"
@@ -740,6 +758,8 @@ erDiagram
 | `page` | CMS pages (rules, tutorial, FAQ) in fa/en. |
 | `app_release` | Operator tools served from this server (Android SMS app, iPhone Shortcut). |
 | `email_settings` | Outgoing-mail relay (single row), with the last success / error. |
+| `domain_config` | Settings → Domain & Cloudflare (single row): encrypted Cloudflare token, last token test, transition days ([domain.md](domain.md)). |
+| `domain_change` | One run of the domain-change wizard: old → new, DNS mode / zone, status, per-step state and messages, checklist, end of the transition. |
 | `telegram_config` | The two bots (sales, backup): encrypted token, proxy, backup chat. |
 | `required_channel` | Forced-join channels of the sales bot with member counts. |
 | `telegram_stats` | Periodic bot / channel member snapshot. |

@@ -1,0 +1,529 @@
+"""Domain change wizard + Cloudflare token (docs/domain.md).
+
+Django does what needs no docker: the Cloudflare token (encrypted, write-only),
+DNS records through the Cloudflare API (or the exact records for manual DNS),
+the check that the names resolve to this server (public DNS-over-HTTPS, what
+Let's Encrypt sees), the wizard state, audit log and the Telegram menu button.
+
+Everything that touches certbot, nginx, .env or containers runs on the HOST —
+the web container never gets docker access. Same pattern as Paths: Django
+writes backups/.domain-request.json, the host watcher
+(scripts/domain.sh apply-request, cron every minute) does the work, validates,
+rolls back on failure and writes backups/.domain-status.json (+ the public
+backups/.domain-state.json), which `sync()` folds back into the wizard.
+"""
+from __future__ import annotations
+
+import json
+import os
+import re
+from datetime import timedelta
+from pathlib import Path
+
+import requests
+from django.conf import settings
+from django.db import transaction
+from django.utils import timezone
+
+from apps.common.models import write_audit
+
+from .models import DomainChange, DomainConfig, SiteConfig
+
+S = DomainChange.Status
+ACTIVE = (S.DRAFT, S.APPLYING, S.TRANSITION)
+STEPS = ("domain", "dns", "tls", "apply", "links", "transition")
+CHECKLIST = ("shortcut", "sms_app", "botfather", "brevo", "mail", "notify")
+DNS_EDIT = "#dns_records:edit"
+_LABEL = r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?"
+_DOMAIN_RE = re.compile(rf"^(?:{_LABEL}\.)+[a-z][a-z0-9-]{{0,61}}[a-z0-9]$")
+
+
+class DomainError(Exception):
+    """A refused wizard action; the message is shown to the admin as is."""
+
+
+# ------------------------------------------------------------------ files shared with the host
+def _dir() -> Path:
+    return Path(os.path.dirname(getattr(settings, "UPDATE_SENTINEL_PATH", "/app/backups/.update-requested")))
+
+
+def request_file() -> Path:
+    return _dir() / ".domain-request.json"
+
+
+def status_file() -> Path:
+    return _dir() / ".domain-status.json"
+
+
+def state_file() -> Path:
+    return _dir() / ".domain-state.json"
+
+
+def _read(path: Path):
+    try:
+        return json.loads(path.read_text())
+    except (OSError, ValueError):
+        return None
+
+
+def _write_request(data: dict) -> dict:
+    path = request_file()
+    if path.exists():
+        raise DomainError("another server step is already queued — wait for it to finish")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data))
+    os.replace(tmp, path)
+    return data
+
+
+# ------------------------------------------------------------------ basics
+def current_domain() -> str:
+    host = _read(state_file()) or {}
+    return (host.get("domain") or getattr(settings, "DOMAIN", "") or "").strip().lower()
+
+
+def server_ip() -> str:
+    from apps.adminpanel.views.monitoring import _public_ip
+
+    return (_public_ip() or "").strip()
+
+
+def normalize(raw: str) -> str:
+    d = (raw or "").strip().lower()
+    d = re.sub(r"^[a-z]+://", "", d).split("/")[0].split(":")[0].rstrip(".")
+    if d.startswith("www."):
+        d = d[4:]
+    try:
+        d = d.encode("idna").decode("ascii")
+    except UnicodeError:
+        return ""
+    return d
+
+
+def validate_domain(d: str) -> str | None:
+    if not d or len(d) > 253 or not _DOMAIN_RE.match(d):
+        return "not a valid domain name (example: example.com)"
+    if re.fullmatch(r"[0-9.]+", d):
+        return "an IP address is not a domain"
+    if d == current_domain():
+        return "this is already the site's domain"
+    return None
+
+
+def hosts(change) -> list[str]:
+    return [change.new_domain] + ([f"www.{change.new_domain}"] if change.include_www else [])
+
+
+def records(change) -> list[dict]:
+    """The A records the new domain needs. mail is optional (only for the mail server / its cert)."""
+    ip = change.server_ip or server_ip()
+    out = [{"type": "A", "name": change.new_domain, "content": ip, "proxied": False, "required": True}]
+    if change.include_www:
+        out.append({"type": "A", "name": f"www.{change.new_domain}", "content": ip, "proxied": False, "required": True})
+    out.append({"type": "A", "name": f"mail.{change.new_domain}", "content": ip, "proxied": False, "required": False})
+    return out
+
+
+def _now():
+    return timezone.now().isoformat()
+
+
+def set_step(change, key, state, message="", **detail):
+    change.steps = {**(change.steps or {}), key: {"state": state, "message": message, "at": _now(), **({"detail": detail} if detail else {})}}
+
+
+def _audit(action, by, change=None, **detail):
+    staff = by if hasattr(by, "username") else None
+    label = by if isinstance(by, str) else None
+    log = write_audit(action=f"domain.{action}", staff=staff, target=change, detail=detail)
+    if label and not staff:
+        log.staff_label = label
+        log.save(update_fields=["staff_label"])
+    return log
+
+
+def _by(by) -> str:
+    return getattr(by, "username", None) or str(by or "")
+
+
+# ------------------------------------------------------------------ Cloudflare token
+def save_token(token: str, by) -> DomainConfig:
+    cfg = DomainConfig.load()
+    cfg.cloudflare_token = (token or "").strip()
+    cfg.token_updated_at = timezone.now()
+    cfg.token_updated_by = _by(by)
+    cfg.last_test = {}
+    cfg.save()
+    _audit("token_cleared" if not cfg.cloudflare_token else "token_saved", by)
+    return cfg
+
+
+def test_token(token: str | None, by=None) -> dict:
+    """Verify a token (the one typed in, else the saved / .env one): status,
+    zones it can see and whether it may edit DNS there. Never returns the token."""
+    from apps.ops.cloudflare import Cloudflare, CloudflareError, configured_token
+
+    source = "typed"
+    if not token:
+        token, source = configured_token()
+    res = {"ok": False, "at": _now(), "source": source, "status": "", "zones": [], "permissions": [], "error": ""}
+    if not token:
+        res["error"] = "no Cloudflare token saved (and none in .env)"
+    else:
+        cf = Cloudflare(token)
+        try:
+            v = cf.verify()
+            res["status"] = v.get("status", "")
+            res["expires_on"] = v.get("expires_on")
+            if res["status"] != "active":
+                raise CloudflareError(f"token status is “{res['status'] or 'unknown'}”, not active")
+            perms = set()
+            for z in cf.zones():
+                zp = z.get("permissions")
+                perms.update(zp or [])
+                res["zones"].append({"id": z.get("id"), "name": z.get("name"), "status": z.get("status"),
+                                     "dns_edit": (DNS_EDIT in zp) if isinstance(zp, list) else None})
+            res["permissions"] = sorted(perms)
+            if not res["zones"]:
+                res["error"] = "the token is valid but can't see any zone — give it Zone → Zone → Read and Zone → DNS → Edit"
+            elif not any(z["dns_edit"] is not False for z in res["zones"]):
+                res["error"] = "the token is valid but has no DNS edit permission — add Zone → DNS → Edit for the zone"
+            else:
+                res["ok"] = True
+                if any(z["dns_edit"] is None for z in res["zones"]):
+                    res["note"] = "Cloudflare did not report permissions; DNS edit is confirmed on the first record write"
+        except CloudflareError as exc:
+            res["error"] = str(exc)
+    if source != "typed":
+        cfg = DomainConfig.load()
+        cfg.last_test = res
+        cfg.save(update_fields=["last_test", "updated_at"])
+    if by is not None:
+        _audit("token_tested", by, ok=res["ok"], source=source, error=res["error"], zones=[z["name"] for z in res["zones"]])
+    return res
+
+
+def _client():
+    from apps.ops.cloudflare import Cloudflare, configured_token
+
+    token, _ = configured_token()
+    if not token:
+        raise DomainError("no Cloudflare token — save one above, or choose manual DNS")
+    return Cloudflare(token)
+
+
+# ------------------------------------------------------------------ DNS check (public DoH)
+def resolve(name: str) -> dict:
+    out = []
+    for url in getattr(settings, "DOMAIN_DOH_URLS", []):
+        try:
+            r = requests.get(url, params={"name": name, "type": "A"}, headers={"accept": "application/dns-json"}, timeout=6)
+            body = r.json()
+            ips = [a.get("data") for a in body.get("Answer") or [] if a.get("type") == 1]
+            out.append({"resolver": url.split("/")[2], "ips": ips})
+        except (requests.RequestException, ValueError) as exc:
+            out.append({"resolver": url.split("/")[2], "ips": [], "error": exc.__class__.__name__})
+    return {"name": name, "resolvers": out}
+
+
+def dns_check(change, by=None) -> DomainChange:
+    ip = change.server_ip
+    rows, ok = [], True
+    for rec in records(change):
+        res = resolve(rec["name"])
+        answered = [r for r in res["resolvers"] if "error" not in r]
+        good = bool(answered) and all(ip in r["ips"] for r in answered)
+        seen = sorted({i for r in answered for i in r["ips"]})
+        rows.append({"name": rec["name"], "required": rec["required"], "ok": good, "seen": seen,
+                     "errors": [r["resolver"] for r in res["resolvers"] if "error" in r]})
+        ok = ok and (good or not rec["required"])
+    if ok:
+        set_step(change, "dns", "ok", f"resolves to {ip}", hosts=rows)
+    else:
+        bad = [r["name"] for r in rows if r["required"] and not r["ok"]]
+        set_step(change, "dns", "waiting", f"not yet pointing at {ip}: {', '.join(bad)}", hosts=rows)
+    change.save()
+    if by is not None:
+        _audit("dns_checked", by, change, ok=ok, hosts=rows)
+    return change
+
+
+# ------------------------------------------------------------------ wizard
+def active_change():
+    return DomainChange.objects.filter(status__in=ACTIVE).first()
+
+
+def start(*, domain, include_www=True, mode="cloudflare", zone_id="", by) -> DomainChange:
+    d = normalize(domain)
+    err = validate_domain(d)
+    if err:
+        raise DomainError(err)
+    if active_change():
+        raise DomainError("finish or cancel the current domain change first")
+    if mode not in ("cloudflare", "manual"):
+        raise DomainError("choose a Cloudflare zone or manual DNS")
+    ip = server_ip()
+    if not ip:
+        raise DomainError("this server's public IP is unknown — set SERVER_IP in .env")
+    zone_name = ""
+    if mode == "cloudflare":
+        from apps.ops.cloudflare import CloudflareError
+
+        try:
+            zones = _client().zones()
+        except CloudflareError as exc:
+            raise DomainError(f"Cloudflare: {exc}") from exc
+        fits = [z for z in zones if d == z["name"] or d.endswith("." + z["name"])]
+        zone = next((z for z in fits if z["id"] == zone_id), None) if zone_id else (max(fits, key=lambda z: len(z["name"])) if fits else None)
+        if not zone:
+            raise DomainError(f"{d} is not in a Cloudflare zone this token can manage — pick manual DNS or add the zone")
+        zone_id, zone_name = zone["id"], zone["name"]
+    change = DomainChange(old_domain=current_domain(), new_domain=d, include_www=bool(include_www), mode=mode,
+                          zone_id=zone_id if mode == "cloudflare" else "", zone_name=zone_name, server_ip=ip,
+                          transition_days=DomainConfig.load().transition_days, created_by=_by(by))
+    set_step(change, "domain", "ok", f"{change.old_domain} → {d}")
+    if mode == "manual":
+        set_step(change, "dns", "waiting", "add the records below at your DNS provider, then check")
+    else:
+        set_step(change, "dns", "pending")
+    change.save()
+    _audit("started", by, change, old=change.old_domain, new=d, www=change.include_www, mode=mode, zone=zone_name)
+    return change
+
+
+def _need(change, status=(S.DRAFT,)):
+    if change.status not in status:
+        raise DomainError(f"not possible while the change is “{change.get_status_display()}”")
+
+
+def dns_apply(change, by) -> DomainChange:
+    """Cloudflare: create/update the A records (DNS-only). Manual: nothing to call."""
+    _need(change)
+    if change.mode == "manual":
+        set_step(change, "dns", "waiting", "add the records below at your DNS provider, then check")
+        change.save()
+        _audit("dns_manual", by, change, records=records(change))
+        return change
+    from apps.ops.cloudflare import CloudflareError
+
+    cf, done = _client(), []
+    for rec in records(change):
+        try:
+            res = cf.upsert(change.zone_id, type="A", name=rec["name"], content=rec["content"], proxied=False)
+            done.append({"name": rec["name"], "action": res["action"]})
+        except CloudflareError as exc:
+            msg = f"{rec['name']}: {exc}"
+            if "81053" in str(exc) or "CNAME" in str(exc):
+                msg += " — a CNAME already uses this name; remove it in Cloudflare first"
+            set_step(change, "dns", "failed", msg, records=done)
+            change.save()
+            _audit("dns_failed", by, change, error=msg, records=done)
+            raise DomainError(msg) from exc
+    set_step(change, "dns", "waiting", "records saved in Cloudflare — waiting for them to resolve", records=done)
+    change.save()
+    _audit("dns_records", by, change, zone=change.zone_name, records=done)
+    return dns_check(change)
+
+
+def request_tls(change, by) -> DomainChange:
+    _need(change)
+    if (change.steps.get("dns") or {}).get("state") != "ok":
+        raise DomainError("DNS must resolve to this server first")
+    _write_request({"action": "cert", "id": change.id, "domain": change.new_domain, "www": change.include_www,
+                    "requested_by": _by(by), "at": _now()})
+    set_step(change, "tls", "running", "queued — the server requests the certificate within a minute")
+    change.save()
+    _audit("tls_requested", by, change, domain=change.new_domain)
+    return change
+
+
+def request_apply(change, by) -> DomainChange:
+    _need(change)
+    if (change.steps.get("tls") or {}).get("state") != "ok":
+        raise DomainError("the certificate must be issued first")
+    _write_request({"action": "apply", "id": change.id, "domain": change.new_domain, "www": change.include_www,
+                    "old_domain": change.old_domain, "transition_days": change.transition_days,
+                    "zone": change.zone_name or change.new_domain, "requested_by": _by(by), "at": _now()})
+    change.status = S.APPLYING
+    set_step(change, "apply", "running", "queued — the server switches within a minute")
+    change.save()
+    _audit("apply_requested", by, change, old=change.old_domain, new=change.new_domain, transition_days=change.transition_days)
+    return change
+
+
+def request_retire(change, by) -> DomainChange:
+    _need(change, (S.TRANSITION,))
+    _write_request({"action": "retire", "id": change.id, "domain": change.new_domain, "old_domain": change.old_domain,
+                    "requested_by": _by(by), "at": _now()})
+    set_step(change, "transition", "running", f"queued — removing {change.old_domain}")
+    change.save()
+    _audit("retire_requested", by, change, old=change.old_domain)
+    return change
+
+
+def rollback_target():
+    """The last change that moved the site (live now) → back to its old domain."""
+    return DomainChange.objects.filter(status__in=(S.TRANSITION, S.DONE)).first()
+
+
+def request_rollback(by) -> DomainChange:
+    change = rollback_target()
+    if not change or change.new_domain != current_domain():
+        raise DomainError("nothing to roll back — the site is not on a domain set by this wizard")
+    _write_request({"action": "rollback", "id": change.id, "domain": change.old_domain, "from": change.new_domain,
+                    "www": True, "requested_by": _by(by), "at": _now()})
+    set_step(change, "rollback", "running", f"queued — back to {change.old_domain}")
+    change.save()
+    _audit("rollback_requested", by, change, to=change.old_domain, frm=change.new_domain)
+    return change
+
+
+def cancel(change, by) -> DomainChange:
+    _need(change)
+    change.status = S.CANCELLED
+    change.finished_at = timezone.now()
+    change.save()
+    _audit("cancelled", by, change)
+    return change
+
+
+def set_checklist(change, key, done, by) -> DomainChange:
+    if key not in CHECKLIST:
+        raise DomainError("unknown checklist item")
+    change.checklist = {**(change.checklist or {}), key: bool(done)}
+    change.save(update_fields=["checklist", "updated_at"])
+    _audit("checklist", by, change, item=key, done=bool(done))
+    return change
+
+
+# ------------------------------------------------------------------ after the host switched
+def _menu_button(domain: str, old: str) -> tuple[str, str]:
+    """Point the sales bot's Mini App menu button at the domain. → (state, message)"""
+    from apps.telegram.client import TelegramError
+    from apps.telegram.config import sales_client
+
+    url = getattr(settings, "MINIAPP_URL", "") or ""
+    url = url.replace(old, domain) if old and old in url else (url if domain in url else f"https://{domain}/")
+    client = sales_client()
+    if client is None:
+        return "skipped", "sales bot has no token — nothing to update"
+    try:
+        client.set_chat_menu_button(text="🌐 اپ", url=url)
+    except (TelegramError, requests.RequestException) as exc:
+        return "failed", f"Telegram: {exc}"
+    return "ok", f"menu button → {url}"
+
+
+def _relink(change, domain: str, old: str, by) -> None:
+    """site URL in settings (portal / renew / ticket / bot / shortcut links) + Telegram menu button."""
+    sc = SiteConfig.load()
+    parts = []
+    if (sc.site_domain or "").strip().strip("/").lower() in ("", old):
+        sc.site_domain = domain
+        sc.save(update_fields=["site_domain", "updated_at"])
+        parts.append(f"site URL → https://{domain}")
+    else:
+        parts.append(f"site URL left as {sc.site_domain} (set by hand)")
+    state, msg = _menu_button(domain, old)
+    parts.append(msg)
+    set_step(change, "links", "ok" if state != "failed" else "failed", " · ".join(parts), telegram=state)
+    _audit("links_updated", by, change, site_domain=sc.site_domain, telegram=state, message=msg)
+
+
+def sync() -> DomainChange | None:
+    """Fold the host's last result into the wizard (once per result)."""
+    st = _read(status_file())
+    if not st or not st.get("id"):
+        return None
+    with transaction.atomic():
+        change = DomainChange.objects.select_for_update().filter(pk=st["id"]).first()
+        if not change or (change.steps.get("_host") or {}).get("at") == st.get("at"):
+            return change
+        ok, msg, action = bool(st.get("ok")), st.get("message", ""), st.get("action")
+        change.steps = {**change.steps, "_host": {"at": st.get("at"), "action": action}}
+        who = f"host ({st.get('requested_by') or '?'})"
+        if action == "cert":
+            set_step(change, "tls", "ok" if ok else "failed", msg, **({"expires": st["expires"]} if st.get("expires") else {}))
+        elif action == "apply":
+            if ok:
+                now = timezone.now()
+                change.applied_at = now
+                set_step(change, "apply", "ok", msg)
+                _relink(change, change.new_domain, change.old_domain, who)
+                if change.transition_days:
+                    change.status = S.TRANSITION
+                    change.old_until = now + timedelta(days=change.transition_days)
+                    set_step(change, "transition", "running", f"{change.old_domain} redirects (301) until {change.old_until:%Y-%m-%d}")
+                else:
+                    change.status, change.finished_at = S.DONE, now
+                    set_step(change, "transition", "ok", f"{change.old_domain} removed (no transition period)")
+            else:
+                change.status = S.DRAFT       # the host restored everything — fix and retry, or cancel
+                set_step(change, "apply", "failed", msg)
+        elif action == "retire":
+            if ok:
+                change.status, change.finished_at = S.DONE, timezone.now()
+                set_step(change, "transition", "ok", msg)
+            else:
+                set_step(change, "transition", "failed", msg)
+        elif action == "rollback":
+            if ok:
+                change.status, change.finished_at = S.ROLLED_BACK, timezone.now()
+                set_step(change, "rollback", "ok", msg)
+                _relink(change, change.old_domain, change.new_domain, who)
+            else:
+                set_step(change, "rollback", "failed", msg)
+        change.save()
+        _audit(f"host_{action}_{'ok' if ok else 'failed'}", who, change, message=msg)
+    return change
+
+
+def tick() -> None:
+    """beat: pick up host results; when the transition period is over, remove the old domain."""
+    sync()
+    change = DomainChange.objects.filter(status=S.TRANSITION, old_until__lte=timezone.now()).first()
+    if change and not request_file().exists() and (change.steps.get("transition") or {}).get("state") != "failed":
+        try:
+            request_retire(change, "schedule")
+        except DomainError:
+            pass
+
+
+# ------------------------------------------------------------------ API state
+def serialize(change) -> dict | None:
+    if not change:
+        return None
+    return {
+        "id": change.id, "old_domain": change.old_domain, "new_domain": change.new_domain, "include_www": change.include_www,
+        "mode": change.mode, "zone_id": change.zone_id, "zone_name": change.zone_name, "server_ip": change.server_ip,
+        "status": change.status, "steps": {k: v for k, v in (change.steps or {}).items() if not k.startswith("_")},
+        "checklist": change.checklist or {}, "transition_days": change.transition_days,
+        "old_until": change.old_until, "created_by": change.created_by, "created_at": change.created_at,
+        "applied_at": change.applied_at, "finished_at": change.finished_at, "records": records(change),
+    }
+
+
+def state() -> dict:
+    from apps.ops.cloudflare import configured_token
+
+    sync()
+    cfg = DomainConfig.load()
+    _tok, source = configured_token()
+    change = active_change() or DomainChange.objects.first()
+    rb = rollback_target()
+    cur = current_domain()
+    pending = _read(request_file())
+    return {
+        "current": {"domain": cur, "server_ip": server_ip(), "site_domain": SiteConfig.load().site_domain,
+                    "public_base_url": getattr(settings, "PUBLIC_BASE_URL", ""), "host": _read(state_file())},
+        "cloudflare": {"token_set": bool(cfg.cloudflare_token), "source": source, "updated_at": cfg.token_updated_at,
+                       "updated_by": cfg.token_updated_by, "last_test": cfg.last_test or None},
+        "transition_days": cfg.transition_days,
+        "change": serialize(change),
+        "history": [serialize(c) for c in DomainChange.objects.all()[:10]],
+        "pending": {k: pending.get(k) for k in ("action", "id", "domain", "at", "requested_by")} if pending else None,
+        "last": _read(status_file()),
+        "rollback": {"to": rb.old_domain, "from": rb.new_domain, "id": rb.id} if rb and rb.new_domain == cur else None,
+        "checklist_keys": list(CHECKLIST),
+    }

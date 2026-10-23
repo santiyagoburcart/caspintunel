@@ -414,6 +414,15 @@ class Command(BaseCommand):
             },
         )
         PeriodicTask.objects.update_or_create(
+            name="domain: host results + retire old domain",
+            defaults={
+                "task": "apps.settings_app.tasks.domain_tick_task",
+                "interval": every_5,
+                "kwargs": _json.dumps({}),
+                "enabled": True,
+            },
+        )
+        PeriodicTask.objects.update_or_create(
             name="tickets: auto-close stale",
             defaults={
                 "task": "apps.tickets.tasks.auto_close_tickets_task",

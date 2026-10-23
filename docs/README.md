@@ -7,12 +7,13 @@
 | [deploy.md](deploy.md) | server layout, TLS (auto + manual), DNS/mail, the update button |
 | [architecture.md](architecture.md) | how the system is put together: containers, request flow, Celery schedule, bots, PasarGuard, agency sync, host jobs, backups, deploy, production server |
 | [erd.md](erd.md) | data model — Mermaid ER diagrams per app + every table explained |
-| [flows.md](flows.md) | sequence diagrams: purchase + card-to-card + SMS auto-confirm, renewal, provisioning, agency sync + ledger, bot / Mini App login, deploy |
+| [flows.md](flows.md) | sequence diagrams: purchase + card-to-card + SMS auto-confirm, renewal, provisioning, agency sync + ledger, bot / Mini App login, domain change, deploy |
 | [roadmap.md](roadmap.md) | planned phases: ticketing, agency, CRM, retention, CRM accounting |
 | [api.md](api.md) | API surface overview (full spec at `/api/schema/`, UI at `/api/docs/`) |
 | [operations.md](operations.md) | day-2: backups, monitoring, alerts, user delete/restore, SMS devices & apps, common tasks |
 | [migration.md](migration.md) · [فارسی](migration-fa.md) | moving to a new server: export / import scripts, pre-DNS test, runbook, rollback, server specs |
 | [paths.md](paths.md) | admin-panel and reseller-portal paths: Settings → Paths, host watcher, recovery CLI |
+| [domain.md](domain.md) | Settings → Domain & Cloudflare: encrypted token, domain-change wizard, transition, rollback, recovery CLI |
 | [agency.md](agency.md) | agency panel (reseller admins, PAMP port): switches, data import, golden test |
 | [bots.md](bots.md) | the Telegram sales bot: menus, support message, purchase history, QR photos |
 | [telegram-miniapp.md](telegram-miniapp.md) | Telegram Mini App auto-login |

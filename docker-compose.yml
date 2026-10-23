@@ -170,13 +170,15 @@ services:
   # Self-hosted Postfix + Dovecot (docker-mailserver). Signs DKIM, enforces
   # SPF/DMARC. NOTE: many cloud hosts (incl. Vultr) block OUTBOUND port 25, so
   # external delivery needs a relay — set SMTP_RELAY_* in .env to enable it.
+  # MAIL_DOMAIN (optional) pins the mail identity: the domain wizard sets it to the
+  # old domain on a domain change, so mail keeps working until it is moved by hand.
   mailserver:
     image: ghcr.io/docker-mailserver/docker-mailserver:14.0
-    hostname: mail.${DOMAIN:-aicaspin.ir}
+    hostname: mail.${MAIL_DOMAIN:-${DOMAIN:-aicaspin.ir}}
     restart: unless-stopped
     environment:
-      OVERRIDE_HOSTNAME: mail.${DOMAIN:-aicaspin.ir}
-      POSTMASTER_ADDRESS: postmaster@${DOMAIN:-aicaspin.ir}
+      OVERRIDE_HOSTNAME: mail.${MAIL_DOMAIN:-${DOMAIN:-aicaspin.ir}}
+      POSTMASTER_ADDRESS: postmaster@${MAIL_DOMAIN:-${DOMAIN:-aicaspin.ir}}
       # the app only SENDS mail: no mailboxes / Dovecot. Without this DMS waits
       # 120 s for a mail account, shuts down and restarts forever.
       SMTP_ONLY: 1
@@ -191,8 +193,8 @@ services:
       ONE_DIR: 1
       PERMIT_DOCKER: connected-networks
       SSL_TYPE: manual
-      SSL_CERT_PATH: /etc/letsencrypt/live/${DOMAIN:-aicaspin.ir}/fullchain.pem
-      SSL_KEY_PATH: /etc/letsencrypt/live/${DOMAIN:-aicaspin.ir}/privkey.pem
+      SSL_CERT_PATH: /etc/letsencrypt/live/${MAIL_DOMAIN:-${DOMAIN:-aicaspin.ir}}/fullchain.pem
+      SSL_KEY_PATH: /etc/letsencrypt/live/${MAIL_DOMAIN:-${DOMAIN:-aicaspin.ir}}/privkey.pem
       RELAY_HOST: ${SMTP_RELAY_HOST:-}
       RELAY_PORT: ${SMTP_RELAY_PORT:-587}
       RELAY_USER: ${SMTP_RELAY_USER:-}

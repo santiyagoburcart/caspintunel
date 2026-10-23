@@ -58,7 +58,7 @@ flowchart LR
 
 | Service | Image | Role |
 |---|---|---|
-| `nginx` | own (`nginx/`) | TLS (Let's Encrypt or manual cert), routing below, security headers / two CSPs, `nginx/flags/maintenance` → 503, admin + portal paths from `nginx/paths/active.conf` |
+| `nginx` | own (`nginx/`) | TLS (Let's Encrypt or manual cert), routing below, security headers / two CSPs, `nginx/flags/maintenance` → 503, admin + portal paths from `nginx/paths/active.conf`, the domain set by the wizard from `nginx/domain/active.conf` |
 | `web` | `caspintunel-backend` | gunicorn, 3 workers, Django + DRF (`/api/`, `/admin/`), healthcheck `/api/v1/health/` |
 | `daphne` | `caspintunel-backend` | ASGI for `/ws/` (Channels; Redis channel layer) |
 | `frontend_user` | `caspintunel-frontend-user` | built user SPA (also the Mini App and the reseller portal at `/agency/`) |
@@ -123,7 +123,7 @@ SHA-256 stored).
 | `payments_sms` | `BankCard`, `Payment`, card-to-card receipts, `SmsSource` / `SmsAppDevice` / `SmsMessage`, unit-aware parser, **exact-match auto-confirm + near-miss review** (`matching.py`), `approve_payment` / `reject_payment` |
 | `notifications` | `Notification` / `NotificationDelivery`, `dispatch.notify_user` (site / bot / email, each channel isolated), WebSockets: customer notifications + staff live payments queue |
 | `telegram` | `TelegramClient`, `ensure_bot_user`, forced-channel + phone gate, sales bot (pure `bot/screens.py` + fa/en `bot/texts.py`), backup bot + `run_database_backup`, channel member stats ([bots.md](bots.md)) |
-| `settings_app` | `Setting` (typed KV), `SiteConfig` (branding singleton), `Theme`, `Page` (CMS), `AppRelease` (operator apps), `EmailSettings`, iPhone Shortcut builder, `paths` (admin / portal paths), `seed` |
+| `settings_app` | `Setting` (typed KV), `SiteConfig` (branding singleton), `Theme`, `Page` (CMS), `AppRelease` (operator apps), `EmailSettings`, iPhone Shortcut builder, `paths` (admin / portal paths), `domain` (Cloudflare token + domain wizard: `DomainConfig`, `DomainChange`), `seed` |
 | `ops` | `HealthCheck` / `ResourceStat` / `BackupLog` / `CleanupRun`, health probes, `psutil` sampling, service alerts, **backup retention** (`retention.py`), beat-interval reconcile, Cloudflare `configure_dns` |
 | `agency` | **Agency panel** — 1:1 port of PAMP v1.5.3: `PanelAdmin` (reseller admins), `AdminLimit`, `UserTrafficSnapshot`, `SyncLog`, `AdminGroup`; sync + deleted-user tracking + enforcement; reseller portal (`ResellerSession`); accounting (`AdminPrice`, `LedgerEntry`, reports) ([agency.md](agency.md)) |
 | `tickets` | **support tickets** — `TicketTopic` (+ staff topic scopes), `Ticket`, `TicketMessage`, `TicketAttachment`, `TicketEvent`; rules in `services.py` (active-service gate, open limit, reopen window, auto-close), notifications in `notify.py`, staff Telegram linking (`staff_link.py`), user API `/api/v1/tickets/`, staff API `/api/v1/admin/tickets/`, WebSocket `/ws/admin/tickets/` |
@@ -151,6 +151,7 @@ setting is saved (`apps/ops/schedule.py`).
 | ops: prune old backups | `ops.tasks.prune_backups_task` → `retention.run_cleanup` | 60 min |
 | crm: inactivity detection + stages | `crm.tasks.crm_detect_task` (inactivity cases, auto-close on reconnect, optional friendly message, win-back queue + auto won-back, stage refresh) | 60 min |
 | tickets: auto-close stale | `tickets.tasks.auto_close_tickets_task` (awaiting the customer for `tickets_auto_close_days`) | 60 min |
+| domain: host results + retire old domain | `settings_app.tasks.domain_tick_task` (folds in the host's result; asks the host to remove the old domain when the transition is over) | 5 min |
 
 On-demand tasks: `fulfill_order`, `provision_service_task`, `renew_service_task`,
 `sync_service_task`, `apply_scheduled_renewal_task`,
@@ -374,6 +375,18 @@ ledger calculation changes; `accounting.view` + `crm.view`, the support tab
   (credited to the first replier), resolved + average resolution, reopened;
   per topic — opened, closed, first response.
 
+## Domain & Cloudflare
+
+Settings → Domain & Cloudflare (super admins; [domain.md](domain.md)). The Cloudflare token is stored encrypted
+and never returned (`.env` fallback); **Test** shows its zones and whether it may edit DNS. The wizard
+(`settings_app/domain.py`, `DomainChange.steps`): new domain → A records via the Cloudflare API (or manual) →
+public DoH check → certificate → apply → transition (old domain 301 for `transition_days`) → checklist; rollback
+to the previous domain. The web container never touches docker: it writes `backups/.domain-request.json`; the
+host's `scripts/domain.sh` (cron) runs certbot, renders `nginx/domain/active.conf`, edits `.env`, recreates the
+app containers (web/daphne rolling), verifies through nginx over TLS and restores everything on failure; its
+`.domain-status.json` is folded back into the wizard, which then updates `site_config.site_domain` and the
+bot's Mini App menu button. `MAIL_DOMAIN` keeps the mail server on the old identity.
+
 ## Frontends
 
 React 18 + Vite + Tailwind. Themes from `/api/v1/theme/` (Caspian light/dark —
@@ -421,6 +434,7 @@ Inter, JetBrains Mono) and every asset bundled, no CDN.
 | Schedule | Job |
 |---|---|
 | every minute | `scripts/paths.sh apply-request` — applies an admin/portal path change requested from the panel (nginx -t, reload, verify, rollback) |
+| every minute | `scripts/domain.sh apply-request` — domain wizard: certificate, switch (nginx, .env, rolling restart, verify over TLS, rollback), retire, rollback ([domain.md](domain.md)) |
 | every 2 min | `scripts/watch-update.sh --prod` — runs `update.sh` when the panel's **Update** button left a sentinel |
 | acme.sh / certbot timers | TLS renewal |
 

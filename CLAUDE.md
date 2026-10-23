@@ -172,6 +172,12 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
 - nginx routing for both lives in the generated `nginx/paths/active.conf` (template + `render-paths.sh`); changes go
   through `scripts/paths.sh` (nginx -t, reload, verify, rollback). Never edit active.conf by hand.
 
+## Domain (docs/domain.md)
+- The site domain changes only through the wizard / `scripts/domain.sh` (certificate check, nginx -t, .env, rolling
+  restart, verify over TLS, rollback). Never edit `nginx/domain/active.conf` or the domain keys of `.env` by hand while a
+  change is in progress; recovery: `./scripts/domain.sh show | rollback`. Test only with `scripts/test-domain.sh`.
+- The Cloudflare token is write-only (encrypted `DomainConfig.cloudflare_token`, never in an API response or log).
+
 ## Server migration (docs/migration.md)
 - `scripts/migrate-export.sh [--final|--resume]` (old server) → encrypted archive + manifest;
   `scripts/migrate-import.sh ARCHIVE | --start-workers | --status` (new server); `scripts/migrate-check.sh IP`

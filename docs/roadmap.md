@@ -14,6 +14,7 @@ desktop + 390 px) and **must update [architecture.md](architecture.md),
 | 3 | CRM — customer 360, inactivity + reasons — **done (v1.19.0)** | 1–2 |
 | 4 | Retention — warnings, win-back queue — **done (v1.20.0)** | 3 |
 | 5 | CRM accounting — LTV, renewal / churn reports — **done (v1.21.0)** | 3, 4 |
+| B | Domain & Cloudflare — encrypted token, safe domain-change wizard, rollback — **done (v1.22.0)** | — |
 
 ## Phases 1–2 — Ticketing
 
@@ -124,6 +125,13 @@ retention reports. Original plan:
   discount code, contact), assignment to staff, outcome tracking (renewed /
   declined + reason / no answer).
 - Measured: renewal rate after a warning, win-back success rate.
+
+## Phase B — Domain & Cloudflare
+
+**Done in v1.22.0** ([domain.md](domain.md)): Cloudflare token stored encrypted in the panel (test shows zones and DNS
+permission); domain-change wizard — DNS via Cloudflare or manual, DoH check, certificate via the host watcher, apply
+(nginx, .env, rolling restart, verify, automatic rollback), old domain 301 for a transition period, manual checklist,
+one-click rollback, recovery CLI `./scripts/domain.sh`.
 
 ## Phase 5 — CRM accounting
 

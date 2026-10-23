@@ -440,7 +440,51 @@ sequenceDiagram
     API-->>A: file (UTF-8 BOM CSV / RTL Excel in fa)
 ```
 
-## 13. Deploy (`./update.sh`)
+## 13. Domain change (Settings → Domain & Cloudflare)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor A as Super admin
+    participant UI as /panel/settings/domain
+    participant API as web (settings_app/domain.py)
+    participant CF as Cloudflare API
+    participant DNS as Public DoH resolvers
+    participant H as Host (scripts/domain.sh, cron 1 min)
+    participant N as nginx
+    participant C as certbot
+
+    A->>UI: new domain (+ www), zone or manual DNS
+    UI->>API: POST domain/start/
+    API->>CF: A @ / www / mail → server IP (DNS-only)
+    UI->>API: Check DNS
+    API->>DNS: name → A ? (must be this IP)
+    UI->>API: Request certificate
+    API->>H: backups/.domain-request.json {cert}
+    H->>C: certbot certonly --webroot
+    H-->>API: .domain-status.json (ok + expiry | reason)
+    A->>UI: Switch (confirm)
+    UI->>API: POST domain/<id>/apply/
+    API->>H: request {apply, old, new, transition_days}
+    H->>N: render nginx/domain/active.conf (new + old → 301), nginx -t, reload
+    H->>H: .env DOMAIN / ALLOWED_HOSTS / CSRF / PUBLIC_BASE_URL / MAIL_DOMAIN
+    H->>H: recreate app containers (web + daphne rolling, celery, bots)
+    H->>N: verify https://new/api/v1/health/ = 200, old → 301
+    alt any step fails
+        H->>H: restore .env + nginx config + containers
+        H-->>API: status: rolled back + reason
+    else ok
+        H-->>API: status ok
+        API->>API: site_config.site_domain, Telegram menu button, audit
+    end
+    Note over API: beat (5 min): transition over → request {retire}
+    H->>N: old domain removed, .env without the old names
+    opt rollback (panel or ./scripts/domain.sh rollback)
+        H->>N: same switch back to the previous domain
+    end
+```
+
+## 14. Deploy (`./update.sh`)
 
 ```mermaid
 sequenceDiagram
