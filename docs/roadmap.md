@@ -131,7 +131,7 @@ retention reports. Original plan:
 **Done in v1.22.0** ([domain.md](domain.md)): Cloudflare token stored encrypted in the panel (test shows zones and DNS
 permission); domain-change wizard — DNS via Cloudflare or manual, DoH check, certificate via the host watcher, apply
 (nginx, .env, rolling restart, verify, automatic rollback), old domain 301 for a transition period, manual checklist,
-one-click rollback, recovery CLI `./scripts/domain.sh`.
+one-click rollback, recovery CLI `./scripts/domain.sh`. v1.22.1: mail moves with the domain (DKIM, MX/SPF/DMARC, mail cert, mail server identity, sender); only the PTR stays manual.
 
 ## Phase 5 — CRM accounting
 

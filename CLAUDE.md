@@ -176,6 +176,8 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
 - The site domain changes only through the wizard / `scripts/domain.sh` (certificate check, nginx -t, .env, rolling
   restart, verify over TLS, rollback). Never edit `nginx/domain/active.conf` or the domain keys of `.env` by hand while a
   change is in progress; recovery: `./scripts/domain.sh show | rollback`. Test only with `scripts/test-domain.sh`.
+- Mail moves with the domain (DKIM made by the mail server, MX/SPF/DMARC/DKIM via Cloudflare, `MAIL_DOMAIN`, mail cert);
+  only the PTR is manual. Never copy DKIM private keys out of `mail/config/opendkim`.
 - The Cloudflare token is write-only (encrypted `DomainConfig.cloudflare_token`, never in an API response or log).
 
 ## Server migration (docs/migration.md)

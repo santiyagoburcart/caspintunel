@@ -44,6 +44,8 @@ services:
   frontend_admin:
     image: domaintest-frontend-admin
     ports: !reset []
+  mailserver:
+    ports: !reset []
   cfmock:
     image: caspintunel-backend
     entrypoint: ["python", "/mock/cfmock.py"]
@@ -57,6 +59,7 @@ SECRET_KEY=$(rnd 50)
 ALLOWED_HOSTS=old.test,www.old.test,127.0.0.1,localhost
 CSRF_TRUSTED_ORIGINS=https://old.test,https://www.old.test
 PUBLIC_BASE_URL=https://old.test
+DEFAULT_FROM_EMAIL=no-reply@old.test
 MINIAPP_URL=
 SERVER_IP=$IP
 FIELD_ENCRYPTION_KEY=$(head -c 32 /dev/urandom | base64 | tr '+/' '-_')
@@ -81,8 +84,9 @@ $C up -d db redis cfmock >/dev/null 2>&1
 for i in $(seq 1 60); do $C exec -T db sh -c 'mysqladmin ping -uroot -p"$MYSQL_ROOT_PASSWORD" --silent' >/dev/null 2>&1 && break; sleep 2; done; sleep 3
 $C run --rm --no-deps -T web sh -c 'python manage.py migrate --noinput >/dev/null && python manage.py seed >/dev/null && python manage.py collectstatic --noinput >/dev/null'
 ( cd "$T" && ./scripts/paths.sh ensure >/dev/null ) || true
-$C up -d --no-deps web daphne frontend_user frontend_admin nginx >/dev/null 2>&1
+$C up -d --no-deps web daphne frontend_user frontend_admin nginx mailserver >/dev/null 2>&1
 for i in $(seq 1 60); do [ "$(docker inspect -f '{{.State.Health.Status}}' "$($C ps -q web)" 2>/dev/null)" = healthy ] && break; sleep 2; done
+for i in $(seq 1 60); do [ "$(docker inspect -f '{{.State.Health.Status}}' "$($C ps -q mailserver)" 2>/dev/null)" = healthy ] && break; sleep 3; done
 TOK=$($C exec -T web python manage.py shell -c "
 from apps.accounts.models import Staff
 from apps.adminpanel.tokens import issue_tokens
@@ -94,7 +98,7 @@ API() {  # METHOD PATH [json] → body (Django directly, as nginx would forward 
     -H 'Content-Type: application/json' ${3:+--data "$3"} "http://127.0.0.1:8000/api/v1/admin$2"
 }
 J() { python3 -c "import json,sys;d=json.load(sys.stdin);print(eval(sys.argv[1]))" "$1"; }
-HOSTRUN() { ( cd "$T" && DOMAIN_COMPOSE="$C" DOMAIN_CERTBOT="$T/scripts/domaintest/fake-certbot.sh" DOMAIN_APP_OTHERS="" ./scripts/domain.sh "$@" ); }
+HOSTRUN() { ( cd "$T" && DOMAIN_COMPOSE="$C" DOMAIN_CERTBOT="$T/scripts/domaintest/fake-certbot.sh" DOMAIN_APP_OTHERS="mailserver" ./scripts/domain.sh "$@" ); }
 probe() {  # host url → "code redirect" through nginx, like domain.sh verifies
   local ip; ip="$($C exec -T web getent hosts nginx | awk 'NR==1{print $1}')"
   local port=443; case "$2" in http://*) port=80 ;; esac
@@ -103,7 +107,13 @@ probe() {  # host url → "code redirect" through nginx, like domain.sh verifies
 cert_cn() { local ip; ip="$($C exec -T web getent hosts nginx | awk 'NR==1{print $1}')"
   echo | openssl s_client -connect "$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$($C ps -q nginx)"):443" -servername "$1" 2>/dev/null | openssl x509 -noout -subject 2>/dev/null; }
 cf_records() { $C exec -T web curl -s http://cfmock:8080/records | python3 -c 'import json,sys;print(" ".join(sorted("%s=%s/%s" % (r["name"], r["content"], r["proxied"]) for r in json.load(sys.stdin))))'; }
+mail_host() { $C exec -T mailserver postconf -h myhostname 2>/dev/null | tr -d '\r'; }
+mail_cert() {  # SAN of the certificate the mail server offers on STARTTLS
+  echo QUIT | timeout 20 openssl s_client -connect "$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$($C ps -q mailserver)"):25" \
+    -starttls smtp 2>/dev/null | openssl x509 -noout -ext subjectAltName 2>/dev/null | tr -d ' \n'; }
+mail_recs() { $C exec -T web curl -s http://cfmock:8080/records | python3 -c 'import json,sys;print(" ".join(sorted("%s:%s" % (r["type"], r["name"]) for r in json.load(sys.stdin) if r["type"] != "A")))'; }
 envv() { grep -E "^$1=" "$T/.env" | cut -d= -f2-; }
+check "mail server up as mail.old.test" '[ "$(mail_host)" = mail.old.test ]'
 check "stack serves https://old.test (TLS + health)" '[ "$(probe old.test https://old.test/api/v1/health/)" = "200 " ]'
 check "super admin token works" '[ "$(API GET /domain/ | J "d[\"current\"][\"domain\"]")" = old.test ]'
 
@@ -128,6 +138,11 @@ API POST "/domain/$CID/tls/" >/dev/null
 check "request file written for the host" '[ "$(J "d[\"action\"]" < "$T/backups/.domain-request.json")" = cert ]'
 HOSTRUN apply-request
 check "certificate covers new.test + www" 'openssl x509 -in "$FAKE_LE/live/new.test/fullchain.pem" -noout -ext subjectAltName | grep -q "DNS:www.new.test"'
+check "certificate covers mail.new.test too" 'openssl x509 -in "$FAKE_LE/live/new.test/fullchain.pem" -noout -ext subjectAltName | grep -q "DNS:mail.new.test"'
+check "DKIM key made by the mail server (selector mail, in its KeyTable)" '$C exec -T mailserver test -s /tmp/docker-mailserver/opendkim/keys/new.test/mail.private && $C exec -T mailserver grep -q "mail._domainkey.new.test" /tmp/docker-mailserver/opendkim/KeyTable && grep -q "v=DKIM1" "$T/backups/.domain-dkim.json"'
+R=$(API GET /domain/)
+check "mail records published in Cloudflare: MX, SPF, DMARC, DKIM" '[ "$(mail_recs)" = "MX:new.test TXT:_dmarc.new.test TXT:mail._domainkey.new.test TXT:new.test" ]'
+check "mail step ok (public DNS answers them, DKIM = the server key)" '[ "$(echo "$R" | J "d[\"change\"][\"steps\"][\"mail\"][\"state\"]")" = ok ] && echo "$R" | J "d[\"change\"][\"mail_records\"][3][\"content\"]" | grep -q "$(python3 -c "import json;print(json.load(open(\"$T/backups/.domain-dkim.json\"))[\"txt\"][-40:])")"'
 check "TLS step ok in the wizard" '[ "$(API GET /domain/ | J "d[\"change\"][\"steps\"][\"tls\"][\"state\"]")" = ok ]'
 
 step "4. apply: nginx + .env + rolling restart + verify"
@@ -138,7 +153,9 @@ check "https://new.test answers (health 200) with the new certificate" '[ "$(pro
 check "https://old.test → 301 https://new.test (path + query kept)" '[ "$(probe old.test "https://old.test/store?a=1")" = "301 https://new.test/store?a=1" ]'
 check "http://www.old.test → 301 https://new.test" '[ "$(probe www.old.test http://www.old.test/x)" = "301 https://new.test/x" ]'
 check "POST to the old domain → 308 (method + body kept)" '[ "$(probe old.test https://old.test/api/v1/sms/ POST)" = "308 https://new.test/api/v1/sms/" ]'
-check ".env: DOMAIN, PUBLIC_BASE_URL, hosts + CSRF (old kept), MAIL_DOMAIN pinned" '[ "$(envv DOMAIN)" = new.test ] && [ "$(envv PUBLIC_BASE_URL)" = https://new.test ] && envv ALLOWED_HOSTS | grep -q "old.test.*new.test,www.new.test" && envv CSRF_TRUSTED_ORIGINS | grep -q "https://new.test,https://www.new.test" && [ "$(envv MAIL_DOMAIN)" = old.test ]'
+check ".env: DOMAIN, PUBLIC_BASE_URL, hosts + CSRF (old kept)" '[ "$(envv DOMAIN)" = new.test ] && [ "$(envv PUBLIC_BASE_URL)" = https://new.test ] && envv ALLOWED_HOSTS | grep -q "old.test.*new.test,www.new.test" && envv CSRF_TRUSTED_ORIGINS | grep -q "https://new.test,https://www.new.test"'
+check "mail server moved: mail.new.test, STARTTLS cert covers mail.new.test" '[ "$(mail_host)" = mail.new.test ] && mail_cert | grep -q "DNS:mail.new.test"'
+check ".env: MAIL_DOMAIN=new.test, sender no-reply@new.test" '[ "$(envv MAIL_DOMAIN)" = new.test ] && [ "$(envv DEFAULT_FROM_EMAIL)" = no-reply@new.test ]'
 check "web was replaced (rolling) and runs with the new DOMAIN" '[ "$($C ps -q web)" != "$OLDWEB" ] && [ "$($C exec -T web printenv DOMAIN)" = new.test ]'
 HOST=new.test
 R=$(API GET /domain/)
@@ -156,6 +173,7 @@ step "6. one-click rollback (panel) → old.test"
 API POST /domain/rollback/ >/dev/null
 HOSTRUN apply-request
 HOST=old.test
+check "mail back on mail.old.test, MAIL_DOMAIN=old.test" '[ "$(mail_host)" = mail.old.test ] && [ "$(envv MAIL_DOMAIN)" = old.test ]'
 check "back on https://old.test, .env DOMAIN=old.test" '[ "$(probe old.test https://old.test/api/v1/health/)" = "200 " ] && [ "$(envv DOMAIN)" = old.test ]'
 R=$(API GET /domain/)
 check "wizard: rolled back, site URL old.test" '[ "$(echo "$R" | J "\" \".join([d[\"change\"][\"status\"], d[\"current\"][\"site_domain\"]])")" = "rolled_back old.test" ]'
@@ -169,6 +187,7 @@ FAKE_CERT_BADKEY=1 HOSTRUN apply-request >/dev/null 2>&1 || true      # cert ok,
 API POST "/domain/$BID/apply/" >/dev/null
 check "apply-request reports failure" '! HOSTRUN apply-request >/dev/null 2>&1'
 check "status says rolled back with the real reason" 'grep -q "rolled back to old.test: nginx -t rejected" "$T/backups/.domain-status.json"'
+check "mail server restored to mail.old.test" '[ "$(mail_host)" = mail.old.test ]'
 check "site still on old.test, .env unchanged" '[ "$(probe old.test https://old.test/api/v1/health/)" = "200 " ] && [ "$(envv DOMAIN)" = old.test ] && ! envv ALLOWED_HOSTS | grep -q bad.test'
 R=$(API GET /domain/)
 check "wizard: back to draft, apply failed with the reason" '[ "$(echo "$R" | J "\" \".join([d[\"change\"][\"status\"], d[\"change\"][\"steps\"][\"apply\"][\"state\"]])")" = "draft failed" ]'

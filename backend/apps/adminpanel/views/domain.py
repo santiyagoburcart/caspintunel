@@ -5,7 +5,7 @@ POST domain/token/        {token}    save the Cloudflare token (encrypted, write
 POST domain/token/test/   {token?}   verify a typed token, else the saved / .env one
 POST domain/settings/     {transition_days}
 POST domain/start/        {domain, include_www, mode: cloudflare|manual, zone_id}
-POST domain/<id>/<step>/  dns | dns-check | tls | apply | retire | cancel | checklist {key, done}
+POST domain/<id>/<step>/  dns | dns-check | tls | mail | mail-check | apply | retire | cancel | checklist {key, done}
 POST domain/rollback/                back to the previous domain
 """
 from rest_framework.response import Response
@@ -28,6 +28,7 @@ class _Super(AdminAPIView):
             raise PermissionDenied("only a super admin can change the domain")
 
     DONE = {"dns_apply": ("DNS records saved", "رکوردهای DNS ذخیره شد"), "dns_check": ("DNS checked", "DNS بررسی شد"),
+            "mail_publish": ("Mail records saved", "رکوردهای ایمیل ذخیره شد"), "mail_check": ("Mail DNS checked", "DNS ایمیل بررسی شد"),
             "request_tls": ("Certificate requested — the server handles it within a minute", "درخواست گواهی ثبت شد — تا یک دقیقه انجام می‌شود"),
             "request_apply": ("Switch queued — the server applies it within a minute", "انتقال در صف است — تا یک دقیقه اعمال می‌شود"),
             "request_retire": ("Removal of the old domain queued", "حذف دامنهٔ قبلی در صف است"),
@@ -92,7 +93,7 @@ class DomainRollbackView(_Super):
 
 
 class DomainStepView(_Super):
-    ACTIONS = {"dns": D.dns_apply, "dns-check": D.dns_check, "tls": D.request_tls, "apply": D.request_apply,
+    ACTIONS = {"dns": D.dns_apply, "dns-check": D.dns_check, "mail": D.mail_publish, "mail-check": D.mail_check, "tls": D.request_tls, "apply": D.request_apply,
                "retire": D.request_retire, "cancel": D.cancel}
 
     def post(self, request, pk, step):

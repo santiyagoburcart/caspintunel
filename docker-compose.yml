@@ -170,8 +170,8 @@ services:
   # Self-hosted Postfix + Dovecot (docker-mailserver). Signs DKIM, enforces
   # SPF/DMARC. NOTE: many cloud hosts (incl. Vultr) block OUTBOUND port 25, so
   # external delivery needs a relay — set SMTP_RELAY_* in .env to enable it.
-  # MAIL_DOMAIN (optional) pins the mail identity: the domain wizard sets it to the
-  # old domain on a domain change, so mail keeps working until it is moved by hand.
+  # MAIL_DOMAIN (optional, default DOMAIN): the mail identity. The domain wizard
+  # sets it to the new domain on a domain change (docs/domain.md).
   mailserver:
     image: ghcr.io/docker-mailserver/docker-mailserver:14.0
     hostname: mail.${MAIL_DOMAIN:-${DOMAIN:-aicaspin.ir}}

@@ -21,7 +21,9 @@ SDIR="$ROOT/.domain-state"; STATE="$SDIR/state.json"            # git-ignored, r
 REQ="$ROOT/backups/.domain-request.json"; STATUS="$ROOT/backups/.domain-status.json"
 PUB="$ROOT/backups/.domain-state.json"                          # what the panel shows (no secrets)
 LE="$ROOT/nginx/letsencrypt"
-OTHERS="${DOMAIN_APP_OTHERS:-celery_worker celery_beat bot_sales bot_backup}"
+OTHERS="${DOMAIN_APP_OTHERS-celery_worker celery_beat bot_sales bot_backup mailserver}"
+DKIM="$ROOT/backups/.domain-dkim.json"                          # public DKIM record of the new domain (for DNS)
+MAIL=0                                                          # 1: the cert must cover mail.<domain> (mail moves with the domain)
 INCLUDE='include /etc/nginx/domain/active.conf;'
 
 say() { printf '==> %s\n' "$*"; }
@@ -63,13 +65,14 @@ sget() { [ -f "$STATE" ] && jget "$STATE" "$1" || true; }
 
 # ---------------------------------------------------------------- certificates
 cert_dir() { echo "$LE/live/$1"; }
-cert_check() {  # domain www → "" when fine, else the reason
-  local d="$1" w="${2:-0}" c; c="$(cert_dir "$d")/fullchain.pem"
+cert_check() {  # domain www [mail] → "" when fine, else the reason
+  local d="$1" w="${2:-0}" m="${3:-0}" c; c="$(cert_dir "$d")/fullchain.pem"
   [ -s "$c" ] && [ -s "$(cert_dir "$d")/privkey.pem" ] || { echo "no certificate for $d (nginx/letsencrypt/live/$d)"; return; }
   openssl x509 -in "$c" -noout -checkend 3600 >/dev/null 2>&1 || { echo "the certificate for $d has expired"; return; }
   local san; san="$(openssl x509 -in "$c" -noout -ext subjectAltName 2>/dev/null | tr ',' '\n' | sed 's/.*DNS://' | tr -d ' ')"
   printf '%s\n' "$san" | grep -qx "$d" || { echo "the certificate does not cover $d"; return; }
   if [ "$w" = 1 ]; then printf '%s\n' "$san" | grep -qx "www.$d" || { echo "the certificate does not cover www.$d"; return; }; fi
+  if [ "$m" = 1 ]; then printf '%s\n' "$san" | grep -qx "mail.$d" || { echo "the certificate does not cover mail.$d"; return; }; fi
 }
 cert_expiry() { openssl x509 -in "$(cert_dir "$1")/fullchain.pem" -noout -enddate 2>/dev/null | cut -d= -f2; }
 manual_cert() { [ -s "$ROOT/nginx/manual-certs/fullchain.pem" ]; }
@@ -79,7 +82,7 @@ issue() {  # domain www
   manual_cert && { write_status 0 "a manually uploaded certificate is active (nginx/manual-certs) — remove it first"; return 1; }
   doms=(-d "$d"); [ "$w" = 1 ] && doms+=(-d "www.$d")
   ip="$(envget SERVER_IP)"
-  if [ -n "$ip" ] && dig +short A "mail.$d" @1.1.1.1 2>/dev/null | grep -qx "$ip"; then doms+=(-d "mail.$d"); fi
+  if [ "$MAIL" = 1 ] || { [ -n "$ip" ] && dig +short A "mail.$d" @1.1.1.1 2>/dev/null | grep -qx "$ip"; }; then doms+=(-d "mail.$d"); fi
   say "certificate: ${doms[*]}"
   if [ -n "${DOMAIN_CERTBOT:-}" ]; then
     out="$($DOMAIN_CERTBOT "$d" "${doms[@]}" 2>&1)" || { why="$(printf '%s' "$out" | tail -3 | tr '\n' ' ')"; write_status 0 "certificate not issued: $why"; return 1; }
@@ -91,10 +94,39 @@ issue() {  # domain www
       why="$(printf '%s\n' "$out" | grep -E 'Detail:|Error|error:' | tail -2 | tr '\n' ' ')"
       write_status 0 "certificate not issued: ${why:-$(printf '%s' "$out" | tail -2 | tr '\n' ' ')}"; return 1; }
   fi
-  why="$(cert_check "$d" "$w")"
+  why="$(cert_check "$d" "$w" "$MAIL")"
   [ -z "$why" ] || { write_status 0 "certificate check failed: $why"; return 1; }
-  write_status 1 "certificate issued for ${doms[*]//-d /}" "$(cert_expiry "$d")"
+  if [ "$MAIL" = 1 ]; then
+    why="$(dkim_gen "$d")" || { write_status 0 "certificate ok, but no DKIM key: $why"; return 1; }
+  fi
+  write_status 1 "certificate issued for ${doms[*]//-d /}$([ "$MAIL" = 1 ] && echo " · DKIM key ready (selector mail)")" "$(cert_expiry "$d")"
   say "certificate ok (expires $(cert_expiry "$d"))"
+}
+
+# ---------------------------------------------------------------- mail server (DKIM + identity)
+dkim_gen() {  # domain → DKIM key made by the mail server (kept if it exists), public record → $DKIM
+  local d="$1" txt k="/tmp/docker-mailserver/opendkim/keys/$1"
+  [ -n "$($COMPOSE ps -q mailserver 2>/dev/null)" ] || { echo "the mail server is not running"; return 1; }
+  if ! $COMPOSE exec -T mailserver test -s "$k/mail.private" 2>/dev/null; then
+    $COMPOSE exec -T mailserver setup config dkim keysize 2048 domain "$d" >/dev/null 2>&1 || { echo "the mail server could not create a DKIM key"; return 1; }
+  fi
+  txt="$($COMPOSE exec -T mailserver cat "$k/mail.txt" 2>/dev/null)" || { echo "no DKIM record for $d"; return 1; }
+  printf '%s' "$txt" | python3 -c '
+import json, re, sys
+txt = "".join(re.findall(r"\"([^\"]*)\"", sys.stdin.read())).strip()
+if "p=" not in txt:
+    sys.exit("DKIM record unreadable")
+json.dump({"domain": sys.argv[2], "selector": "mail", "txt": txt}, open(sys.argv[1], "w"))' "$DKIM" "$d" || { echo "DKIM record unreadable"; return 1; }
+  say "DKIM: mail._domainkey.$d"
+}
+verify_mail() {  # domain — the recreated mail server is healthy and answers as mail.<domain>
+  case " $OTHERS " in *" mailserver "*) ;; *) return 0 ;; esac
+  local cid i h; cid="$($COMPOSE ps -q mailserver 2>/dev/null | head -1)"
+  [ -n "$cid" ] || return 0
+  for i in $(seq 1 60); do [ "$(docker inspect -f '{{.State.Health.Status}}' "$cid" 2>/dev/null)" = healthy ] && break; sleep 3; done
+  [ "$(docker inspect -f '{{.State.Health.Status}}' "$cid" 2>/dev/null)" = healthy ] || { echo "the mail server did not become healthy"; return 1; }
+  h="$($COMPOSE exec -T mailserver postconf -h myhostname 2>/dev/null | tr -d '\r')"
+  [ "$h" = "mail.$1" ] || { echo "the mail server answers as '$h', not mail.$1"; return 1; }
 }
 
 # ---------------------------------------------------------------- nginx
@@ -195,8 +227,10 @@ if mini and old and old in mini:
     upd["MINIAPP_URL"] = mini.replace(old, new)
 if zone:
     upd["CLOUDFLARE_ZONE"] = zone
-if not env.get("MAIL_DOMAIN") and old:
-    upd["MAIL_DOMAIN"] = old          # the mail server keeps its identity; moving mail is a manual step
+upd["MAIL_DOMAIN"] = new               # mail moves with the domain (hostname mail.<new>, its cert, DKIM)
+frm = env.get("DEFAULT_FROM_EMAIL", "")
+if old and frm.endswith("@" + old):
+    upd["DEFAULT_FROM_EMAIL"] = frm[: -len(old)] + new
 out, seen = [], set()
 for l in lines:
     k, sep, _ = l.partition("=")
@@ -266,7 +300,7 @@ switch() {  # new new_www keep_old(redirecting, or "") old_until drop… ; state
   local cur cur_www why
   cur="$(envget DOMAIN)"; cur_www="$(sget www)"; cur_www="${cur_www:-1}"
   manual_cert && { write_status 0 "a manually uploaded certificate is active (nginx/manual-certs) — remove it first"; return 1; }
-  why="$(cert_check "$n" "$nw")"
+  why="$(cert_check "$n" "$nw" "$MAIL")"
   [ -z "$why" ] || { write_status 0 "not switched: $why"; return 1; }
   mkdir -p "$DDIR" "$SDIR"; chmod 700 "$SDIR"
   cp -p "$ENVF" "$SDIR/env.before"; chmod 600 "$SDIR/env.before"
@@ -281,7 +315,7 @@ switch() {  # new new_www keep_old(redirecting, or "") old_until drop… ; state
     why=".env could not be updated"
     if env_switch "$n" "$nw" "$@" && say "app containers (web/daphne rolling, $OTHERS)" && why="$(restart_apps)"; then
       say "verify"
-      if why="$(verify "$n" "$keep")"; then
+      if why="$(verify "$n" "$keep")" && why="$(verify_mail "$n")"; then
         local prev="$cur" pwww="$cur_www"
         [ "$cur" = "$n" ] && { prev="$(sget previous_domain)"; pwww="$(sget previous_www)"; }
         write_state "$n" "$nw" "$keep" "$until" "$prev" "$pwww" "$ID"
@@ -350,7 +384,7 @@ case "${1:-show}" in
     [ -f "$REQ" ] || exit 0
     ACTION="$(jget "$REQ" action)"; ID="$(jget "$REQ" id)"; BY="$(jget "$REQ" requested_by)"
     D="$(jget "$REQ" domain)"; W="$(jget "$REQ" www)"; O="$(jget "$REQ" old_domain)"; DAYS="$(jget "$REQ" transition_days)"
-    ZONE="$(jget "$REQ" zone)"
+    ZONE="$(jget "$REQ" zone)"; MAIL="$(jget "$REQ" mail)"; MAIL="${MAIL:-0}"
     rm -f "$REQ"                                   # one attempt per request, never a loop
     if ! printf '%s' "$D" | grep -qE '^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]$'; then
       write_status 0 "rejected: invalid domain"; die "invalid domain"

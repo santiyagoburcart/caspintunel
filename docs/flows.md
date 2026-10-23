@@ -461,15 +461,18 @@ sequenceDiagram
     API->>DNS: name → A ? (must be this IP)
     UI->>API: Request certificate
     API->>H: backups/.domain-request.json {cert}
-    H->>C: certbot certonly --webroot
-    H-->>API: .domain-status.json (ok + expiry | reason)
+    H->>C: certbot certonly --webroot (@, www, mail)
+    H->>H: mail server: DKIM key for the new domain (selector mail)
+    H-->>API: .domain-status.json (ok + expiry | reason) + DKIM record
+    API->>CF: MX, SPF (ip4), DMARC p=none, DKIM TXT
+    API->>DNS: MX / TXT answered? (apply waits)
     A->>UI: Switch (confirm)
     UI->>API: POST domain/<id>/apply/
     API->>H: request {apply, old, new, transition_days}
     H->>N: render nginx/domain/active.conf (new + old → 301), nginx -t, reload
-    H->>H: .env DOMAIN / ALLOWED_HOSTS / CSRF / PUBLIC_BASE_URL / MAIL_DOMAIN
-    H->>H: recreate app containers (web + daphne rolling, celery, bots)
-    H->>N: verify https://new/api/v1/health/ = 200, old → 301
+    H->>H: .env DOMAIN / ALLOWED_HOSTS / CSRF / PUBLIC_BASE_URL / MAIL_DOMAIN / sender
+    H->>H: recreate app containers (web + daphne rolling, celery, bots, mailserver)
+    H->>N: verify https://new/api/v1/health/ = 200, old → 301, mail server = mail.new
     alt any step fails
         H->>H: restore .env + nginx config + containers
         H-->>API: status: rolled back + reason

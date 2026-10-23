@@ -384,8 +384,11 @@ public DoH check → certificate → apply → transition (old domain 301 for `t
 to the previous domain. The web container never touches docker: it writes `backups/.domain-request.json`; the
 host's `scripts/domain.sh` (cron) runs certbot, renders `nginx/domain/active.conf`, edits `.env`, recreates the
 app containers (web/daphne rolling), verifies through nginx over TLS and restores everything on failure; its
-`.domain-status.json` is folded back into the wizard, which then updates `site_config.site_domain` and the
-bot's Mini App menu button. `MAIL_DOMAIN` keeps the mail server on the old identity.
+`.domain-status.json` is folded back into the wizard, which then updates `site_config.site_domain`, the
+email sender and the bot's Mini App menu button. **Mail moves with the domain**: the certificate covers
+`mail.<new>`, the mail server makes the new domain's DKIM key, the panel publishes MX / SPF / DMARC / DKIM
+(Cloudflare) and waits until public DNS answers, the switch sets `MAIL_DOMAIN` and recreates the mail server.
+Only the PTR (reverse DNS at the hosting provider) stays manual.
 
 ## Frontends
 

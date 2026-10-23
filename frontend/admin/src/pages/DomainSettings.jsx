@@ -25,15 +25,17 @@ const T = {
     wizard: 'تغییر دامنه', new_domain: 'دامنهٔ جدید', www: 'www هم فعال باشد', dns_mode: 'مدیریت DNS',
     manual: 'دستی (پنل DNS دیگر)', pick_zone: 'زون Cloudflare', zone_auto: 'خودکار از روی دامنه', start: 'شروع',
     test_first: 'برای انتخاب زون، اول توکن را آزمایش کنید (یا DNS دستی را انتخاب کنید).',
-    steps: { domain: 'دامنهٔ جدید', dns: 'رکوردهای DNS', tls: 'گواهی TLS', apply: 'اعمال روی سرور', links: 'لینک‌ها و ربات', transition: 'دورهٔ گذار', rollback: 'بازگشت' },
+    steps: { domain: 'دامنهٔ جدید', dns: 'رکوردهای DNS', tls: 'گواهی TLS و کلید DKIM', mail: 'ایمیل (MX، SPF، DKIM، DMARC)', apply: 'اعمال روی سرور', links: 'لینک‌ها و ربات', transition: 'دورهٔ گذار', rollback: 'بازگشت' },
     st: { ok: 'انجام شد', running: 'در حال انجام…', waiting: 'در انتظار', failed: 'ناموفق', pending: 'مانده', skipped: 'رد شد' },
     status: { draft: 'در حال آماده‌سازی', applying: 'در حال اعمال', transition: 'دورهٔ گذار', done: 'تمام', failed: 'ناموفق', rolled_back: 'برگشت داده شد', cancelled: 'لغو شد' },
     create_records: 'ساخت رکوردها در Cloudflare', check_dns: 'بررسی DNS', request_cert: 'درخواست گواهی',
     apply: 'انتقال به دامنهٔ جدید', retire: 'حذف دامنهٔ قبلی همین حالا', cancel: 'لغو',
+    mail_recs: 'رکوردهای ایمیل', mail_hint: 'ایمیل همراه دامنه منتقل می‌شود: سرور ایمیل با نام mail.<دامنهٔ جدید>، گواهی و کلید DKIM خودش. این رکوردها را در پنل DNS بسازید (TXTهای دیگر را دست نزنید)، سپس «بررسی DNS ایمیل».',
+    publish_mail: 'ثبت رکوردهای ایمیل در Cloudflare', check_mail: 'بررسی DNS ایمیل', prio: 'اولویت',
     records: 'رکوردهای لازم', manual_hint: 'این رکوردها را در پنل DNS دامنه بسازید (بدون پروکسی)، سپس «بررسی DNS» را بزنید.',
     rec_type: 'نوع', rec_name: 'نام', rec_value: 'مقدار', optional: 'اختیاری (ایمیل)', resolves: 'پاسخ DNS عمومی',
     queued: 'در صف سرور — حداکثر تا یک دقیقه انجام می‌شود…', host_last: 'آخرین نتیجهٔ سرور',
-    apply_t: 'انتقال سایت به دامنهٔ جدید', apply_m: 'nginx، ALLOWED_HOSTS، CSRF، آدرس سایت، لینک‌ها و دکمهٔ مینی‌اپ ربات به دامنهٔ جدید منتقل می‌شوند. سرویس‌های برنامه بدون قطعی بازنشانی می‌شوند. در صورت هر خطا همه‌چیز خودکار برمی‌گردد.',
+    apply_t: 'انتقال سایت به دامنهٔ جدید', apply_m: 'nginx، ALLOWED_HOSTS، CSRF، آدرس سایت، لینک‌ها، سرور ایمیل (mail.<دامنهٔ جدید> و فرستنده) و دکمهٔ مینی‌اپ ربات به دامنهٔ جدید منتقل می‌شوند. سرویس‌های برنامه بدون قطعی بازنشانی می‌شوند. در صورت هر خطا همه‌چیز خودکار برمی‌گردد.',
     old_redirects: 'دامنهٔ قبلی با 301 به دامنهٔ جدید هدایت می‌شود تا', retire_t: 'حذف دامنهٔ قبلی', retire_m: 'دامنهٔ قبلی دیگر سرو نمی‌شود و ریدایرکت آن حذف می‌شود.',
     rollback: 'بازگشت به دامنهٔ قبلی', rollback_t: 'بازگشت دامنه', rollback_m: 'سایت دوباره روی دامنهٔ قبلی می‌رود و دامنهٔ فعلی دیگر سرو نمی‌شود. گواهی دامنهٔ قبلی باید معتبر باشد.',
     checklist: 'کارهای دستی بعد از انتقال', history: 'سابقه', cli: 'بازیابی روی سرور: ./scripts/domain.sh show | rollback',
@@ -43,8 +45,7 @@ const T = {
       shortcut: ['آدرس سرور در میان‌بر آیفون', 'میان‌بر را از صفحهٔ «اپ‌ها» دوباره دریافت و نصب کنید (آدرس جدید داخل آن است).', '/apps'],
       sms_app: ['آدرس سرور در اپ پیامک اندروید', 'در اپ SMS Bridge آدرس سرور را به دامنهٔ جدید تغییر دهید.', '/apps'],
       botfather: ['تنظیمات BotFather', 'اگر دامنهٔ ورود (/setdomain) یا لینک مینی‌اپ را در BotFather ثبت کرده‌اید، به دامنهٔ جدید تغییر دهید. دکمهٔ منوی مینی‌اپ خودکار به‌روز شد.', null],
-      brevo: ['دامنهٔ فرستنده در Brevo', 'دامنهٔ جدید را در Brevo تأیید کنید (رکوردهای DKIM/SPF) و سپس فرستندهٔ ایمیل را تغییر دهید.', '/settings/email'],
-      mail: ['سرور ایمیل', 'سرور ایمیل داخلی هنوز با هویت mail.<دامنهٔ قبلی> کار می‌کند (MAIL_DOMAIN در .env). انتقال آن و رکوردهای MX/SPF/DKIM دستی است.', null],
+      ptr: ['Reverse DNS (PTR) در کنسول Hetzner', 'در Hetzner Console → سرور → Networking، reverse DNS آی‌پی {ip} را روی mail.{domain} بگذارید. بقیهٔ کارهای ایمیل (MX، SPF، DKIM، DMARC، گواهی، فرستنده) خودکار انجام شد.', null],
       notify: ['اطلاع به نماینده‌ها و مشتری‌ها', 'آدرس جدید را از طریق اعلان‌ها و ربات اطلاع دهید.', '/notifications'],
     },
   },
@@ -59,15 +60,17 @@ const T = {
     wizard: 'Change the domain', new_domain: 'New domain', www: 'Also serve www', dns_mode: 'DNS',
     manual: 'Manual (another DNS provider)', pick_zone: 'Cloudflare zone', zone_auto: 'automatic from the domain', start: 'Start',
     test_first: 'Test the token first to pick a zone (or choose manual DNS).',
-    steps: { domain: 'New domain', dns: 'DNS records', tls: 'TLS certificate', apply: 'Apply on the server', links: 'Links & bot', transition: 'Transition', rollback: 'Rollback' },
+    steps: { domain: 'New domain', dns: 'DNS records', tls: 'TLS certificate + DKIM key', mail: 'Mail (MX, SPF, DKIM, DMARC)', apply: 'Apply on the server', links: 'Links & bot', transition: 'Transition', rollback: 'Rollback' },
     st: { ok: 'done', running: 'running…', waiting: 'waiting', failed: 'failed', pending: 'to do', skipped: 'skipped' },
     status: { draft: 'preparing', applying: 'applying', transition: 'transition', done: 'done', failed: 'failed', rolled_back: 'rolled back', cancelled: 'cancelled' },
     create_records: 'Create records in Cloudflare', check_dns: 'Check DNS', request_cert: 'Request certificate',
     apply: 'Switch to the new domain', retire: 'Remove the old domain now', cancel: 'Cancel',
+    mail_recs: 'Mail records', mail_hint: 'Mail moves with the domain: the mail server becomes mail.<new domain> with its certificate and its own DKIM key. Create these records at your DNS provider (leave other TXT records alone), then “Check mail DNS”.',
+    publish_mail: 'Publish mail records in Cloudflare', check_mail: 'Check mail DNS', prio: 'priority',
     records: 'Records needed', manual_hint: 'Create these records at your DNS provider (no proxy), then press “Check DNS”.',
     rec_type: 'Type', rec_name: 'Name', rec_value: 'Value', optional: 'optional (mail)', resolves: 'Public DNS answer',
     queued: 'Queued on the server — done within a minute…', host_last: 'Last server result',
-    apply_t: 'Move the site to the new domain', apply_m: 'nginx, ALLOWED_HOSTS, CSRF, the site URL, links and the bot’s Mini App button move to the new domain. App services restart without downtime. On any error everything is restored automatically.',
+    apply_t: 'Move the site to the new domain', apply_m: 'nginx, ALLOWED_HOSTS, CSRF, the site URL, links, the mail server (mail.<new domain> and the sender) and the bot’s Mini App button move to the new domain. App services restart without downtime. On any error everything is restored automatically.',
     old_redirects: 'The old domain redirects (301) to the new one until', retire_t: 'Remove the old domain', retire_m: 'The old domain is no longer served and its redirect is removed.',
     rollback: 'Roll back to the previous domain', rollback_t: 'Roll back the domain', rollback_m: 'The site goes back to the previous domain and the current one is no longer served. The previous domain’s certificate must still be valid.',
     checklist: 'Manual steps after the move', history: 'History', cli: 'Recovery on the server: ./scripts/domain.sh show | rollback',
@@ -77,14 +80,13 @@ const T = {
       shortcut: ['iPhone Shortcut server URL', 'Download and install the Shortcut again from Apps (it carries the new address).', '/apps'],
       sms_app: ['Android SMS app URL', 'In the SMS Bridge app, change the server address to the new domain.', '/apps'],
       botfather: ['BotFather settings', 'If you registered a login domain (/setdomain) or a Mini App link in BotFather, change it. The Mini App menu button was updated automatically.', null],
-      brevo: ['Brevo sender domain', 'Verify the new domain in Brevo (DKIM/SPF records), then change the email sender.', '/settings/email'],
-      mail: ['Mail server', 'The built-in mail server still runs as mail.<old domain> (MAIL_DOMAIN in .env). Moving it and the MX/SPF/DKIM records is manual.', null],
+      ptr: ['Reverse DNS (PTR) in the Hetzner console', 'In Hetzner Console → server → Networking, set the reverse DNS of {ip} to mail.{domain}. Everything else for mail (MX, SPF, DKIM, DMARC, certificate, sender) was done automatically.', null],
       notify: ['Tell resellers and customers', 'Announce the new address through Notifications and the bot.', '/notifications'],
     },
   },
 }
 
-const ORDER = ['domain', 'dns', 'tls', 'apply', 'links', 'transition']
+const ORDER = ['domain', 'dns', 'tls', 'mail', 'apply', 'links', 'transition']
 const TONE = { ok: 'ok', running: 'run', waiting: 'wait', failed: 'bad', pending: 'idle', skipped: 'idle' }
 
 function StepIcon({ state }) {
@@ -149,6 +151,7 @@ export default function DomainSettings() {
   const step = (k) => c?.steps?.[k] || { state: 'pending' }
   const dnsOk = step('dns').state === 'ok'
   const tlsOk = step('tls').state === 'ok'
+  const mailOk = step('mail').state === 'ok'
   const hostBusy = !!st.pending
 
   const runTest = async () => {
@@ -263,6 +266,12 @@ export default function DomainSettings() {
                     <div className="dm-step-b">
                       <div className="dm-step-t"><b>{i + 1}. {s.steps[k]}</b><span className="dm-st">{s.st[x.state] || x.state}</span></div>
                       {x.message && <bdi className="dm-msg">{x.message}</bdi>}
+                      {k === 'mail' && x.detail?.hosts && (
+                        <ul className="dm-res">{x.detail.hosts.map((h) => (
+                          <li key={h.type + h.name} className={h.ok ? 'ok' : 'bad'}>
+                            {h.type} <bdi dir="ltr" className="dm-mono">{h.name}</bdi>{h.ok ? ' ✓' : ''}
+                          </li>))}</ul>
+                      )}
                       {k === 'dns' && x.detail?.hosts && (
                         <ul className="dm-res">{x.detail.hosts.map((h) => (
                           <li key={h.name} className={h.ok ? 'ok' : h.required ? 'bad' : 'idle'}>
@@ -293,6 +302,22 @@ export default function DomainSettings() {
               </div>
             )}
 
+            {c.status === 'draft' && tlsOk && !mailOk && (
+              <div className="dm-records">
+                <b>{s.mail_recs}</b>
+                <p className="dm-hint">{s.mail_hint}</p>
+                <div className="dm-table" role="table">
+                  <div className="dm-tr dm-th" role="row"><span>{s.rec_type}</span><span>{s.rec_name}</span><span>{s.rec_value}</span></div>
+                  {c.mail_records.map((r) => (
+                    <div key={r.type + r.name} className="dm-tr" role="row">
+                      <span>{r.type}</span><span className="dm-cp"><bdi dir="ltr" className="dm-mono">{r.name}</bdi><Copyable text={r.name} /></span>
+                      <span className="dm-cp"><bdi dir="ltr" className="dm-mono dm-long">{r.content}</bdi><Copyable text={r.content} />{r.priority != null && <small>{s.prio} {r.priority}</small>}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="dm-actions">
               {c.status === 'draft' && !dnsOk && c.mode === 'cloudflare' && (
                 <button className="btn-primary text-sm" disabled={!!busy} onClick={() => act('dns', `/admin/domain/${c.id}/dns/`)}>{busy === 'dns' ? <span className="dm-spin" /> : s.create_records}</button>)}
@@ -301,7 +326,11 @@ export default function DomainSettings() {
                   onClick={() => act('check', `/admin/domain/${c.id}/dns-check/`)}>{busy === 'check' ? <span className="dm-spin" /> : s.check_dns}</button>)}
               {c.status === 'draft' && dnsOk && !tlsOk && (
                 <button className="btn-primary text-sm" disabled={!!busy || hostBusy || step('tls').state === 'running'} onClick={() => act('tls', `/admin/domain/${c.id}/tls/`)}>{s.request_cert}</button>)}
-              {c.status === 'draft' && tlsOk && (
+              {c.status === 'draft' && tlsOk && !mailOk && c.mode === 'cloudflare' && (
+                <button className="btn-primary text-sm" disabled={!!busy} onClick={() => act('mail', `/admin/domain/${c.id}/mail/`)}>{busy === 'mail' ? <span className="dm-spin" /> : s.publish_mail}</button>)}
+              {c.status === 'draft' && tlsOk && !mailOk && (
+                <button className={`${c.mode === 'manual' ? 'btn-primary' : 'btn-ghost'} text-sm`} disabled={!!busy} onClick={() => act('mcheck', `/admin/domain/${c.id}/mail-check/`)}>{busy === 'mcheck' ? <span className="dm-spin" /> : s.check_mail}</button>)}
+              {c.status === 'draft' && tlsOk && mailOk && (
                 <button className="btn-primary text-sm" disabled={!!busy || hostBusy}
                   onClick={() => confirm({ tone: 'danger', title: s.apply_t, message: s.apply_m, confirmLabel: s.apply,
                     details: [[s.from_to, c.old_domain], [s.to, c.new_domain], [s.trans, `${c.transition_days} ${s.days}`]],
@@ -331,7 +360,8 @@ export default function DomainSettings() {
             <span className="dm-pill idle">{Object.values(st.change.checklist).filter(Boolean).length}/{st.checklist_keys.length}</span></div>
           <ul className="dm-check">
             {st.checklist_keys.map((k) => {
-              const [t, d, to] = s.ck[k]
+              const [t, d0, to] = s.ck[k]
+              const d = d0.replace('{ip}', st.change.server_ip || st.current.server_ip).replace('{domain}', st.change.new_domain)
               const done = !!st.change.checklist[k]
               return (
                 <li key={k} className={done ? 'done' : ''}>
@@ -441,6 +471,7 @@ const CSS = `
 .dm-tr { display: grid; grid-template-columns: 52px minmax(0, 1.3fr) minmax(0, 1fr); gap: 8px; padding: 8px 12px; align-items: center; border-top: 1px solid var(--c-border); }
 .dm-th { border-top: 0; font-size: 12px; font-weight: 700; color: var(--c-muted-fg); }
 .dm-tr small { color: var(--c-muted-fg); font-size: 11.5px; }
+.dm-long { word-break: break-all; font-size: 11.5px; max-height: 4.6em; overflow: hidden; }
 .dm-cp { display: flex; align-items: center; gap: 6px; min-width: 0; flex-wrap: wrap; }
 .dm-www { display: flex; align-items: center; gap: 10px; font-size: 13.5px; min-height: 44px; }
 .dm-last { font-size: 12.5px; overflow-wrap: anywhere; } .dm-last.ok { color: var(--c-success-fg); } .dm-last.bad { color: var(--c-danger-fg); }

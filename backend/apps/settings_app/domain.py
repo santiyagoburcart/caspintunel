@@ -31,8 +31,9 @@ from .models import DomainChange, DomainConfig, SiteConfig
 
 S = DomainChange.Status
 ACTIVE = (S.DRAFT, S.APPLYING, S.TRANSITION)
-STEPS = ("domain", "dns", "tls", "apply", "links", "transition")
-CHECKLIST = ("shortcut", "sms_app", "botfather", "brevo", "mail", "notify")
+STEPS = ("domain", "dns", "tls", "mail", "apply", "links", "transition")
+CHECKLIST = ("shortcut", "sms_app", "botfather", "ptr", "notify")
+DNS_TYPES = {"A": 1, "MX": 15, "TXT": 16}
 DNS_EDIT = "#dns_records:edit"
 _LABEL = r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?"
 _DOMAIN_RE = re.compile(rf"^(?:{_LABEL}\.)+[a-z][a-z0-9-]{{0,61}}[a-z0-9]$")
@@ -57,6 +58,10 @@ def status_file() -> Path:
 
 def state_file() -> Path:
     return _dir() / ".domain-state.json"
+
+
+def dkim_file() -> Path:
+    return _dir() / ".domain-dkim.json"
 
 
 def _read(path: Path):
@@ -121,7 +126,24 @@ def records(change) -> list[dict]:
     out = [{"type": "A", "name": change.new_domain, "content": ip, "proxied": False, "required": True}]
     if change.include_www:
         out.append({"type": "A", "name": f"www.{change.new_domain}", "content": ip, "proxied": False, "required": True})
-    out.append({"type": "A", "name": f"mail.{change.new_domain}", "content": ip, "proxied": False, "required": False})
+    out.append({"type": "A", "name": f"mail.{change.new_domain}", "content": ip, "proxied": False, "required": True})
+    return out
+
+
+def dkim_of(change) -> dict | None:
+    d = ((change.steps or {}).get("tls") or {}).get("detail", {}).get("dkim")
+    return d if d and d.get("txt") else None
+
+
+def mail_records(change) -> list[dict]:
+    """Mail moves with the domain: MX, SPF (this IP), DMARC (p=none) and the DKIM key the mail server made."""
+    d, ip = change.new_domain, change.server_ip or server_ip()
+    out = [{"type": "MX", "name": d, "content": f"mail.{d}", "priority": 10, "match": None},
+           {"type": "TXT", "name": d, "content": f"v=spf1 ip4:{ip} mx ~all", "match": "v=spf1"},
+           {"type": "TXT", "name": f"_dmarc.{d}", "content": "v=DMARC1; p=none; adkim=r; aspf=r", "match": "v=DMARC1"}]
+    dk = dkim_of(change)
+    out.append({"type": "TXT", "name": f"{(dk or {}).get('selector', 'mail')}._domainkey.{d}",
+                "content": dk["txt"] if dk else "", "match": "v=DKIM1"})
     return out
 
 
@@ -214,13 +236,13 @@ def _client():
 
 
 # ------------------------------------------------------------------ DNS check (public DoH)
-def resolve(name: str) -> dict:
+def resolve(name: str, rtype: str = "A") -> dict:
     out = []
     for url in getattr(settings, "DOMAIN_DOH_URLS", []):
         try:
-            r = requests.get(url, params={"name": name, "type": "A"}, headers={"accept": "application/dns-json"}, timeout=6)
+            r = requests.get(url, params={"name": name, "type": rtype}, headers={"accept": "application/dns-json"}, timeout=6)
             body = r.json()
-            ips = [a.get("data") for a in body.get("Answer") or [] if a.get("type") == 1]
+            ips = [a.get("data") for a in body.get("Answer") or [] if a.get("type") == DNS_TYPES[rtype]]
             out.append({"resolver": url.split("/")[2], "ips": ips})
         except (requests.RequestException, ValueError) as exc:
             out.append({"resolver": url.split("/")[2], "ips": [], "error": exc.__class__.__name__})
@@ -247,6 +269,64 @@ def dns_check(change, by=None) -> DomainChange:
     if by is not None:
         _audit("dns_checked", by, change, ok=ok, hosts=rows)
     return change
+
+
+def _txt(v: str) -> str:
+    """DoH TXT data → plain text ("a" "b" → ab)."""
+    parts = re.findall(r'"((?:[^"\\]|\\.)*)"', v or "")
+    return "".join(parts) if parts else (v or "")
+
+
+def mail_check(change, by=None) -> DomainChange:
+    """MX / SPF / DMARC / DKIM of the new domain as public DNS answers them."""
+    rows, ok = [], True
+    for rec in mail_records(change):
+        res = resolve(rec["name"], rec["type"])
+        answered = [r for r in res["resolvers"] if "error" not in r]
+        if rec["type"] == "MX":
+            seen = sorted({v.split()[-1].rstrip(".") for r in answered for v in r["ips"]})
+            good = bool(answered) and all(any(v.split()[-1].rstrip(".") == rec["content"] for v in r["ips"]) for r in answered)
+        else:
+            vals = [[_txt(v) for v in r["ips"]] for r in answered]
+            seen = sorted({v[:60] for vs in vals for v in vs if v.startswith(rec["match"])})
+            want = rec["content"].replace(" ", "")
+            good = bool(rec["content"]) and bool(answered) and all(any(v.replace(" ", "") == want for v in vs) for vs in vals)
+        rows.append({"name": rec["name"], "type": rec["type"], "ok": good, "seen": seen})
+        ok = ok and good
+    if ok:
+        set_step(change, "mail", "ok", "MX, SPF, DKIM and DMARC published", hosts=rows)
+    else:
+        bad = [f"{r['type']} {r['name']}" for r in rows if not r["ok"]]
+        set_step(change, "mail", "waiting", f"not yet in public DNS: {', '.join(bad)}", hosts=rows)
+    change.save()
+    if by is not None:
+        _audit("mail_checked", by, change, ok=ok, records=rows)
+    return change
+
+
+def mail_publish(change, by) -> DomainChange:
+    """Cloudflare: write MX / SPF / DMARC / DKIM (other TXT records on the same names are left alone). Manual: check."""
+    _need(change)
+    if not dkim_of(change):
+        raise DomainError("the DKIM key comes with the certificate step — request the certificate first")
+    if change.mode == "manual":
+        return mail_check(change, by)
+    from apps.ops.cloudflare import CloudflareError
+
+    cf, done = _client(), []
+    for rec in mail_records(change):
+        try:
+            res = cf.upsert(change.zone_id, type=rec["type"], name=rec["name"], content=rec["content"],
+                            priority=rec.get("priority"), match_prefix=rec["match"])
+            done.append({"name": rec["name"], "type": rec["type"], "action": res["action"]})
+        except CloudflareError as exc:
+            msg = f"{rec['type']} {rec['name']}: {exc}"
+            set_step(change, "mail", "failed", msg, records=done)
+            change.save()
+            _audit("mail_failed", by, change, error=msg, records=done)
+            raise DomainError(msg) from exc
+    _audit("mail_records", by, change, zone=change.zone_name, records=done)
+    return mail_check(change, by)
 
 
 # ------------------------------------------------------------------ wizard
@@ -331,7 +411,7 @@ def request_tls(change, by) -> DomainChange:
     if (change.steps.get("dns") or {}).get("state") != "ok":
         raise DomainError("DNS must resolve to this server first")
     _write_request({"action": "cert", "id": change.id, "domain": change.new_domain, "www": change.include_www,
-                    "requested_by": _by(by), "at": _now()})
+                    "mail": True, "requested_by": _by(by), "at": _now()})
     set_step(change, "tls", "running", "queued — the server requests the certificate within a minute")
     change.save()
     _audit("tls_requested", by, change, domain=change.new_domain)
@@ -342,7 +422,9 @@ def request_apply(change, by) -> DomainChange:
     _need(change)
     if (change.steps.get("tls") or {}).get("state") != "ok":
         raise DomainError("the certificate must be issued first")
-    _write_request({"action": "apply", "id": change.id, "domain": change.new_domain, "www": change.include_www,
+    if (change.steps.get("mail") or {}).get("state") != "ok":
+        raise DomainError("the mail records (MX, SPF, DKIM, DMARC) must be in public DNS first")
+    _write_request({"action": "apply", "id": change.id, "domain": change.new_domain, "www": change.include_www, "mail": True,
                     "old_domain": change.old_domain, "transition_days": change.transition_days,
                     "zone": change.zone_name or change.new_domain, "requested_by": _by(by), "at": _now()})
     change.status = S.APPLYING
@@ -425,6 +507,13 @@ def _relink(change, domain: str, old: str, by) -> None:
         parts.append(f"site URL → https://{domain}")
     else:
         parts.append(f"site URL left as {sc.site_domain} (set by hand)")
+    from .models import EmailSettings
+
+    es = EmailSettings.load()
+    if old and (es.from_email or "").lower().endswith("@" + old):
+        es.from_email = es.from_email[: -len(old)] + domain
+        es.save(update_fields=["from_email", "updated_at"])
+        parts.append(f"sender → {es.from_email}")
     state, msg = _menu_button(domain, old)
     parts.append(msg)
     set_step(change, "links", "ok" if state != "failed" else "failed", " · ".join(parts), telegram=state)
@@ -444,7 +533,18 @@ def sync() -> DomainChange | None:
         change.steps = {**change.steps, "_host": {"at": st.get("at"), "action": action}}
         who = f"host ({st.get('requested_by') or '?'})"
         if action == "cert":
-            set_step(change, "tls", "ok" if ok else "failed", msg, **({"expires": st["expires"]} if st.get("expires") else {}))
+            dk = _read(dkim_file()) if ok else None
+            dk = dk if dk and dk.get("domain") == change.new_domain else None
+            set_step(change, "tls", "ok" if ok else "failed", msg,
+                     **({"expires": st["expires"]} if st.get("expires") else {}), **({"dkim": dk} if dk else {}))
+            if ok and change.status == S.DRAFT:
+                change.save()
+                try:                      # publish the mail records right away (Cloudflare) / check them (manual)
+                    mail_publish(change, f"host ({st.get('requested_by') or '?'})")
+                except DomainError:
+                    pass
+                change.refresh_from_db()
+                change.steps = {**change.steps, "_host": {"at": st.get("at"), "action": action}}
         elif action == "apply":
             if ok:
                 now = timezone.now()
@@ -501,6 +601,7 @@ def serialize(change) -> dict | None:
         "checklist": change.checklist or {}, "transition_days": change.transition_days,
         "old_until": change.old_until, "created_by": change.created_by, "created_at": change.created_at,
         "applied_at": change.applied_at, "finished_at": change.finished_at, "records": records(change),
+        "mail_records": [{k: v for k, v in r.items() if k != "match"} for r in mail_records(change)],
     }
 
 

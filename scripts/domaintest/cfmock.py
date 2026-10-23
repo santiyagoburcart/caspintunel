@@ -27,8 +27,15 @@ class H(BaseHTTPRequestHandler):
         u = urlparse(self.path)
         q = {k: v[0] for k, v in parse_qs(u.query).items()}
         if u.path == "/dns-query":
-            ips = [r["content"] for r in RECORDS.values() if r["name"] == q.get("name") and r["type"] == "A"]
-            return self._send(200, {"Status": 0, "Answer": [{"name": q.get("name"), "type": 1, "data": i} for i in ips]})
+            t = q.get("type", "A")
+            recs = [r for r in RECORDS.values() if r["name"] == q.get("name") and r["type"] == t]
+            def data(r):
+                if t == "MX":
+                    return f"{r.get('priority', 10)} {r['content']}."
+                if t == "TXT":   # quoted 255-byte chunks, like real resolvers
+                    return " ".join(f'"{r["content"][i:i + 255]}"' for i in range(0, len(r["content"]), 255))
+                return r["content"]
+            return self._send(200, {"Status": 0, "Answer": [{"name": q.get("name"), "type": {"A": 1, "MX": 15, "TXT": 16}[t], "data": data(r)} for r in recs]})
         if u.path == "/records":                       # for the test script
             return self._send(200, list(RECORDS.values()))
         if self.headers.get("Authorization") != f"Bearer {TOKEN}":
