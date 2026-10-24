@@ -41,6 +41,9 @@ const T = {
     checklist: 'کارهای دستی بعد از انتقال', history: 'سابقه', cli: 'بازیابی روی سرور: ./scripts/domain.sh show | rollback',
     cancel_t: 'لغو تغییر دامنه', cancel_m: 'رکوردهای DNS ساخته‌شده باقی می‌مانند؛ چیزی روی سرور تغییر نکرده است.',
     from_to: 'از', to: 'به', open_new: 'باز کردن دامنهٔ جدید',
+    details: 'جزئیات', zone: 'دامنه (زون)', can_read: 'خواندن', can_edit: 'ویرایش DNS', yes: 'بله', no: 'خیر', na: 'نامشخص',
+    zone_ck: 'بررسی دسترسی زون', leftover: 'رکورد آزمایشی حذف نشد؛ آن را در Cloudflare دستی پاک کنید:',
+    test_how: 'برای هر زون یک رکورد TXT موقت ساخته و بلافاصله حذف می‌شود تا اجازهٔ ویرایش واقعاً آزموده شود.',
     ck: {
       shortcut: ['آدرس سرور در میان‌بر آیفون', 'میان‌بر را از صفحهٔ «اپ‌ها» دوباره دریافت و نصب کنید (آدرس جدید داخل آن است).', '/apps'],
       sms_app: ['آدرس سرور در اپ پیامک اندروید', 'در اپ SMS Bridge آدرس سرور را به دامنهٔ جدید تغییر دهید.', '/apps'],
@@ -76,6 +79,9 @@ const T = {
     checklist: 'Manual steps after the move', history: 'History', cli: 'Recovery on the server: ./scripts/domain.sh show | rollback',
     cancel_t: 'Cancel the domain change', cancel_m: 'DNS records already created stay; nothing has changed on the server.',
     from_to: 'from', to: 'to', open_new: 'Open the new domain',
+    details: 'details', zone: 'Zone', can_read: 'Can read', can_edit: 'Can edit DNS', yes: 'yes', no: 'no', na: 'unknown',
+    zone_ck: 'Zone access check', leftover: 'The test record could not be deleted; remove it in Cloudflare by hand:',
+    test_how: 'For every zone a temporary TXT record is created and deleted right away, so edit access is really tested.',
     ck: {
       shortcut: ['iPhone Shortcut server URL', 'Download and install the Shortcut again from Apps (it carries the new address).', '/apps'],
       sms_app: ['Android SMS app URL', 'In the SMS Bridge app, change the server address to the new domain.', '/apps'],
@@ -88,6 +94,19 @@ const T = {
 
 const ORDER = ['domain', 'dns', 'tls', 'mail', 'apply', 'links', 'transition']
 const TONE = { ok: 'ok', running: 'run', waiting: 'wait', failed: 'bad', pending: 'idle', skipped: 'idle' }
+
+// a failure in words (fa / en) with the fix, and under it the raw code + message
+function Why({ info, lang, s, small }) {
+  if (!info) return null
+  return (
+    <div className={`dm-why${small ? ' sm' : ''}`} role="alert">
+      <p>{lang === 'en' ? info.en : info.fa}</p>
+      {info.raw && <small className="dm-raw">{s.details}: <bdi dir="ltr">{info.raw}</bdi></small>}
+    </div>
+  )
+}
+
+const yn = (v, s) => (v === true ? <span className="dm-y">✓ {s.yes}</span> : v === false ? <span className="dm-n">✕ {s.no}</span> : <span className="dm-u">? {s.na}</span>)
 
 function StepIcon({ state }) {
   if (state === 'ok') return <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5L20 7" /></svg>
@@ -107,6 +126,7 @@ export default function DomainSettings() {
   const [token, setToken] = useState('')
   const [test, setTest] = useState(null)
   const [busy, setBusy] = useState('')
+  const [actErr, setActErr] = useState(null)
   const [days, setDays] = useState('')
   const [f, setF] = useState({ domain: '', include_www: true, mode: 'cloudflare', zone_id: '' })
   const timer = useRef(null)
@@ -134,9 +154,11 @@ export default function DomainSettings() {
     try {
       const r = await api.post(url, body)
       take(r.data)
+      setActErr(null)
       return r.data
     } catch (e) {
       if (e?.response?.data?.current) take(e.response.data)
+      setActErr(e?.response?.data?.error || null)
       return null
     } finally { setBusy('') }
   }
@@ -153,6 +175,9 @@ export default function DomainSettings() {
   const tlsOk = step('tls').state === 'ok'
   const mailOk = step('mail').state === 'ok'
   const hostBusy = !!st.pending
+  // reasons already shown on a step are not repeated under the actions / in "last server result"
+  const shownRaw = new Set(Object.values(c?.steps || {}).flatMap((x) => [x.detail?.error?.raw, ...(x.detail?.hosts || []).map((h) => h.why?.raw)]).filter(Boolean))
+  const lastWhy = st.last && !st.last.ok && st.last.explain && !shownRaw.has(st.last.explain.raw) ? st.last.explain : null
 
   const runTest = async () => {
     setBusy('test')
@@ -195,19 +220,27 @@ export default function DomainSettings() {
         </div>
         {shownTest && (
           <div className={`dm-test ${shownTest.ok ? 'ok' : 'bad'}`}>
-            <b>{shownTest.ok ? s.token_ok : shownTest.error}</b>
-            {shownTest.note && <span className="dm-hint"> · {shownTest.note}</span>}
-            <span className="dm-hint"> · {jalali(shownTest.at, true, lang)}</span>
+            <div>
+              <b>{shownTest.ok ? s.token_ok : null}</b>
+              {!shownTest.ok && (shownTest.explain ? <Why info={shownTest.explain} lang={lang} s={s} /> : <b>{shownTest.error}</b>)}
+              {shownTest.note && <span className="dm-hint"> · {shownTest.note}</span>}
+              <span className="dm-hint"> · {jalali(shownTest.at, true, lang)}</span>
+            </div>
             {!!shownTest.zones?.length && (
-              <div className="dm-zones">
-                <span className="dm-k">{s.zones}</span>
+              <div className="dm-ztable" role="table" aria-label={s.zones}>
+                <div className="dm-zr dm-zh" role="row"><span role="columnheader">{s.zone}</span><span role="columnheader">{s.can_read}</span><span role="columnheader">{s.can_edit}</span></div>
                 {shownTest.zones.map((z) => (
-                  <span key={z.id} className={`dm-zone ${z.dns_edit === false ? 'bad' : z.dns_edit ? 'ok' : 'idle'}`}>
-                    <bdi dir="ltr">{z.name}</bdi> · {z.dns_edit === false ? s.no_edit : z.dns_edit ? s.dns_edit : s.unknown}
-                  </span>
+                  <div key={z.id} className={`dm-zr ${z.dns_edit === false ? 'bad' : z.dns_edit ? 'ok' : ''}`} role="row">
+                    <bdi dir="ltr" className="dm-mono" role="cell">{z.name}</bdi>
+                    <span role="cell">{yn(z.read, s)}</span>
+                    <span role="cell">{yn(z.dns_edit, s)}</span>
+                    {z.error && !z.dns_edit && <div className="dm-zerr"><Why info={z.error} lang={lang} s={s} small /></div>}
+                    {z.leftover && <div className="dm-zerr dm-hint">{s.leftover} <bdi dir="ltr" className="dm-mono">{z.leftover}</bdi></div>}
+                  </div>
                 ))}
               </div>
             )}
+            {!!shownTest.zones?.length && <p className="dm-hint">{s.test_how}</p>}
             {!!shownTest.permissions?.length && (
               <div className="dm-zones"><span className="dm-k">{s.perms}</span>
                 {shownTest.permissions.map((p) => <code key={p} dir="ltr" className="dm-perm">{p}</code>)}</div>
@@ -265,17 +298,23 @@ export default function DomainSettings() {
                     <span className="dm-ico"><StepIcon state={x.state} /></span>
                     <div className="dm-step-b">
                       <div className="dm-step-t"><b>{i + 1}. {s.steps[k]}</b><span className="dm-st">{s.st[x.state] || x.state}</span></div>
-                      {x.message && <bdi className="dm-msg">{x.message}</bdi>}
+                      {x.message && !(x.detail?.error && !x.detail?.hosts && x.state !== 'ok') && <bdi className="dm-msg">{x.message}</bdi>}
+                      {x.detail?.error && !x.detail?.hosts && x.state !== 'ok' && <Why info={x.detail.error} lang={lang} s={s} />}
+                      {k === 'dns' && x.detail?.zone_check && (
+                        <span className="dm-ck">{s.zone_ck} <bdi dir="ltr">{c.zone_name}</bdi>: {s.can_read} {yn(x.detail.zone_check.read, s)} · {s.can_edit} {yn(x.detail.zone_check.dns_edit, s)}</span>
+                      )}
                       {k === 'mail' && x.detail?.hosts && (
                         <ul className="dm-res">{x.detail.hosts.map((h) => (
                           <li key={h.type + h.name} className={h.ok ? 'ok' : 'bad'}>
                             {h.type} <bdi dir="ltr" className="dm-mono">{h.name}</bdi>{h.ok ? ' ✓' : ''}
+                            {!h.ok && x.state !== 'ok' && <Why info={h.why} lang={lang} s={s} small />}
                           </li>))}</ul>
                       )}
                       {k === 'dns' && x.detail?.hosts && (
                         <ul className="dm-res">{x.detail.hosts.map((h) => (
                           <li key={h.name} className={h.ok ? 'ok' : h.required ? 'bad' : 'idle'}>
                             <bdi dir="ltr" className="dm-mono">{h.name}</bdi> → <bdi dir="ltr" className="dm-mono">{h.seen.join(', ') || '—'}</bdi>{!h.required && <small> ({s.optional})</small>}
+                            {!h.ok && x.state !== 'ok' && <Why info={h.why} lang={lang} s={s} small />}
                           </li>))}</ul>
                       )}
                     </div>
@@ -285,6 +324,7 @@ export default function DomainSettings() {
             </ol>
 
             {hostBusy && <Alert kind="warning">{s.queued}</Alert>}
+            {actErr && !(actErr.raw && shownRaw.has(actErr.raw)) && <Why info={actErr} lang={lang} s={s} />}
 
             {c.status === 'draft' && step('dns').state !== 'ok' && (
               <div className="dm-records">
@@ -348,8 +388,11 @@ export default function DomainSettings() {
               <p className="dm-hint">{s.old_redirects} {jalali(c.old_until, true, lang)} · <a className="dm-link" href={`https://${c.new_domain}/`} target="_blank" rel="noreferrer">{s.open_new}</a></p>)}
           </>
         )}
-        {st.last && !hostBusy && (
+        {st.last && !hostBusy && (st.last.ok || !st.last.explain) && (
           <p className={`dm-last ${st.last.ok ? 'ok' : 'bad'}`}>{s.host_last}: <bdi dir="ltr">{st.last.message}</bdi> · {jalali(st.last.at, true, lang)}</p>
+        )}
+        {lastWhy && !hostBusy && (
+          <div className="dm-lastwhy"><span className="dm-k">{s.host_last} · {jalali(st.last.at, true, lang)}</span><Why info={lastWhy} lang={lang} s={s} /></div>
         )}
       </section>
 
@@ -437,6 +480,18 @@ const CSS = `
 .dm-k { font-size: 12px; font-weight: 700; color: var(--c-muted-fg); }
 .dm-zone { font-size: 12px; padding: 2px 8px; border-radius: 8px; border: 1px solid var(--c-border); }
 .dm-zone.ok { color: var(--c-success-fg); } .dm-zone.bad { color: var(--c-danger-fg); }
+.dm-why { border-radius: 10px; padding: 8px 10px; background: color-mix(in srgb, var(--c-danger) 8%, transparent); border: 1px solid color-mix(in srgb, var(--c-danger) 30%, transparent); display: flex; flex-direction: column; gap: 4px; }
+.dm-why p { margin: 0; font-size: 13px; line-height: 1.8; color: var(--c-danger-fg); font-weight: 600; overflow-wrap: anywhere; }
+.dm-why.sm { padding: 6px 8px; margin-top: 4px; } .dm-why.sm p { font-size: 12px; font-weight: 500; }
+.dm-raw { font-size: 11px; color: var(--c-muted-fg); overflow-wrap: anywhere; line-height: 1.6; }
+.dm-raw bdi { font-family: 'JetBrains Mono', monospace; }
+.dm-lastwhy { display: flex; flex-direction: column; gap: 4px; }
+.dm-ztable { border: 1px solid var(--c-border); border-radius: 12px; overflow: hidden; }
+.dm-zr { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr); gap: 8px; padding: 7px 12px; align-items: center; border-top: 1px solid var(--c-border); font-size: 12.5px; }
+.dm-zr.dm-zh { border-top: 0; font-size: 12px; font-weight: 700; color: var(--c-muted-fg); }
+.dm-zerr { grid-column: 1 / -1; }
+.dm-y { color: var(--c-success-fg); font-weight: 700; white-space: nowrap; } .dm-n { color: var(--c-danger-fg); font-weight: 700; white-space: nowrap; } .dm-u { color: var(--c-muted-fg); white-space: nowrap; }
+.dm-ck { font-size: 12px; color: var(--c-muted-fg); display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 .dm-perm { font-size: 11px; padding: 1px 6px; border-radius: 6px; background: color-mix(in srgb, var(--c-text) 7%, transparent); }
 .dm-days { display: flex; align-items: center; gap: 8px; }
 .dm-days .input { width: 96px; }

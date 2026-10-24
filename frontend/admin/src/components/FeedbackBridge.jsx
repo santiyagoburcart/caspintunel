@@ -18,7 +18,7 @@ export default function FeedbackBridge() {
       const w = WORDS[lang] || WORDS.fa
       if (!ok) { toast.error(failureReason(error, lang)); return }
       if (data && typeof data === 'object' && data.ok === false) {            // 200 with a failed test/action
-        toast.error(data.message || data.error || data.detail || failureReason({ response: { status: 200, data } }, lang)); return
+        toast.error((lang !== 'en' && (data.message_fa || data.error_fa)) || data.message || data.error || data.detail || failureReason({ response: { status: 200, data } }, lang)); return
       }
       const server = data && typeof data === 'object' && typeof data.message === 'string' && data.message.length < 160 ? data.message : null
       // a server message in Persian (message_fa) is shown in fa too

@@ -123,7 +123,20 @@ check "API never returns the token" '! API GET /domain/ | grep -q "$CF_TOKEN"'
 check "stored encrypted in the DB" '$C exec -T db sh -c "mysql -N -uroot -p\"\$MYSQL_ROOT_PASSWORD\" caspintunel -e \"select cloudflare_token from domain_config\"" 2>/dev/null | grep -q "^enc:v1:"'
 R=$(API POST /domain/token/test/ '{}')
 check "test: ok, 3 zones, view-only zone flagged" '[ "$(echo "$R" | J "[d[\"ok\"], len(d[\"zones\"]), [z[\"dns_edit\"] for z in d[\"zones\"]]]")" = "[True, 3, [True, True, False]]" ]'
-check "test with a wrong token: clear error" 'API POST /domain/token/test/ "{\"token\": \"wrong-token-0000000000000000\"}" | J "d[\"error\"]" | grep -q "Invalid access token"'
+check "test: per zone can read / can edit DNS (real write + delete)" '[ "$(echo "$R" | J "[[z[\"read\"], z[\"dns_edit\"]] for z in d[\"zones\"]]")" = "[[True, True], [True, True], [True, False]]" ]'
+check "test: view-only zone says how to fix it (fa + raw code)" '[ "$(echo "$R" | J "d[\"zones\"][2][\"error\"][\"key\"] + \" \" + d[\"zones\"][2][\"error\"][\"raw\"]")" = "cf_perm 10000: Authentication error" ] && echo "$R" | J "d[\"zones\"][2][\"error\"][\"fa\"]" | grep -q "Zone Resources شامل view-only.test"'
+check "test: temporary TXT records were deleted again" '! $C exec -T web curl -s http://cfmock:8080/records | grep -q _caspintunel-check'
+R=$(API POST /domain/token/test/ '{"token": "wrong-token-0000000000000000"}')
+check "test with a wrong token: clear error + raw code" '[ "$(echo "$R" | J "d[\"explain\"][\"key\"]")" = cf_invalid ] && echo "$R" | J "d[\"explain\"][\"raw\"]" | grep -q "9109: Invalid access token" && echo "$R" | J "d[\"error_fa\"]" | grep -q "API Tokens"'
+
+step "2a. a zone the token may only read: checked before step 2, nothing written"
+R=$(API POST /domain/start/ '{"domain": "view-only.test", "include_www": false, "mode": "cloudflare"}')
+VID=$(echo "$R" | J 'd["change"]["id"]')
+R=$(API POST "/domain/$VID/dns/")
+check "DNS step refused: cf_perm naming the zone, raw 10000" '[ "$(echo "$R" | J "d[\"error\"][\"key\"] + \" \" + d[\"error\"][\"raw\"]")" = "cf_perm 10000: Authentication error" ] && echo "$R" | J "d[\"detail_fa\"]" | grep -q "در دامنهٔ view-only.test را ندارد"'
+check "step shows the zone check (read yes, edit no)" '[ "$(echo "$R" | J "\" \".join(map(str, [d[\"change\"][\"steps\"][\"dns\"][\"state\"], d[\"change\"][\"steps\"][\"dns\"][\"detail\"][\"zone_check\"][\"read\"], d[\"change\"][\"steps\"][\"dns\"][\"detail\"][\"zone_check\"][\"dns_edit\"]]))")" = "failed True False" ]'
+check "no record written in view-only.test" '! $C exec -T web curl -s http://cfmock:8080/records | grep -q view-only.test'
+API POST "/domain/$VID/cancel/" >/dev/null
 
 step "2. wizard: start → DNS via Cloudflare → resolves"
 R=$(API POST /domain/start/ '{"domain": "new.test", "include_www": true, "mode": "cloudflare"}')
@@ -191,6 +204,7 @@ check "mail server restored to mail.old.test" '[ "$(mail_host)" = mail.old.test 
 check "site still on old.test, .env unchanged" '[ "$(probe old.test https://old.test/api/v1/health/)" = "200 " ] && [ "$(envv DOMAIN)" = old.test ] && ! envv ALLOWED_HOSTS | grep -q bad.test'
 R=$(API GET /domain/)
 check "wizard: back to draft, apply failed with the reason" '[ "$(echo "$R" | J "\" \".join([d[\"change\"][\"status\"], d[\"change\"][\"steps\"][\"apply\"][\"state\"]])")" = "draft failed" ]'
+check "apply error explained: nginx_test + the nginx error in details" '[ "$(echo "$R" | J "d[\"change\"][\"steps\"][\"apply\"][\"detail\"][\"error\"][\"key\"]")" = nginx_test ] && echo "$R" | J "d[\"change\"][\"steps\"][\"apply\"][\"detail\"][\"error\"][\"raw\"]" | grep -qiE "rejected the config: .*(emerg|fail|error)"'
 API POST "/domain/$BID/cancel/" >/dev/null
 
 step "8. recovery CLI"

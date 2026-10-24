@@ -28,7 +28,12 @@ def configured_token() -> tuple[str, str]:
 
 
 class CloudflareError(Exception):
-    pass
+    """str() = "code: message; …" as Cloudflare said it. `codes` (incl. error_chain), `status` (HTTP)
+    and `network` feed apps.settings_app.domain_errors, which turns them into a fix people can follow."""
+
+    def __init__(self, msg, *, codes=(), status=None, network=False):
+        super().__init__(msg)
+        self.codes, self.status, self.network = tuple(codes), status, network
 
 
 class Cloudflare:
@@ -40,15 +45,25 @@ class Cloudflare:
         try:
             r = self._s.request(method, f"{api_base()}{path}", timeout=20, **kw)
         except requests.RequestException as exc:
-            raise CloudflareError(f"Cloudflare API unreachable: {exc.__class__.__name__}") from exc
+            raise CloudflareError(f"Cloudflare API unreachable: {exc.__class__.__name__}", network=True) from exc
         try:
             body = r.json()
         except ValueError:
-            raise CloudflareError(f"{method} {path}: HTTP {r.status_code}, not JSON") from None
+            raise CloudflareError(f"{method} {path}: HTTP {r.status_code}, not JSON", status=r.status_code) from None
         if not body.get("success"):
-            errs = body.get("errors") or []
-            msg = "; ".join(f"{e.get('code')}: {e.get('message')}" for e in errs if isinstance(e, dict)) or f"HTTP {r.status_code}"
-            raise CloudflareError(msg)
+            errs = [e for e in body.get("errors") or [] if isinstance(e, dict)]
+            codes = []
+            for e in errs:
+                for x in [e] + [c for c in e.get("error_chain") or [] if isinstance(c, dict)]:
+                    try:
+                        codes.append(int(x.get("code")))
+                    except (TypeError, ValueError):
+                        pass
+            msg = "; ".join(
+                f"{e.get('code')}: {e.get('message')}"
+                + "".join(f" ({c.get('code')}: {c.get('message')})" for c in e.get("error_chain") or [] if isinstance(c, dict))
+                for e in errs) or f"HTTP {r.status_code}"
+            raise CloudflareError(msg, codes=codes, status=r.status_code)
         return body["result"]
 
     def verify(self) -> dict:
@@ -63,6 +78,37 @@ class Cloudflare:
             if len(res) < 50:
                 break
             page += 1
+        return out
+
+    def check_zone(self, zone_id: str, zone_name: str) -> dict:
+        """What the token may really do in a zone: list records (read), then create a temporary TXT
+        record and delete it right away (DNS edit). → {read, dns_edit: True/False/None, error, cleanup}"""
+        import secrets
+
+        out = {"read": None, "dns_edit": None, "error": None, "cleanup": True}
+        try:
+            self._req("GET", f"/zones/{zone_id}/dns_records", params={"per_page": 1})
+            out["read"] = True
+        except CloudflareError as exc:
+            out["error"] = exc
+            if exc.network or (exc.status or 0) >= 500 or exc.status == 429:
+                return out                                    # unknown — try again later
+            out["read"] = out["dns_edit"] = False
+            return out
+        name = f"_caspintunel-check-{secrets.token_hex(3)}.{zone_name}"
+        try:
+            rec = self._req("POST", f"/zones/{zone_id}/dns_records",
+                            json={"type": "TXT", "name": name, "content": "caspintunel DNS edit check - safe to delete", "ttl": 60})
+        except CloudflareError as exc:
+            out["error"] = exc
+            if not (exc.network or (exc.status or 0) >= 500 or exc.status == 429):
+                out["dns_edit"] = False
+            return out
+        out["dns_edit"] = True
+        try:
+            self._req("DELETE", f"/zones/{zone_id}/dns_records/{rec['id']}")
+        except (CloudflareError, KeyError, TypeError):
+            out["cleanup"] = name                              # left behind — shown so it can be deleted by hand
         return out
 
     def zone_id(self, name: str) -> str:

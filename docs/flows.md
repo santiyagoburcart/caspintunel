@@ -456,6 +456,7 @@ sequenceDiagram
 
     A->>UI: new domain (+ www), zone or manual DNS
     UI->>API: POST domain/start/
+    API->>CF: zone check: list records + temporary TXT create / delete (DNS edit?)
     API->>CF: A @ / www / mail → server IP (DNS-only)
     UI->>API: Check DNS
     API->>DNS: name → A ? (must be this IP)

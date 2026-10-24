@@ -47,10 +47,21 @@ class H(BaseHTTPRequestHandler):
             return self._ok([z for z in ZONES if not q.get("name") or z["name"] == q["name"]])
         parts = p.strip("/").split("/")
         if len(parts) >= 3 and parts[0] == "zones" and parts[2] == "dns_records":
+            zone = next((z for z in ZONES if z["id"] == parts[1]), None)
+            if not zone:
+                return self._send(404, {"success": False, "errors": [{"code": 7003, "message": "Could not route to /zones/" + parts[1]}], "result": None})
             if method == "GET":
-                return self._ok([r for r in RECORDS.values() if r["zone"] == parts[1] and r["name"] == q.get("name") and r["type"] == q.get("type")])
+                return self._ok([r for r in RECORDS.values() if r["zone"] == parts[1] and q.get("name", r["name"]) == r["name"]
+                                 and q.get("type", r["type"]) == r["type"]])
+            if "#dns_records:edit" not in zone["permissions"]:     # like Cloudflare: a read-only token can't write
+                return self._send(403, {"success": False, "errors": [{"code": 10000, "message": "Authentication error"}], "result": None})
+            if method == "DELETE":
+                RECORDS.pop(parts[3] if len(parts) > 3 else "", None)
+                return self._ok({"id": parts[3] if len(parts) > 3 else ""})
             body = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
             rid = parts[3] if len(parts) > 3 else f"r{len(RECORDS) + 1}"
+            while method == "POST" and rid in RECORDS:
+                rid += "x"
             RECORDS[rid] = {**body, "id": rid, "zone": parts[1]}
             return self._ok(RECORDS[rid])
         self._send(404, {"success": False, "errors": [{"code": 7003, "message": "no route"}], "result": None})
@@ -63,6 +74,9 @@ class H(BaseHTTPRequestHandler):
 
     def do_PUT(self):
         self._route("PUT")
+
+    def do_DELETE(self):
+        self._route("DELETE")
 
     def log_message(self, *a):
         pass

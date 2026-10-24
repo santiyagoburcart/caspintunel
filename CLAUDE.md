@@ -179,6 +179,8 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
 - Mail moves with the domain (DKIM made by the mail server, MX/SPF/DMARC/DKIM via Cloudflare, `MAIL_DOMAIN`, mail cert);
   only the PTR is manual. Never copy DKIM private keys out of `mail/config/opendkim`.
 - The Cloudflare token is write-only (encrypted `DomainConfig.cloudflare_token`, never in an API response or log).
+- Wizard errors go through `settings_app/domain_errors.py` (`DomainError(key, …)` / `E.cloudflare` / `E.host`): fa + en
+  text with the fix, raw code + message kept in `raw` for the page's "details" line. Add a key there, not a bare string.
 
 ## Server migration (docs/migration.md)
 - `scripts/migrate-export.sh [--final|--resume]` (old server) → encrypted archive + manifest;

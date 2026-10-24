@@ -9,9 +9,31 @@ and a one-click rollback. Recovery on the server: `./scripts/domain.sh show | ro
 * Stored **encrypted** in the DB (`domain_config.cloudflare_token`, `FIELD_ENCRYPTION_KEY`), write-only like the bot
   tokens: the API never returns it. `.env` `CLOUDFLARE_API_TOKEN` stays the fallback (`ops/cloudflare.configured_token`:
   panel first, then .env — also used by `manage.py configure_dns`).
-* **Test** verifies the typed token, or else the saved one: `GET /user/tokens/verify` (must be *active*), then the zones
-  it can see with the permissions Cloudflare reports per zone. A clear error is shown if it sees no zone or
-  has no `#dns_records:edit` (**Zone → DNS → Edit**). Token for the wizard: *Zone → Zone → Read* + *Zone → DNS → Edit*.
+* **Test** verifies the typed token, or else the saved one: `GET /user/tokens/verify` (must be *active*), then every
+  zone it can see is **really checked** (`Cloudflare.check_zone`): list its records (*can read*), create a temporary TXT
+  `_caspintunel-check-<random>.<zone>` and delete it right away (*can edit DNS*) — Cloudflare's reported permissions
+  alone are not trusted. The page shows a table *zone | can read | can edit DNS* with the fix under each refused zone
+  (first 25 zones; a test record that could not be deleted is named so it can be removed by hand). Token for the
+  wizard: *Zone → Zone → Read* + *Zone → DNS → Edit*, Zone Resources including the domain.
+* The same check runs automatically for the chosen zone **before step b** writes anything; a refused zone stops there
+  (`dns` step *failed*, nothing written).
+
+## Errors
+
+Every failure is explained (`apps/settings_app/domain_errors.py`) as `{key, en, fa, raw}`: a sentence with the fix in
+both languages, and under it a small *details* line with the raw code + message (Cloudflare `code: message`, the DoH
+answers, certbot's `Type:` / `Detail:`, the `nginx -t` error, …). API: a refused action answers 400 with
+`detail` (en), `detail_fa`, `error` ({key, en, fa, raw}); steps carry `detail.error`, DNS / mail rows `why`, the token
+test `explain` (+ `error`, `error_fa`), the last host result `explain`.
+
+| Source | Keys |
+|---|---|
+| Cloudflare API | `cf_perm` (10000, 9109, 6003, 9103 — no DNS edit in zone X: *My Profile → API Tokens → Edit → Permissions: Zone·DNS·Edit, Zone Resources incl. X*), `cf_invalid` (1000, 6111, 9106, "Invalid access token"), `cf_inactive`, `cf_ip` (client IP filtering), `cf_zone` (7003, 7000, 1001, 1049 / not among the token's zones), `cf_rate` (HTTP 429, 971), `cf_exists` (81057/81058), `cf_cname` (81053–81055), `cf_record` (1004, 9xxx), `cf_down` (network / 5xx), `cf_no_zones`, `cf_no_edit`, `cf_no_token` |
+| DNS check | `dns_none`, `dns_proxied` (answer in Cloudflare's IP ranges = orange cloud), `dns_wrong` (other IP / TTL), `dns_partial` (propagating), `dns_doh` (resolvers unreachable) |
+| Mail DNS | `mail_missing`, `mail_mx` (MX elsewhere), `spf_multi` (two `v=spf1`), `mail_diff` (old DKIM / foreign SPF), `mail_no_dkim` |
+| certbot | `le_rate`, `le_dns`, `le_caa`, `le_port80`, `le_challenge`, `le_check`, `manual_cert`, `dkim_fail`, `le_other` |
+| switch | `nginx_test`, `apply_health`, `apply_redirect`, `apply_container`, `apply_mail`, `apply_env`, `apply_moved`, `rb_none`, `apply_other` |
+| wizard rules | `bad_domain`, `same_domain`, `busy_change`, `queued`, `need_dns`, `need_tls`, `need_mail`, `nothing_rb`, … |
 
 ## The wizard
 

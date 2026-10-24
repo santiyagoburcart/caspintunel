@@ -86,6 +86,7 @@ export function failureReason(e, lang = 'fa') {
   if (st === 415) return fa ? 'نوع فایل پشتیبانی نمی‌شود.' : 'Unsupported file type.'
   if (st === 403) return (d && typeof d.detail === 'string' && d.detail) || (fa ? 'اجازهٔ این کار را ندارید.' : 'You do not have permission for this.')
   if (d && typeof d === 'object' && !Array.isArray(d)) {
+    if (fa && typeof d.detail_fa === 'string') return d.detail_fa   // a server reason written in Persian too
     if (typeof d.detail === 'string') return d.detail
     if (typeof d.message === 'string' && d.ok === false) return d.message
     const parts = Object.entries(d).filter(([k]) => k !== 'code').slice(0, 2).map(([k, v]) => {

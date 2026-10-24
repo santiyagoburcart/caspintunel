@@ -388,7 +388,9 @@ app containers (web/daphne rolling), verifies through nginx over TLS and restore
 email sender and the bot's Mini App menu button. **Mail moves with the domain**: the certificate covers
 `mail.<new>`, the mail server makes the new domain's DKIM key, the panel publishes MX / SPF / DMARC / DKIM
 (Cloudflare) and waits until public DNS answers, the switch sets `MAIL_DOMAIN` and recreates the mail server.
-Only the PTR (reverse DNS at the hosting provider) stays manual.
+Only the PTR (reverse DNS at the hosting provider) stays manual. Every failure (Cloudflare codes, DNS, certbot,
+nginx, switch, mail DNS) is explained by `settings_app/domain_errors.py` as fa/en text with the fix + the raw code;
+the token test and step b really check DNS edit per zone (temporary TXT record, deleted again).
 
 ## Frontends
 

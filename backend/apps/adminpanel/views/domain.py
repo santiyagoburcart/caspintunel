@@ -41,8 +41,8 @@ class _Super(AdminAPIView):
             args[0].refresh_from_db()
         try:
             fn(*args, **kwargs)
-        except D.DomainError as exc:
-            return Response({"detail": str(exc), **D.state()}, status=400)
+        except D.DomainError as exc:   # the fix in words (fa / en) + the raw code / message for "details"
+            return Response({"detail": exc.info["en"], "detail_fa": exc.info["fa"], "error": exc.info, **D.state()}, status=400)
         msg = self.DONE.get(fn.__name__)
         return Response({**D.state(), **({"message": msg[0], "message_fa": msg[1]} if msg else {})})
 

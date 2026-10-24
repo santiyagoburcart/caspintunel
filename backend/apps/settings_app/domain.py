@@ -27,6 +27,7 @@ from django.utils import timezone
 
 from apps.common.models import write_audit
 
+from . import domain_errors as E
 from .models import DomainChange, DomainConfig, SiteConfig
 
 S = DomainChange.Status
@@ -40,7 +41,13 @@ _DOMAIN_RE = re.compile(rf"^(?:{_LABEL}\.)+[a-z][a-z0-9-]{{0,61}}[a-z0-9]$")
 
 
 class DomainError(Exception):
-    """A refused wizard action; the message is shown to the admin as is."""
+    """A refused wizard action. Built from a domain_errors key (+ context) or a ready
+    explanation dict: str() is the English text, `.info` = {key, en, fa, raw} for the page."""
+
+    def __init__(self, what, **ctx):
+        info = what if isinstance(what, dict) else E.explain(what, **ctx) if what in E.MSG else None
+        super().__init__(info["en"] if info else str(what))
+        self.info = info or {"key": "other", "en": str(what), "fa": str(what), "raw": ""}
 
 
 # ------------------------------------------------------------------ files shared with the host
@@ -74,7 +81,7 @@ def _read(path: Path):
 def _write_request(data: dict) -> dict:
     path = request_file()
     if path.exists():
-        raise DomainError("another server step is already queued — wait for it to finish")
+        raise DomainError("queued")
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
     tmp.write_text(json.dumps(data))
@@ -107,12 +114,13 @@ def normalize(raw: str) -> str:
 
 
 def validate_domain(d: str) -> str | None:
+    """→ a domain_errors key, or None"""
+    if re.fullmatch(r"[0-9.]+", d or ""):
+        return "ip_domain"
     if not d or len(d) > 253 or not _DOMAIN_RE.match(d):
-        return "not a valid domain name (example: example.com)"
-    if re.fullmatch(r"[0-9.]+", d):
-        return "an IP address is not a domain"
+        return "bad_domain"
     if d == current_domain():
-        return "this is already the site's domain"
+        return "same_domain"
     return None
 
 
@@ -189,34 +197,48 @@ def test_token(token: str | None, by=None) -> dict:
     source = "typed"
     if not token:
         token, source = configured_token()
-    res = {"ok": False, "at": _now(), "source": source, "status": "", "zones": [], "permissions": [], "error": ""}
+    res = {"ok": False, "at": _now(), "source": source, "status": "", "zones": [], "permissions": [], "error": "", "error_fa": "", "explain": None}
+
+    def fail(info):
+        res["error"], res["error_fa"], res["explain"] = info["en"], info["fa"], info
+
     if not token:
-        res["error"] = "no Cloudflare token saved (and none in .env)"
+        fail(E.explain("cf_no_token"))
     else:
-        cf = Cloudflare(token)
+        cf, ip = Cloudflare(token), server_ip()
         try:
             v = cf.verify()
             res["status"] = v.get("status", "")
             res["expires_on"] = v.get("expires_on")
             if res["status"] != "active":
-                raise CloudflareError(f"token status is “{res['status'] or 'unknown'}”, not active")
+                raise DomainError("cf_inactive", status=res["status"] or "unknown")
             perms = set()
-            for z in cf.zones():
+            for i, z in enumerate(cf.zones()):
                 zp = z.get("permissions")
                 perms.update(zp or [])
-                res["zones"].append({"id": z.get("id"), "name": z.get("name"), "status": z.get("status"),
-                                     "dns_edit": (DNS_EDIT in zp) if isinstance(zp, list) else None})
+                row = {"id": z.get("id"), "name": z.get("name"), "status": z.get("status"),
+                       "reported": (DNS_EDIT in zp) if isinstance(zp, list) else None,
+                       "read": None, "dns_edit": None, "error": None}
+                if i < ZONE_CHECK_MAX:          # the real thing: write + delete a temporary TXT record
+                    row.update(zone_check(cf, row["id"], row["name"], ip))
+                else:
+                    row["dns_edit"] = row["reported"]
+                res["zones"].append(row)
             res["permissions"] = sorted(perms)
             if not res["zones"]:
-                res["error"] = "the token is valid but can't see any zone — give it Zone → Zone → Read and Zone → DNS → Edit"
-            elif not any(z["dns_edit"] is not False for z in res["zones"]):
-                res["error"] = "the token is valid but has no DNS edit permission — add Zone → DNS → Edit for the zone"
+                fail(E.explain("cf_no_zones"))
+            elif not any(z["dns_edit"] for z in res["zones"]):
+                bad = next((z["error"] for z in res["zones"] if z["error"]), None)
+                fail(bad if bad and (bad["key"] != "cf_perm" or len(res["zones"]) == 1)
+                     else E.explain("cf_no_edit", (bad or {}).get("raw", "")))
             else:
                 res["ok"] = True
                 if any(z["dns_edit"] is None for z in res["zones"]):
-                    res["note"] = "Cloudflare did not report permissions; DNS edit is confirmed on the first record write"
+                    res["note"] = "some zones could not be checked — DNS edit is confirmed on the first record write"
         except CloudflareError as exc:
-            res["error"] = str(exc)
+            fail(E.cloudflare(exc, ip=ip))
+        except DomainError as exc:
+            fail(exc.info)
     if source != "typed":
         cfg = DomainConfig.load()
         cfg.last_test = res
@@ -231,8 +253,21 @@ def _client():
 
     token, _ = configured_token()
     if not token:
-        raise DomainError("no Cloudflare token — save one above, or choose manual DNS")
+        raise DomainError("cf_no_token")
     return Cloudflare(token)
+
+
+ZONE_CHECK_MAX = 25
+
+
+def zone_check(cf, zone_id: str, zone_name: str, ip: str = "") -> dict:
+    """{read, dns_edit, error (explained), cleanup} — see Cloudflare.check_zone."""
+    r = cf.check_zone(zone_id, zone_name)
+    err = E.cloudflare(r["error"], zone=zone_name, ip=ip or server_ip()) if r["error"] else None
+    if err and r["dns_edit"] is False and r["read"] is not False and err["key"] in ("cf_other", "cf_record", "cf_exists"):
+        err = E.explain("cf_perm", err["raw"], zone=zone_name)   # refused write = no DNS edit, whatever the code
+    return {"read": r["read"], "dns_edit": r["dns_edit"], "error": err,
+            **({"leftover": r["cleanup"]} if r["cleanup"] is not True else {})}
 
 
 # ------------------------------------------------------------------ DNS check (public DoH)
@@ -258,13 +293,16 @@ def dns_check(change, by=None) -> DomainChange:
         good = bool(answered) and all(ip in r["ips"] for r in answered)
         seen = sorted({i for r in answered for i in r["ips"]})
         rows.append({"name": rec["name"], "required": rec["required"], "ok": good, "seen": seen,
-                     "errors": [r["resolver"] for r in res["resolvers"] if "error" in r]})
+                     "errors": [r["resolver"] for r in res["resolvers"] if "error" in r],
+                     "why": None if good else E.dns_host(rec["name"], ip, res["resolvers"])})
         ok = ok and (good or not rec["required"])
+    keep = {k: v for k, v in ((change.steps.get("dns") or {}).get("detail") or {}).items() if k in ("zone_check", "records")}
     if ok:
-        set_step(change, "dns", "ok", f"resolves to {ip}", hosts=rows)
+        set_step(change, "dns", "ok", f"resolves to {ip}", hosts=rows, **keep)
     else:
-        bad = [r["name"] for r in rows if r["required"] and not r["ok"]]
-        set_step(change, "dns", "waiting", f"not yet pointing at {ip}: {', '.join(bad)}", hosts=rows)
+        bad = [r for r in rows if r["required"] and not r["ok"]]
+        set_step(change, "dns", "waiting", f"not yet pointing at {ip}: {', '.join(r['name'] for r in bad)}",
+                 hosts=rows, error=bad[0]["why"], **keep)
     change.save()
     if by is not None:
         _audit("dns_checked", by, change, ok=ok, hosts=rows)
@@ -284,6 +322,7 @@ def mail_check(change, by=None) -> DomainChange:
         res = resolve(rec["name"], rec["type"])
         answered = [r for r in res["resolvers"] if "error" not in r]
         if rec["type"] == "MX":
+            vals = [list(r["ips"]) for r in answered]
             seen = sorted({v.split()[-1].rstrip(".") for r in answered for v in r["ips"]})
             good = bool(answered) and all(any(v.split()[-1].rstrip(".") == rec["content"] for v in r["ips"]) for r in answered)
         else:
@@ -291,13 +330,17 @@ def mail_check(change, by=None) -> DomainChange:
             seen = sorted({v[:60] for vs in vals for v in vs if v.startswith(rec["match"])})
             want = rec["content"].replace(" ", "")
             good = bool(rec["content"]) and bool(answered) and all(any(v.replace(" ", "") == want for v in vs) for vs in vals)
-        rows.append({"name": rec["name"], "type": rec["type"], "ok": good, "seen": seen})
+            if good and rec["match"] == "v=spf1" and any(sum(v.startswith("v=spf1") for v in vs) > 1 for vs in vals):
+                good = False                                    # ours is there, but a second SPF breaks SPF
+        rows.append({"name": rec["name"], "type": rec["type"], "ok": good, "seen": seen,
+                     "why": None if good else E.mail_record(rec, vals, res["resolvers"])})
         ok = ok and good
     if ok:
         set_step(change, "mail", "ok", "MX, SPF, DKIM and DMARC published", hosts=rows)
     else:
-        bad = [f"{r['type']} {r['name']}" for r in rows if not r["ok"]]
-        set_step(change, "mail", "waiting", f"not yet in public DNS: {', '.join(bad)}", hosts=rows)
+        bad = [r for r in rows if not r["ok"]]
+        set_step(change, "mail", "waiting", f"not yet in public DNS: {', '.join(r['type'] + ' ' + r['name'] for r in bad)}",
+                 hosts=rows, error=bad[0]["why"])
     change.save()
     if by is not None:
         _audit("mail_checked", by, change, ok=ok, records=rows)
@@ -308,7 +351,7 @@ def mail_publish(change, by) -> DomainChange:
     """Cloudflare: write MX / SPF / DMARC / DKIM (other TXT records on the same names are left alone). Manual: check."""
     _need(change)
     if not dkim_of(change):
-        raise DomainError("the DKIM key comes with the certificate step — request the certificate first")
+        raise DomainError("mail_no_dkim")
     if change.mode == "manual":
         return mail_check(change, by)
     from apps.ops.cloudflare import CloudflareError
@@ -321,10 +364,11 @@ def mail_publish(change, by) -> DomainChange:
             done.append({"name": rec["name"], "type": rec["type"], "action": res["action"]})
         except CloudflareError as exc:
             msg = f"{rec['type']} {rec['name']}: {exc}"
-            set_step(change, "mail", "failed", msg, records=done)
+            info = E.cloudflare(exc, zone=change.zone_name, name=rec["name"], ip=change.server_ip)
+            set_step(change, "mail", "failed", msg, records=done, error=info)
             change.save()
             _audit("mail_failed", by, change, error=msg, records=done)
-            raise DomainError(msg) from exc
+            raise DomainError(info) from exc
     _audit("mail_records", by, change, zone=change.zone_name, records=done)
     return mail_check(change, by)
 
@@ -338,14 +382,14 @@ def start(*, domain, include_www=True, mode="cloudflare", zone_id="", by) -> Dom
     d = normalize(domain)
     err = validate_domain(d)
     if err:
-        raise DomainError(err)
+        raise DomainError(err, domain=d or (domain or "").strip())
     if active_change():
-        raise DomainError("finish or cancel the current domain change first")
+        raise DomainError("busy_change")
     if mode not in ("cloudflare", "manual"):
-        raise DomainError("choose a Cloudflare zone or manual DNS")
+        raise DomainError("bad_mode")
     ip = server_ip()
     if not ip:
-        raise DomainError("this server's public IP is unknown — set SERVER_IP in .env")
+        raise DomainError("no_ip")
     zone_name = ""
     if mode == "cloudflare":
         from apps.ops.cloudflare import CloudflareError
@@ -353,11 +397,11 @@ def start(*, domain, include_www=True, mode="cloudflare", zone_id="", by) -> Dom
         try:
             zones = _client().zones()
         except CloudflareError as exc:
-            raise DomainError(f"Cloudflare: {exc}") from exc
+            raise DomainError(E.cloudflare(exc, zone=d, ip=ip)) from exc
         fits = [z for z in zones if d == z["name"] or d.endswith("." + z["name"])]
         zone = next((z for z in fits if z["id"] == zone_id), None) if zone_id else (max(fits, key=lambda z: len(z["name"])) if fits else None)
         if not zone:
-            raise DomainError(f"{d} is not in a Cloudflare zone this token can manage — pick manual DNS or add the zone")
+            raise DomainError(E.explain("cf_zone", f"{d}: not among the token's zones ({', '.join(z['name'] for z in zones) or 'none'})", zone=d))
         zone_id, zone_name = zone["id"], zone["name"]
     change = DomainChange(old_domain=current_domain(), new_domain=d, include_www=bool(include_www), mode=mode,
                           zone_id=zone_id if mode == "cloudflare" else "", zone_name=zone_name, server_ip=ip,
@@ -374,7 +418,7 @@ def start(*, domain, include_www=True, mode="cloudflare", zone_id="", by) -> Dom
 
 def _need(change, status=(S.DRAFT,)):
     if change.status not in status:
-        raise DomainError(f"not possible while the change is “{change.get_status_display()}”")
+        raise DomainError("bad_state", status=change.get_status_display())
 
 
 def dns_apply(change, by) -> DomainChange:
@@ -388,19 +432,26 @@ def dns_apply(change, by) -> DomainChange:
     from apps.ops.cloudflare import CloudflareError
 
     cf, done = _client(), []
+    # before writing anything: may this token really edit DNS in the chosen zone? (temporary TXT, deleted again)
+    chk = zone_check(cf, change.zone_id, change.zone_name, change.server_ip)
+    if not chk["dns_edit"]:
+        info = chk["error"] or E.explain("cf_perm", zone=change.zone_name)
+        set_step(change, "dns", "failed", f"{change.zone_name}: {info['raw'] or info['en']}", zone_check=chk, error=info)
+        change.save()
+        _audit("dns_failed", by, change, error=info["raw"] or info["key"], zone_check={k: v for k, v in chk.items() if k != "error"})
+        raise DomainError(info)
     for rec in records(change):
         try:
             res = cf.upsert(change.zone_id, type="A", name=rec["name"], content=rec["content"], proxied=False)
             done.append({"name": rec["name"], "action": res["action"]})
         except CloudflareError as exc:
             msg = f"{rec['name']}: {exc}"
-            if "81053" in str(exc) or "CNAME" in str(exc):
-                msg += " — a CNAME already uses this name; remove it in Cloudflare first"
-            set_step(change, "dns", "failed", msg, records=done)
+            info = E.cloudflare(exc, zone=change.zone_name, name=rec["name"], ip=change.server_ip)
+            set_step(change, "dns", "failed", msg, records=done, zone_check=chk, error=info)
             change.save()
             _audit("dns_failed", by, change, error=msg, records=done)
-            raise DomainError(msg) from exc
-    set_step(change, "dns", "waiting", "records saved in Cloudflare — waiting for them to resolve", records=done)
+            raise DomainError(info) from exc
+    set_step(change, "dns", "waiting", "records saved in Cloudflare — waiting for them to resolve", records=done, zone_check=chk)
     change.save()
     _audit("dns_records", by, change, zone=change.zone_name, records=done)
     return dns_check(change)
@@ -409,7 +460,7 @@ def dns_apply(change, by) -> DomainChange:
 def request_tls(change, by) -> DomainChange:
     _need(change)
     if (change.steps.get("dns") or {}).get("state") != "ok":
-        raise DomainError("DNS must resolve to this server first")
+        raise DomainError("need_dns")
     _write_request({"action": "cert", "id": change.id, "domain": change.new_domain, "www": change.include_www,
                     "mail": True, "requested_by": _by(by), "at": _now()})
     set_step(change, "tls", "running", "queued — the server requests the certificate within a minute")
@@ -421,9 +472,9 @@ def request_tls(change, by) -> DomainChange:
 def request_apply(change, by) -> DomainChange:
     _need(change)
     if (change.steps.get("tls") or {}).get("state") != "ok":
-        raise DomainError("the certificate must be issued first")
+        raise DomainError("need_tls")
     if (change.steps.get("mail") or {}).get("state") != "ok":
-        raise DomainError("the mail records (MX, SPF, DKIM, DMARC) must be in public DNS first")
+        raise DomainError("need_mail")
     _write_request({"action": "apply", "id": change.id, "domain": change.new_domain, "www": change.include_www, "mail": True,
                     "old_domain": change.old_domain, "transition_days": change.transition_days,
                     "zone": change.zone_name or change.new_domain, "requested_by": _by(by), "at": _now()})
@@ -452,7 +503,7 @@ def rollback_target():
 def request_rollback(by) -> DomainChange:
     change = rollback_target()
     if not change or change.new_domain != current_domain():
-        raise DomainError("nothing to roll back — the site is not on a domain set by this wizard")
+        raise DomainError("nothing_rb")
     _write_request({"action": "rollback", "id": change.id, "domain": change.old_domain, "from": change.new_domain,
                     "www": True, "requested_by": _by(by), "at": _now()})
     set_step(change, "rollback", "running", f"queued — back to {change.old_domain}")
@@ -472,7 +523,7 @@ def cancel(change, by) -> DomainChange:
 
 def set_checklist(change, key, done, by) -> DomainChange:
     if key not in CHECKLIST:
-        raise DomainError("unknown checklist item")
+        raise DomainError("bad_checklist")
     change.checklist = {**(change.checklist or {}), key: bool(done)}
     change.save(update_fields=["checklist", "updated_at"])
     _audit("checklist", by, change, item=key, done=bool(done))
@@ -536,7 +587,8 @@ def sync() -> DomainChange | None:
             dk = _read(dkim_file()) if ok else None
             dk = dk if dk and dk.get("domain") == change.new_domain else None
             set_step(change, "tls", "ok" if ok else "failed", msg,
-                     **({"expires": st["expires"]} if st.get("expires") else {}), **({"dkim": dk} if dk else {}))
+                     **({"expires": st["expires"]} if st.get("expires") else {}), **({"dkim": dk} if dk else {}),
+                     **({} if ok else {"error": E.host("cert", msg, change.new_domain, change.server_ip)}))
             if ok and change.status == S.DRAFT:
                 change.save()
                 try:                      # publish the mail records right away (Cloudflare) / check them (manual)
@@ -560,20 +612,20 @@ def sync() -> DomainChange | None:
                     set_step(change, "transition", "ok", f"{change.old_domain} removed (no transition period)")
             else:
                 change.status = S.DRAFT       # the host restored everything — fix and retry, or cancel
-                set_step(change, "apply", "failed", msg)
+                set_step(change, "apply", "failed", msg, error=E.host("apply", msg, change.new_domain, change.server_ip))
         elif action == "retire":
             if ok:
                 change.status, change.finished_at = S.DONE, timezone.now()
                 set_step(change, "transition", "ok", msg)
             else:
-                set_step(change, "transition", "failed", msg)
+                set_step(change, "transition", "failed", msg, error=E.host("retire", msg, change.new_domain, change.server_ip))
         elif action == "rollback":
             if ok:
                 change.status, change.finished_at = S.ROLLED_BACK, timezone.now()
                 set_step(change, "rollback", "ok", msg)
                 _relink(change, change.old_domain, change.new_domain, who)
             else:
-                set_step(change, "rollback", "failed", msg)
+                set_step(change, "rollback", "failed", msg, error=E.host("rollback", msg, change.old_domain, change.server_ip))
         change.save()
         _audit(f"host_{action}_{'ok' if ok else 'failed'}", who, change, message=msg)
     return change
@@ -615,6 +667,9 @@ def state() -> dict:
     rb = rollback_target()
     cur = current_domain()
     pending = _read(request_file())
+    last = _read(status_file())
+    if last and not last.get("ok"):
+        last["explain"] = E.host(last.get("action") or "", last.get("message") or "", last.get("domain") or cur, server_ip())
     return {
         "current": {"domain": cur, "server_ip": server_ip(), "site_domain": SiteConfig.load().site_domain,
                     "public_base_url": getattr(settings, "PUBLIC_BASE_URL", ""), "host": _read(state_file())},
@@ -624,7 +679,7 @@ def state() -> dict:
         "change": serialize(change),
         "history": [serialize(c) for c in DomainChange.objects.all()[:10]],
         "pending": {k: pending.get(k) for k in ("action", "id", "domain", "at", "requested_by")} if pending else None,
-        "last": _read(status_file()),
+        "last": last,
         "rollback": {"to": rb.old_domain, "from": rb.new_domain, "id": rb.id} if rb and rb.new_domain == cur else None,
         "checklist_keys": list(CHECKLIST),
     }

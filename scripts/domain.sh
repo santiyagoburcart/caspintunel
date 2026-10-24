@@ -91,7 +91,7 @@ issue() {  # domain www
     out="$($COMPOSE run --rm --no-deps -T --entrypoint certbot certbot certonly --webroot -w /var/www/certbot \
            --cert-name "$d" --expand "${doms[@]}" --email "$email" --agree-tos --no-eff-email --non-interactive \
            --keep-until-expiring 2>&1)" || {
-      why="$(printf '%s\n' "$out" | grep -E 'Detail:|Error|error:' | tail -2 | tr '\n' ' ')"
+      why="$(printf '%s\n' "$out" | grep -E 'Type:|Detail:|Error|error:' | tail -3 | tr '\n' ' ')"
       write_status 0 "certificate not issued: ${why:-$(printf '%s' "$out" | tail -2 | tr '\n' ' ')}"; return 1; }
   fi
   why="$(cert_check "$d" "$w" "$MAIL")"
@@ -187,8 +187,9 @@ EOF
   fi
 }
 nginx_apply() {  # point 10-ssl.conf at our file, test, reload
-  $COMPOSE exec -T nginx sh -c "printf '%s\n' '$INCLUDE' > /etc/nginx/conf.d/10-ssl.conf" >/dev/null 2>&1 || return 1
-  $COMPOSE exec -T nginx nginx -t >/dev/null 2>&1 || { echo "nginx -t rejected the config"; return 1; }
+  $COMPOSE exec -T nginx sh -c "printf '%s\n' '$INCLUDE' > /etc/nginx/conf.d/10-ssl.conf" >/dev/null 2>&1 || { echo "nginx container not reachable"; return 1; }
+  local out; out="$($COMPOSE exec -T nginx nginx -t 2>&1)" || {
+    echo "nginx -t rejected the config: $(printf '%s\n' "$out" | grep -m1 -E '\[emerg\]|\[error\]' | sed 's/^.*\(\[emerg\]\|\[error\]\)/\1/' || printf '%s\n' "$out" | tail -1)"; return 1; }
   $COMPOSE exec -T nginx nginx -s reload >/dev/null 2>&1
 }
 
