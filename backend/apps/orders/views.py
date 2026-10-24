@@ -38,6 +38,17 @@ class OrderViewSet(mixins.CreateModelMixin, mixins.ListModelMixin,
         body["reused"] = reused
         return Response(body, status=200 if reused else 201)
 
+    @action(detail=True, methods=["post"], url_path="account-name")
+    def account_name(self, request, pk=None):
+        """Paid order whose name exists on the panel: the customer's new name → fulfilment again."""
+        from .services import OrderError, rename_paid_order
+
+        try:
+            order = rename_paid_order(self.get_object(), request.data.get("requested_account_name") or "")
+        except OrderError as exc:
+            return Response({"requested_account_name": [str(exc)]}, status=400)
+        return Response(_checkout_payload(order))
+
     @action(detail=True, methods=["get"])
     def checkout(self, request, pk=None):
         """Order + payment instructions — lets the invoice page be restored

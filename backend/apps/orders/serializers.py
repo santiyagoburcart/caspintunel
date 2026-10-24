@@ -21,7 +21,7 @@ class OrderSerializer(serializers.ModelSerializer):
             "requested_account_name", "custom_volume_gb",
             "amount", "discount_amount", "amount_unique", "unique_expire_at",
             "payment_status", "payment_method", "receipt_url",
-            "reject_reason", "source", "created_at",
+            "reject_reason", "source", "created_at", "needs_new_name",
         )
         read_only_fields = fields
 

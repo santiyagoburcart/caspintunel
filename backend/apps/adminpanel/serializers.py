@@ -691,6 +691,8 @@ class AdminServiceLinkSerializer(serializers.Serializer):
     panel_username = serializers.CharField(max_length=64)
     user = serializers.PrimaryKeyRelatedField(queryset=User.objects.filter(deleted_at__isnull=True))
     plan = serializers.PrimaryKeyRelatedField(queryset=Plan.objects.all(), required=False, allow_null=True)
+    # the account belongs to another panel admin (e.g. a reseller's customer): staff must say so explicitly
+    confirm_other_admin = serializers.BooleanField(required=False, default=False)
 
 
 class AdminSmsLogSerializer(serializers.ModelSerializer):

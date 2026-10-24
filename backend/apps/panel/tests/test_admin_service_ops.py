@@ -59,6 +59,7 @@ def test_set_service_status_rejects_unknown_status(user, panel, plan):
 @responses.activate
 def test_create_manual_service_creates_order_and_service(user, panel, plan):
     _token(responses)
+    responses.add(responses.GET, f"{BASE}/api/user/manual-1", json={"detail": "not found"}, status=404)  # free on the panel
     responses.add(responses.POST, f"{BASE}/api/user",
                   json={"username": "manual-1", "status": "on_hold", "subscription_url": "/s/m1/"},
                   status=200)
@@ -79,7 +80,10 @@ def test_create_manual_service_creates_order_and_service(user, panel, plan):
 
 @responses.activate
 def test_create_manual_service_auto_generates_account_name(user, panel, plan):
+    import re
+
     _token(responses)
+    responses.add(responses.GET, re.compile(rf"{BASE}/api/user/m_[0-9a-f]+"), json={"detail": "nf"}, status=404)
     responses.add(responses.POST, f"{BASE}/api/user",
                   json={"username": "whatever", "status": "active"}, status=200)
     svc = create_manual_service(user=user, plan=plan)

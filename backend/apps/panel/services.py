@@ -15,7 +15,7 @@ from django.utils import timezone
 from apps.common.models import write_audit
 
 from .client import PasarGuardClient
-from .exceptions import PanelConflict, PanelError, PanelNotFound
+from .exceptions import PanelConflict, PanelError, PanelLinkNeedsConfirmation, PanelNameTaken, PanelNotFound
 from .mappers import apply_user_to_service, build_create_payload, build_renew_payload
 from .models import Panel, Service, ServiceStatus
 
@@ -30,12 +30,69 @@ def client_for(panel: Panel) -> PasarGuardClient:
     return PasarGuardClient(panel)
 
 
+# ------------------------------------------------------------------ account names on the panel
+OWN_CREATE_SKEW = timedelta(minutes=10)
+
+
+def panel_owner(api_user: dict) -> str:
+    a = api_user.get("admin")
+    return (a.get("username") if isinstance(a, dict) else a) or ""
+
+
+def panel_account(panel: Panel, name: str) -> dict | None:
+    """The panel's account with this exact name, or None. Other panel errors propagate."""
+    try:
+        return client_for(panel).get_user(name)
+    except PanelNotFound:
+        return None
+
+
+def name_taken_on_panel(panel: Panel, name: str) -> dict | None:
+    """For a name check before an order: the existing panel account, or None.
+    Fails open when the panel can't be asked (the provisioning guard still
+    refuses to attach to someone else's account)."""
+    try:
+        return panel_account(panel, name)
+    except PanelError as exc:
+        log.warning("account name check on panel %s skipped (%s)", panel.id, exc)
+        return None
+
+
+def created_for(api_user: dict, service: Service) -> bool:
+    """True only when the panel account is the one we created for this very
+    service (an earlier attempt that died before saving): our note
+    `caspintunel#<id>` and not created before the service row."""
+    if (api_user.get("note") or "").strip() != f"caspintunel#{service.id}":
+        return False
+    raw = api_user.get("created_at")
+    if not raw or not service.created_at:
+        return True
+    try:
+        from datetime import datetime, timezone as tz
+
+        made = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+        made = made if made.tzinfo else made.replace(tzinfo=tz.utc)
+    except ValueError:
+        return True
+    return made >= service.created_at - OWN_CREATE_SKEW
+
+
+def _adopt_own_or_refuse(client, service: Service) -> dict:
+    """409 on create: take the account back only if it is our own earlier attempt."""
+    api_user = client.get_user(service.panel_username)
+    if not created_for(api_user, service):
+        raise PanelNameTaken(service.panel_username, owner=panel_owner(api_user) or None)
+    log.warning("panel user %s already exists from our earlier attempt — adopting", service.panel_username)
+    return api_user
+
+
 @transaction.atomic
 def provision_service(service_id: int, plan=None) -> Service:
     """
-    Create the user on the panel for `service`. Idempotent: if the username
-    already exists on the panel (409 or our record already provisioned), we
-    adopt it instead of failing.
+    Create the user on the panel for `service`. Idempotent: if our own earlier
+    attempt already created it (409 + our note `caspintunel#<id>`), we adopt
+    it. Any other existing account with that name raises PanelNameTaken —
+    we never attach a customer to someone else's account.
     """
     service = Service.objects.select_for_update().select_related("panel", "current_plan").get(pk=service_id)
     plan = plan or service.current_plan
@@ -51,8 +108,7 @@ def provision_service(service_id: int, plan=None) -> Service:
     try:
         api_user = client.create_user(build_create_payload(service, plan, service.panel))
     except PanelConflict:
-        log.warning("panel user %s already exists — adopting", service.panel_username)
-        api_user = client.get_user(service.panel_username)
+        api_user = _adopt_own_or_refuse(client, service)
 
     service.current_plan = plan
     apply_user_to_service(service, api_user, service.panel)
@@ -293,6 +349,9 @@ def create_manual_service(*, user, plan, panel: Panel | None = None, group_ids=N
     name = (account_name or "").strip() or _auto_account_name(panel)
     if Service.objects.filter(panel=panel, panel_username__iexact=name).exists():
         raise PanelError("that account name is already taken on this panel")
+    existing = panel_account(panel, name)        # never adopt silently: "Link existing account" is the explicit way
+    if existing is not None:
+        raise PanelNameTaken(existing.get("username") or name, owner=panel_owner(existing) or None)
 
     order = Order(
         user=user, plan=plan, type=OrderType.MANUAL,
@@ -315,8 +374,7 @@ def create_manual_service(*, user, plan, panel: Panel | None = None, group_ids=N
     try:
         api_user = client.create_user(payload)
     except PanelConflict:
-        log.warning("manual create: panel user %s already exists — adopting", name)
-        api_user = client.get_user(name)
+        api_user = _adopt_own_or_refuse(client, service)
 
     apply_user_to_service(service, api_user, panel)
     if service.status == ServiceStatus.PENDING:
@@ -445,6 +503,8 @@ def search_panel_users(panel: Panel, search: str = "", *, limit: int = 20) -> li
         svc = linked.get(name.lower())
         out.append({
             "username": name,
+            "owner": panel_owner(u),
+            "other_admin": bool(panel_owner(u)) and panel_owner(u) != panel.admin_username,
             "status": u.get("status"),
             "used_traffic": int(u.get("used_traffic") or 0),
             "data_limit": int(u.get("data_limit") or 0),
@@ -458,7 +518,8 @@ def search_panel_users(panel: Panel, search: str = "", *, limit: int = 20) -> li
 
 
 @transaction.atomic
-def link_existing_service(*, user, panel: Panel, panel_username: str, plan=None, staff=None) -> Service:
+def link_existing_service(*, user, panel: Panel, panel_username: str, plan=None, staff=None,
+                          confirm_other_admin: bool = False) -> Service:
     """Adopt an account that already exists on the panel: create our Service
     (mirrored from the live panel data) + a completed `imported` Order with no
     payment. Nothing is changed on the panel."""
@@ -475,6 +536,9 @@ def link_existing_service(*, user, panel: Panel, panel_username: str, plan=None,
 
     api_user = client_for(panel).get_user(name)          # PanelNotFound -> caller
     name = api_user.get("username") or name               # the panel's exact spelling
+    owner = panel_owner(api_user)
+    if owner and owner != panel.admin_username and not confirm_other_admin:
+        raise PanelLinkNeedsConfirmation(name, owner=owner)   # e.g. a reseller's customer: staff must choose explicitly
 
     service = Service(user=user, panel=panel, panel_username=name, current_plan=plan, source="import")
     apply_user_to_service(service, api_user, panel)
@@ -490,7 +554,8 @@ def link_existing_service(*, user, panel: Panel, panel_username: str, plan=None,
     order.save()
 
     write_audit(action="service.linked_existing", staff=staff, target=service, detail={
-        "panel": panel.id, "panel_username": name, "user": user.id,
+        "panel": panel.id, "panel_username": name, "user": user.id, "panel_owner": owner,
+        "other_admin_confirmed": bool(confirm_other_admin and owner and owner != panel.admin_username),
         "plan": plan.id if plan else None, "order": order.id,
     })
     return service

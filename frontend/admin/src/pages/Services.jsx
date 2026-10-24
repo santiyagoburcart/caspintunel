@@ -53,6 +53,10 @@ const T = {
     l_search: 'جستجوی اکانت در پنل', l_search_ph: 'نام کاربری سرویس در پنل…', l_pick_panel: 'ابتدا پنل را انتخاب کنید',
     l_searching: 'در حال جستجو در پنل…', l_none: 'اکانتی با این نام روی پنل یافت نشد', l_change: 'تغییر اکانت',
     l_linked: 'قبلاً به کاربر {u} متصل است', l_deleted: 'کاربر حذف‌شده',
+    l_owner: 'ادمین پنل: {o}', l_other_admin: 'متعلق به ادمین دیگر ({o})',
+    l_confirm_other: 'این اکانت متعلق به ادمین «{o}» در پنل است (مثلاً مشتری یک نماینده). مطمئنم که می‌خواهم آن را به این کاربر متصل کنم.',
+    exists_on_panel: 'نام «{n}» روی پنل قبلاً وجود دارد{o} — به آن متصل نمی‌شویم. یک نام دیگر بنویسید، یا اگر همین اکانت را می‌خواهید آگاهانه «اتصال سرویس موجود» را انتخاب کنید.',
+    link_instead: 'اتصال همین اکانت موجود…',
     l_plan: 'پلن برای تمدیدهای بعدی (اختیاری)', l_no_plan: '— بدون پلن —', l_plan_hint: 'فقط برای تمدید؛ روی اکانت فعلی اعمال نمی‌شود',
     l_note: 'یک سفارش «اتصال سرویس موجود» بدون پرداخت ثبت می‌شود و مشخصات سرویس از پنل همگام‌سازی می‌شود.',
     l_submit: 'اتصال', linked_ok: 'سرویس موجود با موفقیت متصل شد', user_deleted: 'حذف‌شده',
@@ -81,6 +85,10 @@ const T = {
     l_search: 'Find the account on the panel', l_search_ph: 'Panel service username…', l_pick_panel: 'Select a panel first',
     l_searching: 'Searching the panel…', l_none: 'No account with that name on the panel', l_change: 'Change account',
     l_linked: 'Already linked to user {u}', l_deleted: 'deleted user',
+    l_owner: 'panel admin: {o}', l_other_admin: 'belongs to another admin ({o})',
+    l_confirm_other: 'This account belongs to panel admin “{o}” (e.g. a reseller’s customer). I’m sure I want to link it to this user.',
+    exists_on_panel: 'The name “{n}” already exists on the panel{o} — we never attach to it. Enter another name, or choose “Link existing account” deliberately if you want that very account.',
+    link_instead: 'Link this existing account…',
     l_plan: 'Plan for future renewals (optional)', l_no_plan: '— no plan —', l_plan_hint: 'Only used for renewals; not applied to the account now',
     l_note: 'A no-payment "linked existing" order is recorded and the service details are synced from the panel.',
     l_submit: 'Link', linked_ok: 'Existing service linked', user_deleted: 'deleted',
@@ -342,6 +350,9 @@ function PanelAccountRow({ a, s, t, lang, picked, onPick }) {
         <span dir="ltr" className="svc-mono">{fmtData(a.used_traffic, a.data_limit, s, lang)}</span>
         <span>· {s.col_expire}: {exp}</span>
       </span>
+      {a.owner && (
+        <span className={a.other_admin ? 'svc-acc-other' : 'svc-acc-owner'}>{(a.other_admin ? s.l_other_admin : s.l_owner).replace('{o}', a.owner)}</span>
+      )}
       {a.linked && (
         <span className="svc-acc-linked">{s.l_linked.replace('{u}', a.linked.username)}{a.linked.user_deleted ? ` (${s.l_deleted})` : ''}</span>
       )}
@@ -366,6 +377,9 @@ function ManualCreateModal({ s, t, lang, onClose, onCreated }) {
   const [accLoading, setAccLoading] = useState(false)
   const [accErr, setAccErr] = useState('')
   const [picked, setPicked] = useState(null)
+  const [confirmOther, setConfirmOther] = useState(false)
+  const [otherOwner, setOtherOwner] = useState('')     // from a 409 when the search row had no owner
+  const [existsName, setExistsName] = useState('')     // manual create: the name exists on the panel
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
 
@@ -399,16 +413,18 @@ function ManualCreateModal({ s, t, lang, onClose, onCreated }) {
   }
 
   const toggleGroup = (id) => setSelectedGroups((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]))
-  const switchMode = (m) => { setMode(m); setErr(''); setPlanId(''); setPicked(null) }
+  const switchMode = (m) => { setMode(m); setErr(''); setPlanId(''); setPicked(null); setConfirmOther(false); setOtherOwner(''); setExistsName('') }
+  const pick = (a) => { setPicked(a); setConfirmOther(false); setOtherOwner('') }
+  const ownerOfPicked = picked ? (picked.other_admin ? picked.owner : otherOwner) : ''
   const changePanel = (v) => { setPanelId(v); setPlanId(''); setGroups(null); setSelectedGroups([]); setPicked(null); setAccQuery('') }
 
   const submit = async (e) => {
-    e.preventDefault(); setErr(''); setBusy(true)
+    e.preventDefault(); setErr(''); setExistsName(''); setBusy(true)
     try {
       if (mode === 'link') {
         await api.post('/admin/services/link/', {
           panel: Number(panelId), panel_username: picked.username, user: user.id,
-          plan: planId ? Number(planId) : null,
+          plan: planId ? Number(planId) : null, confirm_other_admin: !!(ownerOfPicked && confirmOther),
         })
         onCreated(s.linked_ok)
       } else {
@@ -421,11 +437,17 @@ function ManualCreateModal({ s, t, lang, onClose, onCreated }) {
       }
     } catch (e2) {
       const d = e2?.response?.data
+      if (e2?.response?.status === 409 && d?.code === 'other_admin') { setOtherOwner(d.owner); setErr(''); return }
+      if (e2?.response?.status === 409 && d?.code === 'exists_on_panel') {
+        setExistsName(d.panel_username)
+        setErr(s.exists_on_panel.replace('{n}', d.panel_username).replace('{o}', d.owner ? ` (${d.owner})` : ''))
+        return
+      }
       setErr(e2?.response?.status === 409 && d?.username ? s.l_linked.replace('{u}', d.username) : apiError(e2))
     } finally { setBusy(false) }
   }
 
-  const canSubmit = mode === 'link' ? !!(user && panelId && picked) : !!(user && planId)
+  const canSubmit = mode === 'link' ? !!(user && panelId && picked && (!ownerOfPicked || confirmOther)) : !!(user && planId)
 
   return (
     <div className="svc-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -447,6 +469,9 @@ function ManualCreateModal({ s, t, lang, onClose, onCreated }) {
         </div>
         <div className="svc-modal-body">
           <Alert>{err}</Alert>
+          {mode === 'create' && existsName && (
+            <button type="button" className="btn-ghost text-sm" onClick={() => { const n = existsName; switchMode('link'); setAccQuery(n) }}>{s.link_instead}</button>
+          )}
 
           {mode === 'create' && <UserPicker s={s} user={user} setUser={setUser} />}
 
@@ -516,7 +541,7 @@ function ManualCreateModal({ s, t, lang, onClose, onCreated }) {
                       <b dir="ltr" className="svc-mono">{picked.username}</b>
                       <span className="svc-sub" dir="ltr">{fmtData(picked.used_traffic, picked.data_limit, s, lang)} · {enumLabel(t, 'st_', picked.status)}</span>
                     </span>
-                    <button type="button" className="btn-ghost text-xs" onClick={() => setPicked(null)}>{s.l_change}</button>
+                    <button type="button" className="btn-ghost text-xs" onClick={() => pick(null)}>{s.l_change}</button>
                   </div>
                 ) : (
                   <>
@@ -536,13 +561,20 @@ function ManualCreateModal({ s, t, lang, onClose, onCreated }) {
                           <div className="svc-user-empty">{s.l_none}</div>
                         ) : accResults.map((a) => (
                           <PanelAccountRow key={a.username} a={a} s={s} t={t} lang={lang}
-                            picked={picked?.username === a.username} onPick={setPicked} />
+                            picked={picked?.username === a.username} onPick={pick} />
                         ))}
                       </div>
                     )}
                   </>
                 )}
               </div>
+
+              {ownerOfPicked && (
+                <label className="svc-confirm-other">
+                  <input type="checkbox" checked={confirmOther} onChange={(e) => setConfirmOther(e.target.checked)} />
+                  <span>{s.l_confirm_other.replace('{o}', ownerOfPicked)}</span>
+                </label>
+              )}
 
               <UserPicker s={s} user={user} setUser={setUser} />
 
@@ -665,6 +697,10 @@ const CSS = `
 .svc-acc-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .svc-acc-meta { display: flex; flex-wrap: wrap; gap: 6px; font-size: 11.5px; color: var(--c-text-muted); }
 .svc-acc-linked { font-size: 11px; font-weight: 700; color: var(--c-danger); }
+.svc-acc-owner { font-size: 11px; color: var(--c-text-muted); }
+.svc-acc-other { font-size: 11px; font-weight: 700; color: var(--c-warning-fg, var(--c-warning)); }
+.svc-confirm-other { display: flex; gap: 10px; align-items: flex-start; font-size: 12.5px; line-height: 1.8; padding: 10px 12px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--c-warning) 45%, transparent); background: color-mix(in srgb, var(--c-warning) 10%, transparent); cursor: pointer; }
+.svc-confirm-other input { margin-top: 5px; width: 18px; height: 18px; flex: none; accent-color: var(--c-primary); }
 .svc-err { color: var(--c-danger); }
 .svc-link-note { padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--c-primary) 7%, transparent); line-height: 1.7; }
 .svc-deleted-tag { margin-inline-start: 6px; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 5px; color: var(--c-danger);

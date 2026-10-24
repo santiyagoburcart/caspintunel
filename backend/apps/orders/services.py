@@ -63,6 +63,41 @@ def expire_stale_reservations() -> int:
     return count
 
 
+NAME_TAKEN = "that account name is already taken — pick another"
+
+
+def check_account_name(panel, name: str) -> None:
+    """A new service's account name must be free in our DB *and* on the panel
+    (a reseller's customer may already use it there — we never attach to it)."""
+    from apps.panel.models import Service
+    from apps.panel.services import name_taken_on_panel
+
+    if Service.objects.filter(panel=panel, panel_username__iexact=name).exists():
+        raise OrderError(NAME_TAKEN)
+    if panel is not None and name_taken_on_panel(panel, name) is not None:
+        raise OrderError(NAME_TAKEN)
+
+
+def rename_paid_order(order: Order, name: str) -> Order:
+    """The customer's new account name for a paid order whose first name was
+    taken on the panel; fulfilment runs again with it."""
+    import re
+
+    name = (name or "").strip()
+    if not (order.status == OrderStatus.PAID and order.needs_new_name and order.type == OrderType.NEW):
+        raise OrderError("this order does not need a new account name")
+    if not re.fullmatch(r"[A-Za-z0-9_.\-]{2,64}", name):
+        raise OrderError("use 2–64 English letters, digits, _ . -")
+    check_account_name(order.plan.panel, name)
+    order.requested_account_name, order.needs_new_name = name, False
+    order.save(update_fields=["requested_account_name", "needs_new_name", "updated_at"])
+    write_audit(action="order.account_name_changed", target=order, detail={"name": name})
+    from .tasks import fulfill_order
+
+    transaction.on_commit(lambda: fulfill_order.delay(order.id))
+    return order
+
+
 @transaction.atomic
 def create_order(
     *,
@@ -110,8 +145,7 @@ def create_order(
             # custom-volume. We never auto-generate it.
             raise OrderError("requested_account_name is required for a new service")
         # username uniqueness is scoped to the plan's panel
-        if Service.objects.filter(panel=plan.panel, panel_username__iexact=name).exists():
-            raise OrderError("that account name is already taken — pick another")
+        check_account_name(plan.panel, name)
         requested_account_name = name
 
     # --- amount ---

@@ -255,6 +255,26 @@ def test_taken_account_name_asks_again(bot, user, plans):
     assert Order.objects.filter(requested_account_name="free1").exists()
 
 
+def test_paid_order_with_taken_name_asks_for_a_new_one(bot, user, plans):
+    """the "choose another name" button from the fulfilment message: taken names are refused, a free one is saved"""
+    a, *_ = plans
+    panel = Panel.objects.create(name="P3", base_url="https://p3.invalid", admin_username="a", admin_password_enc="x")
+    Plan.objects.filter(pk=a.pk).update(panel=panel)
+    Service.objects.create(user=user, panel=panel, panel_username="taken2", status="active")
+    o = Order(user=user, plan_id=a.id, type="new", requested_account_name="parsa", amount=1, amount_unique=1,
+              unique_expire_at=timezone.now(), status=OrderStatus.PAID, needs_new_name=True)
+    o.save()
+    out = bot.click(f"nn:{o.id}")
+    assert "✏️" in out[-1][1]
+    out = bot.feed(_msg("taken2"))
+    assert "⚠️" in out[-1][1]
+    out = bot.feed(_msg("fresh9"))
+    assert "fresh9" in out[-1][1] and "✅" in out[-1][1]
+    o.refresh_from_db()
+    assert o.requested_account_name == "fresh9" and not o.needs_new_name
+    assert bot.click(f"nn:{o.id}")                       # no longer pending a name → history, nothing asked
+
+
 def test_receipt_photo_attaches_to_the_open_order(bot, user, plans):
     a, *_ = plans
     bot.click(f"pb:{a.id}"); bot.feed(_msg("ali4"))

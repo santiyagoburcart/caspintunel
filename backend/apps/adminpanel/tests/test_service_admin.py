@@ -87,6 +87,7 @@ def test_status_change_end_to_end(staff_client, perms, panel, plan, cust):
 def test_manual_create_end_to_end(staff_client, perms, panel, plan, cust):
     manager = make_staff("mgr2", ["monitoring.view", "services.manage"], perms)
     _token(responses)
+    responses.add(responses.GET, f"{BASE}/api/user/brandnew", json={"detail": "nf"}, status=404)   # free on the panel
     responses.add(responses.POST, f"{BASE}/api/user",
                   json={"username": "brandnew", "status": "on_hold", "subscription_url": "/s/n/"},
                   status=200)

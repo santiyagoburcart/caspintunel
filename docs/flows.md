@@ -140,7 +140,14 @@ sequenceDiagram
     else
         W->>PG: POST /api/user (limit, expiry or on_hold_expire_duration,<br/>plan group_ids or panel defaults, HWID limit)
         alt 409 — username exists
-            W->>PG: GET user (adopt it)
+            W->>PG: GET user
+            alt our own earlier attempt (note caspintunel#id, not older than the service)
+                W->>W: adopt it
+            else someone else's account (e.g. a reseller's customer)
+                W->>DB: drop the pending Service, order stays paid + needs_new_name (no auto retry)
+                W-->>C: "choose another name" (site form, bot button nn:id, email)
+                C->>W: new name → checked in DB + on the panel → fulfil again
+            end
         end
     end
     PG-->>W: user object
@@ -149,6 +156,12 @@ sequenceDiagram
     W-->>C: notify site + email, bot gets the QR photo + link
     Note over W,PG: PanelUnavailable → Celery retry,<br/>beat retries paid-but-unprovisioned orders every 10 min
 ```
+
+Account names are checked **in our DB and on the panel** when the order is placed
+(`orders.services.check_account_name`, site + bot ask for another name; an unreachable
+panel does not block the sale — the 409 guard above still never attaches). Staff manual
+creation refuses a name that exists on the panel and offers **Link existing account**; linking
+an account owned by another panel admin needs `confirm_other_admin` (a checkbox in the modal).
 
 Add-on volume orders call `add_service_data_limit` instead (panel first, then
 mirror). Every `service_sync_interval_minutes` beat dispatches

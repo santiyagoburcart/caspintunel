@@ -172,6 +172,13 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
 - nginx routing for both lives in the generated `nginx/paths/active.conf` (template + `render-paths.sh`); changes go
   through `scripts/paths.sh` (nginx -t, reload, verify, rollback). Never edit active.conf by hand.
 
+## Panel account names
+- Never attach a customer to a panel account we did not create: names are checked in our DB **and** on the panel
+  (`orders.services.check_account_name`); a 409 on create is adopted only for our own earlier attempt (note
+  `caspintunel#<service id>`, not older than the service) — otherwise `PanelNameTaken` → the order waits for a new
+  name (`needs_new_name`). Linking an existing account is an explicit staff action; another admin's account needs
+  `confirm_other_admin`.
+
 ## Domain (docs/domain.md)
 - The site domain changes only through the wizard / `scripts/domain.sh` (certificate check, nginx -t, .env, rolling
   restart, verify over TLS, rollback). Never edit `nginx/domain/active.conf` or the domain keys of `.env` by hand while a

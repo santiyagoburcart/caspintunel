@@ -121,12 +121,15 @@ def test_provision_creates_and_stores_subscription(user, panel, timed_plan):
 
 @responses.activate
 def test_provision_is_idempotent_on_conflict(user, panel, timed_plan):
+    """409 from our own earlier attempt (our note) → adopted; someone else's account never is (test_account_names)."""
+    svc = _svc(user, panel, timed_plan)
     _token(responses)
     responses.add(responses.POST, f"{BASE}/api/user", status=409)
     responses.add(responses.GET, f"{BASE}/api/user/cust-1",
-                  json={"username": "cust-1", "subscription_url": f"{BASE}/myac/xyz/", "status": "on_hold"},
+                  json={"username": "cust-1", "subscription_url": f"{BASE}/myac/xyz/", "status": "on_hold",
+                        "note": f"caspintunel#{svc.id}"},
                   status=200)
-    out = provision_service(_svc(user, panel, timed_plan).id)
+    out = provision_service(svc.id)
     assert out.subscription_url == f"{BASE}/myac/xyz/"
 
 

@@ -4,7 +4,7 @@ from celery import shared_task
 from django.db import transaction
 
 from apps.common.models import write_audit
-from apps.panel.exceptions import PanelError, PanelUnavailable
+from apps.panel.exceptions import PanelError, PanelNameTaken, PanelUnavailable
 from apps.panel.models import Panel, Service, ServiceStatus
 
 from .models import Order, OrderStatus, OrderType
@@ -38,7 +38,7 @@ def retry_unfulfilled_orders():
 
     cutoff = timezone.now() - timezone.timedelta(minutes=2)
     stuck = list(
-        Order.objects.filter(status=OrderStatus.PAID, updated_at__lt=cutoff)
+        Order.objects.filter(status=OrderStatus.PAID, updated_at__lt=cutoff, needs_new_name=False)
         .values_list("id", flat=True)
     )
     for oid in stuck:
@@ -76,6 +76,8 @@ def fulfill_order(self, order_id: int):
             raise PanelError(f"unknown order type {order.type}")
     except PanelUnavailable:
         raise
+    except PanelNameTaken as exc:
+        return _ask_for_new_name(order, exc)
     except PanelError as exc:
         log.error("fulfill_order(%s) permanently failed: %s", order_id, exc)
         write_audit(action="order.fulfillment_failed", target=order, detail={"error": str(exc)})
@@ -91,6 +93,64 @@ def fulfill_order(self, order_id: int):
     if order.type != OrderType.RENEW:
         _notify_delivered(order)
     return {"order": order_id, "status": "completed"}
+
+
+def _ask_for_new_name(order: Order, exc: PanelNameTaken) -> dict:
+    """Paid, but the name exists on the panel as someone else's account: drop
+    our never-provisioned service row, keep the order paid and ask the customer
+    (site + bot) for another name. Never attached, never retried by itself."""
+    svc = order.service
+    with transaction.atomic():
+        order.service = None
+        order.needs_new_name = True
+        order.save(update_fields=["service", "needs_new_name", "updated_at"])
+        if svc is not None and not svc.subscription_url and svc.status == ServiceStatus.PENDING \
+                and not svc.orders.exclude(pk=order.pk).exists():
+            svc.delete()
+    write_audit(action="order.account_name_taken", target=order,
+                detail={"name": exc.username, "panel_owner": exc.owner or ""})
+    log.warning("order %s: account name %s exists on the panel (admin %s) — asked the customer for another",
+                order.id, exc.username, exc.owner)
+    try:
+        from apps.notifications.dispatch import notify_user
+        from apps.notifications.models import NotificationType
+
+        notify_user(
+            order.user,
+            title="نام اکانت را عوض کنید",
+            body=(f"پرداخت سفارش #{order.id} تأیید شده، اما نام «{exc.username}» روی سرور قبلاً استفاده شده است. "
+                  "لطفاً یک نام دیگر انتخاب کنید تا سرویس ساخته شود."),
+            title_en="Choose another account name",
+            body_en=(f"Order #{order.id} is paid, but the name “{exc.username}” is already in use on the server. "
+                     "Please choose another name and your service will be created."),
+            ntype=NotificationType.ORDER_CONFIRMED, via_site=True, via_bot=False, via_email=True,
+            link=f"/checkout?order={order.id}",
+        )
+        _send_bot_rename_prompt(order, exc.username)
+    except Exception as e:  # noqa: BLE001 - notification must not fail the task
+        log.warning("new-name request for order %s not delivered: %s", order.id, e)
+    return {"order": order.id, "status": "needs_new_name"}
+
+
+def _send_bot_rename_prompt(order, name: str) -> bool:
+    user = order.user
+    if not user.telegram_id:
+        return False
+    from apps.telegram.config import sales_client
+
+    client = sales_client()
+    if client is None:
+        return False
+    en = getattr(user, "language", "fa") == "en"
+    text = (f"⚠️ Order #{order.id} is paid, but the account name <code>{name}</code> is already in use on the server.\n"
+            "Tap the button and send another name — your service is created right away."
+            if en else
+            f"⚠️ پرداخت سفارش #{order.id} تأیید شده، اما نام <code>{name}</code> روی سرور قبلاً استفاده شده است.\n"
+            "دکمه را بزنید و یک نام دیگر بفرستید تا سرویس ساخته شود.")
+    kb = {"inline_keyboard": [[{"text": "✏️ Choose another name" if en else "✏️ انتخاب نام جدید",
+                                "callback_data": f"nn:{order.id}"}]]}
+    client.send_message(user.telegram_id, text, parse_mode="HTML", reply_markup=kb)
+    return True
 
 
 def _notify_delivered(order):

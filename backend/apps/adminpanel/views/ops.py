@@ -7,7 +7,7 @@ from rest_framework import mixins, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from apps.panel.exceptions import PanelError, PanelNotFound
+from apps.panel.exceptions import PanelError, PanelLinkNeedsConfirmation, PanelNameTaken, PanelNotFound
 from apps.panel.models import Panel, Service, ServiceStatus
 from apps.panel.services import (
     ServiceAlreadyLinked,
@@ -102,6 +102,9 @@ class ServiceListViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
                 group_ids=v.get("group_ids"), account_name=v.get("account_name"),
                 staff=request.user,
             )
+        except PanelNameTaken as exc:      # exists on the panel: staff must choose "Link existing account" explicitly
+            return Response({"detail": str(exc), "code": "exists_on_panel", "panel_username": exc.username,
+                             "owner": exc.owner or ""}, status=409)
         except PanelError as exc:
             return Response({"detail": str(exc)}, status=502)
         return Response(AdminServiceSerializer(service).data, status=201)
@@ -207,7 +210,11 @@ class ServiceListViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
         v = ser.validated_data
         try:
             service = link_existing_service(user=v["user"], panel=v["panel"], panel_username=v["panel_username"],
-                                            plan=v.get("plan"), staff=request.user)
+                                            plan=v.get("plan"), staff=request.user,
+                                            confirm_other_admin=v.get("confirm_other_admin", False))
+        except PanelLinkNeedsConfirmation as exc:
+            return Response({"detail": str(exc), "code": "other_admin", "panel_username": exc.username,
+                             "owner": exc.owner}, status=409)
         except ServiceAlreadyLinked as exc:
             return Response({"detail": str(exc), "service_id": exc.service.id,
                              "user_id": exc.service.user_id, "username": exc.service.user.username}, status=409)

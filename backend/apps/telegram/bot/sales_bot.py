@@ -22,7 +22,7 @@ from telebot import types
 
 from apps.accounts.models import User
 from apps.orders.models import Order
-from apps.orders.services import OrderError
+from apps.orders.services import OrderError, rename_paid_order
 from apps.panel.exceptions import PanelError
 from apps.panel.services import revoke_subscription
 from apps.plans.models import Plan, PlanType
@@ -492,6 +492,12 @@ def _route(bot, chat_id, msg, user, tg, data: str) -> None:
         if len(parts) > 2 or order.status != "pending_payment":
             return render(bot, chat_id, sc.order_status(user, order), msg)
         return render(bot, chat_id, sc.invoice(user, order), msg)
+    if head == "nn":                                   # paid order, name taken on the panel → ask for another
+        order = Order.objects.filter(pk=int(parts[1]), user=user, needs_new_name=True).first()
+        if not order:
+            return render(bot, chat_id, sc.history(user), msg)
+        set_state(tg, rename=order.id, awaiting="newname")
+        return bot.send_message(chat_id, tr(user, "ask_name"))
     if head == "rn":
         set_state(tg, renew=[int(parts[1]), int(parts[2])], awaiting=None)
         return _after_draft(bot, chat_id, user, tg, msg)
@@ -545,6 +551,18 @@ def _typed(bot, msg, user, awaiting: str) -> None:
             return bot.send_message(chat_id, tr(user, "ask_name"))
         set_state(tg, name=text[:64], awaiting=None)
         return _after_draft(bot, chat_id, user, tg)
+    if awaiting == "newname":
+        order = Order.objects.filter(pk=st.get("rename"), user=user).select_related("plan__panel").first()
+        if not order:
+            clear_state(tg)
+            return render(bot, chat_id, sc.history(user))
+        try:
+            rename_paid_order(order, text[:64])
+        except OrderError as exc:                       # taken too / bad format: ask again
+            return bot.send_message(chat_id, tr(user, "bad_name", err=html.escape(str(exc))))
+        clear_state(tg)
+        return bot.send_message(chat_id, tr(user, "name_changed", n=html.escape(order.requested_account_name)),
+                                reply_markup=sc.main_menu(user).markup)
     if awaiting == "pwd":
         try:
             change_password_via_bot(user, text)

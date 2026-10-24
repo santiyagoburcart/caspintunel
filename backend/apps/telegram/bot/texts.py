@@ -50,6 +50,8 @@ T: dict[str, tuple[str, str]] = {
     "ask_name": ("✏️ یک نام دلخواه برای اکانت بفرستید (حروف و اعداد انگلیسی، مثل <code>ali2</code>):",
                  "✏️ Send a name for the account (English letters and digits, e.g. <code>ali2</code>):"),
     "bad_name": ("⚠️ {err}\nیک نام دیگر بفرستید:", "⚠️ {err}\nSend another name:"),
+    "name_changed": ("✅ نام اکانت <code>{n}</code> ثبت شد — سرویس شما تا چند لحظهٔ دیگر ساخته می‌شود.",
+                     "✅ Account name <code>{n}</code> saved — your service is being created now."),
     "terms": ("📜 <b>پذیرش قوانین</b>\nپیش از خرید، قوانین سرویس را بخوانید و بپذیرید.",
               "📜 <b>Accept the rules</b>\nRead and accept the service rules before buying."),
     "btn_accept": ("✅ قوانین را می‌پذیرم", "✅ I accept the rules"),

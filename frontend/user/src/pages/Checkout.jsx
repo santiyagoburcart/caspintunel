@@ -55,6 +55,7 @@ export default function Checkout() {
   const [selectedCard, setSelectedCard] = useState(null)
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
+  const [newName, setNewName] = useState('')
   const [restoring, setRestoring] = useState(false)
   const [changingPlan, setChangingPlan] = useState(false)
   const [now, setNow] = useState(Date.now())
@@ -375,8 +376,26 @@ export default function Checkout() {
         </div>
       )}
 
+      {/* paid, but the chosen name exists on the panel (someone else's account): pick another */}
+      {order.status === 'paid' && order.needs_new_name && (
+        <form className="ckt-state" onSubmit={async (e) => {
+          e.preventDefault(); setBusy(true); setErr('')
+          try {
+            const { data } = await api.post(`/orders/${order.id}/account-name/`, { requested_account_name: newName.trim() })
+            showOrder(data); setNewName('')
+          } catch (e2) { setErr(apiError(e2)) } finally { setBusy(false) }
+        }}>
+          <div className="ckt-state-ico" style={{ background: 'var(--c-warning)' }}>✎</div>
+          <h2>{t('new_name_title')}</h2>
+          <p>{t('new_name_hint', { n: order.requested_account_name })}</p>
+          <input className="input w-full" dir="ltr" required minLength={2} maxLength={64} pattern="[A-Za-z0-9_.\-]{2,64}"
+            aria-label={t('new_name_title')} value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="ali2" />
+          <button className="btn-primary w-full" disabled={busy || newName.trim().length < 2}>{busy ? <Spinner /> : t('new_name_save')}</button>
+        </form>
+      )}
+
       {/* approved (receipt or SMS) but the service is still being provisioned */}
-      {order.status !== 'completed' && order.status !== 'failed' && confirmed && (
+      {order.status !== 'completed' && order.status !== 'failed' && confirmed && !order.needs_new_name && (
         <div className="ckt-state">
           <div className="ckt-state-ico" style={{ background: 'var(--c-success)' }}>✓</div>
           <h2 style={{ color: 'var(--c-success)' }}>{t('pay_confirmed_title')}</h2>

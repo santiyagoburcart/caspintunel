@@ -60,6 +60,9 @@ class Order(TimeStampedModel):
         max_length=16, choices=OrderStatus.choices, default=OrderStatus.PENDING_PAYMENT, db_index=True
     )
     source = models.CharField(max_length=8, default="site")
+    # paid, but the chosen account name turned out to exist on the panel (someone
+    # else's account): never attached — the customer picks another name (site / bot)
+    needs_new_name = models.BooleanField(default=False)
 
     class Meta:
         db_table = "order"

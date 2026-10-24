@@ -25,3 +25,22 @@ class PanelValidationError(PanelError):
 
 class PanelConflict(PanelValidationError):
     """The panel user already exists (409)."""
+
+
+class PanelNameTaken(PanelError):
+    """The account name already exists on the panel and is not ours to take
+    (someone else's account, e.g. a reseller's). We never attach to it."""
+
+    def __init__(self, username, *, owner=None):
+        self.username, self.owner = username, owner
+        super().__init__(f"the account name '{username}' already exists on the panel"
+                         + (f" (admin {owner})" if owner else "") + " — choose another name")
+
+
+class PanelLinkNeedsConfirmation(PanelError):
+    """Linking an existing account that belongs to another panel admin needs an explicit choice."""
+
+    def __init__(self, username, *, owner):
+        self.username, self.owner = username, owner
+        super().__init__(f"panel account {username} belongs to admin {owner}, not this panel's admin — "
+                         "confirm explicitly to link it")
