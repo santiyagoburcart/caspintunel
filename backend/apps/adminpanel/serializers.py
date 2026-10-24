@@ -707,10 +707,11 @@ class AdminSmsLogSerializer(serializers.ModelSerializer):
     mismatch_order = serializers.IntegerField(source="mismatch_order_id", read_only=True)
     mismatch_invoice = serializers.DecimalField(source="mismatch_order.amount_unique", max_digits=12, decimal_places=0,
                                                 default=None, read_only=True)
+    delivered_late = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = SmsMessage
-        fields = ("id", "received_at", "device", "sender", "source", "text", "parsed_amount",
+        fields = ("id", "received_at", "uploaded_at", "delivered_late", "device", "sender", "source", "text", "parsed_amount",
                   "parsed_raw", "parsed_unit", "matched_order", "matched_order_status", "note",
                   "mismatch_order", "mismatch_kind", "mismatch_invoice")
         read_only_fields = fields

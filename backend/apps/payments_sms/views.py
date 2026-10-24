@@ -183,6 +183,30 @@ class SmsInboundView(APIView):
         return Response(result, status=status.HTTP_201_CREATED)
 
 
+class SmsInboundBatchView(APIView):
+    """Offline queue upload (iPhone Shortcut v1.1+): many SMS, each with the time
+    the phone received it; idempotent (see batch.py). Body: JSON array or
+    newline-delimited JSON — raw (any content type) or as an uploaded file."""
+
+    authentication_classes = [SmsDeviceAuthentication]
+    permission_classes = [IsSmsDevice]
+    parser_classes = [MultiPartParser, FormParser]
+    throttle_scope = "sms_ingest"
+
+    @extend_schema(request=None, responses=dict,
+                   summary="Upload queued SMS (NDJSON / JSON array of {text, sender, received_at}); idempotent")
+    def post(self, request):
+        from .batch import ingest_batch
+
+        if (request.content_type or "").startswith("multipart/"):
+            f = next(iter(request.FILES.values()), None)
+            raw = f.read() if f else (request.data.get("queue") or "").encode()
+        else:
+            raw = request.body
+        body = ingest_batch(request.auth, raw.decode("utf-8", errors="replace") if isinstance(raw, bytes) else raw)
+        return Response(body, status=status.HTTP_200_OK if body["ok"] else status.HTTP_413_REQUEST_ENTITY_TOO_LARGE)
+
+
 class SmsPingView(APIView):
     authentication_classes = [SmsDeviceAuthentication]
     permission_classes = [IsSmsDevice]

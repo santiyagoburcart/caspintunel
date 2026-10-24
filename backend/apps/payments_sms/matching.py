@@ -10,6 +10,13 @@ order for manual review (SmsMessage.mismatch_order + "less"/"more"), the order
 gets a pending "sms_mismatch" payment so it shows in the Payments queue (and
 does not expire), and admins get a live notification. Same endpoint for the
 iPhone Shortcut and the Android app.
+
+Everything is judged at the moment the phone RECEIVED the SMS (`received_at`),
+not when it reached us: the iPhone Shortcut queues SMS offline and uploads them
+later (`inbound-batch`). An order counts as open for an SMS when it was waiting
+for payment at that moment — still pending, or expired since but its deadline
+was after the SMS arrived — and it existed by then (a few minutes of clock skew
+allowed). An order created after the SMS arrived can never be paid by it.
 """
 from __future__ import annotations
 
@@ -17,7 +24,10 @@ import logging
 import re
 from decimal import Decimal
 
+from datetime import timedelta
+
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from apps.common.models import write_audit
@@ -59,6 +69,22 @@ def mask_sms(text: str) -> str:
     return re.sub(r"\d{13,}", lambda m: "*" * 4 + m.group(0)[-4:], text)
 
 
+CLOCK_SKEW = timedelta(minutes=5)          # phone clock vs server clock
+
+
+def open_orders_at(at=None, *, pending: bool | None = None):
+    """Orders that were waiting for payment when the SMS arrived (see module doc).
+    An expired order counts only if it was still open then: its deadline was not
+    before the SMS and it was closed (expired by the timer, or dropped early for
+    a newer order — `updated_at`) after the SMS arrived. pending=True/False
+    narrows to still-pending / expired ones."""
+    at = at or timezone.now()
+    still = Q(status=OrderStatus.PENDING_PAYMENT)
+    gone = Q(status=OrderStatus.EXPIRED, unique_expire_at__gte=at, updated_at__gte=at)
+    cond = still if pending else gone if pending is False else (still | gone)
+    return Order.objects.filter(cond, created_at__lte=at + CLOCK_SKEW)
+
+
 def _resolve_source(sender: str | None):
     """
     Returns (SmsSource|None, allowed: bool).
@@ -85,18 +111,21 @@ def _resolve_source(sender: str | None):
 
 
 @transaction.atomic
-def ingest_sms(*, device, raw_text: str, sender: str | None = None, received_at=None) -> tuple[SmsMessage, dict]:
+def ingest_sms(*, device, raw_text: str, sender: str | None = None, received_at=None,
+               dedupe_key: str | None = None) -> tuple[SmsMessage, dict]:
+    """Store one SMS and try to match it. `dedupe_key` (batch uploads) is unique:
+    a second copy raises IntegrityError before anything is matched."""
     source, allowed = _resolve_source(sender)
     amount = deposit_amount(raw_text, source.amount_unit if source else RIAL)
+    now = timezone.now()
     msg = SmsMessage.objects.create(
         device=device, sms_source=source, raw_text=raw_text, sender=(sender or "")[:64],
         parsed_amount=amount.toman if amount and amount.whole else None,
         parsed_raw=amount.raw if amount else None, parsed_unit=amount.unit if amount else "",
+        received_at=received_at or now, uploaded_at=now, dedupe_key=dedupe_key,
     )
-    if received_at:
-        SmsMessage.objects.filter(pk=msg.pk).update(received_at=received_at)
 
-    result: dict = {"message_id": msg.id, "matched": False}
+    result: dict = {"message_id": msg.id, "matched": False, "late": msg.delivered_late}
     if not allowed:
         result["reason"] = "sender is not an allowed SMS source"
         _note(msg, f"sender {sender!r} is not in Settings → bank numbers" if sender
@@ -111,9 +140,10 @@ def ingest_sms(*, device, raw_text: str, sender: str | None = None, received_at=
             amount=str(payment.amount),
             payment_status=payment.status,
         )
-        _note(msg, f"matched order #{payment.order_id} ({payment.amount} T, SMS {amount.describe()}) — auto-confirmed")
+        late = " (delivered late; order was open when the SMS arrived)" if msg.delivered_late else ""
+        _note(msg, f"matched order #{payment.order_id} ({payment.amount} T, SMS {amount.describe()}) — auto-confirmed{late}")
         return msg, result
-    suspect = near_order(amount)
+    suspect = near_order(amount, msg.received_at)
     if suspect is not None:
         kind = flag_mismatch(msg, suspect, amount)
         result.update(reason="amount mismatch", mismatch=kind, order_id=suspect.id)
@@ -135,19 +165,19 @@ def _whole(values) -> list:
 NEAR_RATIO = Decimal("0.20")
 
 
-def near_order(amount: SmsAmount | None) -> Order | None:
-    """The open (pending-payment) order this deposit is close to but does not
-    equal: the ×10 / ÷10 unit case first, else the closest invoice within ±20 %."""
+def near_order(amount: SmsAmount | None, at=None) -> Order | None:
+    """The order open at `at` (see open_orders_at) this deposit is close to but does
+    not equal: the ×10 / ÷10 unit case first, else the closest invoice within ±20 %."""
     if amount is None or amount.toman <= 0:
         return None
-    unit = unit_mismatch_order(amount)
+    unit = unit_mismatch_order(amount, at)
     if unit is not None:
         return unit
     t = Decimal(amount.toman)
     lo, hi = t / (1 + NEAR_RATIO), t / (1 - NEAR_RATIO)      # |t - invoice| <= 20 % of the invoice
     best = None
-    for o in Order.objects.filter(status=OrderStatus.PENDING_PAYMENT, amount_unique__gte=lo.to_integral_value() - 1,
-                                  amount_unique__lte=hi.to_integral_value() + 1).order_by("-created_at"):
+    for o in open_orders_at(at).filter(amount_unique__gte=lo.to_integral_value() - 1,
+                                       amount_unique__lte=hi.to_integral_value() + 1).order_by("-created_at"):
         inv = Decimal(o.amount_unique)
         if inv <= 0 or inv == t or abs(t - inv) > inv * NEAR_RATIO:
             continue
@@ -187,7 +217,7 @@ def flag_mismatch(msg: SmsMessage, order: Order, amount: SmsAmount) -> str:
     return kind
 
 
-def unit_mismatch_order(amount: SmsAmount | None) -> Order | None:
+def unit_mismatch_order(amount: SmsAmount | None, at=None) -> Order | None:
     """An open order whose invoice equals this SMS only after a ×10 / ÷10 unit
     change (the raw number, ten times / a tenth of the converted amount) — the
     classic Rial/Toman mix-up. Such an SMS is never approved, only flagged."""
@@ -198,8 +228,7 @@ def unit_mismatch_order(amount: SmsAmount | None) -> Order | None:
     suspects = [v for v in suspects if v != t]
     if not suspects:
         return None
-    return (Order.objects.filter(status=OrderStatus.PENDING_PAYMENT, amount_unique__in=suspects)
-            .order_by("-created_at").first())
+    return open_orders_at(at).filter(amount_unique__in=suspects).order_by("-created_at").first()
 
 
 def _why_unmatched(amount: SmsAmount | None) -> str:
@@ -228,12 +257,14 @@ def match_sms_message(msg: SmsMessage, amount: SmsAmount | None = None) -> Payme
     if amount is None or not amount.whole:
         return None
 
-    order = (
-        Order.objects.select_for_update()
-        .filter(status=OrderStatus.PENDING_PAYMENT, amount_unique_lock=amount.toman)
-        .order_by("created_at")
-        .first()
-    )
+    # exactly this invoice amount, open when the SMS arrived (a queued SMS may
+    # pay an order that expired while it waited in the phone)
+    order = None
+    for pending in (True, False):           # an open invoice first, then one that expired while the SMS was queued
+        order = (open_orders_at(msg.received_at, pending=pending).select_for_update()
+                 .filter(amount_unique=amount.toman).order_by("created_at").first())
+        if order is not None:
+            break
     if order is None or order.amount_unique != amount.toman:
         return None
 

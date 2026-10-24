@@ -7,6 +7,7 @@ from .views import (
     PaymentRejectView,
     ReceiptFileView,
     ReceiptUploadView,
+    SmsInboundBatchView,
     SmsInboundView,
     SmsPingView,
     SmsSourcesView,
@@ -23,6 +24,7 @@ urlpatterns = [
     path("<int:pk>/reject/", PaymentRejectView.as_view(), name="reject"),
     # Android SMS app
     path("sms/inbound/", SmsInboundView.as_view(), name="sms-inbound"),
+    path("sms/inbound-batch/", SmsInboundBatchView.as_view(), name="sms-inbound-batch"),
     path("sms/ping/", SmsPingView.as_view(), name="sms-ping"),
     path("sms/sources/", SmsSourcesView.as_view(), name="sms-sources"),
 ]

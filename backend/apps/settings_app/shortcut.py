@@ -27,7 +27,7 @@ TEMPLATE_NAME = "CaspinSMS.shortcut"
 # fixed action UUIDs in the template (see mobile_shortcut/README.md)
 ENDPOINT_UUID = "6F1C4C2E-7A43-4F4B-9D6B-5A1E0C3B7E01"
 TOKEN_UUID = "0B9A3D51-2C8E-4E3B-8F77-2D4C6A9E1F02"
-SMS_PATH = "/api/v1/payments/sms/inbound/"
+SMS_PATH = "/api/v1/payments/sms/inbound-batch/"   # v1.1+: offline queue, uploaded as a batch
 
 ICLOUD_SETTING = "ios_shortcut_icloud_url"
 ICLOUD_PREFIX = "https://www.icloud.com/shortcuts/"

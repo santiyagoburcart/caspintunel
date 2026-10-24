@@ -86,6 +86,14 @@ sequenceDiagram
     API-->>P: {matched, order_id | reason}
 ```
 
+Matching happens at `received_at` — when the phone got the SMS. An order counts
+as open for an SMS if it is still pending, or it expired since but was still open
+when the SMS arrived (deadline and close time after it); an order created after
+the SMS arrived never matches (5 min clock skew allowed). The iPhone Shortcut
+(v1.1+) saves every SMS to a queue file on the phone **before** any network call
+and uploads the whole queue to `/payments/sms/inbound-batch/`, which is
+idempotent — see [sms-batch.md](sms-batch.md).
+
 ## 3. Renewal
 
 A renewal is paid like a purchase (flows 1–2) with `type=renew` on an existing

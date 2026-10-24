@@ -34,6 +34,11 @@ WebSockets: `/ws/notifications/?token=<customer JWT>` (live site notifications) 
 
 ## SMS device (Android app / iPhone shortcut, `X-Device-Token`)
 - `POST /payments/sms/inbound/` `{text, sender?, received_at?}` → parse amount → auto-match an order
+- `POST /payments/sms/inbound-batch/` — offline queue (iPhone Shortcut v1.1+): JSON array or NDJSON of
+  `{text, sender, received_at}` (raw body or a multipart file). Idempotent (`sha256(device|received_at|text)`),
+  matched at `received_at`; `received_at` > 5 min in the future or > 72 h old → refused (logged).
+  → `{ok, result: "stored", count, new, duplicate, refused, matched, results: [{index, status, message_id, matched,
+  order_id, reason, late}]}` — the Shortcut clears its queue only on `result == "stored"` ([sms-batch.md](sms-batch.md))
 - `GET /payments/sms/ping/` (connection test, returns the device name)
 - `GET /payments/sms/sources/` (allowed bank sender numbers the app filters on)
 

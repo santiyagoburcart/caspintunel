@@ -20,9 +20,9 @@ const T = {
     features: 'چه کاری انجام می‌دهد؟', setup: 'راه‌اندازی',
     a_f: ['فقط پیامک‌های شماره‌های بانکیِ تعریف‌شده ارسال می‌شود', 'اجرای دائمی در پس‌زمینه و شروع خودکار پس از روشن شدن گوشی', 'ارسال مجدد خودکار در صورت قطعی اینترنت (تا 3 بار)', 'نمایش وضعیت اتصال و 20 پیامک آخر در خود اپ'],
     a_s: ['فایل APK را دانلود و روی گوشی نصب کنید (اجازهٔ «نصب از منابع ناشناس» را بدهید).', 'در پنل: تنظیمات ← دستگاه‌های SMS ← «افزودن دستگاه» و توکن ساخته‌شده را کپی کنید.', 'در اپ آدرس سرور (پایین همین صفحه) و توکن را وارد و «تست اتصال» را بزنید.', 'مجوز دریافت پیامک را بدهید و بهینه‌سازی باتری را برای اپ خاموش کنید.', 'در تنظیمات ← شماره‌های بانکی، شمارهٔ فرستندهٔ پیامک بانک را اضافه کنید.'],
-    i_f: ['اتوماسیون «وقتی پیامی از فرستندهٔ بانک رسید» روی خود آیفون', 'ارسال متن پیامک به سرور با توکن همان دستگاه', 'بدون نصب اپ و بدون نیاز به App Store'],
-    i_s: ['در پنل: تنظیمات ← دستگاه‌های SMS ← «افزودن دستگاه» برای این آیفون.', 'روی آیفون «نصب از iCloud» را بزنید (یا کد QR را با دوربین آیفون اسکن کنید) و «Add Shortcut» را بزنید.', 'هنگام نصب، آدرس سرور و توکن دستگاه (همین کارت) را در فیلدهای خواسته‌شده وارد کنید.', 'Shortcuts ← Automation ← «Message»: فرستندهٔ بانک ← اجرای همین شورتکات با «Shortcut Input» ← «Run Immediately» را روشن کنید.'],
-    server: 'آدرس دریافت پیامک در سرور', header: 'هدر احراز هویت', body: 'بدنهٔ درخواست (JSON)',
+    i_f: ['اتوماسیون «وقتی پیامی از فرستندهٔ بانک رسید» روی خود آیفون', 'هر پیامک اول در صف روی آیفون ذخیره و بعد ارسال می‌شود — با قطعی اینترنت هیچ پیامکی گم نمی‌شود', 'دکمهٔ «ارسال صف پیامک» روی صفحهٔ اصلی برای ارسال دستی صف', 'بدون نصب اپ و بدون نیاز به App Store'],
+    i_s: ['در پنل: تنظیمات ← دستگاه‌های SMS ← «افزودن دستگاه» برای این آیفون.', 'روی آیفون «نصب از iCloud» را بزنید (یا کد QR را با دوربین آیفون اسکن کنید) و «Add Shortcut» را بزنید.', 'هنگام نصب، آدرس سرور و توکن دستگاه (همین کارت) را در فیلدهای خواسته‌شده وارد کنید.', 'Shortcuts ← Automation ← «Message»: فرستندهٔ بانک ← اجرای همین شورتکات با «Shortcut Input» ← «Run Immediately» را روشن کنید.', 'اختیاری: شورتکات را با نام «ارسال صف پیامک» به صفحهٔ اصلی اضافه کنید؛ اجرای دستی فقط صف را می‌فرستد.'],
+    server: 'آدرس دریافت پیامک در سرور', server_batch: 'آدرس صف پیامک (شورتکات آیفون، NDJSON)', header: 'هدر احراز هویت', body: 'بدنهٔ درخواست (JSON)',
     copy: 'کپی', copied: 'کپی شد', download: 'دانلود از سرور', downloading: 'در حال دانلود…',
     none_file: 'هنوز فایلی بارگذاری نشده است', version: 'نسخه', size: 'حجم', updated: 'به‌روزرسانی', by: 'توسط',
     src_bundled: 'نسخهٔ همراه سامانه', src_upload: 'بارگذاری‌شده توسط ادمین', icloud: 'لینک iCloud (نیاز به اینترنت)',
@@ -54,9 +54,9 @@ const T = {
     features: 'What it does', setup: 'Setup',
     a_f: ['Only SMS from the configured bank numbers are forwarded', 'Runs permanently in the background and restarts after a reboot', 'Automatic retry when the connection drops (up to 3 times)', 'Shows the connection status and the last 20 SMS in the app'],
     a_s: ['Download the APK and install it on the phone (allow "install unknown apps").', 'In the panel: Settings → SMS devices → "Add device", copy the generated token.', 'In the app enter the server address (below) and the token, then tap "Test connection".', 'Grant the SMS permission and turn battery optimization off for the app.', 'In Settings → Bank numbers add the sender number of the bank SMS.'],
-    i_f: ['A "when a message from the bank arrives" automation on the iPhone', 'Sends the SMS text to the server with that device\'s token', 'Nothing to install, no App Store needed'],
-    i_s: ['In the panel: Settings → SMS devices → "Add device" for this iPhone.', 'On the iPhone tap "Install via iCloud" (or scan the QR code with the iPhone camera) and tap "Add Shortcut".', 'While installing, enter the server address and the device token (on this card) in the fields it asks for.', 'Shortcuts → Automation → "Message": the bank sender → run this shortcut with "Shortcut Input" → turn "Run Immediately" on.'],
-    server: 'SMS endpoint on the server', header: 'Auth header', body: 'Request body (JSON)',
+    i_f: ['A "when a message from the bank arrives" automation on the iPhone', 'Every SMS is saved to a queue on the iPhone first, then sent — no SMS is lost when the network drops', 'A home-screen "send SMS queue" button to flush the queue by hand', 'Nothing to install, no App Store needed'],
+    i_s: ['In the panel: Settings → SMS devices → "Add device" for this iPhone.', 'On the iPhone tap "Install via iCloud" (or scan the QR code with the iPhone camera) and tap "Add Shortcut".', 'While installing, enter the server address and the device token (on this card) in the fields it asks for.', 'Shortcuts → Automation → "Message": the bank sender → run this shortcut with "Shortcut Input" → turn "Run Immediately" on.', 'Optional: add the shortcut to the home screen as "send SMS queue"; a manual run only sends the queue.'],
+    server: 'SMS endpoint on the server', server_batch: 'SMS queue endpoint (iPhone Shortcut, NDJSON)', header: 'Auth header', body: 'Request body (JSON)',
     copy: 'Copy', copied: 'Copied', download: 'Download from server', downloading: 'Downloading…',
     none_file: 'No file uploaded yet', version: 'Version', size: 'Size', updated: 'Updated', by: 'by',
     src_bundled: 'Bundled with the system', src_upload: 'Uploaded by an admin', icloud: 'iCloud link (needs internet)',
@@ -391,6 +391,7 @@ export default function Apps() {
           </div>
           <section className="card ap-conn">
             <CopyRow label={s.server} value={endpoint} s={s} />
+            <CopyRow label={s.server_batch} value={endpoint.replace('/inbound/', '/inbound-batch/')} s={s} />
             <CopyRow label={s.header} value="X-Device-Token: <token>" s={s} />
             <CopyRow label={s.body} value={'{"text": "…", "sender": "…", "received_at": "ISO-8601 (optional)"}'} s={s} />
           </section>

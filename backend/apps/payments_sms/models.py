@@ -1,6 +1,7 @@
 import secrets
 
 from django.db import models
+from django.utils import timezone
 
 from apps.common.models import TimeStampedModel
 
@@ -95,7 +96,19 @@ class SmsMessage(models.Model):
     mismatch_kind = models.CharField(max_length=4, blank=True, default="", db_default="")
     # why it matched / did not match — shown in the admin SMS log
     note = models.CharField(max_length=255, blank=True, default="")
-    received_at = models.DateTimeField(auto_now_add=True)
+    # when the phone got the SMS (device time, if it said so) vs when it reached us —
+    # an offline queue (iPhone Shortcut batch) can deliver it hours later
+    received_at = models.DateTimeField(default=timezone.now)
+    uploaded_at = models.DateTimeField(default=timezone.now)
+    # batch uploads: sha256(device | text | received_at) — the same SMS is stored (and matched) once
+    dedupe_key = models.CharField(max_length=64, null=True, blank=True, unique=True)
+
+    LATE_AFTER_SECONDS = 120
+
+    @property
+    def delivered_late(self) -> bool:
+        return bool(self.received_at and self.uploaded_at
+                    and (self.uploaded_at - self.received_at).total_seconds() > self.LATE_AFTER_SECONDS)
 
     class Meta:
         db_table = "sms_message"

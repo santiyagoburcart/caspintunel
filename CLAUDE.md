@@ -172,6 +172,10 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
 - nginx routing for both lives in the generated `nginx/paths/active.conf` (template + `render-paths.sh`); changes go
   through `scripts/paths.sh` (nginx -t, reload, verify, rollback). Never edit active.conf by hand.
 
+## SMS ingest (docs/sms-batch.md)
+- SMS are matched at `received_at` (when the phone got them) via `matching.open_orders_at`; keep `inbound-batch`
+  idempotent (`dedupe_key` unique) — never match or approve an SMS twice. The old `/inbound/` stays for the Android app.
+
 ## Panel account names
 - Never attach a customer to a panel account we did not create: names are checked in our DB **and** on the panel
   (`orders.services.check_account_name`); a 409 on create is adopted only for our own earlier attempt (note

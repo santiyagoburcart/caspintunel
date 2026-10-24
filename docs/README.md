@@ -14,6 +14,7 @@
 | [migration.md](migration.md) · [فارسی](migration-fa.md) | moving to a new server: export / import scripts, pre-DNS test, runbook, rollback, server specs |
 | [paths.md](paths.md) | admin-panel and reseller-portal paths: Settings → Paths, host watcher, recovery CLI |
 | [domain.md](domain.md) | Settings → Domain & Cloudflare: encrypted token, domain-change wizard, transition, rollback, recovery CLI |
+| [sms-batch.md](sms-batch.md) | iPhone Shortcut offline SMS queue: save first, upload the queue to `inbound-batch` (idempotent, matched at received_at) |
 | [agency.md](agency.md) | agency panel (reseller admins, PAMP port): switches, data import, golden test |
 | [bots.md](bots.md) | the Telegram sales bot: menus, support message, purchase history, QR photos |
 | [telegram-miniapp.md](telegram-miniapp.md) | Telegram Mini App auto-login |

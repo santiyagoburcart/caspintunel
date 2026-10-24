@@ -29,39 +29,61 @@ def test_repo_template_has_no_secrets_and_asks_on_import():
     wf = _template()
     acts = _actions(wf)
     assert acts[shortcut.TOKEN_UUID]["WFWorkflowActionParameters"]["WFTextActionText"] == ""
-    assert "YOUR-DOMAIN" in acts[shortcut.ENDPOINT_UUID]["WFWorkflowActionParameters"]["WFTextActionText"]
-    assert {q["ActionIndex"] for q in wf["WFWorkflowImportQuestions"]} == {0, 1}
-    # no real domain / token-looking strings in the committed file
+    assert acts[shortcut.ENDPOINT_UUID]["WFWorkflowActionParameters"]["WFTextActionText"].endswith(shortcut.SMS_PATH)
+    assert {q["ActionIndex"] for q in wf["WFWorkflowImportQuestions"]} == {0, 1, 2}     # server, token, sender
     for dev in SmsAppDevice.objects.all():
         assert dev.api_token not in raw
-    assert "aicaspin" not in raw and "X-Device-Token" in raw
-    assert (Path(settings.SHORTCUT_SOURCE_DIR) / "VERSION").read_text().strip()
+    assert "X-Device-Token" in raw
+    assert (Path(settings.SHORTCUT_SOURCE_DIR) / "VERSION").read_text().strip() == "1.1.0"
 
 
-def test_json_body_binds_the_automation_input():
-    """text = Shortcut Input (the received message), sender = its Sender
-    property, header = the token Text action, URL = the endpoint action."""
-    acts = _actions(_template())
-    post = next(a for a in acts.values() if a["WFWorkflowActionIdentifier"] == "is.workflow.actions.downloadurl")
-    p = post["WFWorkflowActionParameters"]
-    assert p["WFHTTPMethod"] == "POST" and p["WFHTTPBodyType"] == "JSON"
-    body = {i["WFKey"]["Value"]["string"]: i["WFValue"]["Value"] for i in p["WFJSONValues"]["Value"]["WFDictionaryFieldValueItems"]}
-    assert set(body) == {"text", "sender"}
-    assert body["text"]["string"] == OBJ and body["text"]["attachmentsByRange"]["{0, 1}"] == {"Type": "ExtensionInput"}
-    snd = body["sender"]["attachmentsByRange"]["{0, 1}"]
-    assert snd["Type"] == "ExtensionInput" and snd["Aggrandizements"][0]["PropertyName"] == "Sender"
-    hdr = p["WFHTTPHeaders"]["Value"]["WFDictionaryFieldValueItems"][0]
-    assert hdr["WFKey"]["Value"]["string"] == "X-Device-Token"
-    assert hdr["WFValue"]["Value"]["attachmentsByRange"]["{0, 1}"]["OutputUUID"] == shortcut.TOKEN_UUID
-    assert p["WFURL"]["Value"]["attachmentsByRange"]["{0, 1}"]["OutputUUID"] == shortcut.ENDPOINT_UUID
-    # the POST sits inside "if Shortcut Input has any value" (a manual run sends nothing)
+def _flow():
     wf = _template()["WFWorkflowActions"]
-    ifs = [a for a in wf if a["WFWorkflowActionIdentifier"] == "is.workflow.actions.conditional"]
-    order = [a["WFWorkflowActionIdentifier"].split(".")[-1] for a in wf]
-    assert order == ["gettext", "gettext", "conditional", "downloadurl", "conditional", "alert", "conditional"]
-    assert wf[2]["WFWorkflowActionParameters"]["WFCondition"] == 100
-    assert [a["WFWorkflowActionParameters"]["WFControlFlowMode"] for a in ifs] == [0, 1, 2]
-    assert len({a["WFWorkflowActionParameters"]["GroupingIdentifier"] for a in ifs}) == 1
+    return wf, [a["WFWorkflowActionIdentifier"].removeprefix("is.workflow.actions.") for a in wf]
+
+
+def test_saves_the_sms_before_any_network_call():
+    """v1.1: {text, sender, received_at} → JSON → appended to the queue file first; then the whole
+    queue is POSTed. A manual run (no input) only flushes, without an alert."""
+    wf, names = _flow()
+    assert names.index("file.append") < names.index("downloadurl")
+    assert "alert" not in names
+    first_if = wf[names.index("conditional")]["WFWorkflowActionParameters"]
+    assert first_if["WFCondition"] == 100 and first_if["WFInput"]["Variable"]["Value"] == {"Type": "ExtensionInput"}
+    group = first_if["GroupingIdentifier"]
+    end = next(i for i, a in enumerate(wf) if a["WFWorkflowActionParameters"].get("GroupingIdentifier") == group
+               and a["WFWorkflowActionParameters"]["WFControlFlowMode"] == 2)
+    assert names.index("file.append") < end < names.index("downloadurl")         # save inside, send outside
+    d = wf[names.index("dictionary")]["WFWorkflowActionParameters"]["WFItems"]["Value"]["WFDictionaryFieldValueItems"]
+    body = {i["WFKey"]["Value"]["string"]: i["WFValue"]["Value"]["attachmentsByRange"]["{0, 1}"] for i in d}
+    assert set(body) == {"text", "sender", "received_at"} and body["text"] == {"Type": "ExtensionInput"}
+    fmt = wf[names.index("format.date")]["WFWorkflowActionParameters"]
+    assert fmt["WFDateFormatStyle"] == "ISO 8601" and fmt["WFISO8601IncludeTime"] is True
+    assert body["received_at"]["OutputUUID"] == fmt["UUID"]
+    append = wf[names.index("file.append")]["WFWorkflowActionParameters"]
+    assert append["WFFilePath"]["Value"]["string"] == "CaspinSMS-queue.txt" and append["WFAppendFileWriteMode"] == "Append"
+
+
+def test_queue_is_posted_and_cleared_only_when_stored():
+    wf, names = _flow()
+    p = wf[names.index("downloadurl")]["WFWorkflowActionParameters"]
+    assert p["WFHTTPMethod"] == "POST" and p["WFHTTPBodyType"] == "File"
+    assert p["WFURL"]["Value"]["attachmentsByRange"]["{0, 1}"]["OutputUUID"] == shortcut.ENDPOINT_UUID
+    hdr = {i["WFKey"]["Value"]["string"]: i for i in p["WFHTTPHeaders"]["Value"]["WFDictionaryFieldValueItems"]}
+    assert hdr["X-Device-Token"]["WFValue"]["Value"]["attachmentsByRange"]["{0, 1}"]["OutputUUID"] == shortcut.TOKEN_UUID
+    key = wf[names.index("getvalueforkey")]["WFWorkflowActionParameters"]
+    assert key["WFDictionaryKey"] == "result"
+    stored_if = next(a["WFWorkflowActionParameters"] for a in wf if a["WFWorkflowActionParameters"].get("WFConditionalActionString"))
+    assert stored_if["WFCondition"] == 4 and stored_if["WFConditionalActionString"] == "stored"
+    assert names.index("getvalueforkey") < names.index("text.replace") < names.index("file.delete")
+    assert names.index("documentpicker.save") < names.index("file.delete")
+    assert wf[names.index("file.delete")]["WFWorkflowActionParameters"]["WFDeleteFileConfirmDeletion"] is False
+    # every If has its End If
+    modes = {}
+    for a in wf:
+        if a["WFWorkflowActionIdentifier"].endswith("conditional"):
+            modes.setdefault(a["WFWorkflowActionParameters"]["GroupingIdentifier"], []).append(a["WFWorkflowActionParameters"]["WFControlFlowMode"])
+    assert all(m[0] == 0 and m[-1] == 2 for m in modes.values()) and len(modes) == 5
 
 
 def test_download_injects_domain_but_never_writes_back(staff_client, superadmin):
@@ -72,9 +94,9 @@ def test_download_injects_domain_but_never_writes_back(staff_client, superadmin)
     wf = plistlib.loads(r.content)
     acts = _actions(wf)
     assert acts[shortcut.ENDPOINT_UUID]["WFWorkflowActionParameters"]["WFTextActionText"] == \
-        "https://pay.example.ir/api/v1/payments/sms/inbound/"
+        "https://pay.example.ir/api/v1/payments/sms/inbound-batch/"
     assert acts[shortcut.TOKEN_UUID]["WFWorkflowActionParameters"]["WFTextActionText"] == ""
-    assert [q["ActionIndex"] for q in wf["WFWorkflowImportQuestions"]] == [1]          # token still asked
+    assert [q["ActionIndex"] for q in wf["WFWorkflowImportQuestions"]] == [1, 2]       # token + sender still asked
     assert shortcut.template_path().read_bytes() == before
 
 
@@ -83,7 +105,7 @@ def test_download_with_device_injects_its_token(staff_client, superadmin):
     r = staff_client(superadmin).get(f"/api/v1/admin/apps/ios/download/?device={dev.id}")
     wf = plistlib.loads(r.content)
     assert _actions(wf)[shortcut.TOKEN_UUID]["WFWorkflowActionParameters"]["WFTextActionText"] == dev.api_token
-    assert wf["WFWorkflowImportQuestions"] == []
+    assert [q["ActionIndex"] for q in wf["WFWorkflowImportQuestions"]] == [2]          # only the optional sender
     assert dev.api_token not in shortcut.template_path().read_text()
 
 

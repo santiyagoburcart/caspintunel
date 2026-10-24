@@ -13,6 +13,7 @@ const T = {
   fa: {
     h1: 'لاگ پیامک‌ها', sub: 'پیامک‌هایی که گوشیِ دریافت‌کنندهٔ پیامک بانک به سرور فرستاده و نتیجهٔ تطبیق هرکدام با سفارش‌ها',
     all: 'همه', matched: 'تطبیق‌یافته', unmatched: 'تطبیق‌نیافته', mismatch: 'مغایرت مبلغ', mismatch_pill: 'مغایرت مبلغ — بررسی دستی', mm_less: 'مبلغ نامطابق: کمتر از فاکتور', mm_more: 'مبلغ نامطابق: بیشتر از فاکتور', mm_order: 'سفارش', rial: 'ریال', toman_u: 'تومان',
+    received: 'دریافت در گوشی', uploaded: 'رسیدن به سرور', late: 'با تأخیر رسید',
     time: 'زمان', sender: 'فرستنده', device: 'دستگاه', amount: 'مبلغ یافت‌شده', result: 'نتیجه', text: 'متن (شماره‌ها پوشانده شده)',
     ok: 'سفارش', none: 'تطبیق نشد', empty: 'پیامکی ثبت نشده است', more: 'بیشتر', unknown: 'نامشخص',
     hint: 'اگر پیامکی اینجا نیست، گوشی چیزی به سرور نفرستاده است (اتوماسیون/اپ را بررسی کنید). اگر هست، ستون «نتیجه» دلیل را می‌گوید.',
@@ -20,6 +21,7 @@ const T = {
   en: {
     h1: 'SMS log', sub: 'SMS the bank-SMS phone forwarded to the server, and how each was matched to an order',
     all: 'All', matched: 'Matched', unmatched: 'Not matched', mismatch: 'Amount mismatch', mismatch_pill: 'Amount mismatch — check by hand', mm_less: 'Amount mismatch: LESS than the invoice', mm_more: 'Amount mismatch: MORE than the invoice', mm_order: 'order', rial: 'Rial', toman_u: 'Toman',
+    received: 'received on the phone', uploaded: 'reached the server', late: 'delivered late',
     time: 'Time', sender: 'Sender', device: 'Device', amount: 'Amount found', result: 'Result', text: 'Text (numbers masked)',
     ok: 'Order', none: 'Not matched', empty: 'No SMS recorded yet', more: 'Load more', unknown: 'unknown',
     hint: 'If an SMS is missing here, the phone never sent it (check the automation / app). If it is here, "Result" says why.',
@@ -70,7 +72,17 @@ export default function SmsLog() {
             emptyArt="inbox"
             rows={rows}
             columns={[
-              { key: 'received_at', label: s.time, render: (r) => <span className="smsl-mono" dir="ltr">{jalali(r.received_at, true, lang)}</span> },
+              { key: 'received_at', label: s.time, render: (r) => (
+                <span className="smsl-when">
+                  <span className="smsl-mono" dir="ltr" title={s.received}>{jalali(r.received_at, true, lang)}</span>
+                  {r.delivered_late && r.uploaded_at && (
+                    <>
+                      <span className="smsl-pill smsl-pill--late">{s.late}</span>
+                      <span className="smsl-up">{s.uploaded}: <bdi className="smsl-mono" dir="ltr">{jalali(r.uploaded_at, true, lang)}</bdi></span>
+                    </>
+                  )}
+                </span>
+              ) },
               { key: 'sender', label: s.sender, render: (r) => <span dir="auto">{r.sender || (r.source ? r.source : '—')}</span> },
               { key: 'device', label: s.device, render: (r) => r.device || '—' },
               { key: 'parsed_amount', label: s.amount, render: (r) => (r.parsed_raw != null ? (
@@ -115,6 +127,9 @@ const CSS = `
 .smsl-pill { display: inline-flex; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
 .smsl-pill--ok { color: var(--c-text); background: color-mix(in srgb, var(--c-success) 18%, transparent); }
 .smsl-pill--no { color: var(--c-text); background: color-mix(in srgb, var(--c-warning) 20%, transparent); }
+.smsl-when { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+.smsl-up { font-size: 11px; color: var(--c-text-muted); }
+.smsl-pill--late { color: var(--c-warning-fg, var(--c-text)); background: color-mix(in srgb, var(--c-warning) 22%, transparent); font-size: 11px; }
 .smsl-pill--bad { color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 16%, transparent); font-weight: 700; }
 .smsl-amt { display: inline-flex; flex-direction: column; gap: 1px; }
 .smsl-note { font-size: 12px; line-height: 1.7; color: var(--c-text-muted); overflow-wrap: anywhere; }

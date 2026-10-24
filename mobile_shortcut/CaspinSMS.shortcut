@@ -12,7 +12,7 @@
 				<key>UUID</key>
 				<string>6F1C4C2E-7A43-4F4B-9D6B-5A1E0C3B7E01</string>
 				<key>WFTextActionText</key>
-				<string>https://YOUR-DOMAIN/api/v1/payments/sms/inbound/</string>
+				<string>https://caspintunel.com/api/v1/payments/sms/inbound-batch/</string>
 			</dict>
 		</dict>
 		<dict>
@@ -22,6 +22,17 @@
 			<dict>
 				<key>UUID</key>
 				<string>0B9A3D51-2C8E-4E3B-8F77-2D4C6A9E1F02</string>
+				<key>WFTextActionText</key>
+				<string></string>
+			</dict>
+		</dict>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.gettext</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>UUID</key>
+				<string>3C5E7A90-1B2D-4F6A-8C0E-2D4F6A8C0E05</string>
 				<key>WFTextActionText</key>
 				<string></string>
 			</dict>
@@ -56,65 +67,163 @@
 		</dict>
 		<dict>
 			<key>WFWorkflowActionIdentifier</key>
-			<string>is.workflow.actions.downloadurl</string>
+			<string>is.workflow.actions.date</string>
 			<key>WFWorkflowActionParameters</key>
 			<dict>
-				<key>ShowHeaders</key>
-				<true/>
 				<key>UUID</key>
-				<string>D2E4F6A8-1B3C-4D5E-8F90-7A6B5C4D3E04</string>
-				<key>WFHTTPBodyType</key>
-				<string>JSON</string>
-				<key>WFHTTPHeaders</key>
+				<string>4D6F8A01-2C3E-4A5B-9D1F-3E5A7B9D1F06</string>
+				<key>WFDateActionMode</key>
+				<string>Current Date</string>
+			</dict>
+		</dict>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.format.date</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>UUID</key>
+				<string>5E7A9B12-3D4F-4B6C-8E2A-4F6B8C0E2A07</string>
+				<key>WFDate</key>
 				<dict>
 					<key>Value</key>
 					<dict>
-						<key>WFDictionaryFieldValueItems</key>
-						<array>
+						<key>attachmentsByRange</key>
+						<dict>
+							<key>{0, 1}</key>
 							<dict>
-								<key>WFItemType</key>
-								<integer>0</integer>
-								<key>WFKey</key>
-								<dict>
-									<key>Value</key>
-									<dict>
-										<key>string</key>
-										<string>X-Device-Token</string>
-									</dict>
-									<key>WFSerializationType</key>
-									<string>WFTextTokenString</string>
-								</dict>
-								<key>WFValue</key>
-								<dict>
-									<key>Value</key>
-									<dict>
-										<key>attachmentsByRange</key>
-										<dict>
-											<key>{0, 1}</key>
-											<dict>
-												<key>OutputName</key>
-												<string>Text</string>
-												<key>OutputUUID</key>
-												<string>0B9A3D51-2C8E-4E3B-8F77-2D4C6A9E1F02</string>
-												<key>Type</key>
-												<string>ActionOutput</string>
-											</dict>
-										</dict>
-										<key>string</key>
-										<string>￼</string>
-									</dict>
-									<key>WFSerializationType</key>
-									<string>WFTextTokenString</string>
-								</dict>
+								<key>OutputName</key>
+								<string>Date</string>
+								<key>OutputUUID</key>
+								<string>4D6F8A01-2C3E-4A5B-9D1F-3E5A7B9D1F06</string>
+								<key>Type</key>
+								<string>ActionOutput</string>
 							</dict>
-						</array>
+						</dict>
+						<key>string</key>
+						<string>￼</string>
 					</dict>
 					<key>WFSerializationType</key>
-					<string>WFDictionaryFieldValue</string>
+					<string>WFTextTokenString</string>
 				</dict>
-				<key>WFHTTPMethod</key>
-				<string>POST</string>
-				<key>WFJSONValues</key>
+				<key>WFDateFormatStyle</key>
+				<string>ISO 8601</string>
+				<key>WFISO8601IncludeTime</key>
+				<true/>
+			</dict>
+		</dict>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.conditional</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>GroupingIdentifier</key>
+				<string>B62D8F31-A4E5-4C90-82B7-4F3A0D1E5C16</string>
+				<key>WFCondition</key>
+				<integer>100</integer>
+				<key>WFControlFlowMode</key>
+				<integer>0</integer>
+				<key>WFInput</key>
+				<dict>
+					<key>Type</key>
+					<string>Variable</string>
+					<key>Variable</key>
+					<dict>
+						<key>Value</key>
+						<dict>
+							<key>OutputName</key>
+							<string>Text</string>
+							<key>OutputUUID</key>
+							<string>3C5E7A90-1B2D-4F6A-8C0E-2D4F6A8C0E05</string>
+							<key>Type</key>
+							<string>ActionOutput</string>
+						</dict>
+						<key>WFSerializationType</key>
+						<string>WFTextTokenAttachment</string>
+					</dict>
+				</dict>
+			</dict>
+		</dict>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.setvariable</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>WFInput</key>
+				<dict>
+					<key>Value</key>
+					<dict>
+						<key>OutputName</key>
+						<string>Text</string>
+						<key>OutputUUID</key>
+						<string>3C5E7A90-1B2D-4F6A-8C0E-2D4F6A8C0E05</string>
+						<key>Type</key>
+						<string>ActionOutput</string>
+					</dict>
+					<key>WFSerializationType</key>
+					<string>WFTextTokenAttachment</string>
+				</dict>
+				<key>WFVariableName</key>
+				<string>Sender</string>
+			</dict>
+		</dict>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.conditional</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>GroupingIdentifier</key>
+				<string>B62D8F31-A4E5-4C90-82B7-4F3A0D1E5C16</string>
+				<key>WFControlFlowMode</key>
+				<integer>1</integer>
+			</dict>
+		</dict>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.setvariable</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>WFInput</key>
+				<dict>
+					<key>Value</key>
+					<dict>
+						<key>Aggrandizements</key>
+						<array>
+							<dict>
+								<key>PropertyName</key>
+								<string>Sender</string>
+								<key>Type</key>
+								<string>WFPropertyVariableAggrandizement</string>
+							</dict>
+						</array>
+						<key>Type</key>
+						<string>ExtensionInput</string>
+					</dict>
+					<key>WFSerializationType</key>
+					<string>WFTextTokenAttachment</string>
+				</dict>
+				<key>WFVariableName</key>
+				<string>Sender</string>
+			</dict>
+		</dict>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.conditional</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>GroupingIdentifier</key>
+				<string>B62D8F31-A4E5-4C90-82B7-4F3A0D1E5C16</string>
+				<key>WFControlFlowMode</key>
+				<integer>2</integer>
+			</dict>
+		</dict>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.dictionary</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>UUID</key>
+				<string>6F8B0C23-4E5A-4C7D-9F3B-5A7C9D1F3B08</string>
+				<key>WFItems</key>
 				<dict>
 					<key>Value</key>
 					<dict>
@@ -173,17 +282,46 @@
 										<dict>
 											<key>{0, 1}</key>
 											<dict>
-												<key>Aggrandizements</key>
-												<array>
-													<dict>
-														<key>PropertyName</key>
-														<string>Sender</string>
-														<key>Type</key>
-														<string>WFPropertyVariableAggrandizement</string>
-													</dict>
-												</array>
 												<key>Type</key>
-												<string>ExtensionInput</string>
+												<string>Variable</string>
+												<key>VariableName</key>
+												<string>Sender</string>
+											</dict>
+										</dict>
+										<key>string</key>
+										<string>￼</string>
+									</dict>
+									<key>WFSerializationType</key>
+									<string>WFTextTokenString</string>
+								</dict>
+							</dict>
+							<dict>
+								<key>WFItemType</key>
+								<integer>0</integer>
+								<key>WFKey</key>
+								<dict>
+									<key>Value</key>
+									<dict>
+										<key>string</key>
+										<string>received_at</string>
+									</dict>
+									<key>WFSerializationType</key>
+									<string>WFTextTokenString</string>
+								</dict>
+								<key>WFValue</key>
+								<dict>
+									<key>Value</key>
+									<dict>
+										<key>attachmentsByRange</key>
+										<dict>
+											<key>{0, 1}</key>
+											<dict>
+												<key>OutputName</key>
+												<string>Formatted Date</string>
+												<key>OutputUUID</key>
+												<string>5E7A9B12-3D4F-4B6C-8E2A-4F6B8C0E2A07</string>
+												<key>Type</key>
+												<string>ActionOutput</string>
 											</dict>
 										</dict>
 										<key>string</key>
@@ -197,6 +335,286 @@
 					</dict>
 					<key>WFSerializationType</key>
 					<string>WFDictionaryFieldValue</string>
+				</dict>
+			</dict>
+		</dict>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.gettext</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>UUID</key>
+				<string>7A9C1D34-5F6B-4D8E-8A4C-6B8D0E2A4C09</string>
+				<key>WFTextActionText</key>
+				<dict>
+					<key>Value</key>
+					<dict>
+						<key>attachmentsByRange</key>
+						<dict>
+							<key>{0, 1}</key>
+							<dict>
+								<key>OutputName</key>
+								<string>Dictionary</string>
+								<key>OutputUUID</key>
+								<string>6F8B0C23-4E5A-4C7D-9F3B-5A7C9D1F3B08</string>
+								<key>Type</key>
+								<string>ActionOutput</string>
+							</dict>
+						</dict>
+						<key>string</key>
+						<string>￼</string>
+					</dict>
+					<key>WFSerializationType</key>
+					<string>WFTextTokenString</string>
+				</dict>
+			</dict>
+		</dict>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.file.append</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>WFAppendFileWriteMode</key>
+				<string>Append</string>
+				<key>WFFilePath</key>
+				<dict>
+					<key>Value</key>
+					<dict>
+						<key>string</key>
+						<string>CaspinSMS-queue.txt</string>
+					</dict>
+					<key>WFSerializationType</key>
+					<string>WFTextTokenString</string>
+				</dict>
+				<key>WFInput</key>
+				<dict>
+					<key>Value</key>
+					<dict>
+						<key>attachmentsByRange</key>
+						<dict>
+							<key>{0, 1}</key>
+							<dict>
+								<key>OutputName</key>
+								<string>Text</string>
+								<key>OutputUUID</key>
+								<string>7A9C1D34-5F6B-4D8E-8A4C-6B8D0E2A4C09</string>
+								<key>Type</key>
+								<string>ActionOutput</string>
+							</dict>
+						</dict>
+						<key>string</key>
+						<string>￼</string>
+					</dict>
+					<key>WFSerializationType</key>
+					<string>WFTextTokenString</string>
+				</dict>
+			</dict>
+		</dict>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.conditional</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>GroupingIdentifier</key>
+				<string>A51C7E20-93D4-4B8F-B1A6-3E2F9C0D4B03</string>
+				<key>WFControlFlowMode</key>
+				<integer>1</integer>
+			</dict>
+		</dict>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.conditional</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>GroupingIdentifier</key>
+				<string>A51C7E20-93D4-4B8F-B1A6-3E2F9C0D4B03</string>
+				<key>WFControlFlowMode</key>
+				<integer>2</integer>
+			</dict>
+		</dict>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.documentpicker.open</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>UUID</key>
+				<string>8B0D2E45-6A7C-4E9F-9B5D-7C9E1F3B5D10</string>
+				<key>WFFileErrorIfNotFound</key>
+				<false/>
+				<key>WFGetFilePath</key>
+				<dict>
+					<key>Value</key>
+					<dict>
+						<key>string</key>
+						<string>CaspinSMS-queue.txt</string>
+					</dict>
+					<key>WFSerializationType</key>
+					<string>WFTextTokenString</string>
+				</dict>
+				<key>WFShowFilePicker</key>
+				<false/>
+			</dict>
+		</dict>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.gettext</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>UUID</key>
+				<string>9C1E3F56-7B8D-4F0A-8C6E-8D0F2A4C6E11</string>
+				<key>WFTextActionText</key>
+				<dict>
+					<key>Value</key>
+					<dict>
+						<key>attachmentsByRange</key>
+						<dict>
+							<key>{0, 1}</key>
+							<dict>
+								<key>OutputName</key>
+								<string>File</string>
+								<key>OutputUUID</key>
+								<string>8B0D2E45-6A7C-4E9F-9B5D-7C9E1F3B5D10</string>
+								<key>Type</key>
+								<string>ActionOutput</string>
+							</dict>
+						</dict>
+						<key>string</key>
+						<string>￼</string>
+					</dict>
+					<key>WFSerializationType</key>
+					<string>WFTextTokenString</string>
+				</dict>
+			</dict>
+		</dict>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.conditional</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>GroupingIdentifier</key>
+				<string>C73E9A42-B5F6-4DA1-93C8-5A4B1E2F6D17</string>
+				<key>WFCondition</key>
+				<integer>100</integer>
+				<key>WFControlFlowMode</key>
+				<integer>0</integer>
+				<key>WFInput</key>
+				<dict>
+					<key>Type</key>
+					<string>Variable</string>
+					<key>Variable</key>
+					<dict>
+						<key>Value</key>
+						<dict>
+							<key>OutputName</key>
+							<string>Text</string>
+							<key>OutputUUID</key>
+							<string>9C1E3F56-7B8D-4F0A-8C6E-8D0F2A4C6E11</string>
+							<key>Type</key>
+							<string>ActionOutput</string>
+						</dict>
+						<key>WFSerializationType</key>
+						<string>WFTextTokenAttachment</string>
+					</dict>
+				</dict>
+			</dict>
+		</dict>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.downloadurl</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>ShowHeaders</key>
+				<true/>
+				<key>UUID</key>
+				<string>D2E4F6A8-1B3C-4D5E-8F90-7A6B5C4D3E04</string>
+				<key>WFHTTPBodyType</key>
+				<string>File</string>
+				<key>WFHTTPHeaders</key>
+				<dict>
+					<key>Value</key>
+					<dict>
+						<key>WFDictionaryFieldValueItems</key>
+						<array>
+							<dict>
+								<key>WFItemType</key>
+								<integer>0</integer>
+								<key>WFKey</key>
+								<dict>
+									<key>Value</key>
+									<dict>
+										<key>string</key>
+										<string>X-Device-Token</string>
+									</dict>
+									<key>WFSerializationType</key>
+									<string>WFTextTokenString</string>
+								</dict>
+								<key>WFValue</key>
+								<dict>
+									<key>Value</key>
+									<dict>
+										<key>attachmentsByRange</key>
+										<dict>
+											<key>{0, 1}</key>
+											<dict>
+												<key>OutputName</key>
+												<string>Text</string>
+												<key>OutputUUID</key>
+												<string>0B9A3D51-2C8E-4E3B-8F77-2D4C6A9E1F02</string>
+												<key>Type</key>
+												<string>ActionOutput</string>
+											</dict>
+										</dict>
+										<key>string</key>
+										<string>￼</string>
+									</dict>
+									<key>WFSerializationType</key>
+									<string>WFTextTokenString</string>
+								</dict>
+							</dict>
+							<dict>
+								<key>WFItemType</key>
+								<integer>0</integer>
+								<key>WFKey</key>
+								<dict>
+									<key>Value</key>
+									<dict>
+										<key>string</key>
+										<string>Content-Type</string>
+									</dict>
+									<key>WFSerializationType</key>
+									<string>WFTextTokenString</string>
+								</dict>
+								<key>WFValue</key>
+								<dict>
+									<key>Value</key>
+									<dict>
+										<key>string</key>
+										<string>application/x-ndjson; charset=utf-8</string>
+									</dict>
+									<key>WFSerializationType</key>
+									<string>WFTextTokenString</string>
+								</dict>
+							</dict>
+						</array>
+					</dict>
+					<key>WFSerializationType</key>
+					<string>WFDictionaryFieldValue</string>
+				</dict>
+				<key>WFHTTPMethod</key>
+				<string>POST</string>
+				<key>WFRequestVariable</key>
+				<dict>
+					<key>Value</key>
+					<dict>
+						<key>OutputName</key>
+						<string>Text</string>
+						<key>OutputUUID</key>
+						<string>9C1E3F56-7B8D-4F0A-8C6E-8D0F2A4C6E11</string>
+						<key>Type</key>
+						<string>ActionOutput</string>
+					</dict>
+					<key>WFSerializationType</key>
+					<string>WFTextTokenAttachment</string>
 				</dict>
 				<key>WFURL</key>
 				<dict>
@@ -224,27 +642,277 @@
 		</dict>
 		<dict>
 			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.getvalueforkey</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>UUID</key>
+				<string>A1C3E5F7-9B2D-4E6A-8C0E-1F3B5D7A9C12</string>
+				<key>WFDictionaryKey</key>
+				<string>result</string>
+				<key>WFGetDictionaryValueType</key>
+				<string>Value</string>
+				<key>WFInput</key>
+				<dict>
+					<key>Value</key>
+					<dict>
+						<key>OutputName</key>
+						<string>Contents of URL</string>
+						<key>OutputUUID</key>
+						<string>D2E4F6A8-1B3C-4D5E-8F90-7A6B5C4D3E04</string>
+						<key>Type</key>
+						<string>ActionOutput</string>
+					</dict>
+					<key>WFSerializationType</key>
+					<string>WFTextTokenAttachment</string>
+				</dict>
+			</dict>
+		</dict>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
 			<string>is.workflow.actions.conditional</string>
 			<key>WFWorkflowActionParameters</key>
 			<dict>
 				<key>GroupingIdentifier</key>
-				<string>A51C7E20-93D4-4B8F-B1A6-3E2F9C0D4B03</string>
+				<string>D84FAB53-C6A7-4EB2-A4D9-6B5C2F3A7E18</string>
+				<key>WFCondition</key>
+				<integer>4</integer>
+				<key>WFConditionalActionString</key>
+				<string>stored</string>
+				<key>WFControlFlowMode</key>
+				<integer>0</integer>
+				<key>WFInput</key>
+				<dict>
+					<key>Type</key>
+					<string>Variable</string>
+					<key>Variable</key>
+					<dict>
+						<key>Value</key>
+						<dict>
+							<key>OutputName</key>
+							<string>Dictionary Value</string>
+							<key>OutputUUID</key>
+							<string>A1C3E5F7-9B2D-4E6A-8C0E-1F3B5D7A9C12</string>
+							<key>Type</key>
+							<string>ActionOutput</string>
+						</dict>
+						<key>WFSerializationType</key>
+						<string>WFTextTokenAttachment</string>
+					</dict>
+				</dict>
+			</dict>
+		</dict>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.documentpicker.open</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>UUID</key>
+				<string>B2D4F6A8-0C3E-4F7B-9D1F-2A4C6E8B0D13</string>
+				<key>WFFileErrorIfNotFound</key>
+				<false/>
+				<key>WFGetFilePath</key>
+				<dict>
+					<key>Value</key>
+					<dict>
+						<key>string</key>
+						<string>CaspinSMS-queue.txt</string>
+					</dict>
+					<key>WFSerializationType</key>
+					<string>WFTextTokenString</string>
+				</dict>
+				<key>WFShowFilePicker</key>
+				<false/>
+			</dict>
+		</dict>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.gettext</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>UUID</key>
+				<string>C3E5A7B9-1D4F-4A8C-8E2A-3B5D7F9C1E14</string>
+				<key>WFTextActionText</key>
+				<dict>
+					<key>Value</key>
+					<dict>
+						<key>attachmentsByRange</key>
+						<dict>
+							<key>{0, 1}</key>
+							<dict>
+								<key>OutputName</key>
+								<string>File</string>
+								<key>OutputUUID</key>
+								<string>B2D4F6A8-0C3E-4F7B-9D1F-2A4C6E8B0D13</string>
+								<key>Type</key>
+								<string>ActionOutput</string>
+							</dict>
+						</dict>
+						<key>string</key>
+						<string>￼</string>
+					</dict>
+					<key>WFSerializationType</key>
+					<string>WFTextTokenString</string>
+				</dict>
+			</dict>
+		</dict>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.text.replace</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>UUID</key>
+				<string>E4F6B8C0-2E5A-4B9D-9F3B-4C6E8A0D2F15</string>
+				<key>WFInput</key>
+				<dict>
+					<key>Value</key>
+					<dict>
+						<key>attachmentsByRange</key>
+						<dict>
+							<key>{0, 1}</key>
+							<dict>
+								<key>OutputName</key>
+								<string>Text</string>
+								<key>OutputUUID</key>
+								<string>C3E5A7B9-1D4F-4A8C-8E2A-3B5D7F9C1E14</string>
+								<key>Type</key>
+								<string>ActionOutput</string>
+							</dict>
+						</dict>
+						<key>string</key>
+						<string>￼</string>
+					</dict>
+					<key>WFSerializationType</key>
+					<string>WFTextTokenString</string>
+				</dict>
+				<key>WFReplaceTextCaseSensitive</key>
+				<true/>
+				<key>WFReplaceTextFind</key>
+				<dict>
+					<key>Value</key>
+					<dict>
+						<key>attachmentsByRange</key>
+						<dict>
+							<key>{0, 1}</key>
+							<dict>
+								<key>OutputName</key>
+								<string>Text</string>
+								<key>OutputUUID</key>
+								<string>9C1E3F56-7B8D-4F0A-8C6E-8D0F2A4C6E11</string>
+								<key>Type</key>
+								<string>ActionOutput</string>
+							</dict>
+						</dict>
+						<key>string</key>
+						<string>￼</string>
+					</dict>
+					<key>WFSerializationType</key>
+					<string>WFTextTokenString</string>
+				</dict>
+				<key>WFReplaceTextRegularExpression</key>
+				<false/>
+				<key>WFReplaceTextReplace</key>
+				<string></string>
+			</dict>
+		</dict>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.conditional</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>GroupingIdentifier</key>
+				<string>E95ABC64-D7B8-4FC3-B5EA-7C6D3A4B8F19</string>
+				<key>WFCondition</key>
+				<integer>100</integer>
+				<key>WFControlFlowMode</key>
+				<integer>0</integer>
+				<key>WFInput</key>
+				<dict>
+					<key>Type</key>
+					<string>Variable</string>
+					<key>Variable</key>
+					<dict>
+						<key>Value</key>
+						<dict>
+							<key>OutputName</key>
+							<string>Updated Text</string>
+							<key>OutputUUID</key>
+							<string>E4F6B8C0-2E5A-4B9D-9F3B-4C6E8A0D2F15</string>
+							<key>Type</key>
+							<string>ActionOutput</string>
+						</dict>
+						<key>WFSerializationType</key>
+						<string>WFTextTokenAttachment</string>
+					</dict>
+				</dict>
+			</dict>
+		</dict>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.documentpicker.save</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>WFAskWhereToSave</key>
+				<false/>
+				<key>WFFileDestinationPath</key>
+				<dict>
+					<key>Value</key>
+					<dict>
+						<key>string</key>
+						<string>CaspinSMS-queue.txt</string>
+					</dict>
+					<key>WFSerializationType</key>
+					<string>WFTextTokenString</string>
+				</dict>
+				<key>WFInput</key>
+				<dict>
+					<key>Value</key>
+					<dict>
+						<key>OutputName</key>
+						<string>Updated Text</string>
+						<key>OutputUUID</key>
+						<string>E4F6B8C0-2E5A-4B9D-9F3B-4C6E8A0D2F15</string>
+						<key>Type</key>
+						<string>ActionOutput</string>
+					</dict>
+					<key>WFSerializationType</key>
+					<string>WFTextTokenAttachment</string>
+				</dict>
+				<key>WFSaveFileOverwrite</key>
+				<true/>
+			</dict>
+		</dict>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.conditional</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>GroupingIdentifier</key>
+				<string>E95ABC64-D7B8-4FC3-B5EA-7C6D3A4B8F19</string>
 				<key>WFControlFlowMode</key>
 				<integer>1</integer>
 			</dict>
 		</dict>
 		<dict>
 			<key>WFWorkflowActionIdentifier</key>
-			<string>is.workflow.actions.alert</string>
+			<string>is.workflow.actions.file.delete</string>
 			<key>WFWorkflowActionParameters</key>
 			<dict>
-				<key>WFAlertActionCancelButtonShown</key>
+				<key>WFDeleteFileConfirmDeletion</key>
 				<false/>
-				<key>WFAlertActionMessage</key>
-				<string>این شورتکات باید از اتوماسیون «Message» اجرا شود؛ اجرای دستی پیامکی برای ارسال ندارد.
-Run this shortcut from a Message automation — a manual run has no SMS to send.</string>
-				<key>WFAlertActionTitle</key>
-				<string>Caspin SMS</string>
+				<key>WFInput</key>
+				<dict>
+					<key>Value</key>
+					<dict>
+						<key>OutputName</key>
+						<string>File</string>
+						<key>OutputUUID</key>
+						<string>B2D4F6A8-0C3E-4F7B-9D1F-2A4C6E8B0D13</string>
+						<key>Type</key>
+						<string>ActionOutput</string>
+					</dict>
+					<key>WFSerializationType</key>
+					<string>WFTextTokenAttachment</string>
+				</dict>
 			</dict>
 		</dict>
 		<dict>
@@ -253,7 +921,29 @@ Run this shortcut from a Message automation — a manual run has no SMS to send.
 			<key>WFWorkflowActionParameters</key>
 			<dict>
 				<key>GroupingIdentifier</key>
-				<string>A51C7E20-93D4-4B8F-B1A6-3E2F9C0D4B03</string>
+				<string>E95ABC64-D7B8-4FC3-B5EA-7C6D3A4B8F19</string>
+				<key>WFControlFlowMode</key>
+				<integer>2</integer>
+			</dict>
+		</dict>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.conditional</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>GroupingIdentifier</key>
+				<string>D84FAB53-C6A7-4EB2-A4D9-6B5C2F3A7E18</string>
+				<key>WFControlFlowMode</key>
+				<integer>2</integer>
+			</dict>
+		</dict>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.conditional</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>GroupingIdentifier</key>
+				<string>C73E9A42-B5F6-4DA1-93C8-5A4B1E2F6D17</string>
 				<key>WFControlFlowMode</key>
 				<integer>2</integer>
 			</dict>
@@ -278,11 +968,11 @@ Run this shortcut from a Message automation — a manual run has no SMS to send.
 			<key>Category</key>
 			<string>Parameter</string>
 			<key>DefaultValue</key>
-			<string>https://YOUR-DOMAIN/api/v1/payments/sms/inbound/</string>
+			<string>https://caspintunel.com/api/v1/payments/sms/inbound-batch/</string>
 			<key>ParameterKey</key>
 			<string>WFTextActionText</string>
 			<key>Text</key>
-			<string>Server SMS endpoint (e.g. https://your-domain/api/v1/payments/sms/inbound/)</string>
+			<string>Server SMS endpoint / آدرس سرور (…/api/v1/payments/sms/inbound-batch/)</string>
 		</dict>
 		<dict>
 			<key>ActionIndex</key>
@@ -294,7 +984,19 @@ Run this shortcut from a Message automation — a manual run has no SMS to send.
 			<key>ParameterKey</key>
 			<string>WFTextActionText</string>
 			<key>Text</key>
-			<string>SMS device token (panel → Settings → SMS devices)</string>
+			<string>SMS device token / توکن دستگاه (panel → Settings → SMS devices)</string>
+		</dict>
+		<dict>
+			<key>ActionIndex</key>
+			<integer>2</integer>
+			<key>Category</key>
+			<string>Parameter</string>
+			<key>DefaultValue</key>
+			<string></string>
+			<key>ParameterKey</key>
+			<string>WFTextActionText</string>
+			<key>Text</key>
+			<string>Bank sender (optional, e.g. Resalat) — empty = the SMS's own sender / فرستندهٔ بانک (اختیاری)</string>
 		</dict>
 	</array>
 	<key>WFWorkflowInputContentItemClasses</key>
