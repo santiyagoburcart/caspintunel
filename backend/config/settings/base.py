@@ -202,10 +202,12 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_FILTER_BACKENDS": ("django_filters.rest_framework.DjangoFilterBackend",),
+    # rest_framework's own classes, tunnel-aware (apps/common/throttling.py, docs/access-mode.md)
     "DEFAULT_THROTTLE_CLASSES": (
-        "rest_framework.throttling.AnonRateThrottle",
-        "rest_framework.throttling.UserRateThrottle",
-        "rest_framework.throttling.ScopedRateThrottle",
+        "apps.common.throttling.AnonRateThrottle",
+        "apps.common.throttling.UserRateThrottle",
+        "apps.common.throttling.ScopedRateThrottle",
+        "apps.common.throttling.TunnelAggregateThrottle",
     ),
     # Per client IP (anon) / per account (user). Many Iranian mobile users share
     # one carrier NAT address, so the general limits are generous; the
@@ -218,6 +220,7 @@ REST_FRAMEWORK = {
         "receipt": "20/hour",      # receipt upload
         "ticket": "60/hour",       # open a ticket / reply (per account)
         "sms_ingest": "240/min",   # SMS bridge app / iPhone shortcut
+        "tunnel_total": env("THROTTLE_TUNNEL_TOTAL", default="6000/min"),  # everyone through the Iran tunnel together
     },
     # nginx hands Django exactly one trusted client address in X-Forwarded-For
     # (see nginx/prod.conf $client_ip); without this DRF keyed throttles on the
@@ -369,6 +372,16 @@ CLOUDFLARE_API_BASE = env("CLOUDFLARE_API_BASE", default="https://api.cloudflare
 # domain wizard (docs/domain.md): public DNS-over-HTTPS resolvers used to check
 # that a new domain points at this server (JSON API, like Let's Encrypt sees it)
 DOMAIN_DOH_URLS = env.list("DOMAIN_DOH_URLS", default=["https://cloudflare-dns.com/dns-query", "https://dns.google/resolve"])
+# Access mode (docs/access-mode.md): verification of a path, propagation wait, PROXY-protocol listener ports
+DOMAIN_ACCESS_VERIFY_TLS = env.bool("DOMAIN_ACCESS_VERIFY_TLS", default=True)
+DOMAIN_ACCESS_PORT = env.int("DOMAIN_ACCESS_PORT", default=443)
+DOMAIN_ACCESS_PROPAGATION_SECONDS = env.int("DOMAIN_ACCESS_PROPAGATION_SECONDS", default=180)
+DOMAIN_ACCESS_POLL_SECONDS = env.int("DOMAIN_ACCESS_POLL_SECONDS", default=5)
+# throw-away test stacks only (scripts/test-domain.sh) — never set these in production
+DOMAIN_ACCESS_ALLOW_PRIVATE = env.bool("DOMAIN_ACCESS_ALLOW_PRIVATE", default=False)
+DOMAIN_ACCESS_PROBE_REWRITE = env.json("DOMAIN_ACCESS_PROBE_REWRITE", default={})
+ACCESS_PROXY_HTTP_PORT = env.int("ACCESS_PROXY_HTTP_PORT", default=8880)
+ACCESS_PROXY_HTTPS_PORT = env.int("ACCESS_PROXY_HTTPS_PORT", default=8843)
 
 GITHUB_TOKEN = env("GITHUB_TOKEN", default="")
 GITHUB_REPO = env("GITHUB_REPO", default="caspintunel")

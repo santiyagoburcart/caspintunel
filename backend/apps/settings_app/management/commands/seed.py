@@ -414,6 +414,15 @@ class Command(BaseCommand):
             },
         )
         PeriodicTask.objects.update_or_create(
+            name="access mode: host nginx result + Cloudflare ranges (daily)",
+            defaults={
+                "task": "apps.settings_app.tasks.access_tick_task",
+                "interval": every_5,
+                "kwargs": _json.dumps({}),
+                "enabled": True,
+            },
+        )
+        PeriodicTask.objects.update_or_create(
             name="domain: host results + retire old domain",
             defaults={
                 "task": "apps.settings_app.tasks.domain_tick_task",

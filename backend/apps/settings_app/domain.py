@@ -603,6 +603,7 @@ def sync() -> DomainChange | None:
                 change.applied_at = now
                 set_step(change, "apply", "ok", msg)
                 _relink(change, change.new_domain, change.old_domain, who)
+                DomainConfig.objects.filter(pk=1).update(access_mode="direct")   # the wizard's records are DNS-only → here
                 if change.transition_days:
                     change.status = S.TRANSITION
                     change.old_until = now + timedelta(days=change.transition_days)
@@ -670,7 +671,11 @@ def state() -> dict:
     last = _read(status_file())
     if last and not last.get("ok"):
         last["explain"] = E.host(last.get("action") or "", last.get("message") or "", last.get("domain") or cur, server_ip())
+    from . import access
+
+    access.sync_host()
     return {
+        "access": access.state(),
         "current": {"domain": cur, "server_ip": server_ip(), "site_domain": SiteConfig.load().site_domain,
                     "public_base_url": getattr(settings, "PUBLIC_BASE_URL", ""), "host": _read(state_file())},
         "cloudflare": {"token_set": bool(cfg.cloudflare_token), "source": source, "updated_at": cfg.token_updated_at,

@@ -45,7 +45,31 @@ class HealthView(APIView):
             checks["redis"] = False
 
         ok = all(checks.values())
-        return Response(
+        resp = Response(
             {"status": "ok" if ok else "degraded", "version": settings.VERSION, "checks": checks},
             status=200 if ok else 503,
         )
+        from apps.settings_app.access import instance_id
+
+        resp["X-Caspin-Instance"] = instance_id()    # access-mode checks: the answer came from THIS server
+        return resp
+
+
+class DomainProbeView(APIView):
+    """Access mode → "Auto-detect": a test request through the tunnel records the
+    TCP peer address nginx saw (X-Conn-Addr). Only for a nonce the panel created."""
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_scope = "public_read"
+
+    @extend_schema(exclude=True)
+    def get(self, request, nonce):
+        from apps.settings_app.access import instance_id, record_probe
+
+        row = record_probe(nonce, request)
+        if row is None:
+            return Response({"detail": "unknown probe"}, status=404)
+        resp = Response({"ok": True, "conn": row["conn"], "client": row["client"]})
+        resp["X-Caspin-Instance"] = instance_id()
+        return resp

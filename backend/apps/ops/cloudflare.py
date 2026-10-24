@@ -150,3 +150,45 @@ class Cloudflare:
 
         self._req("POST", f"/zones/{zone}/dns_records", json=payload)
         return {"action": "created", "name": name, "type": type}
+
+    # ------------------------------------------------------------------ access mode (settings_app/access.py)
+    def records(self, zone: str, *, type: str, name: str) -> list[dict]:
+        return self._req("GET", f"/zones/{zone}/dns_records", params={"type": type, "name": name, "per_page": 100})
+
+    def set_a(self, zone: str, *, name: str, ips: list[str], proxied: bool, ttl: int = 1) -> list[dict]:
+        """Make the A records of `name` exactly `ips` (proxied or DNS-only): existing
+        ones are updated in place first, extras deleted last, so the name never
+        resolves to nothing. → what changed."""
+        want = list(dict.fromkeys(ips))
+        have = self.records(zone, type="A", name=name)
+        done, keep = [], set()
+        for rec in have:                                 # already right, or proxy flag / ttl to flip
+            if rec.get("content") in want and rec["content"] not in keep:
+                keep.add(rec["content"])
+                if rec.get("proxied", False) != proxied or (not proxied and rec.get("ttl") != ttl):
+                    self._req("PATCH", f"/zones/{zone}/dns_records/{rec['id']}", json={"proxied": proxied, "ttl": ttl})
+                    done.append({"name": name, "content": rec["content"], "action": "updated"})
+        spare = [r for r in have if r.get("content") not in keep]
+        for ip in [i for i in want if i not in keep]:    # reuse an old record (atomic swap), else create
+            body = {"type": "A", "name": name, "content": ip, "proxied": proxied, "ttl": ttl}
+            if spare:
+                rec = spare.pop(0)
+                self._req("PUT", f"/zones/{zone}/dns_records/{rec['id']}", json=body)
+                done.append({"name": name, "content": ip, "action": "replaced", "was": rec.get("content")})
+            else:
+                self._req("POST", f"/zones/{zone}/dns_records", json=body)
+                done.append({"name": name, "content": ip, "action": "created"})
+        for rec in spare:
+            self._req("DELETE", f"/zones/{zone}/dns_records/{rec['id']}")
+            done.append({"name": name, "content": rec.get("content"), "action": "deleted"})
+        return done
+
+    def ssl_mode(self, zone: str) -> str:
+        return (self._req("GET", f"/zones/{zone}/settings/ssl") or {}).get("value", "")
+
+    def set_ssl_mode(self, zone: str, value: str) -> str:
+        return (self._req("PATCH", f"/zones/{zone}/settings/ssl", json={"value": value}) or {}).get("value", "")
+
+    def ips(self) -> dict:
+        """Cloudflare's published edge ranges (public endpoint) → {ipv4_cidrs, ipv6_cidrs}."""
+        return self._req("GET", "/ips")

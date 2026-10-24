@@ -509,6 +509,37 @@ sequenceDiagram
     end
 ```
 
+## 13b. Access mode switch (Direct / Cloudflare proxy / Iran tunnel)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor A as Super admin
+    participant UI as Domain & Cloudflare page
+    participant W as celery_worker (access_switch_task)
+    participant CF as Cloudflare API
+    participant DNS as public DoH
+    participant P as new path (Iran IP / this server / CF edge)
+
+    A->>UI: mode (+ Iran IPs, tunnel sources, PROXY ports)
+    UI->>W: request_switch(mode)
+    W->>CF: zone + proxy mode: SSL/TLS = Full (strict) (set, else stop)
+    W->>P: HTTPS for the domain (SNI) → 200 + our cert + X-Caspin-Instance
+    alt path broken
+        W-->>UI: failed (nothing changed)
+    else ok
+        W->>CF: A @ / www → target (mail.* never), previous records saved
+        W->>DNS: until public DNS answers the target
+        W->>P: check again
+        alt broken
+            W->>CF: put the previous records back
+            W-->>UI: reverted + reason
+        else ok
+            W-->>UI: ok — mode shown in the header
+        end
+    end
+```
+
 ## 14. Deploy (`./update.sh`)
 
 ```mermaid

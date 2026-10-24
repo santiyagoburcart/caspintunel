@@ -1,5 +1,5 @@
 from rest_framework import permissions, viewsets
-from rest_framework.throttling import ScopedRateThrottle
+from apps.common.throttling import ScopedRateThrottle
 
 from apps.common.public_cache import cached_public
 

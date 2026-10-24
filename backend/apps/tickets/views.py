@@ -10,7 +10,7 @@ from rest_framework import permissions
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
-from rest_framework.throttling import ScopedRateThrottle
+from apps.common.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from apps.accounts.authentication import JWTAuthentication

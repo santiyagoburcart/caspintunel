@@ -204,6 +204,15 @@ class DomainConfig(models.Model):
     token_updated_by = models.CharField(max_length=150, blank=True)
     last_test = models.JSONField(default=dict, blank=True)   # last "Test" result (no secrets)
     transition_days = models.PositiveSmallIntegerField(default=14)
+    # access mode (docs/access-mode.md): how visitors reach the site under the same domain.
+    # Nothing about the tunnel is hard-coded — IPs, sources and PROXY ports are edited here.
+    access_mode = models.CharField(max_length=10, default="direct")      # direct | cloudflare | tunnel
+    iran_ips = models.JSONField(default=list, blank=True)                 # tunnel entry IP(s) → the A record
+    tunnel_sources = models.JSONField(default=list, blank=True)           # IPs / CIDRs the tunnel arrives from
+    proxy_protocol = models.JSONField(default=dict, blank=True)           # {"80": false, "443": false}
+    cf_ranges = models.JSONField(default=dict, blank=True)                # {"v4": [...], "v6": [...], "at": iso}
+    access_state = models.JSONField(default=dict, blank=True)             # last / running switch (steps, records)
+    dns01 = models.JSONField(default=dict, blank=True)                    # certificate renewal via DNS-01 (host result)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

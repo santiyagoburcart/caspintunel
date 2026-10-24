@@ -16,6 +16,7 @@ server {
     ssl_session_cache  shared:SSL:10m;
 
     client_max_body_size 15m;
+    include /etc/nginx/domain/realip*.conf;        # CF-Connecting-IP only from Cloudflare's ranges (access mode)
 
     location /.well-known/acme-challenge/ { root /var/www/certbot; }
 
@@ -25,6 +26,7 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Conn-Addr $realip_remote_addr;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $connection_upgrade;

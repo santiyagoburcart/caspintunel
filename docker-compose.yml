@@ -132,6 +132,10 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      # access mode (docs/access-mode.md): listeners for tunnels that send the PROXY protocol —
+      # nginx only listens there when it is switched on, and only answers the tunnel sources
+      - "${ACCESS_PROXY_HTTP_PORT:-8880}:8880"
+      - "${ACCESS_PROXY_HTTPS_PORT:-8843}:8843"
     volumes:
       - media_data:/var/www/media:ro
       - static_data:/var/www/static:ro
@@ -144,7 +148,8 @@ services:
       - frontend_admin
 
   certbot:
-    image: certbot/certbot:latest
+    # certbot + the Cloudflare DNS plugin: DNS-01 renewal works in every access mode (docs/access-mode.md)
+    image: certbot/dns-cloudflare:latest
     restart: unless-stopped
     volumes:
       - ./nginx/letsencrypt:/etc/letsencrypt

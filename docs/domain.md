@@ -4,6 +4,9 @@
 moves the whole site to a new domain step by step, with a status per step, a transition period for the old domain
 and a one-click rollback. Recovery on the server: `./scripts/domain.sh show | rollback`.
 
+See also **[access-mode.md](access-mode.md)**: Direct / Cloudflare proxy / Iran tunnel for the same
+domain (switch, verification, auto-revert, DNS-01 certificates).
+
 ## Cloudflare token
 
 * Stored **encrypted** in the DB (`domain_config.cloudflare_token`, `FIELD_ENCRYPTION_KEY`), write-only like the bot

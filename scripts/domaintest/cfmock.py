@@ -9,6 +9,7 @@ ZONES = [{"id": "z1", "name": "new.test", "status": "active", "permissions": ["#
          {"id": "z2", "name": "bad.test", "status": "active", "permissions": ["#zone:read", "#dns_records:read", "#dns_records:edit"]},
          {"id": "z3", "name": "view-only.test", "status": "active", "permissions": ["#zone:read", "#dns_records:read"]}]
 RECORDS = {}
+SSL = {"value": "full"}
 
 
 class H(BaseHTTPRequestHandler):
@@ -38,9 +39,15 @@ class H(BaseHTTPRequestHandler):
             return self._send(200, {"Status": 0, "Answer": [{"name": q.get("name"), "type": {"A": 1, "MX": 15, "TXT": 16}[t], "data": data(r)} for r in recs]})
         if u.path == "/records":                       # for the test script
             return self._send(200, list(RECORDS.values()))
+        if u.path == "/client/v4/ips":                 # public, like Cloudflare's
+            return self._ok({"ipv4_cidrs": ["173.245.48.0/20", "104.16.0.0/13"], "ipv6_cidrs": ["2606:4700::/32"]})
         if self.headers.get("Authorization") != f"Bearer {TOKEN}":
             return self._send(403, {"success": False, "errors": [{"code": 9109, "message": "Invalid access token"}], "result": None})
         p = u.path.removeprefix("/client/v4")
+        if p.endswith("/settings/ssl"):
+            if method == "PATCH":
+                SSL["value"] = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}").get("value", SSL["value"])
+            return self._ok({"id": "ssl", "value": SSL["value"]})
         if p == "/user/tokens/verify":
             return self._ok({"id": "tok1", "status": "active"})
         if p == "/zones":
@@ -59,6 +66,9 @@ class H(BaseHTTPRequestHandler):
                 RECORDS.pop(parts[3] if len(parts) > 3 else "", None)
                 return self._ok({"id": parts[3] if len(parts) > 3 else ""})
             body = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
+            if method == "PATCH" and len(parts) > 3 and parts[3] in RECORDS:      # merge
+                RECORDS[parts[3]].update(body)
+                return self._ok(RECORDS[parts[3]])
             rid = parts[3] if len(parts) > 3 else f"r{len(RECORDS) + 1}"
             while method == "POST" and rid in RECORDS:
                 rid += "x"
@@ -74,6 +84,9 @@ class H(BaseHTTPRequestHandler):
 
     def do_PUT(self):
         self._route("PUT")
+
+    def do_PATCH(self):
+        self._route("PATCH")
 
     def do_DELETE(self):
         self._route("DELETE")

@@ -207,6 +207,30 @@ MSG = {
     "apply_other": (
         "The server step failed and everything was restored automatically — the reason is in the details below.",
         "مرحلهٔ سرور ناموفق بود و همه‌چیز خودکار برگشت — دلیل در جزئیات زیر است."),
+    # ---------------------------------------------------------------- access mode (docs/access-mode.md)
+    "ax_mode": ("Choose Direct, Cloudflare proxy or Iran tunnel.", "یکی از حالت‌های مستقیم، پروکسی Cloudflare یا تونل ایران را انتخاب کنید."),
+    "ax_busy": ("A mode switch is already running — wait for it to finish.", "یک تغییر حالت در حال انجام است — تا پایانش صبر کنید."),
+    "ax_wizard": ("Finish or cancel the domain change first; the access mode applies to the live domain.",
+                  "اول تغییر دامنه را تمام یا لغو کنید؛ حالت دسترسی روی دامنهٔ فعلی اعمال می‌شود."),
+    "ax_no_iran": ("Add the Iran server's public IP first (the A record points there in tunnel mode).",
+                   "اول IP عمومی سرور ایران را وارد کنید (در حالت تونل رکورد A به آن اشاره می‌کند)."),
+    "ax_no_sources": ("Add the tunnel source IP(s) first — use “Auto-detect” to capture what this server sees.",
+                      "اول IP(های) مبدأ تونل را اضافه کنید — با «تشخیص خودکار» آدرسی که این سرور می‌بیند را بگیرید."),
+    "ax_bad_ip": ("“{name}” is not a valid {type}.", "«{name}» یک {type} معتبر نیست."),
+    "ax_no_zone": ("{zone} is not in a Cloudflare zone this token can manage — the access mode needs the Cloudflare token.",
+                   "{zone} در هیچ زون Cloudflare قابل‌مدیریت با این توکن نیست — حالت دسترسی به توکن Cloudflare نیاز دارد."),
+    "ax_ssl": ("Cloudflare SSL/TLS mode is “{status}”; proxy mode needs Full (strict) and the token could not change it — "
+               "in Cloudflare: SSL/TLS → Overview → Full (strict), or give the token Zone · Zone Settings · Edit.",
+               "حالت SSL/TLS در Cloudflare «{status}» است؛ حالت پروکسی Full (strict) لازم دارد و توکن نتوانست آن را عوض کند — "
+               "در Cloudflare: SSL/TLS ← Overview ← Full (strict)، یا دسترسی Zone · Zone Settings · Edit به توکن بدهید."),
+    "ax_path": ("The site did not answer correctly through {name} — {seen}. Nothing was switched (or it was switched back).",
+                "سایت از مسیر {name} درست پاسخ نداد — {seen}. چیزی عوض نشد (یا به حالت قبل برگشت)."),
+    "ax_reverted": ("The new path failed after the DNS change, so DNS was put back to the previous mode — {seen}.",
+                    "مسیر جدید بعد از تغییر DNS کار نکرد، پس DNS به حالت قبلی برگشت — {seen}."),
+    "ax_edge": ("Public DNS did not return Cloudflare's addresses in time, so the proxy path could not be checked — switched back.",
+                "DNS عمومی در زمان مقرر آدرس‌های Cloudflare را برنگرداند و مسیر پروکسی بررسی نشد — به حالت قبل برگشت."),
+    "ax_detect": ("No request came through {name} — check that the tunnel forwards port 443 to this server.",
+                  "هیچ درخواستی از مسیر {name} نرسید — بررسی کنید تونل پورت 443 را به این سرور فوروارد می‌کند."),
     # ---------------------------------------------------------------- wizard rules
     "bad_domain": ("{domain} is not a valid domain name (example: example.com).",
                    "«{domain}» نام دامنهٔ معتبری نیست (مثال: example.com)."),

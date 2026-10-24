@@ -5,7 +5,8 @@ from .views.apps import AppReleaseDetailView, AppReleaseDownloadView, AppRelease
 from .views.auth import StaffLoginView, StaffMeView, StaffRefreshView
 from .views.branding import QrPreviewView, SiteConfigView
 from .views.docs import DocsListView, DocsPageView
-from .views.domain import DomainRollbackView, DomainSettingsView, DomainStartView, DomainStepView, DomainTokenView, DomainView
+from .views.domain import (AccessDetectView, AccessDns01View, AccessSettingsView, AccessSwitchView, DomainRollbackView,
+                           DomainSettingsView, DomainStartView, DomainStepView, DomainTokenView, DomainView)
 from .views.agency import (AgencyAdminActionView, AgencyAdminDetailView, AgencyAdminListView, AgencyDashboardView,
                            AgencyGroupsView, AgencyLedgerExportView, AgencyLedgerOverviewView, AgencyLedgerView,
                            AgencyLedgerVoidView, AgencySettingsView, AgencySyncLogsView, AgencySyncNowView, PathsView,
@@ -82,6 +83,11 @@ urlpatterns = [
     path("domain/settings/", DomainSettingsView.as_view(), name="admin-domain-settings"),
     path("domain/start/", DomainStartView.as_view(), name="admin-domain-start"),
     path("domain/rollback/", DomainRollbackView.as_view(), name="admin-domain-rollback"),
+    path("domain/access/", AccessSwitchView.as_view(), name="admin-access-switch"),
+    path("domain/access/back/", AccessSwitchView.as_view(), {"back": True}, name="admin-access-back"),
+    path("domain/access/settings/", AccessSettingsView.as_view(), name="admin-access-settings"),
+    path("domain/access/detect/", AccessDetectView.as_view(), name="admin-access-detect"),
+    path("domain/access/dns01/", AccessDns01View.as_view(), name="admin-access-dns01"),
     path("domain/<int:pk>/<str:step>/", DomainStepView.as_view(), name="admin-domain-step"),
     path("agency/", AgencyDashboardView.as_view(), name="admin-agency"),
     path("agency/admins/", AgencyAdminListView.as_view(), name="admin-agency-admins"),

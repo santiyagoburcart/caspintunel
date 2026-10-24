@@ -16,8 +16,23 @@ export const tokens = {
 
 export const api = axios.create({ baseURL: '/api/v1' })
 
+// a random id per browser: behind an Iran tunnel (no per-visitor IP) the server rate-limits by this instead
+export function clientId() {
+  try {
+    let v = localStorage.getItem('ct_cid')
+    if (!v || !/^[A-Za-z0-9_-]{8,64}$/.test(v)) {
+      const b = new Uint8Array(16); crypto.getRandomValues(b)
+      v = Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('')
+      localStorage.setItem('ct_cid', v)
+    }
+    return v
+  } catch { return '' }
+}
+
 api.interceptors.request.use((cfg) => {
   if (tokens.access) cfg.headers.Authorization = `Bearer ${tokens.access}`
+  const cid = clientId()
+  if (cid) cfg.headers['X-Client-Id'] = cid
   return cfg
 })
 

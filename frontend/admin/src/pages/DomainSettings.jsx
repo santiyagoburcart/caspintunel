@@ -6,6 +6,8 @@ import { useAuth } from '../lib/auth'
 import { jalali } from '../lib/format'
 import { Alert, Spinner, Toggle, Copyable } from '../components/ui'
 import { useConfirm } from '../components/ConfirmDialog'
+import { Why, yn } from '../components/DomainWhy'
+import AccessMode from './DomainAccess'
 import { useToast } from '../components/Toast'
 
 // /settings/domain — Cloudflare token + the domain-change wizard (docs/domain.md).
@@ -15,6 +17,7 @@ import { useToast } from '../components/Toast'
 
 const T = {
   fa: {
+    ax_mode: 'حالت دسترسی', ax_modes: { direct: 'مستقیم', cloudflare: 'پروکسی Cloudflare', tunnel: 'تونل ایران' },
     title: 'دامنه و Cloudflare', sub: 'توکن Cloudflare و تغییر امن دامنهٔ سایت، مرحله به مرحله',
     current: 'دامنهٔ فعلی', ip: 'IP این سرور', only_super: 'فقط مدیر کل به این صفحه دسترسی دارد.',
     cf: 'توکن API کلادفلر', cf_hint: 'رمزنگاری‌شده در پایگاه‌داده ذخیره می‌شود و دیگر نمایش داده نمی‌شود. اگر خالی باشد، مقدار .env استفاده می‌شود.',
@@ -53,6 +56,7 @@ const T = {
     },
   },
   en: {
+    ax_mode: 'Access mode', ax_modes: { direct: 'Direct', cloudflare: 'Cloudflare proxy', tunnel: 'Iran tunnel' },
     title: 'Domain & Cloudflare', sub: 'Cloudflare token and a safe, step-by-step change of the site domain',
     current: 'Current domain', ip: 'This server', only_super: 'Only a super admin can open this page.',
     cf: 'Cloudflare API token', cf_hint: 'Stored encrypted in the database and never shown again. When empty, the .env value is used.',
@@ -95,19 +99,6 @@ const T = {
 const ORDER = ['domain', 'dns', 'tls', 'mail', 'apply', 'links', 'transition']
 const TONE = { ok: 'ok', running: 'run', waiting: 'wait', failed: 'bad', pending: 'idle', skipped: 'idle' }
 
-// a failure in words (fa / en) with the fix, and under it the raw code + message
-function Why({ info, lang, s, small }) {
-  if (!info) return null
-  return (
-    <div className={`dm-why${small ? ' sm' : ''}`} role="alert">
-      <p>{lang === 'en' ? info.en : info.fa}</p>
-      {info.raw && <small className="dm-raw">{s.details}: <bdi dir="ltr">{info.raw}</bdi></small>}
-    </div>
-  )
-}
-
-const yn = (v, s) => (v === true ? <span className="dm-y">✓ {s.yes}</span> : v === false ? <span className="dm-n">✕ {s.no}</span> : <span className="dm-u">? {s.na}</span>)
-
 function StepIcon({ state }) {
   if (state === 'ok') return <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5L20 7" /></svg>
   if (state === 'failed') return <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
@@ -141,8 +132,10 @@ export default function DomainSettings() {
       if (data.last.ok) toast.success(data.last.message); else toast.error(data.last.message)
     }
     lastAt.current = at
+    const ax = data.access || {}
     const busyNow = data.pending || data.change?.status === 'applying'
       || Object.values(data.change?.steps || {}).some((x) => x.state === 'running')
+      || ax.switch?.status === 'running' || ax.switch?.nginx?.state === 'running' || ax.dns01?.state === 'running'
     clearTimeout(timer.current)
     if (busyNow) timer.current = setTimeout(load, 5000)
   }
@@ -195,9 +188,12 @@ export default function DomainSettings() {
         <div className="dm-now">
           <span>{s.current}</span><bdi dir="ltr" className="dm-mono">{st.current.domain}</bdi>
           <span>{s.ip}</span><bdi dir="ltr" className="dm-mono">{st.current.server_ip || '—'}</bdi>
+          <span>{s.ax_mode}</span><span className={`dm-pill dm-mode-${st.access?.mode || 'direct'}`}>{s.ax_modes[st.access?.mode || 'direct']}</span>
         </div>
       </div>
       <Alert>{err}</Alert>
+
+      <AccessMode st={st} lang={lang} take={take} load={load} />
 
       {/* ---------------- Cloudflare token */}
       <section className="card dm-card">
@@ -469,6 +465,9 @@ const CSS = `
 .dm-pill.ok { color: var(--c-success-fg); background: color-mix(in srgb, var(--c-success) 14%, transparent); }
 .dm-pill.run, .dm-pill.wait { color: var(--c-warning-fg); background: color-mix(in srgb, var(--c-warning) 16%, transparent); }
 .dm-pill.bad { color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 14%, transparent); }
+.dm-mode-direct { color: var(--c-text); border-color: var(--c-border); }
+.dm-mode-cloudflare { color: #fff; background: #f38020; }
+.dm-mode-tunnel { color: #fff; background: var(--c-primary); }
 .dm-pill.idle { color: var(--c-muted-fg); border-color: var(--c-border); }
 .dm-token { display: flex; gap: 8px; flex-wrap: wrap; }
 .dm-token .input { flex: 1 1 260px; font-family: 'JetBrains Mono', monospace; }

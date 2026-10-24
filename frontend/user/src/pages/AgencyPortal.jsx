@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
+import { clientId } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 import { jalali, toman } from '../lib/format'
 import { ACCENT_CSS, Ic } from '../components/AgencyIcons'
@@ -19,6 +20,8 @@ const http = axios.create({ baseURL: '/api/v1/agency/portal' })
 http.interceptors.request.use((cfg) => {
   const t = store.get()
   if (t) cfg.headers.Authorization = `Agency ${t}`
+  const cid = clientId()
+  if (cid) cfg.headers['X-Client-Id'] = cid
   return cfg
 })
 const errText = (e, fallback) => e?.response?.data?.detail || fallback

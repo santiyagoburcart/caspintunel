@@ -172,6 +172,12 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
 - nginx routing for both lives in the generated `nginx/paths/active.conf` (template + `render-paths.sh`); changes go
   through `scripts/paths.sh` (nginx -t, reload, verify, rollback). Never edit active.conf by hand.
 
+## Access mode (docs/access-mode.md)
+- Direct / Cloudflare proxy / Iran tunnel change only `@` and `www` A records — never `mail.*`. Switch only through the
+  panel / `settings_app.access` (verify → DNS → verify → revert). Never hard-code tunnel IPs, sources or ports; never
+  trust CF-Connecting-IP outside Cloudflare's ranges or a client-sent X-Conn-Addr. The certbot Cloudflare credentials
+  (`nginx/letsencrypt/cloudflare.ini`, 0600) never go to `backups/` or git.
+
 ## SMS ingest (docs/sms-batch.md)
 - SMS are matched at `received_at` (when the phone got them) via `matching.open_orders_at`; keep `inbound-batch`
   idempotent (`dedupe_key` unique) — never match or approve an SMS twice. The old `/inbound/` stays for the Android app.

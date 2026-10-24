@@ -35,6 +35,12 @@ x-code: &code
 services:
   web: *code
   daphne: *code
+  celery_worker: *code
+  iran:
+    image: caspintunel-backend
+    entrypoint: ["python", "/mock/tunnel.py"]
+    volumes:
+      - ./scripts/domaintest:/mock:ro
   nginx:
     image: domaintest-nginx
     ports: !reset []
@@ -65,6 +71,11 @@ SERVER_IP=$IP
 FIELD_ENCRYPTION_KEY=$(head -c 32 /dev/urandom | base64 | tr '+/' '-_')
 CLOUDFLARE_API_BASE=http://cfmock:8080/client/v4
 DOMAIN_DOH_URLS=http://cfmock:8080/dns-query
+DOMAIN_ACCESS_VERIFY_TLS=False
+DOMAIN_ACCESS_ALLOW_PRIVATE=True
+DOMAIN_ACCESS_PROBE_REWRITE={"203.0.113.10": "nginx"}
+DOMAIN_ACCESS_PROPAGATION_SECONDS=10
+DOMAIN_ACCESS_POLL_SECONDS=1
 DB_NAME=caspintunel
 DB_USER=caspintunel
 DB_PASSWORD=$(rnd 24)
@@ -212,6 +223,88 @@ HOSTRUN show
 HOSTRUN rollback >/dev/null
 check "./scripts/domain.sh rollback → previous domain (new.test)" '[ "$(probe new.test https://new.test/api/v1/health/)" = "200 " ] && [ "$(envv DOMAIN)" = new.test ]'
 check "audit log has every step" '[ "$(API GET /domain/ >/dev/null; $C exec -T db sh -c "mysql -N -uroot -p\"\$MYSQL_ROOT_PASSWORD\" caspintunel -e \"select count(distinct action) from audit_log where action like \\\"domain.%\\\"\"" 2>/dev/null)" -ge 15 ]'
+
+step "9. access mode: Iran tunnel (simulated tunnel container), Cloudflare real IP, PROXY protocol, DNS-01"
+$C up -d --no-deps iran celery_worker >/dev/null 2>&1
+sleep 3
+IRAN=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$($C ps -q iran)")
+WEBIP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$($C ps -q web)")
+HOST=new.test
+arecs() { $C exec -T web curl -s http://cfmock:8080/records | python3 -c 'import json,sys;print(" ".join(sorted("%s=%s/%s" % (r["name"], r["content"], r.get("proxied", False)) for r in json.load(sys.stdin) if r["type"] == "A" and r["name"].endswith("new.test"))))'; }
+thru() {  # IP PORT PATH [curl args…] → body, through that address (like a browser whose DNS says IP)
+  local ip=$1 port=$2 path=$3; shift 3
+  $C exec -T web curl -sk --max-time 15 --resolve "new.test:$port:$ip" "$@" "https://new.test:$port$path"
+}
+code() { local ip=$1 port=$2 path=$3; shift 3; thru "$ip" "$port" "$path" -o /dev/null -w '%{http_code}' "$@"; }
+ax() { API GET /domain/ | J "$1"; }
+wait_switch() {  # until the switch is no longer running; on a timeout show why (and let the checks fail)
+  local i; for i in $(seq 1 60); do [ "$(ax 'd["access"]["switch"]["status"]')" != running ] && return 0; sleep 2; done
+  echo "  (switch still running after 120 s)"; $C logs --tail 30 celery_worker 2>&1 | sed 's/^/    /'; API GET /domain/ | J 'd["access"]["switch"]' | head -c 1500; echo
+}
+
+check "the simulated tunnel carries https://new.test to this stack" '[ "$(code "$IRAN" 443 /api/v1/health/)" = 200 ]'
+R=$(API POST /domain/access/settings/ "{\"iran_ips\": [\"$IRAN\"]}")
+R=$(API POST /domain/access/detect/ '{}')
+check "auto-detect: the tunnel source this server sees = the tunnel container ($IRAN)" '[ "$(echo "$R" | J "\",\".join(d[\"found\"])")" = "$IRAN" ]'
+API POST /domain/access/settings/ "{\"tunnel_sources\": [\"$IRAN\"]}" >/dev/null
+check "saving the sources queues the nginx render for the host" '[ "$(J "d[\"action\"]" < "$T/backups/.domain-request.json")" = access ]'
+HOSTRUN apply-request >/dev/null
+check "host: nginx re-rendered (realip.conf + X-Conn-Addr), nginx -t ok, status ok" '[ -s "$T/nginx/domain/realip.conf" ] && grep -q "real_ip_header CF-Connecting-IP" "$T/nginx/domain/realip.conf" && grep -q "X-Conn-Addr" "$T/nginx/domain/active.conf" && [ "$(ax "d[\"access\"][\"switch\"][\"nginx\"][\"state\"]")" = ok ]'
+
+API POST /domain/access/ '{"mode": "tunnel"}' >/dev/null
+wait_switch
+check "switch to tunnel: ok, mode tunnel" '[ "$(ax "d[\"access\"][\"switch\"][\"status\"] + \" \" + d[\"access\"][\"mode\"]")" = "ok tunnel" ]'
+check "DNS: new.test + www → the Iran IP (DNS only); mail.new.test still → this server" '[ "$(arecs)" = "mail.new.test=$IP/False new.test=$IRAN/False www.new.test=$IRAN/False" ]'
+check "site answers through the tunnel" '[ "$(code "$IRAN" 443 /)" = 200 ] && [ "$(code "$IRAN" 443 /api/v1/health/)" = 200 ]'
+# per-IP limits: through the tunnel every visitor has the same address → keyed per client instead
+LIM=$(for i in $(seq 1 12); do code "$IRAN" 443 /api/v1/auth/login/ -X POST -H "X-Client-Id: client-$i-aaaaaaaa" -H "Content-Type: application/json" --data '{"username":"x","password":"y"}'; echo; done | grep -c 429 || true)
+check "12 logins from 12 visitors through the tunnel: none throttled (auth = 10/min per client)" '[ "$LIM" = 0 ]'
+LIM=$(for i in $(seq 1 12); do code "$IRAN" 443 /api/v1/auth/login/ -X POST -H "X-Client-Id: same-client-bbbbbbbb" -H "Content-Type: application/json" --data '{"username":"x","password":"y"}'; echo; done | grep -c 429 || true)
+check "12 logins from ONE visitor through the tunnel: throttled after 10" '[ "$LIM" -ge 1 ]'
+
+# Cloudflare real IP: only from Cloudflare's ranges — a spoofed header from anyone else is ignored
+NONCE=$($C exec -T web python manage.py shell -c "from django.core.cache import cache; cache.set('access:detect:e2e-nonce', [], 600); print('e2e-nonce')" 2>/dev/null | tail -1)
+SEEN=$(thru "$IRAN" 443 "/api/v1/domain-probe/$NONCE/" -H "CF-Connecting-IP: 198.51.100.66" | J 'd["client"]')
+check "CF-Connecting-IP from a non-Cloudflare address is ignored" '[ "$SEEN" = "$IRAN" ]'
+
+# PROXY protocol (off by default): switch it on for 443 → the tunnel's PROXY listener gives the real client IP
+API POST /domain/access/settings/ '{"proxy_protocol": {"443": true}}' >/dev/null
+HOSTRUN apply-request >/dev/null
+check "PROXY listener rendered (8843 ssl proxy_protocol, only the tunnel sources)" 'grep -q "listen 8843 ssl proxy_protocol" "$T/nginx/domain/active.conf" && grep -q "set_real_ip_from $IRAN" "$T/nginx/domain/active.conf"'
+P=$(thru "$IRAN" 8443 "/api/v1/domain-probe/$NONCE/")
+check "through a PROXY-protocol tunnel Django sees the real client (198.51.100.9), peer = tunnel" '[ "$(echo "$P" | J "d[\"client\"] + \" \" + d[\"conn\"]")" = "198.51.100.9 $IRAN" ]'
+NG=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$($C ps -q nginx)")
+check "the PROXY listener refuses anyone who is not a tunnel source" '[ "$(code "$NG" 8843 /api/v1/health/ --haproxy-protocol)" = 000 ]'
+check "a visitor through a PROXY tunnel is not 'via tunnel' (real IP known)" '[ "$($C exec -T web python manage.py shell -c "
+from django.test import RequestFactory
+from apps.settings_app.access import via_tunnel
+r = RequestFactory().get(\"/\", HTTP_X_CONN_ADDR=\"$IRAN\", HTTP_X_FORWARDED_FOR=\"198.51.100.9\")
+print(via_tunnel(r))" 2>/dev/null | tail -1)" = False ]'
+API POST /domain/access/settings/ '{"proxy_protocol": {"443": false}}' >/dev/null
+HOSTRUN apply-request >/dev/null
+
+# a broken tunnel: new Iran IP that does not answer → checked first, DNS untouched
+DEAD=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$($C ps -q cfmock)")
+API POST /domain/access/settings/ "{\"iran_ips\": [\"$DEAD\"]}" >/dev/null
+wait_switch
+check "new Iran IP that does not answer: switch failed before DNS, records unchanged" '[ "$(ax "d[\"access\"][\"switch\"][\"status\"] + \" \" + d[\"access\"][\"switch\"][\"error\"][\"key\"]")" = "failed ax_path" ] && [ "$(arecs)" = "mail.new.test=$IP/False new.test=$IRAN/False www.new.test=$IRAN/False" ]'
+check "site still answers through the old tunnel" '[ "$(code "$IRAN" 443 /api/v1/health/)" = 200 ]'
+
+# one click back → direct
+API POST /domain/access/back/ '{}' >/dev/null
+wait_switch
+check "back: direct, DNS → this server" '[ "$(ax "d[\"access\"][\"mode\"]")" = direct ] && [ "$(arecs)" = "mail.new.test=$IP/False new.test=$IP/False www.new.test=$IP/False" ]'
+
+# DNS-01 with the Cloudflare token
+cat > "$T/fake-reconfigure.sh" <<'SH'
+#!/bin/sh
+echo "reconfigure $1 --authenticator dns-cloudflare" > "$(dirname "$0")/backups/.reconfigured"
+SH
+chmod +x "$T/fake-reconfigure.sh"
+API POST /domain/access/dns01/ '{}' >/dev/null
+DOMAIN_CERTBOT_RECONFIGURE="$T/fake-reconfigure.sh" HOSTRUN apply-request >/dev/null
+check "DNS-01: credentials file root-only with the token, renewal switched" '[ "$(stat -c %a "$T/nginx/letsencrypt/cloudflare.ini")" = 600 ] && grep -q "dns_cloudflare_api_token = $CF_TOKEN" "$T/nginx/letsencrypt/cloudflare.ini" && grep -q "reconfigure new.test" "$T/backups/.reconfigured" && [ "$(ax "d[\"access\"][\"dns01\"][\"state\"]")" = ok ]'
+check "the token never landed in backups/ or the status file" '! grep -rq "$CF_TOKEN" "$T/backups"'
 
 echo
 if [ "$FAILS" = 0 ]; then echo "domain: ALL CHECKS PASSED"; else echo "domain: $FAILS CHECK(S) FAILED"; exit 1; fi
