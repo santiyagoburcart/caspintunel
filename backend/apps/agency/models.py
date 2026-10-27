@@ -34,6 +34,9 @@ class PanelAdmin(models.Model):
     # Admin's own traffic quota from panel (bytes). False = unlimited.
     has_data_limit = models.BooleanField(default=False)
     admin_limit_bytes = models.BigIntegerField(default=0)
+    # caspintunel: the last FINITE limit — kept when the admin goes unlimited, so "Add X" and
+    # the quota charge start from it instead of 0 (docs/agency.md → "Unlimited admins")
+    last_limit_bytes = models.BigIntegerField(default=0)
     admin_remaining = models.BigIntegerField(default=0)
 
     # Traffic aggregated across all this admin's users (bytes)

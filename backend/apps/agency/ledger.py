@@ -6,9 +6,9 @@ per GB valid on that day. Additive only: it reads the limit change, it never
 changes PAMP's numbers.
 
   * GB uses PAMP's unit (1024**3 bytes); the amount is rounded half-up to whole tomans.
-  * An unlimited admin counts as limit 0: setting a limit on an unlimited admin
-    charges the whole new limit. Lowering a limit or removing it creates no
-    automatic credit (use an adjustment).
+  * An unlimited admin counts as its LAST FINITE limit (PanelAdmin.last_limit_bytes,
+    0 only if it never had one): giving it a limit again charges only new − last.
+    Lowering a limit or removing it creates no automatic credit (use an adjustment).
   * No price set for the day → the charge is still recorded (amount 0, noted) so
     the grant is never lost; fix it with an adjustment.
   * Balance = charges + adjustments − payments (voided entries excluded).

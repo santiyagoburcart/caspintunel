@@ -93,8 +93,8 @@ Additive tables (`agency_admin_price`, `agency_ledger_entry`) — PAMP's numbers
 * **Price per GB** (Toman) per admin with history; a price applies from its `valid_from` date on.
 * **Quota charge (basis a)**: when a limit is raised through the agency panel (after the cut-over), a charge =
   increase in GB (1024³) × the price valid that day, rounded half-up to whole tomans. An unlimited admin counts
-  as 0 (setting a limit on them charges the whole limit); lowering / removing a limit creates no credit; with no
-  price set the grant is still recorded (amount 0, noted).
+  as its **last finite limit** (0 only if it never had one), so re-limiting charges only the difference; lowering /
+  removing a limit creates no credit; with no price set the grant is still recorded (amount 0, noted).
 * Manual charges, signed adjustments, payments (card / cash / crypto / other); entries are never deleted —
   **voided** with a reason. Balance = charges + adjustments − payments.
 * Statement per admin (Jalali dates, running balance), CSV export (UTF-8 BOM, Jalali dates), balance column in
@@ -114,9 +114,11 @@ old and new value (0 = unlimited), the action, who did it and from where, and th
 Each record also writes an `agency.limit_changed` audit entry (`old_limit_bytes`, `new_limit_bytes`, GB/TB text,
 `source`, `action`, `ledger_entry`). Units: GB = 1024³ bytes (PAMP's unit), TB = 1024⁴.
 
-⚠ **"Add" on an unlimited admin** adds to 0 — and the ledger charges the whole new limit (unlimited counts as 0).
-To restore a limit after removing it by mistake, use **Set** with the full value and correct the charge with an
-adjustment if needed.
+**Unlimited admins** (v1.23.2): `agency_panel_admin.last_limit_bytes` keeps the last *finite* limit (set by our
+panel, admin creation and the sync; never cleared by "remove limit"). For an unlimited admin **Add / Reduce X**
+start from it, and the quota charge of **Add** or **Set** is *new − last limit* (only an admin that never had a
+limit is charged from 0). The confirm dialog shows both: "Unlimited now", the last limit used as the base, the new
+limit and the GB × price that will be charged.
 
 ## Account groups (Agency → Groups, `agency.manage`)
 

@@ -277,6 +277,7 @@ def create(panel, data: dict, *, by: str = "") -> dict:
             PanelAdmin.objects.get_or_create(
                 username=username,
                 defaults={"has_data_limit": limit > 0, "admin_limit_bytes": limit, "admin_remaining": limit,
+                          "last_limit_bytes": limit,
                           "status": "active" if payload.get("status", "active") == "active" else "disabled",
                           "is_active": payload.get("status", "active") == "active",
                           "raw_data": created})

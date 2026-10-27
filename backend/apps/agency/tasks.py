@@ -161,6 +161,9 @@ def _pamp_sync(self):
                     'expired_users': data['expired_users'],
                     'raw_data': data['raw_data'],
                     'last_synced_at': now,
+                    # the last FINITE limit survives "unlimited" (charges + "Add" start from it)
+                    **({'last_limit_bytes': data['admin_limit_bytes']}
+                       if data['has_data_limit'] and data['admin_limit_bytes'] > 0 else {}),
                 },
             )
 

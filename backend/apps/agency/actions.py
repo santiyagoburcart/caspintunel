@@ -55,6 +55,14 @@ def new_limit_for(current_limit: int, action: str, value_gb: float):
     return None
 
 
+def base_limit(a) -> int:
+    """The limit "Add / Reduce" and the quota charge start from: the current finite limit,
+    or — for an unlimited admin — the last finite one (0 if it never had a limit)."""
+    if a.has_data_limit and (a.admin_limit_bytes or 0) > 0:
+        return a.admin_limit_bytes
+    return a.last_limit_bytes or 0
+
+
 def preview_set_limit(username: str, action: str, value_gb) -> dict:
     """What set_limit WOULD do — no panel call, nothing saved. For the confirm dialog."""
     from .ledger import quote_quota_charge
@@ -67,13 +75,17 @@ def preview_set_limit(username: str, action: str, value_gb) -> dict:
     if value_gb < 0:
         raise ValueError("Invalid value")
     a = get_object_or_404(PanelAdmin, username=username)
-    old = a.admin_limit_bytes or 0
-    new = new_limit_for(old, action, value_gb)
+    unlimited = not (a.has_data_limit and (a.admin_limit_bytes or 0) > 0)
+    old = 0 if unlimited else a.admin_limit_bytes
+    base = base_limit(a)
+    new = new_limit_for(base, action, value_gb)
     if new is None:
         raise ValueError("Unknown action")
     fmt = lambda b: "Unlimited" if b <= 0 else _fmt_bytes(b)
-    q = quote_quota_charge(username, old, new)
+    q = quote_quota_charge(username, base, new)
     return {"old_limit_fmt": fmt(old), "new_limit_fmt": fmt(new), "old_limit_bytes": old, "new_limit_bytes": new,
+            "unlimited_now": unlimited, "base_limit_bytes": base, "base_limit_fmt": fmt(base),
+            "charged_gb_basis": "new − last limit" if unlimited and base else "new − current limit",
             "remaining_after_fmt": fmt(max(0, new - a.admin_used_bytes)) if new > 0 else "Unlimited",
             "remaining_after_bytes": max(0, new - a.admin_used_bytes) if new > 0 else None,
             "charge": q}
@@ -95,10 +107,12 @@ def set_limit(username: str, action: str, value_gb, by: str = "") -> tuple[bool,
     client = PanelAPIClient()
     client.authenticate()
 
-    current_limit = panel_admin.admin_limit_bytes or 0
+    unlimited = not (panel_admin.has_data_limit and (panel_admin.admin_limit_bytes or 0) > 0)
+    current_limit = 0 if unlimited else panel_admin.admin_limit_bytes
+    base = base_limit(panel_admin)        # unlimited → the last finite limit (caspintunel)
     gb = 1024 ** 3
 
-    new_limit_bytes = new_limit_for(current_limit, action, value_gb)
+    new_limit_bytes = new_limit_for(base, action, value_gb)
     if new_limit_bytes is None:
         return False, "Unknown action"
 
@@ -109,14 +123,21 @@ def set_limit(username: str, action: str, value_gb, by: str = "") -> tuple[bool,
     panel_admin.admin_limit_bytes = new_limit_bytes
     panel_admin.has_data_limit = new_limit_bytes > 0
     panel_admin.admin_remaining = max(0, new_limit_bytes - panel_admin.admin_used_bytes)
-    panel_admin.save(update_fields=['admin_limit_bytes', 'has_data_limit', 'admin_remaining'])
+    fields = ['admin_limit_bytes', 'has_data_limit', 'admin_remaining']
+    if new_limit_bytes > 0:
+        panel_admin.last_limit_bytes = new_limit_bytes
+        fields.append('last_limit_bytes')
+    panel_admin.save(update_fields=fields)
 
     from .ledger import record_quota_charge
-    entry = record_quota_charge(username, current_limit, new_limit_bytes, by=by)
+    entry = record_quota_charge(username, base, new_limit_bytes, by=by)   # charged from the last limit, not from 0
 
     from . import limit_history
+    note = f"{action} {value_gb:g} GB"
+    if unlimited and base:
+        note += f" — was unlimited; based on the last limit {gb_label(base)}"
     limit_history.record(username, current_limit, new_limit_bytes, action=action, source="panel", by=by,
-                         note=f"{action} {value_gb:g} GB", ledger_entry=entry)
+                         note=note, ledger_entry=entry)
 
     return True, f"Limit set to {gb_label(new_limit_bytes)} — {message}"
 
@@ -142,7 +163,9 @@ def remove_limit(username: str, by: str = "") -> tuple[bool, str]:
     panel_admin.admin_limit_bytes = 0
     panel_admin.has_data_limit = False
     panel_admin.admin_remaining = 0
-    panel_admin.save(update_fields=['admin_limit_bytes', 'has_data_limit', 'admin_remaining'])
+    if old_limit:
+        panel_admin.last_limit_bytes = old_limit       # kept: "Add" / the next charge start from it
+    panel_admin.save(update_fields=['admin_limit_bytes', 'has_data_limit', 'admin_remaining', 'last_limit_bytes'])
     return True, f"{message} — admin is now unlimited"
 
 

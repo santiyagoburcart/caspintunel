@@ -35,7 +35,7 @@ const T = {
     warn80: 'به {p}% سقف رسیده است', blocked_pamp: 'به‌دلیل رسیدن به سقف محدود شده', blocked_panel: 'روی پنل غیرفعال است',
     actions: 'محدودیت‌ها و عملیات', a_set: 'تعیین / تغییر سقف', a_remove: 'حذف سقف', a_disable: 'غیرفعال‌سازی ادمین', a_enable: 'فعال‌سازی ادمین',
     a_disable_users: 'غیرفعال‌سازی همه کاربران', a_enable_users: 'فعال‌سازی همه کاربران', a_reset: 'ریست ترافیک حذف‌شده‌ها',
-    cur_limit: 'سقف فعلی', statement_link: 'صورت‌حساب این نماینده', unit: 'واحد', amount: 'مقدار', p_old_new: 'سقف', p_remaining: 'باقی‌مانده پس از تغییر', p_charge: 'شارژ حساب', p_no_charge: 'بدون شارژ (افزایش نیست)', p_no_price: 'برای امروز قیمتی ثبت نشده — شارژ با مبلغ 0 ثبت می‌شود', p_wait: 'در حال محاسبه…', v_positive: 'یک عدد مثبت وارد کنید', d_reset: 'شمارندهٔ «از کاربران حذف‌شده» صفر می‌شود و حجم فروخته‌شده در همگام‌سازی بعدی کم می‌شود.', d_disable_users: 'همهٔ کاربران این ادمین روی پنل غیرفعال می‌شوند.', d_disable: 'دسترسی این ادمین به پنل بسته می‌شود؛ کاربرانش دست نمی‌خورند.', d_remove: 'سقف این ادمین برداشته می‌شود (نامحدود).',
+    cur_limit: 'سقف فعلی', statement_link: 'صورت‌حساب این نماینده', unit: 'واحد', amount: 'مقدار', p_old_new: 'سقف', p_base: 'آخرین سقف (مبنا)', p_base_hint: '— ادمین الان نامحدود است؛ «افزایش» و شارژ از این مقدار حساب می‌شود', p_base_none: 'سقفی ثبت نشده — شارژ از صفر حساب می‌شود', p_remaining: 'باقی‌مانده پس از تغییر', p_charge: 'شارژ حساب', p_no_charge: 'بدون شارژ (افزایش نیست)', p_no_price: 'برای امروز قیمتی ثبت نشده — شارژ با مبلغ 0 ثبت می‌شود', p_wait: 'در حال محاسبه…', v_positive: 'یک عدد مثبت وارد کنید', d_reset: 'شمارندهٔ «از کاربران حذف‌شده» صفر می‌شود و حجم فروخته‌شده در همگام‌سازی بعدی کم می‌شود.', d_disable_users: 'همهٔ کاربران این ادمین روی پنل غیرفعال می‌شوند.', d_disable: 'دسترسی این ادمین به پنل بسته می‌شود؛ کاربرانش دست نمی‌خورند.', d_remove: 'سقف این ادمین برداشته می‌شود (نامحدود).',
     gb: 'گیگابایت', mode: 'نوع', m_set: 'تنظیم روی', m_add: 'افزودن', m_reduce: 'کاهش', confirm_go: 'تأیید',
     snapshots: 'آخرین مصرف کاربران (اسنپ‌شات)', snap_n: '{n} کاربر', user: 'کاربر', last_seen: 'آخرین بررسی', recent_syncs: 'همگام‌سازی‌های اخیر',
     support: 'پشتیبانی', groups_none: 'گروهی تعریف نشده است.', owner: 'مالک', members: 'اعضا', note: 'یادداشت', missing: 'روی پنل نیست',
@@ -75,7 +75,7 @@ const T = {
     warn80: 'reached {p}% of the limit', blocked_pamp: 'Limited: the admin limit was reached', blocked_panel: 'Disabled on the panel',
     actions: 'Limits & actions', a_set: 'Set / change limit', a_remove: 'Remove limit', a_disable: 'Disable admin', a_enable: 'Enable admin',
     a_disable_users: 'Disable all users', a_enable_users: 'Enable all users', a_reset: 'Reset deleted traffic',
-    cur_limit: 'Current limit', statement_link: "This admin's statement", unit: 'Unit', amount: 'Amount', p_old_new: 'Limit', p_remaining: 'Remaining after', p_charge: 'Account charge', p_no_charge: 'No charge (not an increase)', p_no_price: 'No price set for today — the charge is recorded at 0', p_wait: 'Calculating…', v_positive: 'Enter a positive number', d_reset: 'The "from deleted users" counter goes to 0; Total Sold drops at the next sync.', d_disable_users: "All of this admin's users are disabled on the panel.", d_disable: 'This admin loses panel access; their users keep working.', d_remove: "This admin's limit is removed (unlimited).",
+    cur_limit: 'Current limit', statement_link: "This admin's statement", unit: 'Unit', amount: 'Amount', p_old_new: 'Limit', p_base: 'Last limit (base)', p_base_hint: '— the admin is unlimited now; "Add" and the charge start from this', p_base_none: 'no previous limit — charged from 0', p_remaining: 'Remaining after', p_charge: 'Account charge', p_no_charge: 'No charge (not an increase)', p_no_price: 'No price set for today — the charge is recorded at 0', p_wait: 'Calculating…', v_positive: 'Enter a positive number', d_reset: 'The "from deleted users" counter goes to 0; Total Sold drops at the next sync.', d_disable_users: "All of this admin's users are disabled on the panel.", d_disable: 'This admin loses panel access; their users keep working.', d_remove: "This admin's limit is removed (unlimited).",
     gb: 'GB', mode: 'Mode', m_set: 'Set to', m_add: 'Add', m_reduce: 'Reduce', confirm_go: 'Confirm',
     snapshots: 'Last known user usage (snapshot)', snap_n: '{n} users', user: 'User', last_seen: 'Last seen', recent_syncs: 'Recent syncs',
     support: 'Support', groups_none: 'No groups defined.', owner: 'Owner', members: 'Members', note: 'Note', missing: 'not on the panel',
@@ -516,6 +516,11 @@ function SetLimitForm({ s, lang, username, current, currentBytes, box }) {
       {p && !err && (
         <dl className="ag-preview" aria-live="polite">
           <div><dt>{s.p_old_new}</dt><dd><Lim b={p.old_limit_bytes} tb={p.old_limit_fmt} s={s} /> {lang === 'fa' ? '←' : '→'} <Lim b={p.new_limit_bytes} tb={p.new_limit_fmt} s={s} strong /></dd></div>
+          {p.unlimited_now && (
+            <div className="ag-preview-base"><dt>{s.p_base}</dt><dd>{p.base_limit_bytes > 0
+              ? <><Lim b={p.base_limit_bytes} tb={p.base_limit_fmt} s={s} strong /> <small className="text-muted">{s.p_base_hint}</small></>
+              : <span className="text-muted">{s.p_base_none}</span>}</dd></div>
+          )}
           <div><dt>{s.p_remaining}</dt><dd><B>{fmt(p.remaining_after_fmt, s)}</B><GB b={p.remaining_after_bytes} /></dd></div>
           <div><dt>{s.p_charge}</dt><dd>{!p.charge ? <span className="text-muted">{s.p_no_charge}</span> : (
             <><B>{Number(p.charge.gb).toLocaleString('en-US', { maximumFractionDigits: 2 })} GB</B> × <B>{p.charge.price_per_gb != null ? money(p.charge.price_per_gb) : '—'}</B> = <b><B>{money(p.charge.amount)}</B></b>
@@ -1067,6 +1072,7 @@ const CSS = `
 .ag-preview { display: flex; flex-direction: column; border-top: 1px solid var(--c-border); margin-top: 4px; }
 .ag-preview > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; padding: 8px 0; border-bottom: 1px solid var(--c-border); font-size: 13px; }
 .ag-preview dt { color: var(--c-muted-fg); }
+.ag-preview-base { background: color-mix(in srgb, var(--c-warning) 10%, transparent); padding-inline: 8px !important; border-radius: 8px; }
 .ag-kpi, .ag-nums > div[data-ac], .ag-nums--counts > div[data-k] {
   background-image: linear-gradient(color-mix(in srgb, var(--ac) 11%, transparent), color-mix(in srgb, var(--ac) 11%, transparent));
   border-color: color-mix(in srgb, var(--ac) 32%, var(--c-border)) !important; }

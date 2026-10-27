@@ -31,7 +31,7 @@ def setup():
     cache.clear()
     set_setting("agency_sync_enabled", True, ValueType.BOOL)
     Panel.objects.create(name="sigma", base_url=BASE, admin_username="u", admin_password_enc="p", is_active=True)
-    PanelAdmin.objects.create(username="Mostafa-ho", has_data_limit=True, admin_limit_bytes=BEFORE,
+    PanelAdmin.objects.create(username="Mostafa-ho", has_data_limit=True, admin_limit_bytes=BEFORE, last_limit_bytes=BEFORE,
                               admin_remaining=233 * GB, total_user_used=27_597 * GB)
     ledger.set_price("Mostafa-ho", 2000, ledger.today())
 
@@ -118,3 +118,66 @@ def test_our_own_change_is_not_reported_again_by_the_next_sync(monkeypatch):
 def test_history_needs_the_view_permission():
     c = APIClient()
     assert c.get("/api/v1/admin/agency/admins/Mostafa-ho/limit-history/").status_code == 401
+
+
+# ------------------------------------------------------------------ unlimited admins: the last finite limit is the base
+def _remove_then(c, payload):
+    url = "/api/v1/admin/agency/admins/Mostafa-ho/"
+    assert c.post(url + "remove-limit/", {}, format="json").status_code == 200
+    a = PanelAdmin.objects.get(username="Mostafa-ho")
+    assert (a.has_data_limit, a.admin_limit_bytes, a.last_limit_bytes) == (False, 0, BEFORE)   # remembered
+    prev = c.post(url + "set-limit/preview/", payload, format="json").json()
+    r = c.post(url + "set-limit/", payload, format="json")
+    assert r.status_code == 200, r.json()
+    return prev, PanelAdmin.objects.get(username="Mostafa-ho")
+
+
+@responses.activate
+def test_add_from_unlimited_starts_from_the_last_limit_and_charges_only_x():
+    panel_ok()
+    prev, a = _remove_then(boss(), {"action": "add", "value_gb": 1000})
+    assert prev["unlimited_now"] is True and prev["base_limit_bytes"] == BEFORE and prev["old_limit_bytes"] == 0
+    assert prev["new_limit_bytes"] == 28_830 * GB and float(prev["charge"]["gb"]) == 1000 and float(prev["charge"]["amount"]) == 2_000_000
+    assert a.admin_limit_bytes == 28_830 * GB and a.last_limit_bytes == 28_830 * GB
+    e = LedgerEntry.objects.get()
+    assert (e.gb, e.amount, e.old_limit_bytes, e.new_limit_bytes) == (Decimal("1000.0000"), Decimal("2000000"), BEFORE, 28_830 * GB)
+    h = AdminLimitChange.objects.filter(action="add").get()
+    assert h.old_limit_bytes == 0 and "last limit" in h.note and h.ledger_entry == e
+
+
+@responses.activate
+def test_set_from_unlimited_charges_only_the_difference_to_the_last_limit():
+    panel_ok()
+    prev, a = _remove_then(boss(), {"action": "set", "value_gb": 28_830})
+    assert prev["base_limit_bytes"] == BEFORE and float(prev["charge"]["gb"]) == 1000
+    e = LedgerEntry.objects.get()
+    assert e.amount == Decimal("2000000") and e.old_limit_bytes == BEFORE        # not 28,830 GB × 2000 = 57,660,000
+
+
+@responses.activate
+def test_set_below_the_last_limit_from_unlimited_charges_nothing():
+    panel_ok()
+    prev, a = _remove_then(boss(), {"action": "set", "value_gb": 1000})
+    assert prev["charge"] is None and a.admin_limit_bytes == 1000 * GB and not LedgerEntry.objects.exists()
+
+
+@responses.activate
+def test_never_limited_admin_still_charges_the_whole_limit():
+    panel_ok()
+    PanelAdmin.objects.filter(username="Mostafa-ho").update(has_data_limit=False, admin_limit_bytes=0, last_limit_bytes=0)
+    c = boss()
+    prev = c.post("/api/v1/admin/agency/admins/Mostafa-ho/set-limit/preview/", {"action": "add", "value_gb": 10}, format="json").json()
+    assert prev["unlimited_now"] is True and prev["base_limit_bytes"] == 0 and float(prev["charge"]["gb"]) == 10
+
+
+def test_sync_keeps_the_last_finite_limit_through_unlimited(monkeypatch):
+    rows = {"v": [_sync_row(26_000 * GB)]}
+    monkeypatch.setattr("apps.agency.panel_api.PanelAPIClient.sync_all_admins", lambda self: rows["v"])
+    monkeypatch.setattr("apps.agency.panel_api.PanelAPIClient.__init__", lambda self: None)
+    me = SimpleNamespace(retry=lambda exc: exc)
+    tasks._pamp_sync(me)
+    assert PanelAdmin.objects.get(username="Mostafa-ho").last_limit_bytes == 26_000 * GB
+    rows["v"] = [_sync_row(0)]
+    tasks._pamp_sync(me)
+    a = PanelAdmin.objects.get(username="Mostafa-ho")
+    assert (a.has_data_limit, a.last_limit_bytes) == (False, 26_000 * GB)
