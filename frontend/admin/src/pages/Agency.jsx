@@ -8,6 +8,7 @@ import { Alert, Spinner, Toggle } from '../components/ui'
 import { copyToClipboard } from '../lib/clipboard'
 import { useConfirm } from '../components/ConfirmDialog'
 import { useToast } from '../components/Toast'
+import AgencyLimitHistory from './AgencyLimitHistory'
 import { ACCENT_CSS, Ic } from '../components/AgencyIcons'
 import { AgencyLedgerOverview, BalanceText, LedgerCard, LT } from './AgencyLedger'
 import { AdminSettingsTab, AgencyAdminCreate } from './AgencyAdminForms'
@@ -53,7 +54,7 @@ const T = {
     g_member: 'عضو', g_search: 'جستجوی ادمین برای افزودن…', g_add_members: 'افزودن عضو', g_remove_member: 'حذف از گروه', g_remove: 'حذف', g_accounts: 'حساب‌ها',
     g_delete_msg: 'فقط گروه حذف می‌شود؛ حساب‌ها روی پنل دست نمی‌خورند. مالک از این پس در پرتال فقط حساب خودش را می‌بیند.',
     g_created: 'گروه ساخته شد', g_saved: 'گروه ذخیره شد', g_deleted: 'گروه حذف شد',
-    new_admin: 'ساخت ادمین', t_overview: 'نمای کلی', t_limits: 'محدودیت‌ها و عملیات', t_settings: 'تنظیمات', t_accounting: 'حسابداری', t_send: 'ارسال به نماینده',
+    new_admin: 'ساخت ادمین', t_overview: 'نمای کلی', t_limits: 'محدودیت‌ها و عملیات', t_history: 'تاریخچهٔ سقف', t_settings: 'تنظیمات', t_accounting: 'حسابداری', t_send: 'ارسال به نماینده',
     history: 'سوابق', send_pw_note: 'رمز ورود همان رمز پنل این ادمین است. برای رمز تازه از تب «تنظیمات» → تغییر رمز عبور استفاده کنید؛ رمز جدید همان‌جا یک بار نمایش داده می‌شود.',
   },
   en: {
@@ -93,7 +94,7 @@ const T = {
     g_member: 'member', g_search: 'Search admins to add…', g_add_members: 'Add members', g_remove_member: 'Remove from group', g_remove: 'Remove', g_accounts: 'Accounts',
     g_delete_msg: 'Only the group is deleted; the accounts on the panel are untouched. From now on the owner sees only their own account in the portal.',
     g_created: 'Group created', g_saved: 'Group saved', g_deleted: 'Group deleted',
-    new_admin: 'New admin', t_overview: 'Overview', t_limits: 'Limits & actions', t_settings: 'Settings', t_accounting: 'Accounting', t_send: 'Send to reseller',
+    new_admin: 'New admin', t_overview: 'Overview', t_limits: 'Limits & actions', t_history: 'Limit history', t_settings: 'Settings', t_accounting: 'Accounting', t_send: 'Send to reseller',
     history: 'History', send_pw_note: "The password is the admin's panel password. For a fresh one use Settings → Change password; the new password is shown there once.",
   },
 }
@@ -327,7 +328,7 @@ export function AgencyAdmins() {
 }
 
 // ------------------------------------------------------------------ admin detail
-const DETAIL_TABS = ['overview', 'limits', 'settings', 'accounting', 'send']
+const DETAIL_TABS = ['overview', 'limits', 'history', 'settings', 'accounting', 'send']
 
 export function AgencyAdminNew() {
   const [s] = useT()
@@ -383,8 +384,8 @@ export function AgencyAdminDetail() {
   const tabs = DETAIL_TABS.filter((k) => (k === 'settings' ? can('agency.manage') : k === 'accounting' ? can('agency.accounting') : true))
   const tab = tabs.includes(rawTab) ? rawTab : 'overview'
   const base = `/agency/admins/${encodeURIComponent(username)}`
-  const label = { overview: s.t_overview, limits: s.t_limits, settings: s.t_settings, accounting: s.t_accounting, send: s.t_send }
-  const icon = { overview: 'list', limits: 'gauge', settings: 'sliders', accounting: 'wallet', send: 'link' }
+  const label = { overview: s.t_overview, limits: s.t_limits, history: s.t_history, settings: s.t_settings, accounting: s.t_accounting, send: s.t_send }
+  const icon = { overview: 'list', limits: 'gauge', history: 'clock', settings: 'sliders', accounting: 'wallet', send: 'link' }
   return (
     <div className="ag space-y-4">
       <Header s={s} switches={d.switches} />
@@ -440,6 +441,7 @@ export function AgencyAdminDetail() {
       </div>}
 
       {tab === 'settings' && <AdminSettingsTab username={d.username} writable={writable} onDeleted={() => go('/agency/admins')} />}
+      {tab === 'history' && <AgencyLimitHistory username={d.username} />}
       {tab === 'accounting' && <LedgerCard username={d.username} />}
       {tab === 'send' && <>
         <PortalLinkCard s={s} username={d.username} />

@@ -112,13 +112,18 @@ def set_limit(username: str, action: str, value_gb, by: str = "") -> tuple[bool,
     panel_admin.save(update_fields=['admin_limit_bytes', 'has_data_limit', 'admin_remaining'])
 
     from .ledger import record_quota_charge
-    record_quota_charge(username, current_limit, new_limit_bytes, by=by)
+    entry = record_quota_charge(username, current_limit, new_limit_bytes, by=by)
+
+    from . import limit_history
+    limit_history.record(username, current_limit, new_limit_bytes, action=action, source="panel", by=by,
+                         note=f"{action} {value_gb:g} GB", ledger_entry=entry)
 
     return True, f"Limit set to {gb_label(new_limit_bytes)} — {message}"
 
 
-def remove_limit(username: str) -> tuple[bool, str]:
-    """PAMP remove_limit: unlimited on the panel."""
+def remove_limit(username: str, by: str = "") -> tuple[bool, str]:
+    """PAMP remove_limit: unlimited on the panel. caspintunel: the removed limit is kept
+    in the limit history (no ledger entry — lowering / removing never credits)."""
     _gate()
     from .panel_api import PanelAPIClient
 
@@ -126,10 +131,14 @@ def remove_limit(username: str) -> tuple[bool, str]:
     client = PanelAPIClient()
     client.authenticate()
 
+    old_limit = panel_admin.admin_limit_bytes if panel_admin.has_data_limit else 0
     success, message = client.set_admin_data_limit(username, 0)
     if not success:
         return False, f"Failed: {message}"
 
+    from . import limit_history
+    limit_history.record(username, old_limit, 0, action="remove", source="panel", by=by,
+                         note=f"removed {gb_label(old_limit)}" if old_limit else "was already unlimited")
     panel_admin.admin_limit_bytes = 0
     panel_admin.has_data_limit = False
     panel_admin.admin_remaining = 0

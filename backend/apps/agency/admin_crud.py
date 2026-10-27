@@ -284,9 +284,14 @@ def create(panel, data: dict, *, by: str = "") -> dict:
 
             if price is not None:
                 ledger.set_price(username, price, ledger.today(), note="set on creation", by=by)
+            entry = None
             if limit > 0:
                 entry = ledger.record_quota_charge(username, 0, limit, by=by)
                 charge = {"amount": str(entry.amount), "gb": str(entry.gb)} if entry else None
+            from . import limit_history
+
+            limit_history.record(username, None, limit, action="create", source="panel", by=by,
+                                 note="admin created", ledger_entry=entry)
             if group is not None:
                 from . import groups as G
 

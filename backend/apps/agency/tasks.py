@@ -132,6 +132,16 @@ def _pamp_sync(self):
             continue
 
         try:
+            prev = PanelAdmin.objects.filter(username=data['username']).values('has_data_limit', 'admin_limit_bytes').first()
+            if prev is not None:
+                old_lim = prev['admin_limit_bytes'] if prev['has_data_limit'] else 0
+                new_lim = data['admin_limit_bytes'] if data['has_data_limit'] else 0
+                if int(old_lim or 0) != int(new_lim or 0):
+                    # our own panel changes update the row at once, so a difference here was made
+                    # on PasarGuard directly (or by another tool) — keep it in the limit history
+                    from . import limit_history
+                    limit_history.record(data['username'], old_lim, new_lim, action="external", source="pasarguard",
+                                         note="detected by the sync — changed directly on PasarGuard")
             obj, _ = PanelAdmin.objects.update_or_create(
                 username=data['username'],
                 defaults={

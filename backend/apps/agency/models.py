@@ -365,3 +365,28 @@ class LedgerEntry(models.Model):
     def signed_amount(self):
         """+ = reseller owes more, − = owes less."""
         return -self.amount if self.kind == self.KIND_PAYMENT else self.amount
+
+
+class AdminLimitChange(models.Model):
+    """Every change of a panel admin's data limit (caspintunel addition): who / where /
+    old → new, so a mistake can always be traced and undone. 0 bytes = unlimited.
+    source: "panel" (our agency panel), "pasarguard" (changed directly on the panel,
+    detected by the sync), "history" (baseline / reconstructed records)."""
+
+    ACTIONS = [("create", "Created with a limit"), ("set", "Set"), ("add", "Increased"), ("reduce", "Reduced"),
+               ("remove", "Removed (unlimited)"), ("external", "Changed in PasarGuard"), ("baseline", "Baseline")]
+    SOURCES = [("panel", "Agency panel"), ("pasarguard", "PasarGuard directly"), ("history", "History")]
+
+    admin_username = models.CharField(max_length=255, db_index=True)
+    old_limit_bytes = models.BigIntegerField(null=True, blank=True, help_text="0 = unlimited, null = unknown")
+    new_limit_bytes = models.BigIntegerField(help_text="0 = unlimited")
+    action = models.CharField(max_length=10, choices=ACTIONS)
+    source = models.CharField(max_length=12, choices=SOURCES)
+    staff = models.CharField(max_length=150, blank=True, default="")
+    note = models.CharField(max_length=255, blank=True, default="")
+    ledger_entry = models.ForeignKey("LedgerEntry", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    created_at = models.DateTimeField(db_index=True)
+
+    class Meta:
+        db_table = "agency_limit_change"
+        ordering = ("-created_at", "-id")

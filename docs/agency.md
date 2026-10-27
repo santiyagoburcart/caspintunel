@@ -100,6 +100,24 @@ Additive tables (`agency_admin_price`, `agency_ledger_entry`) — PAMP's numbers
 * Statement per admin (Jalali dates, running balance), CSV export (UTF-8 BOM, Jalali dates), balance column in
   the admin list, overview tab "حسابداری". Resellers see their own statement read-only (no prices, no staff names).
 
+## Limit history (Agency → admin → "Limit history", `agency.view`)
+
+Table `agency_limit_change` (`apps/agency/limit_history.py`): **every** change of an admin's data limit, with the
+old and new value (0 = unlimited), the action, who did it and from where, and the ledger entry it produced:
+
+* **Agency panel** — create (with a limit), set / add / reduce, remove (unlimited): recorded with the staff user.
+* **PasarGuard directly** — the sync compares the panel's limit with the stored one *before* overwriting it; a
+  difference is recorded as *Changed in PasarGuard* (our own changes update the row at once, so they are not
+  reported twice).
+* **Baseline** — the value each admin had when the history started (v1.23.1).
+
+Each record also writes an `agency.limit_changed` audit entry (`old_limit_bytes`, `new_limit_bytes`, GB/TB text,
+`source`, `action`, `ledger_entry`). Units: GB = 1024³ bytes (PAMP's unit), TB = 1024⁴.
+
+⚠ **"Add" on an unlimited admin** adds to 0 — and the ledger charges the whole new limit (unlimited counts as 0).
+To restore a limit after removing it by mistake, use **Set** with the full value and correct the charge with an
+adjustment if needed.
+
 ## Account groups (Agency → Groups, `agency.manage`)
 
 PAMP's account groups, managed from the panel: create (optional name, owner = main admin, members, note),

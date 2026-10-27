@@ -273,6 +273,8 @@ erDiagram
     agency_panel_admin ||..o{ agency_reseller_session : "portal logins (by username)"
     agency_panel_admin ||..o{ agency_admin_price : "price per GB (by username)"
     agency_panel_admin ||..o{ agency_ledger_entry : "account lines (by username)"
+    agency_panel_admin ||..o{ agency_limit_change : "limit history (by username)"
+    agency_ledger_entry |o--o{ agency_limit_change : "charge of a change"
 
     agency_panel_admin {
         bigint id PK
@@ -345,6 +347,18 @@ erDiagram
         bigint new_limit_bytes
         string method
         bool voided
+    }
+
+    agency_limit_change {
+        bigint id PK
+        string admin_username
+        bigint old_limit_bytes "0 = unlimited, null = unknown"
+        bigint new_limit_bytes
+        string action "create | set | add | reduce | remove | external | baseline"
+        string source "panel | pasarguard | history"
+        string staff
+        bigint ledger_entry_id FK
+        datetime created_at
     }
 ```
 

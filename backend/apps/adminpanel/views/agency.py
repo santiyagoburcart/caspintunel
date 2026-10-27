@@ -99,6 +99,17 @@ class AgencyAdminDetailView(AdminAPIView):
         return Response({**api.admin_detail(a), "switches": _switches()})
 
 
+class AgencyLimitHistoryView(AdminAPIView):
+    """Every data-limit change of one admin: our panel and PasarGuard directly (agency/limit_history.py)."""
+
+    perms_map = {"GET": VIEW}
+
+    def get(self, request, username):
+        from apps.agency import limit_history
+
+        return Response({"username": username, "results": limit_history.history(username)})
+
+
 class AgencyAdminActionView(AdminAPIView):
     perms_map = {"POST": MANAGE}
     ACTIONS = {"set-limit", "remove-limit", "admin-action", "reset-deleted-traffic"}
@@ -121,7 +132,8 @@ class AgencyAdminActionView(AdminAPIView):
                                         else f"سقف ادمین روی {label} تنظیم شد")
             return r
         if action == "remove-limit":
-            return _run(request, "agency.remove_limit", a, actions.remove_limit, username)
+            return _run(request, "agency.remove_limit", a, actions.remove_limit, username,
+                        getattr(request.user, "username", ""))
         if action == "admin-action":
             return _run(request, f"agency.{d.get('action')}", a, actions.admin_action, username, d.get("action"))
         return _run(request, "agency.reset_deleted_traffic", a, actions.reset_deleted_traffic, username)

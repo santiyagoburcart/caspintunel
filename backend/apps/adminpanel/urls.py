@@ -7,7 +7,7 @@ from .views.branding import QrPreviewView, SiteConfigView
 from .views.docs import DocsListView, DocsPageView
 from .views.domain import (AccessDetectView, AccessDns01View, AccessSettingsView, AccessSwitchView, DomainRollbackView,
                            DomainSettingsView, DomainStartView, DomainStepView, DomainTokenView, DomainView)
-from .views.agency import (AgencyAdminActionView, AgencyAdminDetailView, AgencyAdminListView, AgencyDashboardView,
+from .views.agency import (AgencyLimitHistoryView, AgencyAdminActionView, AgencyAdminDetailView, AgencyAdminListView, AgencyDashboardView,
                            AgencyGroupsView, AgencyLedgerExportView, AgencyLedgerOverviewView, AgencyLedgerView,
                            AgencyLedgerVoidView, AgencySettingsView, AgencySyncLogsView, AgencySyncNowView, PathsView,
                            AgencyPortalLinkView, AgencySetLimitPreviewView, AgencyLedgerReportView,
@@ -94,6 +94,7 @@ urlpatterns = [
     path("agency/panel-admins/options/", AgencyPanelAdminOptionsView.as_view(), name="admin-agency-panel-admin-options"),
     path("agency/panel-admins/", AgencyPanelAdminCreateView.as_view(), name="admin-agency-panel-admin-create"),
     path("agency/panel-admins/<str:username>/", AgencyPanelAdminView.as_view(), name="admin-agency-panel-admin"),
+    path("agency/admins/<str:username>/limit-history/", AgencyLimitHistoryView.as_view(), name="admin-agency-limit-history"),
     path("agency/admins/<str:username>/set-limit/preview/", AgencySetLimitPreviewView.as_view(), name="admin-agency-limit-preview"),
     path("agency/admins/<str:username>/<str:action>/", AgencyAdminActionView.as_view(), name="admin-agency-action"),
     path("agency/portal-link/", AgencyPortalLinkView.as_view(), name="admin-agency-portal-link"),
