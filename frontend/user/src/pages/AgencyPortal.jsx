@@ -5,6 +5,8 @@ import { useI18n } from '../lib/i18n'
 import { jalali, toman } from '../lib/format'
 import { ACCENT_CSS, Ic } from '../components/AgencyIcons'
 import { useToast } from '../components/Toast'
+import { Link } from 'react-router-dom'
+import { PORTAL_PATH } from '../lib/paths'
 
 // Reseller portal (PAMP's per-admin portal). Separate from the customer site:
 // own token ("Agency <token>"), own HTTP client — the customer JWT, its 401
@@ -38,7 +40,7 @@ const T = {
     blocked_disabled: 'دسترسی شما روی پنل غیرفعال است.', blocked_limited: 'سقف حجم شما تمام شده و حساب محدود شده است.',
     support: 'پشتیبانی', balance: 'بدهی شما', statement: 'صورت‌حساب', none: 'هنوز گردشی ثبت نشده است.', show: 'نمایش صورت‌حساب', hide: 'بستن',
     k_quota_charge: 'شارژ حجم', k_manual_charge: 'بدهکاری', k_adjustment: 'اصلاحیه', k_payment: 'پرداخت', running: 'مانده', voided: 'باطل‌شده',
-    group: 'حساب‌های گروه شما', last_sync: 'آخرین به‌روزرسانی', welcome: 'خوش آمدید', bye: 'از پرتال خارج شدید', net: 'ارتباط با سرور برقرار نشد — اینترنت را بررسی کنید.', expired: 'نشست شما تمام شده — دوباره وارد شوید.', locked: 'به‌دلیل تلاش‌های ناموفق، ورود موقتاً بسته شده است — چند دقیقه بعد تلاش کنید.',
+    mgr_link: 'مدیر گروه هستید؟ ورود مدیران گروه', group: 'حساب‌های گروه شما', last_sync: 'آخرین به‌روزرسانی', welcome: 'خوش آمدید', bye: 'از پرتال خارج شدید', net: 'ارتباط با سرور برقرار نشد — اینترنت را بررسی کنید.', expired: 'نشست شما تمام شده — دوباره وارد شوید.', locked: 'به‌دلیل تلاش‌های ناموفق، ورود موقتاً بسته شده است — چند دقیقه بعد تلاش کنید.',
   },
   en: {
     title: 'Reseller portal', sub: 'Sign in with your PasarGuard panel username and password',
@@ -51,7 +53,7 @@ const T = {
     blocked_disabled: 'Your access is disabled on the panel.', blocked_limited: 'Your volume limit is used up and the account is limited.',
     support: 'Support', balance: 'You owe', statement: 'Statement', none: 'No entries yet.', show: 'Show statement', hide: 'Hide',
     k_quota_charge: 'Quota charge', k_manual_charge: 'Charge', k_adjustment: 'Adjustment', k_payment: 'Payment', running: 'Balance', voided: 'voided',
-    group: 'Your group\'s accounts', last_sync: 'Last update', welcome: 'Welcome', bye: 'You signed out of the portal', net: 'Could not reach the server — check your connection.', expired: 'Your session ended — please sign in again.', locked: 'Too many failed attempts — sign-in is paused for a few minutes.',
+    mgr_link: 'Group manager? Sign in here', group: 'Your group\'s accounts', last_sync: 'Last update', welcome: 'Welcome', bye: 'You signed out of the portal', net: 'Could not reach the server — check your connection.', expired: 'Your session ended — please sign in again.', locked: 'Too many failed attempts — sign-in is paused for a few minutes.',
   },
 }
 const fmt = (v, s) => (v === 'Unlimited' ? s.unl : v)
@@ -142,6 +144,7 @@ function LoginForm({ s, onDone }) {
       <label htmlFor="ap-p">{s.password}</label>
       <input id="ap-p" className="ap-input" dir="ltr" type="password" autoComplete="current-password" required value={p} onChange={(e) => setP(e.target.value)} />
       <button className="ap-btn" disabled={busy}>{busy ? <span className="ap-btn-spin" aria-hidden="true" /> : <Ic n="login" size={17} />}{s.login}</button>
+      <Link className="ap-mgr-link" to={`${PORTAL_PATH}/manager`}><Ic n="users" size={14} />{s.mgr_link}</Link>
     </form>
   )
 }
@@ -269,6 +272,7 @@ const CSS = `
 .ap-st-a { font-weight: 800; }
 .ap-st-a[data-sign="owes"] { color: var(--c-danger-fg); } .ap-st-a[data-sign="credit"] { color: var(--c-success-fg); } .ap-st-a[data-sign="zero"] { color: var(--c-muted-fg); }
 .ap-st-r, .ap-st-n { grid-column: 1 / -1; font-size: 12px; color: var(--c-muted-fg); }
+.ap-mgr-link { display: inline-flex; align-items: center; justify-content: center; gap: 6px; margin-top: 10px; font-size: 13px; font-weight: 700; color: var(--c-primary); min-height: 40px; }
 .ap-foot { font-size: 12px; color: var(--c-muted-fg); margin-top: 10px; }
 .ap-spin { width: 28px; height: 28px; margin: 24px auto; border-radius: 50%; border: 3px solid var(--c-border); border-top-color: var(--c-primary); animation: ap-r 0.8s linear infinite; }
 @keyframes ap-r { to { transform: rotate(360deg); } }
@@ -284,3 +288,5 @@ const CSS = `
 .ap-gb { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: .74em; font-weight: 500; color: var(--c-muted-fg); margin: 0 6px; white-space: nowrap; }
 .ap-nums dd .ap-gb { display: block; margin: 0; font-size: 11.5px; margin-top: 1px; }
 `
+
+export { CSS as PORTAL_CSS }

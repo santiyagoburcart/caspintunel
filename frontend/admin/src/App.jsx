@@ -15,7 +15,7 @@ import SmsLog from './pages/SmsLog'
 import Docs from './pages/Docs'
 import PathsSettings from './pages/PathsSettings'
 import DomainSettings from './pages/DomainSettings'
-import { AgencyAdminDetail, AgencyAdminNew, AgencyAdmins, AgencyDashboard, AgencyGroups, AgencyLedger, AgencySettings, AgencySyncLogs } from './pages/Agency'
+import { AgencyAdminDetail, AgencyAdminNew, AgencyAdmins, AgencyApprovals, AgencyDashboard, AgencyGroupStatement, AgencyGroups, AgencyLedger, AgencyLedgerGroups, AgencyManagers, AgencySettings, AgencySyncLogs } from './pages/Agency'
 import Accounting from './pages/Accounting'
 import Tickets from './pages/Tickets'
 import TicketTopics from './pages/TicketTopics'
@@ -80,6 +80,10 @@ export default function App() {
         <Route path="/agency/admins/:username/:tab" element={<AgencyAdminDetail />} />
         <Route path="/agency/groups" element={<AgencyGroups />} />
         <Route path="/agency/ledger" element={<AgencyLedger />} />
+        <Route path="/agency/ledger/groups" element={<AgencyLedgerGroups />} />
+        <Route path="/agency/ledger/groups/:id" element={<AgencyGroupStatement />} />
+        <Route path="/agency/managers" element={<AgencyManagers />} />
+        <Route path="/agency/approvals" element={<AgencyApprovals />} />
         <Route path="/agency/sync-logs" element={<AgencySyncLogs />} />
         <Route path="/agency/settings" element={<AgencySettings />} />
         <Route path="/tickets" element={<Tickets />} />

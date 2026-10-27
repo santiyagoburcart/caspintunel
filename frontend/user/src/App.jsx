@@ -19,6 +19,7 @@ import Renew from './pages/Renew'
 import Help from './pages/Help'
 import Rules from './pages/Rules'
 import AgencyPortal from './pages/AgencyPortal'
+import AgencyManager from './pages/AgencyManager'
 import { PORTAL_PATH } from './lib/paths'
 
 const TG_ROUTES = { store: '/store', dashboard: '/', history: '/history', help: '/help', rules: '/rules', profile: '/profile' }
@@ -125,6 +126,9 @@ export default function App() {
       <Route path="/terms" element={<PublicTerms />} />
       {/* reseller portal (agency panel) — its own login and token, not a customer page */}
       <Route path={PORTAL_PATH} element={<AgencyPortal />} />
+      {/* group-manager portal — own login and token (Manager <token>), never a staff session */}
+      <Route path={`${PORTAL_PATH}/manager`} element={<AgencyManager />} />
+      <Route path={`${PORTAL_PATH}/manager/*`} element={<AgencyManager />} />
       <Route path={`${PORTAL_PATH}/*`} element={<AgencyPortal />} />
       <Route element={<Private><><TelegramStart /><Layout /></></Private>}>
         <Route path="/" element={<Dashboard />} />

@@ -4,9 +4,10 @@ from rest_framework.views import APIView
 
 from apps.accounts.authentication import JWTAuthentication
 
-from ..permissions import StaffJWTAuthentication, StaffPermission
+from ..permissions import RefuseManagerToken, StaffJWTAuthentication, StaffPermission
 
-_AUTH = [StaffJWTAuthentication, JWTAuthentication, SessionAuthentication]
+# RefuseManagerToken last: the first class still answers 401 (WWW-Authenticate) for anonymous requests
+_AUTH = [StaffJWTAuthentication, JWTAuthentication, SessionAuthentication, RefuseManagerToken]
 
 
 class AdminAPIView(APIView):

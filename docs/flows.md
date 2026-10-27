@@ -247,6 +247,45 @@ Edit (`PATCH`, only changed fields, password reset shown once) and delete
 (`DELETE`, typed username; local row + group membership removed, ledger kept)
 follow the same panel-first rule.
 
+## 5c. Group manager gives volume → staff approve / reject
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor M as Group manager
+    participant MP as portal /agency/manager
+    participant API as web agency/manager/
+    participant PG as PasarGuard
+    participant DB as MySQL
+    actor S as Staff (agency.manage + agency.accounting)
+    participant AP as /panel/agency/approvals
+
+    M->>MP: sign in (own password, "Manager" token)
+    M->>MP: + volume (GB) on an admin of their group
+    MP->>API: POST admins/{u}/add-volume/ {gb}
+    API->>API: own group? not sudo? GB > 0? cap (pending + GB ≤ max)?
+    alt forbidden / cap reached
+        API-->>MP: 403 / 409 cap_reached — nothing changed
+    end
+    API->>PG: GET /api/admins?username= (live limit; unlimited → 403)
+    API->>PG: PUT /api/admin/{u} data_limit = live + GB
+    API->>DB: PanelAdmin limit · VolumeRequest(pending) · AdminLimitChange(add, source manager)
+    API->>DB: AuditLog agency.manager.volume_added (manager, group)
+    API-->>MP: live at once — "pending approval"
+    AP->>API: GET approvals/badge/ (every 30 s → menu badge + toast)
+    S->>AP: Approve (price × GB shown; price asked if the admin has none)
+    AP->>API: POST approvals/{id}/approve/
+    API->>DB: LedgerEntry quota_charge (old → new, price of that day) · link to the limit-history row
+    API->>DB: AuditLog agency.approval.approved
+    S->>AP: or Reject (confirm)
+    AP->>API: POST approvals/{id}/reject/ {confirm: true}
+    API->>PG: PUT data_limit = live − GB (never 0 = unlimited)
+    API->>DB: AdminLimitChange(reduce) · request rejected · no charge
+```
+
+A new admin made by a manager (`POST admins/`) follows the same path: created on
+PasarGuard with an allowed role and the initial GB, added to the group, request `create`.
+
 ## 6. Bot and Mini App login
 
 ```mermaid

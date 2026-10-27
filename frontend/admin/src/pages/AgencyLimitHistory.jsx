@@ -13,7 +13,7 @@ const T = {
     empty: 'هنوز تغییری ثبت نشده است.', unlimited: 'نامحدود', unknown: 'نامشخص',
     when: 'زمان', change: 'تغییر', what: 'نوع', by: 'توسط', where: 'منبع', ledger: 'حسابداری', none: '—', voided: 'باطل‌شده',
     actions: { create: 'ساخت با سقف', set: 'تنظیم', add: 'افزایش', reduce: 'کاهش', remove: 'برداشتن سقف', external: 'تغییر در PasarGuard', baseline: 'مقدار اولیه' },
-    sources: { panel: 'پنل نمایندگی', pasarguard: 'مستقیم در PasarGuard', history: 'تاریخچه' },
+    sources: { panel: 'پنل نمایندگی', pasarguard: 'مستقیم در PasarGuard', history: 'تاریخچه', manager: 'مدیر گروه' },
     toman: 'تومان', system: 'سیستم',
   },
   en: {
@@ -21,7 +21,7 @@ const T = {
     empty: 'No changes recorded yet.', unlimited: 'Unlimited', unknown: 'unknown',
     when: 'Time', change: 'Change', what: 'Type', by: 'By', where: 'Source', ledger: 'Accounting', none: '—', voided: 'voided',
     actions: { create: 'Created with a limit', set: 'Set', add: 'Increase', reduce: 'Decrease', remove: 'Limit removed', external: 'Changed in PasarGuard', baseline: 'Baseline' },
-    sources: { panel: 'Agency panel', pasarguard: 'PasarGuard directly', history: 'History' },
+    sources: { panel: 'Agency panel', pasarguard: 'PasarGuard directly', history: 'History', manager: 'Group manager' },
     toman: 'T', system: 'system',
   },
 }
@@ -92,6 +92,7 @@ const CSS = `
 .alh-src { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--c-border); }
 .alh-src-pasarguard { color: var(--c-warning-fg, var(--c-text)); background: color-mix(in srgb, var(--c-warning) 18%, transparent); border-color: transparent; }
 .alh-src-panel { color: var(--c-primary); }
+.alh-src-manager { color: var(--c-success-fg); border-color: color-mix(in srgb, var(--c-success) 40%, transparent); }
 .alh-chg { font-size: 13.5px; }
 .alh-v small, .alh-u { color: var(--c-muted-fg); }
 .alh-up { color: var(--c-success-fg); font-weight: 700; } .alh-down { color: var(--c-danger-fg); font-weight: 700; }

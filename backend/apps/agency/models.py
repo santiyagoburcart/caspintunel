@@ -378,7 +378,8 @@ class AdminLimitChange(models.Model):
 
     ACTIONS = [("create", "Created with a limit"), ("set", "Set"), ("add", "Increased"), ("reduce", "Reduced"),
                ("remove", "Removed (unlimited)"), ("external", "Changed in PasarGuard"), ("baseline", "Baseline")]
-    SOURCES = [("panel", "Agency panel"), ("pasarguard", "PasarGuard directly"), ("history", "History")]
+    SOURCES = [("panel", "Agency panel"), ("pasarguard", "PasarGuard directly"), ("history", "History"),
+               ("manager", "Group manager")]
 
     admin_username = models.CharField(max_length=255, db_index=True)
     old_limit_bytes = models.BigIntegerField(null=True, blank=True, help_text="0 = unlimited, null = unknown")
@@ -392,4 +393,87 @@ class AdminLimitChange(models.Model):
 
     class Meta:
         db_table = "agency_limit_change"
+        ordering = ("-created_at", "-id")
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Group managers (caspintunel addition, docs/agency.md → "Group managers"): staff
+# create any number of them and assign agency groups; they get their own portal
+# (/agency/manager) and session, never a staff token. Every volume they give is
+# applied on PasarGuard at once and waits as a VolumeRequest for staff approval;
+# only the approval writes the charge into the ledger.
+# ═════════════════════════════════════════════════════════════════════════════
+class GroupManager(models.Model):
+    username = models.CharField(max_length=64, unique=True)
+    password = models.CharField(max_length=128, help_text="Django password hash")
+    display_name = models.CharField(max_length=100, blank=True, default="")
+    is_active = models.BooleanField(default=True)
+    # GB given but not yet approved (all groups) above which new volume is blocked; null = no cap
+    max_unapproved_gb = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    note = models.CharField(max_length=255, blank=True, default="")
+    created_by = models.CharField(max_length=150, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    last_login_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "agency_group_manager"
+        ordering = ("username",)
+
+    def __str__(self):
+        return self.username
+
+
+class GroupManagerAssignment(models.Model):
+    """One agency group a manager runs, and the PasarGuard roles (= inbound sets) the
+    manager may give its admins. Owner roles are never allowed."""
+    manager = models.ForeignKey(GroupManager, on_delete=models.CASCADE, related_name="assignments")
+    group = models.ForeignKey(AdminGroup, on_delete=models.CASCADE, related_name="manager_assignments")
+    allowed_role_ids = models.JSONField(default=list, blank=True)
+
+    class Meta:
+        db_table = "agency_group_manager_group"
+        unique_together = ("manager", "group")
+
+
+class ManagerSession(models.Model):
+    """A group-manager portal login. Only the SHA-256 of the bearer token is stored."""
+    manager = models.ForeignKey(GroupManager, on_delete=models.CASCADE, related_name="sessions")
+    key_hash = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    last_used_at = models.DateTimeField(null=True, blank=True)
+    ip = models.CharField(max_length=64, blank=True, default="")
+    revoked = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = "agency_manager_session"
+
+
+class VolumeRequest(models.Model):
+    """"Pending approval": volume a group manager gave (new admin or +GB), already live on
+    PasarGuard. Approve → quota charge in the ledger; reject → the volume is taken back."""
+    KINDS = [("create", "New admin"), ("add", "Added volume")]
+    STATUSES = [("pending", "Pending"), ("approved", "Approved"), ("rejected", "Rejected")]
+
+    group = models.ForeignKey(AdminGroup, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    group_name = models.CharField(max_length=150, blank=True, default="")
+    manager = models.ForeignKey(GroupManager, null=True, blank=True, on_delete=models.SET_NULL, related_name="requests")
+    manager_username = models.CharField(max_length=64)
+    admin_username = models.CharField(max_length=255, db_index=True)
+    kind = models.CharField(max_length=8, choices=KINDS)
+    gb = models.DecimalField(max_digits=14, decimal_places=4)
+    old_limit_bytes = models.BigIntegerField(help_text="limit before (0 for a new admin)")
+    new_limit_bytes = models.BigIntegerField()
+    status = models.CharField(max_length=10, choices=STATUSES, default="pending", db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    decided_at = models.DateTimeField(null=True, blank=True)
+    decided_by = models.CharField(max_length=150, blank=True, default="")
+    reason = models.CharField(max_length=255, blank=True, default="")
+    revert_note = models.CharField(max_length=255, blank=True, default="")
+    ledger_entry = models.ForeignKey(LedgerEntry, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    limit_change = models.ForeignKey(AdminLimitChange, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+
+    class Meta:
+        db_table = "agency_volume_request"
         ordering = ("-created_at", "-id")

@@ -160,3 +160,34 @@ def to_csv(rows: list[list]) -> str:
     buf.write("﻿")                       # BOM: Excel opens UTF-8 (Persian) correctly
     csv.writer(buf).writerows(rows)
     return buf.getvalue()
+
+
+def parse_day(v):
+    """ISO (2026-10-21) or Jalali (1405/07/29) → date; None when missing / invalid."""
+    if not v:
+        return None
+    v = str(v).strip()
+    try:
+        if "/" in v:
+            y, m, d = (int(x) for x in v.split("/"))
+            return jdatetime.date(y, m, d).togregorian() if y < 1700 else date(y, m, d)
+        return date.fromisoformat(v)
+    except (ValueError, TypeError):
+        return None
+
+
+def export_response(rows: list[list], fmt: str, name: str, lang: str):
+    """CSV (UTF-8 + BOM) or .xlsx download of report rows (rows[0] = header)."""
+    from django.http import HttpResponse
+
+    from apps.common import xlsx
+
+    if fmt == "xlsx":
+        resp = HttpResponse(xlsx.build(rows, sheet=name[:31], rtl=lang == "fa", widths=[16] + [18] * (max(len(r) for r in rows) - 1)),
+                            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        resp["Content-Disposition"] = f'attachment; filename="{name}.xlsx"'
+    else:
+        resp = HttpResponse(to_csv(rows), content_type="text/csv; charset=utf-8")
+        resp["Content-Disposition"] = f'attachment; filename="{name}.csv"'
+    resp["Cache-Control"] = "private, no-store"
+    return resp

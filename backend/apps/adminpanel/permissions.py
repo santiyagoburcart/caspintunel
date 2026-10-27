@@ -30,6 +30,17 @@ class StaffJWTAuthentication(authentication.BaseAuthentication):
         return "Bearer"
 
 
+class RefuseManagerToken(authentication.BaseAuthentication):
+    """A group-manager token (`Authorization: Manager …`, apps/agency/managers.py) on the
+    staff API is answered 403 — managers never get into the site panel."""
+
+    def authenticate(self, request):
+        header = authentication.get_authorization_header(request).split()
+        if header and header[0].lower() == b"manager":
+            raise exceptions.PermissionDenied({"detail": "group managers cannot use the site panel", "code": "forbidden"})
+        return None
+
+
 class StaffPermission(permissions.BasePermission):
     """
     Grants access to an authenticated `Staff` holding the permission codes the

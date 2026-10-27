@@ -241,9 +241,11 @@ def _limit_bytes(data: dict) -> int:
 
 
 # --- actions ----------------------------------------------------------------------
-def create(panel, data: dict, *, by: str = "") -> dict:
+def create(panel, data: dict, *, by: str = "", charge: bool = True, source: str = "panel", note: str = "admin created") -> dict:
     """Create the admin on the panel, then (optionally) price + quota charge + group.
-    Returns the "send to reseller" card data (the password only this once)."""
+    Returns the "send to reseller" card data (the password only this once).
+    charge=False (group managers): no ledger entry — the volume waits for approval;
+    the limit-history row id is returned as "history_id" so the request can link it."""
     _gate()
     payload = build_payload(data, creating=True)
     limit = _limit_bytes(data)
@@ -270,7 +272,7 @@ def create(panel, data: dict, *, by: str = "") -> dict:
 
     username = payload["username"]
     tracked = is_agency_panel(panel)
-    charge = None
+    charge_out, hist = None, None
     if tracked:
         with transaction.atomic():
             # the next sync fills every PAMP counter; the row exists now so the detail page works
@@ -286,21 +288,21 @@ def create(panel, data: dict, *, by: str = "") -> dict:
             if price is not None:
                 ledger.set_price(username, price, ledger.today(), note="set on creation", by=by)
             entry = None
-            if limit > 0:
+            if limit > 0 and charge:
                 entry = ledger.record_quota_charge(username, 0, limit, by=by)
-                charge = {"amount": str(entry.amount), "gb": str(entry.gb)} if entry else None
+                charge_out = {"amount": str(entry.amount), "gb": str(entry.gb)} if entry else None
             from . import limit_history
 
-            limit_history.record(username, None, limit, action="create", source="panel", by=by,
-                                 note="admin created", ledger_entry=entry)
+            hist = limit_history.record(username, None, limit, action="create", source=source, by=by,
+                                        note=note, ledger_entry=entry)
             if group is not None:
                 from . import groups as G
 
                 members = G._members(group.member_usernames) + [username]
                 G.upsert(group.id, owner=group.owner_username, members=members, name=group.name, note=group.note)
     return {"username": username, "password": payload["password"], "panel": panel.name, "tracked": tracked,
-            "limit_bytes": limit, "charge": charge, "group": group.name or group.owner_username if group else None,
-            "admin": editable_view(created)}
+            "limit_bytes": limit, "charge": charge_out, "group": group.name or group.owner_username if group else None,
+            "admin": editable_view(created), "history_id": hist.id if hist else None}
 
 
 def modify(panel, username: str, data: dict) -> dict:

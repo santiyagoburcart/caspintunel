@@ -12,6 +12,8 @@ import AgencyLimitHistory from './AgencyLimitHistory'
 import { ACCENT_CSS, Ic } from '../components/AgencyIcons'
 import { AgencyLedgerOverview, BalanceText, LedgerCard, LT } from './AgencyLedger'
 import { AdminSettingsTab, AgencyAdminCreate } from './AgencyAdminForms'
+import { AgencyApprovalsView, AgencyGroupStatementView, AgencyLedgerGroupsView, AgencyManagersView, GroupActivity, LedgerSubNav } from './AgencyManagers'
+import { useLiveApprovals } from '../lib/liveApprovals'
 
 // Agency panel (PAMP port). Every number on these pages comes from the backend
 // (apps/agency: PAMP's own formulas); this file only formats and lays out.
@@ -19,7 +21,7 @@ import { AdminSettingsTab, AgencyAdminCreate } from './AgencyAdminForms'
 const T = {
   fa: {
     title: 'پنل نمایندگی', sub: 'ادمین‌های نماینده روی پنل پاسارگاد',
-    tab_dash: 'داشبورد', tab_admins: 'نماینده‌ها', tab_groups: 'گروه‌ها', tab_logs: 'لاگ همگام‌سازی', tab_settings: 'تنظیمات',
+    tab_dash: 'داشبورد', tab_admins: 'نماینده‌ها', tab_groups: 'گروه‌ها', tab_managers: 'مدیران گروه', tab_approvals: 'تأییدها', tab_logs: 'لاگ همگام‌سازی', tab_settings: 'تنظیمات',
     cutover: 'فعال پس از انتقال نهایی',
     cutover_note: 'همگام‌سازی این بخش هنوز روشن نشده است؛ این بخش فعلاً فقط‌خواندنی است و هیچ تغییری روی پنل اعمال نمی‌شود. داده‌ها از آخرین درون‌ریزی هستند.',
     balance: 'بدهی', portal_set: 'پرتال نماینده‌ها', portal_set_d: 'نماینده‌ها با نام کاربری و رمز پنل پاسارگاد خود در /agency/ وارد می‌شوند و فقط اعداد خودشان را می‌بینند. تا انتقال نهایی، اعداد از آخرین درون‌ریزی است.',
@@ -59,7 +61,7 @@ const T = {
   },
   en: {
     title: 'Agency Panel', sub: 'Reseller admins on the PasarGuard panel',
-    tab_dash: 'Dashboard', tab_admins: 'Admins', tab_groups: 'Groups', tab_logs: 'Sync logs', tab_settings: 'Settings',
+    tab_dash: 'Dashboard', tab_admins: 'Admins', tab_groups: 'Groups', tab_managers: 'Group managers', tab_approvals: 'Approvals', tab_logs: 'Sync logs', tab_settings: 'Settings',
     cutover: 'Available after the final cut-over',
     cutover_note: 'Sync for this section is not on yet; it is read-only for now and changes nothing on the panel. Data is from the last import.',
     balance: 'Balance', portal_set: 'Reseller portal', portal_set_d: 'Resellers sign in at /agency/ with their PasarGuard admin username and password and see only their own numbers. Until the cut-over the numbers are from the last import.',
@@ -122,7 +124,9 @@ const Lim = ({ b, tb, s, block, strong }) => {
 function Header({ s, switches }) {
   const { can } = useAuth()
   const { lang } = useI18n()
+  const { pending } = useLiveApprovals()
   const tabs = [['/agency', s.tab_dash, true], ['/agency/admins', s.tab_admins], ['/agency/groups', s.tab_groups],
+    ['/agency/managers', s.tab_managers], ['/agency/approvals', s.tab_approvals, false, pending],
     ...(can('agency.accounting') ? [['/agency/ledger', (LT[lang] || LT.fa).tab]] : []),
     ['/agency/sync-logs', s.tab_logs], ['/agency/settings', s.tab_settings]]
   return (
@@ -133,8 +137,10 @@ function Header({ s, switches }) {
         <p className="text-sm text-muted mt-1">{s.sub}</p>
       </div>
       <nav className="ag-tabs" aria-label={s.title}>
-        {tabs.map(([to, label, end]) => (
-          <NavLink key={to} to={to} end={!!end} className={({ isActive }) => 'ag-tab' + (isActive ? ' on' : '')}>{label}</NavLink>
+        {tabs.map(([to, label, end, badge]) => (
+          <NavLink key={to} to={to} end={!!end} className={({ isActive }) => 'ag-tab' + (isActive ? ' on' : '')}>
+            {label}{badge > 0 && <span className="ag-tab-badge" aria-label={`${badge}`}>{badge > 99 ? '99+' : badge}</span>}
+          </NavLink>
         ))}
       </nav>
       {switches && !switches.writes_enabled && (
@@ -567,8 +573,18 @@ function PortalLinkCard({ s, username }) {
 export function AgencyLedger() {
   const [s] = useT()
   const [dash] = useLoad('/admin/agency/')
-  return <AgencyLedgerOverview Header={<Header s={s} switches={dash?.switches} />} />
+  return <AgencyLedgerOverview Header={<><Header s={s} switches={dash?.switches} /><LedgerSubNav /></>} />
 }
+
+function useHeader() {
+  const [s] = useT()
+  const [dash] = useLoad('/admin/agency/')
+  return <Header s={s} switches={dash?.switches} />
+}
+export function AgencyManagers() { return <AgencyManagersView Header={useHeader()} /> }
+export function AgencyApprovals() { return <AgencyApprovalsView Header={useHeader()} /> }
+export function AgencyLedgerGroups() { return <AgencyLedgerGroupsView Header={useHeader()} /> }
+export function AgencyGroupStatement() { return <AgencyGroupStatementView Header={useHeader()} /> }
 
 // ------------------------------------------------------------------ groups
 const GERR = {
@@ -742,6 +758,10 @@ export function AgencyGroups() {
               </div>
             )}
             {g.note && <p className="text-xs text-muted mt-2">{s.note}: {g.note}</p>}
+            <div className="ag-g-foot">
+              <GroupActivity groupId={g.id} />
+              {can('agency.accounting') && <Link to={`/agency/ledger/groups/${g.id}`} className="ag-act ag-act--sm" data-tone="neutral"><Ic n="doc" size={13} />{(LT[lang] || LT.fa).tab}</Link>}
+            </div>
           </section>
         ))
       )}
@@ -889,6 +909,11 @@ const CSS = `
 .ag-tab { white-space: nowrap; padding: 7px 14px; border-radius: 999px; font-size: 13px; font-weight: 700; color: var(--c-text);
   border: 1px solid var(--c-border); text-decoration: none; }
 .ag-tab:hover { border-color: var(--c-primary); }
+.ag-tab-badge { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; margin-inline-start: 6px; border-radius: 999px;
+  font-size: 11px; font-weight: 800; color: #fff; background: var(--c-danger); vertical-align: middle; }
+.ag-g-foot { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; }
+.ag-g-foot > .ag-act { margin-top: 10px; }
+.ag-g-foot .gm-activity { flex: 1 1 100%; order: 2; }
 .ag-tab.on { background: color-mix(in srgb, var(--c-primary) 82%, #000); border-color: color-mix(in srgb, var(--c-primary) 82%, #000); color: #fff; }
 .ag-cutover { display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 1.7;
   color: var(--c-warning-fg); background: color-mix(in srgb, var(--c-warning) 12%, transparent); border: 1px solid color-mix(in srgb, var(--c-warning) 30%, transparent); }

@@ -275,6 +275,13 @@ erDiagram
     agency_panel_admin ||..o{ agency_ledger_entry : "account lines (by username)"
     agency_panel_admin ||..o{ agency_limit_change : "limit history (by username)"
     agency_ledger_entry |o--o{ agency_limit_change : "charge of a change"
+    agency_group_manager ||--o{ agency_group_manager_group : "runs"
+    agency_admin_group ||--o{ agency_group_manager_group : "managed by"
+    agency_group_manager ||--o{ agency_manager_session : "signs in"
+    agency_group_manager |o--o{ agency_volume_request : "gave volume"
+    agency_admin_group |o--o{ agency_volume_request : "for an admin of"
+    agency_volume_request |o--o| agency_ledger_entry : "charge when approved"
+    agency_volume_request |o--o| agency_limit_change : "the change it approves"
 
     agency_panel_admin {
         bigint id PK
@@ -355,10 +362,49 @@ erDiagram
         bigint old_limit_bytes "0 = unlimited, null = unknown"
         bigint new_limit_bytes
         string action "create | set | add | reduce | remove | external | baseline"
-        string source "panel | pasarguard | history"
+        string source "panel | pasarguard | history | manager"
         string staff
         bigint ledger_entry_id FK
         datetime created_at
+    }
+
+    agency_group_manager {
+        bigint id PK
+        string username UK "own login, not staff"
+        string password "Django hash"
+        bool is_active
+        decimal max_unapproved_gb "null = no cap"
+        datetime last_login_at
+    }
+
+    agency_group_manager_group {
+        bigint id PK
+        bigint manager_id FK
+        bigint group_id FK
+        json allowed_role_ids "PasarGuard roles = inbound sets (never owner)"
+    }
+
+    agency_manager_session {
+        bigint id PK
+        bigint manager_id FK
+        string key_hash UK "sha256 of the bearer token"
+        datetime expires_at
+        bool revoked
+    }
+
+    agency_volume_request {
+        bigint id PK
+        bigint group_id FK
+        bigint manager_id FK
+        string admin_username
+        string kind "create | add"
+        decimal gb
+        bigint old_limit_bytes
+        bigint new_limit_bytes
+        string status "pending | approved | rejected"
+        string decided_by
+        bigint ledger_entry_id FK
+        bigint limit_change_id FK
     }
 ```
 
@@ -371,6 +417,10 @@ erDiagram
 | `agency_admin_group` | Several admin accounts under one owner (combined numbers, portal group view). |
 | `agency_reseller_session` | Reseller-portal logins (password checked against the panel); hashed token, revocable. |
 | `agency_admin_price` | Price per GB for an admin from a date on. |
+| `agency_group_manager` | A group manager (caspintunel): own username / password hash, active flag, optional cap on unapproved GB. Never a staff account. |
+| `agency_group_manager_group` | Which agency groups a manager runs, and the PasarGuard roles (= inbound sets) it may give per group. |
+| `agency_manager_session` | Group-manager portal logins; hashed token, ended on disable / password reset. |
+| `agency_volume_request` | "Pending approval": volume a manager gave (new admin / +GB), already live on PasarGuard; approve → quota charge, reject → volume taken back. |
 | `agency_ledger_entry` | The reseller's account: automatic quota charges on limit increases, manual charges, signed adjustments, payments; voidable, never deleted. Balance = charges − payments. |
 
 ## 5. Tickets (`tickets`)

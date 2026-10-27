@@ -50,31 +50,35 @@ def _round(x: Decimal) -> Decimal:
     return x.quantize(Decimal(1), rounding=ROUND_HALF_UP)
 
 
-def quote_quota_charge(username: str, old_limit_bytes: int, new_limit_bytes: int) -> dict | None:
-    """The charge an increase would create today (None = no charge)."""
+def quote_quota_charge(username: str, old_limit_bytes: int, new_limit_bytes: int,
+                       day: date_cls | None = None) -> dict | None:
+    """The charge an increase would create today (or on `day`); None = no charge."""
     old, new = int(old_limit_bytes or 0), int(new_limit_bytes or 0)
     if new <= old:
         return None
     gb = Decimal(new - old) / GB
-    price = price_at(username, today())
+    price = price_at(username, day or today())
     return {"gb": gb.quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP), "price_per_gb": price.price_per_gb if price else None,
             "amount": _round(gb * price.price_per_gb) if price else Decimal(0)}
 
 
-def record_quota_charge(username: str, old_limit_bytes: int, new_limit_bytes: int, by: str = "") -> LedgerEntry | None:
-    """Called after a successful limit change on the panel. Only an increase charges."""
+def record_quota_charge(username: str, old_limit_bytes: int, new_limit_bytes: int, by: str = "",
+                        day: date_cls | None = None, note: str = "") -> LedgerEntry | None:
+    """Called after a successful limit change on the panel (or when a group manager's
+    volume is approved — then `day` is the day the volume was given). Only an increase charges."""
     old, new = int(old_limit_bytes or 0), int(new_limit_bytes or 0)
     if new <= old:
         return None
     gb = Decimal(new - old) / GB
-    day = today()
+    day = day or today()
     price = price_at(username, day)
     amount = _round(gb * price.price_per_gb) if price else Decimal(0)
+    if not price:
+        note = (note + " · " if note else "") + "no price per GB set for this date — add an adjustment"
     return LedgerEntry.objects.create(
         admin_username=username, kind=LedgerEntry.KIND_QUOTA, amount=amount, date=day,
         gb=gb.quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP), price_per_gb=price.price_per_gb if price else None,
-        old_limit_bytes=old, new_limit_bytes=new, created_by=by[:150],
-        note="" if price else "no price per GB set for this date — add an adjustment")
+        old_limit_bytes=old, new_limit_bytes=new, created_by=by[:150], note=note[:255])
 
 
 def add_entry(username: str, kind: str, amount, day: date_cls, *, method: str = "", note: str = "", by: str = "",

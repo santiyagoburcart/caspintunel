@@ -131,3 +131,65 @@ already left the panel may stay until removed. Each group shows its members (sta
 users) and combined numbers (sums of the members' synced values). The portal reads the same rows, so a change
 is what the owner sees on the next request (owner = group view; members and ex-owners = their own account).
 Writes follow the cut-over gate and are audited (`agency.group_created|updated|deleted`).
+
+## Group managers (Agency → Group managers / Approvals, v1.24.0)
+
+Any number of **group managers**, each running one or more agency groups (nothing hard-coded: the
+groups are the Account groups above). A manager is **not** staff: own username + password hash
+(`agency_group_manager`), own portal at **`<portal path>/manager`** (`/agency/manager`) and own
+session (`Authorization: Manager <token>`, 10 days, hashed). A manager token on `/api/v1/admin/…`
+answers **403**; the manager's password is not a staff login, so `/panel/` stays closed.
+
+**Staff** (`agency.manage`; list with `agency.view`): create / edit / disable managers, reset the
+password (random, shown once; sessions end), assign groups and per group the **allowed inbounds**.
+In PasarGuard 5.4 an admin's inbounds come from its **role** (`RoleAccess.allowed_group_ids`), so
+"allowed inbounds" = allowed roles, shown with the inbound groups each opens; **owner roles are never
+allowed**. Optional **max unapproved GB** (empty = no cap).
+
+**Manager portal** (fa/en, phone + desktop, same look as `/agency/`), only the admins of their groups:
+usage, limit, users, status, remaining, inbounds, balance, pending GB —
+* **new admin**: username, password, inbounds (allowed list), initial GB > 0 → created on PasarGuard
+  at once (so it can make users right away) and added to the group;
+* **add volume** (increase only): live limit read from PasarGuard, `+GB` applied at once; the
+  confirm shows current → new;
+* **password** and **inbounds** (allowed roles only) of their admins;
+* **accounting** (read-only): per admin charges / payments / balance and statement, group total debt,
+  pending (unapproved) volume apart, Jalali date filter, CSV / Excel; **group statement** (below);
+* **activity**: their own actions and staff decisions.
+
+**Never** (API-enforced, each answers 403, tested): reduce or remove a limit, unlimited (0 GB),
+add volume to an unlimited admin, touch an owner/sudo admin, delete admins, roles outside the list,
+payments, prices, other groups' admins / statements, any staff endpoint.
+
+**Approvals** (Agency → Approvals, badge on the Agency menu + tab, in-site toast when new ones arrive,
+polled every 30 s). Every create / add-volume is a `VolumeRequest` (*pending*): group, manager, admin,
+GB, old → new limit, price × GB = amount (price valid on the request day).
+* **Approve** (`agency.manage` + `agency.accounting`) → a `quota_charge` dated the request day, from the
+  limit before → after (the v1.23.2 last-limit logic), linked to the limit-history row
+  (source *Group manager*). An admin without a price for that day: the dialog asks for one (saved from
+  that day). **Bulk approve** for many at once.
+* **Reject** (`agency.manage`, confirm) → the GB are taken back on PasarGuard (live limit − GB, never 0 =
+  unlimited; a rejected new admin keeps a 1-byte limit), a `reduce` row in the limit history, no charge.
+* **Cap**: pending GB of a manager + new GB > cap → `409 cap_reached`, nothing sent to PasarGuard,
+  until staff approve.
+
+**Audit**: `agency.manager.*` (login, admin_created, volume_added, password_changed, inbounds_changed —
+staff label `manager:<username>`, never a password), `agency.managers.*` (staff edits),
+`agency.approval.approved|rejected`. Each group card on the Groups page has an **Activity** list.
+
+## Group statement (Accounting → By group; portal → Accounting)
+
+One combined statement per group: every charge, payment and adjustment of all its admins (admin name
+per row, voided rows shown but not counted), running balance (opening balance before the range),
+charges / payments of the range, closing balance, **group total debt**, and the pending (unapproved)
+items listed apart (not in the balance). Jalali date filter, CSV / Excel (`?export=csv|xlsx`) and print.
+Staff (`agency.accounting`) see any group: `GET agency/ledger/groups/` and
+`agency/ledger/groups/<id>/statement/`; a manager only their own: `GET agency/manager/groups/<id>/statement/`.
+
+### How to create a group manager
+
+1. Agency → **Group managers** → **New group manager**.
+2. Username, password (or **Random**), display name, optional max unapproved GB.
+3. Tick the group(s) and, under each, the allowed inbound sets (roles).
+4. **Create** → the card shows the sign-in address (`https://<domain>/agency/manager`), username and
+   password once — copy and send them.

@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-do
 import { useAuth } from '../lib/auth'
 import { useLivePayments } from '../lib/livePayments'
 import { useLiveTickets } from '../lib/liveTickets'
+import { useLiveApprovals } from '../lib/liveApprovals'
 import { useI18n } from '../lib/i18n'
 import { useTheme } from '../theme/ThemeProvider'
 import { CASPIAN_BOTNAV, CASPIAN_GROUPS, NAV_ICONS } from './adminNav'
@@ -53,7 +54,8 @@ function SideIcon({ name }) {
 function PendingBadge({ to }) {
   const { pendingCount } = useLivePayments()
   const { badge } = useLiveTickets()
-  const n = to === '/payments' ? pendingCount : to === '/tickets' ? badge : 0
+  const { pending: approvals } = useLiveApprovals()
+  const n = to === '/payments' ? pendingCount : to === '/tickets' ? badge : to === '/agency' ? approvals : 0
   if (!n) return null
   return <span className="nav-pending-badge" aria-label={`${n}`}>{n > 99 ? '99+' : n}</span>
 }
@@ -250,6 +252,7 @@ function CaspianLayout() {
   const { mode, toggle, locked, config } = useTheme()
   const { pendingCount } = useLivePayments()
   const { badge: ticketBadge } = useLiveTickets()
+  const { pending: approvals } = useLiveApprovals()
   const go = useNavigate()
   const { pathname } = useLocation()
   const side = useSideNav()
@@ -345,7 +348,7 @@ function CaspianLayout() {
           const on = tab === to
           // tickets live in the Settings index on phones — its tab carries the ticket badge
           const badge = to === '/payments' && pendingCount > 0 ? pendingCount
-            : to === '/settings' && ticketBadge > 0 ? ticketBadge : null
+            : to === '/settings' && ticketBadge + approvals > 0 ? ticketBadge + approvals : null
           return (
             <NavLink key={to} to={to} end={to === '/'} aria-current={on ? 'page' : undefined}
               className={'csp-bn-item' + (on ? ' on' : '') + (centre ? ' csp-bn-centre' : '')}>
