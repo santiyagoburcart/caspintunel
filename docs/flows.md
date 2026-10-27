@@ -253,14 +253,15 @@ follow the same panel-first rule.
 sequenceDiagram
     autonumber
     actor M as Group manager
-    participant MP as portal /agency/manager
+    participant MP as /panel/ (group-manager menu)
     participant API as web agency/manager/
     participant PG as PasarGuard
     participant DB as MySQL
     actor S as Staff (agency.manage + agency.accounting)
     participant AP as /panel/agency/approvals
 
-    M->>MP: sign in (own password, "Manager" token)
+    M->>MP: sign in at /panel/login (staff JWT, role "Group manager")
+    Note over MP,API: every other /api/v1/admin/ endpoint → 403 for this staff (StaffPermission default-deny)
     M->>MP: + volume (GB) on an admin of their group
     MP->>API: POST admins/{u}/add-volume/ {gb}
     API->>API: own group? not sudo? GB > 0? cap (pending + GB ≤ max)?
@@ -618,3 +619,37 @@ sequenceDiagram
 Release routine (development side): tests on the isolated stack
 (`./scripts/test.sh`), bump `VERSION`, PROGRESS entry, commit, tag `vX.Y.Z`,
 push, `./update.sh`, GitHub release ([development.md](development.md)).
+
+
+## 5d. Super Admin deletes (voids) a transaction → restore
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor SA as Super Admin
+    participant TX as /panel/transactions
+    participant API as web admin/transactions/
+    participant PG as PasarGuard
+    participant DB as MySQL
+
+    SA->>TX: Delete (row or bulk)
+    TX->>API: GET {id}/delete-preview/
+    API-->>TX: TX number, amount, linked order + service, choices keep | disable | delete
+    SA->>TX: reason (required) + choice (default keep)
+    TX->>API: POST {id}/delete/ {reason, service_action}
+    API->>API: Super Admin? (else 403) · reason? · not already deleted?
+    opt disable / delete
+        API->>PG: PUT user status=disabled  /  DELETE user
+        alt PasarGuard refuses
+            API-->>TX: 502 — nothing deleted
+        end
+    end
+    API->>DB: order → cancelled (choice, or the payment was still pending) · drop unapplied renewal
+    API->>DB: payment.voided_at / voided_by / void_reason / void_service_action
+    API->>DB: AuditLog payment.voided (who, reason, amount, TX, order, choice)
+    API-->>TX: row hidden; cards, Accounting, Analytics, reports no longer count it
+    SA->>TX: Show deleted → Restore (≤ 30 days)
+    TX->>API: POST {id}/restore/
+    API->>DB: clear voided_*; order status back (lapsed pending → expired)
+    API->>DB: AuditLog payment.restored
+```

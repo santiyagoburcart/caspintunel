@@ -6,7 +6,7 @@ import { useLiveTickets } from '../lib/liveTickets'
 import { useLiveApprovals } from '../lib/liveApprovals'
 import { useI18n } from '../lib/i18n'
 import { useTheme } from '../theme/ThemeProvider'
-import { CASPIAN_BOTNAV, CASPIAN_GROUPS, NAV_ICONS } from './adminNav'
+import { CASPIAN_BOTNAV, CASPIAN_GROUPS, GM_BOTNAV, GM_GROUPS, NAV_ICONS, isGroupManager } from './adminNav'
 
 // Aurora / Royal Frost — the original flat nav (kept exactly as-is).
 const nav = [
@@ -134,7 +134,7 @@ function LegacyLayout() {
   const side = useSideNav()
   const closeAll = () => { setOpen(false); side.closeDrawer() }
 
-  const items = nav.filter(([, , p]) => !p || can(p))
+  const items = isGroupManager(staff) ? GM_GROUPS[0][1].map(([to, k]) => [to, k, null]) : nav.filter(([, , p]) => !p || can(p))
   const brand = (lang === 'fa' ? config?.site_name_fa : config?.site_name_en) || (lang === 'fa' ? 'کسپین' : 'caspin')
 
   const Brand = ({ children }) => (
@@ -235,11 +235,13 @@ const MOBILE_TITLES = [
   ['/branding', 'branding'], ['/apps', 'apps'], ['/settings', 'settings'], ['/notifications', 'notifications'],
   ['/pages', 'pages'], ['/themes', 'themes'], ['/roles', 'roles'], ['/docs', 'docs'],
 ]
-const TAB_ROOTS = new Set(['/', '/users', '/payments', '/services', '/settings'])
+const TAB_ROOTS = new Set(['/', '/users', '/payments', '/services', '/settings',
+  '/my-groups', '/my-groups/new', '/my-groups/accounting', '/my-groups/activity'])   // group-manager tabs
 
 /** which bottom tab a path belongs to — pages reached from the Settings index light up Settings */
 function activeTab(path) {
   if (path === '/') return '/'
+  if (path.startsWith('/my-groups')) return GM_BOTNAV.find(([to]) => to === path)?.[0] || '/my-groups'
   for (const root of ['/users', '/payments', '/services']) {
     if (path === root || path.startsWith(root + '/')) return root
   }
@@ -259,8 +261,9 @@ function CaspianLayout() {
   const railRef = useRef(null)
   useInert(railRef, !side.open)
 
-  const groups = CASPIAN_GROUPS.map(([g, items]) => [g, items.filter(([, , p]) => !p || can(p))])
-  const botnav = CASPIAN_BOTNAV.filter(([, , p]) => !p || can(p))
+  const gm = isGroupManager(staff)
+  const groups = gm ? GM_GROUPS : CASPIAN_GROUPS.map(([g, items]) => [g, items.filter(([, , p]) => !p || can(p))])
+  const botnav = gm ? GM_BOTNAV : CASPIAN_BOTNAV.filter(([, , p]) => !p || can(p))
   const brand = (lang === 'fa' ? config?.site_name_fa : config?.site_name_en)
     || (lang === 'fa' ? 'کسپین تانل' : 'Caspian Tunnel')
   const tab = activeTab(pathname)

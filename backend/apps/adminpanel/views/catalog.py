@@ -37,7 +37,7 @@ class BankCardViewSet(AdminViewSet):
     perms_map = {"GET": ["payment.view"], "*": ["settings.manage"]}
 
     def get_queryset(self):
-        approved = Q(payments__status=PaymentStatus.APPROVED)
+        approved = Q(payments__status=PaymentStatus.APPROVED, payments__voided_at__isnull=True)
         return (
             BankCard.objects.annotate(
                 deposit_total=Sum("payments__amount", filter=approved),

@@ -149,7 +149,7 @@ def refresh_stage(user) -> CustomerProfile:
 def ltv(user) -> Decimal:
     from apps.payments_sms.models import Payment
 
-    return Payment.objects.filter(order__user=user, status="approved").aggregate(s=Sum("amount"))["s"] or Decimal(0)
+    return Payment.objects.live().filter(order__user=user, status="approved").aggregate(s=Sum("amount"))["s"] or Decimal(0)
 
 
 # --- detection ----------------------------------------------------------------------

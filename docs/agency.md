@@ -132,21 +132,41 @@ users) and combined numbers (sums of the members' synced values). The portal rea
 is what the owner sees on the next request (owner = group view; members and ex-owners = their own account).
 Writes follow the cut-over gate and are audited (`agency.group_created|updated|deleted`).
 
-## Group managers (Agency → Group managers / Approvals, v1.24.0)
+## Group managers (Agency → Group managers / Approvals, v1.24.0; sign-in moved to /panel/ in v1.25.0)
 
 Any number of **group managers**, each running one or more agency groups (nothing hard-coded: the
-groups are the Account groups above). A manager is **not** staff: own username + password hash
-(`agency_group_manager`), own portal at **`<portal path>/manager`** (`/agency/manager`) and own
-session (`Authorization: Manager <token>`, 10 days, hashed). A manager token on `/api/v1/admin/…`
-answers **403**; the manager's password is not a staff login, so `/panel/` stays closed.
+groups are the Account groups above). Since **v1.25.0** a manager signs in to the **main admin panel**
+(`/panel/` login) as a staff account: `GroupManager.staff` → `Staff` with the RBAC role **Group manager**
+(permission `agency.group_manager` only; never part of Super Admin) and the same username / password.
+Existing managers were converted by migration `agency.0007` (same username + password hash; a username
+already used by another staff account is never linked — the Managers page then says "no panel login").
+The old portal is gone: `/agency/manager` forwards to the panel login, `POST agency/manager/login/`
+answers **410**, an old `Manager <token>` header opens nothing.
 
-**Staff** (`agency.manage`; list with `agency.view`): create / edit / disable managers, reset the
-password (random, shown once; sessions end), assign groups and per group the **allowed inbounds**.
+**Server-side restriction (default-deny).** The *link* (not the role) restricts the staff:
+`Staff.is_group_manager` → `StaffPermission` refuses **every** `/api/v1/admin/…` view (settings,
+customers, orders, payments, transactions, tickets, CRM, agency, other groups — 403 for every method;
+a test walks all admin routes) unless the view sets `group_manager_ok`, and `Staff.has_perm()` answers
+false for everything except `agency.group_manager` (receipts, ticket files, live sockets stay closed
+even if someone gives the account another role). The manager API `/api/v1/agency/manager/*` takes the
+normal staff JWT and only a staff linked to an **active** manager (`IsGroupManagerStaff`); a superadmin
+or other staff get 403 there. `GET admin/auth/me/` returns `group_manager {id, username}` and
+`permissions: ["agency.group_manager"]`, so the panel draws the reduced menu.
+
+**Panel menu for a manager** (`components/adminNav.js` → `GM_GROUPS`, page `pages/GroupManager.jsx`):
+*Group admins* (`/my-groups`), *New admin* (`/my-groups/new`), *Accounting* (`/my-groups/accounting`,
+incl. the group statement — the staff Agency `GroupStatement` component) and *Activity*
+(`/my-groups/activity`). Every other route redirects to `/my-groups`. Disabling a manager or resetting
+its password ends its panel sessions (`Staff.token_version`).
+
+**Staff** (`agency.manage`; list with `agency.view`): create / edit / disable managers (the linked
+staff account follows: created with the role, active flag, display name; a username taken by another
+staff account is refused), reset the password (random, shown once; panel sessions end), assign groups and per group the **allowed inbounds**.
 In PasarGuard 5.4 an admin's inbounds come from its **role** (`RoleAccess.allowed_group_ids`), so
 "allowed inbounds" = allowed roles, shown with the inbound groups each opens; **owner roles are never
 allowed**. Optional **max unapproved GB** (empty = no cap).
 
-**Manager portal** (fa/en, phone + desktop, same look as `/agency/`), only the admins of their groups:
+**Manager pages** (inside `/panel/`, fa/en, phone + desktop), only the admins of their groups:
 usage, limit, users, status, remaining, inbounds, balance, pending GB —
 * **new admin**: username, password, inbounds (allowed list), initial GB > 0 → created on PasarGuard
   at once (so it can make users right away) and added to the group;
@@ -173,11 +193,11 @@ GB, old → new limit, price × GB = amount (price valid on the request day).
 * **Cap**: pending GB of a manager + new GB > cap → `409 cap_reached`, nothing sent to PasarGuard,
   until staff approve.
 
-**Audit**: `agency.manager.*` (login, admin_created, volume_added, password_changed, inbounds_changed —
+**Audit**: `agency.manager.*` (admin_created, volume_added, password_changed, inbounds_changed —
 staff label `manager:<username>`, never a password), `agency.managers.*` (staff edits),
 `agency.approval.approved|rejected`. Each group card on the Groups page has an **Activity** list.
 
-## Group statement (Accounting → By group; portal → Accounting)
+## Group statement (Accounting → By group; manager → Accounting)
 
 One combined statement per group: every charge, payment and adjustment of all its admins (admin name
 per row, voided rows shown but not counted), running balance (opening balance before the range),
@@ -191,5 +211,6 @@ Staff (`agency.accounting`) see any group: `GET agency/ledger/groups/` and
 1. Agency → **Group managers** → **New group manager**.
 2. Username, password (or **Random**), display name, optional max unapproved GB.
 3. Tick the group(s) and, under each, the allowed inbound sets (roles).
-4. **Create** → the card shows the sign-in address (`https://<domain>/agency/manager`), username and
-   password once — copy and send them.
+4. **Create** → the card shows the sign-in address (the panel login, `https://<domain>/panel/login` or
+   your panel path), username and password once — copy and send them. The manager signs in there and
+   sees only the group-manager menu.

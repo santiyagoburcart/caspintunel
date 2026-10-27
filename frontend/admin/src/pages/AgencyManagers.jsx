@@ -6,6 +6,7 @@ import { useAuth } from '../lib/auth'
 import { jalali, toman, digits } from '../lib/format'
 import { Alert, Spinner, Toggle } from '../components/ui'
 import { copyToClipboard } from '../lib/clipboard'
+import { ADMIN_BASE } from '../lib/base'
 import { useConfirm } from '../components/ConfirmDialog'
 import { useToast } from '../components/Toast'
 import { DateRangeModal, DRP_CSS } from '../components/DateRangePicker'
@@ -18,8 +19,8 @@ import { useLiveApprovals } from '../lib/liveApprovals'
 
 const T = {
   fa: {
-    m_title: 'مدیران گروه', m_intro: 'هر مدیر گروه با نام کاربری و رمز خودش در پرتال (آدرس زیر) وارد می‌شود و فقط ادمین‌های گروه‌های خودش را می‌بیند: ساخت ادمین، افزودن حجم (فقط افزایش)، تغییر رمز و اینباند (از فهرست مجاز). هر حجمی که می‌دهد بلافاصله روی PasarGuard اعمال و در «تأییدها» منتظر شما می‌ماند.',
-    m_new: 'مدیر گروه جدید', m_edit: 'ویرایش مدیر', m_none: 'هنوز مدیر گروهی ساخته نشده است.', m_portal: 'آدرس ورود مدیران',
+    m_title: 'مدیران گروه', m_intro: 'هر مدیر گروه با نام کاربری و رمز خودش در همین پنل اصلی (آدرس زیر) وارد می‌شود — با نقش «Group manager» — و فقط ادمین‌های گروه‌های خودش را می‌بیند: ساخت ادمین، افزودن حجم (فقط افزایش)، تغییر رمز و اینباند (از فهرست مجاز). هر حجمی که می‌دهد بلافاصله روی PasarGuard اعمال و در «تأییدها» منتظر شما می‌ماند.',
+    m_new: 'مدیر گروه جدید', m_edit: 'ویرایش مدیر', m_none: 'هنوز مدیر گروهی ساخته نشده است.', m_portal: 'آدرس ورود مدیران', no_login: 'ورود به پنل ندارد: این نام کاربری را یک کاربر پنل دیگر دارد — مدیر جدیدی با نام دیگر بسازید.',
     username: 'نام کاربری', password: 'رمز عبور', gen: 'رمز تصادفی', display: 'نام نمایشی', active: 'فعال', disabled: 'غیرفعال',
     cap: 'سقف حجم تأییدنشده (گیگ)', cap_hint: 'خالی = بدون سقف. با رسیدن به سقف، حجم تازه تا تأیید شما بسته می‌شود.', no_cap: 'بدون سقف',
     groups: 'گروه‌ها و اینباندهای مجاز', groups_hint: 'اینباندها در PasarGuard از «نقش» ادمین می‌آیند؛ نقش‌های مالک (sudo) هیچ‌وقت مجاز نیستند.',
@@ -45,8 +46,8 @@ const T = {
     acts: { admin_created: 'ساخت ادمین', volume_added: 'افزودن حجم', password_changed: 'تغییر رمز ادمین', inbounds_changed: 'تغییر اینباند', login: 'ورود', approved: 'تأیید حجم', rejected: 'رد حجم' },
   },
   en: {
-    m_title: 'Group managers', m_intro: "Each group manager signs in to the portal (address below) with their own username and password and sees only their groups' admins: create admins, add volume (increase only), change password and inbounds (allowed list). Every volume they give is live on PasarGuard at once and waits for you in Approvals.",
-    m_new: 'New group manager', m_edit: 'Edit manager', m_none: 'No group managers yet.', m_portal: 'Managers sign in at',
+    m_title: 'Group managers', m_intro: "Each group manager signs in to this main panel (address below) with their own username and password — role \u201cGroup manager\u201d — and sees only their groups' admins: create admins, add volume (increase only), change password and inbounds (allowed list). Every volume they give is live on PasarGuard at once and waits for you in Approvals.",
+    m_new: 'New group manager', m_edit: 'Edit manager', m_none: 'No group managers yet.', m_portal: 'Managers sign in at', no_login: 'No panel login: another panel user has this username — create the manager again with a different one.',
     username: 'Username', password: 'Password', gen: 'Random', display: 'Display name', active: 'Active', disabled: 'Disabled',
     cap: 'Max unapproved volume (GB)', cap_hint: 'Empty = no cap. When reached, new volume is blocked until you approve.', no_cap: 'no cap',
     groups: 'Groups and allowed inbounds', groups_hint: "In PasarGuard an admin's inbounds come from its role; owner (sudo) roles are never allowed.",
@@ -189,9 +190,9 @@ export function AgencyManagersView({ Header }) {
   const confirm = useConfirm()
   const toast = useToast()
   const [d, err, load] = useGet('/admin/agency/managers/')
-  const [link] = useGet('/admin/agency/portal-link/')
   const manage = can('agency.manage')
-  const portal = link ? `${link.url.replace(/\/$/, '')}/manager` : ''
+  // v1.25: managers sign in to the main panel (role "Group manager"), not a separate portal
+  const portal = `${window.location.origin}${ADMIN_BASE}/login`
 
   const options = async () => (await api.get('/admin/agency/managers/options/')).data
   const showCred = (username, password) => confirm({ tone: 'primary', icon: 'check', title: s.cred_title, hideCancel: true, confirmLabel: s.close,
@@ -252,6 +253,7 @@ export function AgencyManagersView({ Header }) {
               <div className="gm-name">
                 <h3 className="ag-sh" data-ac="purple"><Ic n="user" size={15} /><bdi>{m.display_name || m.username}</bdi></h3>
                 <span className="text-xs text-muted"><N>{m.username}</N></span>
+                {!m.staff_username && <span className="text-xs" style={{ color: 'var(--c-warning-fg)' }}>{s.no_login}</span>}
                 <span className="gm-pill" data-on={m.is_active || undefined}>{m.is_active ? s.active : s.disabled}</span>
               </div>
               {manage && (

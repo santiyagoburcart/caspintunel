@@ -218,6 +218,8 @@ def order_status(user, order) -> Screen:
     icon, fa, en = ORDER_STATUS.get(order.status, ("•", order.status, order.status))
     lines = [tr(user, "order_status", id=order.id, st=f"{icon} {pick(user, fa, en)}")]
     pay = getattr(order, "payment", None)
+    if pay is not None:
+        lines.append(tr(user, "tx_line", tx=pay.tx_number))
     if order.status == OrderStatus.PENDING_PAYMENT and pay and pay.status == PaymentStatus.PENDING:
         lines.append(tr(user, "receipt_pending"))
     elif order.status == OrderStatus.PENDING_PAYMENT:
@@ -350,6 +352,8 @@ def history_item(user, o) -> str:
     lines.append(tr(user, "hist_manual") if manual else tr(user, "hist_paid", m=money(user, o.amount_unique)))
     lines.append(tr(user, "hist_date", d=to_jalali_str(o.created_at, "%Y/%m/%d %H:%M")))
     pay = getattr(o, "payment", None)
+    if pay is not None:
+        lines.append(tr(user, "tx_line", tx=pay.tx_number))
     if o.status == OrderStatus.REJECTED and pay and pay.reject_reason:
         lines.append(tr(user, "hist_reason", r=html.escape(pay.reject_reason)[:120]))
     return "\n".join(lines)

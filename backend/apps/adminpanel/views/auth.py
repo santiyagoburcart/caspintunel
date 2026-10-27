@@ -6,7 +6,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.accounts.models import Staff
+from apps.accounts.models import GROUP_MANAGER_PERM, Staff
 
 from ..permissions import StaffJWTAuthentication
 from ..tokens import decode, issue_tokens, revoke_refresh, staff_for_payload
@@ -85,8 +85,11 @@ class StaffMeView(APIView):
 
 
 def _staff_payload(staff: Staff) -> dict:
+    gm = staff.group_manager_row if staff.is_group_manager else None
     if staff.is_superadmin:
         perms = ["*"]
+    elif gm is not None:
+        perms = [GROUP_MANAGER_PERM]       # never the role's other codes (Staff.has_perm)
     elif staff.role_id:
         perms = list(staff.role.permissions.values_list("code", flat=True))
     else:
@@ -98,4 +101,7 @@ def _staff_payload(staff: Staff) -> dict:
         "is_superadmin": staff.is_superadmin,
         "permissions": perms,
         "last_login": staff.last_login,
+        # v1.25: the panel shows a group manager only its own menu (Agency pages scoped to its groups)
+        "group_manager": ({"id": gm.id, "username": gm.username, "display_name": gm.display_name}
+                          if gm is not None else None),
     }

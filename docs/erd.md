@@ -188,7 +188,7 @@ erDiagram
         decimal amount_unique "amount + 200..1500 T surcharge"
         decimal amount_unique_lock UK "set while pending/paid"
         datetime unique_expire_at "reservation, 30 min"
-        string status "pending_payment | paid | completed | rejected | failed | expired"
+        string status "pending_payment | paid | completed | rejected | failed | expired | cancelled"
         string source "site | bot | admin"
     }
     payment {
@@ -203,6 +203,12 @@ erDiagram
         string confirmed_by "admin | system"
         bigint confirmed_by_staff_id FK
         string reject_reason
+        int number UK "TX-000123 (= id, backfilled)"
+        datetime voided_at "Super Admin delete (void); null = live"
+        bigint voided_by_id FK "staff"
+        string void_reason
+        string void_service_action "keep | disable | delete"
+        string void_prev_order_status "put back by restore"
     }
     bank_card {
         bigint id PK
@@ -252,7 +258,7 @@ erDiagram
 | Table | Description |
 |---|---|
 | `order` | Purchase intent. `amount_unique` = price + a random surcharge, reserved via the unique `amount_unique_lock` while pending/paid (never a value the same user had in the last 24 h). Expires after `unique_amount_reservation_minutes`. |
-| `payment` | One per order: receipt (card-to-card), SMS auto-confirm, or SMS near-miss under review. Approved / rejected only through `approve_payment` / `reject_payment`. |
+| `payment` | One per order: receipt (card-to-card), SMS auto-confirm, or SMS near-miss under review. Approved / rejected only through `approve_payment` / `reject_payment`. `number` = human transaction number `TX-000123` (v1.25). A Super Admin "delete" voids it (`voided_*`, `payments_sms/voiding.py`): out of every list and total, restorable for 30 days; never a hard delete. |
 | `bank_card` | Receiving cards shown at checkout; per-card deposit report in Accounting. |
 | `sms_source` | Allow-list of bank senders and the default amount unit for unit-less SMS. |
 | `sms_app_device` | Operator phones (Android app / iPhone Shortcut) allowed to forward bank SMS. |
@@ -277,7 +283,8 @@ erDiagram
     agency_ledger_entry |o--o{ agency_limit_change : "charge of a change"
     agency_group_manager ||--o{ agency_group_manager_group : "runs"
     agency_admin_group ||--o{ agency_group_manager_group : "managed by"
-    agency_group_manager ||--o{ agency_manager_session : "signs in"
+    agency_group_manager ||--o{ agency_manager_session : "legacy portal logins (unused since v1.25)"
+    agency_group_manager |o--o| staff : "signs in to /panel/ as (role Group manager)"
     agency_group_manager |o--o{ agency_volume_request : "gave volume"
     agency_admin_group |o--o{ agency_volume_request : "for an admin of"
     agency_volume_request |o--o| agency_ledger_entry : "charge when approved"
@@ -370,8 +377,9 @@ erDiagram
 
     agency_group_manager {
         bigint id PK
-        string username UK "own login, not staff"
-        string password "Django hash"
+        string username UK "= its staff username"
+        string password "Django hash (legacy; the staff hash is used)"
+        bigint staff_id FK "v1.25: the /panel/ staff account"
         bool is_active
         decimal max_unapproved_gb "null = no cap"
         datetime last_login_at
@@ -417,9 +425,9 @@ erDiagram
 | `agency_admin_group` | Several admin accounts under one owner (combined numbers, portal group view). |
 | `agency_reseller_session` | Reseller-portal logins (password checked against the panel); hashed token, revocable. |
 | `agency_admin_price` | Price per GB for an admin from a date on. |
-| `agency_group_manager` | A group manager (caspintunel): own username / password hash, active flag, optional cap on unapproved GB. Never a staff account. |
+| `agency_group_manager` | A group manager (caspintunel): active flag, optional cap on unapproved GB, groups. Since v1.25 it signs in to `/panel/` as the linked `staff` row (role *Group manager*); that link restricts the staff to its own groups on every admin API. |
 | `agency_group_manager_group` | Which agency groups a manager runs, and the PasarGuard roles (= inbound sets) it may give per group. |
-| `agency_manager_session` | Group-manager portal logins; hashed token, ended on disable / password reset. |
+| `agency_manager_session` | Legacy group-manager portal logins (before v1.25); no longer accepted, kept for one release (drop next). |
 | `agency_volume_request` | "Pending approval": volume a manager gave (new admin / +GB), already live on PasarGuard; approve → quota charge, reject → volume taken back. |
 | `agency_ledger_entry` | The reseller's account: automatic quota charges on limit increases, manual charges, signed adjustments, payments; voidable, never deleted. Balance = charges − payments. |
 

@@ -329,7 +329,7 @@ def run_winback() -> dict:
         if case.user.services.filter(status__in=LIVE).exists() and now - case.opened_at <= window + timedelta(days=1):
             from apps.payments_sms.models import Payment
 
-            got = Payment.objects.filter(order__user=case.user, status="approved", confirmed_at__gte=case.opened_at) \
+            got = Payment.objects.live().filter(order__user=case.user, status="approved", confirmed_at__gte=case.opened_at) \
                 .aggregate(s=Sum("amount"))["s"] or Decimal(0)
             case.recovered_amount = got
             case.save(update_fields=["recovered_amount", "updated_at"])

@@ -5,6 +5,8 @@ import { useI18n, enumLabel } from '../lib/i18n'
 import { jalali, toman } from '../lib/format'
 import { Alert, Spinner } from '../components/ui'
 import { useConfirm } from '../components/ConfirmDialog'
+import { useAuth } from '../lib/auth'
+import { T as TX_T, useTxDelete } from './Transactions'
 
 /* ------------------------------------------------------------------ *
  *  Transaction Detail — direct port of the Stitch screens
@@ -98,6 +100,8 @@ export default function TransactionDetail() {
   const [busy, setBusy] = useState(false)
   const [sel, setSel] = useState(null)          // status picked in the switcher
   const [lightbox, setLightbox] = useState(false)
+  const { staff } = useAuth()
+  const superadmin = !!staff?.is_superadmin
 
   const load = useCallback(async () => {
     setErr('')
@@ -111,6 +115,8 @@ export default function TransactionDetail() {
     }
   }, [id])
   useEffect(() => { load() }, [load])
+  const xs = TX_T[lang] || TX_T.fa
+  const { del, restore } = useTxDelete(xs, t, lang, load)
 
   const { src: receiptSrc, state: receiptState } = useReceiptBlob(r?.receipt_url)
 
@@ -217,6 +223,16 @@ export default function TransactionDetail() {
       <style>{CSS}</style>
       <Header t={t} onBack={back} status={r.status} />
       <Alert>{err}</Alert>
+      <div className="txd-txbar">
+        <span className="txd-txno" dir="ltr">{r.tx_number}</span>
+        {r.voided && (
+          <span className="txd-void">{xs.deleted}: {r.void_reason} · {r.voided_by || '—'} · {jalali(r.voided_at, true, lang)} · {xs.until} {jalali(r.restorable_until, false, lang)}</span>
+        )}
+        {superadmin && !r.voided && <button type="button" className="tx-del-btn txd-del" onClick={() => del(r)}>{xs.del}</button>}
+        {superadmin && r.voided && new Date(r.restorable_until) > new Date() && (
+          <button type="button" className="txd-restore" onClick={() => restore(r)}>{xs.restore}</button>
+        )}
+      </div>
 
       <div className="txd-split">
         {/* ---- receipt column ---- */}
@@ -413,6 +429,12 @@ function Lightbox({ t, src, txId, onDownload, onClose }) {
 }
 
 const CSS = `
+.txd-txbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 6px 0 12px; }
+.txd-txno { font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: 15px; }
+.txd-void { font-size: 12.5px; font-weight: 600; color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 10%, transparent); padding: 4px 10px; border-radius: 8px; }
+.txd-del, .txd-restore { padding: 5px 12px; border-radius: 8px; font-size: 12.5px; font-weight: 700; }
+.txd-del { border: 1px solid color-mix(in srgb, var(--c-danger) 40%, transparent); color: var(--c-danger-fg); background: transparent; }
+.txd-restore { border: 1px solid var(--c-primary); color: var(--c-primary); background: transparent; }
 .txd { display: flex; flex-direction: column; gap: 18px; }
 .txd-loading, .txd-empty { display: grid; place-items: center; padding: 80px 0; color: var(--c-text-muted); }
 .txd-err { color: var(--c-danger); font-size: 14px; }

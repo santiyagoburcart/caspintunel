@@ -46,6 +46,8 @@ PERMISSIONS = [
     ("tickets.manage_topics", "Tickets: topics, settings, staff topic scopes"),
     ("crm.view", "CRM: customer 360, follow-up queue, leads, reports"),
     ("crm.manage", "CRM: cases, messages, notes, owners, stages, settings"),
+    # v1.25: held only by the "Group manager" role; never part of Super Admin (it restricts, not grants)
+    ("agency.group_manager", "Group manager: own groups only (agency admins, volume, accounting)"),
 ]
 
 SUPPORT_PERMS = {"users.view", "payment.view", "payment.approve", "accounting.view", "monitoring.view"}
@@ -201,7 +203,7 @@ class Command(BaseCommand):
         super_role, _ = Role.objects.get_or_create(
             name="Super Admin", defaults={"description": "Full access"}
         )
-        super_role.permissions.set(perms.values())
+        super_role.permissions.set([p for c, p in perms.items() if c != "agency.group_manager"])
 
         # bootstrap a Staff account from the Django superuser env (panel login)
         su_name = os.environ.get("DJANGO_SUPERUSER_USERNAME", "")
@@ -228,6 +230,12 @@ class Command(BaseCommand):
         )
         if created:
             ticketing_role.permissions.set([perms[c] for c in TICKETING_PERMS])
+
+        # v1.25: group managers sign in to /panel/ as staff with this role (apps/agency/managers.py)
+        gm_role, _ = Role.objects.get_or_create(
+            name="Group manager", defaults={"description": "Group managers — own agency groups only"}
+        )
+        gm_role.permissions.set([perms["agency.group_manager"]])
 
         # --- themes ---
         # `seed` re-runs on every container start / update, so `is_active` must

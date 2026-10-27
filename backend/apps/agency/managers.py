@@ -6,10 +6,11 @@ an admin's inbounds come from its ROLE (RoleAccess.allowed_group_ids), so "allow
 inbounds" = allowed roles, shown with the inbound groups each one opens. Owner
 roles are never allowed.
 
-A manager signs in at <portal>/manager with its own password and session
-(`Authorization: Manager <token>`) — never a staff token, so /panel/ and every
-/api/v1/admin/ endpoint stay closed to it. What a manager may do, all scoped to
-the admins of its own groups:
+Since v1.25 a manager signs in to /panel/ as a staff account (GroupManager.staff,
+RBAC role "Group manager", same username/password). A linked staff is default-denied
+on every admin API (adminpanel.permissions.StaffPermission) and reaches only
+/api/v1/agency/manager/* (manager_views.py, IsGroupManagerStaff). What a manager may
+do, all scoped to the admins of its own groups:
   * create a PasarGuard admin (allowed role, initial GB > 0) — live at once;
   * add volume (increase only) — live at once;
   * change an admin's password and role (allowed list only);
@@ -23,17 +24,15 @@ from __future__ import annotations
 
 import hashlib
 import re
-import secrets
-from datetime import date, timedelta
+from datetime import date
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from urllib.parse import quote
 
-from django.contrib.auth.hashers import check_password, make_password
+from django.contrib.auth.hashers import make_password
 from django.core.cache import cache
-from django.db import transaction
+from django.db import models, transaction
 from django.db.models import Sum
 from django.utils import timezone
-from rest_framework import authentication, exceptions, permissions
 
 from apps.common.models import AuditLog, write_audit
 
@@ -42,8 +41,6 @@ from .models import (AdminGroup, AdminLimitChange, GroupManager, GroupManagerAss
 
 GB = 1024 ** 3
 D0 = Decimal(0)
-SESSION_AGE = timedelta(days=10)
-FAIL_LIMIT, FAIL_WINDOW = 5, 15 * 60
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_.@-]{3,64}$")
 MAX_GB = Decimal(1_000_000)
 ROLES_CACHE = "agency:mgr:roles"
@@ -198,6 +195,8 @@ def save_manager(manager_id: int | None, data: dict, by: str = "") -> GroupManag
             raise ManagerError("username: 3–64 letters, digits or _ . @ -", "invalid", "username")
         if GroupManager.objects.filter(username__iexact=username).exists():
             raise ManagerError("a group manager with this username exists", "exists", "username")
+        if _staff_model().objects.filter(username__iexact=username).exists():
+            raise ManagerError("a panel (staff) account with this username exists", "exists", "username")
         pw = str(data.get("password") or "")
         if len(pw) < 8:
             raise ManagerError("password: at least 8 characters", "invalid", "password")
@@ -219,9 +218,49 @@ def save_manager(manager_id: int | None, data: dict, by: str = "") -> GroupManag
             a, _ = GroupManagerAssignment.objects.update_or_create(manager=m, group=g, defaults={"allowed_role_ids": rids})
             keep.append(a.pk)
         GroupManagerAssignment.objects.filter(manager=m).exclude(pk__in=keep).delete()
+    _sync_staff(m, password=(str(data.get("password") or "") or None) if manager_id is None else None)
     if was_active and not m.is_active:
         revoke_sessions(m)
     return m
+
+
+def _staff_model():
+    from apps.accounts.models import Staff
+
+    return Staff
+
+
+def gm_role():
+    from apps.accounts.models import GROUP_MANAGER_PERM, GROUP_MANAGER_ROLE, Permission, Role
+
+    perm, _ = Permission.objects.get_or_create(
+        code=GROUP_MANAGER_PERM, defaults={"name": "Group manager: own groups only (agency admins, volume, accounting)"})
+    role, created = Role.objects.get_or_create(name=GROUP_MANAGER_ROLE,
+                                               defaults={"description": "Group managers — own agency groups only"})
+    if created:
+        role.permissions.set([perm])
+    return role
+
+
+def _sync_staff(m: GroupManager, password: str | None = None):
+    """Keep the manager's /panel/ staff account in step (created on first save; a taken
+    staff username is never linked — the manager then stays without a panel login)."""
+    Staff = _staff_model()
+    s = m.staff
+    if s is None:
+        if Staff.objects.filter(username__iexact=m.username).exists():
+            return
+        s = Staff(username=m.username, role=gm_role(), is_superadmin=False)
+        if password:
+            s.set_password(password)
+        else:
+            s.password_hash = m.password           # same Django hasher format
+    s.is_active = m.is_active
+    s.display_name = (m.display_name or "")[:60]
+    s.save()
+    if m.staff_id != s.pk:
+        m.staff = s
+        GroupManager.objects.filter(pk=m.pk).update(staff=s)
 
 
 def set_password(m: GroupManager, password: str | None = None) -> str:
@@ -232,11 +271,20 @@ def set_password(m: GroupManager, password: str | None = None) -> str:
         raise ManagerError("password: at least 8 characters", "invalid", "password")
     m.password = make_password(pw)
     m.save(update_fields=["password", "updated_at"])
+    if m.staff_id:
+        m.staff.set_password(pw)               # also ends its panel sessions (token_version)
+        m.staff.save(update_fields=["password_hash", "token_version", "updated_at"])
+    else:
+        _sync_staff(m, password=pw)
     revoke_sessions(m)
     return pw
 
 
 def revoke_sessions(m: GroupManager) -> int:
+    """End the manager's panel sessions (staff token_version) and any pre-v1.25 portal session."""
+    if m.staff_id:
+        Staff = _staff_model()
+        Staff.objects.filter(pk=m.staff_id).update(token_version=models.F("token_version") + 1)
     return ManagerSession.objects.filter(manager=m, revoked=False).update(revoked=True)
 
 
@@ -255,9 +303,10 @@ def manager_row(m: GroupManager, cat: dict | None = None) -> dict:
     return {
         "id": m.id, "username": m.username, "display_name": m.display_name, "is_active": m.is_active, "note": m.note,
         "max_unapproved_gb": m.max_unapproved_gb, "created_by": m.created_by, "created_at": m.created_at,
-        "last_login_at": m.last_login_at, "cap": cap_state(m),
+        "last_login_at": (m.staff.last_login if m.staff_id else None) or m.last_login_at, "cap": cap_state(m),
         "pending_count": VolumeRequest.objects.filter(manager=m, status="pending").count(),
-        "sessions": ManagerSession.objects.filter(manager=m, revoked=False, expires_at__gt=timezone.now()).count(),
+        # v1.25: the manager signs in to /panel/ as this staff account (None = username taken by other staff)
+        "staff_username": m.staff.username if m.staff_id else None,
         "assignments": [{"group_id": a.group_id, "group": group_title(a.group), "role_ids": a.allowed_role_ids,
                          "roles": [_role_view(r, cat) for r in a.allowed_role_ids]}
                         for a in m.assignments.select_related("group").order_by("group__owner_username")],
@@ -266,72 +315,6 @@ def manager_row(m: GroupManager, cat: dict | None = None) -> dict:
 
 def group_title(g: AdminGroup | None) -> str:
     return "" if g is None else (g.name or g.owner_username)
-
-
-# ------------------------------------------------------------------ manager auth (own session)
-def _hash(token: str) -> str:
-    return hashlib.sha256(token.encode()).hexdigest()
-
-
-def _fail_key(username: str) -> str:
-    return "agency:mgr:fail:" + hashlib.sha256(username.lower().encode()).hexdigest()[:32]
-
-
-def login(username: str, password: str, ip: str = "") -> str | None:
-    username = (username or "").strip()
-    if (cache.get(_fail_key(username)) or 0) >= FAIL_LIMIT:
-        raise exceptions.Throttled(detail="too many failed attempts for this username — try again later")
-    m = GroupManager.objects.filter(username__iexact=username).first()
-    if m is None or not m.is_active or not check_password(password or "", m.password):
-        key = _fail_key(username)
-        cache.set(key, (cache.get(key) or 0) + 1, FAIL_WINDOW)
-        return None
-    cache.delete(_fail_key(username))
-    token = secrets.token_urlsafe(32)
-    ManagerSession.objects.create(manager=m, key_hash=_hash(token), expires_at=timezone.now() + SESSION_AGE, ip=ip[:64])
-    GroupManager.objects.filter(pk=m.pk).update(last_login_at=timezone.now())
-    write_audit(action="agency.manager.login", staff=label(m), detail={"manager": m.username, "ip": ip[:64]})
-    return token
-
-
-class Manager:
-    """request.user for group-manager requests — not staff, not a customer."""
-    is_authenticated = True
-    is_staff = is_superuser = False
-
-    def __init__(self, manager: GroupManager, session: ManagerSession):
-        self.manager, self.session, self.username = manager, session, manager.username
-
-    @property
-    def pk(self) -> str:
-        return f"manager:{self.manager.id}"
-
-
-class ManagerTokenAuthentication(authentication.BaseAuthentication):
-    keyword = "Manager"
-
-    def authenticate(self, request):
-        auth = authentication.get_authorization_header(request).split()
-        if not auth or auth[0].decode(errors="ignore").lower() != self.keyword.lower():
-            return None
-        if len(auth) != 2:
-            raise exceptions.AuthenticationFailed("invalid token header")
-        s = (ManagerSession.objects.select_related("manager")
-             .filter(key_hash=_hash(auth[1].decode(errors="ignore")), revoked=False, expires_at__gt=timezone.now()).first())
-        if s is None or not s.manager.is_active:
-            raise exceptions.AuthenticationFailed("session expired — log in again")
-        now = timezone.now()
-        if not s.last_used_at or now - s.last_used_at > timedelta(minutes=5):
-            ManagerSession.objects.filter(pk=s.pk).update(last_used_at=now)
-        return Manager(s.manager, s), s
-
-    def authenticate_header(self, request):
-        return self.keyword
-
-
-class IsManager(permissions.BasePermission):
-    def has_permission(self, request, view):
-        return isinstance(request.user, Manager)
 
 
 # ------------------------------------------------------------------ scope

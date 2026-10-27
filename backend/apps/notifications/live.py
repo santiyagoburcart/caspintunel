@@ -21,7 +21,7 @@ STAFF_PAYMENTS_GROUP = "staff_payments"
 def pending_payments_count() -> int:
     from apps.payments_sms.models import Payment, PaymentStatus
 
-    return Payment.objects.filter(status=PaymentStatus.PENDING).count()
+    return Payment.objects.live().filter(status=PaymentStatus.PENDING).count()
 
 
 def _send(event: str, data: dict) -> None:

@@ -319,7 +319,8 @@ def _register(bot: telebot.TeleBot):
             bot.send_message(msg.chat.id, tr(user, "receipt_fail", err=html.escape(str(exc))))
             return
         order.refresh_from_db()
-        bot.send_message(msg.chat.id, tr(user, "receipt_ok"), reply_markup=sc.order_status(user, order).markup)
+        text = tr(user, "receipt_ok") + "\n" + tr(user, "tx_line", tx=payment.tx_number)
+        bot.send_message(msg.chat.id, text, reply_markup=sc.order_status(user, order).markup)
 
     @bot.message_handler(content_types=["contact"])
     def contact(msg):

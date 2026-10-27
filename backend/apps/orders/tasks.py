@@ -62,6 +62,9 @@ def fulfill_order(self, order_id: int):
     order = Order.objects.select_related("plan", "plan__panel", "service").get(pk=order_id)
     if order.status == OrderStatus.COMPLETED:
         return {"already": "completed"}
+    if order.status == OrderStatus.CANCELLED:
+        # its payment was deleted (voided) with "cancel the order" — never deliver it
+        return {"skipped": "cancelled"}
 
     try:
         if order.type == OrderType.NEW:

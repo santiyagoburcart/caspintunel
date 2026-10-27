@@ -15,7 +15,8 @@ def test_seed_is_idempotent_and_complete():
 
     assert Permission.objects.count() == len(PERMISSIONS)
     assert Role.objects.filter(name="Super Admin").exists()
-    assert Role.objects.get(name="Super Admin").permissions.count() == len(PERMISSIONS)
+    # every code except agency.group_manager (it restricts; only the "Group manager" role holds it)
+    assert Role.objects.get(name="Super Admin").permissions.count() == len(PERMISSIONS) - 1
 
     theme = Theme.objects.get(name="Midnight Aurora")
     assert theme.is_active

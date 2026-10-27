@@ -169,7 +169,7 @@ const dict = {
     st_active: 'فعال', st_on_hold: 'در انتظار اتصال', st_expired: 'منقضی',
     st_limited: 'اتمام حجم', st_disabled: 'غیرفعال', st_pending: 'در حال ساخت',
     st_pending_payment: 'در انتظار پرداخت', st_paid: 'پرداخت شد',
-    st_completed: 'تکمیل شد', st_rejected: 'رد شد',
+    st_completed: 'تکمیل شد', st_rejected: 'رد شد', st_cancelled: 'لغو شد', tx_id: 'شماره تراکنش',
   },
   en: {
     login: 'Login', register: 'Register', logout: 'Logout', email: 'Email', username: 'Username',
@@ -339,7 +339,7 @@ const dict = {
     st_active: 'Active', st_on_hold: 'Awaiting connection', st_expired: 'Expired',
     st_limited: 'Data used up', st_disabled: 'Disabled', st_pending: 'Provisioning',
     st_pending_payment: 'Awaiting payment', st_paid: 'Paid',
-    st_completed: 'Completed', st_rejected: 'Rejected',
+    st_completed: 'Completed', st_rejected: 'Rejected', st_cancelled: 'Cancelled', tx_id: 'Transaction',
   },
 }
 

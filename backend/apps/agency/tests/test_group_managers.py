@@ -122,10 +122,13 @@ def make_manager(boss, pg, cap=None, roles=(6, 7), username="mona"):
 
 
 def manager_client(username="mona", password="mgr-Pass-123"):
+    """v1.25: a group manager signs in to the main panel (staff login) and gets a staff JWT."""
     c = APIClient()
-    r = c.post("/api/v1/agency/manager/login/", {"username": username, "password": password}, format="json")
+    r = c.post("/api/v1/admin/auth/login/", {"username": username, "password": password}, format="json")
     assert r.status_code == 200, r.json()
-    c.credentials(HTTP_AUTHORIZATION=f"Manager {r.json()['token']}")
+    assert r.json()["staff"]["group_manager"]["username"] == username
+    assert r.json()["staff"]["permissions"] == ["agency.group_manager"]
+    c.credentials(HTTP_AUTHORIZATION=f"Bearer {r.json()['access']}")
     return c
 
 
@@ -147,12 +150,15 @@ def test_staff_create_edit_disable_and_reset_password(pg):
     # disable → sessions end, login refused
     assert boss.patch(f"/api/v1/admin/agency/managers/{row['id']}/", {"is_active": False}, format="json").status_code == 200
     assert mc.get(M + "me/").status_code == 401
-    assert APIClient().post(M + "login/", {"username": "mona", "password": "mgr-Pass-123"}, format="json").status_code == 400
+    assert APIClient().post("/api/v1/admin/auth/login/", {"username": "mona", "password": "mgr-Pass-123"},
+                            format="json").status_code == 401
     boss.patch(f"/api/v1/admin/agency/managers/{row['id']}/", {"is_active": True, "max_unapproved_gb": ""}, format="json")
     assert GroupManager.objects.get().max_unapproved_gb is None                   # empty = no cap
+    mc = manager_client()
     r = boss.post(f"/api/v1/admin/agency/managers/{row['id']}/password/", {}, format="json")
     new_pw = r.json()["password"]
     assert len(new_pw) >= 12
+    assert mc.get(M + "me/").status_code == 401                                   # reset ends panel sessions
     manager_client(password=new_pw)
     logs = list(AuditLog.objects.filter(action__startswith="agency.managers.").values_list("action", flat=True))
     assert "agency.managers.created" in logs and "agency.managers.password_reset" in logs
@@ -328,11 +334,15 @@ def test_every_forbidden_action_is_403(pg):
     assert not VolumeRequest.objects.exists() and not LedgerEntry.objects.exists()
 
 
-def test_manager_token_never_opens_the_site_panel(pg):
+def test_group_manager_staff_never_opens_the_rest_of_the_panel(pg):
     make_manager(staff_client(superadmin=True), pg)
     mc = manager_client()
     for method, path, body in [
         ("get", "/api/v1/admin/agency/", None),
+        ("get", "/api/v1/admin/agency/admins/", None),
+        ("get", "/api/v1/admin/agency/groups/", None),
+        ("get", "/api/v1/admin/agency/ledger/groups/", None),
+        ("get", f"/api/v1/admin/agency/ledger/groups/{pg['g2'].id}/statement/", None),
         ("post", "/api/v1/admin/agency/admins/g1-a/set-limit/", {"action": "add", "value_gb": 10}),
         ("post", "/api/v1/admin/agency/admins/g1-a/remove-limit/", {}),
         ("delete", "/api/v1/admin/agency/panel-admins/g1-a/", None),
@@ -341,20 +351,144 @@ def test_manager_token_never_opens_the_site_panel(pg):
         ("post", "/api/v1/admin/agency/approvals/bulk-approve/", {"ids": [1]}),
         ("get", "/api/v1/admin/agency/managers/", None),
         ("get", "/api/v1/admin/roles/", None),
+        ("get", "/api/v1/admin/staff/", None),
         ("get", "/api/v1/admin/users/", None),
+        ("get", "/api/v1/admin/transactions/", None),
+        ("get", "/api/v1/admin/payments/pending/", None),
+        ("get", "/api/v1/admin/accounting/", None),
+        ("get", "/api/v1/admin/settings/", None),
+        ("get", "/api/v1/admin/tickets/", None),
+        ("get", "/api/v1/admin/crm/analytics/financial/", None),
     ]:
         r = getattr(mc, method)(path, body, format="json") if body is not None else getattr(mc, method)(path)
         assert r.status_code == 403, (method, path, r.status_code)
-    # the manager's password is not a staff login either
-    assert APIClient().post("/api/v1/admin/auth/login/", {"username": "mona", "password": "mgr-Pass-123"},
-                            format="json").status_code in (400, 401)
+    # its own profile works (the panel needs it to draw the reduced menu)
+    me = mc.get("/api/v1/admin/auth/me/").json()
+    assert me["group_manager"]["username"] == "mona" and me["permissions"] == ["agency.group_manager"]
 
 
-def test_reseller_and_staff_tokens_do_not_open_the_manager_api(pg):
+def _admin_routes():
+    """Every concrete URL under /api/v1/admin/ (router + path routes), ids filled with 1."""
+    import re
+
+    from django.urls import URLPattern, URLResolver, get_resolver
+
+    out = set()
+
+    def walk(patterns, prefix):
+        for p in patterns:
+            route = str(p.pattern)
+            if isinstance(p, URLResolver):
+                walk(p.url_patterns, prefix + route)
+            elif isinstance(p, URLPattern):
+                full = prefix + route
+                if "format" in full:
+                    continue
+                full = full.replace("^", "").replace("$", "")
+                full = re.sub(r"<int:[^>]+>", "1", full)
+                full = re.sub(r"<(?:str|path|slug):[^>]+>", "x1", full)
+                full = re.sub(r"<[^>]+>", "x1", full)
+                full = re.sub(r"\(\?P<[^>]+>[^)]*\)", "1", full)
+                full = full.replace("\\.", ".")
+                if any(ch in full for ch in "()[]*+?\\"):
+                    continue
+                out.add("/" + full)
+
+    walk(get_resolver().url_patterns, "")
+    return sorted(u for u in out if u.startswith("/api/v1/admin/"))
+
+
+def test_every_other_panel_api_is_403_for_a_group_manager(pg):
+    """Default-deny: a group-manager staff gets 403 on EVERY /api/v1/admin/ route (settings,
+    customers, orders, payments, transactions, tickets, CRM, agency, other groups …) for
+    every method — only its own profile and the login/refresh endpoints answer."""
+    make_manager(staff_client(superadmin=True), pg)
+    mc = manager_client()
+    routes = _admin_routes()
+    assert len(routes) > 100, len(routes)
+    allowed = {"/api/v1/admin/auth/login/", "/api/v1/admin/auth/refresh/", "/api/v1/admin/auth/me/"}
+    before = {k: v["data_limit"] for k, v in pg["fake"].admins.items()}
+    bad = []
+    for url in routes:
+        if url in allowed:
+            continue
+        for method in ("get", "post", "put", "patch", "delete"):
+            r = getattr(mc, method)(url, {}, format="json")
+            if r.status_code != 403:
+                bad.append((method, url, r.status_code))
+    assert not bad, bad[:20]
+    assert {k: v["data_limit"] for k, v in pg["fake"].admins.items()} == before
+
+
+def test_group_manager_staff_cannot_read_receipts(pg):
+    from apps.accounts.models import Staff
+
+    make_manager(staff_client(superadmin=True), pg)
+    s = Staff.objects.get(username="mona")
+    assert s.is_group_manager and not s.has_perm("payment.view") and not s.has_perm("agency.view")
+    # even if someone gives the staff a powerful role, the group-manager link still restricts it
+    s.role = Role.objects.create(name="powerful")
+    s.role.permissions.set([Permission.objects.get_or_create(code="payment.view", defaults={"name": "x"})[0]])
+    s.save()
+    assert not Staff.objects.get(pk=s.pk).has_perm("payment.view")
+
+
+def test_staff_tokens_do_not_open_the_manager_api(pg):
     boss = staff_client(superadmin=True)
     make_manager(boss, pg)
-    assert boss.get(M + "me/").status_code == 401
+    assert boss.get(M + "me/").status_code == 403            # a superadmin is not a group manager
+    plain = staff_client(perms=["agency.view", "agency.manage"], name="plain")
+    assert plain.get(M + "me/").status_code == 403
     assert APIClient().get(M + "me/").status_code == 401
+
+
+def test_old_portal_login_is_gone(pg):
+    make_manager(staff_client(superadmin=True), pg)
+    r = APIClient().post(M + "login/", {"username": "mona", "password": "mgr-Pass-123"}, format="json")
+    assert r.status_code == 410 and r.json()["code"] == "moved"
+    # an old "Manager <token>" header opens nothing
+    c = APIClient()
+    c.credentials(HTTP_AUTHORIZATION="Manager abc")
+    assert c.get(M + "me/").status_code in (401, 403)
+    assert c.get("/api/v1/admin/agency/").status_code == 403
+
+
+def test_staff_username_must_be_free_for_a_new_manager(pg):
+    boss = staff_client(superadmin=True)
+    staff_client(superadmin=False, name="taken")
+    r = boss.post("/api/v1/admin/agency/managers/", {"username": "taken", "password": "mgr-Pass-123",
+                                                     "assignments": [{"group_id": pg["g1"].id, "role_ids": [6]}]},
+                  format="json")
+    assert r.status_code == 409 and r.json()["field"] == "username"
+
+
+def test_existing_managers_are_converted_to_staff(pg):
+    """Migration agency.0007: same username + password hash, role "Group manager"; a taken
+    staff username is never linked."""
+    import importlib
+
+    from django.apps import apps as live_apps
+    from django.contrib.auth.hashers import make_password
+
+    from apps.accounts.models import Staff
+
+    mig = importlib.import_module("apps.agency.migrations.0007_group_manager_staff")
+    old = GroupManager.objects.create(username="legacy", password=make_password("Legacy-Pass-1"), display_name="L")
+    from apps.agency.models import GroupManagerAssignment
+
+    GroupManagerAssignment.objects.create(manager=old, group=pg["g1"], allowed_role_ids=[6])
+    staff_client(name="clash")
+    GroupManager.objects.create(username="clash", password=make_password("Clash-Pass-1"))
+    mig.forwards(live_apps, None)
+    old.refresh_from_db()
+    assert old.staff is not None and old.staff.username == "legacy" and old.staff.role.name == "Group manager"
+    assert old.staff.check_password("Legacy-Pass-1")
+    assert GroupManager.objects.get(username="clash").staff is None
+    assert not Staff.objects.get(username="clash").is_group_manager
+    mc = manager_client(username="legacy", password="Legacy-Pass-1")
+    assert [g["id"] for g in mc.get(M + "me/").json()["groups"]] == [pg["g1"].id]
+    mig.forwards(live_apps, None)                                                # idempotent
+    assert Staff.objects.filter(username="legacy").count() == 1
 
 
 # ------------------------------------------------------------------ accounting + group statement

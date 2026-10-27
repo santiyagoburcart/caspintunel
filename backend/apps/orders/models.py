@@ -18,6 +18,8 @@ class OrderStatus(models.TextChoices):
     REJECTED = "rejected", "Rejected"
     FAILED = "failed", "Failed"
     EXPIRED = "expired", "Reservation expired"
+    # its payment was deleted (voided) by a Super Admin with "cancel the order" (v1.25)
+    CANCELLED = "cancelled", "Cancelled"
 
 
 # Statuses during which the unique amount is reserved and must stay globally unique.

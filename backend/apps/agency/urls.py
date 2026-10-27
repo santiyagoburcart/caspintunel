@@ -9,8 +9,8 @@ urlpatterns = [
     path("portal/me/", v.PortalMeView.as_view(), name="agency-portal-me"),
     path("portal/statement/", v.PortalStatementView.as_view(), name="agency-portal-statement"),
     # group managers (apps/agency/managers.py)
-    path("manager/login/", mv.ManagerLoginView.as_view(), name="agency-manager-login"),
-    path("manager/logout/", mv.ManagerLogoutView.as_view(), name="agency-manager-logout"),
+    path("manager/login/", mv.ManagerLoginGoneView.as_view(), name="agency-manager-login"),
+    path("manager/logout/", mv.ManagerLoginGoneView.as_view(), name="agency-manager-logout"),
     path("manager/me/", mv.ManagerMeView.as_view(), name="agency-manager-me"),
     path("manager/admins/", mv.ManagerAdminCreateView.as_view(), name="agency-manager-admin-create"),
     path("manager/admins/<str:username>/statement/", mv.ManagerAdminStatementView.as_view(), name="agency-manager-statement"),

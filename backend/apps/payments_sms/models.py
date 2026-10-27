@@ -139,7 +139,30 @@ class ConfirmedBy(models.TextChoices):
     SYSTEM = "system", "System"
 
 
+class VoidServiceAction(models.TextChoices):
+    """What a Super Admin chose for the linked order / service when deleting (voiding) a payment."""
+    KEEP = "keep", "Keep the order and service"
+    DISABLE = "disable", "Cancel the order, disable the service on PasarGuard"
+    DELETE = "delete", "Cancel the order, delete the service on PasarGuard"
+
+
+TX_PREFIX = "TX-"
+
+
+def format_tx(number) -> str:
+    return f"{TX_PREFIX}{int(number):06d}" if number else ""
+
+
+class PaymentQuerySet(models.QuerySet):
+    def live(self):
+        """Not deleted (voided) by a Super Admin — the only rows that count anywhere
+        (totals, Accounting, Analytics, reports, review queue)."""
+        return self.filter(voided_at__isnull=True)
+
+
 class Payment(TimeStampedModel):
+    objects = PaymentQuerySet.as_manager()
+
     order = models.OneToOneField("orders.Order", on_delete=models.CASCADE, related_name="payment")
     bank_card = models.ForeignKey(
         BankCard, null=True, blank=True, on_delete=models.SET_NULL, related_name="payments"
@@ -160,6 +183,18 @@ class Payment(TimeStampedModel):
     )
     confirmed_at = models.DateTimeField(null=True, blank=True)
     reject_reason = models.CharField(max_length=255, blank=True)
+    # human-readable transaction number (TX-000123): sequential and unique — the row's
+    # own id, written right after the insert (save) and backfilled for older rows
+    number = models.PositiveIntegerField(null=True, blank=True, unique=True, editable=False)
+    # Super Admin "delete" = void (apps/payments_sms/voiding.py): hidden from lists and
+    # every total; restorable for VOID_RESTORE_DAYS. Never a hard delete.
+    voided_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    voided_by = models.ForeignKey("accounts.Staff", null=True, blank=True, on_delete=models.SET_NULL,
+                                  related_name="voided_payments")
+    void_reason = models.CharField(max_length=255, blank=True, default="")
+    void_service_action = models.CharField(max_length=8, choices=VoidServiceAction.choices, blank=True, default="")
+    # the order status before the void (cancel) — put back by a restore
+    void_prev_order_status = models.CharField(max_length=16, blank=True, default="")
 
     class Meta:
         db_table = "payment"
@@ -167,3 +202,17 @@ class Payment(TimeStampedModel):
 
     def __str__(self) -> str:
         return f"payment#{self.pk} {self.method} {self.status}"
+
+    @property
+    def tx_number(self) -> str:
+        return format_tx(self.number or self.pk)
+
+    @property
+    def is_voided(self) -> bool:
+        return self.voided_at is not None
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if self.number is None and self.pk:
+            self.number = self.pk
+            type(self).objects.filter(pk=self.pk, number__isnull=True).update(number=self.pk)

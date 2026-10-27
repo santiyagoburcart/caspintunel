@@ -13,6 +13,7 @@ class OrderSerializer(serializers.ModelSerializer):
     payment_method = serializers.SerializerMethodField()
     receipt_url = serializers.SerializerMethodField()
     reject_reason = serializers.SerializerMethodField()
+    tx_number = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
@@ -21,7 +22,7 @@ class OrderSerializer(serializers.ModelSerializer):
             "requested_account_name", "custom_volume_gb",
             "amount", "discount_amount", "amount_unique", "unique_expire_at",
             "payment_status", "payment_method", "receipt_url",
-            "reject_reason", "source", "created_at", "needs_new_name",
+            "reject_reason", "source", "created_at", "needs_new_name", "tx_number",
         )
         read_only_fields = fields
 
@@ -37,6 +38,10 @@ class OrderSerializer(serializers.ModelSerializer):
         # owner-checked endpoint (ReceiptFileView), never a public media path
         pay = getattr(obj, "payment", None)
         return f"/api/v1/payments/{pay.id}/receipt/" if pay and pay.receipt_image else None
+
+    def get_tx_number(self, obj) -> str | None:
+        pay = getattr(obj, "payment", None)
+        return pay.tx_number if pay else None
 
     def get_reject_reason(self, obj) -> str:
         pay = getattr(obj, "payment", None)

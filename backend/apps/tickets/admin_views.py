@@ -360,7 +360,7 @@ class CustomerView(_TicketView):
 
             payments = [{"id": p.id, "order": p.order_id, "amount": str(p.amount), "status": p.status, "method": p.method,
                          "created_at": p.created_at}
-                        for p in Payment.objects.filter(order__user=u).order_by("-created_at")[:5]]
+                        for p in Payment.objects.live().filter(order__user=u).order_by("-created_at")[:5]]
         others = rules.staff_queryset(request.user).filter(user=u).exclude(pk=t.pk).order_by("-last_activity_at")
         return Response({
             "user": {"id": u.id, "username": u.username, "name": u.name, "phone": u.phone, "email": u.email,

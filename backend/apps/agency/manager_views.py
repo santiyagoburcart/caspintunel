@@ -1,9 +1,9 @@
-"""/api/v1/agency/manager/ — the group-manager portal API (manager sessions only;
-apps/agency/managers.py has the rules). Everything is scoped to the manager's own
-groups; anything else answers 403.
+"""/api/v1/agency/manager/ — the group-manager API (apps/agency/managers.py has the rules).
+Since v1.25 a manager signs in to /panel/ as a staff account (role "Group manager") and
+calls this API with its normal staff JWT; only a staff linked to an active GroupManager
+passes (IsGroupManagerStaff). Everything is scoped to the manager's own groups; anything
+else answers 403. Every other /api/v1/admin/ endpoint refuses such a staff (StaffPermission).
 
-POST login/ {username, password} → {token, expires_at}      (throttle "auth", per-username lockout)
-POST logout/
 GET  me/                             manager, groups (admins + allowed inbounds), cap, pending
 POST admins/ {group_id, username, password, role_id, initial_gb}       create (live at once, pending approval)
 POST admins/<u>/add-volume/ {gb}     increase only (live at once, pending approval)
@@ -13,21 +13,18 @@ GET  admins/<u>/statement/?from=&to=&export=csv|xlsx
 GET  accounting/?group=&from=&to=&export=csv|xlsx
 GET  groups/<id>/statement/?from=&to=&export=csv|xlsx
 GET  activity/?group=
+POST login/ · logout/                410 — sign in at /panel/ (the old portal login is gone)
 anything else under manager/ (set-limit, remove-limit, delete, prices, payments, roles…) → 403
 """
-from django.utils import timezone
-from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.adminpanel.permissions import IsGroupManagerStaff, StaffJWTAuthentication
+
 from . import managers as M
 from .models import PanelAdmin
 from .reports import export_response, parse_day
-
-
-def _ip(request):
-    return request.META.get("HTTP_X_FORWARDED_FOR") or request.META.get("REMOTE_ADDR", "")
 
 
 def _err(exc: M.ManagerError) -> Response:
@@ -35,12 +32,12 @@ def _err(exc: M.ManagerError) -> Response:
 
 
 class _Mgr(APIView):
-    authentication_classes = [M.ManagerTokenAuthentication]
-    permission_classes = [M.IsManager]
+    authentication_classes = [StaffJWTAuthentication]
+    permission_classes = [IsGroupManagerStaff]
 
     @property
     def m(self):
-        return self.request.user.manager
+        return self.request.user.group_manager_row
 
     def handle_exception(self, exc):
         if isinstance(exc, M.ManagerError):
@@ -58,23 +55,16 @@ class _Mgr(APIView):
         return "en" if self.request.query_params.get("lang") == "en" else "fa"
 
 
-class ManagerLoginView(APIView):
+class ManagerLoginGoneView(APIView):
+    """The separate manager portal login is gone (v1.25): managers sign in at /panel/."""
     authentication_classes = []
     permission_classes = [AllowAny]
-    throttle_scope = "auth"
 
     def post(self, request):
-        token = M.login(request.data.get("username", ""), request.data.get("password", ""), _ip(request))
-        if not token:
-            return Response({"detail": "Wrong username or password."}, status=status.HTTP_400_BAD_REQUEST)
-        return Response({"token": token, "expires_at": timezone.now() + M.SESSION_AGE})
+        return Response({"detail": "Group managers now sign in to the main panel (/panel/) with the same "
+                                   "username and password.", "code": "moved", "login": "/panel/login"}, status=410)
 
-
-class ManagerLogoutView(_Mgr):
-    def post(self, request):
-        request.auth.revoked = True
-        request.auth.save(update_fields=["revoked"])
-        return Response(status=status.HTTP_204_NO_CONTENT)
+    get = post
 
 
 def _admin_row(a: PanelAdmin, cat) -> dict:

@@ -415,6 +415,10 @@ class GroupManager(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     last_login_at = models.DateTimeField(null=True, blank=True)
+    # v1.25: a manager signs in to /panel/ as this staff account (role "Group manager").
+    # The link — not the role — is what restricts the staff to its groups (StaffPermission).
+    staff = models.OneToOneField("accounts.Staff", null=True, blank=True, on_delete=models.SET_NULL,
+                                 related_name="group_manager")
 
     class Meta:
         db_table = "agency_group_manager"

@@ -43,6 +43,25 @@ export const CASPIAN_GROUPS = [
   ]],
 ]
 
+// v1.25: a group manager (staff.group_manager set) sees ONLY this menu — its own
+// groups' admins, create admin, accounting + group statement, activity. Every other
+// page is hidden here and refused by the server (403).
+export const GM_GROUPS = [
+  ['nav_group_gm', [
+    ['/my-groups', 'gm_admins', null, 'agency'],
+    ['/my-groups/new', 'gm_new_admin', null, 'users'],
+    ['/my-groups/accounting', 'gm_accounting', null, 'accounting'],
+    ['/my-groups/activity', 'gm_activity', null, 'monitoring'],
+  ]],
+]
+export const GM_BOTNAV = [
+  ['/my-groups', 'gm_admins', null, 'agency'],
+  ['/my-groups/new', 'gm_new_admin', null, 'users', true],
+  ['/my-groups/accounting', 'gm_accounting', null, 'accounting'],
+  ['/my-groups/activity', 'gm_activity', null, 'monitoring'],
+]
+export const isGroupManager = (staff) => !!staff?.group_manager
+
 // Heroicons-style outline paths (self-hosted, no icon font / CDN) — chosen to
 // echo the reference's Material Symbols intent.
 export const NAV_ICONS = {

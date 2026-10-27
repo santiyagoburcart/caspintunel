@@ -70,6 +70,7 @@ T: dict[str, tuple[str, str]] = {
     "send_receipt": ("📸 پس از واریز، <b>عکس رسید</b> را همین‌جا بفرستید.", "📸 After paying, send the <b>receipt photo</b> here."),
     "btn_check": ("🔄 بررسی وضعیت پرداخت", "🔄 Check payment status"),
     "order_status": ("🧾 <b>سفارش #{id}</b>\nوضعیت: {st}", "🧾 <b>Order #{id}</b>\nStatus: {st}"),
+    "tx_line": ("🔖 شماره تراکنش: <code>{tx}</code>", "🔖 Transaction: <code>{tx}</code>"),
     "receipt_pending": ("📸 رسید شما ثبت شده و در انتظار تأیید ادمین است.", "📸 Your receipt is waiting for admin approval."),
     "receipt_ok": ("✅ رسید شما دریافت شد و در انتظار تأیید ادمین است. پس از تأیید، سرویس آماده می‌شود.",
                    "✅ Receipt received — waiting for admin approval. Your service is prepared once it is approved."),
@@ -156,6 +157,7 @@ ORDER_STATUS = {
     "rejected": ("❌", "رد شد", "Rejected"),
     "failed": ("⚠️", "ناموفق", "Failed"),
     "expired": ("⌛", "منقضی (مهلت پرداخت تمام شد)", "Expired (payment window passed)"),
+    "cancelled": ("🚫", "لغو شد", "Cancelled"),
 }
 SERVICE_STATUS = {
     "active": ("🟢", "فعال", "Active"), "on_hold": ("⏳", "در انتظار اولین اتصال", "Waiting for first connection"),
@@ -170,6 +172,7 @@ HIST_STATUS = {
     "rejected": ("❌", "رد شده", "Rejected"),
     "failed": ("⚠️", "ناموفق", "Failed"),
     "expired": ("⌛", "منقضی", "Expired"),
+    "cancelled": ("🚫", "لغو‌شده", "Cancelled"),
 }
 ORDER_TYPE = {"new": ("خرید جدید", "New"), "renew": ("تمدید", "Renewal"), "addon_volume": ("حجم اضافه", "Add-on"),
               "manual": ("دستی", "Manual"), "imported": ("انتقالی", "Imported")}

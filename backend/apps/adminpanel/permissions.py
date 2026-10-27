@@ -50,6 +50,10 @@ class StaffPermission(permissions.BasePermission):
     A view declares needs via `perms_map = {"GET": [...], "POST": [...]}` or a
     flat `required_perms = [...]`; a viewset may override single actions with
     `action_perms = {"<action>": [...]}`.
+
+    A staff linked to a group manager (role "Group manager", v1.25) is refused on
+    every view unless the view sets `group_manager_ok = True` — those views scope
+    their data to the manager's groups themselves.
     """
 
     def has_permission(self, request, view):
@@ -57,6 +61,9 @@ class StaffPermission(permissions.BasePermission):
         if isinstance(user, Staff):
             if user.is_superadmin:
                 return True
+            if user.is_group_manager:
+                # default-deny: a group manager reaches only views that opt in
+                return bool(getattr(view, "group_manager_ok", False))
             return all(user.has_perm(code) for code in self._needed(request, view))
         return bool(getattr(user, "is_superuser", False) and getattr(user, "is_authenticated", False))
 
@@ -83,3 +90,16 @@ try:
             return {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}
 except ImportError:  # pragma: no cover
     pass
+
+
+class IsGroupManagerStaff(permissions.BasePermission):
+    """Staff signed in as a group manager (active, linked GroupManager row, active
+    manager). Superadmins and other staff are refused: this API is the manager's own."""
+
+    message = "group managers only"
+
+    def has_permission(self, request, view):
+        user = request.user
+        if not isinstance(user, Staff) or not user.is_active or not user.is_group_manager:
+            return False
+        return bool(user.group_manager_row.is_active)

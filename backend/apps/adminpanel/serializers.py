@@ -390,20 +390,31 @@ class TransactionSerializer(serializers.ModelSerializer):
     confirmer = serializers.SerializerMethodField()
     reject_reason = serializers.CharField(read_only=True)
     receipt_url = serializers.SerializerMethodField()
+    tx_number = serializers.CharField(read_only=True)
+    voided = serializers.BooleanField(source="is_voided", read_only=True)
+    voided_by = serializers.CharField(source="voided_by.username", read_only=True, default=None)
+    restorable_until = serializers.SerializerMethodField()
+    service_id = serializers.IntegerField(source="order.service_id", read_only=True, default=None)
 
     class Meta:
         model = Payment
         fields = (
-            "id", "order_id", "user", "user_name", "user_telegram", "plan_name", "plan_name_en",
+            "id", "number", "tx_number", "order_id", "service_id", "user", "user_name", "user_telegram", "plan_name", "plan_name_en",
             "account_name", "amount", "amount_unique", "method", "status",
             "card", "card_holder", "card_bank", "gateway_ref",
             "confirmed_by", "confirmer", "confirmed_at", "reject_reason",
             "receipt_url", "order_source", "order_type", "order_status",
             "created_at", "updated_at",
+            "voided", "voided_at", "voided_by", "void_reason", "void_service_action", "restorable_until",
         )
 
     def get_receipt_url(self, obj) -> str | None:
         return f"/api/v1/payments/{obj.id}/receipt/" if obj.receipt_image else None
+
+    def get_restorable_until(self, obj):
+        from apps.payments_sms.voiding import restorable_until
+
+        return restorable_until(obj)
 
     def get_confirmer(self, obj) -> str | None:
         if obj.confirmed_by == "system":

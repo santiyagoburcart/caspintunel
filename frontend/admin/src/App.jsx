@@ -32,6 +32,8 @@ import Apps from './pages/Apps'
 import { PanelConnection, Bots } from './pages/Integrations'
 import EmailSettings from './pages/EmailSettings'
 import { Pages, Roles, Themes } from './pages/Simple'
+import GroupManager from './pages/GroupManager'
+import { isGroupManager } from './components/adminNav'
 
 function Private({ children }) {
   const { staff, loading } = useAuth()
@@ -40,6 +42,21 @@ function Private({ children }) {
 }
 
 export default function App() {
+  const { staff } = useAuth()
+  // v1.25: a group manager gets only its own pages; any other URL lands on /my-groups
+  // (the server refuses every other admin API with 403 anyway)
+  if (isGroupManager(staff)) {
+    return (
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route element={<Private><Layout /></Private>}>
+          <Route path="/my-groups" element={<GroupManager />} />
+          <Route path="/my-groups/:tab" element={<GroupManager />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/my-groups" replace />} />
+      </Routes>
+    )
+  }
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
@@ -100,6 +117,7 @@ export default function App() {
         <Route path="/crm/settings" element={<CrmSettings />} />
         <Route path="/docs" element={<Docs />} />
         <Route path="/docs/:slug" element={<Docs />} />
+        <Route path="/my-groups/*" element={<Navigate to="/" replace />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

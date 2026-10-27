@@ -113,7 +113,7 @@ def parse_period(params) -> tuple[datetime, datetime, str]:
     if preset == "all":
         from apps.payments_sms.models import Payment
 
-        first = Payment.objects.filter(status="approved").order_by("confirmed_at").values_list("confirmed_at", flat=True).first()
+        first = Payment.objects.live().filter(status="approved").order_by("confirmed_at").values_list("confirmed_at", flat=True).first()
         return (first or now - timedelta(days=30)), now, preset
     return month_range(k)[0], now, "this_month"
 
@@ -128,7 +128,8 @@ def _rng(start, end) -> dict:
 def _approved():
     from apps.payments_sms.models import Payment
 
-    return Payment.objects.filter(status="approved", confirmed_at__isnull=False)
+    # voided (deleted by a Super Admin) payments are left out of every figure
+    return Payment.objects.live().filter(status="approved", confirmed_at__isnull=False)
 
 
 def financial(start, end) -> dict:
@@ -195,7 +196,9 @@ def coverages() -> dict:
     from apps.orders.models import Order
 
     out = defaultdict(list)
-    for o in Order.objects.filter(status__in=BOUGHT, type__in=("new", "renew")).select_related("plan").only(
+    # an order whose payment a Super Admin deleted (voided) is not a purchase for cohorts either
+    for o in Order.objects.filter(status__in=BOUGHT, type__in=("new", "renew")).exclude(
+            payment__voided_at__isnull=False).select_related("plan").only(
             "id", "user_id", "created_at", "plan__duration_days"):
         days = (o.plan.duration_days if o.plan and o.plan.duration_days else 30)
         s = local_date(o.created_at)

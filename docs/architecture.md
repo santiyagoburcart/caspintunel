@@ -61,7 +61,7 @@ flowchart LR
 | `nginx` | own (`nginx/`) | TLS (Let's Encrypt or manual cert), routing below, security headers / two CSPs, `nginx/flags/maintenance` → 503, admin + portal paths from `nginx/paths/active.conf`, the domain set by the wizard from `nginx/domain/active.conf` |
 | `web` | `caspintunel-backend` | gunicorn, 3 workers, Django + DRF (`/api/`, `/admin/`), healthcheck `/api/v1/health/` |
 | `daphne` | `caspintunel-backend` | ASGI for `/ws/` (Channels; Redis channel layer) |
-| `frontend_user` | `caspintunel-frontend-user` | built user SPA (also the Mini App, the reseller portal at `/agency/` and the group-manager portal at `/agency/manager`) |
+| `frontend_user` | `caspintunel-frontend-user` | built user SPA (also the Mini App and the reseller portal at `/agency/`; `/agency/manager` only forwards to the panel login since v1.25) |
 | `frontend_admin` | `caspintunel-frontend-admin` | built admin SPA, served under the admin path (default `/panel/`) |
 | `celery_worker` | `caspintunel-backend` | all async work (provisioning, sync, backups, notifications, agency sync) |
 | `celery_beat` | `caspintunel-backend` | periodic tasks, stored in the DB (`django_celery_beat`) |
@@ -120,15 +120,15 @@ SHA-256 stored).
 | `panel` | multi-panel `Panel` + `PasarGuardClient` (token cache, typed errors), `Service`, payload mappers, idempotent provision / renew / sync, scheduled renewals (reset / carry-over), admin full edit, manual create, link an existing panel account |
 | `plans` | `Plan` (fixed / custom-volume), `group_ids` per plan with panel-default fallback, renewal mode + carry-over |
 | `orders` | `Order` (new / renew / add-on / manual / imported), atomic unique-amount reservation (`amount_unique_lock`), checkout resume, `ScheduledRenewal`, `fulfill_order` + `retry_unfulfilled_orders` |
-| `payments_sms` | `BankCard`, `Payment`, card-to-card receipts, `SmsSource` / `SmsAppDevice` / `SmsMessage`, unit-aware parser, **exact-match auto-confirm + near-miss review** (`matching.py`), `approve_payment` / `reject_payment` |
+| `payments_sms` | `BankCard`, `Payment`, card-to-card receipts, `SmsSource` / `SmsAppDevice` / `SmsMessage`, unit-aware parser, **exact-match auto-confirm + near-miss review** (`matching.py`), `approve_payment` / `reject_payment`; **transaction numbers** `TX-000123` (`Payment.number`) and the Super Admin **void / restore** (`voiding.py`, 30 days) — voided payments are left out of every total (`Payment.objects.live()`) |
 | `notifications` | `Notification` / `NotificationDelivery`, `dispatch.notify_user` (site / bot / email, each channel isolated), WebSockets: customer notifications + staff live payments queue |
 | `telegram` | `TelegramClient`, `ensure_bot_user`, forced-channel + phone gate, sales bot (pure `bot/screens.py` + fa/en `bot/texts.py`), backup bot + `run_database_backup`, channel member stats ([bots.md](bots.md)) |
 | `settings_app` | `Setting` (typed KV), `SiteConfig` (branding singleton), `Theme`, `Page` (CMS), `AppRelease` (operator apps), `EmailSettings`, iPhone Shortcut builder, `paths` (admin / portal paths), `domain` (Cloudflare token + domain wizard: `DomainConfig`, `DomainChange`), `seed` |
 | `ops` | `HealthCheck` / `ResourceStat` / `BackupLog` / `CleanupRun`, health probes, `psutil` sampling, service alerts, **backup retention** (`retention.py`), beat-interval reconcile, Cloudflare `configure_dns` |
-| `agency` | **Agency panel** — 1:1 port of PAMP v1.5.3: `PanelAdmin` (reseller admins), `AdminLimit`, `UserTrafficSnapshot`, `SyncLog`, `AdminGroup`; sync + deleted-user tracking + enforcement; reseller portal (`ResellerSession`); accounting (`AdminPrice`, `LedgerEntry`, reports); group managers (`GroupManager`, `GroupManagerAssignment`, `ManagerSession`, `VolumeRequest` — own portal at `/agency/manager`, approvals) ([agency.md](agency.md)) |
+| `agency` | **Agency panel** — 1:1 port of PAMP v1.5.3: `PanelAdmin` (reseller admins), `AdminLimit`, `UserTrafficSnapshot`, `SyncLog`, `AdminGroup`; sync + deleted-user tracking + enforcement; reseller portal (`ResellerSession`); accounting (`AdminPrice`, `LedgerEntry`, reports); group managers (`GroupManager` → linked `Staff` with role *Group manager* since v1.25, `GroupManagerAssignment`, `VolumeRequest`, approvals; `ManagerSession` is legacy, unused) ([agency.md](agency.md)) |
 | `tickets` | **support tickets** — `TicketTopic` (+ staff topic scopes), `Ticket`, `TicketMessage`, `TicketAttachment`, `TicketEvent`; rules in `services.py` (active-service gate, open limit, reopen window, auto-close), notifications in `notify.py`, staff Telegram linking (`staff_link.py`), user API `/api/v1/tickets/`, staff API `/api/v1/admin/tickets/`, WebSocket `/ws/admin/tickets/` |
 | `crm` | **CRM** — `CustomerProfile` (lifecycle stage + manual override, owner, tags), notes, `FollowUpCase` (inactivity / lead / manual, reason, outcome, linked ticket), `CaseReason`, `MessageTemplate`, `CrmEvent` (timeline); stage rules + detection in `services.py`, hourly beat, links connection-problem tickets to open cases (`signals.py`); staff API `/api/v1/admin/crm/` |
-| `adminpanel` | operator API under `/api/v1/admin/` — staff JWT + `StaffPermission` (`perms_map` / `action_perms`), every management endpoint, SMS log, system/update, read-only `docs/*.md` for the Documentation page |
+| `adminpanel` | operator API under `/api/v1/admin/` — staff JWT + `StaffPermission` (`perms_map` / `action_perms`; a staff linked to a group manager is default-denied everywhere unless a view sets `group_manager_ok`), every management endpoint, SMS log, system/update, read-only `docs/*.md` for the Documentation page |
 
 ## Async — Celery beat schedule
 
@@ -487,3 +487,31 @@ password encrypted at rest. Throttles: anon 180/min, user 600/min, public reads
 that matters → `AuditLog`. Payments become approved only through
 `approve_payment`; SMS amounts match **exactly** (no tolerance). See
 `LICENSE` (proprietary) and [operations.md](operations.md).
+
+
+## Transactions — numbers and Super Admin delete (v1.25)
+
+* **Number.** `Payment.number` = the row id, written right after the insert (`Payment.save`) and
+  backfilled by migration `payments_sms.0009`; shown as `TX-000123` (`Payment.tx_number`) — first column
+  of `/panel/transactions`, the detail page, the CSV export (`GET admin/transactions/?export=csv`), the
+  customer's order history / checkout / receipt (`OrderSerializer.tx_number`), the bot order screen,
+  history and receipt reply, and the approve / reject notifications. Search: `?search=` matches the
+  number (`TX-000123`, `TX123`, `123`), user, name, phone, account name, gateway reference.
+* **Delete = void** (`apps/payments_sms/voiding.py`, Super Admin only — every other role gets 403 and
+  never sees the buttons): reason required; fields `voided_at / voided_by / void_reason /
+  void_service_action / void_prev_order_status`. The dialog (`GET transactions/<id>/delete-preview/`)
+  shows the linked order and service and asks: **keep** (default), **disable** (order → `cancelled`,
+  service disabled on PasarGuard) or **delete** (order → `cancelled`, service deleted on PasarGuard).
+  PasarGuard first; if it refuses nothing is voided (502). A still-pending payment always closes its
+  order so an SMS can never approve it; an unapplied scheduled renewal of a cancelled order is dropped;
+  `fulfill_order` skips cancelled orders; `approve_payment` / `reject_payment` refuse voided payments.
+  Bulk: `POST transactions/bulk-delete/ {ids, reason, service_action}` / `bulk-restore/ {ids}`.
+* **Left out of every figure**: `Payment.objects.live()` in the Transactions list (unless *Show deleted*,
+  `?deleted=1|only`, Super Admin), the review queue + live pending count, Accounting, card deposit
+  report, CRM Analytics (revenue, LTV, cohorts — orders whose payment is voided are not purchases),
+  CRM customer figures / retention win-back revenue, ticket customer context.
+* **Restore** within 30 days (`POST transactions/<id>/restore/`): payment counts again, the order status
+  comes back (a lapsed pending reservation becomes `expired`). PasarGuard changes are not undone and a
+  dropped scheduled renewal is not re-created (see the audit entry).
+* **Audit**: `payment.voided` / `payment.restored` (staff, time, reason, amount, TX, order, choice,
+  panel result); live event `payment_voided` / `payment_restored` on the staff payments socket.

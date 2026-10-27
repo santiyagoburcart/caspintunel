@@ -41,8 +41,11 @@ def test_seed_adds_permissions_and_the_gated_periodic_task():
 
     call_command("seed", verbosity=0)
     assert set(Permission.objects.filter(code__startswith="agency.").values_list("code", flat=True)) == {
-        "agency.view", "agency.manage", "agency.accounting"}
+        "agency.view", "agency.manage", "agency.accounting", "agency.group_manager"}
     assert Role.objects.get(name="Super Admin").permissions.filter(code="agency.manage").exists()
+    # v1.25: the group-manager code restricts — only the "Group manager" role holds it
+    assert not Role.objects.get(name="Super Admin").permissions.filter(code="agency.group_manager").exists()
+    assert list(Role.objects.get(name="Group manager").permissions.values_list("code", flat=True)) == ["agency.group_manager"]
     t = PeriodicTask.objects.get(name="agency: sync panel admins (PAMP)")
     assert t.task == "apps.agency.tasks.sync_panel_admins" and t.interval.every == 15
 

@@ -39,7 +39,7 @@ function LegacyHistory() {
             <div key={o.id} className="flex items-start justify-between gap-3 py-3">
               <div className="min-w-0">
                 <div className="truncate text-sm">{o.plan_name} · {label(t, 'o_', o.type)}</div>
-                <div className="text-xs text-muted">{jalali(o.created_at, true, lang)}</div>
+                <div className="text-xs text-muted">{jalali(o.created_at, true, lang)}{o.tx_number ? ` · ${o.tx_number}` : ''}</div>
                 {note && (
                   <div className="mt-1 text-xs" style={{ color: note[1] }}>
                     {t(note[0])}{o.reject_reason ? ` — ${o.reject_reason}` : ''}
@@ -112,7 +112,7 @@ function CaspianHistory() {
     const list = (rows || []).filter(FILTERS.find(([k]) => k === filter)[2])
     const s = q.trim().toLowerCase()
     return s ? list.filter((o) =>
-      String(o.id).includes(s) || (o.plan_name || '').toLowerCase().includes(s) ||
+      String(o.id).includes(s) || (o.tx_number || '').toLowerCase().includes(s) || (o.plan_name || '').toLowerCase().includes(s) ||
       (o.plan_name_en || '').toLowerCase().includes(s)) : list
   }, [rows, filter, q])
   const fc = (fn) => (rows || []).filter(fn).length
@@ -183,7 +183,7 @@ function Row({ o, t, lang, onReceipt }) {
   const icon = rejected ? H.timerOff : pendingPay ? H.clock : H.shield
   // expired = neutral gray (not a success, not an error); failed / rejected = red
   const tone = rejected || o.status === 'failed' ? 'danger' : pendingPay ? 'warning'
-    : o.status === 'expired' ? 'muted' : 'success'
+    : o.status === 'expired' || o.status === 'cancelled' ? 'muted' : 'success'
   const { num, unit } = tomanParts(o.amount_unique ?? o.amount, lang)
   const svc = o.requested_account_name
 
@@ -201,6 +201,7 @@ function Row({ o, t, lang, onReceipt }) {
           <div className="csp-hist-meta mono-num">
             <span><HI d={H.cal} w={13} />{jalali(o.created_at, true, lang)}</span>
             <span><HI d={H.tag} w={13} />{t('ord_id')}: #ORD-{o.id}</span>
+            {o.tx_number && <span><HI d={H.tag} w={13} />{t('tx_id')}: {o.tx_number}</span>}
             {svc && <span className="csp-hist-meta-svc"><HI d={H.dns} w={13} />{svc}</span>}
           </div>
           {rejected && o.reject_reason && <div className="csp-hist-reason">{o.reject_reason}</div>}
@@ -240,7 +241,7 @@ function ReceiptModal({ o, t, onClose }) {
     <div className="csp-hist-overlay" onClick={onClose}>
       <div className="csp-hist-modal" onClick={(e) => e.stopPropagation()}>
         <div className="csp-hist-modal-head">
-          <span>{t('receipt')} · #ORD-{o.id}</span>
+          <span>{t('receipt')} · #ORD-{o.id}{o.tx_number ? ` · ${o.tx_number}` : ''}</span>
           <button type="button" onClick={onClose} aria-label={t('close')}><HI d={H.x} w={18} /></button>
         </div>
         <div className="csp-hist-modal-body">

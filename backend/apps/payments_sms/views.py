@@ -78,7 +78,7 @@ class PaymentPendingListView(generics.ListAPIView):
 
     def get_queryset(self):
         return (
-            Payment.objects.filter(status=PaymentStatus.PENDING)
+            Payment.objects.live().filter(status=PaymentStatus.PENDING)
             .select_related("order", "order__user", "bank_card")
             .order_by("created_at")
         )

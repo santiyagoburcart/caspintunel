@@ -86,6 +86,8 @@ def approve_payment(payment_id: int, *, actor=None, bank_card=None) -> Payment:
     returned as is, and an order that is already paid/completed is never
     provisioned again."""
     payment = Payment.objects.select_for_update().select_related("order").get(pk=payment_id)
+    if payment.voided_at is not None:
+        raise PaymentError("this transaction was deleted — restore it first")
     if payment.status == PaymentStatus.APPROVED:
         return payment
     if payment.status not in (PaymentStatus.PENDING, PaymentStatus.REJECTED):
@@ -114,9 +116,9 @@ def approve_payment(payment_id: int, *, actor=None, bank_card=None) -> Payment:
     notify_user(
         payment.order.user,
         title="سفارش شما تأیید شد",
-        body=f"پرداخت سفارش #{payment.order_id} تأیید شد و سرویس شما در حال آماده‌سازی است.",
+        body=f"پرداخت سفارش #{payment.order_id} (تراکنش {payment.tx_number}) تأیید شد و سرویس شما در حال آماده‌سازی است.",
         title_en="Your order was confirmed",
-        body_en=f"Payment for order #{payment.order_id} was approved and your service is being prepared.",
+        body_en=f"Payment for order #{payment.order_id} (transaction {payment.tx_number}) was approved and your service is being prepared.",
         ntype=NotificationType.ORDER_CONFIRMED,
         via_site=True, via_bot=True, via_email=True,
     )
@@ -133,6 +135,8 @@ def reject_payment(payment_id: int, *, reason: str, actor=None) -> Payment:
     with the reason, never reused for a new purchase) and its unique amount is
     released. Buying again creates a new order with a new unique amount."""
     payment = Payment.objects.select_for_update().select_related("order").get(pk=payment_id)
+    if payment.voided_at is not None:
+        raise PaymentError("this transaction was deleted — restore it first")
     if payment.status == PaymentStatus.APPROVED:
         raise PaymentError("cannot reject an approved payment")
     order = Order.objects.select_for_update().get(pk=payment.order_id)
@@ -149,9 +153,9 @@ def reject_payment(payment_id: int, *, reason: str, actor=None) -> Payment:
     notify_user(
         order.user,
         title="پرداخت شما رد شد",
-        body=f"پرداخت سفارش #{order.id} رد شد. دلیل: {reason}\nبرای خرید دوباره یک سفارش جدید ثبت کنید.",
+        body=f"پرداخت سفارش #{order.id} (تراکنش {payment.tx_number}) رد شد. دلیل: {reason}\nبرای خرید دوباره یک سفارش جدید ثبت کنید.",
         title_en="Your payment was rejected",
-        body_en=f"Payment for order #{order.id} was rejected. Reason: {reason}\nPlace a new order to buy again.",
+        body_en=f"Payment for order #{order.id} (transaction {payment.tx_number}) was rejected. Reason: {reason}\nPlace a new order to buy again.",
         ntype=NotificationType.EVENT,
         via_site=True, via_bot=True, via_email=True,
     )

@@ -159,7 +159,7 @@ class CustomerView(_Staff):
             from apps.payments_sms.models import Payment
 
             out["payments"] = [{"id": x.id, "order": x.order_id, "amount": str(x.amount), "status": x.status, "method": x.method,
-                                "created_at": x.created_at} for x in Payment.objects.filter(order__user=u).order_by("-created_at")[:10]]
+                                "created_at": x.created_at} for x in Payment.objects.live().filter(order__user=u).order_by("-created_at")[:10]]
         return Response(out)
 
     def patch(self, request, pk):
@@ -198,7 +198,7 @@ def timeline(u, *, limit=150) -> list:
         items.append({"at": o.created_at, "kind": "order", "order": o.id, "type": o.type, "status": o.status,
                       "amount": str(o.amount_unique or o.amount), "plan": o.plan.name_fa if o.plan else None,
                       "plan_en": o.plan.name_en if o.plan else None})
-    for x in Payment.objects.filter(order__user=u).exclude(confirmed_at__isnull=True).order_by("-confirmed_at")[:limit]:
+    for x in Payment.objects.live().filter(order__user=u).exclude(confirmed_at__isnull=True).order_by("-confirmed_at")[:limit]:
         items.append({"at": x.confirmed_at, "kind": "payment", "status": x.status, "amount": str(x.amount), "method": x.method,
                       "by": x.confirmed_by})
     for t in u.tickets.select_related("topic").order_by("-created_at")[:limit]:

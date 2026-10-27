@@ -1,11 +1,16 @@
 from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.utils import timezone
 
 from apps.common.models import TimeStampedModel
 
 from .managers import UserManager, generate_referral_code
+
+# the only permission a group-manager staff holds (apps/agency/managers.py, v1.25)
+GROUP_MANAGER_PERM = "agency.group_manager"
+GROUP_MANAGER_ROLE = "Group manager"
 
 
 class Source(models.TextChoices):
@@ -172,9 +177,25 @@ class Staff(TimeStampedModel):
         self.last_login = timezone.now()
         self.save(update_fields=["last_login"])
 
+    @property
+    def group_manager_row(self):
+        """The agency GroupManager this staff signs in as (v1.25), or None."""
+        try:
+            return self.group_manager
+        except ObjectDoesNotExist:
+            return None
+
+    @property
+    def is_group_manager(self) -> bool:
+        """A staff linked to a group manager is restricted to its own groups: every
+        admin API refuses it unless the view opts in (StaffPermission)."""
+        return not self.is_superadmin and self.group_manager_row is not None
+
     def has_perm(self, code: str) -> bool:
         if self.is_superadmin:
             return True
+        if self.is_group_manager:
+            return code == GROUP_MANAGER_PERM
         if not self.role_id:
             return False
         return self.role.permissions.filter(code=code).exists()
