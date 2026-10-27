@@ -638,11 +638,16 @@ sequenceDiagram
     SA->>TX: reason (required) + choice (default keep)
     TX->>API: POST {id}/delete/ {reason, service_action}
     API->>API: Super Admin? (else 403) · reason? · not already deleted?
+    API->>API: service_action required (missing / unknown → 400)
+    API->>DB: BEGIN · lock payment + order
     opt disable / delete
         API->>PG: PUT user status=disabled  /  DELETE user
-        alt PasarGuard refuses
-            API-->>TX: 502 — nothing deleted
+        API->>PG: GET user (disabled? / 404?) — verify
+        alt refused / error / not verified
+            API->>DB: ROLLBACK · AuditLog payment.void_failed (+ PasarGuard calls)
+            API-->>TX: 502 "PasarGuard: … — nothing was deleted"
         end
+        API->>DB: service row disabled / deleted
     end
     API->>DB: order → cancelled (choice, or the payment was still pending) · drop unapplied renewal
     API->>DB: payment.voided_at / voided_by / void_reason / void_service_action

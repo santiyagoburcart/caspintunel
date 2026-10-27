@@ -77,7 +77,9 @@ export const T = {
     act_keep: 'سرویس بماند (پیش‌فرض)', act_disable: 'سفارش لغو و سرویس روی PasarGuard غیرفعال شود', act_delete: 'سفارش لغو و سرویس روی PasarGuard حذف شود (برگشت‌ناپذیر)',
     bulk_act_note: 'گزینهٔ سرویس برای هر تراکنشی که سرویس دارد اعمال می‌شود.',
     restore_title: 'بازگردانی تراکنش', restore_msg: 'تراکنش دوباره در فهرست و جمع‌ها حساب می‌شود و وضعیت سفارش برمی‌گردد. تغییرات PasarGuard برنمی‌گردد.',
-    done_del: 'حذف شد', done_restore: 'بازگردانده شد', bulk_res: '{ok} انجام شد، {failed} ناموفق', until: 'قابل بازگردانی تا',
+    done_del: 'حذف شد', done_restore: 'بازگردانده شد', will: 'آنچه انجام می‌شود',
+    res_kept: 'سرویس دست‌نخورده ماند', res_no_service: 'سرویسی نداشت', res_disabled: 'سرویس {u} روی PasarGuard غیرفعال شد',
+    res_deleted: 'سرویس {u} از PasarGuard حذف شد', res_missing_on_panel: 'سرویس {u} روی PasarGuard نبود؛ اینجا غیرفعال شد', bulk_res: '{ok} انجام شد، {failed} ناموفق', until: 'قابل بازگردانی تا',
   },
   en: {
     title: 'Transactions',
@@ -98,7 +100,9 @@ export const T = {
     act_keep: 'Keep the service (default)', act_disable: 'Cancel the order and disable the service on PasarGuard', act_delete: 'Cancel the order and delete the service on PasarGuard (cannot be undone)',
     bulk_act_note: 'The service choice applies to each transaction that has a service.',
     restore_title: 'Restore transaction', restore_msg: 'The transaction counts again in the list and totals and its order status comes back. PasarGuard changes are not undone.',
-    done_del: 'Deleted', done_restore: 'Restored', bulk_res: '{ok} done, {failed} failed', until: 'Restorable until',
+    done_del: 'Deleted', done_restore: 'Restored', will: 'What will happen',
+    res_kept: 'service left as it was', res_no_service: 'it had no service', res_disabled: 'service {u} disabled on PasarGuard',
+    res_deleted: 'service {u} deleted from PasarGuard', res_missing_on_panel: 'service {u} was not on PasarGuard; disabled here', bulk_res: '{ok} done, {failed} failed', until: 'Restorable until',
   },
 }
 
@@ -139,13 +143,19 @@ function ServiceChoice({ box, s, actions }) {
     <div className="tx-choice" role="radiogroup">
       {actions.map((a) => (
         <label key={a} className="tx-choice-i" data-on={v === a || undefined} data-danger={a === 'delete' || undefined}>
-          <input type="radio" name="tx-svc" checked={v === a} onChange={() => pick(a)} />
+          <input type="radio" name="tx-svc" value={a} checked={v === a} onChange={() => pick(a)} />
           <span>{s['act_' + a]}</span>
         </label>
       ))}
+      <p className="tx-will" data-danger={v === 'delete' || undefined}>{s.will}: <b>{s['act_' + v]}</b></p>
     </div>
   )
 }
+
+// the option the person SEES checked is the one sent (v1.25.1: a lost choice once became "keep")
+const chosen = (box) => document.querySelector('input[name="tx-svc"]:checked')?.value || box.v
+
+const resultText = (s, r, svcName) => (r && s['res_' + r] ? s['res_' + r].replace('{u}', svcName || '') : '')
 
 function DeleteDetails({ p, s, t, lang }) {
   return (
@@ -165,6 +175,7 @@ export function useTxDelete(s, t, lang, done) {
     let p
     try { p = (await api.get(`/admin/transactions/${r.id}/delete-preview/`)).data } catch (e) { toast.error(apiError(e)); return }
     const box = { v: p.default_action }
+    let res
     const ok = await confirm({
       tone: 'danger', title: s.del_title, message: s.del_msg, confirmLabel: s.del,
       reason: { label: s.reason, required: true },
@@ -175,9 +186,9 @@ export function useTxDelete(s, t, lang, done) {
           <ServiceChoice box={box} s={s} actions={p.actions} />
         </div>
       ),
-      action: async (reason) => { await api.post(`/admin/transactions/${r.id}/delete/`, { reason, service_action: box.v }) },
+      action: async (reason) => { res = (await api.post(`/admin/transactions/${r.id}/delete/`, { reason, service_action: chosen(box) })).data },
     })
-    if (ok) { toast.success(s.done_del); done() }
+    if (ok) { toast.success(`${s.done_del} · ${resultText(s, res?.service_result, p.service?.panel_username)}`); done() }
   }
   const restore = async (r) => {
     const ok = await confirm({
@@ -204,7 +215,7 @@ export function useTxDelete(s, t, lang, done) {
           <ServiceChoice box={box} s={s} actions={['keep', 'disable', 'delete']} />
         </div>
       ),
-      action: async (reason) => { res = (await api.post('/admin/transactions/bulk-delete/', { ids: rows.map((r) => r.id), reason, service_action: box.v })).data },
+      action: async (reason) => { res = (await api.post('/admin/transactions/bulk-delete/', { ids: rows.map((r) => r.id), reason, service_action: chosen(box) })).data },
     })
     if (ok && res) {
       const msg = s.bulk_res.replace('{ok}', digits(res.ok, lang)).replace('{failed}', digits(res.failed, lang))
@@ -426,6 +437,8 @@ const CSS = `
 .tx-choice-i[data-on] { border-color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 8%, transparent); }
 .tx-choice-i[data-on][data-danger] { border-color: var(--c-danger); background: color-mix(in srgb, var(--c-danger) 8%, transparent); }
 .tx-choice-i input { margin-top: 3px; }
+.tx-will { font-size: 12.5px; margin-top: 2px; }
+.tx-will[data-danger] b { color: var(--c-danger-fg); }
 .tx-bulk-list { font-size: 12px; max-height: 140px; overflow: auto; }
 .tx-filter-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
 .tx-tool-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 10px; font-size: 12.5px; font-weight: 600;

@@ -97,79 +97,143 @@ class _Lock:
         cache.delete(self.key)
 
 
-def _panel_step(order, action: str, staff) -> dict:
-    """Panel first (disable / delete), then our rows mirror it. Raises VoidError on failure
-    so nothing is voided when PasarGuard refused."""
-    from apps.panel.exceptions import PanelError
-    from apps.panel.services import delete_service, disable_service_on_panel
-
-    svc = order.service if order.service_id else None
-    if svc is None or action not in CANCELLING:
+def _short(api_user) -> dict:
+    """What we keep of a PasarGuard user in the audit — never the subscription link."""
+    if not isinstance(api_user, dict):
         return {}
+    return {k: api_user.get(k) for k in ("username", "status", "used_traffic", "data_limit", "admin") if k in api_user}
+
+
+def _panel_step(order, action: str, staff) -> dict:
+    """PasarGuard first, verified by reading the account back; our rows then mirror it.
+    Every call is recorded (call, result / error) for the audit. Any failure raises
+    VoidError and — as this runs inside the void's transaction — nothing is voided."""
+    from apps.panel.exceptions import PanelError, PanelNotFound
+    from apps.panel.mappers import apply_user_to_service
+    from apps.panel.models import Service, ServiceStatus
+    from apps.panel.services import client_for
+
+    svc = Service.objects.select_for_update().select_related("panel").filter(pk=order.service_id).first() \
+        if order.service_id else None
+    if action not in CANCELLING:
+        return {"service_result": "kept" if svc else "no_service", "panel_calls": []}
+    if svc is None:
+        raise VoidError("this order has no service to disable or delete", "invalid", "service_action")
     info = _service_info(order)
+    name = svc.panel_username
+    calls: list[dict] = []
+
+    def fail(msg, exc=None):
+        calls.append({"error": msg})
+        e = VoidError(f"PasarGuard: {msg} — nothing was deleted", "panel_error")
+        e.calls = calls
+        raise e from exc
+
     try:
-        if action == VoidServiceAction.DISABLE:
-            res = disable_service_on_panel(svc)
-            write_audit(action="service.status_changed", staff=staff, target=svc,
-                        detail={"status": "disabled", "why": "transaction deleted"})
-            return {"service": info, "panel_result": res}
-        with transaction.atomic():
-            delete_service(svc.id, staff=staff)
-        return {"service": info, "panel_result": "deleted"}
+        client = client_for(svc.panel)
+        if action == VoidServiceAction.DELETE:
+            try:
+                client.delete_user(name)
+                calls.append({"call": f"DELETE /api/user/{name}", "result": "ok"})
+            except PanelNotFound:
+                calls.append({"call": f"DELETE /api/user/{name}", "result": "404 (already gone)"})
+            try:
+                left = client.get_user(name)
+            except PanelNotFound:
+                calls.append({"call": f"GET /api/user/{name}", "result": "404 — deleted"})
+            else:
+                calls.append({"call": f"GET /api/user/{name}", "result": _short(left)})
+                fail(f"the account {name} still exists after the delete")
+            write_audit(action="service.deleted", staff=staff, target=svc,
+                        detail={"panel_username": name, "panel": svc.panel_id, "why": "transaction deleted"})
+            svc.delete()
+            return {"service": info, "service_result": "deleted", "panel_calls": calls}
+        # disable
+        try:
+            client.update_user(name, {"status": ServiceStatus.DISABLED})
+            calls.append({"call": f"PUT /api/user/{name} status=disabled", "result": "ok"})
+            back = client.get_user(name)
+        except PanelNotFound:
+            calls.append({"call": f"PUT /api/user/{name} status=disabled", "result": "404 (not on the panel)"})
+            svc.status = ServiceStatus.DISABLED
+            svc.save(update_fields=["status", "updated_at"])
+            return {"service": info, "service_result": "missing_on_panel", "panel_calls": calls}
+        calls.append({"call": f"GET /api/user/{name}", "result": _short(back)})
+        if (back or {}).get("status") != ServiceStatus.DISABLED:
+            fail(f"the account {name} is still “{(back or {}).get('status')}” after disabling")
+        changed = apply_user_to_service(svc, back, svc.panel)
+        svc.last_synced_at = timezone.now()
+        svc.save(update_fields=sorted(set(changed) | {"last_synced_at", "updated_at"}))
+        write_audit(action="service.status_changed", staff=staff, target=svc,
+                    detail={"status": "disabled", "why": "transaction deleted"})
+        return {"service": info, "service_result": "disabled", "panel_calls": calls}
+    except VoidError:
+        raise
     except PanelError as exc:
-        raise VoidError(f"PasarGuard refused: {exc} — nothing was deleted", "panel_error") from exc
+        fail(f"{type(exc).__name__}: {exc}", exc)
+    except Exception as exc:  # noqa: BLE001 — transport / unexpected: never void on a half-known state
+        fail(f"{type(exc).__name__}: {exc}", exc)
 
 
-def void_payment(payment_id: int, *, staff, reason: str, service_action: str = VoidServiceAction.KEEP) -> Payment:
+def void_payment(payment_id: int, *, staff, reason: str, service_action: str | None) -> Payment:
+    """service_action is REQUIRED (keep | disable | delete) — never defaulted here, so a
+    lost choice in a client is refused instead of silently becoming "keep"."""
     from apps.orders.models import Order, OrderStatus, ScheduledRenewal
 
     require_superadmin(staff)
     reason = (reason or "").strip()
     if len(reason) < 3:
         raise VoidError("a reason is required", "invalid", "reason")
-    service_action = service_action or VoidServiceAction.KEEP
     if service_action not in VoidServiceAction.values:
-        raise VoidError("unknown choice for the order / service", "invalid", "service_action")
-    p0 = Payment.objects.select_related("order", "order__service", "order__service__panel").filter(pk=payment_id).first()
+        raise VoidError("choose what happens to the order / service: keep, disable or delete", "invalid", "service_action")
+    p0 = Payment.objects.filter(pk=payment_id).first()
     if p0 is None:
         raise VoidError("transaction not found", "not_found")
     if p0.voided_at is not None:
         raise VoidError("this transaction is already deleted", "already")
-    if service_action in CANCELLING and not p0.order.service_id:
-        raise VoidError("this order has no service to disable or delete", "invalid", "service_action")
 
     with _Lock(p0.pk):
-        panel = _panel_step(p0.order, service_action, staff)
-        with transaction.atomic():
-            p = Payment.objects.select_for_update().get(pk=p0.pk)
-            if p.voided_at is not None:
-                raise VoidError("this transaction is already deleted", "already")
-            order = Order.objects.select_for_update().get(pk=p.order_id)
-            cancel = service_action in CANCELLING or p.status == PaymentStatus.PENDING
-            dropped_renewal = None
-            prev = ""
-            if cancel and order.status != OrderStatus.CANCELLED:
-                prev = order.status
-                order.status = OrderStatus.CANCELLED
-                order.sync_unique_lock()            # releases a still-reserved unique amount
-                order.save(update_fields=["status", "amount_unique_lock", "updated_at"])
-                sr = ScheduledRenewal.objects.filter(order=order, applied_at__isnull=True).first()
-                if sr is not None:
-                    dropped_renewal = sr.id
-                    sr.delete()
-            p.voided_at = timezone.now()
-            p.voided_by = staff
-            p.void_reason = reason[:255]
-            p.void_service_action = service_action
-            p.void_prev_order_status = prev
-            p.save(update_fields=["voided_at", "voided_by", "void_reason", "void_service_action",
-                                  "void_prev_order_status", "updated_at"])
-            write_audit(action="payment.voided", staff=staff, target=p, detail={
-                "tx": p.tx_number, "amount": str(p.amount), "status": p.status, "reason": p.void_reason,
-                "order": order.id, "service_action": service_action, "order_cancelled": bool(prev),
-                "order_prev_status": prev, "dropped_scheduled_renewal": dropped_renewal, **panel})
-            push_payments_event("payment_voided", order_id=order.id, payment_id=p.id,
-                                by=getattr(staff, "username", None))
+        try:
+            with transaction.atomic():
+                p = Payment.objects.select_for_update().get(pk=p0.pk)
+                if p.voided_at is not None:
+                    raise VoidError("this transaction is already deleted", "already")
+                order = Order.objects.select_for_update().select_related("service", "service__panel").get(pk=p.order_id)
+                # PasarGuard inside the transaction: a refusal rolls back everything below
+                panel = _panel_step(order, service_action, staff)
+                order.refresh_from_db()
+                cancel = service_action in CANCELLING or p.status == PaymentStatus.PENDING
+                dropped_renewal = None
+                prev = ""
+                if cancel and order.status != OrderStatus.CANCELLED:
+                    prev = order.status
+                    order.status = OrderStatus.CANCELLED
+                    order.sync_unique_lock()            # releases a still-reserved unique amount
+                    order.save(update_fields=["status", "amount_unique_lock", "updated_at"])
+                    sr = ScheduledRenewal.objects.filter(order=order, applied_at__isnull=True).first()
+                    if sr is not None:
+                        dropped_renewal = sr.id
+                        sr.delete()
+                p.voided_at = timezone.now()
+                p.voided_by = staff
+                p.void_reason = reason[:255]
+                p.void_service_action = service_action
+                p.void_prev_order_status = prev
+                p.save(update_fields=["voided_at", "voided_by", "void_reason", "void_service_action",
+                                      "void_prev_order_status", "updated_at"])
+                write_audit(action="payment.voided", staff=staff, target=p, detail={
+                    "tx": p.tx_number, "amount": str(p.amount), "status": p.status, "reason": p.void_reason,
+                    "order": order.id, "service_action": service_action, "order_cancelled": bool(prev),
+                    "order_prev_status": prev, "dropped_scheduled_renewal": dropped_renewal, **panel})
+                push_payments_event("payment_voided", order_id=order.id, payment_id=p.id,
+                                    by=getattr(staff, "username", None))
+        except VoidError as exc:
+            if getattr(exc, "calls", None):
+                # the refusal is audited (outside the rolled-back transaction) with every PasarGuard call
+                write_audit(action="payment.void_failed", staff=staff, target=p0, detail={
+                    "tx": p0.tx_number, "service_action": service_action, "error": str(exc), "panel_calls": exc.calls})
+            raise
+    p.service_result = panel.get("service_result")
     return p
 
 

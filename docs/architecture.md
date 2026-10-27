@@ -502,7 +502,12 @@ that matters → `AuditLog`. Payments become approved only through
   void_service_action / void_prev_order_status`. The dialog (`GET transactions/<id>/delete-preview/`)
   shows the linked order and service and asks: **keep** (default), **disable** (order → `cancelled`,
   service disabled on PasarGuard) or **delete** (order → `cancelled`, service deleted on PasarGuard).
-  PasarGuard first; if it refuses nothing is voided (502). A still-pending payment always closes its
+  The choice is **required** by the API (missing / unknown → 400, never a silent "keep" — v1.25.1).
+  PasarGuard runs inside the void's DB transaction and is **verified by reading the account back**
+  (delete → GET must 404; disable → status must be `disabled`); any refusal, transport error or
+  unverified result rolls everything back (502 "PasarGuard: … — nothing was deleted") and is audited as
+  `payment.void_failed` with every PasarGuard call. The response says what happened
+  (`service_result`: kept | no_service | disabled | deleted | missing_on_panel), shown in the toast. A still-pending payment always closes its
   order so an SMS can never approve it; an unapplied scheduled renewal of a cancelled order is dropped;
   `fulfill_order` skips cancelled orders; `approve_payment` / `reject_payment` refuse voided payments.
   Bulk: `POST transactions/bulk-delete/ {ids, reason, service_action}` / `bulk-restore/ {ids}`.

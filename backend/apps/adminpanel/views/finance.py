@@ -96,11 +96,14 @@ class TransactionViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, views
         from apps.payments_sms.voiding import VoidError, void_payment
 
         try:
+            # the option is passed through as sent — missing / unknown → 400, never a silent "keep"
             p = void_payment(pk, staff=request.user, reason=request.data.get("reason", ""),
-                             service_action=request.data.get("service_action") or "keep")
+                             service_action=request.data.get("service_action"))
         except VoidError as exc:
             return self._void_err(exc)
-        return Response(TransactionSerializer(Payment.objects.get(pk=p.pk)).data)
+        data = dict(TransactionSerializer(Payment.objects.get(pk=p.pk)).data)
+        data["service_result"] = p.service_result      # kept | no_service | disabled | deleted | missing_on_panel
+        return Response(data)
 
     @extend_schema(request=None, responses=TransactionSerializer, summary="Restore a deleted transaction (Super Admin)")
     @action(detail=True, methods=["post"], url_path="restore")
@@ -116,8 +119,9 @@ class TransactionViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, views
     @extend_schema(request=dict, responses=dict, summary="Delete (void) several transactions (Super Admin)")
     @action(detail=False, methods=["post"], url_path="bulk-delete")
     def bulk_void(self, request):
-        """{ids, reason, service_action}: the choice applies to each row that has a service;
-        rows without one are deleted with "keep". One result per id."""
+        """{ids, reason, service_action} (required): the choice applies to each row that has a
+        service; a row without one is deleted with "keep" and says so (service_result
+        "no_service"). One result per id; a PasarGuard refusal leaves that row untouched."""
         from apps.payments_sms.voiding import VoidError, require_superadmin, void_payment
 
         try:
@@ -127,14 +131,17 @@ class TransactionViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, views
         ids = _ids(request.data.get("ids"))
         if not ids:
             return Response({"detail": "pick at least one transaction", "field": "ids"}, status=400)
-        action_ = request.data.get("service_action") or "keep"
+        action_ = request.data.get("service_action")
+        if action_ not in ("keep", "disable", "delete"):
+            return Response({"detail": "choose what happens to the orders / services: keep, disable or delete",
+                             "code": "invalid", "field": "service_action"}, status=400)
         out = []
         for pid in ids:
             try:
                 has_service = Payment.objects.filter(pk=pid, order__service__isnull=False).exists()
-                void_payment(pid, staff=request.user, reason=request.data.get("reason", ""),
-                             service_action=action_ if has_service else "keep")
-                out.append({"id": pid, "ok": True})
+                p = void_payment(pid, staff=request.user, reason=request.data.get("reason", ""),
+                                 service_action=action_ if has_service else "keep")
+                out.append({"id": pid, "ok": True, "tx_number": p.tx_number, "service_result": p.service_result})
             except VoidError as exc:
                 if exc.field == "reason":
                     return self._void_err(exc)
