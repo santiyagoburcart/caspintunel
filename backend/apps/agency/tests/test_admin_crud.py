@@ -158,11 +158,11 @@ def test_modify_sends_only_changed_fields_and_never_logs_password(panel):
     responses.add(responses.PUT, f"{BASE}/api/admin/ali", json=admin_json("ali"))
     c = client(["agency.manage"])
     assert c.get("/api/v1/admin/agency/panel-admins/ali/").json()["role_name"] == "reseller"
-    r = c.patch("/api/v1/admin/agency/panel-admins/ali/", {"note": "new note", "password": "Another-Pass1", "status": "disabled"},
+    r = c.patch("/api/v1/admin/agency/panel-admins/ali/", {"note": "new note", "password": "Another-Pass#12", "status": "disabled"},
                 format="json")
     assert r.status_code == 200 and r.json()["password_changed"] is True
     put = json.loads([x.request.body for x in responses.calls if x.request.method == "PUT"][0])
-    assert put == {"note": "new note", "password": "Another-Pass1", "status": "disabled"}
+    assert put == {"note": "new note", "password": "Another-Pass#12", "status": "disabled"}
     assert PanelAdmin.objects.get(username="ali").status == "disabled"
     a = AuditLog.objects.get(action="agency.admin_updated")
     assert a.detail["password_reset"] is True and "Another" not in json.dumps(a.detail)

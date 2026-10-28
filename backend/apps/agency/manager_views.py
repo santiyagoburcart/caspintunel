@@ -39,6 +39,11 @@ class _Mgr(APIView):
     def m(self):
         return self.request.user.group_manager_row
 
+    def need(self, code: str):
+        """v1.27: each ability is its own permission of the manager's role (Roles page)."""
+        if not self.request.user.has_perm(code):
+            raise M.ManagerError("your role does not allow this", "forbidden", None, permission=code)
+
     def handle_exception(self, exc):
         if isinstance(exc, M.ManagerError):
             return _err(exc)
@@ -124,11 +129,12 @@ class ManagerMeView(_Mgr):
             x = pend.setdefault(p["admin"], {"gb": 0, "count": 0})
             x["gb"] += p["gb"]; x["count"] += 1
         groups = []
+        see_admins = self.request.user.has_perm("agency.gm.view_admins")
         for asg in M.assignments(m):
             g = asg.group
             admins = {a.username: a for a in PanelAdmin.objects.filter(username__in=g.get_all_usernames())}
             rows = []
-            for u in g.get_all_usernames():
+            for u in (g.get_all_usernames() if see_admins else []):
                 if u in admins:
                     r = _admin_row(admins[u], cat)
                     r.update({"balance": bal.get(u, 0), "pending": pend.get(u, {"gb": 0, "count": 0}),
@@ -137,13 +143,15 @@ class ManagerMeView(_Mgr):
             groups.append({"id": g.id, "name": M.group_title(g), "owner": g.owner_username, "admins": rows,
                            "roles": [M._role_view(r, cat) for r in asg.allowed_role_ids
                                      if not M._role_view(r, cat)["is_owner"]],
-                           "total_debt": sum((bal.get(u, 0) for u in g.get_all_usernames()), 0)})
+                           "total_debt": sum((bal.get(u, 0) for u in g.get_all_usernames()), 0)
+                           if self.request.user.has_perm("agency.gm.accounting") else None})
         staff = self.request.user
         return Response({"manager": {"username": m.username, "display_name": m.display_name,
                                      "role": staff.role.name if staff.role_id else "",
                                      "role_fa": (staff.role.name_fa or "") if staff.role_id else "",
                                      "max_unapproved_gb": m.max_unapproved_gb},
                          "groups": groups, "cap": M.cap_state(m), "roles_live": cat is not None,
+                         "permissions": self.request.user.gm_permissions(),
                          "writes_enabled": _writes()})
 
 
@@ -155,26 +163,48 @@ def _writes() -> bool:
 
 class ManagerAdminCreateView(_Mgr):
     def post(self, request):
+        self.need("agency.gm.create_admin")
         out = M.create_admin(self.m, request.data or {})
         return Response({**out, "ok": True}, status=201)
 
 
 class ManagerAdminActionView(_Mgr):
-    ACTIONS = {"add-volume", "password", "inbounds"}
+    ACTIONS = {"add-volume", "password", "inbounds", "enable", "disable", "profile", "users"}
+
+    def get(self, request, username, action):
+        q = request.query_params
+        if action == "profile":
+            self.need("agency.gm.create_admin")
+            return Response(M.admin_profile(self.m, username))
+        if action == "users":
+            self.need("agency.gm.view_users")
+            return Response(M.admin_users(self.m, username, search=q.get("search") or "", status=q.get("status") or "",
+                                          offset=q.get("offset") or 0, limit=q.get("limit") or 20))
+        raise M.forbidden()
 
     def post(self, request, username, action):
         d = request.data or {}
+        if action in ("enable", "disable"):
+            self.need("agency.gm.toggle_admin")
+            return Response(M.set_admin_status(self.m, username, action == "enable"))
+        if action == "profile":
+            self.need("agency.gm.create_admin")
+            return Response(M.update_admin_profile(self.m, username, d))
         if action == "add-volume":
+            self.need("agency.gm.add_volume")
             return Response({**M.add_volume(self.m, username, d.get("gb")), "ok": True})
         if action == "password":
+            self.need("agency.gm.admin_password")
             return Response(M.change_password(self.m, username, d.get("password")))
         if action == "inbounds":
+            self.need("agency.gm.admin_role")
             return Response(M.change_inbounds(self.m, username, d.get("role_id")))
         raise M.forbidden()
 
 
 class ManagerAdminStatementView(_Mgr):
     def get(self, request, username):
+        self.need("agency.gm.accounting")
         M.assignment_for_admin(self.m, username)
         frm, to = self.range()
         st = M.admin_statement(username, frm, to)
@@ -186,6 +216,7 @@ class ManagerAdminStatementView(_Mgr):
 
 class ManagerAccountingView(_Mgr):
     def get(self, request):
+        self.need("agency.gm.accounting")
         m = self.m
         gid = request.query_params.get("group")
         asgs = [M.assignment_for_group(m, gid)] if gid else M.assignments(m)
@@ -208,6 +239,7 @@ class ManagerAccountingView(_Mgr):
 
 class ManagerGroupStatementView(_Mgr):
     def get(self, request, group_id):
+        self.need("agency.gm.accounting")
         a = M.assignment_for_group(self.m, group_id)
         frm, to = self.range()
         st = M.group_statement(a.group, frm, to)
@@ -219,6 +251,7 @@ class ManagerGroupStatementView(_Mgr):
 
 class ManagerActivityView(_Mgr):
     def get(self, request):
+        self.need("agency.gm.activity")
         gid = request.query_params.get("group")
         ids = [M.assignment_for_group(self.m, gid).group_id] if gid else [a.group_id for a in M.assignments(self.m)]
         return Response({"results": M.activity(ids)})

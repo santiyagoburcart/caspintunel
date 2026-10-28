@@ -12,7 +12,7 @@ from django.conf import settings as dj_settings
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-from apps.accounts.models import Permission, Role
+from apps.accounts.models import GM_PERMS, Permission, Role
 from apps.settings_app.models import Page, Setting, SiteConfig, Theme, ValueType
 from apps.telegram.models import BotType, TelegramConfig
 
@@ -50,6 +50,8 @@ PERMISSIONS = [
     ("discounts.manage", "Discount codes: create, edit, disable"),
     # v1.25: held only by the "Group manager" role; never part of Super Admin (it restricts, not grants)
     ("agency.group_manager", "Group manager: own groups only (agency admins, volume, accounting)"),
+    # v1.27: one permission per group-manager ability (apps.accounts.models.GM_PERMS)
+    *[(code, en) for code, (en, _fa) in GM_PERMS.items()],
 ]
 
 # v1.25.2: Persian labels — the panel shows these when its language is fa
@@ -85,6 +87,7 @@ PERMISSIONS_FA = {
     "crm.manage": "CRM: پرونده‌ها، پیام‌ها، یادداشت‌ها، مسئول‌ها، مراحل، تنظیمات",
     "discounts.view": "کدهای تخفیف: دیدن کدها و گزارش آن‌ها",
     "discounts.manage": "کدهای تخفیف: ساخت، ویرایش، غیرفعال‌کردن",
+    **{code: fa for code, (_en, fa) in GM_PERMS.items()},
     "agency.group_manager": "مدیر گروه: فقط گروه‌های خودش (ادمین‌های نماینده، حجم، حسابداری)",
 }
 # built-in roles: (name_fa, description_fa) — written only while still blank
@@ -251,7 +254,8 @@ class Command(BaseCommand):
         super_role, _ = Role.objects.get_or_create(
             name="Super Admin", defaults={"description": "Full access"}
         )
-        super_role.permissions.set([p for c, p in perms.items() if c != "agency.group_manager"])
+        # the group-manager codes restrict a manager; they mean nothing for Super Admin
+        super_role.permissions.set([p for c, p in perms.items() if c != "agency.group_manager" and c not in GM_PERMS])
 
         # bootstrap a Staff account from the Django superuser env (panel login)
         su_name = os.environ.get("DJANGO_SUPERUSER_USERNAME", "")
@@ -280,10 +284,15 @@ class Command(BaseCommand):
             ticketing_role.permissions.set([perms[c] for c in TICKETING_PERMS])
 
         # v1.25: group managers sign in to /panel/ as staff with this role (apps/agency/managers.py)
-        gm_role, _ = Role.objects.get_or_create(
+        gm_role, gm_created = Role.objects.get_or_create(
             name="Group manager", defaults={"description": "Group managers — own agency groups only"}
         )
-        gm_role.permissions.set([perms["agency.group_manager"]])
+        # v1.27: every ability on creation; afterwards the operator's per-role choices are kept
+        # (migration agency.0009 gave the existing role all of them once)
+        if gm_created:
+            gm_role.permissions.set([perms["agency.group_manager"], *[perms[c] for c in GM_PERMS]])
+        else:
+            gm_role.permissions.add(perms["agency.group_manager"])
 
         for role_name, (fa_name, fa_desc) in ROLES_FA.items():
             Role.objects.filter(name=role_name, name_fa="").update(name_fa=fa_name)

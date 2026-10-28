@@ -73,12 +73,58 @@ def is_agency_panel(panel) -> bool:
         return False
 
 
+# Admin password rule (v1.27) — PasarGuard refuses weak admin passwords; this is checked
+# BEFORE calling it, the same in the panel (lib/adminPassword.js): at least 12 characters,
+# 2+ upper-case, 2+ lower-case, 2+ digits, 1+ special of SPECIALS, not containing the username.
+PW_MIN = 12
+SPECIALS = "#.$@!%&*-_+=?"
+_UP, _LO, _DG = "ABCDEFGHJKLMNPQRSTUVWXYZ", "abcdefghijkmnopqrstuvwxyz", "23456789"
+PW_RULE_FA = ("رمز ادمین باید حداقل ۱۲ نویسه باشد و دست‌کم ۲ حرف بزرگ انگلیسی، ۲ حرف کوچک، ۲ رقم و "
+              "یک نماد از # . $ @ ! % & * - _ + = ? داشته باشد و نام کاربری در آن نباشد.")
+PW_RULE_EN = ("Admin password: at least 12 characters with 2+ upper-case, 2+ lower-case, 2+ digits and one of "
+              "# . $ @ ! % & * - _ + = ? — and not containing the username.")
+
+
+def password_problem(pw: str, username: str = "") -> str | None:
+    """None = fine, else a short reason code."""
+    pw = str(pw or "")
+    if len(pw) < PW_MIN:
+        return "length"
+    if sum(c.isupper() for c in pw) < 2:
+        return "upper"
+    if sum(c.islower() for c in pw) < 2:
+        return "lower"
+    if sum(c.isdigit() for c in pw) < 2:
+        return "digits"
+    if not any(c in SPECIALS for c in pw):
+        return "special"
+    if any(c.isspace() for c in pw) or any(ord(c) > 126 for c in pw):
+        return "charset"
+    if username and username.lower() in pw.lower():
+        return "username"
+    return None
+
+
+def check_password(pw, username: str = "") -> str:
+    reason = password_problem(pw, username)
+    if reason:
+        err = AdminCrudError(PW_RULE_EN, "weak_password", "password")
+        err.reason, err.message_fa = reason, PW_RULE_FA
+        raise err
+    return str(pw)
+
+
 def generate_password(length: int = 16) -> str:
-    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"
-    while True:
-        pw = "".join(secrets.choice(alphabet) for _ in range(length))
-        if any(c.isdigit() for c in pw) and any(c.isupper() for c in pw) and any(c.islower() for c in pw):
-            return pw
+    """A password PasarGuard accepts: 2+ of each class, 2 specials, shuffled."""
+    length = max(length, PW_MIN)
+    pick = [secrets.choice(_UP) for _ in range(2)] + [secrets.choice(_LO) for _ in range(2)] + \
+           [secrets.choice(_DG) for _ in range(2)] + [secrets.choice(SPECIALS) for _ in range(2)]
+    pool = _UP + _LO + _DG
+    pick += [secrets.choice(pool) for _ in range(length - len(pick))]
+    for i in range(len(pick) - 1, 0, -1):                       # Fisher–Yates with secrets
+        j = secrets.randbelow(i + 1)
+        pick[i], pick[j] = pick[j], pick[i]
+    return "".join(pick)
 
 
 def _err(exc: PanelError) -> AdminCrudError:
@@ -171,7 +217,7 @@ def _int_or_none(v, field):
         raise AdminCrudError(f"{field} must be a whole number", "invalid", field)
 
 
-def build_payload(data: dict, *, creating: bool) -> dict:
+def build_payload(data: dict, *, creating: bool, username: str = "") -> dict:
     """Validate the form → the PasarGuard AdminCreate / AdminModify body. Only keys
     present in `data` are sent on modify."""
     p: dict = {}
@@ -181,10 +227,7 @@ def build_payload(data: dict, *, creating: bool) -> dict:
             raise AdminCrudError("username: 3–32 letters, digits or _ . @ -", "username", "username")
         p["username"] = username
     if "password" in data and data.get("password") not in (None, ""):
-        pw = str(data["password"])
-        if len(pw) < 8:
-            raise AdminCrudError("password: at least 8 characters", "password", "password")
-        p["password"] = pw
+        p["password"] = check_password(data["password"], str(data.get("username") or username or ""))
     elif creating:
         raise AdminCrudError("password is required", "password", "password")
     if "role_id" in data or creating:
@@ -307,7 +350,7 @@ def create(panel, data: dict, *, by: str = "", charge: bool = True, source: str 
 
 def modify(panel, username: str, data: dict) -> dict:
     _gate()
-    payload = build_payload(data, creating=False)
+    payload = build_payload(data, creating=False, username=username)
     if not payload:
         raise AdminCrudError("nothing to change", "empty")
     c = PasarGuardClient(panel)

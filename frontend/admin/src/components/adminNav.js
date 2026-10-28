@@ -49,22 +49,24 @@ export const CASPIAN_GROUPS = [
 // page is hidden here and refused by the server (403).
 export const GM_GROUPS = [
   ['nav_group_gm', [
-    ['/my-groups', 'gm_admins', null, 'agency'],
-    ['/my-groups/new', 'gm_new_admin', null, 'users'],
-    ['/my-groups/accounting', 'gm_accounting', null, 'accounting'],
-    ['/my-groups/activity', 'gm_activity', null, 'monitoring'],
+    ['/my-groups', 'gm_admins', 'agency.gm.view_admins', 'agency'],
+    ['/my-groups/new', 'gm_new_admin', 'agency.gm.create_admin', 'users'],
+    ['/my-groups/accounting', 'gm_accounting', 'agency.gm.accounting', 'accounting'],
+    ['/my-groups/activity', 'gm_activity', 'agency.gm.activity', 'monitoring'],
     ['/my-groups/settings', 'settings', null, 'settings'],
   ]],
 ]
 export const GM_BOTNAV = [
-  ['/my-groups', 'gm_admins', null, 'agency'],
-  ['/my-groups/new', 'gm_new_admin', null, 'users', true],
-  ['/my-groups/accounting', 'gm_accounting', null, 'accounting'],
-  ['/my-groups/activity', 'gm_activity', null, 'monitoring'],
+  ['/my-groups', 'gm_admins', 'agency.gm.view_admins', 'agency'],
+  ['/my-groups/new', 'gm_new_admin', 'agency.gm.create_admin', 'users', true],
+  ['/my-groups/accounting', 'gm_accounting', 'agency.gm.accounting', 'accounting'],
+  ['/my-groups/activity', 'gm_activity', 'agency.gm.activity', 'monitoring'],
   // v1.25.5: profile, own password, language, theme and logout — like staff's Settings tab
   ['/my-groups/settings', 'settings', null, 'settings'],
 ]
 export const isGroupManager = (staff) => !!staff?.group_manager
+// v1.27: a manager's pages each need their own permission (agency.gm.*) — the first one it may open
+export const gmHome = (can) => (GM_BOTNAV.find(([, , p]) => !p || can(p)) || ['/my-groups/settings'])[0]
 
 // Heroicons-style outline paths (self-hosted, no icon font / CDN) — chosen to
 // echo the reference's Material Symbols intent.

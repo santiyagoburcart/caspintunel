@@ -242,7 +242,11 @@ def gm_role():
                                                          "name_fa": "مدیر گروه",
                                                          "description_fa": "مدیران گروه — فقط گروه‌های نمایندگی خودشان"})
     if created:
-        role.permissions.set([perm])
+        from apps.accounts.models import GM_PERMS
+
+        abilities = [Permission.objects.get_or_create(code=c, defaults={"name": en, "name_fa": fa})[0]
+                     for c, (en, fa) in GM_PERMS.items()]
+        role.permissions.set([perm, *abilities])          # v1.27: a new role can do everything until narrowed
     if not role.name_fa or not role.description_fa:          # Persian labels (v1.25.2) — never overwrite an edit
         Role.objects.filter(pk=role.pk, name_fa="").update(name_fa="مدیر گروه")
         Role.objects.filter(pk=role.pk, description_fa="").update(description_fa="مدیران گروه — فقط گروه‌های نمایندگی خودشان")
@@ -478,6 +482,11 @@ def _audit(m: GroupManager, action: str, a: GroupManagerAssignment | None, **det
         "manager": m.username, "group_id": a.group_id if a else None, "group": group_title(a.group) if a else "", **detail})
 
 
+def _from_crud(exc) -> ManagerError:
+    extra = {"detail_fa": exc.message_fa} if getattr(exc, "message_fa", None) else {}
+    return ManagerError(str(exc), exc.code, exc.field, **extra)
+
+
 def _writable_admin(m: GroupManager, username: str) -> tuple[GroupManagerAssignment, dict]:
     """The admin must be in the manager's groups and must not hold an owner role; returns
     (assignment, live PasarGuard admin)."""
@@ -561,14 +570,21 @@ def create_admin(m: GroupManager, data: dict) -> dict:
     username = str(data.get("username") or "").strip()
     if PanelAdmin.objects.filter(username__iexact=username).exists():
         raise ManagerError("an admin with this username already exists", "exists", "username")
+    try:
+        admin_crud.check_password(data.get("password"), username)    # before anything reaches PasarGuard
+    except admin_crud.AdminCrudError as exc:
+        raise _from_crud(exc) from exc
     payload = {"username": username, "password": data.get("password"), "role_id": rid,
                "limit_value": str(gb), "limit_unit": "GB", "group_id": a.group_id}
+    for k in PROFILE_KEYS:                                            # v1.27: shown on subscription pages
+        if data.get(k) not in (None, ""):
+            payload[k] = data[k]
     with _AdminLock(username):
         try:
             out = admin_crud.create(_panel(), payload, by=label(m), charge=False, source="manager",
                                     note=f"created by group manager {m.username} — pending approval")
         except admin_crud.AdminCrudError as exc:
-            raise ManagerError(str(exc), exc.code, exc.field) from exc
+            raise _from_crud(exc) from exc
         req = VolumeRequest.objects.create(
             group=a.group, group_name=group_title(a.group), manager=m, manager_username=m.username,
             admin_username=username, kind="create", gb=gb, old_limit_bytes=0, new_limit_bytes=out["limit_bytes"],
@@ -623,14 +639,16 @@ def change_password(m: GroupManager, username: str, password) -> dict:
     from . import admin_crud
 
     _gate()
+    a, _ = _writable_admin(m, username)                 # scope first: a foreign admin is 403, whatever the password
     pw = str(password or "")
-    if len(pw) < 8:
-        raise ManagerError("password: at least 8 characters", "invalid", "password")
-    a, _ = _writable_admin(m, username)
+    try:
+        admin_crud.check_password(pw, username)
+    except admin_crud.AdminCrudError as exc:
+        raise _from_crud(exc) from exc
     try:
         admin_crud.modify(_panel(), username, {"password": pw})
     except admin_crud.AdminCrudError as exc:
-        raise ManagerError(str(exc), exc.code, exc.field) from exc
+        raise _from_crud(exc) from exc
     _audit(m, "password_changed", a, admin=username)          # never the password
     return {"ok": True, "message": f"Password of {username} changed"}
 
@@ -645,7 +663,7 @@ def change_inbounds(m: GroupManager, username: str, role_id) -> dict:
     try:
         out = admin_crud.modify(_panel(), username, {"role_id": rid})
     except admin_crud.AdminCrudError as exc:
-        raise ManagerError(str(exc), exc.code, exc.field) from exc
+        raise _from_crud(exc) from exc
     pa = PanelAdmin.objects.filter(username=username).first()
     if pa is not None:
         raw = dict(pa.raw_data or {})
@@ -656,6 +674,90 @@ def change_inbounds(m: GroupManager, username: str, role_id) -> dict:
     _audit(m, "inbounds_changed", a, admin=username, old_role_id=old, new_role_id=rid,
            inbounds=_role_view(rid, cat)["inbounds"])
     return {"ok": True, "role": _role_view(rid, cat), "message": f"Inbounds of {username} changed"}
+
+
+PROFILE_KEYS = ("support_url", "profile_title")
+USER_STATUSES = ("active", "disabled", "limited", "expired", "on_hold")
+
+
+def admin_profile(m: GroupManager, username: str) -> dict:
+    """Live PasarGuard values a manager may see / edit for one of its admins (v1.27)."""
+    a, live = _writable_admin(m, username)
+    role = live.get("role") or {}
+    return {"username": username, "status": "disabled" if live.get("is_disabled") else live.get("status", "active"),
+            "support_url": live.get("support_url") or "", "profile_title": live.get("profile_title") or "",
+            "role": _role_view(role["id"], _safe_catalog()) if role.get("id") else None}
+
+
+def update_admin_profile(m: GroupManager, username: str, data: dict) -> dict:
+    """Support link + profile title only (v1.27)."""
+    from . import admin_crud
+
+    _gate()
+    body = {k: data.get(k) or "" for k in PROFILE_KEYS if k in data}
+    if not body:
+        raise ManagerError("nothing to change", "empty")
+    a, live = _writable_admin(m, username)
+    try:
+        admin_crud.modify(_panel(), username, body)
+    except admin_crud.AdminCrudError as exc:
+        raise _from_crud(exc) from exc
+    _audit(m, "profile_changed", a, admin=username,
+           changes={k: [live.get(k) or "", body[k]] for k in body if (live.get(k) or "") != body[k]})
+    return {"ok": True, **{k: body[k] for k in body}}
+
+
+def set_admin_status(m: GroupManager, username: str, enable: bool) -> dict:
+    """Enable / disable one admin of the manager's own groups (v1.27). An admin the limit
+    enforcement blocked (pamp_blocked) stays with staff: it would just be blocked again."""
+    from . import admin_crud
+
+    _gate()
+    with _AdminLock(username):
+        a, live = _writable_admin(m, username)
+        pa = PanelAdmin.objects.filter(username=username).first()
+        if enable and pa is not None and pa.pamp_blocked:
+            raise forbidden("this admin was blocked for using up its volume — only staff can enable it")
+        try:
+            admin_crud.modify(_panel(), username, {"status": "active" if enable else "disabled"})
+        except admin_crud.AdminCrudError as exc:
+            raise _from_crud(exc) from exc
+    _audit(m, "admin_enabled" if enable else "admin_disabled", a, admin=username)
+    return {"ok": True, "status": "active" if enable else "disabled"}
+
+
+def admin_users(m: GroupManager, username: str, *, search: str = "", status: str = "", offset=0, limit=20) -> dict:
+    """Read-only list of one admin's PasarGuard users (v1.27): own groups only, paged."""
+    assignment_for_admin(m, username)
+    try:
+        offset, limit = max(0, int(offset or 0)), min(100, max(1, int(limit or 20)))
+    except (TypeError, ValueError):
+        offset, limit = 0, 20
+    params = {"admin": [username], "offset": offset, "limit": limit, "sort": "-created_at"}
+    if search.strip():
+        params["search"] = search.strip()[:64]
+    if status:
+        if status not in USER_STATUSES:
+            raise ManagerError("unknown status", "invalid", "status")
+        params["status"] = status
+    try:
+        data = _client()._request("GET", "/api/users", params=params) or {}
+    except Exception as exc:  # noqa: BLE001
+        from apps.panel.exceptions import PanelError
+
+        if isinstance(exc, PanelError):
+            raise _panel_err(exc) from exc
+        raise ManagerError(f"panel error: {exc}", "panel_error") from exc
+    rows = []
+    for u in data.get("users", []) if isinstance(data, dict) else []:
+        owner = (u.get("admin") or {}).get("username") if isinstance(u.get("admin"), dict) else u.get("admin")
+        if owner and owner != username:
+            continue                                   # never show another admin's user
+        rows.append({"username": u.get("username"), "status": u.get("status"), "used_traffic": u.get("used_traffic") or 0,
+                     "data_limit": u.get("data_limit") or 0, "expire": u.get("expire"), "online_at": u.get("online_at"),
+                     "created_at": u.get("created_at"), "on_hold_expire_duration": u.get("on_hold_expire_duration")})
+    total = data.get("total", len(rows)) if isinstance(data, dict) else len(rows)
+    return {"admin": username, "results": rows, "total": total, "offset": offset, "limit": limit}
 
 
 # ------------------------------------------------------------------ staff: approvals

@@ -71,6 +71,8 @@ const SHARED_CSS = `
 .sm-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
 .sm-role-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 8px; font-size: 11.5px; font-weight: 600; border: 1px solid var(--c-border); color: var(--c-text-muted); }
 .sm-warn-badge { margin-inline-start: 4px; color: var(--c-warning); border-color: color-mix(in srgb, var(--c-warning) 40%, transparent); }
+.sm-perm-sec { margin-top: 10px; }
+.sm-perm-sec-h { font-size: 13px; font-weight: 800; margin: 6px 0 4px; }
 .sm-gm { padding: 10px 12px; border-radius: 12px; border: 1px solid var(--c-border); }
 .sm-gm .gm-form { grid-template-columns: 1fr; }
 .sm-gm .gm-l, .sm-gm .gm-hint { display: block; margin-bottom: 4px; }
@@ -517,6 +519,7 @@ export function Pages() {
 /* ================= Roles + Staff accounts — full CRUD, wired to RBAC ================= */
 const blankRole = { name: '', description: '', name_fa: '', description_fa: '', permission_codes: [] }
 const GM_PERM = 'agency.group_manager'
+const isGmPerm = (code) => code === GM_PERM || code.startsWith('agency.gm.')
 const isGmRole = (r) => !!r && (r.name === 'Group manager' || (r.permission_codes || []).includes(GM_PERM))
 const roleName = (r, lang) => (r ? ((lang === 'fa' && r.name_fa) || r.name) : '')
 const roleDesc = (r, lang) => (r ? ((lang === 'fa' && r.description_fa) || r.description) : '')
@@ -536,7 +539,7 @@ const R = {
     tg_on: 'تلگرام این کارمند برای اعلان تیکت‌ها متصل است.', tg_off: 'تلگرام متصل نیست — خود کارمند از صفحهٔ تیکت‌ها (دکمهٔ تلگرام) کد اتصال می‌گیرد.',
     ticket_scope: 'موضوعات تیکت', ticket_scope_hint: '— محدود کردن این کارمند به موضوعات انتخاب‌شده',
     scope_all: 'هیچ موضوعی انتخاب نشده = همهٔ موضوعات', scope_some: 'فقط {n} موضوع انتخاب‌شده',
-    pick_perms: 'انتخاب دسترسی‌های مجاز',
+    pick_perms: 'انتخاب دسترسی‌های مجاز', sec_general: 'دسترسی‌های پنل', sec_gm: 'نمایندگی – مدیر گروه', sec_gm_hint: 'فقط برای نقش‌های مدیر گروه (با «مدیر گروه: فقط گروه‌های خودش»)؛ گروه‌ها برای هر کاربر جدا تعیین می‌شوند.',
     pw_edit_hint: '(فقط برای تغییر وارد شود)',
     super: 'ابرمدیر', super_hint: 'دسترسی کامل به همهٔ بخش‌ها',
     none_roles: 'نقشی تعریف نشده', none_staff: 'کارمندی ثبت نشده',
@@ -559,7 +562,7 @@ const R = {
     tg_on: 'This staff member’s Telegram is linked for ticket alerts.', tg_off: 'Telegram not linked — the staff member gets a link code on the Tickets page (Telegram button).',
     ticket_scope: 'Ticket topics', ticket_scope_hint: '— limit this staff member to the selected topics',
     scope_all: 'None selected = every topic', scope_some: 'Only the {n} selected topic(s)',
-    pick_perms: 'Select the allowed permissions',
+    pick_perms: 'Select the allowed permissions', sec_general: 'Panel permissions', sec_gm: 'Agency – group manager', sec_gm_hint: 'Only for group-manager roles (with “Group manager: own groups only”); groups are assigned per user.',
     pw_edit_hint: '(fill only to change)',
     super: 'Superadmin', super_hint: 'Full access to every section',
     none_roles: 'No roles defined', none_staff: 'No staff accounts yet',
@@ -636,14 +639,21 @@ function RoleModal({ row, perms, s, t, lang, onClose, onSaved }) {
           </div>
           <div className="sm-fld">
             <span className="label">{s.pick_perms} <span className="sm-hint">({digits(f.permission_codes.length, lang)}/{digits(perms.length, lang)})</span></span>
-            <div className="sm-perm-grid">
-              {perms.map((p) => (
-                <label key={p.code} className="sm-perm">
-                  <input type="checkbox" checked={f.permission_codes.includes(p.code)} onChange={() => toggle(p.code)} />
-                  <span>{(lang === 'fa' && p.name_fa) || p.name}<br /><code dir="ltr">{p.code}</code></span>
-                </label>
-              ))}
-            </div>
+            {[[s.sec_general, perms.filter((p) => !isGmPerm(p.code)), null],
+              [s.sec_gm, perms.filter((p) => isGmPerm(p.code)), s.sec_gm_hint]].map(([title, list, hint]) => list.length > 0 && (
+              <div key={title} className="sm-perm-sec" data-testid={hint ? 'perm-sec-gm' : 'perm-sec-general'}>
+                <h4 className="sm-perm-sec-h">{title}</h4>
+                {hint && <p className="sm-hint">{hint}</p>}
+                <div className="sm-perm-grid">
+                  {list.map((p) => (
+                    <label key={p.code} className="sm-perm">
+                      <input type="checkbox" checked={f.permission_codes.includes(p.code)} onChange={() => toggle(p.code)} />
+                      <span>{(lang === 'fa' && p.name_fa) || p.name}<br /><code dir="ltr">{p.code}</code></span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
         <div className="sm-modal-foot">

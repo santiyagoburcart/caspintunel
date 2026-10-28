@@ -3,6 +3,8 @@ import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { api, tokens } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useTheme } from '../theme/ThemeProvider'
+import { genAdminPassword, passwordProblem, PW_RULE } from '../lib/adminPassword'
+import { gmHome } from '../components/adminNav'
 import { useI18n } from '../lib/i18n'
 import { jalali, toman } from '../lib/format'
 import { copyToClipboard } from '../lib/clipboard'
@@ -30,46 +32,60 @@ const T = {
     login: 'ورود', logout: 'خروج', wrong: 'نام کاربری یا رمز عبور اشتباه است.', locked: 'به‌دلیل تلاش‌های ناموفق، ورود موقتاً بسته شده است.', error: 'خطا در ارتباط با سرور',
     net: 'ارتباط با سرور برقرار نشد — اینترنت را بررسی کنید.', expired: 'نشست شما تمام شده — دوباره وارد شوید.', welcome: 'خوش آمدید', bye: 'خارج شدید', reseller: 'ورود نمایندگان',
     t_admins: 'ادمین‌ها', t_acc: 'حسابداری', t_act: 'فعالیت', no_groups: 'هنوز گروهی به شما سپرده نشده است.',
-    limit: 'سقف', used: 'مصرف', remaining: 'باقی‌مانده', users: 'کاربران', active_u: 'فعال', unl: 'نامحدود', inbounds: 'اینباندها', balance: 'بدهی', pend: 'در انتظار تأیید',
+    limit: 'سقف', used: 'مصرف', remaining: 'باقی‌مانده', users: 'کاربران', active_u: 'فعال', unl: 'نامحدود', inbounds: 'نقش ادمین (Role)', balance: 'بدهی', pend: 'در انتظار تأیید',
     st_active: 'فعال', st_panel_disabled: 'غیرفعال', st_pamp_limited: 'محدود‌شده', owner: 'مالک گروه', sudo: 'فقط پشتیبانی',
-    add: 'افزودن حجم', pw: 'تغییر رمز', inb: 'تغییر اینباند', new_admin: 'ادمین جدید', group_debt: 'بدهی کل گروه',
+    add: 'افزودن حجم', pw: 'تغییر رمز', inb: 'تغییر نقش', new_admin: 'ادمین جدید', group_debt: 'بدهی کل گروه',
     cap: 'حجم تأییدنشدهٔ شما', cap_of: 'از سقف', cap_reached: 'به سقف حجم تأییدنشده رسیده‌اید — تا تأیید پشتیبانی، حجم تازه نمی‌توانید بدهید.', no_cap: 'بدون سقف',
     gb_in: 'حجم (گیگابایت)', add_note: 'فقط افزایش. بلافاصله روی پنل اعمال می‌شود و تا تأیید پشتیبانی «در انتظار» می‌ماند.', confirm_add: 'تأیید و اعمال', new_limit: 'سقف جدید',
-    cur: 'فعلی', pw_new: 'رمز جدید (حداقل ۸ نویسه)', gen: 'رمز تصادفی', save: 'ذخیره', cancel: 'انصراف', pick_inb: 'اینباندها را انتخاب کنید',
+    cur: 'فعلی', pw_new: 'رمز جدید', gen: 'رمز تصادفی', save: 'ذخیره', cancel: 'انصراف', pick_inb: 'نقش ادمین (Role) را انتخاب کنید', inb_info: 'اینباندهای این نقش',
     n_user: 'نام کاربری ادمین', n_gb: 'حجم اولیه (گیگابایت)', create: 'ساخت ادمین', created: 'ادمین ساخته شد', cred: 'اطلاعات ورود ادمین (فقط همین یک بار)', copy: 'کپی', copied: 'کپی شد', close: 'بستن',
-    added: 'حجم اضافه شد — در انتظار تأیید', pw_done: 'رمز ادمین تغییر کرد', inb_done: 'اینباند تغییر کرد', unl_no: 'این ادمین نامحدود است؛ فقط پشتیبانی آن را تغییر می‌دهد.',
+    added: 'حجم اضافه شد — در انتظار تأیید', pw_done: 'رمز ادمین تغییر کرد', inb_done: 'نقش ادمین تغییر کرد', unl_no: 'این ادمین نامحدود است؛ فقط پشتیبانی آن را تغییر می‌دهد.',
     from: 'از تاریخ', to: 'تا تاریخ', apply: 'اعمال', clear: 'همهٔ زمان‌ها', csv: 'CSV', xlsx: 'Excel', print: 'چاپ', date_ph: '۱۴۰۵/۰۷/۰۱',
     date: 'تاریخ', type: 'نوع', amount: 'مبلغ', charges: 'شارژ', payments: 'پرداخت', admin: 'ادمین', statement: 'صورت‌حساب', group_st: 'صورت‌حساب گروه', hide: 'بستن', pending_sep: 'در انتظار تأیید (جدا از مانده)',
     opening: 'مانده از قبل', closing: 'مانده پایان بازه', none: 'گردشی نیست.', running: 'مانده', voided: 'باطل‌شده', no_price: 'بی‌قیمت', total: 'جمع',
     k_quota_charge: 'شارژ حجم', k_manual_charge: 'بدهکاری', k_adjustment: 'اصلاحیه', k_payment: 'پرداخت', act_none: 'فعالیتی نیست.',
+    disable: 'غیرفعال‌کردن', enable: 'فعال‌کردن', dis_q: 'ادمین {u} غیرفعال شود؟ تا فعال‌شدن دوباره نمی‌تواند وارد پنل شود (کاربرانش دست نمی‌خورند).', en_q: 'ادمین {u} دوباره فعال شود؟',
+    dis_done: 'ادمین غیرفعال شد', en_done: 'ادمین فعال شد', confirm: 'تأیید', blocked: 'به‌خاطر تمام‌شدن حجم بسته شده — فقط پشتیبانی',
+    u_title: 'کاربران {u}', u_search: 'جستجوی نام کاربر…', u_all: 'همه', u_none: 'کاربری پیدا نشد.', u_exp: 'انقضا', u_never: 'هرگز', u_online: 'آنلاین', u_last: 'آخرین اتصال',
+    u_noexp: 'بدون انقضا', prev: 'قبلی', next: 'بعدی', page: 'صفحهٔ {p} از {n}', u_total: '{n} کاربر',
+    us_active: 'فعال', us_disabled: 'غیرفعال', us_limited: 'حجم تمام', us_expired: 'منقضی', us_on_hold: 'در انتظار اتصال',
+    a_settings: 'تنظیمات', support_url: 'لینک پشتیبانی', profile_title: 'عنوان پروفایل', profile_hint: 'در صفحهٔ اشتراک کاربران این ادمین نمایش داده می‌شود.',
+    prof_done: 'تنظیمات ادمین ذخیره شد', group: 'گروه', search_admins: 'جستجوی نام ادمین…', no_match: 'ادمینی با این نام نیست.',
     set_profile: 'حساب من', set_role: 'نقش', set_groups: 'گروه‌های سپرده‌شده', set_cap: 'سقف حجم تأییدنشده', set_display: 'نام نمایشی',
     set_pw: 'تغییر رمز عبور من', set_pw_cur: 'رمز فعلی', set_pw_new: 'رمز جدید (حداقل ۸ نویسه)', set_pw_rep: 'تکرار رمز جدید', set_pw_mismatch: 'رمز جدید و تکرار آن یکی نیستند.',
     set_pw_done: 'رمز شما تغییر کرد — نشست‌های دیگر بسته شدند.', set_pw_note: 'بعد از تغییر، همهٔ نشست‌های دیگر شما (دستگاه‌های دیگر) بسته می‌شوند.',
     set_prefs: 'نمایش', set_lang: 'زبان', set_theme: 'پوسته', light: 'روشن', dark: 'تاریک', set_logout: 'خروج از حساب', note: 'توضیح',
-    acts: { admin_created: 'ساخت ادمین', volume_added: 'افزودن حجم', password_changed: 'تغییر رمز ادمین', inbounds_changed: 'تغییر اینباند', login: 'ورود', approved: 'تأیید پشتیبانی', rejected: 'رد پشتیبانی' },
+    acts: { admin_created: 'ساخت ادمین', volume_added: 'افزودن حجم', password_changed: 'تغییر رمز ادمین', inbounds_changed: 'تغییر نقش ادمین', login: 'ورود', approved: 'تأیید پشتیبانی', rejected: 'رد پشتیبانی', admin_enabled: 'فعال‌کردن ادمین', admin_disabled: 'غیرفعال‌کردن ادمین', profile_changed: 'تغییر تنظیمات ادمین' },
   },
   en: {
     title: 'My groups', sub: 'Sign in with the username and password support made for you', username: 'Username', password: 'Password',
     login: 'Sign in', logout: 'Sign out', wrong: 'Wrong username or password.', locked: 'Too many failed attempts — sign-in is paused for a few minutes.', error: 'Could not reach the server',
     net: 'Could not reach the server — check your connection.', expired: 'Your session ended — please sign in again.', welcome: 'Welcome', bye: 'Signed out', reseller: 'Reseller sign-in',
     t_admins: 'Admins', t_acc: 'Accounting', t_act: 'Activity', no_groups: 'No group is assigned to you yet.',
-    limit: 'Limit', used: 'Used', remaining: 'Remaining', users: 'Users', active_u: 'active', unl: 'Unlimited', inbounds: 'Inbounds', balance: 'Owes', pend: 'Pending approval',
+    limit: 'Limit', used: 'Used', remaining: 'Remaining', users: 'Users', active_u: 'active', unl: 'Unlimited', inbounds: 'Admin role', balance: 'Owes', pend: 'Pending approval',
     st_active: 'Active', st_panel_disabled: 'Disabled', st_pamp_limited: 'Limited', owner: 'Group owner', sudo: 'support only',
-    add: 'Add volume', pw: 'Password', inb: 'Inbounds', new_admin: 'New admin', group_debt: 'Group total debt',
+    add: 'Add volume', pw: 'Password', inb: 'Role', new_admin: 'New admin', group_debt: 'Group total debt',
     cap: 'Your unapproved volume', cap_of: 'of', cap_reached: 'You reached your unapproved-volume cap — new volume is blocked until support approves.', no_cap: 'no cap',
     gb_in: 'Volume (GB)', add_note: 'Increase only. Applied on the panel at once; pending until support approves.', confirm_add: 'Confirm and apply', new_limit: 'New limit',
-    cur: 'Current', pw_new: 'New password (8+ characters)', gen: 'Random', save: 'Save', cancel: 'Cancel', pick_inb: 'Pick the inbounds',
+    cur: 'Current', pw_new: 'New password', gen: 'Random', save: 'Save', cancel: 'Cancel', pick_inb: 'Pick the admin role', inb_info: 'Inbounds of this role',
     n_user: 'Admin username', n_gb: 'Initial volume (GB)', create: 'Create admin', created: 'Admin created', cred: 'Admin sign-in (shown only once)', copy: 'Copy', copied: 'Copied', close: 'Close',
-    added: 'Volume added — pending approval', pw_done: 'Admin password changed', inb_done: 'Inbounds changed', unl_no: 'This admin is unlimited; only support can change it.',
+    added: 'Volume added — pending approval', pw_done: 'Admin password changed', inb_done: 'Admin role changed', unl_no: 'This admin is unlimited; only support can change it.',
     from: 'From', to: 'To', apply: 'Apply', clear: 'All time', csv: 'CSV', xlsx: 'Excel', print: 'Print', date_ph: '1405/07/01',
     date: 'Date', type: 'Type', amount: 'Amount', charges: 'Charges', payments: 'Payments', admin: 'Admin', statement: 'Statement', group_st: 'Group statement', hide: 'Hide', pending_sep: 'Pending approval (not in the balance)',
     opening: 'Opening balance', closing: 'Closing balance', none: 'No entries.', running: 'Balance', voided: 'voided', no_price: 'no price', total: 'Total',
     k_quota_charge: 'Quota charge', k_manual_charge: 'Charge', k_adjustment: 'Adjustment', k_payment: 'Payment', act_none: 'No activity yet.',
+    disable: 'Disable', enable: 'Enable', dis_q: 'Disable admin {u}? They cannot sign in to the panel until enabled again (their users are not touched).', en_q: 'Enable admin {u} again?',
+    dis_done: 'Admin disabled', en_done: 'Admin enabled', confirm: 'Confirm', blocked: 'Blocked for using up its volume — support only',
+    u_title: 'Users of {u}', u_search: 'Search user…', u_all: 'All', u_none: 'No users found.', u_exp: 'Expires', u_never: 'never', u_online: 'Online', u_last: 'Last seen',
+    u_noexp: 'no expiry', prev: 'Previous', next: 'Next', page: 'Page {p} of {n}', u_total: '{n} users',
+    us_active: 'Active', us_disabled: 'Disabled', us_limited: 'Limited', us_expired: 'Expired', us_on_hold: 'On hold',
+    a_settings: 'Settings', support_url: 'Support link', profile_title: 'Profile title', profile_hint: "Shown on the subscription page of this admin's users.",
+    prof_done: 'Admin settings saved', group: 'Group', search_admins: 'Search admin name…', no_match: 'No admin with this name.',
     set_profile: 'My account', set_role: 'Role', set_groups: 'Assigned groups', set_cap: 'Max unapproved volume', set_display: 'Display name',
     set_pw: 'Change my password', set_pw_cur: 'Current password', set_pw_new: 'New password (8+ characters)', set_pw_rep: 'Repeat the new password', set_pw_mismatch: 'The new password and its repeat differ.',
     set_pw_done: 'Your password changed — other sessions were signed out.', set_pw_note: 'After the change, all your other sessions (other devices) are signed out.',
     set_prefs: 'Display', set_lang: 'Language', set_theme: 'Theme', light: 'Light', dark: 'Dark', set_logout: 'Log out', note: 'Note',
-    acts: { admin_created: 'Admin created', volume_added: 'Volume added', password_changed: 'Admin password changed', inbounds_changed: 'Inbounds changed', login: 'Signed in', approved: 'Approved by support', rejected: 'Rejected by support' },
+    acts: { admin_created: 'Admin created', volume_added: 'Volume added', password_changed: 'Admin password changed', inbounds_changed: 'Admin role changed', login: 'Signed in', approved: 'Approved by support', rejected: 'Rejected by support', admin_enabled: 'Admin enabled', admin_disabled: 'Admin disabled', profile_changed: 'Admin settings changed' },
   },
 }
 const GIB = 1024 ** 3
@@ -77,15 +93,13 @@ const N = ({ children }) => <bdi dir="ltr" className="ap-num">{children}</bdi>
 const gbText = (v) => `${Number(v || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })} GB`
 const bText = (b) => gbText(Number(b || 0) / GIB)
 const money = (v, lang) => (Number(v) < 0 ? '−' : '') + toman(Math.abs(Number(v || 0)), lang)
-const errText = (e, s) => (!e?.response ? s.net : e.response.data?.detail || s.error)
+const errText = (e, s) => (!e?.response ? s.net : (s === T.fa && e.response.data?.detail_fa) || e.response.data?.detail || s.error)
 const faDigits = (v) => String(v).replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))
-const roleLabel = (r, s) => (r ? (r.all_inbounds ? '*' : (r.inbounds || []).join(' · ') || r.name) : '—')
+const roleLabel = (r) => (r ? r.name || `#${r.id}` : '—')
+const roleInb = (r) => (r ? (r.all_inbounds ? '*' : (r.inbounds || []).join(' · ') || '—') : '')
+const pwCheck = (pw, username, s) => (passwordProblem(pw, username) ? PW_RULE[s === T.fa ? 'fa' : 'en'] : '')
 
-function genPw() {
-  const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'
-  const a = new Uint32Array(14); crypto.getRandomValues(a)
-  return Array.from(a, (x) => abc[x % abc.length]).join('') + '7a'
-}
+const genPw = () => genAdminPassword()
 
 async function download(url, params, name) {
   const r = await http.get(url, { params, responseType: 'blob' })
@@ -97,12 +111,15 @@ async function download(url, params, name) {
 }
 
 const TABS = { undefined: 'admins', new: 'new', accounting: 'acc', activity: 'act', settings: 'set' }
+// v1.27: each page needs its own permission of the manager's role (server answers 403 too)
+const TAB_PERM = { admins: 'agency.gm.view_admins', new: 'agency.gm.create_admin', acc: 'agency.gm.accounting', act: 'agency.gm.activity' }
 
 export default function GroupManager() {
   const { lang } = useI18n()
   const s = T[lang] || T.fa
   const { tab: seg } = useParams()
   const tab = TABS[seg]
+  const { can } = useAuth()
   const [me, setMe] = useState(null)
   const [err, setErr] = useState('')
   const toast = useToast()
@@ -110,7 +127,11 @@ export default function GroupManager() {
     const m = errText(e, s); setErr(m); toast.error(m)
   })
   useEffect(() => { load() }, [])
-  if (!tab) return <Navigate to="/my-groups" replace />
+  if (!tab) return <Navigate to={gmHome(can)} replace />
+  if (TAB_PERM[tab] && !can(TAB_PERM[tab])) {
+    const home = gmHome(can)
+    return home === `/my-groups${seg ? '/' + seg : ''}` ? null : <Navigate to={home} replace />
+  }
   return (
     <div className="ap am-in" dir={lang === 'fa' ? 'rtl' : 'ltr'}>
       <style>{ACCENT_CSS + PORTAL_CSS + CSS}</style>
@@ -120,7 +141,7 @@ export default function GroupManager() {
       {me && (
         <>
           {me.groups.length === 0 && <div className="ap-card ap-empty">{s.no_groups}</div>}
-          {tab === 'admins' && <Admins me={me} s={s} lang={lang} reload={load} />}
+          {tab === 'admins' && <Admins me={me} s={s} lang={lang} reload={load} can={can} />}
           {tab === 'new' && <NewAdminPage me={me} s={s} reload={load} />}
           {tab === 'acc' && me.groups.length > 0 && <Accounting me={me} s={s} lang={lang} />}
           {tab === 'act' && <Activity s={s} lang={lang} />}
@@ -133,23 +154,17 @@ export default function GroupManager() {
 
 function NewAdminPage({ me, s, reload }) {
   const go = useNavigate()
-  const [g, setG] = useState(me.groups.length === 1 ? me.groups[0] : null)
   const cap = me.cap
   const blocked = !me.writes_enabled || cap.reached
+  const groups = me.groups.filter((g) => g.roles.length)
   return (
     <>
       {cap.reached && <div className="ap-alert">{s.cap_reached}</div>}
       <section className="ap-card am-pick">
         <h2>{s.new_admin}</h2>
-        <div className="am-grid">
-          {me.groups.map((x) => (
-            <button key={x.id} type="button" className="ap-btn am-btn" disabled={blocked || !x.roles.length} onClick={() => setG(x)}>
-              <Ic n="plus" /><bdi>{x.name}</bdi>
-            </button>
-          ))}
-        </div>
+        {blocked || !groups.length ? <p className="am-hint">{!groups.length ? s.no_groups : s.cap_reached}</p>
+          : <NewAdminForm groups={groups} s={s} cap={cap} onClose={() => go('/my-groups')} reload={reload} />}
       </section>
-      {g && !blocked && <NewAdmin g={g} s={s} cap={cap} onClose={() => { setG(null); go('/my-groups') }} reload={reload} />}
     </>
   )
 }
@@ -220,16 +235,21 @@ function AddVolume({ a, s, cap, onClose, reload }) {
 
 function Password({ a, s, onClose }) {
   const [pw, setPw] = useState('')
+  const [localErr, setLocalErr] = useState('')
   const { busy, err, run } = useAction(s, () => {})
   const [done, setDone] = useState(false)
   return (
     <Modal title={`${s.pw} — ${a.username}`} onClose={onClose}>
       {done ? <Cred s={s} username={a.username} password={pw} onClose={onClose} /> : (
-        <form className="am-form" onSubmit={async (e) => { e.preventDefault(); if (await run(() => http.post(`/admins/${encodeURIComponent(a.username)}/password/`, { password: pw }), s.pw_done)) setDone(true) }}>
+        <form className="am-form" onSubmit={async (e) => {
+          e.preventDefault()
+          const bad = pwCheck(pw, a.username, s); setLocalErr(bad); if (bad) return
+          if (await run(() => http.post(`/admins/${encodeURIComponent(a.username)}/password/`, { password: pw }), s.pw_done)) setDone(true)
+        }}>
           <label>{s.pw_new}<span className="am-pw"><input className="ap-input" dir="ltr" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} autoFocus />
             <button type="button" className="ap-link" onClick={() => setPw(genPw())}><Ic n="reset" />{s.gen}</button></span></label>
-          {err && <div className="ap-alert">{err}</div>}
-          <div className="am-row"><button type="button" className="ap-link" onClick={onClose}>{s.cancel}</button><button className="ap-btn am-btn" disabled={busy || pw.length < 8}>{s.save}</button></div>
+          {(localErr || err) && <div className="ap-alert" role="alert">{localErr || err}</div>}
+          <div className="am-row"><button type="button" className="ap-link" onClick={onClose}>{s.cancel}</button><button className="ap-btn am-btn" disabled={busy || !pw}>{s.save}</button></div>
         </form>
       )}
     </Modal>
@@ -242,7 +262,7 @@ function RolePick({ roles, value, onChange, s }) {
       {roles.map((r) => (
         <label key={r.id} className="am-rolei" data-on={value === r.id || undefined}>
           <input type="radio" name="role" checked={value === r.id} onChange={() => onChange(r.id)} />
-          <span><b>{roleLabel(r, s)}</b><small>{r.name}</small></span>
+          <span><b>{roleLabel(r)}</b><small>{s.inb_info}: {roleInb(r)}</small></span>
         </label>
       ))}
     </div>
@@ -255,7 +275,7 @@ function Inbounds({ a, roles, s, onClose, reload }) {
   return (
     <Modal title={`${s.inb} — ${a.username}`} onClose={onClose}>
       <form className="am-form" onSubmit={(e) => { e.preventDefault(); run(() => http.post(`/admins/${encodeURIComponent(a.username)}/inbounds/`, { role_id: rid }), s.inb_done) }}>
-        <p className="am-hint">{s.cur}: <b>{roleLabel(a.role, s)}</b></p>
+        <p className="am-hint">{s.cur}: <b>{roleLabel(a.role)}</b> <small>({roleInb(a.role)})</small></p>
         <RolePick roles={roles} value={rid} onChange={setRid} s={s} />
         {err && <div className="ap-alert">{err}</div>}
         <div className="am-row"><button type="button" className="ap-link" onClick={onClose}>{s.cancel}</button><button className="ap-btn am-btn" disabled={busy || rid == null || rid === a.role?.id}>{s.save}</button></div>
@@ -264,33 +284,138 @@ function Inbounds({ a, roles, s, onClose, reload }) {
   )
 }
 
-function NewAdmin({ g, s, cap, onClose, reload }) {
-  const [v, setV] = useState({ username: '', password: genPw(), role_id: g.roles[0]?.id ?? null, gb: '' })
+function NewAdminForm({ groups, g0, s, cap, onClose, reload }) {
+  const [gid, setGid] = useState(g0?.id ?? (groups.length === 1 ? groups[0].id : null))
+  const g = groups.find((x) => x.id === gid) || null
+  const [v, setV] = useState({ username: '', password: genPw(), role_id: g?.roles[0]?.id ?? null, gb: '', support_url: '', profile_title: '' })
   const [made, setMade] = useState(null)
+  const [localErr, setLocalErr] = useState('')
   const { busy, err, run } = useAction(s, () => reload())
   const gbv = Number(faDigits(v.gb))
   const over = cap.max_gb != null && Number(cap.pending_gb) + gbv > Number(cap.max_gb)
+  const pickGroup = (id) => { const ng = groups.find((x) => x.id === Number(id)); setGid(ng?.id ?? null); setV({ ...v, role_id: ng?.roles[0]?.id ?? null }) }
   const submit = async (e) => {
     e.preventDefault()
-    const r = await run(() => http.post('/admins/', { group_id: g.id, username: v.username.trim(), password: v.password, role_id: v.role_id, initial_gb: gbv }), s.created)
+    const bad = pwCheck(v.password, v.username.trim(), s); setLocalErr(bad); if (bad || !g) return
+    const r = await run(() => http.post('/admins/', { group_id: g.id, username: v.username.trim(), password: v.password, role_id: v.role_id, initial_gb: gbv,
+      support_url: v.support_url.trim(), profile_title: v.profile_title.trim() }), s.created)
     if (r) setMade(r.data)
   }
+  if (made) return <Cred s={s} username={made.username} password={made.password} onClose={onClose} />
+  return (
+    <form className="am-form" onSubmit={submit}>
+      {groups.length > 1 && (
+        <label>{s.group}<select className="ap-input" value={gid ?? ''} onChange={(e) => pickGroup(e.target.value)} required>
+          <option value="" disabled>—</option>{groups.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
+      )}
+      <label>{s.n_user}<input className="ap-input" dir="ltr" autoComplete="off" required minLength={3} maxLength={32} value={v.username} onChange={(e) => setV({ ...v, username: e.target.value })} autoFocus /></label>
+      <label>{s.password}<span className="am-pw"><input className="ap-input" dir="ltr" autoComplete="new-password" required value={v.password} onChange={(e) => setV({ ...v, password: e.target.value })} />
+        <button type="button" className="ap-link" onClick={() => setV({ ...v, password: genPw() })}><Ic n="reset" />{s.gen}</button></span></label>
+      {g && <><span className="am-l">{s.inbounds}</span>
+        <RolePick roles={g.roles} value={v.role_id} onChange={(id) => setV({ ...v, role_id: id })} s={s} /></>}
+      <label>{s.n_gb}<input className="ap-input" dir="ltr" inputMode="decimal" required value={v.gb} onChange={(e) => setV({ ...v, gb: e.target.value.replace(/[^\d.۰-۹]/g, '') })} /></label>
+      <label>{s.support_url}<input className="ap-input" dir="ltr" type="url" placeholder="https://t.me/…" value={v.support_url} onChange={(e) => setV({ ...v, support_url: e.target.value })} /></label>
+      <label>{s.profile_title}<input className="ap-input" maxLength={255} value={v.profile_title} onChange={(e) => setV({ ...v, profile_title: e.target.value })} /></label>
+      <p className="am-hint">{s.profile_hint}</p>
+      <p className="am-hint">{s.add_note}</p>
+      {over && <div className="ap-alert">{s.cap_reached}</div>}
+      {(localErr || err) && <div className="ap-alert" role="alert">{localErr || err}</div>}
+      <div className="am-row"><button type="button" className="ap-link" onClick={onClose}>{s.cancel}</button><button className="ap-btn am-btn" disabled={busy || !g || !(gbv > 0) || v.role_id == null || over}>{busy ? <span className="ap-btn-spin" /> : <Ic n="plus" />}{s.create}</button></div>
+    </form>
+  )
+}
+
+function NewAdmin({ g, groups, s, cap, onClose, reload }) {
   return (
     <Modal title={`${s.new_admin} — ${g.name}`} onClose={onClose}>
-      {made ? <Cred s={s} username={made.username} password={made.password} onClose={onClose} /> : (
-        <form className="am-form" onSubmit={submit}>
-          <label>{s.n_user}<input className="ap-input" dir="ltr" autoComplete="off" required minLength={3} maxLength={32} value={v.username} onChange={(e) => setV({ ...v, username: e.target.value })} autoFocus /></label>
-          <label>{s.password}<span className="am-pw"><input className="ap-input" dir="ltr" autoComplete="new-password" required minLength={8} value={v.password} onChange={(e) => setV({ ...v, password: e.target.value })} />
-            <button type="button" className="ap-link" onClick={() => setV({ ...v, password: genPw() })}><Ic n="reset" />{s.gen}</button></span></label>
-          <span className="am-l">{s.inbounds}</span>
-          <RolePick roles={g.roles} value={v.role_id} onChange={(id) => setV({ ...v, role_id: id })} s={s} />
-          <label>{s.n_gb}<input className="ap-input" dir="ltr" inputMode="decimal" required value={v.gb} onChange={(e) => setV({ ...v, gb: e.target.value.replace(/[^\d.۰-۹]/g, '') })} /></label>
-          <p className="am-hint">{s.add_note}</p>
-          {over && <div className="ap-alert">{s.cap_reached}</div>}
-          {err && <div className="ap-alert">{err}</div>}
-          <div className="am-row"><button type="button" className="ap-link" onClick={onClose}>{s.cancel}</button><button className="ap-btn am-btn" disabled={busy || !(gbv > 0) || v.role_id == null || over}>{busy ? <span className="ap-btn-spin" /> : <Ic n="plus" />}{s.create}</button></div>
+      <NewAdminForm groups={groups || [g]} g0={g} s={s} cap={cap} onClose={onClose} reload={reload} />
+    </Modal>
+  )
+}
+
+// enable / disable (confirm), users (read-only), support link + profile title — v1.27
+function Confirm({ title, text, s, onClose, onYes, tone }) {
+  const [busy, setBusy] = useState(false)
+  return (
+    <Modal title={title} onClose={onClose}>
+      <div className="am-form">
+        <p className="am-hint am-confirm">{text}</p>
+        <div className="am-row"><button type="button" className="ap-link" onClick={onClose}>{s.cancel}</button>
+          <button type="button" className="ap-btn am-btn" data-tone={tone} disabled={busy} onClick={async () => { setBusy(true); await onYes(); setBusy(false) }}>{busy ? <span className="ap-btn-spin" /> : null}{s.confirm}</button></div>
+      </div>
+    </Modal>
+  )
+}
+
+function AdminSettings({ a, s, onClose }) {
+  const [v, setV] = useState(null)
+  const [loadErr, setLoadErr] = useState('')
+  const { busy, err, run } = useAction(s, () => onClose())
+  useEffect(() => { http.get(`/admins/${encodeURIComponent(a.username)}/profile/`).then((r) => setV(r.data)).catch((e) => setLoadErr(errText(e, s))) }, [])
+  return (
+    <Modal title={`${s.a_settings} — ${a.username}`} onClose={onClose}>
+      {loadErr ? <div className="ap-alert">{loadErr}</div> : !v ? <div className="ap-spin" /> : (
+        <form className="am-form" onSubmit={(e) => { e.preventDefault(); run(() => http.post(`/admins/${encodeURIComponent(a.username)}/profile/`, { support_url: v.support_url.trim(), profile_title: v.profile_title.trim() }), s.prof_done) }}>
+          <label>{s.support_url}<input className="ap-input" dir="ltr" type="url" placeholder="https://t.me/…" value={v.support_url} onChange={(e) => setV({ ...v, support_url: e.target.value })} autoFocus /></label>
+          <label>{s.profile_title}<input className="ap-input" maxLength={255} value={v.profile_title} onChange={(e) => setV({ ...v, profile_title: e.target.value })} /></label>
+          <p className="am-hint">{s.profile_hint}</p>
+          {err && <div className="ap-alert" role="alert">{err}</div>}
+          <div className="am-row"><button type="button" className="ap-link" onClick={onClose}>{s.cancel}</button><button className="ap-btn am-btn" disabled={busy}>{s.save}</button></div>
         </form>
       )}
+    </Modal>
+  )
+}
+
+const USER_STATUSES = ['active', 'on_hold', 'limited', 'expired', 'disabled']
+function AdminUsers({ a, s, lang, onClose }) {
+  const [q, setQ] = useState('')
+  const [st, setSt] = useState('')
+  const [page, setPage] = useState(0)
+  const [d, setD] = useState(null)
+  const [err, setErr] = useState('')
+  const LIMIT = 20
+  useEffect(() => { setPage(0) }, [q, st])
+  useEffect(() => {
+    const id = setTimeout(() => {
+      setD(null)
+      http.get(`/admins/${encodeURIComponent(a.username)}/users/`, { params: { search: q.trim() || undefined, status: st || undefined, offset: page * LIMIT, limit: LIMIT } })
+        .then((r) => { setD(r.data); setErr('') }).catch((e) => { setErr(errText(e, s)); setD({ results: [], total: 0 }) })
+    }, q ? 300 : 0)
+    return () => clearTimeout(id)
+  }, [q, st, page])
+  const pages = d ? Math.max(1, Math.ceil(d.total / LIMIT)) : 1
+  const online = (u) => u.online_at && Date.now() - new Date(u.online_at).getTime() < 3 * 60 * 1000
+  return (
+    <Modal title={s.u_title.replace('{u}', a.username)} onClose={onClose}>
+      <div className="am-form am-users">
+        <div className="am-ufilter">
+          <input className="ap-input" type="search" value={q} placeholder={s.u_search} onChange={(e) => setQ(e.target.value)} aria-label={s.u_search} />
+          <select className="ap-input" value={st} onChange={(e) => setSt(e.target.value)} aria-label={s.users}>
+            <option value="">{s.u_all}</option>{USER_STATUSES.map((x) => <option key={x} value={x}>{s['us_' + x]}</option>)}
+          </select>
+        </div>
+        {err && <div className="ap-alert">{err}</div>}
+        {!d ? <div className="ap-spin" /> : d.results.length === 0 ? <p className="ap-foot">{s.u_none}</p> : (
+          <ul className="am-ulist">{d.results.map((u) => (
+            <li key={u.username}>
+              <div className="am-u-h"><b dir="ltr">{u.username}</b><span className="am-u-st" data-st={u.status}>{s['us_' + u.status] || u.status}</span></div>
+              <div className="am-u-b">
+                <span><N>{bText(u.used_traffic)}</N> / <N>{Number(u.data_limit) > 0 ? bText(u.data_limit) : s.unl}</N></span>
+                <span>{s.u_exp}: {u.expire ? jalali(u.expire, false, lang) : s.u_noexp}</span>
+                <span>{online(u) ? <b className="am-u-on">● {s.u_online}</b> : <>{s.u_last}: {u.online_at ? jalali(u.online_at, true, lang) : s.u_never}</>}</span>
+              </div>
+            </li>
+          ))}</ul>
+        )}
+        {d && (
+          <div className="am-pager">
+            <button type="button" className="ap-link" disabled={page === 0} onClick={() => setPage(page - 1)}>{s.prev}</button>
+            <span>{s.page.replace('{p}', page + 1).replace('{n}', pages)} · {s.u_total.replace('{n}', d.total)}</span>
+            <button type="button" className="ap-link" disabled={page + 1 >= pages} onClick={() => setPage(page + 1)}>{s.next}</button>
+          </div>
+        )}
+      </div>
     </Modal>
   )
 }
@@ -310,10 +435,20 @@ function Cred({ s, username, password, onClose }) {
 }
 
 // ------------------------------------------------------------------ admins tab
-function Admins({ me, s, lang, reload }) {
+function Admins({ me, s, lang, reload, can }) {
   const [dlg, setDlg] = useState(null)
+  const [q, setQ] = useState('')
+  const toast = useToast()
   const cap = me.cap
   const close = () => setDlg(null)
+  const term = q.trim().toLowerCase()
+  const match = (a) => !term || a.username.toLowerCase().includes(term)
+  const setStatus = async (a, enable) => {
+    try {
+      await http.post(`/admins/${encodeURIComponent(a.username)}/${enable ? 'enable' : 'disable'}/`, {})
+      toast.success(enable ? s.en_done : s.dis_done); close(); reload()
+    } catch (e) { toast.error(errText(e, s)) }
+  }
   return (
     <>
       {(cap.max_gb != null || Number(cap.pending_gb) > 0) && (
@@ -322,15 +457,17 @@ function Admins({ me, s, lang, reload }) {
           {cap.reached && <> — {s.cap_reached}</>}
         </div>
       )}
+      <input className="ap-input am-search" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={s.search_admins} aria-label={s.search_admins} />
+      {term && !me.groups.some((g) => g.admins.some(match)) && <p className="ap-foot">{s.no_match}</p>}
       {me.groups.map((g) => (
-        <section key={g.id} className="am-group">
+        <section key={g.id} className="am-group" hidden={!!term && !g.admins.some(match)}>
           <div className="am-gh">
             <h2><Ic n="users" size={16} /><bdi>{g.name}</bdi></h2>
-            <span className="am-debt">{s.group_debt}: <N>{money(g.total_debt, lang)}</N></span>
-            <button type="button" className="ap-btn am-btn am-new" disabled={!me.writes_enabled || cap.reached || !g.roles.length} onClick={() => setDlg({ k: 'new', g })}><Ic n="plus" />{s.new_admin}</button>
+            {g.total_debt != null && <span className="am-debt">{s.group_debt}: <N>{money(g.total_debt, lang)}</N></span>}
+            {can('agency.gm.create_admin') && <button type="button" className="ap-btn am-btn am-new" disabled={!me.writes_enabled || cap.reached || !g.roles.length} onClick={() => setDlg({ k: 'new', g })}><Ic n="plus" />{s.new_admin}</button>}
           </div>
           <div className="am-grid">
-            {g.admins.map((a) => <AdminCard key={a.username} a={a} s={s} lang={lang} writable={me.writes_enabled} capReached={cap.reached} onAct={(k) => setDlg({ k, a, g })} />)}
+            {g.admins.filter(match).map((a) => <AdminCard key={a.username} a={a} s={s} lang={lang} can={can} writable={me.writes_enabled} capReached={cap.reached} onAct={(k) => setDlg({ k, a, g })} />)}
           </div>
         </section>
       ))}
@@ -338,11 +475,17 @@ function Admins({ me, s, lang, reload }) {
       {dlg?.k === 'pw' && <Password a={dlg.a} s={s} onClose={close} />}
       {dlg?.k === 'inb' && <Inbounds a={dlg.a} roles={dlg.g.roles} s={s} onClose={close} reload={reload} />}
       {dlg?.k === 'new' && <NewAdmin g={dlg.g} s={s} cap={cap} onClose={close} reload={reload} />}
+      {dlg?.k === 'users' && <AdminUsers a={dlg.a} s={s} lang={lang} onClose={close} />}
+      {dlg?.k === 'settings' && <AdminSettings a={dlg.a} s={s} onClose={close} />}
+      {(dlg?.k === 'disable' || dlg?.k === 'enable') && (
+        <Confirm s={s} title={`${dlg.k === 'disable' ? s.disable : s.enable} — ${dlg.a.username}`} tone={dlg.k === 'disable' ? 'danger' : undefined}
+          text={(dlg.k === 'disable' ? s.dis_q : s.en_q).replace('{u}', dlg.a.username)} onClose={close} onYes={() => setStatus(dlg.a, dlg.k === 'enable')} />
+      )}
     </>
   )
 }
 
-function AdminCard({ a, s, lang, writable, capReached, onAct }) {
+function AdminCard({ a, s, lang, can, writable, capReached, onAct }) {
   const unl = !(Number(a.admin_limit_bytes) > 0)
   const pct = Math.min(Number(a.usage_percent) || 0, 100)
   const tone = a.usage_percent >= 100 ? 'danger' : a.usage_percent >= 80 ? 'warning' : 'primary'
@@ -360,14 +503,20 @@ function AdminCard({ a, s, lang, writable, capReached, onAct }) {
         <div><dt>{s.remaining}</dt><dd><N>{unl ? s.unl : (a.remaining_fmt === 'Unlimited' ? s.unl : a.remaining_fmt)}</N></dd></div>
         <div><dt>{s.users}</dt><dd><N>{a.user_count}</N> <small>/ <N>{a.active_user_count}</N> {s.active_u}</small></dd></div>
         <div><dt>{s.balance}</dt><dd><span className="am-bal" data-sign={Number(a.balance) > 0 ? 'owes' : 'zero'}><N>{money(a.balance, lang)}</N></span></dd></div>
-        <div><dt>{s.inbounds}</dt><dd className="am-inb">{roleLabel(a.role, s)}</dd></div>
+        <div><dt>{s.inbounds}</dt><dd className="am-inb">{roleLabel(a.role)}{a.role && <small className="am-inb-s">{roleInb(a.role)}</small>}</dd></div>
       </dl>
       {Number(a.pending?.gb) > 0 && <p className="am-pend"><Ic n="clock" size={13} />{s.pend}: <N>{gbText(a.pending.gb)}</N></p>}
       {locked ? <p className="am-hint">{s.sudo}</p> : (
         <div className="am-acts">
-          <button type="button" className="ap-link" disabled={!writable || unl || capReached} title={unl ? s.unl_no : undefined} onClick={() => onAct('add')}><Ic n="plus" />{s.add}</button>
-          <button type="button" className="ap-link" disabled={!writable} onClick={() => onAct('pw')}><Ic n="edit" />{s.pw}</button>
-          <button type="button" className="ap-link" disabled={!writable} onClick={() => onAct('inb')}><Ic n="sliders" />{s.inb}</button>
+          {can('agency.gm.add_volume') && <button type="button" className="ap-link" disabled={!writable || unl || capReached} title={unl ? s.unl_no : undefined} onClick={() => onAct('add')}><Ic n="plus" />{s.add}</button>}
+          {can('agency.gm.admin_password') && <button type="button" className="ap-link" disabled={!writable} onClick={() => onAct('pw')}><Ic n="edit" />{s.pw}</button>}
+          {can('agency.gm.admin_role') && <button type="button" className="ap-link" disabled={!writable} onClick={() => onAct('inb')}><Ic n="sliders" />{s.inb}</button>}
+          {can('agency.gm.view_users') && <button type="button" className="ap-link" onClick={() => onAct('users')}><Ic n="users" />{s.users}</button>}
+          {can('agency.gm.create_admin') && <button type="button" className="ap-link" disabled={!writable} onClick={() => onAct('settings')}><Ic n="edit" />{s.a_settings}</button>}
+          {can('agency.gm.toggle_admin') && (a.status_code === 'active'
+            ? <button type="button" className="ap-link am-danger" disabled={!writable} onClick={() => onAct('disable')}><Ic n="x" />{s.disable}</button>
+            : a.status_code === 'pamp_limited' ? <span className="am-hint">{s.blocked}</span>
+              : <button type="button" className="ap-link" disabled={!writable} onClick={() => onAct('enable')}><Ic n="check" />{s.enable}</button>)}
         </div>
       )}
       {unl && !locked && <p className="am-hint">{s.unl_no}</p>}
@@ -395,6 +544,7 @@ function Accounting({ me, s, lang }) {
   const [range, setRange] = useState({ from: '', to: '' })
   const [d, setD] = useState(null)
   const [open, setOpen] = useState(null)
+  const [q, setQ] = useState('')
   const toast = useToast()
   const params = useMemo(() => ({ ...(range.from ? { from: range.from } : {}), ...(range.to ? { to: range.to } : {}) }), [range])
   useEffect(() => { if (!gid) return; setD(null); http.get('/accounting/', { params: { group: gid, ...params } }).then((r) => setD(r.data.groups[0])).catch((e) => toast.error(errText(e, s))) }, [gid, params])
@@ -416,8 +566,9 @@ function Accounting({ me, s, lang }) {
             <button type="button" className="ap-link" onClick={() => exp('/accounting/', 'csv', { group: gid })}><Ic n="download" />{s.csv}</button>
             <button type="button" className="ap-link" onClick={() => exp('/accounting/', 'xlsx', { group: gid })}><Ic n="download" />{s.xlsx}</button>
           </div>
+          <input className="ap-input am-search" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={s.search_admins} aria-label={s.search_admins} />
           <ul className="am-acc">
-            {d.admins.map((r) => (
+            {d.admins.filter((r) => !q.trim() || r.username.toLowerCase().includes(q.trim().toLowerCase())).map((r) => (
               <li key={r.username}>
                 <div className="am-acc-r">
                   <b><bdi>{r.username}</bdi></b>
@@ -520,7 +671,7 @@ function SettingsTab({ me, s }) {
           <div className="am-set-wide"><dt>{s.set_groups}</dt><dd>
             {me.groups.length === 0 ? s.no_groups : (
               <ul className="am-set-groups">{me.groups.map((g) => (
-                <li key={g.id}><b><bdi>{g.name}</bdi></b><small>{g.roles.map((r) => roleLabel(r, s)).join(' · ') || '—'}</small></li>
+                <li key={g.id}><b><bdi>{g.name}</bdi></b><span className="am-set-roles">{g.roles.length ? g.roles.map((r) => <span key={r.id}><b>{roleLabel(r)}</b><small>{roleInb(r)}</small></span>) : '—'}</span></li>
               ))}</ul>
             )}
           </dd></div>
@@ -575,6 +726,27 @@ function Activity({ s, lang }) {
 }
 
 const CSS = `
+.am-search { width: 100%; max-width: 420px; }
+.am-inb-s { display: block; font-size: 11.5px; font-weight: 500; color: var(--c-muted-fg); margin-top: 2px; overflow-wrap: anywhere; }
+.am-danger { color: var(--c-danger) !important; }
+.ap-btn[data-tone="danger"] { background: var(--c-danger); }
+.am-confirm { font-size: 14px; line-height: 1.8; color: var(--c-text); }
+.am-users { min-width: 0; }
+.am-ufilter { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.am-ulist { display: flex; flex-direction: column; gap: 8px; max-height: 55vh; overflow-y: auto; }
+.am-ulist li { padding: 10px 12px; border: 1px solid var(--c-border); border-radius: 12px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.am-u-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.am-u-h b { overflow-wrap: anywhere; min-width: 0; }
+.am-u-st { font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--c-border); white-space: nowrap; }
+.am-u-st[data-st="active"] { color: var(--c-success); } .am-u-st[data-st="disabled"], .am-u-st[data-st="expired"] { color: var(--c-danger); }
+.am-u-st[data-st="limited"] { color: var(--c-warning); } .am-u-st[data-st="on_hold"] { color: var(--c-primary); }
+.am-u-b { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; color: var(--c-muted-fg); }
+.am-u-on { color: var(--c-success); }
+.am-pager { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12.5px; flex-wrap: wrap; }
+.am-set-roles { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+.am-set-roles > span { display: flex; flex-direction: column; }
+.am-set-roles small { font-size: 11.5px; font-weight: 500; color: var(--c-muted-fg); }
+.am-pick .am-form { margin-top: 10px; }
 .am-acc-r b, .am-acc-r bdi, .am-card h3 bdi, .ap-st bdi { overflow-wrap: anywhere; min-width: 0; }
 .ap-st-n { flex-basis: 100%; font-size: 12px; color: var(--c-muted-fg); overflow-wrap: break-word; }
 .am-set { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); align-items: start; }

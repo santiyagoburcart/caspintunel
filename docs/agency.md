@@ -170,6 +170,33 @@ shown everywhere a group appears: admins list chips and filter, admin detail, gr
 the staff page, approvals and activity (resolved live by group id, so renaming also relabels old rows),
 ledger group statements. Production: #2 "Vox" (owner VEX2), #3 "Mostafa" (owner Mostafa-ho).
 
+**Group-manager abilities as permissions (v1.27).** Each ability is its own permission on the Roles
+page, section *Agency – group manager* (Persian names): `agency.gm.view_admins` (group admins),
+`create_admin` (incl. profile title + support link, also editing them later), `add_volume`,
+`toggle_admin` (enable / disable), `admin_password`, `admin_role`, `view_users` (an admin's users,
+read-only), `accounting` (accounting + statements + group statement), `activity`. A role is a
+group-manager role when it holds `agency.group_manager`; the "Group manager" role gets every ability
+when created (migration `agency.0009` gave the existing role all of them once — the seed never
+resets an operator's choice). Groups stay assigned per user. Every manager API checks its permission
+(403 `{"permission": …}`), `auth/me` lists them, and the menu, tabs and buttons follow; `me/` returns
+no admin rows without `view_admins`. Super Admin never holds these codes (they restrict).
+
+**Manager tools (v1.27).** Enable / disable an admin of its own groups (with confirm; an admin the
+limit enforcement blocked stays with staff), audited `agency.manager.admin_enabled|admin_disabled`
+and shown in Activity. Users of an admin, read-only (`GET manager/admins/<u>/users/` → PasarGuard
+`/api/users?admin=<u>`: username, status, used / limit, expiry, online / last seen; search, status,
+20 per page; rows of another admin are dropped). Support link + profile title on create and in the
+admin's Settings (`GET/POST manager/admins/<u>/profile/`, read from PasarGuard, audited with the
+change). Create-admin shows the allowed **roles** (inbounds as small info under each) — a group
+picker only when the manager has several groups. "Inbounds" is called **نقش ادمین (Role)** everywhere.
+Admin search on Group admins, Accounting and the group statement (shared with staff).
+
+**Admin passwords (v1.27).** PasarGuard refuses weak admin passwords, so staff and managers use one
+rule, checked before anything reaches PasarGuard (`admin_crud.password_problem`, panel
+`lib/adminPassword.js`): 12+ characters, 2+ upper-case, 2+ lower-case, 2+ digits, one of
+`# . $ @ ! % & * - _ + = ?`, no spaces / non-ASCII, not containing the username. "Random password"
+always satisfies it; a weak one gets `code: weak_password` with the rule in Persian (`detail_fa`).
+
 **Panel menu for a manager** (`components/adminNav.js` → `GM_GROUPS`, page `pages/GroupManager.jsx`):
 *Group admins* (`/my-groups`), *New admin* (`/my-groups/new`), *Accounting* (`/my-groups/accounting`,
 incl. the group statement — the staff Agency `GroupStatement` component) and *Activity*

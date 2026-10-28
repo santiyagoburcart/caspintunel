@@ -57,6 +57,7 @@ class FakePanel:
 
     def _create(self, req):
         b = json.loads(req.body)
+        self.created = getattr(self, "created", []) + [b]
         if b["username"] in self.admins:
             return 409, {}, json.dumps({"detail": "exists"})
         self.add(b["username"], b.get("data_limit") or 0, role=b["role_id"])
@@ -73,6 +74,11 @@ class FakePanel:
             a["data_limit"] = b["data_limit"]
         if "role_id" in b:
             a["role"] = {"id": b["role_id"], "name": CATALOG[b["role_id"]]["name"], "is_owner": False}
+        if "status" in b:
+            a["status"], a["is_disabled"] = b["status"], b["status"] == "disabled"
+        for k in ("support_url", "profile_title"):
+            if k in b:
+                a[k] = b[k]
         return 200, {}, json.dumps(a)
 
 
@@ -97,7 +103,7 @@ def pg(monkeypatch):
         ledger.set_price(n, 2000, ledger.today())
     with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
         fake.install(rsps)
-        yield {"fake": fake, "g1": g1, "g2": g2}
+        yield {"fake": fake, "g1": g1, "g2": g2, "rsps": rsps}
 
 
 def staff_client(perms=None, superadmin=False, name="boss"):
@@ -127,7 +133,8 @@ def manager_client(username="mona", password="mgr-Pass-123"):
     r = c.post("/api/v1/admin/auth/login/", {"username": username, "password": password}, format="json")
     assert r.status_code == 200, r.json()
     assert r.json()["staff"]["group_manager"]["username"] == username
-    assert r.json()["staff"]["permissions"] == ["agency.group_manager"]
+    perms = r.json()["staff"]["permissions"]                       # v1.27: the marker + its agency.gm.* abilities
+    assert perms[0] == "agency.group_manager" and all(p.startswith("agency.gm.") for p in perms[1:])
     c.credentials(HTTP_AUTHORIZATION=f"Bearer {r.json()['access']}")
     return c
 
@@ -184,7 +191,7 @@ def test_manager_sees_only_its_groups(pg):
 def test_create_admin_is_live_and_pending(pg):
     make_manager(staff_client(superadmin=True), pg)
     mc = manager_client()
-    r = mc.post(M + "admins/", {"group_id": pg["g1"].id, "username": "newbie", "password": "Secret-123",
+    r = mc.post(M + "admins/", {"group_id": pg["g1"].id, "username": "newbie", "password": "Secret-Pass#12",
                                 "role_id": 7, "initial_gb": 50}, format="json")
     assert r.status_code == 201, r.json()
     assert pg["fake"].admins["newbie"]["data_limit"] == 50 * GB and pg["fake"].admins["newbie"]["role"]["id"] == 7
@@ -195,7 +202,7 @@ def test_create_admin_is_live_and_pending(pg):
     h = AdminLimitChange.objects.get(admin_username="newbie")
     assert (h.action, h.source, h.staff) == ("create", "manager", "manager:mona") and req.limit_change == h
     log = AuditLog.objects.get(action="agency.manager.admin_created")
-    assert log.staff_label == "manager:mona" and log.detail["group_id"] == pg["g1"].id and "Secret-123" not in json.dumps(log.detail)
+    assert log.staff_label == "manager:mona" and log.detail["group_id"] == pg["g1"].id and "Secret-Pass#12" not in json.dumps(log.detail)
 
 
 def test_add_volume_then_approve_charges_and_links_history(pg):
@@ -223,7 +230,7 @@ def test_add_volume_then_approve_charges_and_links_history(pg):
 def test_approve_without_price_asks_for_one(pg):
     boss = staff_client(superadmin=True)
     make_manager(boss, pg)
-    manager_client().post(M + "admins/", {"group_id": pg["g1"].id, "username": "fresh", "password": "Secret-123",
+    manager_client().post(M + "admins/", {"group_id": pg["g1"].id, "username": "fresh", "password": "Secret-Pass#12",
                                           "role_id": 6, "initial_gb": 10}, format="json")
     rid = VolumeRequest.objects.get().id
     r = boss.post(f"/api/v1/admin/agency/approvals/{rid}/approve/", {}, format="json")
@@ -249,7 +256,7 @@ def test_reject_takes_the_volume_back_without_charge(pg):
 def test_reject_of_a_new_admin_never_makes_it_unlimited(pg):
     boss = staff_client(superadmin=True)
     make_manager(boss, pg)
-    manager_client().post(M + "admins/", {"group_id": pg["g1"].id, "username": "fresh", "password": "Secret-123",
+    manager_client().post(M + "admins/", {"group_id": pg["g1"].id, "username": "fresh", "password": "Secret-Pass#12",
                                           "role_id": 6, "initial_gb": 10}, format="json")
     rid = VolumeRequest.objects.get().id
     assert boss.post(f"/api/v1/admin/agency/approvals/{rid}/reject/", {"confirm": True}, format="json").status_code == 200
@@ -282,14 +289,14 @@ def test_cap_blocks_new_volume_until_approved(pg):
 def test_password_and_inbounds_within_the_allowed_list(pg):
     make_manager(staff_client(superadmin=True), pg)
     mc = manager_client()
-    assert mc.post(M + "admins/g1-a/password/", {"password": "New-Pass-99"}, format="json").status_code == 200
-    assert ("g1-a", {"password": "New-Pass-99"}) in pg["fake"].puts
+    assert mc.post(M + "admins/g1-a/password/", {"password": "New-Pass#9912"}, format="json").status_code == 200
+    assert ("g1-a", {"password": "New-Pass#9912"}) in pg["fake"].puts
     r = mc.post(M + "admins/g1-a/inbounds/", {"role_id": 7}, format="json")
     assert r.status_code == 200 and r.json()["role"]["inbounds"] == ["ali tunel"]
     assert pg["fake"].admins["g1-a"]["role"]["id"] == 7
     acts = set(AuditLog.objects.filter(action__startswith="agency.manager.").values_list("action", flat=True))
     assert {"agency.manager.password_changed", "agency.manager.inbounds_changed"} <= acts
-    assert "New-Pass-99" not in json.dumps(list(AuditLog.objects.values_list("detail", flat=True)))
+    assert "New-Pass#9912" not in json.dumps(list(AuditLog.objects.values_list("detail", flat=True)))
 
 
 # ------------------------------------------------------------------ everything forbidden → 403
@@ -319,9 +326,9 @@ def test_every_forbidden_action_is_403(pg):
         ("get", f"groups/{pg['g2'].id}/statement/", None),
         ("get", f"accounting/?group={pg['g2'].id}", None),
         ("get", f"activity/?group={pg['g2'].id}", None),
-        ("post", "admins/", {"group_id": pg["g2"].id, "username": "x1x", "password": "Secret-123", "role_id": 6, "initial_gb": 5}),
-        ("post", "admins/", {"group_id": pg["g1"].id, "username": "x2x", "password": "Secret-123", "role_id": 4, "initial_gb": 5}),
-        ("post", "admins/", {"group_id": pg["g1"].id, "username": "x3x", "password": "Secret-123", "role_id": 6, "initial_gb": 0}),
+        ("post", "admins/", {"group_id": pg["g2"].id, "username": "x1x", "password": "Secret-Pass#12", "role_id": 6, "initial_gb": 5}),
+        ("post", "admins/", {"group_id": pg["g1"].id, "username": "x2x", "password": "Secret-Pass#12", "role_id": 4, "initial_gb": 5}),
+        ("post", "admins/", {"group_id": pg["g1"].id, "username": "x3x", "password": "Secret-Pass#12", "role_id": 6, "initial_gb": 0}),
         ("post", "payments/", {"admin": "g1-a", "amount": 1000}),
         ("post", "ledger/g1-a/entries/", {"kind": "payment", "amount": 1000}),
         ("post", "prices/", {"admin": "g1-a", "price_per_gb": 1}),
@@ -364,7 +371,8 @@ def test_group_manager_staff_never_opens_the_rest_of_the_panel(pg):
         assert r.status_code == 403, (method, path, r.status_code)
     # its own profile works (the panel needs it to draw the reduced menu)
     me = mc.get("/api/v1/admin/auth/me/").json()
-    assert me["group_manager"]["username"] == "mona" and me["permissions"] == ["agency.group_manager"]
+    assert me["group_manager"]["username"] == "mona" and me["permissions"][0] == "agency.group_manager"
+    assert all(p.startswith("agency.gm.") for p in me["permissions"][1:])
 
 
 def _admin_routes():

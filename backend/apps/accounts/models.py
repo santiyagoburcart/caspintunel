@@ -11,6 +11,20 @@ from .managers import UserManager, generate_referral_code
 # the only permission a group-manager staff holds (apps/agency/managers.py, v1.25)
 GROUP_MANAGER_PERM = "agency.group_manager"
 GROUP_MANAGER_ROLE = "Group manager"
+# v1.27: what a group manager may do, one permission each (Roles page → "Agency – group manager").
+# code → (English name, Persian name). The "Group manager" role gets all of them when created.
+GM_PERMS = {
+    "agency.gm.view_admins": ("Group manager: view group admins", "مدیر گروه: دیدن ادمین‌های گروه"),
+    "agency.gm.create_admin": ("Group manager: create admin (incl. profile title, support link)",
+                               "مدیر گروه: ساخت ادمین (با عنوان پروفایل و لینک پشتیبانی)"),
+    "agency.gm.add_volume": ("Group manager: add volume", "مدیر گروه: افزودن حجم"),
+    "agency.gm.toggle_admin": ("Group manager: enable / disable admin", "مدیر گروه: فعال / غیرفعال‌کردن ادمین"),
+    "agency.gm.admin_password": ("Group manager: change admin password", "مدیر گروه: تغییر رمز ادمین"),
+    "agency.gm.admin_role": ("Group manager: change admin role", "مدیر گروه: تغییر نقش ادمین"),
+    "agency.gm.view_users": ("Group manager: view admins' users", "مدیر گروه: دیدن کاربران ادمین‌ها"),
+    "agency.gm.accounting": ("Group manager: view accounting / group statement", "مدیر گروه: دیدن حسابداری و صورت‌حساب گروه"),
+    "agency.gm.activity": ("Group manager: view activity", "مدیر گروه: دیدن فعالیت"),
+}
 
 
 class Source(models.TextChoices):
@@ -196,11 +210,22 @@ class Staff(TimeStampedModel):
         admin API refuses it unless the view opts in (StaffPermission)."""
         return not self.is_superadmin and self.group_manager_row is not None
 
+    def gm_permissions(self) -> list[str]:
+        """The agency.gm.* abilities of a group-manager staff (sorted)."""
+        if not self.role_id:
+            return []
+        return sorted(self.role.permissions.filter(code__in=list(GM_PERMS)).values_list("code", flat=True))
+
     def has_perm(self, code: str) -> bool:
         if self.is_superadmin:
             return True
         if self.is_group_manager:
-            return code == GROUP_MANAGER_PERM
+            # restricted: only the group-manager marker + the agency.gm.* abilities its role holds
+            if code == GROUP_MANAGER_PERM:
+                return True
+            if code in GM_PERMS and self.role_id:
+                return self.role.permissions.filter(code=code).exists()
+            return False
         if not self.role_id:
             return False
         return self.role.permissions.filter(code=code).exists()

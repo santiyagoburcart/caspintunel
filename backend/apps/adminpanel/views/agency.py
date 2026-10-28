@@ -500,7 +500,10 @@ def _crud_error(exc):
     if isinstance(exc, AdminCrudError):
         code = 409 if exc.code == "exists" else 404 if exc.code == "not_found" else \
             502 if exc.code in ("panel_error", "panel_refused") else 400
-        return Response({"detail": str(exc), "code": exc.code, "field": exc.field}, status=code)
+        body = {"detail": str(exc), "code": exc.code, "field": exc.field}
+        if getattr(exc, "message_fa", None):
+            body["detail_fa"] = exc.message_fa
+        return Response(body, status=code)
     raise exc
 
 

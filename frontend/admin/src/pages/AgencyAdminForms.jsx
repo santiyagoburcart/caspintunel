@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useI18n } from '../lib/i18n'
+import { genAdminPassword, passwordProblem, PW_RULE } from '../lib/adminPassword'
 import { Spinner, Toggle } from '../components/ui'
 import { useConfirm } from '../components/ConfirmDialog'
 import { useToast } from '../components/Toast'
@@ -76,15 +77,7 @@ const NOTIFY = ['create', 'modify', 'delete', 'status_change', 'reset_data_usage
 const LIMITS = ['max_users', 'data_limit_min', 'data_limit_max', 'expire_min', 'expire_max', 'min_hwid_per_user', 'max_hwid_per_user', 'on_hold_timeout_min', 'on_hold_timeout_max']
 const useF = () => { const { lang } = useI18n(); return [F[lang] || F.fa, lang] }
 
-export function genPassword(n = 16) {
-  const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789'
-  for (;;) {
-    const a = new Uint32Array(n)
-    crypto.getRandomValues(a)
-    const pw = Array.from(a, (x) => abc[x % abc.length]).join('')
-    if (/\d/.test(pw) && /[A-Z]/.test(pw) && /[a-z]/.test(pw)) return pw
-  }
-}
+export const genPassword = () => genAdminPassword()   // PasarGuard's admin password rule (lib/adminPassword.js)
 
 function Sec({ icon, title, children, hint }) {
   return (
@@ -109,7 +102,7 @@ export function PasswordInput({ value, onChange, s, autoFocus }) {
   const [show, setShow] = useState(false)
   return (
     <div className="af-pw">
-      <input className="input" dir="ltr" type={show ? 'text' : 'password'} autoComplete="new-password" minLength={8}
+      <input className="input" dir="ltr" type={show ? 'text' : 'password'} autoComplete="new-password" minLength={12}
         value={value} onChange={(e) => onChange(e.target.value)} autoFocus={autoFocus} />
       <button type="button" className="af-pw-b" onClick={() => setShow((v) => !v)}>{show ? s.hide : s.show}</button>
       <button type="button" className="af-pw-b" onClick={() => { onChange(genPassword()); setShow(true) }}><Ic n="reset" size={13} />{s.gen}</button>
@@ -213,7 +206,7 @@ function useOptions(panel) {
   }, [panel])
   return [opts, err]
 }
-const fieldErrs = (e) => { const d = e?.response?.data; return d?.field ? { [d.field]: d.detail } : {} }
+const fieldErrs = (e, lang = 'fa') => { const d = e?.response?.data; return d?.field ? { [d.field]: (lang === 'fa' && d.detail_fa) || d.detail } : {} }
 
 export function CredentialsCard({ s, username, password, extra }) {
   const toast = useToast()
@@ -245,7 +238,7 @@ const blank = () => ({ panel: '', username: '', password: genPassword(), role_id
 
 // ================================ create page ===================================
 export function AgencyAdminCreate({ Header }) {
-  const [s] = useF()
+  const [s, lang] = useF()
   const { can } = useAuth()
   const go = useNavigate()
   const [f, setF] = useState(blank)
@@ -260,6 +253,7 @@ export function AgencyAdminCreate({ Header }) {
 
   const submit = async (e) => {
     e.preventDefault()
+    if (passwordProblem(f.password, f.username)) { setErrs({ password: PW_RULE[lang] || PW_RULE.fa }); return }
     setBusy(true); setErrs({})
     try {
       const body = { ...f, panel: f.panel || opts?.panel }
@@ -267,7 +261,7 @@ export function AgencyAdminCreate({ Header }) {
       const r = await api.post('/admin/agency/panel-admins/', body)
       setDone(r.data)
       window.scrollTo({ top: 0, behavior: 'smooth' })
-    } catch (e2) { setErrs(fieldErrs(e2)) } finally { setBusy(false) }
+    } catch (e2) { setErrs(fieldErrs(e2, lang)) } finally { setBusy(false) }
   }
 
   if (done) {
@@ -350,7 +344,7 @@ const EDIT_KEYS = ['role_id', 'status', 'telegram_id', 'discord_webhook', 'suppo
 const norm = (k, v) => (v == null ? '' : typeof v === 'object' ? JSON.stringify(v) : String(v))
 
 export function AdminSettingsTab({ username, writable, onDeleted }) {
-  const [s] = useF()
+  const [s, lang] = useF()
   const confirm = useConfirm()
   const [opts] = useOptions('')
   const [orig, setOrig] = useState(null)
@@ -375,12 +369,14 @@ export function AdminSettingsTab({ username, writable, onDeleted }) {
       const body = Object.fromEntries(changed.map((k) => [k, f[k]]))
       await api.patch(`/admin/agency/panel-admins/${encodeURIComponent(username)}/`, body)
       await load()
-    } catch (e2) { setErrs(fieldErrs(e2)) } finally { setBusy(false) }
+    } catch (e2) { setErrs(fieldErrs(e2, lang)) } finally { setBusy(false) }
   }
   const setPassword = async () => {
-    if (pw.length < 8) { setErrs({ password: '8+' }); return }
-    await api.patch(`/admin/agency/panel-admins/${encodeURIComponent(username)}/`, { password: pw })
-    setNewPw(pw); setPw('')
+    if (passwordProblem(pw, username)) { setErrs({ password: PW_RULE[lang] || PW_RULE.fa }); return }
+    try {
+      await api.patch(`/admin/agency/panel-admins/${encodeURIComponent(username)}/`, { password: pw })
+      setNewPw(pw); setPw('')
+    } catch (e2) { setErrs(fieldErrs(e2, lang)) }
   }
   const del = () => {
     let typed = ''

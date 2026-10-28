@@ -89,7 +89,7 @@ def _staff_payload(staff: Staff) -> dict:
     if staff.is_superadmin:
         perms = ["*"]
     elif gm is not None:
-        perms = [GROUP_MANAGER_PERM]       # never the role's other codes (Staff.has_perm)
+        perms = [GROUP_MANAGER_PERM, *staff.gm_permissions()]   # v1.27: + its agency.gm.* abilities (Staff.has_perm)
     elif staff.role_id:
         perms = list(staff.role.permissions.values_list("code", flat=True))
     else:

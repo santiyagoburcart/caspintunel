@@ -19,17 +19,17 @@ import { useLiveApprovals } from '../lib/liveApprovals'
 
 export const GM_T = {
   fa: {
-    m_title: 'مدیران گروه', m_intro: 'هر مدیر گروه با نام کاربری و رمز خودش در همین پنل اصلی (آدرس زیر) وارد می‌شود — با نقش «مدیر گروه» — و فقط ادمین‌های گروه‌های خودش را می‌بیند: ساخت ادمین، افزودن حجم (فقط افزایش)، تغییر رمز و اینباند (از فهرست مجاز). هر حجمی که می‌دهد بلافاصله روی PasarGuard اعمال و در «تأییدها» منتظر شما می‌ماند.',
+    m_title: 'مدیران گروه', m_intro: 'هر مدیر گروه با نام کاربری و رمز خودش در همین پنل اصلی (آدرس زیر) وارد می‌شود — با نقش «مدیر گروه» — و فقط ادمین‌های گروه‌های خودش را می‌بیند: ساخت ادمین، افزودن حجم (فقط افزایش)، تغییر رمز و نقش ادمین (از فهرست مجاز)، فعال/غیرفعال‌کردن ادمین و دیدن کاربرانش. هر حجمی که می‌دهد بلافاصله روی PasarGuard اعمال و در «تأییدها» منتظر شما می‌ماند.',
     m_new: 'مدیر گروه جدید', m_edit: 'ویرایش مدیر', m_none: 'هنوز مدیر گروهی ساخته نشده است.', m_portal: 'آدرس ورود مدیران', no_login: 'ورود به پنل ندارد: این نام کاربری را یک کاربر پنل دیگر دارد — مدیر جدیدی با نام دیگر بسازید.',
     username: 'نام کاربری', password: 'رمز عبور', gen: 'رمز تصادفی', display: 'نام نمایشی', active: 'فعال', disabled: 'غیرفعال',
     cap: 'سقف حجم تأییدنشده (گیگ)', cap_hint: 'خالی = بدون سقف. با رسیدن به سقف، حجم تازه تا تأیید شما بسته می‌شود.', no_cap: 'بدون سقف',
-    groups: 'گروه‌ها و اینباندهای مجاز', groups_hint: 'اینباندها در PasarGuard از «نقش» ادمین می‌آیند؛ نقش‌های مالک (sudo) هیچ‌وقت مجاز نیستند.',
-    roles_err: 'نقش‌ها از PasarGuard خوانده نشد', inbounds: 'اینباندها', all_inb: 'همه', note: 'یادداشت',
+    groups: 'گروه‌ها و نقش‌های مجاز ادمین (Role)', groups_hint: 'اینباندهای هر ادمین در PasarGuard از نقش (Role) او می‌آیند — زیر هر نقش نوشته شده؛ نقش‌های مالک (sudo) هیچ‌وقت مجاز نیستند.',
+    roles_err: 'نقش‌ها از PasarGuard خوانده نشد', inbounds: 'نقش ادمین (Role)', all_inb: 'همه', note: 'یادداشت',
     pending: 'در انتظار', of: 'از', last_login: 'آخرین ورود', never: 'هرگز', save: 'ذخیره', create: 'ساخت',
     reset_pw: 'رمز تازه', reset_msg: 'یک رمز تصادفی ساخته می‌شود و همهٔ نشست‌های این مدیر بسته می‌شود.', disable: 'غیرفعال‌کردن', enable: 'فعال‌کردن',
     disable_msg: 'مدیر دیگر نمی‌تواند وارد شود و نشست‌هایش بسته می‌شود.', saved: 'ذخیره شد', created: 'مدیر گروه ساخته شد',
     cred_title: 'اطلاعات ورود مدیر گروه', cred_note: 'رمز فقط همین یک بار نمایش داده می‌شود.', copy: 'کپی', copied: 'کپی شد', close: 'بستن',
-    pick_group: 'حداقل یک گروه انتخاب کنید.', need_role: 'برای هر گروه حداقل یک اینباند مجاز انتخاب کنید.',
+    pick_group: 'حداقل یک گروه انتخاب کنید.', need_role: 'برای هر گروه حداقل یک نقش مجاز انتخاب کنید.',
     a_title: 'تأییدها', a_intro: 'حجمی که مدیران گروه داده‌اند؛ روی PasarGuard اعمال شده است. تأیید ← شارژ در حسابداری (با منطق آخرین سقف). رد ← همین حجم از PasarGuard برداشته می‌شود و شارژی ثبت نمی‌شود.',
     st_pending: 'در انتظار', st_approved: 'تأییدشده', st_rejected: 'ردشده', st_all: 'همه',
     k_create: 'ادمین جدید', k_add: 'افزودن حجم', group: 'گروه', manager: 'مدیر', admin: 'ادمین', gb: 'حجم', price: 'قیمت هر گیگ', amount: 'مبلغ',
@@ -42,23 +42,23 @@ export const GM_T = {
     opening: 'مانده از قبل', charges: 'جمع شارژ', payments: 'جمع پرداخت', closing: 'مانده پایان بازه', balance: 'مانده', kind: 'نوع', note_c: 'توضیح',
     range: 'بازهٔ تاریخ', all_time: 'همهٔ زمان‌ها', csv: 'CSV', xlsx: 'Excel', print: 'چاپ', pending_items: 'در انتظار تأیید (در مانده حساب نشده)', no_entries: 'گردشی در این بازه نیست.',
     k_quota_charge: 'شارژ حجم', k_manual_charge: 'بدهکاری', k_adjustment: 'اصلاحیه', k_payment: 'پرداخت', voided: 'باطل‌شده', back: 'همهٔ گروه‌ها',
-    act_title: 'فعالیت', act_none: 'فعالیتی ثبت نشده است.', act_show: 'نمایش فعالیت', act_hide: 'بستن',
-    w_no_group: 'هیچ گروهی به این مدیر داده نشده — بعد از ورود چیزی نمی‌بیند.', w_no_role: 'برای یکی از گروه‌ها هیچ اینباند مجازی انتخاب نشده.',
-    staff_link: 'حساب پنل', staff_hint: 'گروه‌ها، اینباندها و سقف همین مدیر را در «نقش‌ها و کارکنان» هم می‌توانید ببینید و تغییر دهید.',
-    acts: { admin_created: 'ساخت ادمین', volume_added: 'افزودن حجم', password_changed: 'تغییر رمز ادمین', inbounds_changed: 'تغییر اینباند', login: 'ورود', approved: 'تأیید حجم', rejected: 'رد حجم' },
+    st_search: 'فیلتر بر اساس نام ادمین…', act_title: 'فعالیت', act_none: 'فعالیتی ثبت نشده است.', act_show: 'نمایش فعالیت', act_hide: 'بستن',
+    w_no_group: 'هیچ گروهی به این مدیر داده نشده — بعد از ورود چیزی نمی‌بیند.', w_no_role: 'برای یکی از گروه‌ها هیچ نقش مجازی انتخاب نشده.',
+    staff_link: 'حساب پنل', staff_hint: 'گروه‌ها، نقش‌های مجاز و سقف همین مدیر را در «نقش‌ها و کارکنان» هم می‌توانید ببینید و تغییر دهید.',
+    acts: { admin_enabled: 'فعال‌کردن ادمین', admin_disabled: 'غیرفعال‌کردن ادمین', profile_changed: 'تغییر تنظیمات ادمین', admin_created: 'ساخت ادمین', volume_added: 'افزودن حجم', password_changed: 'تغییر رمز ادمین', inbounds_changed: 'تغییر نقش ادمین', login: 'ورود', approved: 'تأیید حجم', rejected: 'رد حجم' },
   },
   en: {
-    m_title: 'Group managers', m_intro: "Each group manager signs in to this main panel (address below) with their own username and password — role \u201cGroup manager\u201d — and sees only their groups' admins: create admins, add volume (increase only), change password and inbounds (allowed list). Every volume they give is live on PasarGuard at once and waits for you in Approvals.",
+    m_title: 'Group managers', m_intro: "Each group manager signs in to this main panel (address below) with their own username and password — role \u201cGroup manager\u201d — and sees only their groups' admins: create admins, add volume (increase only), change password and admin role (allowed list), enable / disable admins and see their users. Every volume they give is live on PasarGuard at once and waits for you in Approvals.",
     m_new: 'New group manager', m_edit: 'Edit manager', m_none: 'No group managers yet.', m_portal: 'Managers sign in at', no_login: 'No panel login: another panel user has this username — create the manager again with a different one.',
     username: 'Username', password: 'Password', gen: 'Random', display: 'Display name', active: 'Active', disabled: 'Disabled',
     cap: 'Max unapproved volume (GB)', cap_hint: 'Empty = no cap. When reached, new volume is blocked until you approve.', no_cap: 'no cap',
-    groups: 'Groups and allowed inbounds', groups_hint: "In PasarGuard an admin's inbounds come from its role; owner (sudo) roles are never allowed.",
-    roles_err: 'Could not read the roles from PasarGuard', inbounds: 'Inbounds', all_inb: 'all', note: 'Note',
+    groups: 'Groups and allowed admin roles', groups_hint: "In PasarGuard an admin's inbounds come from its role (shown under each); owner (sudo) roles are never allowed.",
+    roles_err: 'Could not read the roles from PasarGuard', inbounds: 'Admin role', all_inb: 'all', note: 'Note',
     pending: 'pending', of: 'of', last_login: 'Last sign-in', never: 'never', save: 'Save', create: 'Create',
     reset_pw: 'New password', reset_msg: "A random password is made and all of this manager's sessions end.", disable: 'Disable', enable: 'Enable',
     disable_msg: 'The manager can no longer sign in; open sessions end.', saved: 'Saved', created: 'Group manager created',
     cred_title: 'Group manager sign-in', cred_note: 'The password is shown only this once.', copy: 'Copy', copied: 'Copied', close: 'Close',
-    pick_group: 'Pick at least one group.', need_role: 'Pick at least one allowed inbound set for each group.',
+    pick_group: 'Pick at least one group.', need_role: 'Pick at least one allowed role for each group.',
     a_title: 'Approvals', a_intro: 'Volume given by group managers — already live on PasarGuard. Approve → charge in accounting (last-limit logic). Reject → that volume is taken back on PasarGuard, no charge.',
     st_pending: 'Pending', st_approved: 'Approved', st_rejected: 'Rejected', st_all: 'All',
     k_create: 'New admin', k_add: 'Added volume', group: 'Group', manager: 'Manager', admin: 'Admin', gb: 'Volume', price: 'Price / GB', amount: 'Amount',
@@ -71,10 +71,10 @@ export const GM_T = {
     opening: 'Opening balance', charges: 'Charges', payments: 'Payments', closing: 'Closing balance', balance: 'Balance', kind: 'Type', note_c: 'Note',
     range: 'Date range', all_time: 'All time', csv: 'CSV', xlsx: 'Excel', print: 'Print', pending_items: 'Pending approval (not in the balance)', no_entries: 'No entries in this range.',
     k_quota_charge: 'Quota charge', k_manual_charge: 'Charge', k_adjustment: 'Adjustment', k_payment: 'Payment', voided: 'voided', back: 'All groups',
-    act_title: 'Activity', act_none: 'No activity yet.', act_show: 'Show activity', act_hide: 'Hide',
-    w_no_group: 'No group assigned — this manager sees nothing after signing in.', w_no_role: 'One of the groups has no allowed inbound set.',
-    staff_link: 'Panel account', staff_hint: "The same manager's groups, inbounds and cap can also be edited on Roles & staff.",
-    acts: { admin_created: 'Admin created', volume_added: 'Volume added', password_changed: 'Admin password changed', inbounds_changed: 'Inbounds changed', login: 'Signed in', approved: 'Volume approved', rejected: 'Volume rejected' },
+    st_search: 'Filter by admin name…', act_title: 'Activity', act_none: 'No activity yet.', act_show: 'Show activity', act_hide: 'Hide',
+    w_no_group: 'No group assigned — this manager sees nothing after signing in.', w_no_role: 'One of the groups has no allowed role.',
+    staff_link: 'Panel account', staff_hint: "The same manager's groups, allowed roles and cap can also be edited on Roles & staff.",
+    acts: { admin_enabled: 'Admin enabled', admin_disabled: 'Admin disabled', profile_changed: 'Admin settings changed', admin_created: 'Admin created', volume_added: 'Volume added', password_changed: 'Admin password changed', inbounds_changed: 'Admin role changed', login: 'Signed in', approved: 'Volume approved', rejected: 'Volume rejected' },
   },
 }
 const useS = () => { const { lang } = useI18n(); return [GM_T[lang] || GM_T.fa, lang] }
@@ -106,7 +106,7 @@ function RoleChips({ roles, s }) {
     <span className="gm-roles">
       {roles.map((r) => (
         <span key={r.id} className="gm-role" title={r.name}>
-          <b>{r.all_inbounds ? s.all_inb : (r.inbounds || []).join(' · ') || r.name}</b><small>{r.name}</small>
+          <b>{r.name}</b><small>{r.all_inbounds ? s.all_inb : (r.inbounds || []).join(' · ') || '—'}</small>
         </span>
       ))}
     </span>
@@ -141,7 +141,7 @@ export function GroupPicker({ s, opts, value, onChange }) {
                   {(opts?.roles || []).map((r) => (
                     <label key={r.id} className="gm-rolei">
                       <input type="checkbox" checked={(value[g.id] || []).includes(r.id)} onChange={() => toggleRole(g.id, r.id)} />
-                      <span><b>{r.all_inbounds ? s.all_inb : r.inbounds.join(' · ') || '—'}</b><small>{r.name}</small></span>
+                      <span><b>{r.name}</b><small>{r.all_inbounds ? s.all_inb : r.inbounds.join(' · ') || '—'}</small></span>
                     </label>
                   ))}
                 </div>
@@ -543,6 +543,11 @@ export function GroupStatement({ url }) {
 }
 
 function StatementBody({ st, s, lang }) {
+  // v1.27: filter the statement by admin name (instant)
+  const [q, setQ] = useState('')
+  const term = q.trim().toLowerCase()
+  const entries = term ? st.entries.filter((e) => String(e.admin || '').toLowerCase().includes(term)) : st.entries
+  const pending = term ? st.pending.filter((p) => String(p.admin || '').toLowerCase().includes(term)) : st.pending
   return (
     <>
       <dl className="gm-facts gm-st-sum">
@@ -553,12 +558,13 @@ function StatementBody({ st, s, lang }) {
         <div data-strong><dt>{s.g_debt}</dt><dd><span className="gm-bal" data-sign={Number(st.total_debt) > 0 ? 'owes' : 'zero'}><N>{money(st.total_debt, lang)}</N></span></dd></div>
         <div><dt>{s.g_pending}</dt><dd><N>{gbText(st.pending_gb)}</N> · <N>{toman(st.pending_amount, lang)}</N></dd></div>
       </dl>
-      {st.entries.length === 0 ? <p className="text-sm text-muted mt-3">{s.no_entries}</p> : (
+      <input className="input gm-st-q mt-3" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={s.st_search} aria-label={s.st_search} />
+      {entries.length === 0 ? <p className="text-sm text-muted mt-3">{s.no_entries}</p> : (
         <div className="gm-st-wrap mt-3">
           <table className="gm-st-table">
             <thead><tr><th>{s.date}</th><th>{s.admin}</th><th>{s.kind}</th><th>{s.gb}</th><th>{s.amount}</th><th>{s.balance}</th><th>{s.note_c}</th></tr></thead>
             <tbody>
-              {st.entries.map((e) => (
+              {entries.map((e) => (
                 <tr key={e.id} data-voided={e.voided || undefined}>
                   <td data-label={s.date}>{jalali(e.date, false, lang)}</td>
                   <td data-label={s.admin}><bdi>{e.admin}</bdi></td>
@@ -573,11 +579,11 @@ function StatementBody({ st, s, lang }) {
           </table>
         </div>
       )}
-      {st.pending.length > 0 && (
+      {pending.length > 0 && (
         <div className="gm-pend mt-3">
           <h4>{s.pending_items}</h4>
           <ul>
-            {st.pending.map((p) => (
+            {pending.map((p) => (
               <li key={p.id}><span>{jalali(p.date, false, lang)}</span><bdi>{p.admin}</bdi><N>+{gbText(p.gb)}</N><N>{p.price_per_gb != null ? toman(p.amount, lang) : s.no_price}</N><small>#{p.id} · {p.manager}</small></li>
             ))}
           </ul>
@@ -646,6 +652,7 @@ export const GM_CSS = `
 .gm-bal[data-sign="owes"] { color: var(--c-danger-fg); } .gm-bal[data-sign="credit"] { color: var(--c-success-fg); } .gm-bal[data-sign="zero"] { color: var(--c-muted-fg); }
 .gm-st-table tr[data-voided] { opacity: .55; }
 .gm-st-wrap { overflow-x: auto; max-width: 100%; }
+.gm-st-q { max-width: 320px; }
 .gm-st-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .gm-st-table th { text-align: start; font-size: 12px; font-weight: 700; color: var(--c-muted-fg); padding: 10px 12px; border-bottom: 1px solid var(--c-border); white-space: nowrap; }
 .gm-st-table td { padding: 9px 12px; border-bottom: 1px solid var(--c-border); white-space: nowrap; vertical-align: middle; }

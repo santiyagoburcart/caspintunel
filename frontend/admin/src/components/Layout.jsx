@@ -240,7 +240,7 @@ function LegacyLayout() {
   const side = useSideNav()
   const closeAll = () => { setOpen(false); side.closeDrawer() }
 
-  const items = isGroupManager(staff) ? GM_GROUPS[0][1].map(([to, k]) => [to, k, null]) : nav.filter(([, , p]) => !p || can(p))
+  const items = isGroupManager(staff) ? GM_GROUPS[0][1].filter(([, , p]) => !p || can(p)) : nav.filter(([, , p]) => !p || can(p))
   const brand = (lang === 'fa' ? config?.site_name_fa : config?.site_name_en) || (lang === 'fa' ? 'کسپین' : 'caspin')
 
   const Brand = ({ children }) => (
@@ -372,8 +372,8 @@ function CaspianLayout() {
   useInert(railRef, !side.open)
 
   const gm = isGroupManager(staff)
-  const groups = gm ? GM_GROUPS : CASPIAN_GROUPS.map(([g, items]) => [g, items.filter(([, , p]) => !p || can(p))])
-  const botnav = gm ? GM_BOTNAV : CASPIAN_BOTNAV.filter(([, , p]) => !p || can(p))
+  const groups = (gm ? GM_GROUPS : CASPIAN_GROUPS).map(([g, items]) => [g, items.filter(([, , p]) => !p || can(p))])
+  const botnav = (gm ? GM_BOTNAV : CASPIAN_BOTNAV).filter(([, , p]) => !p || can(p))
   const brand = (lang === 'fa' ? config?.site_name_fa : config?.site_name_en)
     || (lang === 'fa' ? 'کسپین تانل' : 'Caspian Tunnel')
   const tab = activeTab(pathname)
