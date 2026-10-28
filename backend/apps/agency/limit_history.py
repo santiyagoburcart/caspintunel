@@ -12,6 +12,7 @@ from django.utils import timezone
 from apps.common.models import write_audit
 
 from .models import AdminLimitChange
+from .notes import to_fa
 
 GIB = 1024 ** 3
 
@@ -48,12 +49,14 @@ def record(username: str, old, new, *, action: str, source: str = "panel", by=""
     return row
 
 
+
 def history(username: str) -> list[dict]:
     out = []
     for r in AdminLimitChange.objects.filter(admin_username=username).select_related("ledger_entry"):
         le = r.ledger_entry
         out.append({
             "id": r.id, "at": r.created_at, "action": r.action, "source": r.source, "staff": r.staff, "note": r.note,
+            "note_fa": to_fa(r.note),
             "old_limit_bytes": r.old_limit_bytes, "new_limit_bytes": r.new_limit_bytes,
             "old_fmt": fmt(r.old_limit_bytes), "new_fmt": fmt(r.new_limit_bytes),
             "delta_bytes": (r.new_limit_bytes - r.old_limit_bytes) if (r.old_limit_bytes and r.new_limit_bytes) else None,

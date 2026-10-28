@@ -52,6 +52,7 @@ export const GM_GROUPS = [
     ['/my-groups/new', 'gm_new_admin', null, 'users'],
     ['/my-groups/accounting', 'gm_accounting', null, 'accounting'],
     ['/my-groups/activity', 'gm_activity', null, 'monitoring'],
+    ['/my-groups/settings', 'settings', null, 'settings'],
   ]],
 ]
 export const GM_BOTNAV = [
@@ -59,6 +60,8 @@ export const GM_BOTNAV = [
   ['/my-groups/new', 'gm_new_admin', null, 'users', true],
   ['/my-groups/accounting', 'gm_accounting', null, 'accounting'],
   ['/my-groups/activity', 'gm_activity', null, 'monitoring'],
+  // v1.25.5: profile, own password, language, theme and logout — like staff's Settings tab
+  ['/my-groups/settings', 'settings', null, 'settings'],
 ]
 export const isGroupManager = (staff) => !!staff?.group_manager
 

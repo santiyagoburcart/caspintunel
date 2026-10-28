@@ -173,7 +173,9 @@ ledger group statements. Production: #2 "Vox" (owner VEX2), #3 "Mostafa" (owner 
 **Panel menu for a manager** (`components/adminNav.js` → `GM_GROUPS`, page `pages/GroupManager.jsx`):
 *Group admins* (`/my-groups`), *New admin* (`/my-groups/new`), *Accounting* (`/my-groups/accounting`,
 incl. the group statement — the staff Agency `GroupStatement` component) and *Activity*
-(`/my-groups/activity`). Every other route redirects to `/my-groups`. Like every staff account, the manager signs out / switches language and light-dark mode from the account block at the bottom of the sidebar (desktop) or the ☰ drawer (phone) — v1.25.4; before, a manager on a phone had no logout because staff use the Settings tab for it. Disabling a manager or resetting
+(`/my-groups/activity`). Every other route redirects to `/my-groups`. Since v1.25.5 a manager has its own **Settings** tab (`/my-groups/settings`, last bottom tab on phones, avatar in the header, avatar menu on desktop): profile (username, role, assigned groups with allowed inbounds, cap), **change own password** (`POST agency/manager/password/` — needs the current password, ends other sessions, returns fresh tokens for this one, keeps `GroupManager.password` in step), language, light/dark and logout. The sidebar/drawer account block of other staff is not shown to managers.
+
+**Statement notes in Persian (v1.25.5).** Notes the server writes (no price, approved request #N, pending approval, limit-history notes, …) are stored in English and returned with `note_fa` (`apps/agency/notes.py`); the panel shows it in Persian and the fa CSV/Excel exports use it. Notes typed by people are shown as typed. On phones the group statement shows each row as a card. Disabling a manager or resetting
 its password ends its panel sessions (`Staff.token_version`).
 
 **Staff** (`agency.manage`; list with `agency.view`): create / edit / disable managers (the linked

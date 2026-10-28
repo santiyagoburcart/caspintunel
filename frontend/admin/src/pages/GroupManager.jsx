@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
-import { api } from '../lib/api'
+import { api, tokens } from '../lib/api'
+import { useAuth } from '../lib/auth'
+import { useTheme } from '../theme/ThemeProvider'
 import { useI18n } from '../lib/i18n'
 import { jalali, toman } from '../lib/format'
 import { copyToClipboard } from '../lib/clipboard'
@@ -40,6 +42,10 @@ const T = {
     date: 'تاریخ', type: 'نوع', amount: 'مبلغ', charges: 'شارژ', payments: 'پرداخت', admin: 'ادمین', statement: 'صورت‌حساب', group_st: 'صورت‌حساب گروه', hide: 'بستن', pending_sep: 'در انتظار تأیید (جدا از مانده)',
     opening: 'مانده از قبل', closing: 'مانده پایان بازه', none: 'گردشی نیست.', running: 'مانده', voided: 'باطل‌شده', no_price: 'بی‌قیمت', total: 'جمع',
     k_quota_charge: 'شارژ حجم', k_manual_charge: 'بدهکاری', k_adjustment: 'اصلاحیه', k_payment: 'پرداخت', act_none: 'فعالیتی نیست.',
+    set_profile: 'حساب من', set_role: 'نقش', set_groups: 'گروه‌های سپرده‌شده', set_cap: 'سقف حجم تأییدنشده', set_display: 'نام نمایشی',
+    set_pw: 'تغییر رمز عبور من', set_pw_cur: 'رمز فعلی', set_pw_new: 'رمز جدید (حداقل ۸ نویسه)', set_pw_rep: 'تکرار رمز جدید', set_pw_mismatch: 'رمز جدید و تکرار آن یکی نیستند.',
+    set_pw_done: 'رمز شما تغییر کرد — نشست‌های دیگر بسته شدند.', set_pw_note: 'بعد از تغییر، همهٔ نشست‌های دیگر شما (دستگاه‌های دیگر) بسته می‌شوند.',
+    set_prefs: 'نمایش', set_lang: 'زبان', set_theme: 'پوسته', light: 'روشن', dark: 'تاریک', set_logout: 'خروج از حساب', note: 'توضیح',
     acts: { admin_created: 'ساخت ادمین', volume_added: 'افزودن حجم', password_changed: 'تغییر رمز ادمین', inbounds_changed: 'تغییر اینباند', login: 'ورود', approved: 'تأیید پشتیبانی', rejected: 'رد پشتیبانی' },
   },
   en: {
@@ -59,6 +65,10 @@ const T = {
     date: 'Date', type: 'Type', amount: 'Amount', charges: 'Charges', payments: 'Payments', admin: 'Admin', statement: 'Statement', group_st: 'Group statement', hide: 'Hide', pending_sep: 'Pending approval (not in the balance)',
     opening: 'Opening balance', closing: 'Closing balance', none: 'No entries.', running: 'Balance', voided: 'voided', no_price: 'no price', total: 'Total',
     k_quota_charge: 'Quota charge', k_manual_charge: 'Charge', k_adjustment: 'Adjustment', k_payment: 'Payment', act_none: 'No activity yet.',
+    set_profile: 'My account', set_role: 'Role', set_groups: 'Assigned groups', set_cap: 'Max unapproved volume', set_display: 'Display name',
+    set_pw: 'Change my password', set_pw_cur: 'Current password', set_pw_new: 'New password (8+ characters)', set_pw_rep: 'Repeat the new password', set_pw_mismatch: 'The new password and its repeat differ.',
+    set_pw_done: 'Your password changed — other sessions were signed out.', set_pw_note: 'After the change, all your other sessions (other devices) are signed out.',
+    set_prefs: 'Display', set_lang: 'Language', set_theme: 'Theme', light: 'Light', dark: 'Dark', set_logout: 'Log out', note: 'Note',
     acts: { admin_created: 'Admin created', volume_added: 'Volume added', password_changed: 'Admin password changed', inbounds_changed: 'Inbounds changed', login: 'Signed in', approved: 'Approved by support', rejected: 'Rejected by support' },
   },
 }
@@ -86,7 +96,7 @@ async function download(url, params, name) {
   setTimeout(() => URL.revokeObjectURL(a.href), 2000)
 }
 
-const TABS = { undefined: 'admins', new: 'new', accounting: 'acc', activity: 'act' }
+const TABS = { undefined: 'admins', new: 'new', accounting: 'acc', activity: 'act', settings: 'set' }
 
 export default function GroupManager() {
   const { lang } = useI18n()
@@ -114,6 +124,7 @@ export default function GroupManager() {
           {tab === 'new' && <NewAdminPage me={me} s={s} reload={load} />}
           {tab === 'acc' && me.groups.length > 0 && <Accounting me={me} s={s} lang={lang} />}
           {tab === 'act' && <Activity s={s} lang={lang} />}
+          {tab === 'set' && <SettingsTab me={me} s={s} />}
         </>
       )}
     </div>
@@ -449,6 +460,7 @@ function AdminStatement({ username, params, s, lang, exp }) {
               <span className="ap-st-d">{jalali(e.date, false, lang)}</span>
               <span className="ap-st-a" data-sign={e.voided ? 'zero' : Number(e.signed) < 0 ? 'credit' : 'owes'}><N>{Number(e.signed) < 0 ? '−' : '+'}{toman(Math.abs(Number(e.amount)), lang)}</N></span>
               <span className="ap-st-r">{s.running}: <N>{money(e.balance, lang)}</N>{e.gb && <> · <N>{gbText(e.gb)}</N></>}{e.voided && ` · ${s.voided}`}</span>
+              {e.note && <span className="ap-st-n">{(lang === 'fa' && e.note_fa) || e.note}</span>}
             </li>
           ))}
         </ul>
@@ -463,6 +475,76 @@ function Pending({ rows, s, lang }) {
     <div className="am-pendbox">
       <h4>{s.pending_sep}</h4>
       <ul>{rows.map((p) => <li key={p.id}><span>{jalali(p.date, false, lang)}</span><bdi>{p.admin}</bdi><N>+{gbText(p.gb)}</N><N>{p.price_per_gb != null ? toman(p.amount, lang) : s.no_price}</N></li>)}</ul>
+    </div>
+  )
+}
+
+// ------------------------------------------------------------------ settings tab (v1.25.5)
+function SettingsTab({ me, s }) {
+  const { staff, logout } = useAuth()
+  const { lang, setLang } = useI18n()
+  const { mode, toggle, locked } = useTheme()
+  const go = useNavigate()
+  const toast = useToast()
+  const [pw, setPw] = useState({ cur: '', neu: '', rep: '' })
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const m = me.manager
+  const role = (lang === 'fa' && (m.role_fa || staff?.role_fa)) || m.role || staff?.role || ''
+  const submit = async (e) => {
+    e.preventDefault(); setErr('')
+    if (pw.neu !== pw.rep) { setErr(s.set_pw_mismatch); return }
+    setBusy(true)
+    try {
+      const r = await http.post('/password/', { current_password: pw.cur, new_password: pw.neu }, { quiet: true })
+      tokens.set(r.data)                              // this session continues with fresh tokens
+      setPw({ cur: '', neu: '', rep: '' }); toast.success(s.set_pw_done)
+    } catch (e2) { const msg = errText(e2, s); setErr(msg) } finally { setBusy(false) }
+  }
+  const Seg = ({ value, opts, onPick, label }) => (
+    <div className="am-seg2" role="radiogroup" aria-label={label}>
+      {opts.map(([v, t]) => <button key={v} type="button" role="radio" aria-checked={value === v} className={value === v ? 'on' : ''} onClick={() => value !== v && onPick(v)}>{t}</button>)}
+    </div>
+  )
+  return (
+    <div className="am-set">
+      <section className="ap-card am-set-card">
+        <h2>{s.set_profile}</h2>
+        <div className="am-set-who">
+          <span className="am-set-av">{(m.username || '?').charAt(0).toUpperCase()}</span>
+          <span><b dir="ltr">{m.username}</b>{m.display_name && <small>{m.display_name}</small>}</span>
+        </div>
+        <dl className="am-set-dl">
+          <div><dt>{s.set_role}</dt><dd>{role || '—'}</dd></div>
+          <div><dt>{s.set_cap}</dt><dd>{me.cap?.max_gb != null ? <N>{gbText(me.cap.max_gb)}</N> : s.no_cap}</dd></div>
+          <div className="am-set-wide"><dt>{s.set_groups}</dt><dd>
+            {me.groups.length === 0 ? s.no_groups : (
+              <ul className="am-set-groups">{me.groups.map((g) => (
+                <li key={g.id}><b><bdi>{g.name}</bdi></b><small>{g.roles.map((r) => roleLabel(r, s)).join(' · ') || '—'}</small></li>
+              ))}</ul>
+            )}
+          </dd></div>
+        </dl>
+      </section>
+      <section className="ap-card am-set-card">
+        <h2>{s.set_pw}</h2>
+        <form className="am-form" onSubmit={submit}>
+          <label>{s.set_pw_cur}<input className="ap-input" type="password" dir="ltr" autoComplete="current-password" required value={pw.cur} onChange={(e) => setPw({ ...pw, cur: e.target.value })} /></label>
+          <label>{s.set_pw_new}<input className="ap-input" type="password" dir="ltr" autoComplete="new-password" required minLength={8} value={pw.neu} onChange={(e) => setPw({ ...pw, neu: e.target.value })} /></label>
+          <label>{s.set_pw_rep}<input className="ap-input" type="password" dir="ltr" autoComplete="new-password" required minLength={8} value={pw.rep} onChange={(e) => setPw({ ...pw, rep: e.target.value })} /></label>
+          <p className="am-hint">{s.set_pw_note}</p>
+          {err && <div className="ap-alert" role="alert">{err}</div>}
+          <div className="am-row"><button className="ap-btn am-btn" disabled={busy || pw.neu.length < 8 || !pw.cur}>{busy ? <span className="ap-btn-spin" /> : <Ic n="check" />}{s.save}</button></div>
+        </form>
+      </section>
+      <section className="ap-card am-set-card">
+        <h2>{s.set_prefs}</h2>
+        <div className="am-set-pref"><span>{s.set_lang}</span><Seg label={s.set_lang} value={lang} onPick={setLang} opts={[['fa', 'فارسی'], ['en', 'English']]} /></div>
+        {!locked && <div className="am-set-pref"><span>{s.set_theme}</span><Seg label={s.set_theme} value={mode} onPick={() => toggle()} opts={[['light', s.light], ['dark', s.dark]]} /></div>}
+        <button type="button" className="am-set-out" onClick={() => { logout(); go('/login') }}>
+          <Ic n="logout" />{s.set_logout}
+        </button>
+      </section>
     </div>
   )
 }
@@ -493,6 +575,32 @@ function Activity({ s, lang }) {
 }
 
 const CSS = `
+.am-acc-r b, .am-acc-r bdi, .am-card h3 bdi, .ap-st bdi { overflow-wrap: anywhere; min-width: 0; }
+.ap-st-n { flex-basis: 100%; font-size: 12px; color: var(--c-muted-fg); overflow-wrap: break-word; }
+.am-set { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); align-items: start; }
+.am-set-card h2 { font-size: 15px; font-weight: 800; margin-bottom: 12px; }
+.am-set-who { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.am-set-who span:last-child { display: flex; flex-direction: column; min-width: 0; }
+.am-set-who b { font-size: 15px; text-align: start; overflow-wrap: anywhere; }
+.am-set-who small { font-size: 12px; color: var(--c-muted-fg); }
+.am-set-av { width: 44px; height: 44px; flex-shrink: 0; border-radius: 999px; display: grid; place-items: center; font-weight: 800; font-size: 17px; color: #fff; background: var(--c-primary); }
+.am-set-dl { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.am-set-dl > div { padding: 9px 12px; border: 1px solid var(--c-border); border-radius: 12px; min-width: 0; }
+.am-set-dl dt { font-size: 11.5px; font-weight: 700; color: var(--c-muted-fg); }
+.am-set-dl dd { font-size: 14px; font-weight: 700; margin-top: 2px; overflow-wrap: anywhere; }
+.am-set-wide { grid-column: 1 / -1; }
+.am-set-groups li { display: flex; flex-direction: column; padding: 6px 0; border-top: 1px solid var(--c-border); }
+.am-set-groups li:first-child { border-top: 0; padding-top: 0; }
+.am-set-groups small { font-size: 12px; font-weight: 500; color: var(--c-muted-fg); }
+.am-set-pref { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--c-border); }
+.am-set-pref > span { font-size: 13px; font-weight: 700; }
+.am-seg2 { display: inline-flex; padding: 3px; gap: 3px; border-radius: 11px; border: 1px solid var(--c-border); }
+.am-seg2 button { min-height: 34px; padding: 5px 14px; border-radius: 8px; font-size: 13px; font-weight: 700; color: var(--c-muted-fg); background: transparent; border: 0; cursor: pointer; }
+.am-seg2 button.on { color: #fff; background: var(--c-primary); }
+.am-set-out { margin-top: 14px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; border-radius: 12px;
+  font-weight: 700; font-size: 14px; color: var(--c-danger); background: transparent; border: 1px solid color-mix(in srgb, var(--c-danger) 40%, transparent); cursor: pointer; }
+.am-set-out:hover { background: color-mix(in srgb, var(--c-danger) 10%, transparent); }
+.am-set-out svg { width: 18px; height: 18px; }
 .ap.am-in { min-height: auto; background: transparent; display: flex; flex-direction: column; gap: 14px; }
 .am-h1 { font-size: 18px; font-weight: 800; }
 .am-pick h2 { font-size: 15px; font-weight: 800; margin-bottom: 10px; }

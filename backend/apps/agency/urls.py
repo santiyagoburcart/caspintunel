@@ -18,5 +18,6 @@ urlpatterns = [
     path("manager/accounting/", mv.ManagerAccountingView.as_view(), name="agency-manager-accounting"),
     path("manager/groups/<int:group_id>/statement/", mv.ManagerGroupStatementView.as_view(), name="agency-manager-group-statement"),
     path("manager/activity/", mv.ManagerActivityView.as_view(), name="agency-manager-activity"),
+    path("manager/password/", mv.ManagerPasswordView.as_view(), name="agency-manager-password"),
     re_path(r"^manager/.*$", mv.ManagerForbiddenView.as_view(), name="agency-manager-forbidden"),
 ]

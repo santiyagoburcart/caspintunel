@@ -25,6 +25,7 @@ from django.db.models import Case, DecimalField, F, Sum, When
 from django.utils import timezone
 
 from .models import AdminPrice, LedgerEntry
+from .notes import to_fa
 
 GB = Decimal(1024 ** 3)
 
@@ -138,7 +139,7 @@ def statement(username: str) -> dict:
                 charges += e.amount
         rows.append({"id": e.id, "date": e.date, "kind": e.kind, "amount": e.amount, "signed": e.signed_amount,
                      "gb": e.gb, "price_per_gb": e.price_per_gb, "old_limit_bytes": e.old_limit_bytes,
-                     "new_limit_bytes": e.new_limit_bytes, "method": e.method, "note": e.note,
+                     "new_limit_bytes": e.new_limit_bytes, "method": e.method, "note": e.note, "note_fa": to_fa(e.note),
                      "old_limit_fmt": _fmt(e.old_limit_bytes), "new_limit_fmt": _fmt(e.new_limit_bytes),
                      "created_by": e.created_by, "voided": e.voided, "void_reason": e.void_reason,
                      "balance": running})
@@ -148,6 +149,7 @@ def statement(username: str) -> dict:
         "entries": rows,
         "price": {"price_per_gb": cur.price_per_gb, "valid_from": cur.valid_from} if cur else None,
         "prices": [{"id": p.id, "price_per_gb": p.price_per_gb, "valid_from": p.valid_from, "note": p.note,
+                    "note_fa": to_fa(p.note),
                     "created_by": p.created_by} for p in AdminPrice.objects.filter(admin_username=username)],
     }
 

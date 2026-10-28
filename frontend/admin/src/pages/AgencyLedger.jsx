@@ -164,7 +164,7 @@ export function LedgerCard({ username }) {
                   <span className="lg-meta">
                     {e.kind === 'quota_charge' && e.new_limit_fmt && <bdi dir="ltr">{s.limit_change.replace('{a}', limGB(e.old_limit_bytes, e.old_limit_fmt)).replace('{b}', limGB(e.new_limit_bytes, e.new_limit_fmt))}</bdi>}
                     {e.gb && <> · <bdi dir="ltr">{e.gb} GB</bdi></>}{e.price_per_gb && <> × <bdi dir="ltr">{toman(e.price_per_gb, lang)}</bdi></>}
-                    {e.method && <> · {s['m_' + e.method]}</>}{e.note && <> · {e.note}</>}{e.created_by && <> · {e.created_by}</>}
+                    {e.method && <> · {s['m_' + e.method]}</>}{e.note && <> · {(lang === 'fa' && e.note_fa) || e.note}</>}{e.created_by && <> · {e.created_by}</>}
                     {e.voided && <> · <b>{s.voided}</b>: {e.void_reason}</>}
                   </span>
                   {!e.voided && <button type="button" className="lg-void" onClick={() => voidEntry(e)}><Ic n="x" size={13} />{s.void}</button>}
@@ -176,7 +176,7 @@ export function LedgerCard({ username }) {
             <>
               <h3 className="ag-sec-h ag-sh" data-ac="orange"><Ic n="tag" size={15} />{s.prices}</h3>
               <ul className="lg-prices">
-                {st.prices.map((p) => <li key={p.id}><bdi dir="ltr">{toman(p.price_per_gb, lang)}</bdi> · {s.from} {jalali(p.valid_from, false, lang)}{p.note && ` · ${p.note}`}{p.created_by && ` · ${p.created_by}`}</li>)}
+                {st.prices.map((p) => <li key={p.id}><bdi dir="ltr">{toman(p.price_per_gb, lang)}</bdi> · {s.from} {jalali(p.valid_from, false, lang)}{p.note && ` · ${(lang === 'fa' && p.note_fa) || p.note}`}{p.created_by && ` · ${p.created_by}`}</li>)}
               </ul>
             </>
           )}

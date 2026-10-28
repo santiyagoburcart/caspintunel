@@ -160,7 +160,60 @@ function SideAccount({ className = '' }) {
   )
 }
 
+// desktop avatar menu (group managers, v1.25.5): who · Settings · language · theme · logout
+function AvatarMenu({ settingsTo }) {
+  const { staff, logout } = useAuth()
+  const { t, lang, setLang } = useI18n()
+  const { mode, toggle, locked } = useTheme()
+  const go = useNavigate()
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  useEffect(() => {
+    if (!open) return undefined
+    const off = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    const esc = (e) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', off); document.addEventListener('keydown', esc)
+    return () => { document.removeEventListener('mousedown', off); document.removeEventListener('keydown', esc) }
+  }, [open])
+  const item = 'avm-item'
+  return (
+    <div className="avm" ref={ref}>
+      <button type="button" className="avm-btn" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((v) => !v)} data-testid="avatar-menu">
+        <span className="side-acc-av">{(staff?.username || '?').charAt(0).toUpperCase()}</span>
+        <span className="avm-name" dir="ltr">{staff?.username}</span>
+      </button>
+      {open && (
+        <div className="avm-pop" role="menu">
+          <div className="avm-who"><b dir="ltr">{staff?.username}</b><small>{roleLabel(staff, lang)}</small></div>
+          <Link role="menuitem" className={item} to={settingsTo} onClick={() => setOpen(false)}><SideIcon name="settings" />{t('settings')}</Link>
+          <button role="menuitem" type="button" className={item} onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')}><span className="avm-ic">{lang === 'fa' ? 'EN' : 'فا'}</span>{lang === 'fa' ? 'English' : 'فارسی'}</button>
+          {!locked && <button role="menuitem" type="button" className={item} onClick={toggle}><SideIcon name={mode === 'dark' ? 'sun' : 'moon'} />{mode === 'dark' ? t('light_mode') : t('dark_mode')}</button>}
+          <button role="menuitem" type="button" className={item + ' avm-out'} onClick={() => { logout(); go('/login') }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" /></svg>{t('logout')}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 const SIDE_ACC_CSS = `
+.avm { position: relative; }
+.avm-btn { display: flex; align-items: center; gap: 8px; padding: 3px 10px 3px 3px; border-radius: 999px; border: 1px solid var(--c-border); background: transparent; color: var(--c-text); cursor: pointer; }
+[dir="rtl"] .avm-btn { padding: 3px 3px 3px 10px; }
+.avm-btn .side-acc-av { width: 28px; height: 28px; font-size: 12px; }
+.avm-name { font-size: 13px; font-weight: 600; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.avm-pop { position: absolute; inset-inline-end: 0; top: calc(100% + 6px); z-index: 70; min-width: 220px; padding: 6px; border-radius: 14px;
+  background: var(--c-surface); border: 1px solid var(--c-border); box-shadow: 0 12px 40px rgb(0 0 0 / .25); display: flex; flex-direction: column; }
+.dark .avm-pop { background: #11151f; }
+.avm-who { display: flex; flex-direction: column; padding: 8px 10px 10px; border-bottom: 1px solid var(--c-border); margin-bottom: 4px; }
+.avm-who b { font-size: 13px; text-align: start; } .avm-who small { font-size: 11.5px; color: var(--c-text-muted); }
+.avm-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 9px; font-size: 13px; font-weight: 600; color: var(--c-text);
+  background: transparent; border: 0; text-align: start; cursor: pointer; text-decoration: none; }
+.avm-item:hover { background: color-mix(in srgb, var(--c-primary) 9%, transparent); }
+.avm-item svg { width: 17px; height: 17px; flex-shrink: 0; }
+.avm-ic { width: 17px; font-size: 10px; font-weight: 800; text-align: center; }
+.avm-out { color: var(--c-danger); }
 .side-acc { margin-top: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--c-border); }
 .side-acc-who { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .side-acc-av { width: 32px; height: 32px; flex-shrink: 0; border-radius: 999px; display: grid; place-items: center;
@@ -209,7 +262,7 @@ function LegacyLayout() {
       <aside id="admin-sidebar" className={`admin-side glass m-3 hidden w-56 shrink-0 self-start overflow-y-auto p-3 ${side.wide && side.open ? 'md:block' : ''}`}>
         <Brand />
         <NavLinks items={items} t={t} />
-        <SideAccount className="mt-3" />
+        {!isGroupManager(staff) && <SideAccount className="mt-3" />}
       </aside>
 
       {/* mobile drawer */}
@@ -224,7 +277,7 @@ function LegacyLayout() {
               <button className="btn-ghost ms-auto shrink-0" onClick={closeAll} aria-label={t('menu_close')}>✕</button>
             </Brand>
             <NavLinks items={items} t={t} onNavigate={closeAll} />
-            <SideAccount className="mt-3" />
+            {!isGroupManager(staff) && <SideAccount className="mt-3" />}
           </aside>
         </div>
       )}
@@ -238,7 +291,7 @@ function LegacyLayout() {
             <button className="btn-ghost shrink-0 hidden md:inline-flex" onClick={toggle}>{mode === 'dark' ? '☀️' : '🌙'}</button>
           )}
           <button className="btn-ghost shrink-0" onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')}>{lang === 'fa' ? 'EN' : 'فا'}</button>
-          <span className="ms-auto truncate text-muted">
+          <span className="ms-auto min-w-0 truncate text-muted">
             {staff?.username}{staff?.role ? ` · ${(lang === 'fa' && staff.role_fa) || staff.role}` : staff?.is_superadmin ? ` · ${lang === 'fa' ? 'ابرمدیر' : 'superadmin'}` : ''}
           </span>
           <button className="btn-ghost shrink-0" onClick={() => { logout(); go('/login') }}>{t('logout')}</button>
@@ -250,7 +303,7 @@ function LegacyLayout() {
 }
 
 // ---- Caspian sidebar (Stitch _9 dark "Caspian Tunnel" / _10 light "Azure Telemetry") ----
-function CaspianNav({ groups, t, brand, logo, onNavigate }) {
+function CaspianNav({ groups, t, brand, logo, onNavigate, account = true }) {
   return (
     <div className="csp-side">
       <div className="csp-brand">
@@ -277,7 +330,7 @@ function CaspianNav({ groups, t, brand, logo, onNavigate }) {
           </div>
         ))}
       </nav>
-      <SideAccount className="csp-acc" />
+      {account && <SideAccount className="csp-acc" />}
     </div>
   )
 }
@@ -293,7 +346,7 @@ const MOBILE_TITLES = [
   ['/pages', 'pages'], ['/themes', 'themes'], ['/roles', 'roles'], ['/docs', 'docs'],
 ]
 const TAB_ROOTS = new Set(['/', '/users', '/payments', '/services', '/settings',
-  '/my-groups', '/my-groups/new', '/my-groups/accounting', '/my-groups/activity'])   // group-manager tabs
+  '/my-groups', '/my-groups/new', '/my-groups/accounting', '/my-groups/activity', '/my-groups/settings'])   // group-manager tabs
 
 /** which bottom tab a path belongs to — pages reached from the Settings index light up Settings */
 function activeTab(path) {
@@ -342,7 +395,7 @@ function CaspianLayout() {
 
       {/* desktop rail — start side (right for fa/RTL, left for en/LTR); collapsible with ☰ */}
       <aside className="csp-rail" id="admin-sidebar" ref={railRef} aria-label={t('menu_open')}>
-        <CaspianNav groups={groups} t={t} brand={brand} logo={config?.logo} onNavigate={side.wide ? undefined : side.closeDrawer} />
+        <CaspianNav groups={groups} t={t} brand={brand} logo={config?.logo} onNavigate={side.wide ? undefined : side.closeDrawer} account={!gm} />
       </aside>
       {side.overlay && <div className="csp-backdrop" onClick={side.closeDrawer} aria-hidden="true" />}
 
@@ -361,7 +414,11 @@ function CaspianLayout() {
             <button type="button" className="csp-mtop-lang" onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')}>
               {lang === 'fa' ? 'EN' : 'فا'}
             </button>
-            {!inner && <span className="csp-mtop-avatar">{(staff?.username || '?').charAt(0).toUpperCase()}</span>}
+            {!inner && (
+              <Link to={gm ? '/my-groups/settings' : '/settings'} className="csp-mtop-avatar" aria-label={t('settings')} data-testid="avatar">
+                {(staff?.username || '?').charAt(0).toUpperCase()}
+              </Link>
+            )}
           </div>
           {inner ? (
             <div className="csp-mtop-brand csp-mtop-inner">
@@ -394,10 +451,14 @@ function CaspianLayout() {
           <button className="csp-tb-btn" onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')}>
             {lang === 'fa' ? 'EN' : 'فا'}
           </button>
-          <span className="csp-tb-user">
-            {staff?.username}{staff?.role ? ` · ${(lang === 'fa' && staff.role_fa) || staff.role}` : staff?.is_superadmin ? ` · ${lang === 'fa' ? 'ابرمدیر' : 'superadmin'}` : ''}
-          </span>
-          <button className="csp-tb-btn" onClick={() => { logout(); go('/login') }}>{t('logout')}</button>
+          {gm ? <AvatarMenu settingsTo="/my-groups/settings" /> : (
+            <>
+              <span className="csp-tb-user">
+                {staff?.username}{staff?.role ? ` · ${(lang === 'fa' && staff.role_fa) || staff.role}` : staff?.is_superadmin ? ` · ${lang === 'fa' ? 'ابرمدیر' : 'superadmin'}` : ''}
+              </span>
+              <button className="csp-tb-btn" onClick={() => { logout(); go('/login') }}>{t('logout')}</button>
+            </>
+          )}
         </header>
 
         <main className={`csp-content admin-main mx-auto max-w-6xl p-3`}><Outlet /></main>
@@ -617,6 +678,7 @@ const CASPIAN_CSS = `
   .csp-mtop-online i { width: 6px; height: 6px; border-radius: 50%; background: var(--c-success); }
   /* Stitch renders the avatar as a plain neutral circle, not a colour tile */
   .csp-mtop-avatar {
+    text-decoration: none;
     width: 36px; height: 36px; flex-shrink: 0; border-radius: 999px;
     display: grid; place-items: center; font-weight: 700; font-size: 13px;
     color: var(--c-text);
@@ -627,7 +689,7 @@ const CASPIAN_CSS = `
   /* --- bottom nav (Stitch f10ea6b9): grid of 5, active = DOT above the icon --- */
   .csp-botnav {
     position: fixed; inset-inline: 0; bottom: 0; z-index: 55;
-    display: grid; grid-template-columns: repeat(var(--csp-bn-n, 5), 1fr); align-items: center;
+    display: grid; grid-template-columns: repeat(var(--csp-bn-n, 5), minmax(0, 1fr)); align-items: center;
     padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px));
     background: color-mix(in srgb, var(--c-surface) 96%, transparent);
     -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);

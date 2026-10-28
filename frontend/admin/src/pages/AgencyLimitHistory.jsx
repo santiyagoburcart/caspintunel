@@ -70,7 +70,7 @@ export default function AgencyLimitHistory({ username }) {
                   <div className="alh-meta">
                     <span>{s.by}: <b>{r.staff || s.system}</b></span>
                     {r.ledger && <span>{s.ledger}: <bdi dir="ltr">{Number(r.ledger.amount).toLocaleString('en-US')} {s.toman}</bdi>{r.ledger.voided && ` (${s.voided})`}</span>}
-                    {r.note && <span className="alh-note" dir="auto">{r.note}</span>}
+                    {r.note && <span className="alh-note" dir="auto">{(lang === 'fa' && r.note_fa) || r.note}</span>}
                   </div>
                 </li>
               )

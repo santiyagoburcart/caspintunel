@@ -525,6 +525,7 @@ export function GroupStatement({ url }) {
   return (
     <section className="card ag-card gm-st">
       <style>{DRP_CSS}</style>
+      <style>{GM_CSS}</style>
       <div className="ag-card-h">
         <h3 className="ag-sh" data-ac="blue"><Ic n="doc" size={15} />{s.g_statement}{st && <> — <bdi>{st.group.name}</bdi></>}</h3>
         <div className="ag-actions gm-noprint">
@@ -553,8 +554,8 @@ function StatementBody({ st, s, lang }) {
         <div><dt>{s.g_pending}</dt><dd><N>{gbText(st.pending_gb)}</N> · <N>{toman(st.pending_amount, lang)}</N></dd></div>
       </dl>
       {st.entries.length === 0 ? <p className="text-sm text-muted mt-3">{s.no_entries}</p> : (
-        <div className="ag-table-wrap mt-3">
-          <table className="ag-table gm-st-table">
+        <div className="gm-st-wrap mt-3">
+          <table className="gm-st-table">
             <thead><tr><th>{s.date}</th><th>{s.admin}</th><th>{s.kind}</th><th>{s.gb}</th><th>{s.amount}</th><th>{s.balance}</th><th>{s.note_c}</th></tr></thead>
             <tbody>
               {st.entries.map((e) => (
@@ -565,7 +566,7 @@ function StatementBody({ st, s, lang }) {
                   <td data-label={s.gb}>{e.gb ? <N>{gbText(e.gb)}</N> : '—'}</td>
                   <td data-label={s.amount}><span className="gm-bal" data-sign={e.voided ? 'zero' : Number(e.signed) < 0 ? 'credit' : 'owes'}><N>{Number(e.signed) < 0 ? '−' : '+'}{toman(Math.abs(Number(e.amount)), lang)}</N></span></td>
                   <td data-label={s.balance}><N>{money(e.balance, lang)}</N></td>
-                  <td data-label={s.note_c} className="gm-note">{e.note}{e.voided && ` · ${s.voided}`}</td>
+                  <td data-label={s.note_c} className="gm-note">{[(lang === 'fa' && e.note_fa) || e.note, e.voided ? s.voided : ''].filter(Boolean).join(' · ')}</td>
                 </tr>
               ))}
             </tbody>
@@ -644,6 +645,26 @@ export const GM_CSS = `
 .gm-bal { font-weight: 800; }
 .gm-bal[data-sign="owes"] { color: var(--c-danger-fg); } .gm-bal[data-sign="credit"] { color: var(--c-success-fg); } .gm-bal[data-sign="zero"] { color: var(--c-muted-fg); }
 .gm-st-table tr[data-voided] { opacity: .55; }
+.gm-st-wrap { overflow-x: auto; max-width: 100%; }
+.gm-st-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.gm-st-table th { text-align: start; font-size: 12px; font-weight: 700; color: var(--c-muted-fg); padding: 10px 12px; border-bottom: 1px solid var(--c-border); white-space: nowrap; }
+.gm-st-table td { padding: 9px 12px; border-bottom: 1px solid var(--c-border); white-space: nowrap; vertical-align: middle; }
+.gm-st-table td.gm-note { white-space: normal; min-width: 160px; }
+/* phones: every statement row is a card (label · value), no horizontal scroll (v1.25.5) */
+@media (max-width: 767px) {
+  .gm-st-wrap { overflow: visible; }
+  .gm-st-table, .gm-st-table tbody { display: block; }
+  .gm-st-table thead { display: none; }
+  .gm-st-table tr { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; padding: 12px; margin-bottom: 10px;
+    border: 1px solid var(--c-border); border-radius: 14px; background: var(--c-surface); }
+  .gm-st-table td { display: flex; flex-direction: column; gap: 2px; padding: 0; border: 0; white-space: normal; min-width: 0; }
+  .gm-st-table td::before { content: attr(data-label); font-size: 11px; font-weight: 700; color: var(--c-muted-fg); }
+  .gm-st-table td > * { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+  .gm-st-table td.gm-note { grid-column: 1 / -1; min-width: 0; max-width: none; overflow-wrap: break-word; word-break: normal; }
+  .gm-st-table td.gm-note:empty { display: none; }
+  .gm-facts { grid-template-columns: 1fr 1fr; }
+  .gm-pend li { font-size: 12px; }
+}
 .gm-note { font-size: 12px; color: var(--c-muted-fg); overflow-wrap: anywhere; max-width: 260px; }
 .gm-pend h4 { font-size: 13px; font-weight: 800; color: var(--c-warning-fg); margin-bottom: 6px; }
 .gm-pend li { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 7px 0; border-top: 1px solid var(--c-border); font-size: 12.5px; }

@@ -243,6 +243,10 @@ def gm_role():
                                                          "description_fa": "مدیران گروه — فقط گروه‌های نمایندگی خودشان"})
     if created:
         role.permissions.set([perm])
+    if not role.name_fa or not role.description_fa:          # Persian labels (v1.25.2) — never overwrite an edit
+        Role.objects.filter(pk=role.pk, name_fa="").update(name_fa="مدیر گروه")
+        Role.objects.filter(pk=role.pk, description_fa="").update(description_fa="مدیران گروه — فقط گروه‌های نمایندگی خودشان")
+        role.refresh_from_db(fields=["name_fa", "description_fa"])
     return role
 
 
@@ -827,7 +831,8 @@ def group_statement(g: AdminGroup, frm: date | None = None, to: date | None = No
                 charges += e.amount
         rows.append({"id": e.id, "date": e.date, "admin": e.admin_username, "kind": e.kind, "gb": e.gb,
                      "price_per_gb": e.price_per_gb, "amount": e.amount, "signed": e.signed_amount, "method": e.method,
-                     "note": e.note, "voided": e.voided, "void_reason": e.void_reason, "balance": running})
+                     "note": e.note, "note_fa": _note_fa(e.note), "voided": e.voided, "void_reason": e.void_reason,
+                     "balance": running})
     pending = _pending_rows(names)
     all_bal = {}
     for e in LedgerEntry.objects.filter(admin_username__in=names, voided=False):
@@ -841,6 +846,12 @@ def group_statement(g: AdminGroup, frm: date | None = None, to: date | None = No
         "pending_gb": sum((p["gb"] for p in pending), D0),
         "pending_amount": sum((p["amount"] or D0 for p in pending), D0),
     }
+
+
+def _note_fa(note):
+    from .notes import to_fa
+
+    return to_fa(note)
 
 
 KIND_FA = {"quota_charge": "شارژ حجم", "manual_charge": "بدهکاری", "adjustment": "اصلاحیه", "payment": "پرداخت",
@@ -865,7 +876,7 @@ def group_statement_rows(st: dict, lang: str) -> list[list]:
         rows.append([_j(st["from"]), "", "مانده از قبل" if fa else "Opening balance", "", "", "", "", st["opening"], "", ""])
     for r in st["entries"]:
         rows.append([_j(r["date"]), r["admin"], k.get(r["kind"], r["kind"]), r["gb"] or "", r["price_per_gb"] or "",
-                     r["amount"], r["signed"], r["balance"], r["note"],
+                     r["amount"], r["signed"], r["balance"], _note_fa(r["note"]) if fa else r["note"],
                      ("باطل: " if fa else "voided: ") + r["void_reason"] if r["voided"] else ""])
     for p in st["pending"]:
         rows.append([_j(p["date"]), p["admin"], k["pending"], p["gb"], p["price_per_gb"] or "", p["amount"], "", "",
@@ -896,7 +907,8 @@ def statement_rows(st: dict, lang: str) -> list[list]:
     head = (["تاریخ", "نوع", "گیگ", "قیمت هر گیگ", "مبلغ (تومان)", "اثر", "مانده", "توضیح", "وضعیت"] if fa else
             ["Date", "Type", "GB", "Price per GB", "Amount (Toman)", "Signed", "Balance", "Note", "Status"])
     rows = [head] + [[_j(r["date"]), k.get(r["kind"], r["kind"]), r["gb"] or "", r["price_per_gb"] or "", r["amount"],
-                      r["signed"], r["balance"], r["note"], ("باطل" if fa else "voided") if r["voided"] else ""]
+                      r["signed"], r["balance"], _note_fa(r["note"]) if fa else r["note"],
+                      ("باطل" if fa else "voided") if r["voided"] else ""]
                      for r in st["entries"]]
     for p in st.get("pending", []):
         rows.append([_j(p["date"]), k["pending"], p["gb"], p["price_per_gb"] or "", p["amount"], "", "", f"#{p['id']}",

@@ -55,6 +55,39 @@ class _Mgr(APIView):
         return "en" if self.request.query_params.get("lang") == "en" else "fa"
 
 
+class ManagerPasswordView(_Mgr):
+    """A manager changes its OWN panel password (v1.25.5, Settings tab). Needs the current
+    password; ends every other session (token_version) and hands back fresh tokens for
+    this one. The GroupManager keeps the same hash."""
+    throttle_scope = "auth"
+
+    def post(self, request):
+        from django.db import transaction
+
+        from apps.adminpanel.tokens import issue_tokens
+        from apps.common.models import write_audit
+
+        cur = str(request.data.get("current_password") or "")
+        new = str(request.data.get("new_password") or "")
+        staff = request.user
+        if not staff.check_password(cur):
+            return Response({"detail": "the current password is wrong", "code": "wrong_password",
+                             "field": "current_password"}, status=400)
+        if len(new) < 8:
+            return Response({"detail": "password: at least 8 characters", "code": "invalid",
+                             "field": "new_password"}, status=400)
+        if new == cur:
+            return Response({"detail": "the new password is the same as the current one", "code": "same",
+                             "field": "new_password"}, status=400)
+        with transaction.atomic():
+            staff.set_password(new)                      # bumps token_version → other sessions end
+            staff.save(update_fields=["password_hash", "token_version", "updated_at"])
+            M.GroupManager.objects.filter(pk=self.m.pk).update(password=staff.password_hash)
+            write_audit(action="agency.manager.own_password_changed", staff=staff, target=self.m,
+                        detail={"manager": self.m.username}, ip=request.META.get("REMOTE_ADDR"))
+        return Response({"detail": "password changed", **issue_tokens(staff)})
+
+
 class ManagerLoginGoneView(APIView):
     """The separate manager portal login is gone (v1.25): managers sign in at /panel/."""
     authentication_classes = []
@@ -105,7 +138,11 @@ class ManagerMeView(_Mgr):
                            "roles": [M._role_view(r, cat) for r in asg.allowed_role_ids
                                      if not M._role_view(r, cat)["is_owner"]],
                            "total_debt": sum((bal.get(u, 0) for u in g.get_all_usernames()), 0)})
-        return Response({"manager": {"username": m.username, "display_name": m.display_name},
+        staff = self.request.user
+        return Response({"manager": {"username": m.username, "display_name": m.display_name,
+                                     "role": staff.role.name if staff.role_id else "",
+                                     "role_fa": (staff.role.name_fa or "") if staff.role_id else "",
+                                     "max_unapproved_gb": m.max_unapproved_gb},
                          "groups": groups, "cap": M.cap_state(m), "roles_live": cat is not None,
                          "writes_enabled": _writes()})
 
