@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from rest_framework import serializers
 
 from apps.accounts.models import DeletedUserArchive, Permission, Role, Staff
@@ -314,7 +315,7 @@ class ThemeSerializer(serializers.ModelSerializer):
 class PermissionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Permission
-        fields = ("id", "code", "name")
+        fields = ("id", "code", "name", "name_fa")
 
 
 class RoleSerializer(serializers.ModelSerializer):
@@ -324,17 +325,23 @@ class RoleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Role
-        fields = ("id", "name", "description", "permission_codes")
+        fields = ("id", "name", "description", "name_fa", "description_fa", "permission_codes")
 
 
 class StaffSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=False, min_length=8)
     role_name = serializers.CharField(source="role.name", read_only=True)
+    role_name_fa = serializers.CharField(source="role.name_fa", read_only=True, default="")
+    # v1.25.2: a "Group manager" staff's groups / allowed roles / cap, the same record
+    # Agency → Group managers edits (apps/agency/managers.py sync_from_staff / staff_info).
+    # write: {"assignments": [{"group_id", "role_ids"}], "max_unapproved_gb"}
+    group_manager = serializers.JSONField(required=False, allow_null=True)
 
     class Meta:
         model = Staff
-        fields = ("id", "username", "password", "role", "role_name",
-                  "is_active", "is_superadmin", "last_login", "created_at", "email", "display_name", "telegram_linked")
+        fields = ("id", "username", "password", "role", "role_name", "role_name_fa",
+                  "is_active", "is_superadmin", "last_login", "created_at", "email", "display_name", "telegram_linked",
+                  "group_manager")
         read_only_fields = ("last_login", "created_at")
 
     telegram_linked = serializers.SerializerMethodField()
@@ -342,25 +349,51 @@ class StaffSerializer(serializers.ModelSerializer):
     def get_telegram_linked(self, obj) -> bool:
         return obj.telegram_id is not None
 
+    def to_representation(self, instance):
+        from apps.agency.managers import staff_info
+
+        data = super().to_representation(instance)
+        data["group_manager"] = staff_info(instance)
+        return data
+
     def validate(self, attrs):
         if not self.instance and not attrs.get("password"):
             raise serializers.ValidationError({"password": "required when creating a staff account"})
+        gm = attrs.get("group_manager")
+        if gm is not None and not isinstance(gm, dict):
+            raise serializers.ValidationError({"group_manager": "must be an object"})
         return attrs
 
+    def _sync_gm(self, staff, gm):
+        from apps.agency import managers as M
+
+        req = self.context.get("request")
+        by = getattr(getattr(req, "user", None), "username", "") or ""
+        try:
+            M.sync_from_staff(staff, gm or None, by=by)
+        except M.ManagerError as exc:
+            raise serializers.ValidationError({"group_manager": str(exc)})
+
+    @transaction.atomic
     def create(self, validated):
         pwd = validated.pop("password")
+        gm = validated.pop("group_manager", None)
         staff = Staff(**validated)
         staff.set_password(pwd)
         staff.save()
+        self._sync_gm(staff, gm)
         return staff
 
+    @transaction.atomic
     def update(self, instance, validated):
         pwd = validated.pop("password", None)
+        gm = validated.pop("group_manager", None)
         for k, v in validated.items():
             setattr(instance, k, v)
         if pwd:
             instance.set_password(pwd)
         instance.save()
+        self._sync_gm(instance, gm)
         return instance
 
 

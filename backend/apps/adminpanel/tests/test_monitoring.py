@@ -72,3 +72,19 @@ def test_monitoring_snapshot_has_storage(boss, tmp_path, monkeypatch):
     st = r.data["storage"]
     assert st["disk"]["total"] > 0 and st["retention_days"] == 2
     assert st["backups"]["db_count"] == 0 and st["last_cleanup"] is None
+
+
+def test_monitoring_snapshot_has_disk_watch(boss, tmp_path, monkeypatch):
+    import json
+
+    from apps.telegram import backup as backup_mod
+
+    monkeypatch.setattr(backup_mod, "BACKUP_DIR", tmp_path)
+    r = boss.get("/api/v1/admin/monitoring/")
+    dw = r.data["disk_watch"]
+    assert dw["warn_percent"] == 80.0 and dw["crit_percent"] == 90.0 and dw["report"] is None
+    (tmp_path / ".disk-report.json").write_text(json.dumps({
+        "generated_at": "2026-10-28T03:17:00Z", "disk": {"percent": 60},
+        "items": [{"label": "mysql-binlogs", "path": "/x", "bytes": 5}]}))
+    dw = boss.get("/api/v1/admin/monitoring/").data["disk_watch"]
+    assert dw["report"]["items"][0]["label"] == "mysql-binlogs"

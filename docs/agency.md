@@ -153,6 +153,18 @@ normal staff JWT and only a staff linked to an **active** manager (`IsGroupManag
 or other staff get 403 there. `GET admin/auth/me/` returns `group_manager {id, username}` and
 `permissions: ["agency.group_manager"]`, so the panel draws the reduced menu.
 
+**Staff page ↔ Group managers (v1.25.2).** Giving a staff account the **Group manager** role on
+*Roles & staff* now makes it a group manager (`managers.sync_from_staff`): the existing link, else an
+unlinked manager with the same username, else a new one (same password hash, **no groups**). The staff
+modal shows **Assigned groups** — groups, allowed PasarGuard roles per group and the unapproved-volume
+cap — the very record Agency → Group managers edits (same validation: owner roles refused, groups must
+exist), so both pages always show the same thing. A manager without a group is flagged on both pages
+(`warnings: ["no_group"]`, "no group" badge / warning). Removing the role (or making the staff a
+superadmin) unlinks it: the manager is disabled and keeps its history (audit `agency.manager.unlinked`).
+Agency → *New group manager* with the username of an existing staff that has the role links that account
+(it keeps its own password) instead of refusing. Migration `agency.0008` linked the staff accounts that
+already had the role (e.g. `imantorabian`) — without assigning any group.
+
 **Panel menu for a manager** (`components/adminNav.js` → `GM_GROUPS`, page `pages/GroupManager.jsx`):
 *Group admins* (`/my-groups`), *New admin* (`/my-groups/new`), *Accounting* (`/my-groups/accounting`,
 incl. the group statement — the staff Agency `GroupStatement` component) and *Activity*

@@ -444,6 +444,7 @@ Inter, JetBrains Mono) and every asset bundled, no CDN.
 | every minute | `scripts/paths.sh apply-request` — applies an admin/portal path change requested from the panel (nginx -t, reload, verify, rollback) |
 | every minute | `scripts/domain.sh apply-request` — domain wizard: certificate, switch (nginx, .env, rolling restart, verify over TLS, rollback), retire, rollback ([domain.md](domain.md)) |
 | every 2 min | `scripts/watch-update.sh --prod` — runs `update.sh` when the panel's **Update** button left a sentinel |
+| daily 03:17 | `scripts/disk-report.sh` — biggest folders, Docker volumes, MySQL binlogs → `backups/.disk-report.json` (+ `.prev`), trims build cache > 24 h; installed by `update.sh` |
 | acme.sh / certbot timers | TLS renewal |
 
 ## Backups
@@ -458,6 +459,28 @@ Inter, JetBrains Mono) and every asset bundled, no CDN.
   `backups/migration/*` 7 days. Each run → `CleanupRun` (shown on Monitoring).
 - `update.sh` dumps the DB to `backups/pre-update-<ver>-<ts>.sql.gz` before
   every deploy.
+
+## Disk protection (v1.25.2)
+
+On 2026-10-28 the 38 GB root disk filled up (MySQL binary logs: 12.9 GB, 30-day retention) and MySQL /
+Redis stopped accepting writes twice (07:14–07:38 and 09:36–12:10 UTC). Since then:
+
+- **Binlogs**: `binlog_expire_logs_seconds = 86400` (persisted in the server, `SET PERSIST`); there is no
+  replica — the binlog only serves point-in-time recovery for one day; backups are the SQL dumps.
+- **Fewer writes**: the agency sync (every 2 min) rewrote all ~8.4k `agency_user_traffic_snapshot` rows
+  each run (`last_seen` was auto_now) as single-row transactions — ~2M binlog events per 8 h. It now
+  writes only rows whose usage changed, in one transaction per admin (`last_seen` = usage last changed).
+- **Alerts** (`apps/ops/disk.py`, checked by `resource_sample_task` every 5 min, before any DB write):
+  Telegram at `disk_alert_warn_percent` (80) and `disk_alert_crit_percent` (90) — backup chat + linked
+  staff with `monitoring.view`; repeated every 6 h (warn) / 1 h (critical), "back to normal" below
+  warn − 3. State lives in Redis with an in-process fallback (works while Redis is read-only).
+- **Daily check**: the host cron writes `backups/.disk-report.json`; `ops: daily disk report` (beat,
+  1440 min) adds day-over-day growth and sends a summary when the disk is above warn, something grew
+  ≥ 1 GB/day, or the report is missing / older than 36 h. Monitoring → *Disk & cleanup* shows the
+  thresholds, the level and the biggest folders with growth.
+- **Clean-up**: `scripts/test.sh` drops the test stack's volumes (`down -v`); `test-paths.sh` /
+  `test-domain.sh` remove their throw-away images; `docker-cleanup.sh` (every deploy) removes those
+  leftovers too and keeps build cache only 24 h.
 
 ## Deploy and rollback
 

@@ -55,10 +55,13 @@ erDiagram
     role {
         bigint id PK
         string name UK
+        string name_fa "v1.25.2 Persian label"
+        string description_fa
     }
     permission {
         bigint id PK
         string code UK "e.g. payment.approve"
+        string name_fa "v1.25.2 Persian label"
     }
     staff_revoked_token {
         bigint id PK
@@ -89,7 +92,7 @@ erDiagram
 |---|---|
 | `user` | Customer account (site, bot or legacy import). Soft-deleted only; excluded from lists, stats and renewals once `deleted_at` is set. |
 | `staff` | Admin-panel operator — a separate model from `user`, with its own JWT; `token_version` ends all sessions when bumped. Optional `email` and linked `telegram_id` receive ticket notifications. |
-| `role` / `permission` / `role_permission` | RBAC: roles bundle permission codes (`users.view`, `payment.approve`, `agency.view`, `agency.accounting`, `settings.email`, …). Super-admins bypass checks. |
+| `role` / `permission` / `role_permission` | RBAC: roles bundle permission codes (`users.view`, `payment.approve`, `agency.view`, `agency.accounting`, `settings.email`, …). Super-admins bypass checks. `name_fa` / `description_fa` (v1.25.2) are shown when the panel is Persian (seeded for built-in roles and every permission). |
 | `staff_revoked_token` | Spent / revoked staff refresh tokens (by `jti`) until they expire. |
 | `deleted_user_archive` | Full snapshot of a user taken right before a soft delete; restore writes `restored_at/_by`. |
 | `audit_log` | Immutable record of staff and system actions (`write_audit`). `staff_id` is a plain column, not an FK. |

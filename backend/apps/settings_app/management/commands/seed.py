@@ -50,6 +50,46 @@ PERMISSIONS = [
     ("agency.group_manager", "Group manager: own groups only (agency admins, volume, accounting)"),
 ]
 
+# v1.25.2: Persian labels — the panel shows these when its language is fa
+PERMISSIONS_FA = {
+    "users.view": "مشاهدهٔ کاربران",
+    "users.manage": "ایجاد / ویرایش / غیرفعال‌کردن کاربران",
+    "plans.manage": "مدیریت پلن‌ها",
+    "payment.view": "مشاهدهٔ پرداخت‌ها",
+    "payment.approve": "تأیید / رد پرداخت‌ها",
+    "accounting.view": "مشاهدهٔ گزارش‌های حسابداری",
+    "broadcast.send": "ارسال پیام همگانی",
+    "sms.manage": "مدیریت شماره‌ها و دستگاه‌های پیامک",
+    "roles.manage": "مدیریت نقش‌ها و دسترسی‌ها",
+    "settings.manage": "مدیریت تنظیمات و برندینگ",
+    "settings.email": "مدیریت ایمیل خروجی (SMTP)",
+    "bots.manage": "مدیریت ربات‌ها و کانال‌ها",
+    "pages.manage": "مدیریت صفحه‌های محتوا",
+    "monitoring.view": "مشاهدهٔ مانیتورینگ و منابع سرور",
+    "audit.view": "مشاهدهٔ لاگ رویدادها",
+    "themes.manage": "مدیریت پوسته‌ها",
+    "services.manage": "مدیریت سرویس‌های فروخته‌شده (وضعیت، ریست، لغو، ساخت)",
+    "services.delete": "حذف سرویس‌های فروخته‌شده",
+    "users.delete": "حذف / بازگردانی کاربران",
+    "agency.view": "پنل نمایندگی: مشاهدهٔ ادمین‌های نماینده",
+    "agency.manage": "پنل نمایندگی: سقف حجم، فعال/غیرفعال، همگام‌سازی",
+    "agency.accounting": "پنل نمایندگی: قیمت‌ها، شارژها، پرداخت‌ها، صورت‌حساب‌ها",
+    "tickets.view": "تیکت‌ها: مشاهدهٔ صندوق (در محدودهٔ موضوعات)",
+    "tickets.reply": "تیکت‌ها: پاسخ، یادداشت داخلی، وضعیت، اولویت",
+    "tickets.assign": "تیکت‌ها: ارجاع به کارمند",
+    "tickets.close": "تیکت‌ها: بستن / بازکردن دوباره",
+    "tickets.manage_topics": "تیکت‌ها: موضوعات، تنظیمات، محدودهٔ موضوع کارکنان",
+    "crm.view": "CRM: نمای کامل مشتری، صف پیگیری، سرنخ‌ها، گزارش‌ها",
+    "crm.manage": "CRM: پرونده‌ها، پیام‌ها، یادداشت‌ها، مسئول‌ها، مراحل، تنظیمات",
+    "agency.group_manager": "مدیر گروه: فقط گروه‌های خودش (ادمین‌های نماینده، حجم، حسابداری)",
+}
+# built-in roles: (name_fa, description_fa) — written only while still blank
+ROLES_FA = {
+    "Super Admin": ("مدیر ارشد", "دسترسی کامل"),
+    "Support": ("پشتیبانی", "پرداخت‌ها و پشتیبانی کاربران"),
+    "Ticketing": ("تیکتینگ", "فقط تیکت‌های پشتیبانی"),
+    "Group manager": ("مدیر گروه", "مدیران گروه — فقط گروه‌های نمایندگی خودشان"),
+}
 SUPPORT_PERMS = {"users.view", "payment.view", "payment.approve", "accounting.view", "monitoring.view"}
 
 # "Ticketing": tickets only. Permissions are set when the role is first created —
@@ -153,6 +193,9 @@ SETTINGS_DEFAULTS = [
     ("agency_enforcement_enabled", "false", ValueType.BOOL),
     ("agency_sync_interval_minutes", "15", ValueType.INT),
     ("agency_portal_enabled", "false", ValueType.BOOL),
+    # v1.25.2 disk protection (apps/ops/disk.py): Telegram alerts at these percentages
+    ("disk_alert_warn_percent", "80", ValueType.INT),
+    ("disk_alert_crit_percent", "90", ValueType.INT),
 ]
 
 PAGES = [
@@ -197,7 +240,8 @@ class Command(BaseCommand):
         # --- permissions & roles ---
         perms = {}
         for code, name in PERMISSIONS:
-            p, _ = Permission.objects.update_or_create(code=code, defaults={"name": name})
+            p, _ = Permission.objects.update_or_create(
+                code=code, defaults={"name": name, "name_fa": PERMISSIONS_FA.get(code, "")})
             perms[code] = p
 
         super_role, _ = Role.objects.get_or_create(
@@ -236,6 +280,10 @@ class Command(BaseCommand):
             name="Group manager", defaults={"description": "Group managers — own agency groups only"}
         )
         gm_role.permissions.set([perms["agency.group_manager"]])
+
+        for role_name, (fa_name, fa_desc) in ROLES_FA.items():
+            Role.objects.filter(name=role_name, name_fa="").update(name_fa=fa_name)
+            Role.objects.filter(name=role_name, description_fa="").update(description_fa=fa_desc)
 
         # --- themes ---
         # `seed` re-runs on every container start / update, so `is_active` must
@@ -455,6 +503,8 @@ class Command(BaseCommand):
             ("ops: resource sample", "apps.ops.tasks.resource_sample_task", 5),
             ("ops: service alerts", "apps.ops.tasks.service_alerts_task", 30),
             ("ops: prune old backups", "apps.ops.tasks.prune_backups_task", 60),
+            # v1.25.2: reads the host's daily disk report (scripts/disk-report.sh) — apps/ops/disk.py
+            ("ops: daily disk report", "apps.ops.tasks.disk_report_task", 1440),
         ]
         for name, task_path, every in monitoring:
             sched, _ = IntervalSchedule.objects.get_or_create(

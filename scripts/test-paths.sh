@@ -18,6 +18,8 @@ cleanup() {
   $C down -v --remove-orphans >/dev/null 2>&1 || true
   docker run --rm --network none -v "$T:/t" --entrypoint sh caspintunel-backend -c 'rm -rf /t/* /t/.[!.]*' >/dev/null 2>&1 || true
   rm -rf "$T"
+  # the throw-away images too (~240 MB per run otherwise left behind)
+  docker images --format '{{.Repository}}:{{.Tag}}' | grep -E '^pathtest-' | xargs -r docker rmi >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 

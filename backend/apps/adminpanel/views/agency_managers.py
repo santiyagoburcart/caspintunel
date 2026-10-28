@@ -89,17 +89,7 @@ class AgencyManagerOptionsView(_V):
     perms_map = {"GET": MANAGE}
 
     def get(self, request):
-        try:
-            cat = M.roles_catalog(fresh=True)
-            roles = [r for r in cat.values() if not r["is_owner"]]
-            err = None
-        except M.ManagerError as exc:
-            roles, err = [], str(exc)
-        return Response({
-            "groups": [{"id": g.id, "name": M.group_title(g), "owner": g.owner_username, "admins": len(g.get_all_usernames())}
-                       for g in AdminGroup.objects.order_by("owner_username")],
-            "roles": sorted(roles, key=lambda r: r["id"]), "roles_error": err,
-        })
+        return Response(M.options_payload())
 
 
 class AgencyApprovalsView(_V):

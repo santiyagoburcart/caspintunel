@@ -120,8 +120,15 @@ class PermissionListViewSet(AdminViewSet):
 
 
 class StaffViewSet(AdminViewSet):
-    queryset = Staff.objects.select_related("role").order_by("username")
+    queryset = Staff.objects.select_related("role", "group_manager").order_by("username")
     serializer_class = StaffSerializer
     perms_map = {"GET": ["roles.manage"], "*": ["roles.manage"]}
     filter_backends = [filters.SearchFilter]
     search_fields = ["username"]
+
+    @action(detail=False, methods=["get"], url_path="group-manager-options")
+    def group_manager_options(self, request):
+        """Agency groups + PasarGuard roles for a "Group manager" staff (v1.25.2)."""
+        from apps.agency.managers import options_payload
+
+        return Response(options_payload())

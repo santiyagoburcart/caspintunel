@@ -98,6 +98,7 @@ def _staff_payload(staff: Staff) -> dict:
         "id": staff.id,
         "username": staff.username,
         "role": staff.role.name if staff.role_id else None,
+        "role_fa": (staff.role.name_fa or "") if staff.role_id else "",
         "is_superadmin": staff.is_superadmin,
         "permissions": perms,
         "last_login": staff.last_login,

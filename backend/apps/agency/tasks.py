@@ -57,18 +57,29 @@ def track_deleted_users(panel_admin, current_users):
             panel_admin.username, len(deleted), added,
         )
 
-    if deleted:
-        UserTrafficSnapshot.objects.filter(
-            panel_admin=panel_admin, user_username__in=deleted
-        ).delete()
+    # caspintunel (v1.25.2): same end state as PAMP's per-user update_or_create, but only
+    # rows whose usage changed (or that are new) are written, all in one transaction.
+    # PAMP rewrote every snapshot on every sync (last_seen is auto_now) — ~8k single-row
+    # transactions every 2 min, which filled the disk with MySQL binlogs (~3 GB/day).
+    # `last_seen` therefore now means "usage last changed".
+    from django.db import transaction
 
-    # Upsert snapshots for all currently live users
-    for uname, used in current_map.items():
-        UserTrafficSnapshot.objects.update_or_create(
-            panel_admin=panel_admin,
-            user_username=uname,
-            defaults={'used_traffic_bytes': used},
-        )
+    now = timezone.now()
+    with transaction.atomic():
+        if deleted:
+            UserTrafficSnapshot.objects.filter(
+                panel_admin=panel_admin, user_username__in=deleted
+            ).delete()
+        for uname, used in current_map.items():
+            if uname not in prev:
+                UserTrafficSnapshot.objects.update_or_create(
+                    panel_admin=panel_admin,
+                    user_username=uname,
+                    defaults={'used_traffic_bytes': used},
+                )
+            elif prev[uname] != used:
+                UserTrafficSnapshot.objects.filter(panel_admin=panel_admin, user_username=uname).update(
+                    used_traffic_bytes=used, last_seen=now)
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60, name='apps.agency.tasks.sync_panel_admins')

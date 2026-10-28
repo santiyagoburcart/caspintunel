@@ -658,3 +658,51 @@ sequenceDiagram
     API->>DB: clear voided_*; order status back (lapsed pending → expired)
     API->>DB: AuditLog payment.restored
 ```
+
+## 5e. Staff page → Group manager role (v1.25.2)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor S as Staff with roles.manage
+    participant P as Panel (Roles & staff)
+    participant API as admin/staff/
+    participant M as agency.managers
+    S->>P: edit staff, role = Group manager
+    P->>API: GET staff/group-manager-options/ (groups + PasarGuard roles, owner roles left out)
+    S->>P: tick groups, allowed roles per group, cap
+    P->>API: PATCH staff/<id>/ {role, group_manager: {assignments, max_unapproved_gb}}
+    API->>M: sync_from_staff (same transaction as the staff save)
+    alt role is Group manager
+        M->>M: link / create GroupManager (same username + password hash)
+        M->>M: _clean_assignments (owner role / unknown group → 400, nothing saved)
+        M-->>API: manager + warnings (no_group / no_role)
+    else role removed / superadmin
+        M->>M: unlink, disable manager, end its portal sessions, audit agency.manager.unlinked
+    end
+    API-->>P: staff row incl. group_manager {assignments, cap, warnings}
+    Note over P: Agency → Group managers edits the same record — both pages show the same groups
+```
+
+## 15. Disk full protection (v1.25.2)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant B as celery beat
+    participant W as worker (ops)
+    participant H as host cron (disk-report.sh)
+    participant T as Telegram (backup chat + monitoring staff)
+    loop every 5 min
+        B->>W: resource_sample_task
+        W->>W: check_disk_alert() before any DB write
+        alt ≥ 80 % (warn) / ≥ 90 % (critical), new level or repeat due
+            W->>T: alert + biggest folders
+        else back below 77 %
+            W->>T: back to normal
+        end
+    end
+    H->>H: 03:17 daily: du of folders / volumes / binlogs → backups/.disk-report.json
+    B->>W: daily disk report
+    W->>T: only if above warn, growth ≥ 1 GB/day, or report missing / stale
+```

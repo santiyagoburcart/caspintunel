@@ -90,10 +90,21 @@ class MonitoringView(AdminAPIView):
                 BackupLog.objects.order_by("-created_at")[:6], many=True
             ).data,
             "storage": storage_snapshot(),
+            "disk_watch": _disk_watch(),
         })
 
 
 # --------------------------------------------------------------------------
+def _disk_watch() -> dict | None:
+    """Alert thresholds + the host's daily biggest-folders report (apps/ops/disk.py)."""
+    from apps.ops.disk import report_snapshot
+
+    try:
+        return report_snapshot()
+    except Exception:  # noqa: BLE001 - never break the page over the report
+        return None
+
+
 def _health_snapshot() -> dict:
     # non-panel targets: latest row per target
     non_panel = HealthCheck.objects.exclude(target=HealthTarget.PANEL)

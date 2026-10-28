@@ -195,12 +195,17 @@ def save_manager(manager_id: int | None, data: dict, by: str = "") -> GroupManag
             raise ManagerError("username: 3–64 letters, digits or _ . @ -", "invalid", "username")
         if GroupManager.objects.filter(username__iexact=username).exists():
             raise ManagerError("a group manager with this username exists", "exists", "username")
-        if _staff_model().objects.filter(username__iexact=username).exists():
+        existing = _staff_model().objects.filter(username__iexact=username).first()
+        if existing is not None and not _linkable(existing):
             raise ManagerError("a panel (staff) account with this username exists", "exists", "username")
         pw = str(data.get("password") or "")
-        if len(pw) < 8:
-            raise ManagerError("password: at least 8 characters", "invalid", "password")
-        m = GroupManager(username=username, password=make_password(pw), created_by=by[:150])
+        if existing is not None and not pw:
+            # v1.25.2: an existing staff with the "Group manager" role keeps its own password
+            m = GroupManager(username=existing.username, password=existing.password_hash, created_by=by[:150])
+        else:
+            if len(pw) < 8:
+                raise ManagerError("password: at least 8 characters", "invalid", "password")
+            m = GroupManager(username=username, password=make_password(pw), created_by=by[:150])
     if "display_name" in data:
         m.display_name = str(data.get("display_name") or "").strip()[:100]
     if "note" in data:
@@ -213,11 +218,7 @@ def save_manager(manager_id: int | None, data: dict, by: str = "") -> GroupManag
     assignments = _clean_assignments(data["assignments"]) if "assignments" in data else None
     m.save()
     if assignments is not None:
-        keep = []
-        for g, rids in assignments:
-            a, _ = GroupManagerAssignment.objects.update_or_create(manager=m, group=g, defaults={"allowed_role_ids": rids})
-            keep.append(a.pk)
-        GroupManagerAssignment.objects.filter(manager=m).exclude(pk__in=keep).delete()
+        _apply_assignments(m, assignments)
     _sync_staff(m, password=(str(data.get("password") or "") or None) if manager_id is None else None)
     if was_active and not m.is_active:
         revoke_sessions(m)
@@ -234,9 +235,12 @@ def gm_role():
     from apps.accounts.models import GROUP_MANAGER_PERM, GROUP_MANAGER_ROLE, Permission, Role
 
     perm, _ = Permission.objects.get_or_create(
-        code=GROUP_MANAGER_PERM, defaults={"name": "Group manager: own groups only (agency admins, volume, accounting)"})
+        code=GROUP_MANAGER_PERM, defaults={"name": "Group manager: own groups only (agency admins, volume, accounting)",
+                                           "name_fa": "مدیر گروه: فقط گروه‌های خودش (ادمین‌های نماینده، حجم، حسابداری)"})
     role, created = Role.objects.get_or_create(name=GROUP_MANAGER_ROLE,
-                                               defaults={"description": "Group managers — own agency groups only"})
+                                               defaults={"description": "Group managers — own agency groups only",
+                                                         "name_fa": "مدیر گروه",
+                                                         "description_fa": "مدیران گروه — فقط گروه‌های نمایندگی خودشان"})
     if created:
         role.permissions.set([perm])
     return role
@@ -248,19 +252,134 @@ def _sync_staff(m: GroupManager, password: str | None = None):
     Staff = _staff_model()
     s = m.staff
     if s is None:
-        if Staff.objects.filter(username__iexact=m.username).exists():
-            return
-        s = Staff(username=m.username, role=gm_role(), is_superadmin=False)
-        if password:
-            s.set_password(password)
+        found = Staff.objects.filter(username__iexact=m.username).first()
+        if found is not None:
+            if not _linkable(found):
+                return
+            s = found                              # v1.25.2: staff made on the Staff page first
+            if password:
+                s.set_password(password)
         else:
-            s.password_hash = m.password           # same Django hasher format
+            s = Staff(username=m.username, role=gm_role(), is_superadmin=False)
+            if password:
+                s.set_password(password)
+            else:
+                s.password_hash = m.password       # same Django hasher format
     s.is_active = m.is_active
     s.display_name = (m.display_name or "")[:60]
     s.save()
     if m.staff_id != s.pk:
         m.staff = s
         GroupManager.objects.filter(pk=m.pk).update(staff=s)
+
+
+def _apply_assignments(m: GroupManager, assignments: list[tuple[AdminGroup, list[int]]]) -> None:
+    keep = []
+    for g, rids in assignments:
+        a, _ = GroupManagerAssignment.objects.update_or_create(manager=m, group=g, defaults={"allowed_role_ids": rids})
+        keep.append(a.pk)
+    GroupManagerAssignment.objects.filter(manager=m).exclude(pk__in=keep).delete()
+
+
+def is_gm_role(role) -> bool:
+    """The RBAC role that makes a staff a group manager ("Group manager", or any role
+    holding the agency.group_manager permission)."""
+    from apps.accounts.models import GROUP_MANAGER_PERM, GROUP_MANAGER_ROLE
+
+    if role is None:
+        return False
+    return role.name == GROUP_MANAGER_ROLE or role.permissions.filter(code=GROUP_MANAGER_PERM).exists()
+
+
+def _linkable(staff) -> bool:
+    """A staff account a group manager may be attached to: has the role, is not a
+    superadmin and is not linked to another manager yet."""
+    return (not staff.is_superadmin and is_gm_role(staff.role)
+            and not GroupManager.objects.filter(staff=staff).exists())
+
+
+@transaction.atomic
+def sync_from_staff(staff, data: dict | None = None, by: str = "") -> GroupManager | None:
+    """Staff page → group manager (v1.25.2), the mirror of `_sync_staff`.
+
+    * staff with the "Group manager" role (not superadmin) always has a linked
+      GroupManager: the existing link, else an unlinked manager of the same
+      username, else a new one (same password hash, no groups yet);
+    * `data` (optional) = {"assignments": [{group_id, role_ids}], "max_unapproved_gb"}
+      — the same rules as Agency → Group managers (`_clean_assignments`, `_cap`);
+    * a staff that loses the role (or becomes superadmin) is unlinked: the manager
+      is disabled and keeps its history (requests, activity)."""
+    m = GroupManager.objects.select_for_update().filter(staff=staff).first()
+    wants = not staff.is_superadmin and is_gm_role(staff.role)
+    if not wants:
+        if data and (data.get("assignments") or data.get("max_unapproved_gb") not in (None, "")):
+            raise ManagerError("only a staff account with the “Group manager” role can have groups",
+                               "invalid", "group_manager")
+        if m is not None:
+            GroupManager.objects.filter(pk=m.pk).update(staff=None, is_active=False, updated_at=timezone.now())
+            ManagerSession.objects.filter(manager=m, revoked=False).update(revoked=True)
+            write_audit(action="agency.manager.unlinked", staff=by or "staff page", target=m,
+                        detail={"manager": m.username, "staff": staff.username, "reason": "role removed"})
+        staff._state.fields_cache.pop("group_manager", None)    # the reverse one-to-one is cached
+        return None
+    if m is None:
+        m = GroupManager.objects.select_for_update().filter(username__iexact=staff.username, staff__isnull=True).first()
+        if m is None:
+            if GroupManager.objects.filter(username__iexact=staff.username).exists():
+                raise ManagerError("a group manager with this username is linked to another panel account",
+                                   "exists", "group_manager")
+            m = GroupManager(username=staff.username, created_by=by[:150])
+    m.staff = staff
+    m.password = staff.password_hash
+    m.is_active = staff.is_active
+    if staff.display_name:
+        m.display_name = staff.display_name[:100]
+    if data and "max_unapproved_gb" in data:
+        m.max_unapproved_gb = _cap(data.get("max_unapproved_gb"))
+    m.save()
+    staff._state.fields_cache["group_manager"] = m
+    if data and "assignments" in data:
+        _apply_assignments(m, _clean_assignments(data["assignments"]))
+    return m
+
+
+def staff_info(staff) -> dict | None:
+    """What the Staff page shows for a group-manager staff (None for everyone else)."""
+    m = staff.group_manager_row
+    if m is None:
+        if staff.is_superadmin or not is_gm_role(staff.role):
+            return None
+        return {"id": None, "assignments": [], "max_unapproved_gb": None, "warnings": ["no_group"]}
+    rows = [{"group_id": a.group_id, "group": group_title(a.group), "role_ids": a.allowed_role_ids}
+            for a in m.assignments.select_related("group").order_by("group__owner_username")]
+    return {"id": m.id, "assignments": rows, "max_unapproved_gb": m.max_unapproved_gb, "warnings": warnings(m, rows)}
+
+
+def warnings(m: GroupManager, rows: list | None = None) -> list[str]:
+    rows = rows if rows is not None else list(m.assignments.all())
+    out = []
+    if not rows:
+        out.append("no_group")
+    elif any(not (r["role_ids"] if isinstance(r, dict) else r.allowed_role_ids) for r in rows):
+        out.append("no_role")
+    if not m.staff_id:
+        out.append("no_login")
+    return out
+
+
+def options_payload() -> dict:
+    """Agency groups + PasarGuard roles (owner roles left out) for the assignment pickers."""
+    try:
+        cat = roles_catalog(fresh=True)
+        roles = [r for r in cat.values() if not r["is_owner"]]
+        err = None
+    except ManagerError as exc:
+        roles, err = [], str(exc)
+    return {
+        "groups": [{"id": g.id, "name": group_title(g), "owner": g.owner_username, "admins": len(g.get_all_usernames())}
+                   for g in AdminGroup.objects.order_by("owner_username")],
+        "roles": sorted(roles, key=lambda r: r["id"]), "roles_error": err,
+    }
 
 
 def set_password(m: GroupManager, password: str | None = None) -> str:
@@ -307,6 +426,7 @@ def manager_row(m: GroupManager, cat: dict | None = None) -> dict:
         "pending_count": VolumeRequest.objects.filter(manager=m, status="pending").count(),
         # v1.25: the manager signs in to /panel/ as this staff account (None = username taken by other staff)
         "staff_username": m.staff.username if m.staff_id else None,
+        "warnings": warnings(m),
         "assignments": [{"group_id": a.group_id, "group": group_title(a.group), "role_ids": a.allowed_role_ids,
                          "roles": [_role_view(r, cat) for r in a.allowed_role_ids]}
                         for a in m.assignments.select_related("group").order_by("group__owner_username")],

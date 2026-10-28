@@ -139,4 +139,13 @@ rm -f "$ROOT/backups/.update-requested" || true
 # old release images / build cache (keeps :latest + :rollback)
 "$ROOT/scripts/docker-cleanup.sh" || true
 
+# daily disk report (v1.25.2): make sure the host cron exists, then refresh the report now
+if command -v crontab >/dev/null 2>&1; then
+  CRON_LINE="17 3 * * * $ROOT/scripts/disk-report.sh >> /var/log/caspintunel-disk.log 2>&1"
+  if ! crontab -l 2>/dev/null | grep -qF "scripts/disk-report.sh"; then
+    ( crontab -l 2>/dev/null; echo "$CRON_LINE" ) | crontab - && echo "   cron: daily disk report installed"
+  fi
+fi
+"$ROOT/scripts/disk-report.sh" || true
+
 echo "==> now on version: $(cat VERSION)"

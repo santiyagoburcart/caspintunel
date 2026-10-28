@@ -17,9 +17,9 @@ import { useLiveApprovals } from '../lib/liveApprovals'
 // (backend: apps/agency/managers.py, adminpanel/views/agency_managers.py).
 // Rules live on the server; this file only lays them out.
 
-const T = {
+export const GM_T = {
   fa: {
-    m_title: 'مدیران گروه', m_intro: 'هر مدیر گروه با نام کاربری و رمز خودش در همین پنل اصلی (آدرس زیر) وارد می‌شود — با نقش «Group manager» — و فقط ادمین‌های گروه‌های خودش را می‌بیند: ساخت ادمین، افزودن حجم (فقط افزایش)، تغییر رمز و اینباند (از فهرست مجاز). هر حجمی که می‌دهد بلافاصله روی PasarGuard اعمال و در «تأییدها» منتظر شما می‌ماند.',
+    m_title: 'مدیران گروه', m_intro: 'هر مدیر گروه با نام کاربری و رمز خودش در همین پنل اصلی (آدرس زیر) وارد می‌شود — با نقش «مدیر گروه» — و فقط ادمین‌های گروه‌های خودش را می‌بیند: ساخت ادمین، افزودن حجم (فقط افزایش)، تغییر رمز و اینباند (از فهرست مجاز). هر حجمی که می‌دهد بلافاصله روی PasarGuard اعمال و در «تأییدها» منتظر شما می‌ماند.',
     m_new: 'مدیر گروه جدید', m_edit: 'ویرایش مدیر', m_none: 'هنوز مدیر گروهی ساخته نشده است.', m_portal: 'آدرس ورود مدیران', no_login: 'ورود به پنل ندارد: این نام کاربری را یک کاربر پنل دیگر دارد — مدیر جدیدی با نام دیگر بسازید.',
     username: 'نام کاربری', password: 'رمز عبور', gen: 'رمز تصادفی', display: 'نام نمایشی', active: 'فعال', disabled: 'غیرفعال',
     cap: 'سقف حجم تأییدنشده (گیگ)', cap_hint: 'خالی = بدون سقف. با رسیدن به سقف، حجم تازه تا تأیید شما بسته می‌شود.', no_cap: 'بدون سقف',
@@ -43,6 +43,8 @@ const T = {
     range: 'بازهٔ تاریخ', all_time: 'همهٔ زمان‌ها', csv: 'CSV', xlsx: 'Excel', print: 'چاپ', pending_items: 'در انتظار تأیید (در مانده حساب نشده)', no_entries: 'گردشی در این بازه نیست.',
     k_quota_charge: 'شارژ حجم', k_manual_charge: 'بدهکاری', k_adjustment: 'اصلاحیه', k_payment: 'پرداخت', voided: 'باطل‌شده', back: 'همهٔ گروه‌ها',
     act_title: 'فعالیت', act_none: 'فعالیتی ثبت نشده است.', act_show: 'نمایش فعالیت', act_hide: 'بستن',
+    w_no_group: 'هیچ گروهی به این مدیر داده نشده — بعد از ورود چیزی نمی‌بیند.', w_no_role: 'برای یکی از گروه‌ها هیچ اینباند مجازی انتخاب نشده.',
+    staff_link: 'حساب پنل', staff_hint: 'گروه‌ها، اینباندها و سقف همین مدیر را در «نقش‌ها و کارکنان» هم می‌توانید ببینید و تغییر دهید.',
     acts: { admin_created: 'ساخت ادمین', volume_added: 'افزودن حجم', password_changed: 'تغییر رمز ادمین', inbounds_changed: 'تغییر اینباند', login: 'ورود', approved: 'تأیید حجم', rejected: 'رد حجم' },
   },
   en: {
@@ -70,10 +72,12 @@ const T = {
     range: 'Date range', all_time: 'All time', csv: 'CSV', xlsx: 'Excel', print: 'Print', pending_items: 'Pending approval (not in the balance)', no_entries: 'No entries in this range.',
     k_quota_charge: 'Quota charge', k_manual_charge: 'Charge', k_adjustment: 'Adjustment', k_payment: 'Payment', voided: 'voided', back: 'All groups',
     act_title: 'Activity', act_none: 'No activity yet.', act_show: 'Show activity', act_hide: 'Hide',
+    w_no_group: 'No group assigned — this manager sees nothing after signing in.', w_no_role: 'One of the groups has no allowed inbound set.',
+    staff_link: 'Panel account', staff_hint: "The same manager's groups, inbounds and cap can also be edited on Roles & staff.",
     acts: { admin_created: 'Admin created', volume_added: 'Volume added', password_changed: 'Admin password changed', inbounds_changed: 'Inbounds changed', login: 'Signed in', approved: 'Volume approved', rejected: 'Volume rejected' },
   },
 }
-const useS = () => { const { lang } = useI18n(); return [T[lang] || T.fa, lang] }
+const useS = () => { const { lang } = useI18n(); return [GM_T[lang] || GM_T.fa, lang] }
 const N = ({ children }) => <bdi dir="ltr" className="ag-num">{children}</bdi>
 const gbText = (v) => `${Number(v || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })} GB`
 const limText = (b) => (Number(b) > 0 ? gbText(Number(b) / 1024 ** 3) : '∞')
@@ -109,6 +113,47 @@ function RoleChips({ roles, s }) {
   )
 }
 
+// groups + allowed PasarGuard roles per group — shared with the Staff page (v1.25.2).
+// value = { [group_id]: [role_id, …] }
+export function GroupPicker({ s, opts, value, onChange }) {
+  const toggleGroup = (gid) => {
+    const n = { ...value }
+    if (gid in n) delete n[gid]; else n[gid] = []
+    onChange(n)
+  }
+  const toggleRole = (gid, rid) => {
+    const cur = value[gid] || []
+    onChange({ ...value, [gid]: cur.includes(rid) ? cur.filter((r) => r !== rid) : [...cur, rid] })
+  }
+  return (
+    <div className="gm-wide">
+      <span className="gm-l">{s.groups}</span>
+      <small className="gm-hint">{s.groups_hint}</small>
+      {opts?.roles_error && <Alert>{s.roles_err}: {opts.roles_error}</Alert>}
+      <div className="gm-groups">
+        {(opts?.groups || []).map((g) => {
+          const on = g.id in value
+          return (
+            <div key={g.id} className="gm-group" data-on={on || undefined}>
+              <label className="gm-gcheck"><input type="checkbox" checked={on} onChange={() => toggleGroup(g.id)} /> <b><bdi>{g.name}</bdi></b> <small>({digits(g.admins, 'en')} {s.admins})</small></label>
+              {on && (
+                <div className="gm-rolepick">
+                  {(opts?.roles || []).map((r) => (
+                    <label key={r.id} className="gm-rolei">
+                      <input type="checkbox" checked={(value[g.id] || []).includes(r.id)} onChange={() => toggleRole(g.id, r.id)} />
+                      <span><b>{r.all_inbounds ? s.all_inb : r.inbounds.join(' · ') || '—'}</b><small>{r.name}</small></span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function ManagerForm({ s, init, opts, box }) {
   const [v, setV] = useState(() => ({
     username: init?.username || '', password: '', display_name: init?.display_name || '', note: init?.note || '',
@@ -121,15 +166,6 @@ function ManagerForm({ s, init, opts, box }) {
     const a = new Uint32Array(14); crypto.getRandomValues(a)
     setV({ ...v, password: Array.from(a, (x) => abc[x % abc.length]).join('') + '7a' })
   }
-  const toggleGroup = (gid) => setV((x) => {
-    const n = { ...x.assignments }
-    if (gid in n) delete n[gid]; else n[gid] = []
-    return { ...x, assignments: n }
-  })
-  const toggleRole = (gid, rid) => setV((x) => {
-    const cur = x.assignments[gid] || []
-    return { ...x, assignments: { ...x.assignments, [gid]: cur.includes(rid) ? cur.filter((r) => r !== rid) : [...cur, rid] } }
-  })
   return (
     <div className="gm-form">
       {!init && <>
@@ -142,31 +178,7 @@ function ManagerForm({ s, init, opts, box }) {
       <label><span>{s.display}</span><input className="input" value={v.display_name} maxLength={100} onChange={(e) => setV({ ...v, display_name: e.target.value })} /></label>
       <label><span>{s.cap}</span><input className="input" dir="ltr" inputMode="decimal" value={v.max_unapproved_gb ?? ''} placeholder={s.no_cap} onChange={(e) => setV({ ...v, max_unapproved_gb: e.target.value.replace(/[^\d.]/g, '') })} /><small>{s.cap_hint}</small></label>
       {init && <div className="gm-row"><Toggle checked={v.is_active} onChange={(c) => setV({ ...v, is_active: c })} label={s.active} /></div>}
-      <div className="gm-wide">
-        <span className="gm-l">{s.groups}</span>
-        <small className="gm-hint">{s.groups_hint}</small>
-        {opts?.roles_error && <Alert>{s.roles_err}: {opts.roles_error}</Alert>}
-        <div className="gm-groups">
-          {(opts?.groups || []).map((g) => {
-            const on = g.id in v.assignments
-            return (
-              <div key={g.id} className="gm-group" data-on={on || undefined}>
-                <label className="gm-gcheck"><input type="checkbox" checked={on} onChange={() => toggleGroup(g.id)} /> <b><bdi>{g.name}</bdi></b> <small>({digits(g.admins, 'en')} {s.admins})</small></label>
-                {on && (
-                  <div className="gm-rolepick">
-                    {(opts?.roles || []).map((r) => (
-                      <label key={r.id} className="gm-rolei">
-                        <input type="checkbox" checked={(v.assignments[g.id] || []).includes(r.id)} onChange={() => toggleRole(g.id, r.id)} />
-                        <span><b>{r.all_inbounds ? s.all_inb : r.inbounds.join(' · ') || '—'}</b><small>{r.name}</small></span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      </div>
+      <GroupPicker s={s} opts={opts} value={v.assignments} onChange={(a) => setV((x) => ({ ...x, assignments: a }))} />
       <label className="gm-wide"><span>{s.note}</span><input className="input" value={v.note} maxLength={255} onChange={(e) => setV({ ...v, note: e.target.value })} /></label>
     </div>
   )
@@ -254,6 +266,7 @@ export function AgencyManagersView({ Header }) {
                 <h3 className="ag-sh" data-ac="purple"><Ic n="user" size={15} /><bdi>{m.display_name || m.username}</bdi></h3>
                 <span className="text-xs text-muted"><N>{m.username}</N></span>
                 {!m.staff_username && <span className="text-xs" style={{ color: 'var(--c-warning-fg)' }}>{s.no_login}</span>}
+                {(m.warnings || []).filter((w) => w !== 'no_login').map((w) => <span key={w} className="text-xs" style={{ color: 'var(--c-warning-fg)' }}>⚠ {s['w_' + w]}</span>)}
                 <span className="gm-pill" data-on={m.is_active || undefined}>{m.is_active ? s.active : s.disabled}</span>
               </div>
               {manage && (
@@ -573,7 +586,7 @@ function StatementBody({ st, s, lang }) {
   )
 }
 
-const GM_CSS = `
+export const GM_CSS = `
 .gm-portal { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 13px; }
 .gm-portal span { font-weight: 700; color: var(--c-muted-fg); }
 .gm-card[data-off] { opacity: .7; }

@@ -15,8 +15,14 @@ def health_check_task():
 
 @shared_task
 def resource_sample_task():
+    from .disk import check_disk_alert
     from .resources import sample_resources
 
+    # the disk alert goes first: it must work even when the DB / Redis can't write
+    try:
+        check_disk_alert()
+    except Exception:  # noqa: BLE001
+        logging.getLogger("caspintunel").exception("disk alert check failed")
     stat = sample_resources()
     return {"cpu": stat.cpu_percent, "ram": stat.ram_percent, "disk": stat.disk_percent}
 
@@ -33,6 +39,14 @@ def service_alerts_task():
     from .alerts import run_service_alerts
 
     return run_service_alerts()
+
+
+@shared_task
+def disk_report_task():
+    """Daily: the host's biggest folders / volumes report + growth (apps/ops/disk.py)."""
+    from .disk import daily_report
+
+    return daily_report()
 
 
 @shared_task

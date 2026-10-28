@@ -183,7 +183,7 @@ function LegacyLayout() {
           )}
           <button className="btn-ghost shrink-0" onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')}>{lang === 'fa' ? 'EN' : 'فا'}</button>
           <span className="ms-auto truncate text-muted">
-            {staff?.username}{staff?.role ? ` · ${staff.role}` : staff?.is_superadmin ? ' · superadmin' : ''}
+            {staff?.username}{staff?.role ? ` · ${(lang === 'fa' && staff.role_fa) || staff.role}` : staff?.is_superadmin ? ` · ${lang === 'fa' ? 'ابرمدیر' : 'superadmin'}` : ''}
           </span>
           <button className="btn-ghost shrink-0" onClick={() => { logout(); go('/login') }}>{t('logout')}</button>
         </header>
@@ -336,7 +336,7 @@ function CaspianLayout() {
             {lang === 'fa' ? 'EN' : 'فا'}
           </button>
           <span className="csp-tb-user">
-            {staff?.username}{staff?.role ? ` · ${staff.role}` : staff?.is_superadmin ? ' · superadmin' : ''}
+            {staff?.username}{staff?.role ? ` · ${(lang === 'fa' && staff.role_fa) || staff.role}` : staff?.is_superadmin ? ` · ${lang === 'fa' ? 'ابرمدیر' : 'superadmin'}` : ''}
           </span>
           <button className="csp-tb-btn" onClick={() => { logout(); go('/login') }}>{t('logout')}</button>
         </header>

@@ -91,6 +91,9 @@ const ST = {
     mig: 'آرشیو مهاجرت', last: 'آخرین پاک‌سازی', never: 'هنوز اجرا نشده',
     freed: 'آزاد شد', deleted: 'حذف', resent: 'ارسال مجدد', kept: 'نگه داشته شد (تحویل به تلگرام تأیید نشده):',
     r_not_sent: 'ارسال نشده', r_no_record: 'بدون سابقه', r_delete_failed: 'حذف ناموفق',
+    alerts_at: 'هشدار تلگرام در {w}٪ و {c}٪', lvl1: 'هشدار', lvl2: 'بحرانی',
+    big: 'بزرگ‌ترین پوشه‌ها و والیوم‌ها (بررسی روزانه)', per_day: 'در روز', report_at: 'گزارش',
+    no_report: 'گزارش روزانهٔ دیسک هنوز از سرور نیامده (scripts/disk-report.sh).', stale: 'گزارش روزانه قدیمی است',
   },
   en: {
     title: 'DISK & CLEANUP', sub: '(local backup retention)',
@@ -99,10 +102,13 @@ const ST = {
     mig: 'Migration archives', last: 'Last cleanup', never: 'not run yet',
     freed: 'freed', deleted: 'deleted', resent: 'resent', kept: 'Kept (Telegram delivery not confirmed):',
     r_not_sent: 'not sent', r_no_record: 'no record', r_delete_failed: 'delete failed',
+    alerts_at: 'Telegram alerts at {w}% and {c}%', lvl1: 'warning', lvl2: 'critical',
+    big: 'Biggest folders & volumes (daily check)', per_day: '/day', report_at: 'report',
+    no_report: 'The daily disk report has not arrived from the host yet (scripts/disk-report.sh).', stale: 'daily report is stale',
   },
 }
 
-function StorageRows({ st, lang }) {
+function StorageRows({ st, dw, lang }) {
   const t = ST[lang] || ST.fa
   const d = (v) => D(v, lang)
   const sz = (n) => fmtBytes(n) ?? '—'
@@ -111,17 +117,41 @@ function StorageRows({ st, lang }) {
   const last = st.last_cleanup
   const del = last?.deleted || {}
   const removed = (del.db_backups || 0) + (del.pre_update || 0) + (del.migration || 0)
-  const warn = disk && disk.percent >= 85
+  const warnAt = dw?.warn_percent ?? 80
+  const critAt = dw?.crit_percent ?? 90
+  const warn = disk && disk.percent >= warnAt
+  const crit = disk && disk.percent >= critAt
+  const rep = dw?.report
   return (
     <div className="stg">
       {disk && (
         <div className="stg-disk">
           <div className="stg-row">
             <span className="k">{t.disk}</span>
-            <span className={'v mono-num' + (warn ? ' bad' : '')}>{sz(disk.used)} / {sz(disk.total)} · {d(disk.percent)}%</span>
+            <span className={'v mono-num' + (warn ? ' bad' : '')}>
+              {warn && <span className="stg-lvl" data-crit={crit || undefined}>{crit ? t.lvl2 : t.lvl1}</span>}
+              {sz(disk.used)} / {sz(disk.total)} · {d(disk.percent)}%</span>
           </div>
-          <div className="stg-bar"><i className={warn ? 'bad' : ''} style={{ width: `${Math.min(disk.percent || 0, 100)}%` }} /></div>
-          <div className="stg-row sm"><span className="k" /><span className="v mono-num">{sz(disk.free)} {t.free}</span></div>
+          <div className="stg-bar"><i className={warn ? 'bad' : ''} style={{ width: `${Math.min(disk.percent || 0, 100)}%` }} />
+            <b style={{ insetInlineStart: `${warnAt}%` }} /><b style={{ insetInlineStart: `${critAt}%` }} /></div>
+          <div className="stg-row sm"><span className="k">{t.alerts_at.replace('{w}', d(warnAt)).replace('{c}', d(critAt))}</span><span className="v mono-num">{sz(disk.free)} {t.free}</span></div>
+        </div>
+      )}
+      {dw && (
+        <div className="stg-big">
+          <div className="stg-row">
+            <span className="k">{t.big}</span>
+            <span className={'v mono-num' + (dw.stale ? ' bad' : '')}>{rep ? `${t.report_at} ${relTime(rep.generated_at, lang)}${dw.stale ? ` · ${t.stale}` : ''}` : '—'}</span>
+          </div>
+          {!rep && <div className="stg-warn"><div>{t.no_report}</div></div>}
+          {rep && rep.items.slice(0, 8).map((i) => (
+            <div className="stg-row sm" key={i.label}>
+              <span className="k mono-num" dir="ltr" title={i.path}>{i.label.replace(/^volume:([0-9a-f]{12})[0-9a-f]{52}$/, 'volume:$1…')}</span>
+              <span className={'v mono-num' + ((i.growth_per_day || 0) >= 1024 ** 3 ? ' bad' : '')}>
+                {sz(i.bytes)}{i.growth_per_day ? ` · ${i.growth_per_day > 0 ? '+' : '−'}${sz(Math.abs(i.growth_per_day))} ${t.per_day}` : ''}
+              </span>
+            </div>
+          ))}
         </div>
       )}
       {bk && (
@@ -175,7 +205,13 @@ const STG_CSS = `
 .stg-row .v.bad { color:var(--c-danger); }
 .stg-disk { padding-bottom:4px; border-bottom:1px solid var(--cm-divider, var(--c-border)); }
 .stg-disk .stg-row:first-child { border-bottom:0; }
-.stg-bar { height:8px; border-radius:999px; background:var(--cm-well, var(--c-border)); overflow:hidden; }
+.stg-bar { position:relative; height:8px; border-radius:999px; background:var(--cm-well, var(--c-border)); overflow:hidden; }
+.stg-bar b { position:absolute; top:0; bottom:0; width:2px; background:var(--cm-text, var(--c-text)); opacity:.35; }
+.stg-lvl { display:inline-block; margin-inline-end:6px; padding:1px 7px; border-radius:999px; font-size:10px; font-weight:700;
+  color:#fff; background:var(--c-warning, #D97706); vertical-align:1px; }
+.stg-lvl[data-crit] { background:var(--c-danger); }
+.stg-big { margin-top:10px; }
+.stg-big .stg-row.sm .k { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .stg-bar i { display:block; height:100%; border-radius:inherit; background:var(--cm-accent, var(--c-primary)); }
 .stg-bar i.bad { background:var(--c-danger); }
 .stg-warn { margin-top:10px; padding:10px 12px; border-radius:10px; font-size:12px;
@@ -544,7 +580,7 @@ function LegacyMonitoring() {
           <div className="card">
             <style>{STG_CSS}</style>
             <div className="title">{(ST[lang] || ST.fa).title}</div>
-            <StorageRows st={data.storage} lang={lang} />
+            <StorageRows st={data.storage} dw={data.disk_watch} lang={lang} />
           </div>
         </div>
       )}
@@ -1276,7 +1312,7 @@ function CaspianMonitoring() {
           <section className="cm-card">
             <style>{STG_CSS}</style>
             <div className="cm-h2-row"><h2 className="cm-h2">{ST[lang]?.title || ST.fa.title}</h2><span className="cm-h2-fa">{(ST[lang] || ST.fa).sub}</span></div>
-            <StorageRows st={data.storage} lang={lang} />
+            <StorageRows st={data.storage} dw={data.disk_watch} lang={lang} />
           </section>
         )}
 

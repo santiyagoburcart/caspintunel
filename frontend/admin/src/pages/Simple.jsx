@@ -5,6 +5,7 @@ import { digits } from '../lib/format'
 import { Alert, Spinner, Toggle } from '../components/ui'
 import { useDeleteConfirm } from '../lib/confirmDelete'
 import { useAuth } from '../lib/auth'
+import { GroupPicker, GM_T, GM_CSS } from './AgencyManagers'
 
 function useList(url) {
   const [rows, setRows] = useState(null)
@@ -69,6 +70,10 @@ const SHARED_CSS = `
 .sm-name-dot { display: inline-flex; align-items: center; gap: 8px; }
 .sm-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
 .sm-role-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 8px; font-size: 11.5px; font-weight: 600; border: 1px solid var(--c-border); color: var(--c-text-muted); }
+.sm-warn-badge { margin-inline-start: 4px; color: var(--c-warning); border-color: color-mix(in srgb, var(--c-warning) 40%, transparent); }
+.sm-gm { padding: 10px 12px; border-radius: 12px; border: 1px solid var(--c-border); }
+.sm-gm .gm-form { grid-template-columns: 1fr; }
+.sm-gm .gm-l, .sm-gm .gm-hint { display: block; margin-bottom: 4px; }
 .sm-role-badge.super { background: color-mix(in srgb, #D97706 14%, transparent); color: #D97706; border-color: color-mix(in srgb, #D97706 26%, transparent); }
 .sm-av { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 12px; background: color-mix(in srgb, var(--c-text-muted) 16%, transparent); color: var(--c-text); flex-shrink: 0; }
 .sm-uname { display: flex; align-items: center; gap: 10px; }
@@ -510,7 +515,11 @@ export function Pages() {
 }
 
 /* ================= Roles + Staff accounts — full CRUD, wired to RBAC ================= */
-const blankRole = { name: '', description: '', permission_codes: [] }
+const blankRole = { name: '', description: '', name_fa: '', description_fa: '', permission_codes: [] }
+const GM_PERM = 'agency.group_manager'
+const isGmRole = (r) => !!r && (r.name === 'Group manager' || (r.permission_codes || []).includes(GM_PERM))
+const roleName = (r, lang) => (r ? ((lang === 'fa' && r.name_fa) || r.name) : '')
+const roleDesc = (r, lang) => (r ? ((lang === 'fa' && r.description_fa) || r.description) : '')
 const blankStaff = { username: '', password: '', role: '', is_active: true, is_superadmin: false }
 
 const R = {
@@ -531,6 +540,11 @@ const R = {
     pw_edit_hint: '(فقط برای تغییر وارد شود)',
     super: 'ابرمدیر', super_hint: 'دسترسی کامل به همهٔ بخش‌ها',
     none_roles: 'نقشی تعریف نشده', none_staff: 'کارمندی ثبت نشده',
+    name_fa: 'نام فارسی', desc_fa: 'توضیح فارسی', fa_hint: '— وقتی پنل فارسی است این نمایش داده می‌شود',
+    gm_h: 'گروه‌های تخصیص‌یافته', gm_intro: 'این کارمند نقش «مدیر گروه» دارد: فقط ادمین‌های همین گروه‌ها را می‌بیند. همان تنظیمات «نمایندگی ← مدیران گروه» است و هر دو صفحه یکی هستند.',
+    gm_cap: 'سقف حجم تأییدنشده (گیگ)', gm_no_cap: 'بدون سقف', gm_load_err: 'گروه‌ها خوانده نشد',
+    gm_no_group: 'هیچ گروهی انتخاب نشده — این مدیر بعد از ورود چیزی نمی‌بیند.', gm_badge_no_group: 'بدون گروه',
+    gm_off: 'نقش «مدیر گروه» برداشته شد: اتصال این کارمند به مدیر گروه قطع و آن مدیر غیرفعال می‌شود.',
   },
   en: {
     kpi_roles: 'Roles defined', kpi_roles_u: 'roles',
@@ -549,6 +563,11 @@ const R = {
     pw_edit_hint: '(fill only to change)',
     super: 'Superadmin', super_hint: 'Full access to every section',
     none_roles: 'No roles defined', none_staff: 'No staff accounts yet',
+    name_fa: 'Persian name', desc_fa: 'Persian description', fa_hint: '— shown when the panel is in Persian',
+    gm_h: 'Assigned groups', gm_intro: 'This staff member has the “Group manager” role: they see only the admins of these groups. Same settings as Agency → Group managers — both pages edit one record.',
+    gm_cap: 'Max unapproved volume (GB)', gm_no_cap: 'no cap', gm_load_err: 'Could not load the groups',
+    gm_no_group: 'No group selected — this manager will see nothing after signing in.', gm_badge_no_group: 'no group',
+    gm_off: 'The “Group manager” role was removed: this staff member is unlinked and that manager is disabled.',
   },
 }
 
@@ -592,7 +611,7 @@ function RoleModal({ row, perms, s, t, lang, onClose, onSaved }) {
       <form className="sm-modal card" onSubmit={submit} role="dialog" aria-modal="true">
         <div className="sm-modal-head">
           <h2 className="font-bold"><span style={{ color: 'var(--c-primary)' }}><Ico d={I.shield} w={18} /></span>
-            {editing ? s.role_modal_edit.replace('{n}', row.name) : s.role_modal_new}</h2>
+            {editing ? s.role_modal_edit.replace('{n}', roleName(row, lang)) : s.role_modal_new}</h2>
           <button type="button" className="sm-icon-btn" onClick={onClose} aria-label={t('cancel')}><Ico d={I.close} /></button>
         </div>
         <div className="sm-modal-body">
@@ -606,6 +625,14 @@ function RoleModal({ row, perms, s, t, lang, onClose, onSaved }) {
               <span className="label">{s.c_desc}</span>
               <input className="input" value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} />
             </label>
+            <label className="sm-fld">
+              <span className="label">{s.name_fa} <span className="sm-hint">{s.fa_hint}</span></span>
+              <input className="input" dir="rtl" maxLength={100} value={f.name_fa || ''} onChange={(e) => setF({ ...f, name_fa: e.target.value })} />
+            </label>
+            <label className="sm-fld">
+              <span className="label">{s.desc_fa}</span>
+              <input className="input" dir="rtl" maxLength={255} value={f.description_fa || ''} onChange={(e) => setF({ ...f, description_fa: e.target.value })} />
+            </label>
           </div>
           <div className="sm-fld">
             <span className="label">{s.pick_perms} <span className="sm-hint">({digits(f.permission_codes.length, lang)}/{digits(perms.length, lang)})</span></span>
@@ -613,7 +640,7 @@ function RoleModal({ row, perms, s, t, lang, onClose, onSaved }) {
               {perms.map((p) => (
                 <label key={p.code} className="sm-perm">
                   <input type="checkbox" checked={f.permission_codes.includes(p.code)} onChange={() => toggle(p.code)} />
-                  <span>{p.name}<br /><code dir="ltr">{p.code}</code></span>
+                  <span>{(lang === 'fa' && p.name_fa) || p.name}<br /><code dir="ltr">{p.code}</code></span>
                 </label>
               ))}
             </div>
@@ -649,11 +676,31 @@ function StaffModal({ row, roles, s, t, onClose, onSaved }) {
   const [showPw, setShowPw] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  // v1.25.2: "Group manager" role → assigned groups + allowed roles per group + cap
+  const gmS = GM_T[lang] || GM_T.fa
+  const selRole = roles.find((r) => String(r.id) === String(f.role))
+  const isGm = !f.is_superadmin && isGmRole(selRole)
+  const wasGm = !!row?.group_manager?.id
+  const [gm, setGm] = useState(() => ({
+    assignments: Object.fromEntries((row?.group_manager?.assignments || []).map((a) => [a.group_id, a.role_ids])),
+    cap: row?.group_manager?.max_unapproved_gb ?? '',
+  }))
+  const [gmOpts, setGmOpts] = useState(null)
+  const [gmErr, setGmErr] = useState('')
+  useEffect(() => {
+    if (!isGm || gmOpts) return
+    api.get('/admin/staff/group-manager-options/').then((r) => setGmOpts(r.data)).catch((e2) => setGmErr(apiError(e2)))
+  }, [isGm])
+  const gmGroups = Object.keys(gm.assignments).length
   const submit = async (e) => {
     e.preventDefault(); setBusy(true); setErr('')
     const body = { ...f }
     if (editing && !body.password) delete body.password
     if (!body.role) body.role = null
+    if (isGm) {
+      body.group_manager = { max_unapproved_gb: gm.cap === '' ? null : gm.cap,
+        assignments: Object.entries(gm.assignments).map(([gid, role_ids]) => ({ group_id: Number(gid), role_ids })) }
+    }
     try {
       const saved = editing ? (await api.patch(`/admin/staff/${row.id}/`, body)).data : (await api.post('/admin/staff/', body)).data
       if (manageScopes && scope !== null) await api.put(`/admin/tickets/staff-scopes/${saved.id}/`, { topic_ids: scope }, { quiet: true })
@@ -662,7 +709,7 @@ function StaffModal({ row, roles, s, t, onClose, onSaved }) {
   }
   return (
     <div className="sm-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <form className="sm-modal sm-modal--sm card" onSubmit={submit} role="dialog" aria-modal="true">
+      <form className={'sm-modal card' + (isGm ? '' : ' sm-modal--sm')} onSubmit={submit} role="dialog" aria-modal="true">
         <div className="sm-modal-head">
           <h2 className="font-bold"><span style={{ color: 'var(--c-primary)' }}><Ico d={I.users} w={18} /></span>
             {editing ? s.staff_modal_edit.replace('{n}', row.username) : s.staff_modal_new}</h2>
@@ -688,9 +735,28 @@ function StaffModal({ row, roles, s, t, onClose, onSaved }) {
             <span className="label">{s.c_role}</span>
             <select className="input" value={f.role || ''} onChange={(e) => setF({ ...f, role: e.target.value })} disabled={f.is_superadmin}>
               <option value="">— {t('select_role')} —</option>
-              {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+              {roles.map((r) => <option key={r.id} value={r.id}>{roleName(r, lang)}</option>)}
             </select>
           </label>
+          {isGm && (
+            <div className="sm-fld sm-gm">
+              <style>{GM_CSS}</style>
+              <span className="label">{s.gm_h}</span>
+              <span className="sm-hint">{s.gm_intro}</span>
+              {gmErr && <Alert>{s.gm_load_err}: {gmErr}</Alert>}
+              {!gmOpts && !gmErr ? <Spinner /> : gmOpts && (
+                <div className="gm-form">
+                  <GroupPicker s={gmS} opts={gmOpts} value={gm.assignments} onChange={(a) => setGm({ ...gm, assignments: a })} />
+                  <label><span>{s.gm_cap}</span>
+                    <input className="input" dir="ltr" inputMode="decimal" value={gm.cap ?? ''} placeholder={s.gm_no_cap}
+                      onChange={(e) => setGm({ ...gm, cap: e.target.value.replace(/[^\d.]/g, '') })} /><small>{gmS.cap_hint}</small></label>
+                </div>
+              )}
+              {gmGroups === 0 && <Alert kind="warning">{s.gm_no_group}</Alert>}
+              {gmGroups > 0 && Object.values(gm.assignments).some((r) => !r.length) && <Alert kind="warning">{gmS.w_no_role}</Alert>}
+            </div>
+          )}
+          {!isGm && wasGm && <Alert kind="warning">{s.gm_off}</Alert>}
           <label className="sm-fld">
             <span className="label">{s.display_name} <span className="sm-hint">{s.display_name_hint}</span></span>
             <input className="input" maxLength={60} value={f.display_name} onChange={(e) => setF({ ...f, display_name: e.target.value })} />
@@ -750,7 +816,7 @@ export function Roles() {
   const flash = () => { setToast(t('saved')); setTimeout(() => setToast(''), 2000) }
   const askDelete = useDeleteConfirm()
   const delRole = async (r) => {
-    const ok = await askDelete({ what: (lang === 'en' ? 'role' : 'نقش'), name: r.name, id: r.id,
+    const ok = await askDelete({ what: (lang === 'en' ? 'role' : 'نقش'), name: roleName(r, lang), id: r.id,
       action: () => api.delete(`/admin/roles/${r.id}/`) })
     if (ok) roles.load()
   }
@@ -794,8 +860,8 @@ export function Roles() {
                 <tbody>
                   {roles.rows.map((r, i) => (
                     <tr key={r.id} className="sm-row">
-                      <td data-label={s.c_name}><span className="sm-name-dot"><span className="sm-dot" style={{ background: DOT[i % DOT.length] }} /><b>{r.name}</b></span></td>
-                      <td data-label={s.c_desc} className="text-muted">{r.description || '—'}</td>
+                      <td data-label={s.c_name}><span className="sm-name-dot"><span className="sm-dot" style={{ background: DOT[i % DOT.length] }} /><b>{roleName(r, lang)}</b></span></td>
+                      <td data-label={s.c_desc} className="text-muted">{roleDesc(r, lang) || '—'}</td>
                       <td data-label={s.c_perms} className="sm-c"><span className="sm-cnt-pill">{digits((r.permission_codes || []).length, lang)}</span></td>
                       <td data-label={s.c_actions} className="sm-c">
                         <div className="sm-acts">
@@ -812,10 +878,10 @@ export function Roles() {
               {roles.rows.map((r, i) => (
                 <div key={r.id} className="sm-role-card" style={{ '--dot': DOT[i % DOT.length] }}>
                   <div className="sm-role-card-top">
-                    <span className="sm-name-dot"><span className="sm-dot" style={{ background: DOT[i % DOT.length] }} /><b>{r.name}</b></span>
+                    <span className="sm-name-dot"><span className="sm-dot" style={{ background: DOT[i % DOT.length] }} /><b>{roleName(r, lang)}</b></span>
                     <span className="sm-cnt-pill">{digits((r.permission_codes || []).length, lang)} {s.c_perms}</span>
                   </div>
-                  {r.description && <p className="sm-role-card-desc">{r.description}</p>}
+                  {roleDesc(r, lang) && <p className="sm-role-card-desc">{roleDesc(r, lang)}</p>}
                   <div className="sm-role-card-acts">
                     <button className="sm-btn" onClick={() => setRoleModal({ row: r })}>{t('edit')}</button>
                     <button className="sm-btn sm-btn--del" onClick={() => delRole(r)}>{t('delete')}</button>
@@ -854,7 +920,8 @@ export function Roles() {
                       <td data-label={s.c_role} className="sm-c">
                         {r.is_superadmin
                           ? <span className="sm-role-badge super">★ {s.super}</span>
-                          : <span className="sm-role-badge">{r.role_name || '—'}</span>}
+                          : <><span className="sm-role-badge">{(lang === 'fa' && r.role_name_fa) || r.role_name || '—'}</span>
+                          {(r.group_manager?.warnings || []).includes('no_group') && <span className="sm-role-badge sm-warn-badge">⚠ {s.gm_badge_no_group}</span>}</>}
                       </td>
                       <td data-label={s.c_active} className="sm-c">{r.is_active ? <span className="sm-ok"><Ico d={I.check} w={14} /></span> : <span className="sm-off">—</span>}</td>
                       <td data-label={s.c_actions} className="sm-c">
@@ -880,7 +947,8 @@ export function Roles() {
                     <div className="mt-1">
                       {r.is_superadmin
                         ? <span className="sm-role-badge super">★ {s.super}</span>
-                        : <span className="sm-role-badge">{r.role_name || '—'}</span>}
+                        : <><span className="sm-role-badge">{(lang === 'fa' && r.role_name_fa) || r.role_name || '—'}</span>
+                          {(r.group_manager?.warnings || []).includes('no_group') && <span className="sm-role-badge sm-warn-badge">⚠ {s.gm_badge_no_group}</span>}</>}
                     </div>
                   </div>
                   <div className="sm-acts">

@@ -104,6 +104,8 @@ class Permission(models.Model):
 
     code = models.CharField(max_length=100, unique=True)
     name = models.CharField(max_length=150)
+    # v1.25.2: Persian label (seeded); the panel shows it when its language is fa
+    name_fa = models.CharField(max_length=150, blank=True, default="")
 
     class Meta:
         db_table = "permission"
@@ -116,6 +118,9 @@ class Permission(models.Model):
 class Role(models.Model):
     name = models.CharField(max_length=100, unique=True)
     description = models.CharField(max_length=255, blank=True)
+    # v1.25.2: Persian name / description (seeded for built-in roles, editable); blank = use `name`
+    name_fa = models.CharField(max_length=100, blank=True, default="")
+    description_fa = models.CharField(max_length=255, blank=True, default="")
     permissions = models.ManyToManyField(
         Permission, related_name="roles", blank=True, db_table="role_permission"
     )

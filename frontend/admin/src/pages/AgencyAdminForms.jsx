@@ -14,6 +14,7 @@ import { Ic } from '../components/AgencyIcons'
 // roles replaced "sudo"; allowed groups / templates come with the role.
 const F = {
   fa: {
+    agency_chip: 'نمایندگی',
     new_title: 'ساخت ادمین جدید', new_sub: 'ادمین نماینده روی پنل پاسارگاد ساخته می‌شود و بلافاصله در پنل نمایندگی دیده می‌شود.',
     back: 'بازگشت به فهرست', panel: 'پنل', panel_hint: 'ادمین روی کدام پنل ساخته شود؟', not_tracked: 'این پنل در پنل نمایندگی همگام نمی‌شود — ادمین فقط روی آن پنل ساخته می‌شود.',
     sec_account: 'حساب', sec_role: 'نقش و دسترسی', sec_contact: 'ارتباط و اعلان‌ها', sec_sub: 'اشتراک', sec_limit: 'سقف و حسابداری',
@@ -42,6 +43,7 @@ const F = {
     usage_note: 'سقف و فعال/غیرفعال‌سازی در «محدودیت‌ها و عملیات» است.',
   },
   en: {
+    agency_chip: 'Agency',
     new_title: 'New admin', new_sub: 'Creates a reseller admin on the PasarGuard panel; it shows up in the Agency panel right away.',
     back: 'Back to the list', panel: 'Panel', panel_hint: 'Which panel to create the admin on?', not_tracked: 'This panel is not synced by the Agency panel — the admin is only created on that panel.',
     sec_account: 'Account', sec_role: 'Role & access', sec_contact: 'Contact & notifications', sec_sub: 'Subscription', sec_limit: 'Limit & accounting',
@@ -296,7 +298,7 @@ export function AgencyAdminCreate({ Header }) {
           <div className="af-wide af-panels">
             {opts.panels.map((p) => (
               <button key={p.id} type="button" className={'af-panel' + (opts.panel === p.id ? ' on' : '')} onClick={() => set('panel', p.id)}>
-                <b>{p.name}</b>{p.agency && <span className="af-chip">✓ Agency</span>}
+                <b>{p.name}</b>{p.agency && <span className="af-chip">✓ {s.agency_chip}</span>}
               </button>
             ))}
           </div>

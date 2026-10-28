@@ -14,7 +14,8 @@ TC=(docker compose -p caspintunel-test -f docker-compose.test.yml)
 export TEST_SECRET_KEY="test-$(head -c 32 /dev/urandom | base64 | tr -dc 'A-Za-z0-9')"
 export TEST_FIELD_ENCRYPTION_KEY="$(head -c 32 /dev/urandom | base64 | tr '+/' '-_')"
 
-cleanup() { "${TC[@]}" down --remove-orphans >/dev/null 2>&1 || true; }
+# -v: also drop the stack's anonymous volumes (nothing of the test stack may stay on disk)
+cleanup() { "${TC[@]}" down -v --remove-orphans >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 
 if [ $# -gt 0 ]; then
