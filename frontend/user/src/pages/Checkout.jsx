@@ -49,6 +49,10 @@ export default function Checkout() {
   const [customGb, setCustomGb] = useState(preGb || '')
   const [code, setCode] = useState(sp.get('code') || '')
   const [showCode, setShowCode] = useState(!!sp.get('code'))
+  // v1.26: the code is checked before the order is made → original / discount / final
+  const [quote, setQuote] = useState(null)
+  const [codeErr, setCodeErr] = useState('')
+  const [quoting, setQuoting] = useState(false)
   const [order, setOrder] = useState(null)
   const [instructions, setInstructions] = useState(null)
   const [service, setService] = useState(null)
@@ -164,21 +168,41 @@ export default function Checkout() {
     }
   }, [order?.status])
 
+  const purchaseBody = () => (renewId
+    ? { plan: Number(chosenPlan), type: 'renew', service: Number(renewId) }
+    : { plan: Number(chosenPlan), type: 'new', custom_volume_gb: customGb ? Number(customGb) : undefined })
+  // a quote belongs to one purchase: changing the plan / volume asks again
+  useEffect(() => { setQuote(null); setCodeErr('') }, [chosenPlan, customGb, renewId])
+  const applyCode = async () => {
+    const c = code.trim().toUpperCase()
+    if (!c || !chosenPlan) return
+    setQuoting(true); setCodeErr('')
+    try {
+      const { data } = await api.post('/orders/quote/', { ...purchaseBody(), discount_code: c, lang }, { quiet: true })
+      setQuote(data)
+    } catch (e2) {
+      setQuote(null)
+      setCodeErr(e2?.response?.data?.discount_code?.[0] || apiError(e2))
+    } finally { setQuoting(false) }
+  }
+
   const createOrder = async (e) => {
     e.preventDefault()
     setBusy(true); setErr('')
     toast.loading(t('action_in_progress'))
     try {
-      const body = renewId
-        ? { plan: Number(chosenPlan), type: 'renew', service: Number(renewId) }
-        : { plan: Number(chosenPlan), type: 'new', requested_account_name: accountName || undefined,
-            custom_volume_gb: customGb ? Number(customGb) : undefined }
+      const body = { ...purchaseBody(), lang }
+      if (!renewId) body.requested_account_name = accountName || undefined
       if (code.trim()) body.discount_code = code.trim().toUpperCase()
       const { data } = await api.post('/orders/', body)
       showOrder(data)
       if (data.reused) toast.success(t('order_resumed'))
       else toast.dismiss()
-    } catch (e2) { const msg = apiError(e2, t('order_failed')); setErr(msg); toast.error(msg) }
+    } catch (e2) {
+      const dmsg = e2?.response?.data?.discount_code?.[0]
+      if (dmsg) { setCodeErr(dmsg); setQuote(null); setShowCode(true) }
+      const msg = dmsg || apiError(e2, t('order_failed')); setErr(dmsg ? '' : msg); toast.error(msg)
+    }
     finally { setBusy(false) }
   }
 
@@ -296,8 +320,23 @@ export default function Checkout() {
         <div className="ckt-code">
           {showCode ? (
             <Field label={lang === 'en' ? 'Discount code' : 'کد تخفیف'}>
-              <input className="input" dir="ltr" maxLength={16} value={code} autoComplete="off"
-                onChange={(e) => setCode(e.target.value.replace(/\s/g, ''))} placeholder="WB…" />
+              <div className="ckt-code-row">
+                <input className="input" dir="ltr" maxLength={32} value={code} autoComplete="off" aria-invalid={!!codeErr}
+                  onChange={(e) => { setCode(e.target.value.replace(/\s/g, '')); setQuote(null); setCodeErr('') }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applyCode() } }} />
+                <button type="button" className="btn-ghost ckt-code-apply" disabled={!code.trim() || !chosenPlan || quoting} onClick={applyCode}>
+                  {quoting ? <Spinner /> : (lang === 'en' ? 'Apply' : 'اعمال')}
+                </button>
+              </div>
+              {codeErr && <div className="ckt-code-err" role="alert">{codeErr}</div>}
+              {quote && (
+                <dl className="ckt-quote" data-testid="quote">
+                  <div><dt>{lang === 'en' ? 'Price' : 'قیمت'}</dt><dd><s>{toman(quote.original, lang)}</s></dd></div>
+                  <div className="ok"><dt>{lang === 'en' ? 'Discount' : 'تخفیف'} <bdi dir="ltr">{quote.code}</bdi>{quote.percent ? ` (${quote.percent}%)` : ''}</dt>
+                    <dd>−{toman(quote.discount, lang)}</dd></div>
+                  <div className="fin"><dt>{lang === 'en' ? 'Final price' : 'مبلغ نهایی'}</dt><dd>{toman(quote.final, lang)}</dd></div>
+                </dl>
+              )}
             </Field>
           ) : (
             <button type="button" className="ckt-code-toggle" onClick={() => setShowCode(true)}>
@@ -496,7 +535,8 @@ export default function Checkout() {
             <div className="ckt-amount-v text-2xl font-bold" style={{ color: 'var(--c-primary)' }}>{toman(order.amount_unique ?? instructions?.amount_to_pay, lang)}</div>
             {Number(order.discount_amount) > 0 && (
               <div className="ckt-discount text-sm mt-1" style={{ color: 'var(--c-success-fg, var(--c-success))' }}>
-                {lang === 'en' ? 'Discount applied' : 'تخفیف اعمال شد'}: −{toman(order.discount_amount, lang)}
+                {Number(order.original_amount) > 0 && <><s className="text-muted">{toman(order.original_amount, lang)}</s> · </>}
+                {lang === 'en' ? 'Discount' : 'تخفیف'}{order.discount_code_text ? <> <bdi dir="ltr">{order.discount_code_text}</bdi></> : ''}: −{toman(order.discount_amount, lang)}
               </div>
             )}
             <div className="ckt-amount-h text-xs text-muted">{t('pay_exact')}</div>
@@ -636,6 +676,15 @@ const CHECKOUT_CSS = `
 .ckt-terms input { margin-top: 3px; flex-shrink: 0; width: 16px; height: 16px; accent-color: var(--c-primary); cursor: pointer; }
 .ckt-terms-link { color: var(--c-primary); font-weight: 600; }
 .ckt-terms-link:hover { text-decoration: underline; }
+.ckt-code-row { display: flex; gap: 8px; }
+.ckt-code-row .input { flex: 1 1 auto; min-width: 0; text-transform: uppercase; }
+.ckt-code-apply { flex: 0 0 auto; min-width: 72px; border: 1px solid var(--c-border); border-radius: 12px; font-weight: 700; }
+.ckt-code-err { margin-top: 6px; font-size: 13px; font-weight: 600; color: var(--c-danger); }
+.ckt-quote { margin-top: 8px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--c-border); display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.ckt-quote > div { display: flex; justify-content: space-between; gap: 10px; }
+.ckt-quote dt { color: var(--c-text-muted); } .ckt-quote dd { font-weight: 700; white-space: nowrap; }
+.ckt-quote .ok dd, .ckt-quote .ok dt { color: var(--c-success-fg, var(--c-success)); }
+.ckt-quote .fin { padding-top: 4px; border-top: 1px dashed var(--c-border); font-size: 14px; }
 .ckt-code-toggle { padding: 0; border: 0; background: none; color: var(--c-primary); font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .ckt-renew-banner {
   display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 12px;

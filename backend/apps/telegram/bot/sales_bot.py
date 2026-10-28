@@ -22,7 +22,7 @@ from telebot import types
 
 from apps.accounts.models import User
 from apps.orders.models import Order
-from apps.orders.services import OrderError, rename_paid_order
+from apps.orders.services import DiscountCodeRefused, OrderError, quote_order, rename_paid_order
 from apps.panel.exceptions import PanelError
 from apps.panel.services import revoke_subscription
 from apps.plans.models import Plan, PlanType
@@ -221,13 +221,16 @@ def _place_order(bot, chat_id, user, tg_id, msg=None) -> None:
             if not svc or not plan:
                 clear_state(tg_id)
                 return render(bot, chat_id, sc.services(user), msg)
-            order = renew(user, svc, plan)
+            order = renew(user, svc, plan, discount_code=st.get("dcode"))
         else:
             plan = Plan.objects.filter(pk=st.get("plan"), is_active=True).first()
             if not plan:
                 clear_state(tg_id)
                 return render(bot, chat_id, sc.store(user), msg)
-            order = buy_new(user, plan, account_name=st.get("name"), custom_gb=st.get("gb"))
+            order = buy_new(user, plan, account_name=st.get("name"), custom_gb=st.get("gb"), discount_code=st.get("dcode"))
+    except DiscountCodeRefused as exc:              # e.g. used up since it was checked: ask again
+        set_state(tg_id, dcode=None, awaiting="dcode")
+        return render(bot, chat_id, sc.discount_bad(user, exc.message(user.language)), msg)
     except OrderError as exc:
         if not st.get("renew"):
             # e.g. the account name is taken: ask for another one
@@ -244,7 +247,22 @@ def _after_draft(bot, chat_id, user, tg_id, msg=None) -> None:
     if _needs_terms(user):
         set_state(tg_id, awaiting=None)
         return render(bot, chat_id, sc.terms(user), msg)
+    # v1.26: ask for a discount code — only when some code could apply to this customer
+    from apps.crm.discounts import any_usable_for
+
+    if not get_state(tg_id).get("dc_done") and any_usable_for(user):
+        set_state(tg_id, awaiting=None)
+        return render(bot, chat_id, sc.discount_ask(user), msg)
     _place_order(bot, chat_id, user, tg_id, msg)
+
+
+def _draft_quote(user, st, code):
+    """The price of the purchase in the draft with `code` (raises DiscountCodeRefused / OrderError)."""
+    if st.get("renew"):
+        sid, pid = st["renew"]
+        return quote_order(user=user, plan_id=pid, order_type="renew", service_id=sid, discount_code=code)
+    return quote_order(user=user, plan_id=st.get("plan"), order_type="new", custom_volume_gb=st.get("gb"),
+                       discount_code=code)
 
 
 # --- handlers -------------------------------------------------------
@@ -484,8 +502,21 @@ def _route(bot, chat_id, msg, user, tg, data: str) -> None:
         user.save(update_fields=["terms_accepted_at", "updated_at"])
         st = get_state(tg)
         if st.get("renew") or (st.get("plan") and st.get("name")):
-            return _place_order(bot, chat_id, user, tg, msg)
+            return _after_draft(bot, chat_id, user, tg, msg)
         return render(bot, chat_id, sc.store(user), msg)
+    if head == "dc":                                   # discount code step (v1.26)
+        st = get_state(tg)
+        if not (st.get("renew") or (st.get("plan") and st.get("name"))):
+            return render(bot, chat_id, sc.store(user), msg)
+        if parts[1:] == ["enter"]:
+            set_state(tg, awaiting="dcode")
+            return bot.send_message(chat_id, tr(user, "dc_type"))
+        if parts[1:] == ["skip"]:
+            set_state(tg, dcode=None, dc_done=True, awaiting=None)
+            return _place_order(bot, chat_id, user, tg, msg)
+        if parts[1:] == ["go"]:
+            set_state(tg, dc_done=True, awaiting=None)
+            return _place_order(bot, chat_id, user, tg, msg)
     if head == "o":
         order = Order.objects.filter(pk=int(parts[1]), user=user).select_related("plan", "payment").first()
         if not order:
@@ -500,6 +531,7 @@ def _route(bot, chat_id, msg, user, tg, data: str) -> None:
         set_state(tg, rename=order.id, awaiting="newname")
         return bot.send_message(chat_id, tr(user, "ask_name"))
     if head == "rn":
+        clear_state(tg)                                # a fresh draft: no code from an earlier purchase
         set_state(tg, renew=[int(parts[1]), int(parts[2])], awaiting=None)
         return _after_draft(bot, chat_id, user, tg, msg)
     if head == "ga":
@@ -552,6 +584,18 @@ def _typed(bot, msg, user, awaiting: str) -> None:
             return bot.send_message(chat_id, tr(user, "ask_name"))
         set_state(tg, name=text[:64], awaiting=None)
         return _after_draft(bot, chat_id, user, tg)
+    if awaiting == "dcode":
+        if not (st.get("renew") or (st.get("plan") and st.get("name"))):
+            clear_state(tg)
+            return render(bot, chat_id, sc.store(user))
+        try:
+            q = _draft_quote(user, st, text[:40])
+        except DiscountCodeRefused as exc:
+            return render(bot, chat_id, sc.discount_bad(user, exc.message(user.language)))
+        except OrderError as exc:
+            return bot.send_message(chat_id, tr(user, "bad_name", err=html.escape(str(exc))).split("\n")[0])
+        set_state(tg, dcode=q["code"], dc_done=True, awaiting=None)
+        return render(bot, chat_id, sc.discount_ok(user, q))
     if awaiting == "newname":
         order = Order.objects.filter(pk=st.get("rename"), user=user).select_related("plan__panel").first()
         if not order:

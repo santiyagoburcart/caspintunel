@@ -1,3 +1,4 @@
+import Discounts from './pages/Discounts'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './lib/auth'
 import { Spinner } from './components/ui'
@@ -90,6 +91,7 @@ export default function App() {
         <Route path="/pages" element={<Pages />} />
         <Route path="/themes" element={<Themes />} />
         <Route path="/roles" element={<Roles />} />
+        <Route path="/discounts" element={<Discounts />} />
         <Route path="/agency" element={<AgencyDashboard />} />
         <Route path="/agency/admins" element={<AgencyAdmins />} />
         <Route path="/agency/admins/new" element={<AgencyAdminNew />} />

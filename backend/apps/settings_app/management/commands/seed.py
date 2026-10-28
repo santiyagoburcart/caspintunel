@@ -46,6 +46,8 @@ PERMISSIONS = [
     ("tickets.manage_topics", "Tickets: topics, settings, staff topic scopes"),
     ("crm.view", "CRM: customer 360, follow-up queue, leads, reports"),
     ("crm.manage", "CRM: cases, messages, notes, owners, stages, settings"),
+    ("discounts.view", "Discount codes: see codes and their reports"),
+    ("discounts.manage", "Discount codes: create, edit, disable"),
     # v1.25: held only by the "Group manager" role; never part of Super Admin (it restricts, not grants)
     ("agency.group_manager", "Group manager: own groups only (agency admins, volume, accounting)"),
 ]
@@ -81,6 +83,8 @@ PERMISSIONS_FA = {
     "tickets.manage_topics": "تیکت‌ها: موضوعات، تنظیمات، محدودهٔ موضوع کارکنان",
     "crm.view": "CRM: نمای کامل مشتری، صف پیگیری، سرنخ‌ها، گزارش‌ها",
     "crm.manage": "CRM: پرونده‌ها، پیام‌ها، یادداشت‌ها، مسئول‌ها، مراحل، تنظیمات",
+    "discounts.view": "کدهای تخفیف: دیدن کدها و گزارش آن‌ها",
+    "discounts.manage": "کدهای تخفیف: ساخت، ویرایش، غیرفعال‌کردن",
     "agency.group_manager": "مدیر گروه: فقط گروه‌های خودش (ادمین‌های نماینده، حجم، حسابداری)",
 }
 # built-in roles: (name_fa, description_fa) — written only while still blank

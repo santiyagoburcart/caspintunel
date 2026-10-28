@@ -20,7 +20,7 @@ const T = {
     wb_rate: 'نرخ بازگشت (30 روز)', open_tk: 'تیکت‌های باز', first_resp: 'میانگین اولین پاسخ', open_cases: 'پیگیری‌های باز', min: 'دقیقه', h: 'ساعت',
     tr_rev: 'درآمد ماهانه', tr_new: 'مشتریان جدید در ماه', tr_active: 'مشتریان فعال در ماه', tr_tk: 'تیکت در هفته',
     revenue: 'درآمد', payments: 'پرداخت‌ها', payers: 'مشتریان پرداخت‌کننده', aov: 'میانگین ارزش سفارش (AOV)', arpu: 'درآمد به ازای مشتری (ARPU)',
-    new_rev: 'درآمد مشتریان جدید', ret_rev: 'درآمد مشتریان قبلی', new_cust: 'مشتریان جدید', discount: 'هزینهٔ تخفیف', codes: 'کد استفاده‌شده',
+    new_rev: 'درآمد مشتریان جدید', ret_rev: 'درآمد مشتریان قبلی', new_cust: 'مشتریان جدید', discount: 'هزینهٔ تخفیف', codes: 'کد استفاده‌شده', by_code: 'کدهای تخفیف (استفاده · تخفیف · درآمد)',
     avg_ltv: 'میانگین LTV (کل)', monthly: 'درآمد به تفکیک ماه', new_vs_ret: 'جدید / قبلی', by_plan: 'به تفکیک پلن', by_channel: 'به تفکیک کانال',
     by_card: 'به تفکیک کارت', ch: { site: 'سایت', bot: 'ربات', admin: 'پنل' }, count: 'تعداد',
     churn: 'نرخ ریزش ماهانه', renewal: 'نرخ تمدید ماهانه', cohort: 'کوهورت: درصد مشتریان فعال در ماه‌های بعد از اولین خرید', customers: 'مشتری',
@@ -39,7 +39,7 @@ const T = {
     wb_rate: 'Win-back rate (30 days)', open_tk: 'Open tickets', first_resp: 'Avg first response', open_cases: 'Open follow-ups', min: 'min', h: 'h',
     tr_rev: 'Monthly revenue', tr_new: 'New customers per month', tr_active: 'Active customers per month', tr_tk: 'Tickets per week',
     revenue: 'Revenue', payments: 'Payments', payers: 'Paying customers', aov: 'Average order value (AOV)', arpu: 'Revenue per customer (ARPU)',
-    new_rev: 'New-customer revenue', ret_rev: 'Returning revenue', new_cust: 'New customers', discount: 'Discount cost', codes: 'codes used',
+    new_rev: 'New-customer revenue', ret_rev: 'Returning revenue', new_cust: 'New customers', discount: 'Discount cost', codes: 'codes used', by_code: 'Discount codes (uses · discount · revenue)',
     avg_ltv: 'Average LTV (all time)', monthly: 'Revenue per month', new_vs_ret: 'new / returning', by_plan: 'By plan', by_channel: 'By channel',
     by_card: 'By bank card', ch: { site: 'Site', bot: 'Bot', admin: 'Panel' }, count: 'Count',
     churn: 'Monthly churn rate', renewal: 'Monthly renewal rate', cohort: 'Cohorts: % of customers active in the months after their first purchase', customers: 'customers',
@@ -186,6 +186,15 @@ export function AnalyticsFinance() {
           <Kpi label={s.discount} value={n(d.discount_cost)} sub={`${n(d.codes_used)} ${s.codes}`} tone="warning" />
           <Kpi label={s.avg_ltv} value={n(d.avg_ltv)} sub={`${n(d.customers_with_ltv)} ${s.customers}`} tone="primary" />
         </div>
+        {d.discount_codes?.length > 0 && (
+          <section className="card space-y-2"><h4>{s.by_code}</h4>
+            {d.discount_codes.map((r) => (
+              <div key={r.id} className="an-row4"><span dir="ltr" className="an-code">{r.code}</span>
+                <span className="an-sub">{n(r.uses)} {s.codes} · {n(r.customers)} {s.customers}</span>
+                <b dir="ltr">−{n(r.discount)}</b><span className="an-sub" dir="ltr">{n(r.revenue)}</span></div>
+            ))}
+          </section>
+        )}
         <section className="card space-y-2"><h4>{s.monthly} <span className="an-sub">({s.new_vs_ret})</span></h4>
           {d.monthly.map((m) => (
             <div key={m.month} className="an-row4"><span dir="ltr">{m.month}</span>

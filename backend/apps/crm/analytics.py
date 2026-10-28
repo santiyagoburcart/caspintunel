@@ -168,9 +168,10 @@ def financial(start, end) -> dict:
         b[2] = r["bank_card__bank_name"] or ""
         discount += r["order__discount_amount"] or D0
     keys = months_between(local_date(start), local_date(end - timedelta(seconds=1)))
-    from .models import DiscountCode
+    from .discounts import totals as discount_totals
 
-    codes_used = DiscountCode.objects.filter(used_at__gte=start, used_at__lt=end).count()
+    disc = discount_totals(start, end)            # v1.26: every discount code, not only win-back
+    codes_used = disc["uses"]
     ltv_all = dict(_approved().values("order__user_id").annotate(s=Sum("amount")).values_list("order__user_id", "s"))
     return {
         "revenue": str(revenue), "payments": len(rows), "paying_customers": len(payers),
@@ -179,6 +180,7 @@ def financial(start, end) -> dict:
         "new_revenue": str(new_rev), "returning_revenue": str(ret_rev),
         "new_customers": sum(1 for u in payers if start <= first_pay.get(u, start - timedelta(days=1)) < end),
         "discount_cost": str(discount), "codes_used": codes_used,
+        "discount_codes": [{**r, "discount": str(r["discount"]), "revenue": str(r["revenue"])} for r in disc["by_code"]],
         "avg_ltv": str(round(sum(ltv_all.values(), D0) / len(ltv_all))) if ltv_all else "0", "customers_with_ltv": len(ltv_all),
         "monthly": [{"month": jlabel(k), **{x: (str(v) if isinstance(v, Decimal) else v) for x, v in monthly[k].items()}}
                     if k in monthly else {"month": jlabel(k), "revenue": "0", "count": 0, "new": "0", "returning": "0"} for k in keys],

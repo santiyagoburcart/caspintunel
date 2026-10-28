@@ -198,6 +198,9 @@ def terms(user) -> Screen:
 def invoice(user, order, *, reused: bool = False) -> Screen:
     lines = [tr(user, "invoice", id=order.id, plan=html.escape(plan_name(user, order.plan)),
                 amount=money(user, order.amount_unique))]
+    if order.discount_amount:
+        lines.append(tr(user, "inv_discount", orig=money(user, order.original_amount), off=money(user, order.discount_amount),
+                        code=html.escape(order.discount_code_text or "")))
     if reused:
         lines += ["", tr(user, "invoice_reused")]
     cards = list(BankCard.objects.filter(is_active=True).order_by("sort_order", "id"))
@@ -212,6 +215,22 @@ def invoice(user, order, *, reused: bool = False) -> Screen:
         lines += ["", tr(user, "deadline", t=to_jalali_str(order.unique_expire_at, "%H:%M"), m=left)]
     lines += ["", tr(user, "send_receipt")]
     return Screen(_clip("\n".join(lines)), _kb([[_b(tr(user, "btn_check"), f"o:{order.id}:st")], _nav(user, "m:buy")]))
+
+
+def discount_ask(user) -> Screen:
+    return Screen(tr(user, "dc_ask"), _kb([[_b(tr(user, "btn_dc_enter"), "dc:enter")],
+                                           [_b(tr(user, "btn_dc_skip"), "dc:skip")]]))
+
+
+def discount_ok(user, q) -> Screen:
+    return Screen(tr(user, "dc_ok", code=html.escape(q["code"]), orig=money(user, q["original"]),
+                     off=money(user, q["discount"]), final=money(user, q["final"])),
+                  _kb([[_b(tr(user, "btn_dc_go"), "dc:go")], [_b(tr(user, "btn_dc_other"), "dc:enter"),
+                                                              _b(tr(user, "btn_dc_skip"), "dc:skip")]]))
+
+
+def discount_bad(user, err: str) -> Screen:
+    return Screen(tr(user, "dc_bad", err=html.escape(err)), _kb([[_b(tr(user, "btn_dc_skip"), "dc:skip")]]))
 
 
 def order_status(user, order) -> Screen:

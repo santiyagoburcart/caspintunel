@@ -341,7 +341,7 @@ const MOBILE_TITLES = [
   ['/tickets/topics', 'ticket_topics'], ['/tickets', 'tickets'], ['/crm', 'crm'], ['/analytics', 'analytics'],
   ['/users/deleted', 'deleted_users'], ['/users', 'users'], ['/agency', 'agency'], ['/services', 'services'], ['/plans', 'plans'],
   ['/payments', 'nav_pay_queue'], ['/transactions', 'transactions'], ['/sms-log', 'sms_log'], ['/accounting', 'accounting'],
-  ['/cards', 'cards'], ['/monitoring', 'monitoring'], ['/panel-link', 'panel_link'], ['/bots', 'bots'],
+  ['/cards', 'cards'], ['/discounts', 'discounts'], ['/monitoring', 'monitoring'], ['/panel-link', 'panel_link'], ['/bots', 'bots'],
   ['/branding', 'branding'], ['/apps', 'apps'], ['/settings', 'settings'], ['/notifications', 'notifications'],
   ['/pages', 'pages'], ['/themes', 'themes'], ['/roles', 'roles'], ['/docs', 'docs'],
 ]

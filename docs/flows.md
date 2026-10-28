@@ -706,3 +706,30 @@ sequenceDiagram
     B->>W: daily disk report
     W->>T: only if above warn, growth ≥ 1 GB/day, or report missing / stale
 ```
+
+## 16. Discount code at checkout (v1.26)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor C as Customer (site / Mini App / bot)
+    participant API as orders API / bot
+    participant E as crm.discounts.evaluate
+    participant O as orders.create_order
+    participant M as SMS matcher / card review
+    C->>API: plan (+ volume / service) + code
+    API->>E: quote (POST /orders/quote/ or the bot's code step)
+    alt refused
+        E-->>C: reason in Persian / English (expired, not for this plan, not for you, used up, …)
+    else ok
+        E-->>C: original · discount · final
+        C->>API: confirm
+        API->>O: create_order(discount_code)
+        O->>E: evaluate again (limits are checked at this moment)
+        O->>O: amount = original − discount; amount_unique = amount + surcharge (unique)
+        O-->>C: invoice: pay amount_unique (shows original, code, discount)
+        C->>M: card-to-card / SMS for amount_unique
+        M->>O: matches amount_unique → paid (the code's use is now counted as used)
+    end
+```
+

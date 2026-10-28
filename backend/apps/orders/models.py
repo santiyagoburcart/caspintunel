@@ -44,8 +44,15 @@ class Order(TimeStampedModel):
     custom_volume_gb = models.IntegerField(null=True, blank=True)
 
     amount = models.DecimalField(max_digits=12, decimal_places=0, help_text="base amount, tomans")
-    # win-back discount (apps.crm.DiscountCode) already taken off `amount`; 0 = none
+    # discount code (apps.crm.DiscountCode — win-back or a "Discount codes" page code)
+    # already taken off `amount`: original_amount − discount_amount = amount (the final
+    # price; amount_unique = amount + surcharge is what the customer pays). 0 = none.
     discount_amount = models.DecimalField(max_digits=12, decimal_places=0, default=0)
+    original_amount = models.DecimalField(max_digits=12, decimal_places=0, default=0,
+                                          help_text="price before the discount code, tomans (v1.26)")
+    discount_code = models.ForeignKey("crm.DiscountCode", null=True, blank=True, on_delete=models.SET_NULL,
+                                      related_name="orders")
+    discount_code_text = models.CharField(max_length=32, blank=True, default="", help_text="code as typed, kept if deleted")
     amount_unique = models.DecimalField(
         max_digits=12, decimal_places=0, help_text="amount + unique surcharge (200..1500)"
     )

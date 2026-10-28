@@ -58,6 +58,20 @@ T: dict[str, tuple[str, str]] = {
     "btn_read_rules": ("📜 خواندن قوانین", "📜 Read the rules"),
     "cancelled": ("لغو شد.", "Cancelled."),
     # --- invoice / order ---
+    # --- discount code (v1.26) ---
+    "dc_ask": ("🏷 <b>کد تخفیف دارید؟</b>\nاگر کد تخفیف دارید وارد کنید؛ وگرنه بدون کد ادامه دهید.",
+               "🏷 <b>Have a discount code?</b>\nEnter it, or continue without one."),
+    "btn_dc_enter": ("🏷 وارد کردن کد تخفیف", "🏷 Enter a discount code"),
+    "btn_dc_skip": ("➡️ ادامه بدون کد", "➡️ Continue without a code"),
+    "btn_dc_go": ("✅ ادامه و صدور فاکتور", "✅ Continue to the invoice"),
+    "btn_dc_other": ("🔁 کد دیگر", "🔁 Another code"),
+    "dc_type": ("کد تخفیف را بفرستید:", "Send the discount code:"),
+    "dc_bad": ("❌ {err}\nکد دیگری بفرستید یا بدون کد ادامه دهید.", "❌ {err}\nSend another code or continue without one."),
+    "dc_ok": ("✅ <b>کد تخفیف {code} اعمال شد</b>\n\nمبلغ اصلی: {orig}\nتخفیف: −{off}\n<b>مبلغ نهایی: {final}</b>\n\n"
+              "مبلغ دقیق پرداخت (با چند تومان کد یکتا) در فاکتور نوشته می‌شود.",
+              "✅ <b>Discount code {code} applied</b>\n\nPrice: {orig}\nDiscount: −{off}\n<b>Final: {final}</b>\n\n"
+              "The exact amount to pay (plus a few Toman unique digits) is on the invoice."),
+    "inv_discount": ("مبلغ اصلی: {orig}\nتخفیف ({code}): −{off}", "Price: {orig}\nDiscount ({code}): −{off}"),
     "invoice": ("🧾 <b>فاکتور سفارش #{id}</b>\n{plan}\n\nمبلغ دقیق قابل پرداخت:\n<b>{amount}</b>\n"
                 "⚠️ دقیقاً همین مبلغ را واریز کنید تا پرداخت خودکار تأیید شود.",
                 "🧾 <b>Invoice — order #{id}</b>\n{plan}\n\nExact amount to pay:\n<b>{amount}</b>\n"

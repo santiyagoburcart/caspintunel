@@ -3,7 +3,7 @@ from rest_framework import serializers
 from apps.plans.models import Plan
 
 from .models import Order, OrderType
-from .services import OrderError, create_order
+from .services import DiscountCodeRefused, OrderError, create_order
 
 
 class OrderSerializer(serializers.ModelSerializer):
@@ -20,7 +20,7 @@ class OrderSerializer(serializers.ModelSerializer):
         fields = (
             "id", "type", "status", "plan", "plan_name", "plan_name_en", "service",
             "requested_account_name", "custom_volume_gb",
-            "amount", "discount_amount", "amount_unique", "unique_expire_at",
+            "amount", "discount_amount", "original_amount", "discount_code_text", "amount_unique", "unique_expire_at",
             "payment_status", "payment_method", "receipt_url",
             "reject_reason", "source", "created_at", "needs_new_name", "tx_number",
         )
@@ -54,7 +54,8 @@ class OrderCreateSerializer(serializers.Serializer):
     requested_account_name = serializers.RegexField(r"^[A-Za-z0-9_.\-]{2,64}$", required=False, allow_blank=True)
     custom_volume_gb = serializers.IntegerField(required=False, min_value=1)
     service = serializers.IntegerField(required=False)
-    discount_code = serializers.CharField(required=False, allow_blank=True, max_length=16)
+    discount_code = serializers.CharField(required=False, allow_blank=True, max_length=40)
+    lang = serializers.ChoiceField(choices=("fa", "en"), required=False, default="fa")
     # accepted once at sign-up (User.terms_accepted_at); kept only so older
     # clients that still send it don't break
     terms_accepted = serializers.BooleanField(write_only=True, required=False)
@@ -79,5 +80,9 @@ class OrderCreateSerializer(serializers.Serializer):
                 source=self.context.get("source", "site"),
                 discount_code=validated.get("discount_code") or None,
             )
+        except DiscountCodeRefused as exc:
+            # v1.26: the reason in the customer's language + a code the client can map
+            raise serializers.ValidationError({"discount_code": [exc.message(validated.get("lang", "fa"))],
+                                               "discount_error": exc.code})
         except OrderError as exc:
             raise serializers.ValidationError(str(exc))

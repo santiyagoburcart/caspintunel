@@ -551,6 +551,9 @@ erDiagram
     user ||--o{ crm_discount_code : "win-back codes"
     crm_followup_case |o--o{ crm_discount_code : "issued from"
     order |o--o{ crm_discount_code : "reserved by"
+    crm_discount_code |o--o{ order : "order.discount_code_id (v1.26)"
+    crm_discount_code ||--o{ crm_discount_code_customer : "selected customers"
+    crm_discount_code ||--o{ crm_discount_code_plan : "selected plans"
     crm_followup_case |o--o{ crm_event : "case events"
 
     crm_customer_profile {
@@ -633,13 +636,34 @@ erDiagram
     }
     crm_discount_code {
         bigint id PK
-        string code UK
-        bigint user_id FK
+        string code UK "up to 32"
+        string kind "winback | campaign"
+        string name
+        bool is_active
+        datetime starts_at
+        datetime expires_at "null = no end"
+        bigint user_id FK "win-back owner"
+        string discount_type "percent | fixed"
         int percent
-        datetime expires_at
+        decimal max_discount
+        decimal amount_off
+        string audience "all | selected"
+        bool first_purchase_only
+        string applies_to "new | renew | both"
+        int max_uses
+        int max_uses_per_customer
+        decimal min_order_amount
         bigint case_id FK
-        bigint order_id FK "reserved by"
+        bigint order_id FK "win-back open invoice"
         datetime used_at
+    }
+    crm_discount_code_customer {
+        bigint discountcode_id FK
+        bigint user_id FK
+    }
+    crm_discount_code_plan {
+        bigint discountcode_id FK
+        bigint plan_id FK
     }
     crm_event {
         bigint id PK
@@ -663,11 +687,11 @@ erDiagram
 | `crm_warning_rule` | Pre-expiry warning thresholds (data % / days left) with their fa / en messages. |
 | `crm_service_warning` | One warning per service, threshold and period, with per-channel send times (quiet hours) and conversion. |
 | `crm_service_end` | When a service was first seen expired / used up (drives the win-back grace period). |
-| `crm_discount_code` | Single-use win-back discount codes: percent, expiry, the reserving order and when it was used. |
+| `crm_discount_code` | Discount codes (v1.26): the Discount codes page codes (`campaign`) and the single-use win-back codes (`winback`, `user` = owner). Percent (+ cap) or fixed amount, start/end, all or selected customers (`crm_discount_code_customer`), first purchase only, plans (`crm_discount_code_plan`, none = all), new / renewal / both, total and per-customer uses, minimum order. |
 
 Analytics (Phase 5, `crm/analytics.py`) adds no tables — it reads payments, orders, services, CRM and ticket tables.
 
-`crm_case_reason` and `crm_message_template` have a `category` (inactivity / winback); `order.discount_amount` holds the discount taken off `amount`.
+`crm_case_reason` and `crm_message_template` have a `category` (inactivity / winback); `order.original_amount − order.discount_amount = order.amount` (the final price; `amount_unique` = amount + surcharge is what is paid); `order.discount_code_id` / `discount_code_text` name the code (v1.26).
 
 ## 7. Notifications (`notifications`)
 

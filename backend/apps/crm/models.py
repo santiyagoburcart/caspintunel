@@ -225,19 +225,66 @@ class ServiceEndMark(models.Model):
         db_table = "crm_service_end"
 
 
+class DiscountKind(models.TextChoices):
+    WINBACK = "winback", "Win-back (one customer, one use)"
+    CAMPAIGN = "campaign", "Discount code"
+
+
+class DiscountType(models.TextChoices):
+    PERCENT = "percent", "Percent"
+    FIXED = "fixed", "Fixed amount"
+
+
+class DiscountAudience(models.TextChoices):
+    ALL = "all", "All customers"
+    SELECTED = "selected", "Selected customers"
+
+
+class DiscountAppliesTo(models.TextChoices):
+    NEW = "new", "New purchase"
+    RENEW = "renew", "Renewal / top-up"
+    BOTH = "both", "Both"
+
+
 class DiscountCode(models.Model):
-    """Single-use win-back discount for one customer: percent off the plan price at
-    checkout, until expires_at. Reserved by an order at creation, used when that
-    order is paid."""
-    code = models.CharField(max_length=16, unique=True)
-    user = models.ForeignKey("accounts.User", on_delete=models.CASCADE, related_name="discount_codes")
-    percent = models.PositiveSmallIntegerField()
-    expires_at = models.DateTimeField()
+    """A discount code (v1.20 win-back, v1.26 "Discount codes" page — one model).
+
+    Rules live in apps/crm/discounts.py (evaluate). A win-back code is a code with
+    kind=winback, `user` set (only that customer), percent, one use. Every code is
+    applied at order creation, BEFORE the unique amount is added — so the SMS matcher
+    and card review always see the final price (Order.amount_unique)."""
+    code = models.CharField(max_length=32, unique=True)
+    kind = models.CharField(max_length=10, choices=DiscountKind.choices, default=DiscountKind.WINBACK)
+    name = models.CharField(max_length=100, blank=True, default="")
+    is_active = models.BooleanField(default=True)
+    starts_at = models.DateTimeField(null=True, blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    # win-back owner (the only customer who may use it); null for page codes
+    user = models.ForeignKey("accounts.User", null=True, blank=True, on_delete=models.CASCADE, related_name="discount_codes")
+    discount_type = models.CharField(max_length=8, choices=DiscountType.choices, default=DiscountType.PERCENT)
+    percent = models.PositiveSmallIntegerField(default=0)
+    max_discount = models.DecimalField(max_digits=12, decimal_places=0, null=True, blank=True,
+                                       help_text="cap for a percent code, tomans")
+    amount_off = models.DecimalField(max_digits=12, decimal_places=0, null=True, blank=True,
+                                     help_text="fixed discount, tomans")
+    audience = models.CharField(max_length=10, choices=DiscountAudience.choices, default=DiscountAudience.ALL)
+    customers = models.ManyToManyField("accounts.User", blank=True, related_name="eligible_discount_codes",
+                                       db_table="crm_discount_code_customer")
+    first_purchase_only = models.BooleanField(default=False)
+    plans = models.ManyToManyField("plans.Plan", blank=True, related_name="discount_codes",
+                                   db_table="crm_discount_code_plan", help_text="none = every plan")
+    applies_to = models.CharField(max_length=6, choices=DiscountAppliesTo.choices, default=DiscountAppliesTo.BOTH)
+    max_uses = models.PositiveIntegerField(null=True, blank=True, help_text="total, null = unlimited")
+    max_uses_per_customer = models.PositiveIntegerField(null=True, blank=True, default=1, help_text="null = unlimited")
+    min_order_amount = models.DecimalField(max_digits=12, decimal_places=0, null=True, blank=True)
+    note = models.CharField(max_length=255, blank=True, default="")
     case = models.ForeignKey(FollowUpCase, null=True, blank=True, on_delete=models.SET_NULL, related_name="discounts")
+    # win-back: the order that holds the code (one open invoice per code); used_at when it is paid
     order = models.ForeignKey("orders.Order", null=True, blank=True, on_delete=models.SET_NULL, related_name="discount_codes")
     used_at = models.DateTimeField(null=True, blank=True)
     created_by = models.CharField(max_length=64, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = "crm_discount_code"

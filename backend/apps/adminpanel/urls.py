@@ -49,6 +49,7 @@ from .views.notifications import NotificationViewSet
 from .views.ops import DashboardView, ServiceListViewSet, TelegramStatsView
 from .views.system import SettingsView, SystemView
 from .views.users import DeletedUserArchiveViewSet, UserAdminViewSet
+from .views.discounts import DiscountCodeViewSet
 
 router = SimpleRouter()
 router.register("users", UserAdminViewSet, basename="admin-users")
@@ -58,6 +59,7 @@ router.register("cards", BankCardViewSet, basename="admin-cards")
 router.register("pages", PageViewSet, basename="admin-pages")
 router.register("themes", ThemeViewSet, basename="admin-themes")
 router.register("roles", RoleViewSet, basename="admin-roles")
+router.register("discounts", DiscountCodeViewSet, basename="admin-discounts")
 router.register("permissions", PermissionListViewSet, basename="admin-permissions")
 router.register("staff", StaffViewSet, basename="admin-staff")
 router.register("transactions", TransactionViewSet, basename="admin-transactions")

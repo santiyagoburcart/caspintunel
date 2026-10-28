@@ -72,17 +72,18 @@ def user_services(user):
     return services
 
 
-def buy_new(user, plan, *, account_name=None, custom_gb=None):
+def buy_new(user, plan, *, account_name=None, custom_gb=None, discount_code=None):
     return create_order(
         user=user, plan_id=plan.id, order_type=OrderType.NEW,
         requested_account_name=account_name, custom_volume_gb=custom_gb, source="bot",
+        discount_code=discount_code or None,
     )
 
 
-def renew(user, service, plan):
+def renew(user, service, plan, *, discount_code=None):
     return create_order(
         user=user, plan_id=plan.id, order_type=OrderType.RENEW,
-        service_id=service.id, source="bot",
+        service_id=service.id, source="bot", discount_code=discount_code or None,
     )
 
 

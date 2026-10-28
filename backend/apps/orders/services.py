@@ -111,15 +111,6 @@ def create_order(
     discount_code: str | None = None,
 ) -> Order:
     expire_stale_reservations()
-    dc = None
-    if discount_code:
-        # win-back discount (apps.crm): single-use, this customer's, not expired
-        from apps.crm.retention import RetentionError, check_code
-
-        try:
-            dc = check_code(user, discount_code)
-        except RetentionError as exc:
-            raise OrderError(str(exc)) from exc
 
     plan = Plan.objects.filter(pk=plan_id, is_active=True).select_related("panel").first()
     if not plan:
@@ -149,21 +140,16 @@ def create_order(
         requested_account_name = name
 
     # --- amount ---
-    if plan.type == PlanType.CUSTOM_VOLUME:
-        gb = int(custom_volume_gb or 0)
-        lo, hi = plan.min_gb or 1, plan.max_gb or 0
-        if gb < lo or (hi and gb > hi):
-            raise OrderError(f"custom volume must be between {lo} and {hi} GB")
-        amount = plan.price_for_volume(gb)
-    else:
-        amount = plan.final_price
-        custom_volume_gb = None
-    amount = Decimal(amount)
+    amount, custom_volume_gb = base_amount(plan, custom_volume_gb)
+    original_amount = amount
     discount_amount = Decimal(0)
-    if dc is not None:
-        from apps.crm.retention import discounted
-
-        amount, discount_amount = discounted(amount, dc.percent)
+    dc = None
+    if discount_code:
+        # discount code (apps.crm.discounts): taken off BEFORE the unique amount is added,
+        # so SMS matching / card review always compare against the final price
+        quote = _discount_quote(discount_code, user=user, plan=plan, order_type=order_type, amount=amount)
+        dc, discount_amount = quote.code, quote.discount
+        amount = quote.final
 
     # A customer who leaves the invoice (e.g. switches to the bank app) and
     # submits the same purchase again must get the SAME order and unique
@@ -173,8 +159,8 @@ def create_order(
         user=user, plan=plan, order_type=order_type, service=service,
         requested_account_name=requested_account_name, custom_volume_gb=custom_volume_gb,
     )
-    if existing is not None and dc is not None and not existing.discount_amount and not hasattr(existing, "payment"):
-        _drop_reservation(existing)          # same purchase again, now with a code: a fresh, discounted invoice
+    if existing is not None and existing.discount_code_id != (dc.id if dc else None) and not hasattr(existing, "payment"):
+        _drop_reservation(existing)          # same purchase, other / no code: a fresh invoice with the new price
         existing = None
     if existing is not None:
         existing.reused = True
@@ -184,22 +170,79 @@ def create_order(
         user=user, plan=plan, service=service, type=order_type,
         requested_account_name=requested_account_name if order_type == OrderType.NEW else None,
         custom_volume_gb=custom_volume_gb,
-        amount=amount, discount_amount=discount_amount, status=OrderStatus.PENDING_PAYMENT,
+        amount=amount, discount_amount=discount_amount, original_amount=original_amount,
+        discount_code=dc, discount_code_text=dc.code if dc else "", status=OrderStatus.PENDING_PAYMENT,
         unique_expire_at=_reservation_deadline(), source=source,
     )
     _assign_unique_amount(order, amount)
     if dc is not None:
-        old = dc.order
-        if old is not None and old.id != order.id and old.status == OrderStatus.PENDING_PAYMENT and not hasattr(old, "payment"):
-            _drop_reservation(old)            # one code, one open invoice
-        dc.order = order
-        dc.save(update_fields=["order"])
+        # one code, one open unpaid invoice per customer: buying again replaces it
+        for old in Order.objects.select_for_update().filter(user=user, discount_code=dc, status=OrderStatus.PENDING_PAYMENT,
+                                                            payment__isnull=True).exclude(pk=order.pk):
+            _drop_reservation(old)
+        if dc.kind == "winback":
+            dc.order = order                  # v1.20: used_at is set when this order is paid
+            dc.save(update_fields=["order"])
     order.reused = False
-    write_audit(action="order.created", target=order, detail={"amount": str(amount)})
+    write_audit(action="order.created", target=order, detail={
+        "amount": str(amount), **({"discount_code": dc.code, "discount": str(discount_amount),
+                                   "original": str(original_amount)} if dc else {})})
     from apps.notifications.live import push_payments_event
 
     push_payments_event("order_created", order_id=order.id)
     return order
+
+
+def base_amount(plan, custom_volume_gb=None) -> tuple[Decimal, int | None]:
+    """Plan price for this purchase (plan discount included), before any discount code."""
+    if plan.type == PlanType.CUSTOM_VOLUME:
+        gb = int(custom_volume_gb or 0)
+        lo, hi = plan.min_gb or 1, plan.max_gb or 0
+        if gb < lo or (hi and gb > hi):
+            raise OrderError(f"custom volume must be between {lo} and {hi} GB")
+        return Decimal(plan.price_for_volume(gb)), gb
+    return Decimal(plan.final_price), None
+
+
+class DiscountCodeRefused(OrderError):
+    """A discount code that cannot be used — carries the reason in Persian and English."""
+
+    def __init__(self, err):
+        self.code, self.fa, self.en = err.code, err.fa, err.en
+        super().__init__(err.en)
+
+    def message(self, lang="fa"):
+        return self.en if lang == "en" else self.fa
+
+
+def _discount_quote(raw, *, user, plan, order_type, amount):
+    from apps.crm.discounts import DiscountError, evaluate
+
+    try:
+        return evaluate(raw, user=user, plan=plan, order_type=order_type, amount=amount)
+    except DiscountError as exc:
+        raise DiscountCodeRefused(exc) from exc
+
+
+def quote_order(*, user, plan_id, order_type=OrderType.NEW, custom_volume_gb=None, service_id=None,
+                discount_code=None) -> dict:
+    """What the customer will pay (shown before the order is made): original, discount,
+    final. The unique surcharge is added only when the order is created."""
+    plan = Plan.objects.filter(pk=plan_id, is_active=True).first()
+    if not plan:
+        raise OrderError("plan not found or inactive")
+    if order_type in (OrderType.RENEW, OrderType.ADDON_VOLUME):
+        from apps.panel.models import Service
+
+        if not Service.objects.filter(pk=service_id, user=user).exists():
+            raise OrderError("service not found")
+    amount, _ = base_amount(plan, custom_volume_gb)
+    out = {"original": amount, "discount": Decimal(0), "final": amount, "code": "", "percent": None}
+    if discount_code:
+        q = _discount_quote(discount_code, user=user, plan=plan, order_type=order_type, amount=amount)
+        out.update(discount=q.discount, final=q.final, code=q.code.code,
+                   percent=q.code.percent if q.code.discount_type == "percent" else None)
+    return out
 
 
 def _drop_reservation(order: Order) -> None:

@@ -370,7 +370,8 @@ _ALPHA = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
 
 def active_code(user):
-    return DiscountCode.objects.filter(user=user, used_at__isnull=True, expires_at__gt=timezone.now()).order_by("-created_at").first()
+    return DiscountCode.objects.filter(kind="winback", user=user, is_active=True, used_at__isnull=True,
+                                       expires_at__gt=timezone.now()).order_by("-created_at").first()
 
 
 def issue_code(case, staff, *, percent=None, days=None) -> DiscountCode:
@@ -386,7 +387,9 @@ def issue_code(case, staff, *, percent=None, days=None) -> DiscountCode:
         code = "WB" + "".join(secrets.choice(_ALPHA) for _ in range(8))
         if not DiscountCode.objects.filter(code=code).exists():
             break
-    dc = DiscountCode.objects.create(code=code, user=case.user, percent=percent, expires_at=timezone.now() + timedelta(days=days),
+    # v1.26: a win-back code is a discount code for one customer, one use (apps/crm/discounts.py)
+    dc = DiscountCode.objects.create(code=code, kind="winback", user=case.user, percent=percent, discount_type="percent",
+                                     expires_at=timezone.now() + timedelta(days=days), max_uses=1, max_uses_per_customer=1,
                                      case=case, created_by=staff.username if staff else "system")
     crm_log(case.user, EventKind.DISCOUNT, staff=staff, case=case, code=code, percent=percent, days=days)
     from apps.common.models import write_audit
@@ -452,6 +455,7 @@ def report(days: int) -> dict:
         "winback_rate": round(won.count() * 100 / closed.count(), 1) if closed.count() else None,
         "recovered": str(won.aggregate(s=Sum("recovered_amount"))["s"] or 0),
         "top_reasons": sorted(reasons.values(), key=lambda x: -x["count"])[:8],
-        "codes_issued": DiscountCode.objects.filter(created_at__gte=since).count() if since else DiscountCode.objects.count(),
-        "codes_used": DiscountCode.objects.filter(used_at__isnull=False, **({"used_at__gte": since} if since else {})).count(),
+        "codes_issued": DiscountCode.objects.filter(kind="winback", **({"created_at__gte": since} if since else {})).count(),
+        "codes_used": DiscountCode.objects.filter(kind="winback", used_at__isnull=False,
+                                                  **({"used_at__gte": since} if since else {})).count(),
     }

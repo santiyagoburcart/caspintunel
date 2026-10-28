@@ -36,6 +36,7 @@ const T = {
     daily_trend: 'روند روزانهٔ دریافتی‌ها', peak: 'اوج دریافت',
     by_panel: 'بر اساس پنل', by_method: 'بر اساس روش پرداخت', by_source: 'بر اساس منبع ورودی', by_card: 'بر اساس کارت مقصد',
     none_found: 'داده‌ای برای این بازه ثبت نشده است',
+    dc_title: 'کدهای تخفیف در این بازه', dc_uses: 'استفاده', dc_disc: 'جمع تخفیف', dc_rev: 'درآمد با کد', dc_cust: 'مشتری', dc_all: 'همهٔ کدها',
     recent: 'تراکنش‌های اخیر', view_all: 'مشاهده همه',
     of_total: 'از کل درآمد دوره',
   },
@@ -48,6 +49,7 @@ const T = {
     daily_trend: 'Daily revenue trend', peak: 'Peak',
     by_panel: 'By panel', by_method: 'By payment method', by_source: 'By source', by_card: 'By destination card',
     none_found: 'No data recorded for this range',
+    dc_title: 'Discount codes in this range', dc_uses: 'uses', dc_disc: 'Total discount', dc_rev: 'Revenue with codes', dc_cust: 'customers', dc_all: 'All codes',
     recent: 'Recent transactions', view_all: 'View all',
     of_total: 'of period revenue',
   },
@@ -224,6 +226,26 @@ export default function Accounting() {
             <Breakdown title={s.by_card} icon={ICONS.bank} tone="#D97706" rows={d.by_card} keyName="bank_card__card_number" prefix="card_" total={d.revenue} t={t} lang={lang} empty={s.none_found} ofTotal={s.of_total} />
           </div>
 
+          {d.discounts && (
+            <div className="card acc-dc" data-testid="acc-discounts">
+              <div className="acc-recent-head">
+                <span className="font-bold text-sm">{s.dc_title}</span>
+                <Link className="acc-view-all" to="/discounts">{s.dc_all} <Ico d={ICONS.arrow} w={12} /></Link>
+              </div>
+              <dl className="acc-dc-kpis">
+                <div><dt>{s.dc_uses}</dt><dd dir="ltr">{digits(d.discounts.uses, lang)}</dd></div>
+                <div><dt>{s.dc_disc}</dt><dd>{toman(d.discounts.discount, lang)}</dd></div>
+                <div><dt>{s.dc_rev}</dt><dd>{toman(d.discounts.revenue, lang)}</dd></div>
+              </dl>
+              {d.discounts.by_code.length > 0 && (
+                <ul className="acc-dc-list">{d.discounts.by_code.map((r) => (
+                  <li key={r.id}><b dir="ltr">{r.code}</b><span>{digits(r.uses, lang)} {s.dc_uses} · {digits(r.customers, lang)} {s.dc_cust}</span>
+                    <span>−{toman(r.discount, lang)}</span><span>{toman(r.revenue, lang)}</span></li>
+                ))}</ul>
+              )}
+            </div>
+          )}
+
           <div className="card acc-recent">
             <div className="acc-recent-head">
               <span className="font-bold text-sm">{s.recent}</span>
@@ -289,6 +311,12 @@ function Breakdown({ title, icon, tone, rows, keyName, prefix, total, t, lang, e
 }
 
 const CSS = `
+.acc-dc-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 10px 0; }
+.acc-dc-kpis > div { padding: 8px 10px; border: 1px solid var(--c-border); border-radius: 12px; min-width: 0; }
+.acc-dc-kpis dt { font-size: 11px; color: var(--c-text-muted); font-weight: 700; } .acc-dc-kpis dd { font-weight: 800; font-size: 14px; overflow-wrap: anywhere; }
+.acc-dc-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 8px 0; border-top: 1px solid var(--c-border); font-size: 12.5px; }
+.acc-dc-list li b { font-family: ui-monospace, monospace; overflow-wrap: anywhere; } .acc-dc-list li span { color: var(--c-text-muted); }
+@media (min-width: 768px) { .acc-dc-list li { grid-template-columns: minmax(0, 1fr) auto auto auto; } }
 .acc-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between; }
 .acc-head-main { display: flex; align-items: flex-start; gap: 12px; }
 .acc-head-ico { width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0; display: grid; place-items: center;

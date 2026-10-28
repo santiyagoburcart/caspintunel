@@ -340,7 +340,7 @@ the Ticketing role): a service first seen expired / used up gets a
 when the customer has no other live service, a `winback` case opens (plan,
 LTV, last connection, open tickets / cases). Actions: win-back message from
 templates (site / bot / email; `{renew} {code} {percent} {code_expires}`),
-single-use discount code (`DiscountCode`: percent, expiry, one active per
+single-use discount code (`DiscountCode` kind `winback` — see *Discount codes (v1.26)*: percent, expiry, one active per
 customer, reserved by the order at checkout, used when that order is paid —
 `Order.discount_amount`), ticket on their behalf, reason for not renewing
 (own reason list), owner. Live again within `retention_winback_days` (14) →
@@ -481,6 +481,34 @@ Redis stopped accepting writes twice (07:14–07:38 and 09:36–12:10 UTC). Sinc
 - **Clean-up**: `scripts/test.sh` drops the test stack's volumes (`down -v`); `test-paths.sh` /
   `test-domain.sh` remove their throw-away images; `docker-cleanup.sh` (every deploy) removes those
   leftovers too and keeps build cache only 24 h.
+
+## Discount codes (v1.26)
+
+One model (`crm.DiscountCode`) and one rule engine (`apps/crm/discounts.py`) for the panel's
+**Discount codes** page (`/panel/discounts`, permissions `discounts.view` / `discounts.manage`,
+Super Admin always) and the CRM win-back codes (kind `winback`: one customer, one use; on the page
+they can only be switched on/off or get another end date).
+
+- **A code**: text (typed or random), on/off, start / end (Jalali picker, Tehran time +03:30),
+  percent (optional max Toman) or fixed Toman, all or selected customers (+ first purchase only),
+  all or selected plans, new purchase / renewal (renewal = renew + top-up) / both, total uses, uses
+  per customer, minimum order. Codes are never deleted (orders keep pointing at them); disable instead.
+  Create / edit / disable / enable are audited (`discount.*`, with the changed fields).
+- **Where**: site checkout = Mini App (`POST /orders/quote/` shows original / discount / final
+  before the order, `POST /orders/` applies it), and the Telegram bot (asks for a code after the
+  plan + name only if some code could apply to that customer, `apps/crm/discounts.any_usable_for`).
+  Refusals come back with a reason code (`discount_error`) and the text in Persian or English:
+  invalid, disabled, not started, expired, not for you, first purchase only, not for this plan,
+  renewals / new purchases only, used up, already used, minimum amount.
+- **Money**: the code is applied in `orders.services.create_order` **before** the unique amount:
+  `original_amount − discount_amount = amount`, `amount_unique = amount + surcharge`. The SMS
+  matcher, card-to-card review, accounting and analytics all work on `amount_unique` / the
+  approved payment, i.e. the discounted price; the undiscounted price never matches an SMS.
+- **Uses** are held by paid / completed / failed orders and by pending orders whose reservation is
+  alive or whose receipt waits for review; rejected / expired / cancelled orders give the use back.
+  A customer's own unpaid invoice with the same code never blocks them (buying again replaces it).
+- **Reports**: per code (list + report: uses, customers, total discount, revenue, its orders),
+  Accounting (`discounts` block for the range) and Analytics (discount cost, codes used, per code).
 
 ## Deploy and rollback
 

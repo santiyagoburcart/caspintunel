@@ -330,7 +330,17 @@ class AccountingView(AdminAPIView):
             "by_card": by_card,
             "by_panel": by_panel,
             "daily": daily,
+            # v1.26: discount codes on the approved payments of this range (apps/crm/discounts.py)
+            "discounts": _discounts(start, end),
         })
+
+
+def _discounts(start, end) -> dict:
+    from apps.crm.discounts import totals
+
+    t = totals(start, end)
+    return {"uses": t["uses"], "discount": str(t["discount"]), "revenue": str(t["revenue"]),
+            "by_code": [{**r, "discount": str(r["discount"]), "revenue": str(r["revenue"])} for r in t["by_code"]]}
 
 
 def _parse_any_date(value, *, end_of_day=False):

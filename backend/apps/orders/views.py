@@ -38,6 +38,27 @@ class OrderViewSet(mixins.CreateModelMixin, mixins.ListModelMixin,
         body["reused"] = reused
         return Response(body, status=200 if reused else 201)
 
+    @action(detail=False, methods=["post"], url_path="quote")
+    def quote(self, request):
+        """v1.26: the price before payment — original, discount, final — for the
+        purchase in the body (same fields as create) and an optional discount code.
+        A refused code answers 400 with the reason (Persian / English) + discount_error."""
+        from .services import DiscountCodeRefused, OrderError, quote_order
+
+        d = request.data
+        lang = "en" if d.get("lang") == "en" else "fa"
+        try:
+            q = quote_order(user=request.user, plan_id=d.get("plan"), order_type=d.get("type") or "new",
+                            custom_volume_gb=d.get("custom_volume_gb") or None, service_id=d.get("service") or None,
+                            discount_code=(d.get("discount_code") or "").strip() or None)
+        except DiscountCodeRefused as exc:
+            return Response({"discount_code": [exc.message(lang)], "discount_error": exc.code}, status=400)
+        except (OrderError, ValueError, TypeError) as exc:
+            return Response({"detail": str(exc)}, status=400)
+        from decimal import Decimal
+
+        return Response({k: (str(v) if isinstance(v, Decimal) else v) for k, v in q.items()})
+
     @action(detail=True, methods=["post"], url_path="account-name")
     def account_name(self, request, pk=None):
         """Paid order whose name exists on the panel: the customer's new name → fulfilment again."""
