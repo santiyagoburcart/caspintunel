@@ -173,7 +173,7 @@ ledger group statements. Production: #2 "Vox" (owner VEX2), #3 "Mostafa" (owner 
 **Panel menu for a manager** (`components/adminNav.js` → `GM_GROUPS`, page `pages/GroupManager.jsx`):
 *Group admins* (`/my-groups`), *New admin* (`/my-groups/new`), *Accounting* (`/my-groups/accounting`,
 incl. the group statement — the staff Agency `GroupStatement` component) and *Activity*
-(`/my-groups/activity`). Every other route redirects to `/my-groups`. Disabling a manager or resetting
+(`/my-groups/activity`). Every other route redirects to `/my-groups`. Like every staff account, the manager signs out / switches language and light-dark mode from the account block at the bottom of the sidebar (desktop) or the ☰ drawer (phone) — v1.25.4; before, a manager on a phone had no logout because staff use the Settings tab for it. Disabling a manager or resetting
 its password ends its panel sessions (`Staff.token_version`).
 
 **Staff** (`agency.manage`; list with `agency.view`): create / edit / disable managers (the linked

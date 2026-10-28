@@ -125,6 +125,59 @@ function MenuButton({ open, onClick, t, className }) {
   )
 }
 
+// signed-in account + theme / language / logout — bottom of the sidebar and the
+// mobile drawer, the same for every role (a group manager has no Settings tab,
+// so this is its only way out on a phone).
+const roleLabel = (staff, lang) => (staff?.role ? ((lang === 'fa' && staff.role_fa) || staff.role)
+  : staff?.is_superadmin ? (lang === 'fa' ? 'ابرمدیر' : 'superadmin') : '')
+
+function SideAccount({ className = '' }) {
+  const { staff, logout } = useAuth()
+  const { t, lang, setLang } = useI18n()
+  const { mode, toggle, locked } = useTheme()
+  const go = useNavigate()
+  return (
+    <div className={'side-acc ' + className} data-testid="side-account">
+      <div className="side-acc-who">
+        <span className="side-acc-av">{(staff?.username || '?').charAt(0).toUpperCase()}</span>
+        <span className="side-acc-txt"><b dir="ltr">{staff?.username}</b><small>{roleLabel(staff, lang)}</small></span>
+      </div>
+      <div className="side-acc-row">
+        {!locked && (
+          <button type="button" className="side-acc-btn" onClick={toggle} aria-label={mode === 'dark' ? t('light_mode') : t('dark_mode')}>
+            <SideIcon name={mode === 'dark' ? 'sun' : 'moon'} /><span>{mode === 'dark' ? t('light_mode') : t('dark_mode')}</span>
+          </button>
+        )}
+        <button type="button" className="side-acc-btn" onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')}>
+          <span>{lang === 'fa' ? 'English' : 'فارسی'}</span>
+        </button>
+      </div>
+      <button type="button" className="side-acc-btn side-acc-out" onClick={() => { logout(); go('/login') }}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" /></svg>
+        <span>{t('logout')}</span>
+      </button>
+    </div>
+  )
+}
+
+const SIDE_ACC_CSS = `
+.side-acc { margin-top: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--c-border); }
+.side-acc-who { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.side-acc-av { width: 32px; height: 32px; flex-shrink: 0; border-radius: 999px; display: grid; place-items: center;
+  font-weight: 800; font-size: 13px; color: #fff; background: var(--c-primary); }
+.side-acc-txt { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.side-acc-txt b { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: start; }
+.side-acc-txt small { font-size: 11px; color: var(--c-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.side-acc-row { display: flex; gap: 6px; }
+.side-acc-row .side-acc-btn { flex: 1 1 0; justify-content: center; }
+.side-acc-btn { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 7px 10px; border-radius: 10px;
+  border: 1px solid var(--c-border); background: transparent; color: var(--c-text); font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.side-acc-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+.side-acc-btn:hover { background: color-mix(in srgb, var(--c-primary) 8%, transparent); }
+.side-acc-out { color: var(--c-danger); border-color: color-mix(in srgb, var(--c-danger) 35%, transparent); }
+.side-acc-out:hover { background: color-mix(in srgb, var(--c-danger) 10%, transparent); }
+`
+
 function LegacyLayout() {
   const { staff, logout, can } = useAuth()
   const { t, lang, setLang } = useI18n()
@@ -151,10 +204,12 @@ function LegacyLayout() {
 
   return (
     <div className="min-h-full aurora md:flex">
+      <style>{SIDE_ACC_CSS}</style>
       {/* desktop sidebar — always visible from md up */}
       <aside id="admin-sidebar" className={`admin-side glass m-3 hidden w-56 shrink-0 self-start overflow-y-auto p-3 ${side.wide && side.open ? 'md:block' : ''}`}>
         <Brand />
         <NavLinks items={items} t={t} />
+        <SideAccount className="mt-3" />
       </aside>
 
       {/* mobile drawer */}
@@ -169,6 +224,7 @@ function LegacyLayout() {
               <button className="btn-ghost ms-auto shrink-0" onClick={closeAll} aria-label={t('menu_close')}>✕</button>
             </Brand>
             <NavLinks items={items} t={t} onNavigate={closeAll} />
+            <SideAccount className="mt-3" />
           </aside>
         </div>
       )}
@@ -221,6 +277,7 @@ function CaspianNav({ groups, t, brand, logo, onNavigate }) {
           </div>
         ))}
       </nav>
+      <SideAccount className="csp-acc" />
     </div>
   )
 }
@@ -281,6 +338,7 @@ function CaspianLayout() {
   return (
     <div className={`csp-shell ${side.open ? 'nav-open' : 'nav-closed'}${side.wide ? '' : ' nav-overlay'}`}>
       <style>{CASPIAN_CSS}</style>
+      <style>{SIDE_ACC_CSS}</style>
 
       {/* desktop rail — start side (right for fa/RTL, left for en/LTR); collapsible with ☰ */}
       <aside className="csp-rail" id="admin-sidebar" ref={railRef} aria-label={t('menu_open')}>
@@ -293,6 +351,7 @@ function CaspianLayout() {
             inner pages; language + dark/light toggle always reachable */}
         <header className="csp-mtop">
           <div className="csp-mtop-end">
+            <MenuButton className="csp-mtop-lang csp-mtop-ico csp-mtop-menu" open={side.open} onClick={side.toggle} t={t} />
             {!locked && (
               <button type="button" className="csp-mtop-lang csp-mtop-ico" onClick={toggle}
                 aria-label={mode === 'dark' ? t('light_mode') : t('dark_mode')}>
@@ -500,6 +559,12 @@ const CASPIAN_CSS = `
  * ================================================================= */
 .csp-mtop { display: none; }
 .csp-botnav { display: none; }
+/* phones: ☰ in the top bar opens the rail as a drawer (menu + account / logout) */
+@media (max-width: 767px) {
+  .csp-shell.nav-overlay.nav-open .csp-rail { display: block; z-index: 60; width: min(18rem, 84vw); box-shadow: 0 12px 48px rgb(0 0 0 / .28); }
+  .csp-shell.nav-overlay.nav-open .csp-backdrop { position: fixed; inset: 0; z-index: 55; background: rgb(0 0 0 / .35); }
+}
+.csp-acc { padding: 12px 16px 16px; }
 
 @media (max-width: 767px) {
   /* --- top bar: hamburger · brand · online + avatar --- */
