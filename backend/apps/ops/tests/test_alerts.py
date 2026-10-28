@@ -13,6 +13,12 @@ pytestmark = pytest.mark.django_db
 _GB = 1024**3
 
 
+@pytest.fixture(autouse=True)
+def _panel_fresh(monkeypatch):
+    """These tests are about the reminder rules; the live re-check is in panel/tests/test_sync.py."""
+    monkeypatch.setattr("apps.crm.retention.fresh_service", lambda s: s)
+
+
 @pytest.fixture
 def svc():
     user = User.objects.create_user("u", "Str0ngPass!")

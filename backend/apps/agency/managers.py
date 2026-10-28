@@ -453,8 +453,23 @@ def manager_row(m: GroupManager, cat: dict | None = None) -> dict:
         "staff_username": m.staff.username if m.staff_id else None,
         "warnings": warnings(m),
         "assignments": [{"group_id": a.group_id, "group": group_title(a.group), "role_ids": a.allowed_role_ids,
+                         "all_roles": not a.allowed_role_ids,       # nothing picked = every non-owner role
                          "roles": [_role_view(r, cat) for r in a.allowed_role_ids]}
                         for a in m.assignments.select_related("group").order_by("group__owner_username")],
+        **_panel_role(m),
+    }
+
+
+def _panel_role(m: GroupManager) -> dict:
+    """The manager's panel role (Roles page) and the group-manager abilities it grants."""
+    from apps.accounts.models import GM_PERMS
+
+    st = m.staff if m.staff_id else None
+    role = st.role if st is not None and st.role_id else None
+    held = set(st.gm_permissions()) if st is not None else set()
+    return {
+        "panel_role": {"id": role.id, "name": role.name, "name_fa": getattr(role, "name_fa", "") or ""} if role else None,
+        "permissions": [{"code": c, "en": en, "fa": fa, "on": c in held} for c, (en, fa) in GM_PERMS.items()],
     }
 
 

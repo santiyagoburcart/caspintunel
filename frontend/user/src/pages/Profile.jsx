@@ -9,130 +9,13 @@ import { useToast } from '../components/Toast'
 import { copyToClipboard } from '../lib/clipboard'
 
 export default function Profile() {
-  const { styleKey } = useTheme()
-  return styleKey === 'caspian' ? <CaspianProfile /> : <LegacyProfile />
+  return <CaspianProfile />
 }
 
 /** Copy + toast only once the copy really happened (the helper itself opens a
  * manual-copy sheet when every automatic method fails). */
 async function copyInvite(text, t, toast, key = 'invite_copied') {
   if (await copyToClipboard(text)) toast.success(t(key))
-}
-
-/* ================= Legacy (Aurora / Frost) ================= */
-function LegacyProfile() {
-  const { t, lang, setLang } = useI18n()
-  const { mode, toggle, locked } = useTheme()
-  const { user, refreshMe } = useAuth()
-  const toast = useToast()
-
-  const [f, setF] = useState({ name: user?.name || '', phone: user?.phone || '', email: user?.email || '' })
-  const [infoBusy, setInfoBusy] = useState(false)
-  const [infoMsg, setInfoMsg] = useState(''); const [infoErr, setInfoErr] = useState('')
-  const dirty = f.name !== (user?.name || '') || f.phone !== (user?.phone || '') || f.email !== (user?.email || '')
-
-  const [pw, setPw] = useState({ current_password: '', new_password: '', confirm: '' })
-  const [msg, setMsg] = useState(''); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false)
-
-  const inviteLink = user?.referral_code ? `${window.location.origin}/register?ref=${user.referral_code}` : ''
-  const st = strength(pw.new_password)
-  const stLabel = [t('pw_weak'), t('pw_weak'), t('pw_fair'), t('pw_strong')][st]
-
-  const phoneRule = usePhoneRule()
-  const saveInfo = async (e) => {
-    e.preventDefault(); setInfoErr(''); setInfoMsg('')
-    const phoneErr = phoneRule.error(f.phone)
-    if (phoneErr) { setInfoErr(phoneErr); return }
-    setInfoBusy(true)
-    try {
-      await api.patch('/auth/me/', { name: f.name, phone: f.phone, email: f.email || null })
-      await refreshMe()
-      setInfoMsg(t('saved_ok'))
-    } catch (e2) { setInfoErr(localizeError(apiError(e2), lang)) } finally { setInfoBusy(false) }
-  }
-  const changePw = async (e) => {
-    e.preventDefault(); setErr(''); setMsg('')
-    if (pw.new_password !== pw.confirm) { setErr(t('pw_mismatch')); return }
-    setBusy(true)
-    try {
-      const { data: pwRes } = await api.post('/auth/password/change/', { current_password: pw.current_password, new_password: pw.new_password })
-      // the new password revokes all old tokens — keep this session on the fresh pair
-      if (pwRes?.access) tokens.set(pwRes)
-      setMsg(t('pw_changed')); setPw({ current_password: '', new_password: '', confirm: '' })
-    } catch (e2) { setErr(apiError(e2)) } finally { setBusy(false) }
-  }
-  const resend = async () => {
-    try { await api.post('/auth/email/verify/resend/'); setInfoMsg(t('verify_sent')) }
-    catch (e2) { setInfoErr(apiError(e2)) }
-  }
-
-  return (
-    <div className="space-y-4">
-      <h1 className="text-lg font-bold">{t('profile')}</h1>
-
-      <form onSubmit={saveInfo} className="card space-y-3">
-        <h2 className="font-bold">{t('account_info')}</h2>
-        <Alert>{infoErr}</Alert>
-        <Alert kind="success">{infoMsg}</Alert>
-        <div className="flex items-center justify-between">
-          <span className="text-muted">{t('username')}</span>
-          <span className="flex items-center gap-2"><code dir="ltr">{user?.username}</code><Copyable text={user?.username || ''} /></span>
-        </div>
-        <Field label={t('name')}><input className="input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
-        <Field label={t('phone') + (phoneRule.required ? ' *' : '')}>
-          <PhoneInput value={f.phone} onChange={(v) => setF({ ...f, phone: v })} />
-        </Field>
-        <Field label={t('email')}>
-          <input className="input" type="email" dir="ltr" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />
-          {user?.email && !user?.email_verified && <button type="button" className="btn-ghost text-xs mt-1" onClick={resend}>{t('verify_email')}</button>}
-        </Field>
-        <button className="btn-primary" disabled={infoBusy || !dirty}>{infoBusy ? <Spinner /> : t('save_changes')}</button>
-      </form>
-
-      <div className="card space-y-2">
-        <h2 className="font-bold">{t('referral')}</h2>
-        <div className="flex items-center justify-between">
-          <span className="text-muted">{t('referral')}</span>
-          <span className="flex items-center gap-2"><code>{user?.referral_code}</code><Copyable text={user?.referral_code || ''} /></span>
-        </div>
-        <div className="flex justify-between"><span className="text-muted">{t('referral_count')}</span><span>{user?.referral_count}</span></div>
-        {inviteLink && (
-          <button type="button" className="btn-ghost w-full text-sm" onClick={() => copyInvite(inviteLink, t, toast)}>
-            {t('copy_invite')}
-          </button>
-        )}
-      </div>
-
-      <div className="card">
-        {!locked && (
-          <div className="toggle-row hidden md:flex">
-            <span>{t('theme')}: {mode === 'dark' ? t('dark') : t('light')}</span>
-            <Toggle checked={mode === 'dark'} onChange={toggle} label={t('theme')} />
-          </div>
-        )}
-        <div className="toggle-row">
-          <span>{t('language')}: {lang === 'fa' ? 'فارسی' : 'English'}</span>
-          <Toggle checked={lang === 'en'} onChange={(v) => setLang(v ? 'en' : 'fa')} label={t('language')} />
-        </div>
-      </div>
-
-      <form onSubmit={changePw} className="card space-y-3">
-        <h2 className="font-bold">{t('change_password')}</h2>
-        <Alert>{err}</Alert>
-        <Alert kind="success">{msg}</Alert>
-        <PasswordField label={t('current_password')} value={pw.current_password} autoComplete="current-password"
-          onChange={(e) => setPw({ ...pw, current_password: e.target.value })} />
-        <div>
-          <PasswordField label={t('new_password')} value={pw.new_password} autoComplete="new-password"
-            onChange={(e) => setPw({ ...pw, new_password: e.target.value })} />
-          {pw.new_password && <p className="text-xs text-muted mt-1">{t('pw_strength')}: {stLabel}</p>}
-        </div>
-        <PasswordField label={t('confirm_password')} value={pw.confirm} autoComplete="new-password"
-          onChange={(e) => setPw({ ...pw, confirm: e.target.value })} />
-        <button className="btn-primary" disabled={busy}>{busy ? <Spinner /> : t('save')}</button>
-      </form>
-    </div>
-  )
 }
 
 /* ================= Caspian — Stitch redesign port ================= */

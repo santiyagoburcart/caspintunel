@@ -138,7 +138,7 @@ setting is saved (`apps/ops/schedule.py`).
 
 | Periodic task | Task | Every |
 |---|---|---|
-| panel: sync all services | `panel.tasks.sync_all_services` → one `sync_service_task` per live service | `service_sync_interval_minutes` (default 60) |
+| panel: sync all services | `panel.tasks.sync_all_services` → every linked service, every status, in one run (lock) — see flows.md §4 | `service_sync_interval_minutes` |
 | orders: expire stale reservations | `orders.tasks.expire_stale_reservations_task` | 5 min |
 | panel: apply due scheduled renewals | `panel.tasks.apply_due_scheduled_renewals` | 5 min |
 | orders: retry unfulfilled | `orders.tasks.retry_unfulfilled_orders` (paid > 2 min, not provisioned) | 10 min |

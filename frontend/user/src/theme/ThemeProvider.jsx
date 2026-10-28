@@ -37,11 +37,15 @@ function applyPalette(palette, mode) {
   const p = palette?.[mode] || palette?.light || palette?.dark
   if (p) for (const [k, v] of Object.entries(VARS)) if (p[k]) root.style.setProperty(v, p[k])
   if (palette?.vars) for (const [k, v] of Object.entries(palette.vars)) root.style.setProperty(k, v)
-  root.setAttribute('data-theme-style', palette?.style || 'aurora')
+  root.setAttribute('data-theme-style', 'caspian')
 }
 
+// One customer design (Caspian) from the very first paint — before /theme/ answers, and
+// even when it never does (slow Telegram in-app browsers used to get the old dark login).
+if (typeof document !== 'undefined') document.documentElement.setAttribute('data-theme-style', 'caspian')
+
 export function ThemeProvider({ children }) {
-  const [userMode, setUserMode] = useState(() => localStorage.getItem('ct_mode') || 'dark')
+  const [userMode, setUserMode] = useState(() => { try { return localStorage.getItem('ct_mode') || 'light' } catch { return 'light' } })
   const [config, setConfig] = useState(null)
   const [palette, setPalette] = useState(null)
 
@@ -67,7 +71,7 @@ export function ThemeProvider({ children }) {
 
   const toggle = () => setUserMode((m) => (m === 'dark' ? 'light' : 'dark'))
   return (
-    <Ctx.Provider value={{ mode, toggle, locked, styleKey: palette?.style || 'aurora', config }}>
+    <Ctx.Provider value={{ mode, toggle, locked, styleKey: 'caspian', config }}>
       {children}
     </Ctx.Provider>
   )

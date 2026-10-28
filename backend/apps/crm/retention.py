@@ -161,6 +161,26 @@ def _render(text, service, now) -> str:
     return (text or "").format_map(_Safe(vals))
 
 
+FRESH_SECONDS = 120
+
+
+def fresh_service(service):
+    """`service` as PasarGuard sees it right now (synced unless it was synced in the last
+    two minutes), or None when the panel can't be asked — then no reminder goes out."""
+    from apps.panel.exceptions import PanelError
+    from apps.panel.services import sync_service
+
+    if service.last_synced_at and (timezone.now() - service.last_synced_at).total_seconds() < FRESH_SECONDS:
+        return service
+    try:
+        fresh = sync_service(service.id)
+    except PanelError as exc:
+        log.info("reminder for service %s held: panel not reachable (%s)", service.id, exc)
+        return None
+    fresh.user = service.user
+    return fresh
+
+
 def run_warnings() -> dict:
     """Create due warnings (only the strongest due threshold per kind; weaker ones of the same
     period are recorded as skipped) and deliver every channel that is still missing."""
@@ -172,6 +192,11 @@ def run_warnings() -> dict:
     rules = list(WarningRule.objects.filter(is_active=True))
     created = 0
     for s in Service.objects.filter(status="active", user__deleted_at__isnull=True).select_related("user"):
+        if not any(_due(s, r, now) for r in rules):
+            continue
+        s = fresh_service(s)                      # never warn from stale numbers (renewed on the panel?)
+        if s is None or s.status != "active":
+            continue
         key = period_key(s)
         for kind in (WarningKind.DATA, WarningKind.TIME):
             # data: highest % first; time: fewest days first — send only the most urgent due one
@@ -209,6 +234,16 @@ def deliver_pending(now=None) -> dict:
     for w in pending.filter(site_sent_at__isnull=True) | pending.filter(bot_sent_at__isnull=True) | pending.filter(email_sent_at__isnull=True):
         s, u, rule = w.service, w.service.user, w.rule
         if rule is None or u.deleted_at:
+            continue
+        if s.status != "active" or period_key(s) != w.period_key or not _due(s, rule, now):
+            # renewed / reset / ended since the warning was made: don't send the rest
+            stale = "skipped: service changed before delivery"
+            for ch in ("site", "bot", "email"):
+                if getattr(w, f"{ch}_sent_at") is None:
+                    setattr(w, f"{ch}_sent_at", now)
+                    if ch != "site":
+                        setattr(w, f"{ch}_error", stale)
+            w.save()
             continue
         title_fa, title_en = _render(rule.title_fa, s, now), _render(rule.title_en or rule.title_fa, s, now)
         body_fa, body_en = _render(rule.body_fa, s, now), _render(rule.body_en or rule.body_fa, s, now)
@@ -299,7 +334,9 @@ def run_winback() -> dict:
 
     now = timezone.now()
     marked = opened = won = messaged = 0
-    for s in Service.objects.filter(status__in=ENDED, user__deleted_at__isnull=True).select_related("user", "crm_end"):
+    fresh_since = now - timedelta(minutes=30)
+    for s in Service.objects.filter(status__in=ENDED, user__deleted_at__isnull=True,
+                                    last_synced_at__gte=fresh_since).select_related("user", "crm_end"):
         if getattr(s, "crm_end", None) is None:
             ended = s.expire_at if s.status == "expired" and s.expire_at and s.expire_at <= now else now
             ServiceEndMark.objects.create(service=s, status=s.status, ended_at=ended)

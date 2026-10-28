@@ -172,8 +172,26 @@ creation refuses a name that exists on the panel and offers **Link existing acco
 an account owned by another panel admin needs `confirm_other_admin` (a checkbox in the modal).
 
 Add-on volume orders call `add_service_data_limit` instead (panel first, then
-mirror). Every `service_sync_interval_minutes` beat dispatches
-`sync_service_task` per live service to refresh usage, expiry and online state.
+mirror).
+
+**Service sync (v1.28).** Every `service_sync_interval_minutes` (Settings; currently every minute) the beat runs
+`sync_all_services`: **every** service with a panel account — whatever its status, expired /
+limited / disabled included — is read from PasarGuard (status, expiry, volume, usage, on-hold,
+online / last seen) and mirrored. A renewal, usage reset, top-up or re-enable done directly on
+PasarGuard is detected (`service.changed_on_panel` audit) and re-arms the volume / expiry
+reminders. One run at a time (cache lock). Staff **Sync** (`services/sync-now/`) runs it in the
+request and answers `{checked, updated, errors, skipped, rows}` (40 s budget, the rest continues
+in the background); each row has its own sync (`services/{id}/sync/`). The customer's services
+page re-reads ended services (≤ once a minute) and on-hold ones (15 s). Changing the subscription
+link signature / `online_at` alone is not counted as an update.
+
+Before 1.28 the beat skipped expired services, so a service renewed directly on PasarGuard after
+it expired stayed "expired" here forever (incident 2026-10-28, `hadis_sadeghi`).
+
+**Reminders never use stale numbers.** A warning (80 % / 95 %, 3 / 1 days) is only created after
+the service was re-read from PasarGuard (or synced < 2 min ago); if the panel can't be asked no
+warning goes out. A queued bot / email warning is dropped when the service was renewed / reset
+before delivery. Win-back only marks services synced in the last 30 minutes.
 
 ## 5. Agency sync + enforcement + ledger charge
 

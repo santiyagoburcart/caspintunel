@@ -14,17 +14,11 @@ from .services import (
     provision_service,
     renew_service,
     sync_service,
+    sync_services,
+    syncable_services,
 )
 
 log = logging.getLogger("caspintunel")
-
-# statuses worth polling regularly
-_SYNCABLE = (
-    ServiceStatus.ACTIVE,
-    ServiceStatus.ON_HOLD,
-    ServiceStatus.LIMITED,
-    ServiceStatus.PENDING,
-)
 
 _RETRY = dict(
     autoretry_for=(PanelUnavailable,),
@@ -71,22 +65,37 @@ def sync_service_task(self, service_id: int):
     sync_service(service_id)
 
 
+SYNC_LOCK = "panel:sync_all:lock"
+
+
 @shared_task
 def sync_all_services():
-    """Celery-beat: refresh usage / expiry / online for every live service."""
+    """Celery-beat (every minute by default): pull every linked service from its panel —
+    every status, including expired / limited / disabled ones, so a renewal or usage reset
+    done directly on PasarGuard shows up here."""
+    from django.core.cache import cache
+
     if not settings.PANEL_SYNC_ENABLED:
         return {"skipped": "PANEL_SYNC_ENABLED is false"}
     if get_active_panel() is None:
         return {"skipped": "no active panel"}
+    if not cache.add(SYNC_LOCK, "1", timeout=600):
+        return {"skipped": "a sync is already running"}
+    try:
+        res = sync_services(syncable_services().order_by("id").values_list("id", flat=True))
+    finally:
+        cache.delete(SYNC_LOCK)
+    res.pop("skipped_ids", None)
+    res["rows"] = res["rows"][:20]
+    return res
 
-    ids = list(
-        Service.objects.filter(status__in=_SYNCABLE)
-        .exclude(panel_username="")
-        .values_list("id", flat=True)
-    )
-    for sid in ids:
-        sync_service_task.delay(sid)
-    return {"dispatched": len(ids), "at": timezone.now().isoformat()}
+
+@shared_task
+def sync_services_task(ids: list[int]):
+    """The rest of a manual sync that ran out of request time."""
+    res = sync_services(ids)
+    res.pop("rows", None)
+    return res
 
 
 @shared_task(bind=True, **_RETRY)

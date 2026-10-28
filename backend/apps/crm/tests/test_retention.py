@@ -27,6 +27,12 @@ GB = 1024 ** 3
 TEHRAN = ZoneInfo("Asia/Tehran")
 
 
+@pytest.fixture(autouse=True)
+def _panel_fresh(monkeypatch):
+    """These tests are about the reminder rules; the live re-check is in panel/tests/test_sync.py."""
+    monkeypatch.setattr("apps.crm.retention.fresh_service", lambda s: s)
+
+
 @pytest.fixture
 def panel():
     return Panel.objects.create(name="p", base_url="https://p.test", admin_username="a", admin_password_enc="x")

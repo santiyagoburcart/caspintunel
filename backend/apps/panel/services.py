@@ -178,7 +178,9 @@ def reset_service_usage(service_id: int, *, staff=None) -> Service:
 # poll or bot). Throttled per service + capped per call so an open dashboard
 # never hammers the panel.
 _WATCHABLE = (ServiceStatus.ON_HOLD, ServiceStatus.PENDING)
+_ENDED = (ServiceStatus.EXPIRED, ServiceStatus.LIMITED, ServiceStatus.DISABLED)
 _REFRESH_THROTTLE_SECONDS = 15
+_ENDED_THROTTLE_SECONDS = 60
 _REFRESH_MAX_PER_CALL = 3
 
 
@@ -190,9 +192,15 @@ def refresh_watchable_services(services) -> int:
     for svc in services:
         if synced >= _REFRESH_MAX_PER_CALL:
             break
-        if svc.status not in _WATCHABLE:
+        if svc.status in _WATCHABLE:
+            wait = _REFRESH_THROTTLE_SECONDS
+        elif svc.status in _ENDED:
+            wait = _ENDED_THROTTLE_SECONDS            # renewed directly on the panel? show it at once
+        else:
             continue
-        if svc.last_synced_at and (now - svc.last_synced_at).total_seconds() < _REFRESH_THROTTLE_SECONDS:
+        if svc.status == ServiceStatus.PENDING and not svc.subscription_url:
+            continue
+        if svc.last_synced_at and (now - svc.last_synced_at).total_seconds() < wait:
             continue
         try:
             sync_service(svc.id)
@@ -202,8 +210,60 @@ def refresh_watchable_services(services) -> int:
     return synced
 
 
+# Fields that change on every read without meaning anything: PasarGuard signs the
+# subscription link per request, online_at moves while the customer is connected.
+_NOISE = {"subscription_url", "online_at", "updated_at"}
+# What a sync result lists by name (the rest is "usage")
+_KEY_FIELDS = ("status", "expire_at", "data_limit", "expire_strategy", "on_hold_duration", "device_limit")
+_LIVE = (ServiceStatus.ACTIVE, ServiceStatus.ON_HOLD)
+
+
+class SyncOutcome:
+    """What one sync of one service did (see sync_service_detail)."""
+
+    def __init__(self, service, changed=(), panel_change=None, error="", missing=False):
+        self.service, self.changed, self.panel_change = service, list(changed), panel_change
+        self.error, self.missing = error, missing
+
+    @property
+    def updated(self) -> bool:
+        return bool(self.changed) or self.missing
+
+    def row(self) -> dict:
+        s = self.service
+        return {"id": s.id, "panel_username": s.panel_username, "status": s.status,
+                "changed": self.changed, "panel_change": self.panel_change,
+                "error": self.error, "missing": self.missing}
+
+
+def _panel_change(before: dict, service: Service) -> dict | None:
+    """A renewal / reset / top-up / re-enable made directly on PasarGuard, or None."""
+    kinds = []
+    if service.expire_at and (before["expire_at"] is None or service.expire_at > before["expire_at"] + timedelta(hours=1)):
+        kinds.append("expiry_extended")
+    if service.data_used + 1024 ** 2 < before["data_used"]:
+        kinds.append("usage_reset")
+    if before["data_limit"] and (service.data_limit == 0 or service.data_limit > before["data_limit"]):
+        kinds.append("volume_added")
+    if before["status"] not in _LIVE and service.status in _LIVE:
+        kinds.append("reactivated")
+    if not kinds:
+        return None
+    return {"kinds": kinds, "before": {
+        "status": before["status"], "data_used": before["data_used"], "data_limit": before["data_limit"],
+        "expire_at": before["expire_at"].isoformat() if before["expire_at"] else None,
+    }, "after": {
+        "status": service.status, "data_used": service.data_used, "data_limit": service.data_limit,
+        "expire_at": service.expire_at.isoformat() if service.expire_at else None,
+    }}
+
+
 @transaction.atomic
-def sync_service(service_id: int) -> Service:
+def sync_service_detail(service_id: int) -> SyncOutcome:
+    """Pull status, expiry, volume, usage, on-hold and online from PasarGuard into our row —
+    for every service, whatever its status (an expired one may have been renewed on the
+    panel). A renewal / usage reset / top-up done on the panel re-arms the volume and expiry
+    reminders and is written to the audit log."""
     service = Service.objects.select_for_update().select_related("panel").get(pk=service_id)
     client = client_for(service.panel)
     try:
@@ -212,12 +272,74 @@ def sync_service(service_id: int) -> Service:
         if service.status != ServiceStatus.DISABLED:
             service.status = ServiceStatus.DISABLED
             service.save(update_fields=["status", "updated_at"])
-        return service
+        return SyncOutcome(service, error="not_found", missing=True)
 
+    before = {"status": service.status, "expire_at": service.expire_at,
+              "data_limit": service.data_limit, "data_used": service.data_used}
     changed = apply_user_to_service(service, api_user, service.panel)
+    change = _panel_change(before, service)
+    if change:
+        kinds = change["kinds"]
+        if "usage_reset" in kinds or "volume_added" in kinds or "reactivated" in kinds:
+            if service.alert_vol_sent:
+                service.alert_vol_sent = False
+                changed.append("alert_vol_sent")
+        if "expiry_extended" in kinds or "reactivated" in kinds:
+            if service.alert_exp_sent:
+                service.alert_exp_sent = False
+                changed.append("alert_exp_sent")
+        write_audit(action="service.changed_on_panel", target=service, detail=change)
     service.last_synced_at = timezone.now()
     service.save(update_fields=sorted(set(changed) | {"last_synced_at", "updated_at"}))
-    return service
+    meaningful = [f for f in dict.fromkeys(changed) if f not in _NOISE and not f.startswith("alert_")]
+    return SyncOutcome(service, meaningful, change)
+
+
+def sync_service(service_id: int) -> Service:
+    return sync_service_detail(service_id).service
+
+
+def syncable_services():
+    """Every service that has an account on a panel (pending ones not created yet are skipped)."""
+    return (Service.objects.exclude(panel_username="")
+            .exclude(status=ServiceStatus.PENDING, subscription_url="")
+            .filter(panel__is_active=True))
+
+
+def sync_services(ids, *, budget_seconds: float | None = None) -> dict:
+    """Sync these services one by one and say what happened:
+    {checked, updated, errors, skipped, rows (only the changed / failed ones)}.
+    With a time budget, whatever is left when it runs out is reported as `skipped`."""
+    import time
+
+    start = time.monotonic()
+    out = {"checked": 0, "updated": 0, "errors": 0, "skipped": 0, "rows": []}
+    ids = list(ids)
+    for i, sid in enumerate(ids):
+        if budget_seconds is not None and time.monotonic() - start > budget_seconds:
+            out["skipped"] = len(ids) - i
+            out["skipped_ids"] = ids[i:]
+            break
+        try:
+            res = sync_service_detail(sid)
+        except Service.DoesNotExist:
+            continue
+        except PanelError as exc:
+            out["checked"] += 1
+            out["errors"] += 1
+            svc = Service.objects.filter(pk=sid).only("id", "panel_username", "status").first()
+            out["rows"].append({"id": sid, "panel_username": svc.panel_username if svc else "", "status": svc.status if svc else "",
+                                "changed": [], "panel_change": None, "error": str(exc)[:200], "missing": False})
+            continue
+        out["checked"] += 1
+        if res.missing:
+            out["errors"] += 1
+            out["rows"].append(res.row())
+        elif res.updated:
+            out["updated"] += 1
+            out["rows"].append(res.row())
+    out["at"] = timezone.now().isoformat()
+    return out
 
 
 @transaction.atomic

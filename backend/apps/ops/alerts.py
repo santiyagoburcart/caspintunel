@@ -23,8 +23,17 @@ def run_service_alerts() -> dict:
     vol_sent = exp_sent = 0
 
     qs = Service.objects.filter(status__in=_WATCHED).select_related("user")
+    from apps.crm.retention import fresh_service
+
     for svc in qs.iterator():
         updates = []
+        vol_due = svc.data_limit and not svc.alert_vol_sent and svc.data_used / svc.data_limit * 100 >= vol_pct
+        exp_due = svc.expire_at and not svc.alert_exp_sent and (svc.expire_at - now).days <= exp_days
+        if not (vol_due or exp_due):
+            continue
+        svc = fresh_service(svc)                 # never warn from stale numbers
+        if svc is None or svc.status not in _WATCHED:
+            continue
 
         if svc.data_limit and not svc.alert_vol_sent:
             used_pct = svc.data_used / svc.data_limit * 100

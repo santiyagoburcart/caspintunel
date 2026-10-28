@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { api, apiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
-import { useTheme } from '../theme/ThemeProvider'
 import { jalali, gb } from '../lib/format'
 import { Alert, Copyable, Spinner, StatusBadge } from '../components/ui'
 import { AuthImage } from '../components/AuthImage'
@@ -11,8 +10,7 @@ import { ConfirmDialog, useConfirm } from '../components/ConfirmDialog'
 import { copyToClipboard } from '../lib/clipboard'
 
 export default function Dashboard() {
-  const { styleKey } = useTheme()
-  return styleKey === 'caspian' ? <CaspianDashboard /> : <LegacyDashboard />
+  return <CaspianDashboard />
 }
 
 /* shared data hook — polling + activation flash, used by both variants */
@@ -117,107 +115,6 @@ function RenewModal({ modal, t, lang, onClose, onProceed }) {
   )
 }
 
-/* ================= Legacy (Aurora / Frost) — unchanged ================= */
-function LegacyDashboard() {
-  const { t, lang } = useI18n()
-  const { items, flash, err, refreshOne } = useServices(t)
-  const renewFlow = useRenewFlow()
-  return (
-    <div className="space-y-4">
-      {flash && <Alert kind="success">{flash}</Alert>}
-      {err && <Alert>{err}</Alert>}
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold">{t('services')}</h1>
-        <Link to="/store" className="btn-primary text-sm">{t('buy')}</Link>
-      </div>
-      {items === null ? <div className="grid place-items-center py-16"><Spinner /></div>
-        : items.length === 0 ? <div className="card text-center text-muted">{t('no_services')}</div>
-        : <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {items.map((s) => (
-              <LegacyServiceCard key={s.id} s={s} t={t} lang={lang} onRefresh={refreshOne}
-                onRenewClick={() => renewFlow.startRenew(s.id)} />
-            ))}
-          </div>}
-      <RenewModal modal={renewFlow.modal} t={t} lang={lang} onClose={renewFlow.close} onProceed={renewFlow.proceed} />
-    </div>
-  )
-}
-
-function LegacyServiceCard({ s, t, lang, onRefresh, onRenewClick }) {
-  const [showQr, setShowQr] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const [err, setErr] = useState('')
-  const pct = s.data_limit ? Math.min(100, Math.round((s.data_used / s.data_limit) * 100)) : 0
-  // timer hasn't started yet whenever the panel hasn't given us an expiry —
-  // covers the just-connected moment too, before the next sync flips status/expire_at
-  const waiting = s.status === 'on_hold' && !s.expire_at
-  const gbUsed = gb(s.data_used)
-  const gbTotal = s.data_limit ? gb(s.data_limit) : null
-  const refresh = async () => {
-    setBusy(true); setErr('')
-    try { await onRefresh(s.id) } catch (e) { setErr(apiError(e)) } finally { setBusy(false) }
-  }
-  return (
-    <div className="card min-w-0 space-y-3">
-      <div className="flex items-center justify-between gap-2">
-        <span dir="ltr" className="min-w-0 truncate font-bold">{s.panel_username}</span>
-        <div className="flex shrink-0 items-center gap-1">
-          {waiting && (
-            <button className="btn-ghost px-1.5 py-0.5 text-sm leading-none" onClick={refresh} disabled={busy}
-              title={t('refresh_status')} aria-label={t('refresh_status')}>
-              <span className={busy ? 'inline-block animate-spin' : ''}>↻</span>
-            </button>
-          )}
-          <StatusBadge status={s.status} />
-        </div>
-      </div>
-      {waiting ? (
-        <div className="rounded-xl px-3 py-2 text-sm" style={{ background: 'color-mix(in srgb, var(--c-warning) 14%, transparent)', color: 'var(--c-warning)' }}>
-          <div className="font-medium">{t('waiting_connect')}</div>
-          <div className="text-xs opacity-90">{s.validity_days ? t('validity_after', { n: s.validity_days }) : t('unlimited_time')}</div>
-        </div>
-      ) : (
-        <div className="text-sm text-muted">
-          {s.expire_at ? `${s.days_left} ${t('days_left')} — ${jalali(s.expire_at, false, lang)}` : t('unlimited_time')}
-        </div>
-      )}
-      <div className="text-sm text-muted">
-        {t('volume')}: {gbTotal != null ? t('used_of', { used: gbUsed, total: gbTotal }) : t('unlimited')}
-        {gbTotal != null && ` · ${Math.round(Math.max(gbTotal - gbUsed, 0) * 10) / 10} ${t('remaining')}`}
-      </div>
-      {gbTotal != null && (
-        <div className="h-2 rounded-full" style={{ background: 'var(--c-border)' }}>
-          <div className="h-2 rounded-full" style={{ width: `${pct}%`, background: pct > 85 ? 'var(--c-danger)' : 'var(--c-primary)' }} />
-        </div>
-      )}
-      {(s.status === 'limited' || s.status === 'expired') && (
-        <div className="text-xs" style={{ color: s.status === 'limited' ? 'var(--c-warning-fg)' : 'var(--c-muted-fg)' }}>
-          {s.status === 'limited' ? t('st_limited_note') : t('st_expired_note')}
-        </div>
-      )}
-      {s.subscription_url && (
-        <div className="space-y-2">
-          <div className="text-xs text-muted">{t('qr_link')}</div>
-          <div className="flex items-center gap-2">
-            <code dir="ltr" className="min-w-0 flex-1 truncate rounded bg-black/10 px-2 py-1 text-xs">{s.subscription_url}</code>
-            <Copyable text={s.subscription_url} />
-          </div>
-          <button className="btn-ghost w-full text-sm" onClick={() => setShowQr((v) => !v)}>{showQr ? '▲ QR' : '▼ QR'}</button>
-          {showQr && (
-            <div className="grid place-items-center rounded-xl bg-white p-3">
-              <AuthImage path={`/services/${s.id}/qr/`} alt="QR" className="h-44 w-44" />
-            </div>
-          )}
-        </div>
-      )}
-      <Alert>{err}</Alert>
-      <div className="flex flex-wrap gap-2">
-        <button type="button" className="btn-primary text-sm" onClick={onRenewClick}>{t('renew')}</button>
-      </div>
-    </div>
-  )
-}
-
 /* ================= Caspian — Stitch redesign port ================= */
 const D = {
   tune: 'M4 6h10M4 12h6M4 18h13M18 4v4M13 10v4M20 16v4',
@@ -310,7 +207,8 @@ function CaspianDashboard() {
             value={fnum(gb(stats.totalUsed), lang)} sub={t('gigabytes')} />
           <Stat icon={D.clock} label={t('stat_next_renewal')}
             value={stats.next ? fnum(stats.next.days_left, lang) : '—'}
-            sub={stats.next ? `${t('days_more', { n: '' }).trim()} · ${stats.next.panel_username}` : t('unlimited_time')} />
+            sub={stats.next ? t('days_more', { n: '' }).trim() : t('unlimited_time')}
+            extra={stats.next?.panel_username} wide />
         </div>
       </section>
 
@@ -366,13 +264,14 @@ function CaspianDashboard() {
   )
 }
 
-function Stat({ icon, label, value, sub }) {
+function Stat({ icon, label, value, sub, extra, wide }) {
   return (
-    <div className="csp-stat">
+    <div className={'csp-stat' + (wide ? ' csp-stat--wide' : '')}>
       <span className="csp-stat-ico"><DI d={icon} w={22} /></span>
       <div className="csp-stat-txt">
         <span className="csp-stat-label">{label}</span>
         <div className="csp-stat-val"><b className="mono-num">{value}</b><span>{sub}</span></div>
+        {extra ? <span className="csp-stat-extra" dir="ltr" title={extra}>{extra}</span> : null}
       </div>
     </div>
   )
@@ -412,7 +311,7 @@ function SvcCard({ s, t, lang, onRevoke, onRenewClick }) {
       <div className="csp-svc-head">
         <div className="csp-svc-id">
           <span className="csp-svc-icon"><DI d={waiting ? D.hourglass : D.shield} w={20} /></span>
-          <div>
+          <div className="csp-svc-idtxt">
             <h2 className="csp-headline" dir="ltr">{s.panel_username}</h2>
             <span className="csp-svc-code mono-num">{t('svc_id')}: #CT-{s.id}</span>
           </div>
@@ -621,6 +520,7 @@ const CSS = `
 .csp-stat-label { font-size: 11.5px; color: var(--c-text-muted); }
 .csp-stat-val { display: flex; align-items: baseline; gap: 6px; margin-top: 2px; }
 .csp-stat-val b { font-size: 20px; font-weight: 800; }
+.csp-stat-extra { display: block; margin-top: 2px; font-size: 12px; font-weight: 600; color: var(--c-text); overflow-wrap: anywhere; text-align: start; }
 .csp-stat-val span { font-size: 11px; color: var(--c-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* filter bar */
@@ -659,7 +559,9 @@ const CSS = `
   width: 40px; height: 40px; flex-shrink: 0; display: grid; place-items: center; border-radius: 12px;
   background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary);
 }
-.csp-svc-id h2 { font-size: 16px; font-weight: 800; }
+.csp-svc-id h2 { font-size: 16px; font-weight: 800; overflow-wrap: anywhere; text-align: start; }
+.csp-svc-idtxt { min-width: 0; }
+.csp-svc-badge { flex-shrink: 0; }
 .csp-svc-code { font-size: 10.5px; color: var(--c-text-muted); }
 .csp-svc-badge {
   flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
@@ -802,19 +704,25 @@ const CSS = `
   .csp-dash { gap: 12px; }
   .csp-dash-hero { padding: 14px; border-radius: 18px; }
   .csp-dash-hero-blob, .csp-dash-hero-lead, .csp-stat-art { display: none; }
-  .csp-dash-hero-inner { flex-wrap: nowrap; gap: 10px; }
-  .csp-dash-hero-txt { min-width: 0; }
+  .csp-dash-hero-inner { flex-wrap: wrap; gap: 10px; }
+  .csp-dash-hero-txt { min-width: 0; flex: 1 1 auto; }
   .csp-dash-hero-h { gap: 8px; }
-  .csp-dash-hero-h h1 { font-size: 19px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .csp-dash-hero-h h1 { font-size: 18px; line-height: 1.4; white-space: normal; overflow-wrap: anywhere; }
   .csp-dash-hero-art { width: 28px; height: 28px; }
-  .csp-dash-buy { padding: 0 14px; font-size: 13px; }
-  .csp-dash-stats { margin-top: 12px; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .csp-dash-buy { padding: 0 14px; min-height: 40px; font-size: 13px; }
+  .csp-dash-stats { margin-top: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .csp-stat { display: block; padding: 8px 10px; border-radius: 12px; min-width: 0; }
-  .csp-stat-label { display: block; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .csp-stat--wide { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; }
+  .csp-stat--wide .csp-stat-ico { width: 36px; height: 36px; }
+  .csp-stat--wide .csp-stat-val { flex-direction: row; align-items: baseline; gap: 6px; }
+  .csp-stat-label { display: block; font-size: 12px; line-height: 1.5; white-space: normal; }
   .csp-stat-val { flex-direction: column; align-items: flex-start; gap: 0; margin-top: 0; }
   .csp-stat-val b { font-size: 19px; line-height: 1.25; }
   .csp-stat-val span { max-width: 100%; }
-  .csp-dash-bar--few { display: none; }        /* filter/search only pays off with many services */
+  .csp-dash-bar--few { display: none; }
+}
+@media (max-width: 430px) {
+  .csp-dash-buy { flex: 1 1 100%; justify-content: center; }        /* filter/search only pays off with many services */
   .csp-dash-bar { padding: 6px; gap: 6px; border-radius: 14px; }
   .csp-dash-tabs { flex: 1 1 100%; }
   .csp-dash-search { flex: 1 1 100%; min-width: 0; }

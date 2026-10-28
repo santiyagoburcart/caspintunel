@@ -5,31 +5,11 @@ import { useI18n } from '../lib/i18n'
 import { useTheme } from '../theme/ThemeProvider'
 import { SESSION_EXPIRED_KEY } from '../lib/api'
 import { Alert, Field, PasswordField, Spinner } from '../components/ui'
-import { ADMIN_LINK } from '../lib/paths'
 import { CaspianBrand, CaspianAuthShell } from '../components/caspian'
 
-/* Shared auth wrapper — used by Register / ResetPassword / VerifyEmail too.
-   Caspian gets its own shell; Aurora + Royal Frost keep the original. */
-function AuthShell({ title, children, hideAdminLink = false }) {
-  const { styleKey } = useTheme()
-  const { lang, setLang } = useI18n()
-  if (styleKey === 'caspian') {
-    return <CaspianAuthShell title={title} hideAdminLink={hideAdminLink}>{children}</CaspianAuthShell>
-  }
-  return (
-    <div className="min-h-full aurora grid place-items-center p-4">
-      <div className="card w-full max-w-sm">
-        <div className="mb-4 flex items-center justify-between">
-          <h1 className="text-xl font-bold">{title}</h1>
-          <button type="button" className="btn-ghost text-xs"
-            onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')}>
-            {lang === 'fa' ? 'EN' : 'فا'}
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  )
+/* Shared auth wrapper — used by Register / ResetPassword / VerifyEmail too (one design only). */
+function AuthShell({ title, children }) {
+  return <CaspianAuthShell title={title}>{children}</CaspianAuthShell>
 }
 
 export { AuthShell }
@@ -37,8 +17,7 @@ export { AuthShell }
 /* ------------------------------------------------------------------ */
 
 export default function Login() {
-  const { styleKey } = useTheme()
-  return styleKey === 'caspian' ? <CaspianLogin /> : <LegacyLogin />
+  return <CaspianLogin />
 }
 
 // never show the backend's raw error text (e.g. a SimpleJWT "token not valid"
@@ -74,29 +53,6 @@ function useLoginForm() {
     finally { setBusy(false) }
   }
   return { f, setF, err, info, busy, submit }
-}
-
-function LegacyLogin() {
-  const { t } = useI18n()
-  const { f, setF, err, info, busy, submit } = useLoginForm()
-  return (
-    <AuthShell title={t('login')}>
-      <form onSubmit={submit} className="space-y-3">
-        {info && <Alert kind="warning">{t('session_expired_msg')}</Alert>}
-        <Alert>{err}</Alert>
-        <Field label={t('username')}>
-          <input className="input" value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} autoFocus />
-        </Field>
-        <PasswordField label={t('password')} value={f.password} autoComplete="current-password"
-          onChange={(e) => setF({ ...f, password: e.target.value })} />
-        <button className="btn-primary w-full" disabled={busy}>{busy ? <Spinner /> : t('login')}</button>
-        <div className="flex justify-between text-sm text-muted">
-          <Link to="/register" className="hover:text-primary">{t('register')}</Link>
-          <Link to="/reset" className="hover:text-primary">{t('forgot')}</Link>
-        </div>
-      </form>
-    </AuthShell>
-  )
 }
 
 /* ---- Caspian: split-card login (port of the Stitch redesign screens) ---- */
@@ -208,7 +164,6 @@ function CaspianLogin() {
         <Link to="/terms" className="csp-auth-footer-l">{t('rules')}</Link>
         <span>·</span>
         <Link to="/help" className="csp-auth-footer-l">{t('pages')}</Link>
-        {ADMIN_LINK && <><span>·</span><a href={ADMIN_LINK} className="csp-auth-footer-l">{t('foot_admin')}</a></>}
       </footer>
     </div>
   )

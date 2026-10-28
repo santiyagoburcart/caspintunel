@@ -23,7 +23,10 @@ export const GM_T = {
     m_new: 'مدیر گروه جدید', m_edit: 'ویرایش مدیر', m_none: 'هنوز مدیر گروهی ساخته نشده است.', m_portal: 'آدرس ورود مدیران', no_login: 'ورود به پنل ندارد: این نام کاربری را یک کاربر پنل دیگر دارد — مدیر جدیدی با نام دیگر بسازید.',
     username: 'نام کاربری', password: 'رمز عبور', gen: 'رمز تصادفی', display: 'نام نمایشی', active: 'فعال', disabled: 'غیرفعال',
     cap: 'سقف حجم تأییدنشده (گیگ)', cap_hint: 'خالی = بدون سقف. با رسیدن به سقف، حجم تازه تا تأیید شما بسته می‌شود.', no_cap: 'بدون سقف',
-    groups: 'گروه‌ها و نقش‌های مجاز ادمین (Role)', groups_hint: 'اینباندهای هر ادمین در PasarGuard از نقش (Role) او می‌آیند — زیر هر نقش نوشته شده؛ نقش‌های مالک (sudo) هیچ‌وقت مجاز نیستند.',
+    groups: 'گروه‌ها و نقش‌های مجاز برای ساخت ادمین', groups_hint: 'گروه را تیک بزنید، بعد نقش‌هایی از پاسارگارد را که این مدیر می‌تواند به ادمین‌های تازه بدهد انتخاب کنید. نقش‌های مالک (sudo) هیچ‌وقت نمایش داده نمی‌شوند.',
+    sec_groups: 'گروه‌ها', sec_roles: 'نقش‌های مجاز برای ساخت ادمین', roles_expl: 'مدیر فقط با این نقش‌های پاسارگارد ادمین می‌سازد یا نقش ادمین را عوض می‌کند.',
+    all_roles: 'همهٔ نقش‌ها (به‌جز مالک)', sec_perms: 'دسترسی‌ها', perms_n: '{n} از {t}', perms_role: 'نقش پنل', perms_edit: 'ویرایش در نقش‌ها و دسترسی‌ها', no_panel_role: 'بدون نقش',
+    sec_cap: 'سقف حجم تأییدنشده', status: 'وضعیت', created_at: 'ساخته‌شده', by: 'توسط', n_requests: '{n} درخواست در انتظار', no_groups: 'گروهی داده نشده', roles_n: '{n} نقش',
     roles_err: 'نقش‌ها از PasarGuard خوانده نشد', inbounds: 'نقش ادمین (Role)', all_inb: 'همه', note: 'یادداشت',
     pending: 'در انتظار', of: 'از', last_login: 'آخرین ورود', never: 'هرگز', save: 'ذخیره', create: 'ساخت',
     reset_pw: 'رمز تازه', reset_msg: 'یک رمز تصادفی ساخته می‌شود و همهٔ نشست‌های این مدیر بسته می‌شود.', disable: 'غیرفعال‌کردن', enable: 'فعال‌کردن',
@@ -52,7 +55,10 @@ export const GM_T = {
     m_new: 'New group manager', m_edit: 'Edit manager', m_none: 'No group managers yet.', m_portal: 'Managers sign in at', no_login: 'No panel login: another panel user has this username — create the manager again with a different one.',
     username: 'Username', password: 'Password', gen: 'Random', display: 'Display name', active: 'Active', disabled: 'Disabled',
     cap: 'Max unapproved volume (GB)', cap_hint: 'Empty = no cap. When reached, new volume is blocked until you approve.', no_cap: 'no cap',
-    groups: 'Groups and allowed admin roles', groups_hint: "In PasarGuard an admin's inbounds come from its role (shown under each); owner (sudo) roles are never allowed.",
+    groups: 'Groups and roles allowed for new admins', groups_hint: 'Tick a group, then pick the PasarGuard roles this manager may give to new admins. Owner (sudo) roles are never listed.',
+    sec_groups: 'Groups', sec_roles: 'Roles allowed for new admins', roles_expl: "The manager can create admins or change an admin's role only with these PasarGuard roles.",
+    all_roles: 'All roles (except owner)', sec_perms: 'Permissions', perms_n: '{n} of {t}', perms_role: 'Panel role', perms_edit: 'Edit on Roles & permissions', no_panel_role: 'no role',
+    sec_cap: 'Unapproved volume cap', status: 'Status', created_at: 'Created', by: 'by', n_requests: '{n} pending requests', no_groups: 'no group assigned', roles_n: '{n} roles',
     roles_err: 'Could not read the roles from PasarGuard', inbounds: 'Admin role', all_inb: 'all', note: 'Note',
     pending: 'pending', of: 'of', last_login: 'Last sign-in', never: 'never', save: 'Save', create: 'Create',
     reset_pw: 'New password', reset_msg: "A random password is made and all of this manager's sessions end.", disable: 'Disable', enable: 'Enable',
@@ -101,17 +107,16 @@ function useGet(url, deps = []) {
 }
 
 // ------------------------------------------------------------------ managers
-function RoleChips({ roles, s }) {
+function RoleChips({ roles, all, s }) {
+  if (all) return <span className="gm-roles"><span className="gm-chip" data-all>{s.all_roles}</span></span>
   return (
     <span className="gm-roles">
-      {roles.map((r) => (
-        <span key={r.id} className="gm-role" title={r.name}>
-          <b>{r.name}</b><small>{r.all_inbounds ? s.all_inb : (r.inbounds || []).join(' · ') || '—'}</small>
-        </span>
-      ))}
+      {roles.map((r) => <span key={r.id} className="gm-chip"><bdi>{r.name}</bdi></span>)}
     </span>
   )
 }
+const fill = (t, o) => Object.entries(o).reduce((a, [k, v]) => a.replace(`{${k}}`, v), t)
+const shortPerm = (p, lang) => (lang === 'fa' ? p.fa.replace(/^مدیر گروه:\s*/, '') : p.en.replace(/^Group manager:\s*/, ''))
 
 // groups + allowed PasarGuard roles per group — shared with the Staff page (v1.25.2).
 // value = { [group_id]: [role_id, …] }
@@ -137,13 +142,15 @@ export function GroupPicker({ s, opts, value, onChange }) {
             <div key={g.id} className="gm-group" data-on={on || undefined}>
               <label className="gm-gcheck"><input type="checkbox" checked={on} onChange={() => toggleGroup(g.id)} /> <b><bdi>{g.name}</bdi></b> <small>({digits(g.admins, 'en')} {s.admins})</small></label>
               {on && (
-                <div className="gm-rolepick">
-                  {(opts?.roles || []).map((r) => (
-                    <label key={r.id} className="gm-rolei">
-                      <input type="checkbox" checked={(value[g.id] || []).includes(r.id)} onChange={() => toggleRole(g.id, r.id)} />
-                      <span><b>{r.name}</b><small>{r.all_inbounds ? s.all_inb : r.inbounds.join(' · ') || '—'}</small></span>
-                    </label>
-                  ))}
+                <div className="gm-rolepick" role="group" aria-label={s.sec_roles}>
+                  {(opts?.roles || []).map((r) => {
+                    const sel = (value[g.id] || []).includes(r.id)
+                    return (
+                      <button key={r.id} type="button" className="gm-chip gm-chip--btn" aria-pressed={sel} data-on={sel || undefined} onClick={() => toggleRole(g.id, r.id)}>
+                        {sel && <span aria-hidden="true">✓</span>}<bdi>{r.name}</bdi>
+                      </button>
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -263,11 +270,13 @@ export function AgencyManagersView({ Header }) {
           <section key={m.id} className="card ag-card gm-card" data-off={!m.is_active || undefined}>
             <div className="ag-card-h">
               <div className="gm-name">
-                <h3 className="ag-sh" data-ac="purple"><Ic n="user" size={15} /><bdi>{m.display_name || m.username}</bdi></h3>
-                <span className="text-xs text-muted"><N>{m.username}</N></span>
+                <span className="gm-av" aria-hidden="true">{(m.display_name || m.username || '?').slice(0, 1).toUpperCase()}</span>
+                <span className="gm-name-t">
+                  <h3 className="gm-h"><bdi>{m.display_name || m.username}</bdi></h3>
+                  <span className="text-xs text-muted"><N>@{m.username}</N></span>
+                </span>
                 {!m.staff_username && <span className="text-xs" style={{ color: 'var(--c-warning-fg)' }}>{s.no_login}</span>}
                 {(m.warnings || []).filter((w) => w !== 'no_login').map((w) => <span key={w} className="text-xs" style={{ color: 'var(--c-warning-fg)' }}>⚠ {s['w_' + w]}</span>)}
-                <span className="gm-pill" data-on={m.is_active || undefined}>{m.is_active ? s.active : s.disabled}</span>
               </div>
               {manage && (
                 <div className="ag-actions">
@@ -278,14 +287,45 @@ export function AgencyManagersView({ Header }) {
               )}
             </div>
             <dl className="gm-facts">
-              <div><dt>{s.pending}</dt><dd><N>{gbText(m.cap.pending_gb)}</N> {m.cap.max_gb != null ? <>{s.of} <N>{gbText(m.cap.max_gb)}</N></> : <small>({s.no_cap})</small>} · <N>{digits(m.pending_count, 'en')}</N></dd></div>
-              <div><dt>{s.last_login}</dt><dd>{m.last_login_at ? jalali(m.last_login_at, true, lang) : s.never}</dd></div>
+              <div><dt>{s.status}</dt><dd><span className="gm-pill" data-on={m.is_active || undefined}>{m.is_active ? s.active : s.disabled}</span></dd></div>
+              <div><dt>{s.last_login}</dt><dd>{m.last_login_at ? jalali(m.last_login_at, true, lang) : <small>{s.never}</small>}</dd></div>
+              <div><dt>{s.created_at}</dt><dd>{jalali(m.created_at, false, lang)}{m.created_by ? <small> · {s.by} <bdi>{m.created_by}</bdi></small> : null}</dd></div>
             </dl>
-            <ul className="gm-assign">
-              {m.assignments.map((a) => (
-                <li key={a.group_id}><b><bdi>{a.group}</bdi></b><RoleChips roles={a.roles} s={s} /></li>
-              ))}
-            </ul>
+            <div className="gm-secs">
+              <section className="gm-sec">
+                <h4>{s.sec_groups}</h4>
+                {m.assignments.length ? (
+                  <span className="gm-roles">{m.assignments.map((a) => <span key={a.group_id} className="gm-chip gm-chip--group"><bdi>{a.group}</bdi></span>)}</span>
+                ) : <small className="gm-muted">{s.no_groups}</small>}
+              </section>
+              <section className="gm-sec">
+                <h4>{s.sec_roles}</h4>
+                <p className="gm-expl">{s.roles_expl}</p>
+                <ul className="gm-assign">
+                  {m.assignments.map((a) => (
+                    <li key={a.group_id}><span className="gm-assign-g"><bdi>{a.group}</bdi></span><RoleChips roles={a.roles} all={a.all_roles} s={s} /></li>
+                  ))}
+                </ul>
+              </section>
+              <section className="gm-sec">
+                <h4>{s.sec_perms} <small className="gm-muted">{fill(s.perms_n, { n: digits((m.permissions || []).filter((p) => p.on).length, 'en'), t: digits((m.permissions || []).length, 'en') })}</small></h4>
+                <span className="gm-roles">
+                  {(m.permissions || []).map((p) => <span key={p.code} className="gm-chip gm-chip--perm" data-off={!p.on || undefined} title={p.code}>{p.on ? '✓ ' : ''}{shortPerm(p, lang)}</span>)}
+                </span>
+                <p className="gm-expl">{s.perms_role}: <b><bdi>{m.panel_role ? ((lang === 'fa' && m.panel_role.name_fa) || m.panel_role.name) : s.no_panel_role}</bdi></b>
+                  {' · '}<Link to="/roles" className="gm-link">{s.perms_edit}</Link></p>
+              </section>
+              <section className="gm-sec">
+                <h4>{s.sec_cap}</h4>
+                <div className="gm-cap">
+                  <span><N>{gbText(m.cap.pending_gb)}</N> {m.cap.max_gb != null ? <>{s.of} <N>{gbText(m.cap.max_gb)}</N></> : <small className="gm-muted">({s.no_cap})</small>}</span>
+                  {m.cap.max_gb != null && Number(m.cap.max_gb) > 0 && (
+                    <i className="gm-capbar" data-full={m.cap.reached || undefined}><b style={{ width: `${Math.min(100, Number(m.cap.pending_gb) / Number(m.cap.max_gb) * 100)}%` }} /></i>
+                  )}
+                  <small className="gm-muted">{fill(s.n_requests, { n: digits(m.pending_count, 'en') })}</small>
+                </div>
+              </section>
+            </div>
             {m.note && <p className="text-xs text-muted">{s.note}: {m.note}</p>}
           </section>
         ))
@@ -596,7 +636,36 @@ function StatementBody({ st, s, lang }) {
 export const GM_CSS = `
 .gm-portal { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 13px; }
 .gm-portal span { font-weight: 700; color: var(--c-muted-fg); }
-.gm-card[data-off] { opacity: .7; }
+.gm-card[data-off] { opacity: .75; }
+.gm-wide > .gm-l { display: block; font-size: 13px; font-weight: 700; }
+.gm-wide > .gm-hint { display: block; margin-top: 2px; font-size: 12px; line-height: 1.7; color: var(--c-muted-fg); }
+.gm-card .ag-card-h { flex-wrap: wrap; align-items: flex-start; }
+.gm-card .ag-actions { flex-wrap: wrap; }
+.gm-name { flex-wrap: nowrap !important; }
+.gm-av { width: 40px; height: 40px; flex: none; display: grid; place-items: center; border-radius: 12px; font-weight: 800; font-size: 16px;
+  color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 14%, transparent); }
+.gm-name-t { display: flex; flex-direction: column; min-width: 0; }
+.gm-h { font-size: 15px; font-weight: 800; overflow-wrap: anywhere; }
+.gm-secs { display: grid; gap: 10px; margin-top: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.gm-sec { border: 1px solid var(--c-border); border-radius: 12px; padding: 10px 12px; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.gm-sec h4 { font-size: 12.5px; font-weight: 800; color: var(--c-muted-fg); display: flex; align-items: baseline; gap: 6px; }
+.gm-expl { font-size: 12px; color: var(--c-muted-fg); line-height: 1.7; }
+.gm-muted { color: var(--c-muted-fg); font-weight: 600; font-size: 12px; }
+.gm-link { color: var(--c-primary); font-weight: 700; }
+.gm-chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 11px; border-radius: 999px; font-size: 12.5px; font-weight: 700; line-height: 1.4;
+  border: 1px solid color-mix(in srgb, var(--c-primary) 30%, var(--c-border)); color: var(--c-text); background: color-mix(in srgb, var(--c-primary) 8%, transparent); max-width: 100%; overflow-wrap: anywhere; }
+.gm-chip[data-all] { border-style: dashed; }
+.gm-chip--group { border-color: var(--c-border); background: color-mix(in srgb, var(--c-text-muted) 9%, transparent); }
+.gm-chip--perm { font-weight: 600; font-size: 12px; color: var(--c-success-fg); border-color: color-mix(in srgb, var(--c-success) 30%, var(--c-border)); background: color-mix(in srgb, var(--c-success) 9%, transparent); }
+.gm-chip--perm[data-off] { color: var(--c-muted-fg); border-color: var(--c-border); background: transparent; text-decoration: line-through; opacity: .75; }
+.gm-chip--btn { cursor: pointer; min-height: 36px; font-weight: 600; background: transparent; border-color: var(--c-border); }
+.gm-chip--btn[data-on] { color: #fff; background: var(--c-primary); border-color: var(--c-primary); }
+.gm-assign-g { font-weight: 700; font-size: 12.5px; min-width: 70px; }
+.gm-cap { display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; font-weight: 700; }
+.gm-capbar { display: block; height: 6px; border-radius: 999px; overflow: hidden; background: color-mix(in srgb, var(--c-text-muted) 18%, transparent); }
+.gm-capbar b { display: block; height: 100%; background: var(--c-primary); border-radius: 999px; }
+.gm-capbar[data-full] b { background: var(--c-danger); }
+@media (max-width: 900px) { .gm-secs { grid-template-columns: minmax(0, 1fr); } }
 .gm-name { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-width: 0; }
 .gm-pill { font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 12%, transparent); }
 .gm-pill[data-on] { color: var(--c-success-fg); background: color-mix(in srgb, var(--c-success) 14%, transparent); }
@@ -622,7 +691,7 @@ export const GM_CSS = `
 .gm-group { border: 1px solid var(--c-border); border-radius: 12px; padding: 8px 10px; }
 .gm-group[data-on] { border-color: color-mix(in srgb, var(--c-primary) 45%, var(--c-border)); }
 .gm-form .gm-gcheck { flex-direction: row; align-items: center; gap: 8px; font-size: 13px; }
-.gm-rolepick { display: grid; gap: 6px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr)); margin-top: 8px; }
+.gm-rolepick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .gm-form .gm-rolei { flex-direction: row; align-items: flex-start; gap: 8px; font-weight: 500; padding: 6px 8px; border-radius: 10px; background: color-mix(in srgb, var(--c-text-muted) 7%, transparent); }
 .gm-rolei span { display: flex; flex-direction: column; }
 .gm-cred dl { display: flex; flex-direction: column; gap: 8px; text-align: start; margin-bottom: 8px; }

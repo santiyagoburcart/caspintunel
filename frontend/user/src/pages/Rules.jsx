@@ -14,23 +14,7 @@ function useRulesPage() {
 }
 
 export default function Rules() {
-  const { styleKey } = useTheme()
-  return styleKey === 'caspian' ? <CaspianRules /> : <LegacyRules />
-}
-
-/* ================= Legacy (Aurora / Frost) — unchanged ================= */
-function LegacyRules() {
-  const { t, lang } = useI18n()
-  const page = useRulesPage()
-  if (page === undefined) return <div className="grid place-items-center py-16"><Spinner /></div>
-  const title = page && ((lang === 'fa' ? page.title_fa : page.title_en) || page.title_fa)
-  const body = page && ((lang === 'fa' ? page.body_fa : page.body_en) || page.body_fa)
-  return (
-    <div className="space-y-3">
-      <h1 className="text-lg font-bold">{title || t('rules')}</h1>
-      <div className="card whitespace-pre-wrap leading-7">{body || t('no_content')}</div>
-    </div>
-  )
+  return <CaspianRules />
 }
 
 /* ================= Caspian — Stitch redesign port ================= */

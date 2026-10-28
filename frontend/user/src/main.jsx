@@ -27,6 +27,13 @@ import '@fontsource/jetbrains-mono/400.css'
 import '@fontsource/jetbrains-mono/600.css'
 import './index.css'
 
+// This site has no service worker: remove any left by an older build, with its caches,
+// so every entry point (browser, Telegram in-app browser, Mini App) shows the current site.
+try {
+  navigator.serviceWorker?.getRegistrations?.().then((rs) => rs.forEach((r) => r.unregister())).catch(() => {})
+  if (window.caches?.keys) caches.keys().then((ks) => ks.forEach((k) => caches.delete(k))).catch(() => {})
+} catch { /* not supported */ }
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>

@@ -29,77 +29,7 @@ function BrandMark() {
 }
 
 export default function Layout() {
-  const { styleKey } = useTheme()
-  return styleKey === 'caspian' ? <CaspianLayout /> : <LegacyLayout />
-}
-
-function LegacyLayout() {
-  const { user, logout } = useAuth()
-  const { t, lang, setLang } = useI18n()
-  const { mode, toggle, locked, config } = useTheme()
-  const nav = useNavigate()
-  const [open, setOpen] = useState(false)
-  const inTelegram = isTelegramMiniApp()
-
-  return (
-    <div className="min-h-full aurora">
-      <header className="glass sticky top-0 z-20 m-3 flex items-center gap-2 px-3 py-3 sm:gap-3 sm:px-4">
-        <button className="btn-ghost text-sm lg:hidden" onClick={() => setOpen(true)} aria-label="menu">☰</button>
-
-        <div className="flex min-w-0 items-center gap-2 font-bold">
-          {config?.logo
-            ? <img src={config.logo} alt="" className="h-7 w-7 rounded object-contain" />
-            : <BrandMark />}
-          <span className="truncate">{lang === 'fa' ? config?.site_name_fa || 'کسپین تانل' : config?.site_name_en || 'caspintunel'}</span>
-        </div>
-
-        <nav className="hidden gap-1 lg:flex">
-          {links.map(([to, key]) => (
-            <NavLink key={to} to={to} end
-              className={({ isActive }) => `btn-ghost text-sm ${isActive ? 'text-primary' : ''}`}>
-              {t(key)}
-            </NavLink>
-          ))}
-        </nav>
-
-        <div className="ms-auto flex shrink-0 items-center gap-1 sm:gap-2">
-          <NotificationBell />
-          {!locked && (
-            <button className="btn-ghost text-sm" onClick={toggle}>{mode === 'dark' ? '☀️' : '🌙'}</button>
-          )}
-          <button className="btn-ghost text-sm" onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')}>
-            {lang === 'fa' ? 'EN' : 'فا'}
-          </button>
-          <span className="hidden text-sm text-muted lg:inline">{user?.name || user?.username}</span>
-          {!inTelegram && (
-            <button className="btn-ghost text-sm" onClick={() => logout().then(() => nav('/login'))}>{t('logout')}</button>
-          )}
-        </div>
-      </header>
-
-      {open && (
-        <div className="fixed inset-0 z-30 lg:hidden" onClick={() => setOpen(false)}>
-          <div className="absolute inset-0 bg-black/40" />
-          <nav
-            className="glass absolute inset-y-0 start-0 flex w-64 flex-col gap-1 overflow-y-auto p-3"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button className="btn-ghost mb-2 self-end" onClick={() => setOpen(false)} aria-label="close">✕</button>
-            {links.map(([to, key]) => (
-              <NavLink key={to} to={to} end onClick={() => setOpen(false)}
-                className={({ isActive }) => `btn-ghost text-sm ${isActive ? 'text-primary' : ''}`}>
-                {t(key)}
-              </NavLink>
-            ))}
-          </nav>
-        </div>
-      )}
-
-      <main className="mx-auto max-w-4xl p-3">
-        <Outlet />
-      </main>
-    </div>
-  )
+  return <CaspianLayout />
 }
 
 /* ---- Caspian: sticky glass top-nav shell (Stitch redesign) ---- */
@@ -150,18 +80,18 @@ function CaspianLayout() {
           <div className="csp-topbar-r">
             <NotificationBell />
             {!locked && (
-              <button className="csp-icon-btn" onClick={toggle} aria-label={t('theme')}>
+              <button className="csp-icon-btn csp-hide-phone" onClick={toggle} aria-label={t('theme')}>
                 <LIco d={mode === 'dark' ? SUN_ICON : MOON_ICON} />
               </button>
             )}
-            <button className="csp-lang" onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')}>
+            <button className="csp-lang csp-hide-phone" onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')}>
               {lang === 'fa' ? 'EN' : 'فا'}
             </button>
             <div className="csp-user">
               <span className="csp-user-av">{(user?.name || user?.username || '?').slice(0, 1).toUpperCase()}</span>
               <span className="csp-user-name">{user?.name || user?.username}</span>
               {!inTelegram && (
-                <button className="csp-icon-btn csp-logout" onClick={() => logout().then(() => nav('/login'))}
+                <button className="csp-icon-btn csp-logout csp-hide-phone" onClick={() => logout().then(() => nav('/login'))}
                   aria-label={t('logout')} title={t('logout')}>
                   <LIco d={OUT_ICON} />
                 </button>
@@ -183,6 +113,22 @@ function CaspianLayout() {
               </button>
             </div>
             <NavItems onClick={() => setOpen(false)} />
+            {/* phones: theme, language and logout live here so the top bar stays clean */}
+            <div className="csp-drawer-foot">
+              {!locked && (
+                <button type="button" className="csp-drawer-act" onClick={toggle}>
+                  <LIco d={mode === 'dark' ? SUN_ICON : MOON_ICON} />{t('theme')}: {mode === 'dark' ? t('dark') : t('light')}
+                </button>
+              )}
+              <button type="button" className="csp-drawer-act" onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')}>
+                <span className="csp-drawer-lang">{lang === 'fa' ? 'EN' : 'فا'}</span>{lang === 'fa' ? 'English' : 'فارسی'}
+              </button>
+              {!inTelegram && (
+                <button type="button" className="csp-drawer-act csp-drawer-out" onClick={() => { setOpen(false); logout().then(() => nav('/login')) }}>
+                  <LIco d={OUT_ICON} />{t('logout')}
+                </button>
+              )}
+            </div>
           </nav>
         </div>
       )}
@@ -262,6 +208,26 @@ const CSP_LAYOUT_CSS = `
 }
 .csp-logout { width: 30px; height: 30px; background: transparent; }
 .csp-logout:hover { color: var(--c-danger); background: color-mix(in srgb, var(--c-danger) 12%, transparent); }
+
+/* phones: a clean top bar — menu · brand ·········· bell · avatar */
+.csp-drawer-foot { display: none; }
+@media (max-width: 640px) {
+  .csp-hide-phone { display: none !important; }
+  .csp-topbar-inner { height: 58px; gap: 8px; padding: 0 12px; }
+  .csp-topbar-l { gap: 8px; }
+  .csp-topbar-r { gap: 6px; flex-shrink: 0; }
+  .csp-topbar-brand { gap: 8px; min-width: 0; }
+  .csp-topbar-brand-txt { min-width: 0; }
+  .csp-topbar-brand-name { white-space: nowrap; font-size: 14px; }
+  .csp-topbar-brand-sub { display: none; }
+  .csp-user { padding: 3px !important; }
+  .csp-drawer-foot { display: flex; flex-direction: column; gap: 6px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--c-border); }
+  .csp-drawer-act { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 12px; border-radius: 12px; font-size: 14px; font-weight: 600;
+    color: var(--c-text); background: color-mix(in srgb, var(--c-text-muted) 8%, transparent); text-align: start; }
+  .csp-drawer-lang { width: 19px; text-align: center; font-size: 12px; font-weight: 800; color: var(--c-primary); }
+  .csp-drawer-out { color: var(--c-danger); }
+}
+@media (max-width: 340px) { .csp-topbar-brand-name { font-size: 13px; } }
 
 /* mobile drawer */
 .csp-drawer-wrap { position: fixed; inset: 0; z-index: 60; }

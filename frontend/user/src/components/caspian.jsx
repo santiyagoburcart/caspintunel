@@ -9,7 +9,6 @@
  * this phase only ships the components themselves, not any page wiring.
  */
 import { useRef } from 'react'
-import { ADMIN_LINK } from '../lib/paths'
 import { useI18n } from '../lib/i18n'
 
 let idSeq = 0
@@ -33,7 +32,7 @@ export function CaspianBrand({ logo, size = 36 }) {
 
 /** Centered auth card shell for the Caspian theme (Register / Reset /
  *  VerifyEmail). Login has its own richer split-card layout. */
-export function CaspianAuthShell({ title, children, hideAdminLink = false }) {
+export function CaspianAuthShell({ title, children }) {
   const { lang, setLang, t } = useI18n()
   return (
     <div className="csp-authshell">
@@ -46,11 +45,6 @@ export function CaspianAuthShell({ title, children, hideAdminLink = false }) {
           </button>
         </div>
         {children}
-        {!hideAdminLink && ADMIN_LINK && (
-          <div className="csp-authshell-back">
-            <a href={ADMIN_LINK} className="csp-link">{t('foot_admin')}</a>
-          </div>
-        )}
       </div>
     </div>
   )

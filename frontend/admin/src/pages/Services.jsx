@@ -31,7 +31,7 @@ const ICONS = {
 const T = {
   fa: {
     h1: 'سرویس‌های فروخته‌شده', sub: 'مدیریت و همگام‌سازی سرویس‌های کاربران روی پنل‌ها',
-    create_btn: 'ایجاد سرویس دستی', sync_btn: 'همگام‌سازی', syncing: 'در حال ارسال…',
+    create_btn: 'ایجاد سرویس دستی', sync_btn: 'همگام‌سازی', syncing: 'در حال همگام‌سازی…', act_sync: 'همگام‌سازی همین سرویس',
     last_synced: 'آخرین همگام‌سازی', never: 'هرگز',
     all: 'همه', active: 'فعال', on_hold: 'در انتظار اتصال', disabled: 'غیرفعال',
     search_ph: 'جستجوی نام اکانت یا کاربر…',
@@ -39,6 +39,11 @@ const T = {
     col_status: 'وضعیت', col_usage: 'مصرف', col_expire: 'انقضا', col_online: 'اتصال', col_actions: 'عملیات',
     online: 'آنلاین', offline: 'آفلاین', unlimited: 'نامحدود', no_expiry: 'بدون انقضا', on_first_conn: 'با اولین اتصال',
     none_found: 'سرویسی یافت نشد', sync_dispatched: 'درخواست همگام‌سازی ارسال شد',
+    sync_res: '{c} سرویس بررسی شد · {u} به‌روزرسانی · {e} خطا', sync_rest: '{n} سرویس دیگر در پس‌زمینه ادامه دارد',
+    sync_one_ok: 'سرویس {n} از پاسارگارد به‌روز شد', sync_one_same: 'سرویس {n} با پاسارگارد یکی است', sync_one_err: 'همگام‌سازی {n} ناموفق بود: {e}',
+    res_title: 'نتیجهٔ همگام‌سازی', res_close: 'بستن', not_found: 'روی پاسارگارد پیدا نشد',
+    pc_expiry_extended: 'تمدید روی پاسارگارد', pc_usage_reset: 'ریست مصرف', pc_volume_added: 'افزایش حجم', pc_reactivated: 'فعال‌شدن دوباره',
+    f_status: 'وضعیت', f_expire_at: 'انقضا', f_data_limit: 'حجم', f_data_used: 'مصرف', f_expire_strategy: 'نوع انقضا', f_on_hold_duration: 'مدت On-Hold', f_device_limit: 'دستگاه', f_on_hold_timeout: 'مهلت اتصال',
     act_reset: 'ریست حجم', act_revoke: 'تغییر لینک ساب', act_delete: 'حذف سرویس', act_details: 'جزئیات / ویرایش',
     create_title: 'ایجاد سرویس دستی', create_sub: 'بدون پرداخت — مستقیماً روی پنل ساخته می‌شود',
     f_user: 'کاربر', f_user_ph: 'جستجوی نام کاربری، نام یا تلگرام…', f_user_none: 'کاربری یافت نشد',
@@ -63,7 +68,7 @@ const T = {
   },
   en: {
     h1: 'Sold services', sub: "Manage and sync users' services on the panels",
-    create_btn: 'Create manual service', sync_btn: 'Sync', syncing: 'Dispatching…',
+    create_btn: 'Create manual service', sync_btn: 'Sync', syncing: 'Syncing…', act_sync: 'Sync this service',
     last_synced: 'Last synced', never: 'Never',
     all: 'All', active: 'Active', on_hold: 'On-hold', disabled: 'Disabled',
     search_ph: 'Search by account name or user…',
@@ -71,6 +76,11 @@ const T = {
     col_status: 'Status', col_usage: 'Usage', col_expire: 'Expiry', col_online: 'Online', col_actions: 'Actions',
     online: 'Online', offline: 'Offline', unlimited: 'unlimited', no_expiry: 'No expiry', on_first_conn: 'on first connection',
     none_found: 'No services found', sync_dispatched: 'Sync request dispatched',
+    sync_res: '{c} services checked · {u} updated · {e} errors', sync_rest: '{n} more continue in the background',
+    sync_one_ok: '{n} updated from PasarGuard', sync_one_same: '{n} already matches PasarGuard', sync_one_err: 'Sync of {n} failed: {e}',
+    res_title: 'Sync result', res_close: 'Close', not_found: 'not found on PasarGuard',
+    pc_expiry_extended: 'renewed on PasarGuard', pc_usage_reset: 'usage reset', pc_volume_added: 'volume added', pc_reactivated: 'reactivated',
+    f_status: 'status', f_expire_at: 'expiry', f_data_limit: 'volume', f_data_used: 'usage', f_expire_strategy: 'expiry type', f_on_hold_duration: 'on-hold', f_device_limit: 'devices', f_on_hold_timeout: 'connect deadline',
     act_reset: 'Reset usage', act_revoke: 'Revoke subscription', act_delete: 'Delete service', act_details: 'Details / edit',
     create_title: 'Create a manual service', create_sub: 'No payment — provisioned directly on the panel',
     f_user: 'User', f_user_ph: 'Search username, name or Telegram…', f_user_none: 'No user found',
@@ -133,14 +143,26 @@ export default function Services() {
   }
   useEffect(load, [filter, search])
 
+  const num = (v) => (lang === 'fa' ? Number(v).toLocaleString('fa-IR') : String(v))
+  const fill = (tpl, o) => Object.entries(o).reduce((a, [k, v]) => a.replace(`{${k}}`, typeof v === 'number' ? num(v) : v), tpl)
+  const [result, setResult] = useState(null)
   const syncNow = async () => {
     setSyncing(true)
     try {
-      await api.post('/admin/services/sync-now/')
-      toast.success(s.sync_dispatched)
-      setTimeout(load, 1500)
+      const { data } = await api.post('/admin/services/sync-now/')
+      const msg = fill(s.sync_res, { c: data.checked, u: data.updated, e: data.errors })
+      ;(data.errors ? toast.error : toast.success)(msg)
+      setResult({ ...data, msg })
+      load()
     } catch (e) { toast.error(apiError(e)) } finally { setSyncing(false) }
   }
+  const syncOne = (row) => guarded(row, async () => {
+    const { data } = await api.post(`/admin/services/${row.id}/sync/`)
+    merge(row, data.service)
+    const r = (data.rows || [])[0]
+    if (data.errors) toast.error(fill(s.sync_one_err, { n: row.panel_username, e: r?.error === 'not_found' ? s.not_found : (r?.error || '') }))
+    else toast.success(fill(data.updated ? s.sync_one_ok : s.sync_one_same, { n: row.panel_username }))
+  })()
 
   const merge = (row, data) => { if (data && data !== true) setRows((cur) => cur.map((r) => (r.id === row.id ? { ...r, ...data } : r))) }
   // every action goes through the shared ConfirmDialog (lib/serviceActions)
@@ -207,13 +229,39 @@ export default function Services() {
 
       <Alert>{err}</Alert>
 
+      {result && (
+        <div className="card svc-result" role="status">
+          <div className="svc-result-head">
+            <b>{s.res_title}</b>
+            <span className="svc-result-msg">{result.msg}</span>
+            <button type="button" className="svc-icon-btn" onClick={() => setResult(null)} aria-label={s.res_close} title={s.res_close}>✕</button>
+          </div>
+          {result.skipped ? <div className="svc-hint">{fill(s.sync_rest, { n: result.skipped })}</div> : null}
+          {result.rows?.length ? (
+            <ul className="svc-result-rows">
+              {result.rows.map((r) => (
+                <li key={r.id}>
+                  <span dir="ltr" className="svc-mono">{r.panel_username}</span>
+                  {r.error
+                    ? <span className="svc-err">{r.error === 'not_found' ? s.not_found : r.error}</span>
+                    : <span className="svc-result-what">
+                        {(r.panel_change?.kinds || []).map((k) => <em key={k} className="svc-chg">{s['pc_' + k] || k}</em>)}
+                        <span>{r.changed.map((f) => s['f_' + f] || f).join('، ')}</span>
+                      </span>}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      )}
+
       {rows === null ? (
         <div className="grid place-items-center py-16"><Spinner /></div>
       ) : rows.length === 0 ? (
         <div className="card text-center text-muted">{s.none_found}</div>
       ) : (
         <div className="card p-0 svc-wrap">
-          <table className="svc-table">
+          <table className={'svc-table' + (new Set(rows.map((r) => r.panel_name)).size > 1 ? '' : ' svc-onepanel')}>
             <thead>
               <tr>
                 <th>{s.col_account}</th><th>{s.col_user}</th><th>{s.col_plan}</th><th>{s.col_panel}</th>
@@ -236,16 +284,19 @@ export default function Services() {
                   </td>
                   <td data-label={s.col_usage}>
                     <div className="svc-usage">
-                      <span className="svc-mono">{fmtData(r.data_used, r.data_limit, s, lang)}</span>
+                      <span className="svc-mono svc-num" dir="ltr">{fmtData(r.data_used, r.data_limit, s, lang)}</span>
                       {r.data_limit ? <div className="svc-usage-bar"><i style={{ width: `${dataPct(r.data_used, r.data_limit)}%` }} /></div> : null}
                     </div>
                   </td>
-                  <td data-label={s.col_expire} className="svc-mono svc-date">{expiry(r)}</td>
+                  <td data-label={s.col_expire} className="svc-mono svc-date"><span dir={r.expire_at && r.status !== 'on_hold' && r.expire_strategy !== 'never' ? 'ltr' : undefined}>{expiry(r)}</span></td>
                   <td data-label={s.col_online} className="svc-c">
                     <span className={'svc-conn ' + (r.is_online ? 'on' : 'off')}><i />{r.is_online ? s.online : s.offline}</span>
                   </td>
                   <td data-label={s.col_actions} className="svc-c">
                     <div className="svc-acts">
+                      <button type="button" className="svc-icon-btn" title={s.act_sync} aria-label={s.act_sync} disabled={busyId === r.id} onClick={() => syncOne(r)}>
+                        <Ico d={ICONS.sync} w={15} />
+                      </button>
                       <button type="button" className="svc-icon-btn" title={s.act_reset} disabled={busyId === r.id} onClick={() => resetUsage(r)}>
                         <Ico d={ICONS.reset} w={15} />
                       </button>
@@ -620,13 +671,45 @@ const CSS = `
   .svc-table td { white-space: nowrap; }
   .svc-ell { display: inline-block; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
 }
-.svc-table { width: 100%; min-width: 900px; border-collapse: collapse; font-size: 13px; }
+.svc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+@media (min-width: 901px) {
+  /* one row of cells per header: same padding, same alignment, no horizontal scroll */
+  .svc-table thead th, .svc-table td { padding: 10px 8px; }
+  .svc-table thead th:first-child, .svc-table td:first-child { padding-inline-start: 16px; }
+  .svc-table thead th:last-child, .svc-table td:last-child { padding-inline-end: 12px; }
+  .svc-table.svc-onepanel th:nth-child(4), .svc-table.svc-onepanel td:nth-child(4) { display: none; }
+  .svc-table .svc-ell { max-width: 150px; }
+  .svc-table .svc-icon-btn { padding: 5px; }
+  .svc-num { display: inline-block; text-align: start; }
+  .svc-table td:first-child { max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+  /* text columns wrap so the table always fits; numbers, dates and buttons stay on one line */
+  .svc-table td:nth-child(2), .svc-table td:nth-child(3), .svc-table td:nth-child(4), .svc-table td:nth-child(5) { white-space: normal; }
+  .svc-table td:nth-child(2) { max-width: 170px; overflow-wrap: anywhere; }
+  .svc-table td:nth-child(5) .svc-pill { white-space: normal; line-height: 1.35; }
+  .svc-table .svc-ell { white-space: normal; overflow-wrap: anywhere; display: inline; }
+  .svc-acts { flex-wrap: nowrap; }
+  .svc-table td:last-child { width: 1%; }
+}
+@media (min-width: 901px) and (max-width: 1180px) {
+  .svc-table .svc-ell { max-width: 110px; }
+  .svc-table .svc-sub { max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+  .svc-usage { min-width: 96px; }
+}
 .svc-table thead th { text-align: start; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .03em;
   color: var(--c-text-muted); padding: 12px 14px; white-space: nowrap; border-bottom: 1px solid var(--c-border); }
 .svc-table td { padding: 10px 14px; vertical-align: middle; border-bottom: 1px solid var(--c-border); }
 .svc-table tr:last-child td { border-bottom: 0; }
 .svc-table tr:hover td { background: color-mix(in srgb, var(--c-primary) 4%, transparent); }
-.svc-c { text-align: center; }
+.svc-table th.svc-c, .svc-table td.svc-c { text-align: center; }
+.svc-table th, .svc-table td { box-sizing: border-box; }
+.svc-result { display: flex; flex-direction: column; gap: 8px; }
+.svc-result-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.svc-result-head .svc-icon-btn { margin-inline-start: auto; }
+.svc-result-msg { font-size: 13px; color: var(--c-text-muted); }
+.svc-result-rows { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; max-height: 220px; overflow-y: auto; }
+.svc-result-rows li { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 8px; background: color-mix(in srgb, var(--c-text-muted) 6%, transparent); }
+.svc-result-what { display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; color: var(--c-text-muted); }
+.svc-chg { font-style: normal; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; color: var(--c-success); background: color-mix(in srgb, var(--c-success) 13%, transparent); }
 .svc-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
 .svc-user { display: block; font-weight: 600; }
 .svc-sub { display: block; font-size: 11px; color: var(--c-text-muted); margin-top: 1px; }

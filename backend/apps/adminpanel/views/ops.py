@@ -7,6 +7,7 @@ from rest_framework import mixins, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from apps.common.models import write_audit
 from apps.panel.exceptions import PanelError, PanelLinkNeedsConfirmation, PanelNameTaken, PanelNotFound
 from apps.panel.models import Panel, Service, ServiceStatus
 from apps.panel.services import (
@@ -49,7 +50,7 @@ class ServiceListViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
         "GET": ["monitoring.view"], "POST": ["services.manage"],
         "PATCH": ["services.manage"], "DELETE": ["services.delete"],
     }
-    action_perms = {"panel_users": ["services.manage"]}
+    action_perms = {"panel_users": ["services.manage"], "sync_now": ["services.manage"], "sync_one": ["services.manage"]}
     queryset = Service.objects.none()
     serializer_class = AdminServiceSerializer
 
@@ -228,10 +229,33 @@ class ServiceListViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
 
     @action(detail=False, methods=["post"], url_path="sync-now")
     def sync_now(self, request):
-        from apps.panel.tasks import sync_all_services
+        """Run the sync now and say what it did: {checked, updated, errors, skipped, rows}.
+        Whatever does not fit in the request time goes on in the background (`skipped`)."""
+        from apps.panel.services import sync_services, syncable_services
+        from apps.panel.tasks import sync_services_task
 
-        result = sync_all_services.delay()
-        return Response({"detail": "sync dispatched", "task_id": result.id}, status=202)
+        ids = list(syncable_services().order_by("id").values_list("id", flat=True))
+        res = sync_services(ids, budget_seconds=40)
+        rest = res.pop("skipped_ids", None)
+        if rest:
+            sync_services_task.delay(rest)
+        res["rows"] = res["rows"][:50]
+        res["last_synced_at"] = Service.objects.aggregate(m=Max("last_synced_at"))["m"]
+        write_audit(action="service.sync_all", staff=request.user,
+                    detail={k: res[k] for k in ("checked", "updated", "errors", "skipped")})
+        return Response(res)
+
+    @action(detail=True, methods=["post"], url_path="sync")
+    def sync_one(self, request, pk=None):
+        """Sync this one service from its panel now: {checked, updated, errors, rows, service}."""
+        from apps.panel.services import sync_services
+
+        service = self.get_object()
+        res = sync_services([service.id])
+        res.pop("skipped_ids", None)
+        service.refresh_from_db()
+        res["service"] = AdminServiceSerializer(service).data
+        return Response(res)
 
 
 class DashboardView(AdminAPIView):

@@ -3,18 +3,19 @@
 @tailwind utilities;
 
 :root {
-  --c-bg: #f5f7fa;
-  --c-surface: rgba(255, 255, 255, 0.7);
-  --c-primary: #6d48f0;
-  --c-secondary: #0ea5b7;
-  --c-success: #059669;
+  /* defaults = the Caspian palette, so the first paint already looks like the live site */
+  --c-bg: #F8FAFC;
+  --c-surface: #FFFFFF;
+  --c-primary: #1464BA;
+  --c-secondary: #4C90D6;
+  --c-success: #11AB53;
   /* switch colors — fixed across every theme/palette (not overridable by --c-*) */
   --toggle-on: #11AB53;
   --toggle-off: #3f4450;
-  --c-danger: #dc2626;
-  --c-warning: #d97706;
-  --c-text: #111827;
-  --c-text-muted: #6b7280;
+  --c-danger: #F43F5E;
+  --c-warning: #F59E0B;
+  --c-text: #0F172A;
+  --c-text-muted: #64748B;
   /* text-safe role colours (>=4.5:1 on page/cards): text in a role colour uses
      these, never the fill (fills stay --c-success etc.). Expired = neutral gray. */
   --c-success-fg: #06592C; --c-danger-fg: #A11818; --c-warning-fg: #733700;
@@ -45,16 +46,16 @@
   --csp-radius-card: 16px;
 }
 .dark {
-  --c-bg: #0b0e14;
-  --c-surface: rgba(255, 255, 255, 0.06);
-  --c-primary: #7c5cff;
-  --c-secondary: #22d3ee;
-  --c-success: #34d399;
+  --c-bg: #080B14;
+  --c-surface: #0D111F;
+  --c-primary: #1464BA;
+  --c-secondary: #4C90D6;
+  --c-success: #11AB53;
   --toggle-off: #2e323c;
-  --c-danger: #f87171;
-  --c-warning: #fbbf24;
-  --c-text: #e6e8ec;
-  --c-text-muted: #9aa3b2;
+  --c-danger: #EF4444;
+  --c-warning: #F59E0B;
+  --c-text: #E0E2EF;
+  --c-text-muted: #94A3B8;
   --c-success-fg: #5CE59A; --c-danger-fg: #FFA3A3; --c-warning-fg: #FCD34D;
   --c-primary-fg: #A3CBF7; --c-secondary-fg: #ADD0F7; --c-muted-fg: #C6CDD8;
   --c-border: rgba(255, 255, 255, 0.1);

@@ -39,7 +39,7 @@ export default function Register() {
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
 
   return (
-    <AuthShell title={t('register')} hideAdminLink>
+    <AuthShell title={t('register')}>
       <style>{`.reg-terms { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; color: var(--c-text-muted); cursor: pointer; line-height: 1.7; }
 .reg-terms input { margin-top: 4px; flex-shrink: 0; width: 18px; height: 18px; accent-color: var(--c-primary); cursor: pointer; }
 .reg-terms-link { color: var(--c-primary); font-weight: 700; }

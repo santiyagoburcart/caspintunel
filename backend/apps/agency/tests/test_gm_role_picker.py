@@ -68,3 +68,29 @@ def test_no_manager_response_mentions_inbounds(pg):
         _no_inbounds(r)
     acts = [x["action"] for x in mc.get(M + "activity/").json()["results"]]
     assert "agency.manager.role_changed" in acts
+
+
+def test_staff_card_shows_role_names_permissions_and_all_roles_flag(pg):
+    """v1.28 Agency → Group managers card: role names, the panel role's group-manager
+    permissions (from the Roles page) and "all roles" when staff restricted none."""
+    from apps.accounts.models import GM_PERMS, Permission
+
+    boss = staff_client(superadmin=True)
+    made = make_manager(boss, pg, roles=(6,))
+    row = boss.get("/api/v1/admin/agency/managers/").json()["results"][0]
+    assert row["id"] == made["id"] and row["created_at"]
+    a = row["assignments"][0]
+    assert a["all_roles"] is False and [r["name"] for r in a["roles"]] == ["operator pouya"]
+    assert row["panel_role"]["name"]
+    perms = {p["code"]: p["on"] for p in row["permissions"]}
+    assert set(perms) == set(GM_PERMS) and all(perms.values())          # the GM role gets all by default
+    # take one ability off the role → the card says so
+    from apps.agency.models import GroupManager
+
+    role = GroupManager.objects.get(pk=made["id"]).staff.role
+    role.permissions.remove(Permission.objects.get(code="agency.gm.accounting"))
+    row = boss.get("/api/v1/admin/agency/managers/").json()["results"][0]
+    assert {p["code"]: p["on"] for p in row["permissions"]}["agency.gm.accounting"] is False
+    GroupManagerAssignment.objects.update(allowed_role_ids=[])
+    row = boss.get("/api/v1/admin/agency/managers/").json()["results"][0]
+    assert row["assignments"][0]["all_roles"] is True

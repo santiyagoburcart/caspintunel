@@ -266,3 +266,13 @@ Staff (`agency.accounting`) see any group: `GET agency/ledger/groups/` and
 4. **Create** → the card shows the sign-in address (the panel login, `https://<domain>/panel/login` or
    your panel path), username and password once — copy and send them. The manager signs in there and
    sees only the group-manager menu.
+
+
+## Group managers page (v1.28)
+
+Agency → Group managers shows one card per manager: status, last sign-in, created (and by whom);
+**Groups**; **Roles allowed for new admins** (PasarGuard role names as chips per group — "All roles
+(except owner)" when staff picked none); **Permissions** (the nine `agency.gm.*` abilities of the
+manager's panel role, ticked / struck through, with a link to Roles & permissions); **Unapproved
+volume cap** (pending of cap, bar, pending requests). The edit form picks roles as chips (names
+only). The list API adds `panel_role`, `permissions[{code,en,fa,on}]` and `assignments[].all_roles`.

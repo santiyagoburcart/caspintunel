@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useI18n } from '../lib/i18n'
-import { useTheme } from '../theme/ThemeProvider'
 import { toman, tomanParts, gb as gbOf } from '../lib/format'
 import { Alert, Spinner } from '../components/ui'
 
@@ -27,123 +26,7 @@ function category(plan, lang) {
 }
 
 export default function Store() {
-  const { styleKey } = useTheme()
-  return styleKey === 'caspian' ? <CaspianStore /> : <LegacyStore />
-}
-
-/* ================= Legacy (Aurora / Frost) — unchanged ================= */
-function LegacyStore() {
-  const { t, lang } = useI18n()
-  const nav = useNavigate()
-  const [plans, setPlans] = useState(null)
-  const [mode, setMode] = useState('grouped')
-  const [selected, setSelected] = useState(null)
-  const [err, setErr] = useState('')
-
-  useEffect(() => {
-    api.get('/plans/').then((r) => setPlans(r.data.results || [])).catch(() => setPlans([]))
-    api.get('/config/').then((r) => {
-      if (r.data?.product_display_mode) setMode(r.data.product_display_mode)
-    }).catch(() => {})
-  }, [])
-
-  const groups = useMemo(() => {
-    if (!plans) return []
-    const byKey = new Map()
-    for (const p of plans) {
-      const { label, key } = category(p, lang)
-      if (!byKey.has(key)) byKey.set(key, { key, label: label || t('other_group'), plans: [] })
-      byKey.get(key).plans.push(p)
-    }
-    const list = [...byKey.values()]
-    list.sort((a, b) => (a.key === '' ? 1 : b.key === '' ? -1 : 0))
-    return list
-  }, [plans, lang, t])
-
-  const continueToCheckout = () => {
-    if (!selected) { setErr(t('choose_plan_first')); return }
-    nav(`/checkout?plan=${selected}`)
-  }
-
-  if (plans === null) return <div className="grid place-items-center py-16"><Spinner /></div>
-
-  return (
-    <div className="space-y-5">
-      <h1 className="text-lg font-bold">{t('store')}</h1>
-      {plans.length === 0 && <div className="card text-center text-muted">{t('no_plans')}</div>}
-      {mode === 'grouped' ? (
-        groups.map((g) => (
-          <section key={g.key || '_other'} className="space-y-3">
-            <div className="flex items-center gap-3">
-              <h2 className="text-base font-bold">{g.label}</h2>
-              <span className="h-px flex-1" style={{ background: 'var(--c-border)' }} />
-              <span className="text-xs text-muted">{g.plans.length}</span>
-            </div>
-            <LegacyGrid plans={g.plans} lang={lang} t={t} selected={selected} onSelect={setSelected} />
-          </section>
-        ))
-      ) : (
-        <LegacyGrid plans={plans} lang={lang} t={t} selected={selected} onSelect={setSelected} showBadge />
-      )}
-      {plans.length > 0 && (
-        <div className="space-y-2">
-          <Alert>{err}</Alert>
-          <button className="btn-primary w-full" disabled={!selected} onClick={continueToCheckout}>
-            {t('continue_checkout')}
-          </button>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function LegacyGrid({ plans, lang, t, selected, onSelect, showBadge }) {
-  return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {plans.map((p) => {
-        const { label: cat } = category(p, lang)
-        const isSel = selected === p.id
-        return (
-          <div key={p.id} role="radio" aria-checked={isSel} tabIndex={0}
-            className="card flex cursor-pointer flex-col gap-2 outline-none transition"
-            style={{
-              borderWidth: 2, borderStyle: 'solid',
-              borderColor: isSel ? 'var(--c-primary)' : 'var(--c-border)',
-              background: isSel ? 'color-mix(in srgb, var(--c-primary) 7%, var(--c-surface))' : undefined,
-            }}
-            onClick={() => onSelect(p.id)}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(p.id) } }}>
-            <div className="flex items-center justify-between gap-2">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white transition"
-                style={{ background: isSel ? 'var(--c-primary)' : 'transparent', border: `2px solid ${isSel ? 'var(--c-primary)' : 'var(--c-border)'}` }}
-                aria-hidden="true">{isSel ? '✓' : ''}</span>
-              {showBadge && cat && (
-                <span className="shrink-0 rounded-full px-2 py-0.5 text-xs"
-                  style={{ background: 'color-mix(in srgb, var(--c-primary) 14%, transparent)', color: 'var(--c-primary)' }}>{cat}</span>
-              )}
-            </div>
-            {!showBadge && cat && <div className="text-xs font-bold" style={{ color: 'var(--c-secondary)' }}>{cat}</div>}
-            <div className="font-bold" style={{ color: 'var(--c-ink)' }}>{(lang === 'fa' ? p.name_fa : p.name_en) || p.name_fa}</div>
-            <div className="whitespace-pre-line text-sm text-muted">{(lang === 'fa' ? p.desc_fa : p.desc_en) || p.desc_fa}</div>
-            <ul className="mt-1 space-y-1 text-sm">
-              <li>{t('volume')}: {p.type === 'custom_volume' ? t('selectable') : p.data_limit ? `${p.data_limit / GB} GB` : t('unlimited')}</li>
-              <li>{t('duration')}: {p.duration_days ? `${p.duration_days} ${t('days')}` : t('no_expiry')}</li>
-              {p.discount_percent > 0 && <li className="text-success">{t('discount')} {p.discount_percent}%</li>}
-            </ul>
-            <div className="mt-auto pt-2">
-              <span className="font-bold" style={{ color: 'var(--c-primary)' }}>
-                {p.type === 'custom_volume' ? `${toman(p.price_per_gb, lang)} / GB` : toman(p.final_price, lang)}
-              </span>
-              {isSel && (
-                <span className="ms-2 rounded-full px-2 py-0.5 text-xs"
-                  style={{ background: 'color-mix(in srgb, var(--c-success) 16%, transparent)', color: 'var(--c-success)' }}>{t('selected')}</span>
-              )}
-            </div>
-          </div>
-        )
-      })}
-    </div>
-  )
+  return <CaspianStore />
 }
 
 /* ================= Caspian — Stitch redesign port ================= */
