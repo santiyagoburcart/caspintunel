@@ -286,16 +286,16 @@ def test_cap_blocks_new_volume_until_approved(pg):
     assert mc.post(M + "admins/g1-a/add-volume/", {"gb": 30}, format="json").status_code == 200
 
 
-def test_password_and_inbounds_within_the_allowed_list(pg):
+def test_password_and_admin_role_within_the_allowed_list(pg):
     make_manager(staff_client(superadmin=True), pg)
     mc = manager_client()
     assert mc.post(M + "admins/g1-a/password/", {"password": "New-Pass#9912"}, format="json").status_code == 200
     assert ("g1-a", {"password": "New-Pass#9912"}) in pg["fake"].puts
-    r = mc.post(M + "admins/g1-a/inbounds/", {"role_id": 7}, format="json")
-    assert r.status_code == 200 and r.json()["role"]["inbounds"] == ["ali tunel"]
+    r = mc.post(M + "admins/g1-a/role/", {"role_id": 7}, format="json")
+    assert r.status_code == 200 and r.json()["role"] == {"id": 7, "name": "operator ali"}
     assert pg["fake"].admins["g1-a"]["role"]["id"] == 7
     acts = set(AuditLog.objects.filter(action__startswith="agency.manager.").values_list("action", flat=True))
-    assert {"agency.manager.password_changed", "agency.manager.inbounds_changed"} <= acts
+    assert {"agency.manager.password_changed", "agency.manager.role_changed"} <= acts
     assert "New-Pass#9912" not in json.dumps(list(AuditLog.objects.values_list("detail", flat=True)))
 
 
@@ -316,12 +316,12 @@ def test_every_forbidden_action_is_403(pg):
         ("delete", "admins/g1-a/", None),
         ("post", "admins/g1-a/delete/", {}),
         ("post", "admins/g1-a/role/", {"role_id": 1}),
-        ("post", "admins/g1-a/inbounds/", {"role_id": 1}),               # owner role
-        ("post", "admins/g1-a/inbounds/", {"role_id": 4}),               # not in the allowed list
+        ("post", "admins/g1-a/role/", {"role_id": 1}),               # owner role
+        ("post", "admins/g1-a/role/", {"role_id": 4}),               # not in the allowed list
         ("post", "admins/g1-sudo/password/", {"password": "Whatever-1"}),   # owner admin in the group
         ("post", "admins/g2-owner/add-volume/", {"gb": 10}),              # other group
         ("post", "admins/other/password/", {"password": "Whatever-1"}),   # admin in no group
-        ("post", "admins/g2-owner/inbounds/", {"role_id": 6}),
+        ("post", "admins/g2-owner/role/", {"role_id": 6}),
         ("get", "admins/g2-owner/statement/", None),
         ("get", f"groups/{pg['g2'].id}/statement/", None),
         ("get", f"accounting/?group={pg['g2'].id}", None),

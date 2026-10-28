@@ -170,6 +170,13 @@ shown everywhere a group appears: admins list chips and filter, admin detail, gr
 the staff page, approvals and activity (resolved live by group id, so renaming also relabels old rows),
 ledger group statements. Production: #2 "Vox" (owner VEX2), #3 "Mostafa" (owner Mostafa-ho).
 
+**Admin role picker (v1.27.1).** Managers choose **نقش ادمین (Role)**: the PasarGuard admin roles read
+live (`/api/admin-roles/simple` via `roles_catalog`, cached 60 s), shown by **name only**. Owner (sudo)
+roles never. If staff chose allowed roles for the group, only those; if none were chosen, every
+non-owner role (`managers.allowed_roles`). The manager UI and API never mention inbounds: roles are
+`{id, name}`, the action is `POST manager/admins/<u>/role/`, the audit row is `agency.manager.role_changed`
+(old activity rows are shown as such, without inbounds). Staff pages still show the inbounds per role.
+
 **Group-manager abilities as permissions (v1.27).** Each ability is its own permission on the Roles
 page, section *Agency – group manager* (Persian names): `agency.gm.view_admins` (group admins),
 `create_admin` (incl. profile title + support link, also editing them later), `add_volume`,
@@ -187,8 +194,7 @@ and shown in Activity. Users of an admin, read-only (`GET manager/admins/<u>/use
 `/api/users?admin=<u>`: username, status, used / limit, expiry, online / last seen; search, status,
 20 per page; rows of another admin are dropped). Support link + profile title on create and in the
 admin's Settings (`GET/POST manager/admins/<u>/profile/`, read from PasarGuard, audited with the
-change). Create-admin shows the allowed **roles** (inbounds as small info under each) — a group
-picker only when the manager has several groups. "Inbounds" is called **نقش ادمین (Role)** everywhere.
+change). Create-admin shows the allowed **roles** — a group picker only when the manager has several groups.
 Admin search on Group admins, Accounting and the group statement (shared with staff).
 
 **Admin passwords (v1.27).** PasarGuard refuses weak admin passwords, so staff and managers use one

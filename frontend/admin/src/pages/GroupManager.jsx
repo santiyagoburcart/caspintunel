@@ -15,7 +15,7 @@ import { GroupStatement as StaffGroupStatement } from './AgencyManagers'
 // Group-manager pages inside the main panel (v1.25). A group manager signs in at
 // /panel/ like any staff (role "Group manager") and sees only this menu
 // (components/adminNav.js → GM_GROUPS). Every rule (own groups only, increase only,
-// allowed inbounds, cap, approvals) is enforced by the server — apps/agency/managers.py
+// allowed admin roles, cap, approvals) is enforced by the server — apps/agency/managers.py
 // behind /api/v1/agency/manager/ — and every other admin API answers 403.
 // Moved here from the old <portal>/manager page; the group statement reuses the staff
 // Agency component (pages/AgencyManagers.jsx → GroupStatement).
@@ -32,12 +32,12 @@ const T = {
     login: 'ورود', logout: 'خروج', wrong: 'نام کاربری یا رمز عبور اشتباه است.', locked: 'به‌دلیل تلاش‌های ناموفق، ورود موقتاً بسته شده است.', error: 'خطا در ارتباط با سرور',
     net: 'ارتباط با سرور برقرار نشد — اینترنت را بررسی کنید.', expired: 'نشست شما تمام شده — دوباره وارد شوید.', welcome: 'خوش آمدید', bye: 'خارج شدید', reseller: 'ورود نمایندگان',
     t_admins: 'ادمین‌ها', t_acc: 'حسابداری', t_act: 'فعالیت', no_groups: 'هنوز گروهی به شما سپرده نشده است.',
-    limit: 'سقف', used: 'مصرف', remaining: 'باقی‌مانده', users: 'کاربران', active_u: 'فعال', unl: 'نامحدود', inbounds: 'نقش ادمین (Role)', balance: 'بدهی', pend: 'در انتظار تأیید',
+    limit: 'سقف', used: 'مصرف', remaining: 'باقی‌مانده', users: 'کاربران', active_u: 'فعال', unl: 'نامحدود', role_l: 'نقش ادمین (Role)', balance: 'بدهی', pend: 'در انتظار تأیید',
     st_active: 'فعال', st_panel_disabled: 'غیرفعال', st_pamp_limited: 'محدود‌شده', owner: 'مالک گروه', sudo: 'فقط پشتیبانی',
     add: 'افزودن حجم', pw: 'تغییر رمز', inb: 'تغییر نقش', new_admin: 'ادمین جدید', group_debt: 'بدهی کل گروه',
     cap: 'حجم تأییدنشدهٔ شما', cap_of: 'از سقف', cap_reached: 'به سقف حجم تأییدنشده رسیده‌اید — تا تأیید پشتیبانی، حجم تازه نمی‌توانید بدهید.', no_cap: 'بدون سقف',
     gb_in: 'حجم (گیگابایت)', add_note: 'فقط افزایش. بلافاصله روی پنل اعمال می‌شود و تا تأیید پشتیبانی «در انتظار» می‌ماند.', confirm_add: 'تأیید و اعمال', new_limit: 'سقف جدید',
-    cur: 'فعلی', pw_new: 'رمز جدید', gen: 'رمز تصادفی', save: 'ذخیره', cancel: 'انصراف', pick_inb: 'نقش ادمین (Role) را انتخاب کنید', inb_info: 'اینباندهای این نقش',
+    cur: 'فعلی', pw_new: 'رمز جدید', gen: 'رمز تصادفی', save: 'ذخیره', cancel: 'انصراف', pick_inb: 'نقش ادمین (Role) را انتخاب کنید', no_roles: 'نقشی برای این گروه در دسترس نیست — با پشتیبانی تماس بگیرید.',
     n_user: 'نام کاربری ادمین', n_gb: 'حجم اولیه (گیگابایت)', create: 'ساخت ادمین', created: 'ادمین ساخته شد', cred: 'اطلاعات ورود ادمین (فقط همین یک بار)', copy: 'کپی', copied: 'کپی شد', close: 'بستن',
     added: 'حجم اضافه شد — در انتظار تأیید', pw_done: 'رمز ادمین تغییر کرد', inb_done: 'نقش ادمین تغییر کرد', unl_no: 'این ادمین نامحدود است؛ فقط پشتیبانی آن را تغییر می‌دهد.',
     from: 'از تاریخ', to: 'تا تاریخ', apply: 'اعمال', clear: 'همهٔ زمان‌ها', csv: 'CSV', xlsx: 'Excel', print: 'چاپ', date_ph: '۱۴۰۵/۰۷/۰۱',
@@ -55,19 +55,19 @@ const T = {
     set_pw: 'تغییر رمز عبور من', set_pw_cur: 'رمز فعلی', set_pw_new: 'رمز جدید (حداقل ۸ نویسه)', set_pw_rep: 'تکرار رمز جدید', set_pw_mismatch: 'رمز جدید و تکرار آن یکی نیستند.',
     set_pw_done: 'رمز شما تغییر کرد — نشست‌های دیگر بسته شدند.', set_pw_note: 'بعد از تغییر، همهٔ نشست‌های دیگر شما (دستگاه‌های دیگر) بسته می‌شوند.',
     set_prefs: 'نمایش', set_lang: 'زبان', set_theme: 'پوسته', light: 'روشن', dark: 'تاریک', set_logout: 'خروج از حساب', note: 'توضیح',
-    acts: { admin_created: 'ساخت ادمین', volume_added: 'افزودن حجم', password_changed: 'تغییر رمز ادمین', inbounds_changed: 'تغییر نقش ادمین', login: 'ورود', approved: 'تأیید پشتیبانی', rejected: 'رد پشتیبانی', admin_enabled: 'فعال‌کردن ادمین', admin_disabled: 'غیرفعال‌کردن ادمین', profile_changed: 'تغییر تنظیمات ادمین' },
+    acts: { admin_created: 'ساخت ادمین', volume_added: 'افزودن حجم', password_changed: 'تغییر رمز ادمین', role_changed: 'تغییر نقش ادمین', login: 'ورود', approved: 'تأیید پشتیبانی', rejected: 'رد پشتیبانی', admin_enabled: 'فعال‌کردن ادمین', admin_disabled: 'غیرفعال‌کردن ادمین', profile_changed: 'تغییر تنظیمات ادمین' },
   },
   en: {
     title: 'My groups', sub: 'Sign in with the username and password support made for you', username: 'Username', password: 'Password',
     login: 'Sign in', logout: 'Sign out', wrong: 'Wrong username or password.', locked: 'Too many failed attempts — sign-in is paused for a few minutes.', error: 'Could not reach the server',
     net: 'Could not reach the server — check your connection.', expired: 'Your session ended — please sign in again.', welcome: 'Welcome', bye: 'Signed out', reseller: 'Reseller sign-in',
     t_admins: 'Admins', t_acc: 'Accounting', t_act: 'Activity', no_groups: 'No group is assigned to you yet.',
-    limit: 'Limit', used: 'Used', remaining: 'Remaining', users: 'Users', active_u: 'active', unl: 'Unlimited', inbounds: 'Admin role', balance: 'Owes', pend: 'Pending approval',
+    limit: 'Limit', used: 'Used', remaining: 'Remaining', users: 'Users', active_u: 'active', unl: 'Unlimited', role_l: 'Admin role', balance: 'Owes', pend: 'Pending approval',
     st_active: 'Active', st_panel_disabled: 'Disabled', st_pamp_limited: 'Limited', owner: 'Group owner', sudo: 'support only',
     add: 'Add volume', pw: 'Password', inb: 'Role', new_admin: 'New admin', group_debt: 'Group total debt',
     cap: 'Your unapproved volume', cap_of: 'of', cap_reached: 'You reached your unapproved-volume cap — new volume is blocked until support approves.', no_cap: 'no cap',
     gb_in: 'Volume (GB)', add_note: 'Increase only. Applied on the panel at once; pending until support approves.', confirm_add: 'Confirm and apply', new_limit: 'New limit',
-    cur: 'Current', pw_new: 'New password', gen: 'Random', save: 'Save', cancel: 'Cancel', pick_inb: 'Pick the admin role', inb_info: 'Inbounds of this role',
+    cur: 'Current', pw_new: 'New password', gen: 'Random', save: 'Save', cancel: 'Cancel', pick_inb: 'Pick the admin role', no_roles: 'No admin role is available for this group — contact support.',
     n_user: 'Admin username', n_gb: 'Initial volume (GB)', create: 'Create admin', created: 'Admin created', cred: 'Admin sign-in (shown only once)', copy: 'Copy', copied: 'Copied', close: 'Close',
     added: 'Volume added — pending approval', pw_done: 'Admin password changed', inb_done: 'Admin role changed', unl_no: 'This admin is unlimited; only support can change it.',
     from: 'From', to: 'To', apply: 'Apply', clear: 'All time', csv: 'CSV', xlsx: 'Excel', print: 'Print', date_ph: '1405/07/01',
@@ -85,7 +85,7 @@ const T = {
     set_pw: 'Change my password', set_pw_cur: 'Current password', set_pw_new: 'New password (8+ characters)', set_pw_rep: 'Repeat the new password', set_pw_mismatch: 'The new password and its repeat differ.',
     set_pw_done: 'Your password changed — other sessions were signed out.', set_pw_note: 'After the change, all your other sessions (other devices) are signed out.',
     set_prefs: 'Display', set_lang: 'Language', set_theme: 'Theme', light: 'Light', dark: 'Dark', set_logout: 'Log out', note: 'Note',
-    acts: { admin_created: 'Admin created', volume_added: 'Volume added', password_changed: 'Admin password changed', inbounds_changed: 'Admin role changed', login: 'Signed in', approved: 'Approved by support', rejected: 'Rejected by support', admin_enabled: 'Admin enabled', admin_disabled: 'Admin disabled', profile_changed: 'Admin settings changed' },
+    acts: { admin_created: 'Admin created', volume_added: 'Volume added', password_changed: 'Admin password changed', role_changed: 'Admin role changed', login: 'Signed in', approved: 'Approved by support', rejected: 'Rejected by support', admin_enabled: 'Admin enabled', admin_disabled: 'Admin disabled', profile_changed: 'Admin settings changed' },
   },
 }
 const GIB = 1024 ** 3
@@ -96,7 +96,6 @@ const money = (v, lang) => (Number(v) < 0 ? '−' : '') + toman(Math.abs(Number(
 const errText = (e, s) => (!e?.response ? s.net : (s === T.fa && e.response.data?.detail_fa) || e.response.data?.detail || s.error)
 const faDigits = (v) => String(v).replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))
 const roleLabel = (r) => (r ? r.name || `#${r.id}` : '—')
-const roleInb = (r) => (r ? (r.all_inbounds ? '*' : (r.inbounds || []).join(' · ') || '—') : '')
 const pwCheck = (pw, username, s) => (passwordProblem(pw, username) ? PW_RULE[s === T.fa ? 'fa' : 'en'] : '')
 
 const genPw = () => genAdminPassword()
@@ -259,23 +258,24 @@ function Password({ a, s, onClose }) {
 function RolePick({ roles, value, onChange, s }) {
   return (
     <div className="am-roles" role="radiogroup" aria-label={s.pick_inb}>
+      {roles.length === 0 && <p className="am-hint">{s.no_roles}</p>}
       {roles.map((r) => (
         <label key={r.id} className="am-rolei" data-on={value === r.id || undefined}>
           <input type="radio" name="role" checked={value === r.id} onChange={() => onChange(r.id)} />
-          <span><b>{roleLabel(r)}</b><small>{s.inb_info}: {roleInb(r)}</small></span>
+          <span><b>{roleLabel(r)}</b></span>
         </label>
       ))}
     </div>
   )
 }
 
-function Inbounds({ a, roles, s, onClose, reload }) {
+function RoleChange({ a, roles, s, onClose, reload }) {
   const [rid, setRid] = useState(a.role?.id ?? null)
   const { busy, err, run } = useAction(s, () => { reload(); onClose() })
   return (
     <Modal title={`${s.inb} — ${a.username}`} onClose={onClose}>
-      <form className="am-form" onSubmit={(e) => { e.preventDefault(); run(() => http.post(`/admins/${encodeURIComponent(a.username)}/inbounds/`, { role_id: rid }), s.inb_done) }}>
-        <p className="am-hint">{s.cur}: <b>{roleLabel(a.role)}</b> <small>({roleInb(a.role)})</small></p>
+      <form className="am-form" onSubmit={(e) => { e.preventDefault(); run(() => http.post(`/admins/${encodeURIComponent(a.username)}/role/`, { role_id: rid }), s.inb_done) }}>
+        <p className="am-hint">{s.cur}: <b>{roleLabel(a.role)}</b></p>
         <RolePick roles={roles} value={rid} onChange={setRid} s={s} />
         {err && <div className="ap-alert">{err}</div>}
         <div className="am-row"><button type="button" className="ap-link" onClick={onClose}>{s.cancel}</button><button className="ap-btn am-btn" disabled={busy || rid == null || rid === a.role?.id}>{s.save}</button></div>
@@ -311,7 +311,7 @@ function NewAdminForm({ groups, g0, s, cap, onClose, reload }) {
       <label>{s.n_user}<input className="ap-input" dir="ltr" autoComplete="off" required minLength={3} maxLength={32} value={v.username} onChange={(e) => setV({ ...v, username: e.target.value })} autoFocus /></label>
       <label>{s.password}<span className="am-pw"><input className="ap-input" dir="ltr" autoComplete="new-password" required value={v.password} onChange={(e) => setV({ ...v, password: e.target.value })} />
         <button type="button" className="ap-link" onClick={() => setV({ ...v, password: genPw() })}><Ic n="reset" />{s.gen}</button></span></label>
-      {g && <><span className="am-l">{s.inbounds}</span>
+      {g && <><span className="am-l">{s.role_l}</span>
         <RolePick roles={g.roles} value={v.role_id} onChange={(id) => setV({ ...v, role_id: id })} s={s} /></>}
       <label>{s.n_gb}<input className="ap-input" dir="ltr" inputMode="decimal" required value={v.gb} onChange={(e) => setV({ ...v, gb: e.target.value.replace(/[^\d.۰-۹]/g, '') })} /></label>
       <label>{s.support_url}<input className="ap-input" dir="ltr" type="url" placeholder="https://t.me/…" value={v.support_url} onChange={(e) => setV({ ...v, support_url: e.target.value })} /></label>
@@ -473,7 +473,7 @@ function Admins({ me, s, lang, reload, can }) {
       ))}
       {dlg?.k === 'add' && <AddVolume a={dlg.a} s={s} cap={cap} onClose={close} reload={reload} />}
       {dlg?.k === 'pw' && <Password a={dlg.a} s={s} onClose={close} />}
-      {dlg?.k === 'inb' && <Inbounds a={dlg.a} roles={dlg.g.roles} s={s} onClose={close} reload={reload} />}
+      {dlg?.k === 'inb' && <RoleChange a={dlg.a} roles={dlg.g.roles} s={s} onClose={close} reload={reload} />}
       {dlg?.k === 'new' && <NewAdmin g={dlg.g} s={s} cap={cap} onClose={close} reload={reload} />}
       {dlg?.k === 'users' && <AdminUsers a={dlg.a} s={s} lang={lang} onClose={close} />}
       {dlg?.k === 'settings' && <AdminSettings a={dlg.a} s={s} onClose={close} />}
@@ -503,7 +503,7 @@ function AdminCard({ a, s, lang, can, writable, capReached, onAct }) {
         <div><dt>{s.remaining}</dt><dd><N>{unl ? s.unl : (a.remaining_fmt === 'Unlimited' ? s.unl : a.remaining_fmt)}</N></dd></div>
         <div><dt>{s.users}</dt><dd><N>{a.user_count}</N> <small>/ <N>{a.active_user_count}</N> {s.active_u}</small></dd></div>
         <div><dt>{s.balance}</dt><dd><span className="am-bal" data-sign={Number(a.balance) > 0 ? 'owes' : 'zero'}><N>{money(a.balance, lang)}</N></span></dd></div>
-        <div><dt>{s.inbounds}</dt><dd className="am-inb">{roleLabel(a.role)}{a.role && <small className="am-inb-s">{roleInb(a.role)}</small>}</dd></div>
+        <div><dt>{s.role_l}</dt><dd className="am-role">{roleLabel(a.role)}</dd></div>
       </dl>
       {Number(a.pending?.gb) > 0 && <p className="am-pend"><Ic n="clock" size={13} />{s.pend}: <N>{gbText(a.pending.gb)}</N></p>}
       {locked ? <p className="am-hint">{s.sudo}</p> : (
@@ -671,7 +671,7 @@ function SettingsTab({ me, s }) {
           <div className="am-set-wide"><dt>{s.set_groups}</dt><dd>
             {me.groups.length === 0 ? s.no_groups : (
               <ul className="am-set-groups">{me.groups.map((g) => (
-                <li key={g.id}><b><bdi>{g.name}</bdi></b><span className="am-set-roles">{g.roles.length ? g.roles.map((r) => <span key={r.id}><b>{roleLabel(r)}</b><small>{roleInb(r)}</small></span>) : '—'}</span></li>
+                <li key={g.id}><b><bdi>{g.name}</bdi></b><span className="am-set-roles">{g.roles.length ? g.roles.map((r) => <span key={r.id}><b>{roleLabel(r)}</b></span>) : '—'}</span></li>
               ))}</ul>
             )}
           </dd></div>
@@ -716,7 +716,7 @@ function Activity({ s, lang }) {
             <b>{s.acts[k] || k}</b>
             {a.admin && <bdi>{a.admin}</bdi>}
             {det.gb && <N>+{gbText(det.gb)}</N>}
-            {det.inbounds && <span>{det.inbounds.join(' · ')}</span>}
+            {det.new_role && <span>{det.new_role}</span>}
             <span className="am-act-t"><bdi>{a.group}</bdi> · {jalali(a.at, true, lang)}</span>
           </li>
         )
@@ -727,7 +727,6 @@ function Activity({ s, lang }) {
 
 const CSS = `
 .am-search { width: 100%; max-width: 420px; }
-.am-inb-s { display: block; font-size: 11.5px; font-weight: 500; color: var(--c-muted-fg); margin-top: 2px; overflow-wrap: anywhere; }
 .am-danger { color: var(--c-danger) !important; }
 .ap-btn[data-tone="danger"] { background: var(--c-danger); }
 .am-confirm { font-size: 14px; line-height: 1.8; color: var(--c-text); }
@@ -801,7 +800,7 @@ const CSS = `
 .am-nums dd { font-size: 14.5px; font-weight: 800; margin-top: 2px; overflow-wrap: anywhere; }
 .am-nums dd small { font-weight: 600; color: var(--c-muted-fg); }
 .am-sum { grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)); }
-.am-inb { font-size: 12.5px !important; }
+.am-role { font-size: 12.5px !important; overflow-wrap: anywhere; }
 .am-bal { font-weight: 800; }
 .am-bal[data-sign="owes"] { color: var(--c-danger-fg); } .am-bal[data-sign="credit"] { color: var(--c-success-fg); } .am-bal[data-sign="zero"] { color: var(--c-muted-fg); }
 .am-pend { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 700; color: var(--c-warning-fg); }

@@ -23,7 +23,7 @@ def _calls(pg):
         "agency.gm.add_volume": [("post", "admins/g1-a/add-volume/", {"gb": 5})],
         "agency.gm.toggle_admin": [("post", "admins/g1-a/disable/", {})],
         "agency.gm.admin_password": [("post", "admins/g1-a/password/", {"password": GOOD})],
-        "agency.gm.admin_role": [("post", "admins/g1-a/inbounds/", {"role_id": 7})],
+        "agency.gm.admin_role": [("post", "admins/g1-a/role/", {"role_id": 7})],
         "agency.gm.view_users": [("get", "admins/g1-a/users/", None)],
         "agency.gm.accounting": [("get", "accounting/", None), ("get", "admins/g1-a/statement/", None),
                                  ("get", f"groups/{gid}/statement/", None)],

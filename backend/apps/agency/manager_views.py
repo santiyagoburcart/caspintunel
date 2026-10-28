@@ -4,11 +4,11 @@ calls this API with its normal staff JWT; only a staff linked to an active Group
 passes (IsGroupManagerStaff). Everything is scoped to the manager's own groups; anything
 else answers 403. Every other /api/v1/admin/ endpoint refuses such a staff (StaffPermission).
 
-GET  me/                             manager, groups (admins + allowed inbounds), cap, pending
+GET  me/                             manager, groups (admins + allowed admin roles, names only), cap, pending
 POST admins/ {group_id, username, password, role_id, initial_gb}       create (live at once, pending approval)
 POST admins/<u>/add-volume/ {gb}     increase only (live at once, pending approval)
 POST admins/<u>/password/ {password}
-POST admins/<u>/inbounds/ {role_id}  allowed list only
+POST admins/<u>/role/ {role_id}      allowed admin roles only
 GET  admins/<u>/statement/?from=&to=&export=csv|xlsx
 GET  accounting/?group=&from=&to=&export=csv|xlsx
 GET  groups/<id>/statement/?from=&to=&export=csv|xlsx
@@ -111,7 +111,7 @@ def _admin_row(a: PanelAdmin, cat) -> dict:
     row = api.admin_row(a)
     row.pop("groups", None)
     role = (a.raw_data or {}).get("role") or {}
-    row["role"] = M._role_view(role["id"], cat) if role.get("id") else None
+    row["role"] = M.mgr_role(role.get("id"), cat)            # v1.27.1: name only
     row["admin_limit_bytes"] = a.admin_limit_bytes if a.has_data_limit else 0
     row["is_sudo"] = a.is_sudo
     return row
@@ -141,8 +141,7 @@ class ManagerMeView(_Mgr):
                               "member_role": "owner" if u == g.owner_username else "member"})
                     rows.append(r)
             groups.append({"id": g.id, "name": M.group_title(g), "owner": g.owner_username, "admins": rows,
-                           "roles": [M._role_view(r, cat) for r in asg.allowed_role_ids
-                                     if not M._role_view(r, cat)["is_owner"]],
+                           "roles": M.allowed_roles(asg, cat),
                            "total_debt": sum((bal.get(u, 0) for u in g.get_all_usernames()), 0)
                            if self.request.user.has_perm("agency.gm.accounting") else None})
         staff = self.request.user
@@ -169,7 +168,7 @@ class ManagerAdminCreateView(_Mgr):
 
 
 class ManagerAdminActionView(_Mgr):
-    ACTIONS = {"add-volume", "password", "inbounds", "enable", "disable", "profile", "users"}
+    ACTIONS = {"add-volume", "password", "role", "enable", "disable", "profile", "users"}
 
     def get(self, request, username, action):
         q = request.query_params
@@ -196,9 +195,9 @@ class ManagerAdminActionView(_Mgr):
         if action == "password":
             self.need("agency.gm.admin_password")
             return Response(M.change_password(self.m, username, d.get("password")))
-        if action == "inbounds":
+        if action == "role":
             self.need("agency.gm.admin_role")
-            return Response(M.change_inbounds(self.m, username, d.get("role_id")))
+            return Response(M.change_role(self.m, username, d.get("role_id")))
         raise M.forbidden()
 
 
@@ -254,7 +253,12 @@ class ManagerActivityView(_Mgr):
         self.need("agency.gm.activity")
         gid = request.query_params.get("group")
         ids = [M.assignment_for_group(self.m, gid).group_id] if gid else [a.group_id for a in M.assignments(self.m)]
-        return Response({"results": M.activity(ids)})
+        # v1.27.1: the manager API never talks about inbounds (old rows carried them)
+        rows = M.activity(ids)
+        for r in rows:
+            r["action"] = r["action"].replace("inbounds_changed", "role_changed")
+            r["detail"] = {k: v for k, v in (r.get("detail") or {}).items() if k != "inbounds"}
+        return Response({"results": rows})
 
 
 class ManagerForbiddenView(_Mgr):

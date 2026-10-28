@@ -129,13 +129,31 @@ def roles_catalog(fresh: bool = False) -> dict[int, dict]:
         raise ManagerError(str(exc), "panel_error") from exc
     cat = {int(r["id"]): {"id": int(r["id"]), "name": r["name"], "is_owner": r["is_owner"],
                           "inbounds": r["groups"], "all_inbounds": r["all_groups"]} for r in opts["roles"]}
-    cache.set(ROLES_CACHE, cat, 300)
+    cache.set(ROLES_CACHE, cat, 60)          # v1.27.1: a role added on PasarGuard shows within a minute
     return cat
 
 
 def _role_view(rid: int, cat: dict | None) -> dict:
     r = (cat or {}).get(int(rid))
     return r or {"id": int(rid), "name": f"#{rid}", "is_owner": False, "inbounds": [], "all_inbounds": False}
+
+
+def mgr_role(rid, cat: dict | None) -> dict | None:
+    """What the MANAGER API shows of a role (v1.27.1): id + name, nothing else."""
+    if rid in (None, ""):
+        return None
+    r = _role_view(rid, cat)
+    return {"id": r["id"], "name": r["name"]}
+
+
+def allowed_roles(a, cat: dict | None) -> list[dict]:
+    """The PasarGuard admin roles a manager may give in this group (v1.27.1): the ones staff
+    allowed for the group, or — none chosen — every role on PasarGuard; owner roles never."""
+    if cat is None:
+        return []
+    ids = [int(x) for x in (a.allowed_role_ids or [])]
+    pool = [cat[i] for i in ids if i in cat] if ids else sorted(cat.values(), key=lambda r: r["id"])
+    return [{"id": r["id"], "name": r["name"]} for r in pool if not r["is_owner"]]
 
 
 def _safe_catalog() -> dict | None:
@@ -368,8 +386,7 @@ def warnings(m: GroupManager, rows: list | None = None) -> list[str]:
     out = []
     if not rows:
         out.append("no_group")
-    elif any(not (r["role_ids"] if isinstance(r, dict) else r.allowed_role_ids) for r in rows):
-        out.append("no_role")
+    # v1.27.1: a group with no role chosen allows every non-owner role — not a problem any more
     if not m.staff_id:
         out.append("no_login")
     return out
@@ -509,12 +526,9 @@ def _check_role(a: GroupManagerAssignment, role_id) -> int:
     try:
         rid = int(role_id)
     except (TypeError, ValueError):
-        raise ManagerError("pick the inbounds", "invalid", "role_id")
-    if rid not in [int(x) for x in a.allowed_role_ids]:
-        raise forbidden("these inbounds are not allowed for this group")
-    cat = roles_catalog()
-    if rid not in cat or cat[rid]["is_owner"]:
-        raise forbidden("these inbounds are not allowed for this group")
+        raise ManagerError("pick an admin role", "invalid", "role_id")
+    if rid not in [r["id"] for r in allowed_roles(a, roles_catalog())]:
+        raise forbidden("this admin role is not allowed for this group")
     return rid
 
 
@@ -653,7 +667,7 @@ def change_password(m: GroupManager, username: str, password) -> dict:
     return {"ok": True, "message": f"Password of {username} changed"}
 
 
-def change_inbounds(m: GroupManager, username: str, role_id) -> dict:
+def change_role(m: GroupManager, username: str, role_id) -> dict:
     from . import admin_crud
 
     _gate()
@@ -671,9 +685,9 @@ def change_inbounds(m: GroupManager, username: str, role_id) -> dict:
         pa.raw_data = raw
         pa.save(update_fields=["raw_data"])
     cat = _safe_catalog()
-    _audit(m, "inbounds_changed", a, admin=username, old_role_id=old, new_role_id=rid,
-           inbounds=_role_view(rid, cat)["inbounds"])
-    return {"ok": True, "role": _role_view(rid, cat), "message": f"Inbounds of {username} changed"}
+    _audit(m, "role_changed", a, admin=username, old_role_id=old, new_role_id=rid,
+           old_role=(mgr_role(old, cat) or {}).get("name"), new_role=mgr_role(rid, cat)["name"])
+    return {"ok": True, "role": mgr_role(rid, cat), "message": f"Admin role of {username} changed"}
 
 
 PROFILE_KEYS = ("support_url", "profile_title")
@@ -686,7 +700,7 @@ def admin_profile(m: GroupManager, username: str) -> dict:
     role = live.get("role") or {}
     return {"username": username, "status": "disabled" if live.get("is_disabled") else live.get("status", "active"),
             "support_url": live.get("support_url") or "", "profile_title": live.get("profile_title") or "",
-            "role": _role_view(role["id"], _safe_catalog()) if role.get("id") else None}
+            "role": mgr_role(role.get("id"), _safe_catalog())}
 
 
 def update_admin_profile(m: GroupManager, username: str, data: dict) -> dict:
