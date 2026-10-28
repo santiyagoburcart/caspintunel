@@ -86,7 +86,7 @@ class AgencyAdminListView(AdminAPIView):
         if p.get("group"):
             rows = [r for r in rows if any(str(g["id"]) == p["group"] for g in r["groups"])]
         return Response({"count": len(rows), "results": rows, "groups": [
-            {"id": g.id, "owner": g.owner_username} for g in groups]})
+            {"id": g.id, "owner": g.owner_username, "name": g.name or g.owner_username} for g in groups]})
 
 
 class AgencyAdminDetailView(AdminAPIView):

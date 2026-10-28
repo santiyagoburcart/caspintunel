@@ -177,3 +177,26 @@ def test_seed_gives_persian_labels(boss):
     Role.objects.filter(pk=gm.pk).update(name_fa="سرگروه")
     call_command("seed")
     assert Role.objects.get(pk=gm.pk).name_fa == "سرگروه"
+
+
+def test_group_names_show_everywhere(boss, groups):
+    from apps.agency.models import PanelAdmin
+
+    from apps.settings_app.utils import set_setting
+
+    set_setting("agency_sync_enabled", True, "bool")          # group writes open after the cut-over
+    vox, _ = groups
+    for u in ("VEX2", "Iman", "Iman2"):
+        PanelAdmin.objects.get_or_create(username=u)
+    sid = _create(boss, group_manager={"assignments": [{"group_id": vox.id, "role_ids": [6]}]}).json()["id"]
+    r = boss.put(f"/api/v1/admin/agency/groups/{vox.id}/", {"name": "Vox", "owner": "VEX2",
+                                                         "members": ["Iman", "Iman2"], "note": ""}, format="json")
+    assert r.status_code == 200, r.content
+    d = boss.get("/api/v1/admin/agency/admins/").json()
+    assert {"id": vox.id, "owner": "VEX2", "name": "Vox"} in d["groups"]
+    iman = next(x for x in d["results"] if x["username"] == "Iman")
+    assert [g["name"] for g in iman["groups"]] == ["Vox"]
+    assert boss.get(f"/api/v1/admin/staff/{sid}/").json()["group_manager"]["assignments"][0]["group"] == "Vox"
+    m = GroupManager.objects.get(staff_id=sid)
+    row = next(x for x in boss.get("/api/v1/admin/agency/managers/").json()["results"] if x["id"] == m.id)
+    assert row["assignments"][0]["group"] == "Vox"

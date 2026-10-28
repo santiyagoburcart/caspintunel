@@ -54,7 +54,7 @@ def test_admin_list_and_detail_carry_enrich_values_unchanged(data):
     e = _enrich(data)
     assert rows["ali"]["sold_limit_fmt"] == e["sold_limit_fmt"] and rows["ali"]["hidden_fmt"] == e["hidden_traffic_fmt"]
     assert rows["ali"]["total_sold_fmt"] == data.total_user_limit_fmt and rows["ali"]["usage_percent"] == data.usage_percent
-    assert rows["bea"]["groups"] == [{"id": AdminGroup.objects.get().id, "owner": "ali"}]
+    assert rows["bea"]["groups"] == [{"id": AdminGroup.objects.get().id, "owner": "ali", "name": "ali"}]
     assert rows["cyrus"]["status_code"] == "panel_disabled"
     d = c.get("/api/v1/admin/agency/admins/ali/").json()
     assert d["deleted_used_fmt"] == e["deleted_used_fmt"] and d["snapshots"]["count"] == 1

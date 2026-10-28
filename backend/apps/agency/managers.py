@@ -668,7 +668,8 @@ def request_row(r: VolumeRequest) -> dict:
     else:
         q = ledger.quote_quota_charge(r.admin_username, r.old_limit_bytes, r.new_limit_bytes, day=_day(r))
         price, amount = (q["price_per_gb"], q["amount"]) if q else (None, D0)
-    return {"id": r.id, "status": r.status, "kind": r.kind, "group_id": r.group_id, "group": r.group_name,
+    return {"id": r.id, "status": r.status, "kind": r.kind, "group_id": r.group_id,
+            "group": group_title(r.group) if r.group_id else r.group_name,   # current name (v1.25.3)
             "manager": r.manager_username, "admin": r.admin_username, "gb": r.gb, "date": _day(r),
             "old_limit_bytes": r.old_limit_bytes, "new_limit_bytes": r.new_limit_bytes,
             "price_per_gb": price, "amount": amount, "created_at": r.created_at, "decided_at": r.decided_at,
@@ -928,6 +929,8 @@ def activity(group_ids: list[int], limit: int = 100) -> list[dict]:
         return []
     qs = (AuditLog.objects.filter(q).filter(Q(action__startswith="agency.manager.") | Q(action__startswith="agency.approval."))
           .order_by("-created_at", "-id")[:limit])
+    titles = {g.id: group_title(g) for g in AdminGroup.objects.filter(pk__in=group_ids)}
     return [{"id": l.id, "at": l.created_at, "action": l.action, "by": l.staff_label,
-             "admin": (l.detail or {}).get("admin"), "group": (l.detail or {}).get("group"),
+             "admin": (l.detail or {}).get("admin"),
+             "group": titles.get((l.detail or {}).get("group_id")) or (l.detail or {}).get("group"),
              "detail": {k: v for k, v in (l.detail or {}).items() if k not in ("ip",)}} for l in qs]

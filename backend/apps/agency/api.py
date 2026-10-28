@@ -9,7 +9,8 @@ from .models import AdminGroup, PanelAdmin, SyncLog, UserTrafficSnapshot
 
 def groups_of(username: str, groups=None) -> list[dict]:
     groups = groups if groups is not None else list(AdminGroup.objects.all())
-    return [{"id": g.id, "owner": g.owner_username} for g in groups if username in g.get_all_usernames()]
+    return [{"id": g.id, "owner": g.owner_username, "name": g.name or g.owner_username}
+            for g in groups if username in g.get_all_usernames()]
 
 
 def volume_bytes(a: PanelAdmin, e: dict) -> dict:

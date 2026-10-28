@@ -283,7 +283,7 @@ export function AgencyAdmins() {
           {d?.groups?.length > 0 && (
             <select className="input ag-group" value={grp} onChange={(e) => setGrp(e.target.value)} aria-label={s.group}>
               <option value="">{s.any_group}</option>
-              {d.groups.map((g) => <option key={g.id} value={g.id}>{g.owner}</option>)}
+              {d.groups.map((g) => <option key={g.id} value={g.id}>{g.name || g.owner}</option>)}
             </select>
           )}
         </div>
@@ -305,7 +305,7 @@ export function AgencyAdmins() {
                   <tr key={r.username}>
                     <td className="ag-t-name" data-label={s.admins}>
                       <Link to={`/agency/admins/${encodeURIComponent(r.username)}`} className="ag-t-nm" title={r.username}>{r.username}</Link>
-                      {r.groups.length > 0 && <span className="ag-t-grp" title={r.groups.map((g) => g.owner).join('، ')}>{r.groups.map((g) => g.owner).join('، ')}</span>}
+                      {r.groups.length > 0 && <span className="ag-t-grp" title={r.groups.map((g) => g.name || g.owner).join('، ')}>{r.groups.map((g) => g.name || g.owner).join('، ')}</span>}
                     </td>
                     <td className="ag-t-st" data-label={s.status}><StatusPill code={r.status_code} s={s} /></td>
                     <td className="ag-t-usage" data-label={s.usage}>
@@ -410,7 +410,7 @@ export function AgencyAdminDetail() {
 
       {tab === 'overview' && <>
       <div className="card ag-card">
-        {d.groups.length > 0 && <div className="ag-detail-h">{d.groups.map((g) => <span key={g.id} className="ag-t-grp">{g.owner}</span>)}</div>}
+        {d.groups.length > 0 && <div className="ag-detail-h">{d.groups.map((g) => <span key={g.id} className="ag-t-grp">{g.name || g.owner}</span>)}</div>}
         {!d.is_unlimited && <div className="ag-detail-bar"><UsageBar pct={d.usage_percent} /><B>{d.usage_percent}%</B></div>}
         {p.show_warning && <Alert kind="warning">{s.warn80.replace('{p}', p.warning_pct)}</Alert>}
         {p.is_blocked && <Alert>{p.block_reason === 'disabled' ? s.blocked_panel : s.blocked_pamp}</Alert>}

@@ -165,6 +165,11 @@ Agency → *New group manager* with the username of an existing staff that has t
 (it keeps its own password) instead of refusing. Migration `agency.0008` linked the staff accounts that
 already had the role (e.g. `imantorabian`) — without assigning any group.
 
+**Group names (v1.25.3).** A group's name (Agency → Groups → edit; blank = shown by its owner) is
+shown everywhere a group appears: admins list chips and filter, admin detail, group managers,
+the staff page, approvals and activity (resolved live by group id, so renaming also relabels old rows),
+ledger group statements. Production: #2 "Vox" (owner VEX2), #3 "Mostafa" (owner Mostafa-ho).
+
 **Panel menu for a manager** (`components/adminNav.js` → `GM_GROUPS`, page `pages/GroupManager.jsx`):
 *Group admins* (`/my-groups`), *New admin* (`/my-groups/new`), *Accounting* (`/my-groups/accounting`,
 incl. the group statement — the staff Agency `GroupStatement` component) and *Activity*
