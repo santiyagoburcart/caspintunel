@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { api, apiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
-import { jalali, gb } from '../lib/format'
+import { jalali, gb, toman } from '../lib/format'
 import { Alert, Copyable, Spinner, StatusBadge } from '../components/ui'
 import { AuthImage } from '../components/AuthImage'
 import { useToast } from '../components/Toast'
@@ -57,8 +57,9 @@ function useServices(t) {
   return { items, flash, err, refreshOne, revokeOne }
 }
 
-/* shared تمدید gate — checks the plan is still buyable before sending the
- * user to checkout, since it may have been deleted/deactivated since */
+/* shared تمدید gate — a renewal is always on the SAME account and subscription link:
+ * own plan → one-tap summary (+ change plan / upgrade); no usable plan → straight to
+ * the plan list in checkout; no renewal plan at all → a short note. Never the store. */
 function useRenewFlow() {
   const navigate = useNavigate()
   const toast = useToast()
@@ -68,9 +69,14 @@ function useRenewFlow() {
     setModal({ checking: true })
     try {
       const { data } = await api.get(`/services/${serviceId}/renew-info/`)
+      if (data.can_renew && data.needs_plan) {
+        setModal(null)
+        navigate(`/checkout?renew=${serviceId}`)
+        return
+      }
       setModal(data.can_renew
-        ? { checking: false, canRenew: true, plan: data.plan, serviceId }
-        : { checking: false, canRenew: false, message: data.message })
+        ? { checking: false, canRenew: true, plan: data.plan, serviceId, account: data.service?.panel_username }
+        : { checking: false, canRenew: false })
     } catch (e) {
       setModal(null)
       toast.error(apiError(e))
@@ -80,15 +86,16 @@ function useRenewFlow() {
   const proceed = () => {
     if (modal?.canRenew) navigate(`/checkout?plan=${modal.plan.id}&renew=${modal.serviceId}`)
   }
-  return { modal, startRenew, close, proceed }
+  const changePlan = () => {
+    if (modal?.canRenew) navigate(`/checkout?renew=${modal.serviceId}&pick=1`)
+  }
+  return { modal, startRenew, close, proceed, changePlan }
 }
 
-/** Renew gate in the shared ConfirmDialog: checking → plan summary → pay,
- * or, when the plan is gone, a pointer to the store. */
-function RenewModal({ modal, t, lang, onClose, onProceed }) {
-  const navigate = useNavigate()
+/** Renew gate in the shared ConfirmDialog: checking → plan summary → pay
+ * (or change plan / upgrade), or a note when nothing can be renewed. */
+function RenewModal({ modal, t, lang, onClose, onProceed, onChangePlan }) {
   if (!modal) return null
-  const cur = lang === 'fa' ? 'تومان' : 'T'
   if (modal.checking || modal.canRenew) {
     const p = modal.plan
     return (
@@ -96,22 +103,28 @@ function RenewModal({ modal, t, lang, onClose, onProceed }) {
         message={modal.checking ? t('checking') : null}
         details={p ? {
           rows: [
+            ...(modal.account ? [[t('account_name'), modal.account]] : []),
             [t('select_plan'), (lang === 'fa' ? p.name_fa : p.name_en) || p.name_fa],
-            [t('amount'), `${fnum(Number(p.final_price ?? p.price), lang)} ${cur}`],
+            [t('amount'), toman(p.final_price ?? p.price, lang)],
             [t('duration'), p.duration_days ? `${fnum(p.duration_days, lang)} ${t('days')}` : t('no_expiry')],
           ],
         } : null}
+        footnote={modal.checking ? null : t('renew_same_account')}
         confirmLabel={t('continue_pay')} cancelLabel={t('cancel')}
         confirmDisabled={modal.checking} onConfirm={onProceed} onCancel={onClose}
       >
         {modal.checking && <div className="grid place-items-center py-2"><Spinner /></div>}
+        {!modal.checking && (
+          <button type="button" className="btn-ghost w-full" style={{ minHeight: 44 }} onClick={onChangePlan}>
+            {t('change_plan_upgrade')}
+          </button>
+        )}
       </ConfirmDialog>
     )
   }
   return (
-    <ConfirmDialog open tone="warning" icon="cart" title={t('renew')} message={t('plan_gone_message')}
-      confirmLabel={t('buy')} cancelLabel={t('cancel')}
-      onConfirm={() => { onClose(); navigate('/store') }} onCancel={onClose} />
+    <ConfirmDialog open tone="warning" icon="refresh" title={t('renew')} message={t('renew_unavailable')}
+      confirmLabel={t('ok')} hideCancel onConfirm={onClose} onCancel={onClose} />
   )
 }
 
@@ -259,7 +272,8 @@ function CaspianDashboard() {
         <span className="csp-dash-guide-cta">{t('watch_tutorials')} <DI d={D.arrow} w={15} /></span>
       </Link>
 
-      <RenewModal modal={renewFlow.modal} t={t} lang={lang} onClose={renewFlow.close} onProceed={renewFlow.proceed} />
+      <RenewModal modal={renewFlow.modal} t={t} lang={lang} onClose={renewFlow.close} onProceed={renewFlow.proceed}
+        onChangePlan={renewFlow.changePlan} />
     </div>
   )
 }

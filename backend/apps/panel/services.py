@@ -709,3 +709,22 @@ def disable_service_on_panel(service: Service) -> str:
     service.last_synced_at = timezone.now()
     service.save()
     return result
+
+
+@transaction.atomic
+def set_service_plan(service_id: int, plan, *, staff=None) -> Service:
+    """Staff set / change / clear (None) the plan of a service — e.g. one linked
+    manually from PasarGuard. Only our record changes (the plan drives renewals);
+    nothing is sent to PasarGuard. The plan must be on the service's panel."""
+    service = Service.objects.select_for_update().select_related("current_plan").get(pk=service_id)
+    if plan is not None and plan.panel_id != service.panel_id:
+        raise ValueError("this plan is on a different panel than the service")
+    old = service.current_plan_id
+    new = plan.pk if plan is not None else None
+    if old == new:
+        return service
+    service.current_plan = plan
+    service.save(update_fields=["current_plan", "updated_at"])
+    write_audit(action="service.plan_changed", target=service, staff=staff,
+                detail={"old_plan": old, "plan": new, "via": "staff"})
+    return service

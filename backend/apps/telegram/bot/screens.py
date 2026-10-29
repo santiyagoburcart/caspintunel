@@ -348,9 +348,34 @@ def revoke_confirm(user, svc) -> Screen:
 
 
 def renew_plans(user, svc) -> Screen:
-    plans = [p for p in active_plans() if p.panel_id in (None, svc.panel_id) and p.type != PlanType.CUSTOM_VOLUME]
+    """Pick a plan for the renewal — "change plan / upgrade", or a service without a plan.
+    Every choice renews the SAME account and subscription link (no account name)."""
+    from apps.orders.services import renewable_plan, renewal_plans
+
+    plans = list(renewal_plans(svc))
     rows = [[_b(plan_button_label(user, p), f"rn:{svc.id}:{p.id}")] for p in plans]
-    return Screen(tr(user, "renew_title", name=html.escape(svc.panel_username)), _kb(rows + [_nav(user, f"s:{svc.id}")]))
+    text = tr(user, "renew_title", name=html.escape(svc.panel_username))
+    if renewable_plan(svc) is None:
+        text += "\n\n" + tr(user, "renew_no_plan" if plans else "renew_none")
+    text += "\n" + tr(user, "renew_same_account")
+    return Screen(text, _kb(rows + [_nav(user, f"s:{svc.id}")]))
+
+
+def renew_offer(user, svc) -> Screen:
+    """تمدید: the service's own plan in one tap (plan, volume, duration, price) + change plan / upgrade.
+    Falls back to the plan list when the service has no renewable plan."""
+    from apps.orders.services import renewable_plan
+
+    plan = renewable_plan(svc)
+    if plan is None:
+        return renew_plans(user, svc)
+    vol = tr(user, "unlimited") if not plan.data_limit else tr(user, "gb", n=plan.data_limit // GB)
+    days = tr(user, "no_expiry") if not plan.duration_days else tr(user, "days", n=plan.duration_days)
+    text = tr(user, "renew_offer", name=html.escape(svc.panel_username), plan=html.escape(plan_name(user, plan)),
+              vol=vol, days=days, price=money(user, plan.final_price))
+    rows = [[_b(tr(user, "btn_renew_same"), f"rn:{svc.id}:{plan.id}")],
+            [_b(tr(user, "btn_renew_change"), f"s:{svc.id}:rnp")]]
+    return Screen(text, _kb(rows + [_nav(user, f"s:{svc.id}")]))
 
 
 # --- history ------------------------------------------------------------------

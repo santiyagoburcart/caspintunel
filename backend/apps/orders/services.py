@@ -127,6 +127,9 @@ def create_order(
         # service (you can't move an account between panels).
         if service.panel_id != plan.panel_id:
             raise OrderError("this plan is on a different panel than the service")
+        if order_type == OrderType.RENEW and plan.type == PlanType.CUSTOM_VOLUME:
+            # a renewal applies the plan's fixed volume to the same account — custom volume has none
+            raise OrderError("a custom-volume plan cannot be used for a renewal")
     elif order_type == OrderType.NEW:
         from apps.panel.models import Service
 
@@ -236,6 +239,8 @@ def quote_order(*, user, plan_id, order_type=OrderType.NEW, custom_volume_gb=Non
 
         if not Service.objects.filter(pk=service_id, user=user).exists():
             raise OrderError("service not found")
+        if order_type == OrderType.RENEW and plan.type == PlanType.CUSTOM_VOLUME:
+            raise OrderError("a custom-volume plan cannot be used for a renewal")
     amount, _ = base_amount(plan, custom_volume_gb)
     out = {"original": amount, "discount": Decimal(0), "final": amount, "code": "", "percent": None}
     if discount_code:
@@ -308,6 +313,22 @@ def mark_paid_and_fulfill(order: Order) -> None:
     transaction.on_commit(lambda: fulfill_order.delay(order.id))
 
 
+def renewal_plans(service):
+    """Plans a service can be renewed with: active, fixed-volume, on the service's panel.
+    A renewal always runs on the SAME PasarGuard account (username + subscription link)."""
+    return (Plan.objects.filter(is_active=True, panel_id=service.panel_id)
+            .exclude(type=PlanType.CUSTOM_VOLUME).order_by("sort_order", "price", "id"))
+
+
+def renewable_plan(service):
+    """The service's own plan when it can be bought again for a renewal, else None
+    (no plan — e.g. a manually linked account — or the plan was retired)."""
+    plan = service.current_plan
+    if plan is None or not renewal_plans(service).filter(pk=plan.pk).exists():
+        return None
+    return plan
+
+
 def schedule_renewal(order: Order) -> ScheduledRenewal:
     """A paid 'renew' order doesn't touch the panel right away — it just
     records what to apply once the service actually reaches the end of its
@@ -328,4 +349,13 @@ def schedule_renewal(order: Order) -> ScheduledRenewal:
         },
     )
     write_audit(action="renewal.scheduled", target=order, detail={"plan": plan.id})
+    # the customer paid for this plan: it is the service's plan from now on (the next
+    # one-tap renewal offers it); the renewal itself is applied by the scheduled job
+    service = order.service
+    if service is not None and service.current_plan_id != plan.id:
+        old = service.current_plan_id
+        service.current_plan = plan
+        service.save(update_fields=["current_plan", "updated_at"])
+        write_audit(action="service.plan_changed", target=service,
+                    detail={"old_plan": old, "plan": plan.id, "order": order.id, "via": "renewal"})
     return renewal

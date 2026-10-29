@@ -61,7 +61,9 @@ export default function Checkout() {
   const [busy, setBusy] = useState(false)
   const [newName, setNewName] = useState('')
   const [restoring, setRestoring] = useState(false)
-  const [changingPlan, setChangingPlan] = useState(false)
+  const [changingPlan, setChangingPlan] = useState(sp.get('pick') === '1')
+  // renewal: the plans this service may renew with (same account) + whether it has none of its own
+  const [renewInfo, setRenewInfo] = useState(null)
   const [now, setNow] = useState(Date.now())
   const orderIdRef = useRef(null)
   orderIdRef.current = order?.id ?? null
@@ -97,7 +99,10 @@ export default function Checkout() {
 
   useEffect(() => {
     api.get('/plans/').then((r) => setPlans(r.data.results))
-    if (renewId) api.get('/services/').then((r) => setServices(r.data.results))
+    if (renewId) {
+      api.get('/services/').then((r) => setServices(r.data.results))
+      api.get(`/services/${renewId}/renew-info/`).then((r) => setRenewInfo(r.data)).catch(() => {})
+    }
     if (urlOrderId) { restore(urlOrderId); return }
     // reopened /checkout for the same purchase while an order is still reserved -> resume it
     const saved = readActive()
@@ -251,7 +256,9 @@ export default function Checkout() {
 
   if (!order) {
     const renewingService = renewId ? services.find((sv) => String(sv.id) === String(renewId)) : null
+    const pickList = renewId ? (renewInfo?.plans || []) : plans
     const showPicker = !plan || changingPlan
+    const accountLabel = renewInfo?.service?.panel_username || renewingService?.panel_username
     const volumeText = plan?.type === 'custom_volume' ? t('selectable')
       : plan?.data_limit ? `${gb(plan.data_limit)} GB` : t('unlimited')
     const durationText = plan?.duration_days ? `${plan.duration_days} ${t('days')}` : t('no_expiry')
@@ -263,19 +270,30 @@ export default function Checkout() {
         {renewId && (
           <div className="ckt-renew-banner">
             <span className="ckt-renew-ico" aria-hidden="true">↻</span>
-            <span>{t('renew_service_title', { id: renewingService?.id ?? renewId })}</span>
+            <span className="min-w-0">
+              {t('renew_service_title', { id: renewingService?.id ?? renewId })}
+              {accountLabel && <> · {t('renew_on_account', { name: '' })}<bdi dir="ltr">{accountLabel}</bdi></>}
+              <span className="ckt-renew-note">{t('renew_same_account')}</span>
+            </span>
           </div>
         )}
 
-        <h1 className="text-lg font-bold">{t('buy')}</h1>
+        <h1 className="text-lg font-bold">{renewId ? t('renew') : t('buy')}</h1>
         <Alert>{err}</Alert>
+        {renewId && renewInfo?.needs_plan && (
+          <div className="ckt-renew-banner" role="note" data-testid="renew-no-plan">{t('renew_no_plan_note')}</div>
+        )}
+        {renewId && renewInfo && !renewInfo.can_renew && <Alert>{t('renew_unavailable')}</Alert>}
 
         {showPicker ? (
-          <Field label={t('store')}>
-            <select className="input" value={chosenPlan}
+          <Field label={renewId ? t('renew_pick_plan') : t('store')}>
+            <select className="input" value={chosenPlan} data-testid="plan-select"
               onChange={(e) => { setChosenPlan(e.target.value); setChangingPlan(false) }}>
               <option value="">—</option>
-              {plans.map((p) => <option key={p.id} value={p.id}>{(lang === 'fa' ? p.name_fa : p.name_en) || p.name_fa}</option>)}
+              {pickList.map((p) => <option key={p.id} value={p.id}>
+                {((lang === 'fa' ? p.name_fa : p.name_en) || p.name_fa)
+                  + (renewId ? ` · ${toman(p.final_price, lang)}` : '')}
+              </option>)}
             </select>
           </Field>
         ) : (
@@ -285,7 +303,8 @@ export default function Checkout() {
                 <div className="ckt-plan-name-en" dir="ltr">{plan.name_en || plan.name_fa}</div>
                 {plan.name_en && plan.name_fa && <div className="ckt-plan-name-fa">{plan.name_fa}</div>}
               </div>
-              <button type="button" className="ckt-plan-change" onClick={() => setChangingPlan(true)}>{t('change_plan')}</button>
+              <button type="button" className="ckt-plan-change" onClick={() => setChangingPlan(true)}>
+                {renewId ? t('change_plan_upgrade') : t('change_plan')}</button>
             </div>
             <div className="ckt-plan-details">
               <div className="ckt-plan-detail">
@@ -692,6 +711,7 @@ const CHECKOUT_CSS = `
   color: var(--c-warning); font-size: 13px; font-weight: 700;
 }
 .ckt-renew-ico { flex-shrink: 0; font-size: 15px; line-height: 1; }
+.ckt-renew-note { display: block; margin-top: 2px; font-size: 12px; opacity: .85; }
 .ckt-plan-card {
   border-radius: 16px; padding: 14px 16px; border: 1px solid var(--c-border);
   background: color-mix(in srgb, var(--c-primary) 5%, transparent);

@@ -116,6 +116,18 @@ T: dict[str, tuple[str, str]] = {
     "revoked": ("✅ لینک ساب تغییر کرد.", "✅ The subscription link was changed."),
     "revoke_fail": ("⚠️ تغییر لینک ناموفق بود: {err}", "⚠️ Could not change the link: {err}"),
     "renew_title": ("🔄 <b>تمدید {name}</b>\nپلن تمدید را انتخاب کنید:", "🔄 <b>Renew {name}</b>\nPick a renewal plan:"),
+    "renew_no_plan": ("ℹ️ این سرویس پلن تمدید ندارد؛ یکی از پلن‌های زیر را انتخاب کنید.",
+                      "ℹ️ This service has no renewal plan yet — pick one below."),
+    "renew_none": ("در حال حاضر پلنی برای تمدید موجود نیست؛ با پشتیبانی تماس بگیرید.",
+                   "No renewal plan is available right now — please contact support."),
+    "renew_same_account": ("تمدید روی همین اکانت و همین لینک اشتراک انجام می‌شود.",
+                           "The renewal applies to this same account and subscription link."),
+    "renew_offer": ("🔄 <b>تمدید {name}</b>\n\nپلن: {plan}\nحجم: {vol} · مدت: {days}\nمبلغ: {price}\n\n"
+                    "تمدید روی همین اکانت و همین لینک اشتراک انجام می‌شود.",
+                    "🔄 <b>Renew {name}</b>\n\nPlan: {plan}\nVolume: {vol} · Duration: {days}\nPrice: {price}\n\n"
+                    "The renewal applies to this same account and subscription link."),
+    "btn_renew_same": ("✅ تمدید با همین پلن", "✅ Renew with this plan"),
+    "btn_renew_change": ("🔁 تغییر پلن / ارتقا", "🔁 Change plan / upgrade"),
     # --- history ---
     "hist_title": ("🧾 <b>سوابق خرید</b> ({n})", "🧾 <b>Purchase history</b> ({n})"),
     "hist_empty": ("هنوز خریدی ثبت نشده است.", "No purchases yet."),

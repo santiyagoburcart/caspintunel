@@ -594,7 +594,9 @@ def _route(bot, chat_id, msg, user, tg, data: str) -> None:
             except PanelError as exc:
                 return bot.send_message(chat_id, tr(user, "revoke_fail", err=html.escape(str(exc))))
             return render(bot, chat_id, sc.service_qr(user, svc, title=tr(user, "revoked")), msg)
-        if action == "rn":
+        if action == "rn":                     # تمدید: own plan in one tap (or the list when it has none)
+            return render(bot, chat_id, sc.renew_offer(user, svc), msg)
+        if action == "rnp":                    # تغییر پلن / ارتقا
             return render(bot, chat_id, sc.renew_plans(user, svc), msg)
         return render(bot, chat_id, sc.service_detail(user, svc), msg)
     render(bot, chat_id, sc.main_menu(user), msg)

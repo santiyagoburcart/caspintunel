@@ -33,7 +33,7 @@ const T = {
     h1: 'سرویس‌های فروخته‌شده', sub: 'مدیریت و همگام‌سازی سرویس‌های کاربران روی پنل‌ها',
     create_btn: 'ایجاد سرویس دستی', sync_btn: 'همگام‌سازی', syncing: 'در حال همگام‌سازی…', act_sync: 'همگام‌سازی همین سرویس',
     last_synced: 'آخرین همگام‌سازی', never: 'هرگز',
-    all: 'همه', active: 'فعال', on_hold: 'در انتظار اتصال', disabled: 'غیرفعال',
+    all: 'همه', active: 'فعال', on_hold: 'در انتظار اتصال', disabled: 'غیرفعال', no_plan: 'بدون پلن',
     search_ph: 'جستجوی نام اکانت یا کاربر…',
     col_account: 'نام اکانت', col_user: 'کاربر', col_plan: 'پلن', col_panel: 'پنل',
     col_status: 'وضعیت', col_usage: 'مصرف', col_expire: 'انقضا', col_online: 'اتصال', col_actions: 'عملیات',
@@ -70,7 +70,7 @@ const T = {
     h1: 'Sold services', sub: "Manage and sync users' services on the panels",
     create_btn: 'Create manual service', sync_btn: 'Sync', syncing: 'Syncing…', act_sync: 'Sync this service',
     last_synced: 'Last synced', never: 'Never',
-    all: 'All', active: 'Active', on_hold: 'On-hold', disabled: 'Disabled',
+    all: 'All', active: 'Active', on_hold: 'On-hold', disabled: 'Disabled', no_plan: 'No plan',
     search_ph: 'Search by account name or user…',
     col_account: 'Account', col_user: 'User', col_plan: 'Plan', col_panel: 'Panel',
     col_status: 'Status', col_usage: 'Usage', col_expire: 'Expiry', col_online: 'Online', col_actions: 'Actions',
@@ -105,7 +105,7 @@ const T = {
   },
 }
 
-const FILTERS = ['', 'active', 'on_hold', 'disabled']
+const FILTERS = ['', 'active', 'on_hold', 'disabled', 'no_plan']
 
 function fmtData(used, limit, s, lang) {
   const u = digits(gb(used), lang)
@@ -218,6 +218,7 @@ export default function Services() {
           {FILTERS.map((f) => (
             <button key={f || 'all'} type="button" className={'svc-filter-btn' + (filter === f ? ' on' : '')} onClick={() => setFilter(f)}>
               {f ? s[f] : s.all}
+              {f === 'no_plan' && stats?.no_plan ? ` (${digits(stats.no_plan, lang)})` : ''}
             </button>
           ))}
         </div>
@@ -277,7 +278,9 @@ export default function Services() {
                     <span className="svc-user">{r.user}{r.user_deleted && <span className="svc-deleted-tag">{s.user_deleted}</span>}</span>
                     {r.user_telegram ? <span className="svc-sub" dir="ltr">@{r.user_telegram}</span> : (r.user_name ? <span className="svc-sub">{r.user_name}</span> : null)}
                   </td>
-                  <td data-label={s.col_plan}><span className="svc-ell" title={(lang === 'fa' ? r.plan : r.plan_en) || r.plan || ''}>{(lang === 'fa' ? r.plan : r.plan_en) || r.plan || '—'}</span></td>
+                  <td data-label={s.col_plan}>{r.plan_id
+                    ? <span className="svc-ell" title={(lang === 'fa' ? r.plan : r.plan_en) || r.plan || ''}>{(lang === 'fa' ? r.plan : r.plan_en) || r.plan}</span>
+                    : <span className="svc-noplan" data-testid="no-plan">{s.no_plan}</span>}</td>
                   <td data-label={s.col_panel}><span className="svc-ell" title={r.panel_name || ''}>{r.panel_name || '—'}</span></td>
                   <td data-label={s.col_status}>
                     <StatusPill status={r.status} t={t} />
@@ -659,9 +662,11 @@ const CSS = `
 .svc-stats-inline { white-space: nowrap; }
 
 .svc-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
-.svc-filters { display: inline-flex; gap: 4px; padding: 4px; border-radius: 12px; background: color-mix(in srgb, var(--c-text-muted) 12%, transparent); }
+.svc-filters { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; border-radius: 12px; background: color-mix(in srgb, var(--c-text-muted) 12%, transparent); }
 .svc-filter-btn { padding: 6px 14px; border-radius: 9px; font-size: 13px; font-weight: 600; color: var(--c-text-muted); }
 .svc-filter-btn.on { background: var(--c-primary); color: #fff; }
+.svc-noplan { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap;
+  color: var(--c-warning-fg); background: color-mix(in srgb, var(--c-warning) 18%, transparent); }
 .svc-search { position: relative; display: flex; align-items: center; min-width: 220px; flex: 1; max-width: 340px; }
 .svc-search svg { position: absolute; inset-inline-start: 12px; color: var(--c-text-muted); pointer-events: none; }
 .svc-search .input { padding-inline-start: 34px; }

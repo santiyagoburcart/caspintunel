@@ -64,36 +64,51 @@ class ServiceViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.
 
     @action(detail=True, methods=["get"], url_path="renew-info")
     def renew_info(self, request, pk=None):
-        """Whether this service's current plan can still be bought again —
-        the plan may have been deleted or deactivated since the service was
-        provisioned/last renewed."""
-        service = self.get_object()
-        plan = service.current_plan
-        if not plan or not plan.is_active:
-            return Response({
-                "can_renew": False, "plan": None,
-                "message": "این پلن دیگر موجود نیست",
-            })
+        """How this service can be renewed — always on the SAME PasarGuard account and
+        subscription link. `plan` = its own plan when that can be bought again (one-tap
+        renewal); `plans` = every plan it may switch / upgrade to. A service without a
+        usable plan (e.g. linked manually by staff) has `plan: null, needs_plan: true`."""
+        from apps.orders.services import renewable_plan, renewal_plans
         from apps.plans.serializers import PlanSerializer
 
-        return Response({"can_renew": True, "plan": PlanSerializer(plan).data, "message": ""})
+        service = self.get_object()
+        plan = renewable_plan(service)
+        plans = list(renewal_plans(service))
+        needs_plan = plan is None
+        message = ""
+        if needs_plan:
+            message = ("این سرویس پلن تمدید ندارد؛ یک پلن انتخاب کنید. تمدید روی همین اکانت و همین لینک اشتراک انجام می‌شود."
+                       if plans else "در حال حاضر پلنی برای تمدید موجود نیست؛ با پشتیبانی تماس بگیرید.")
+        return Response({
+            "can_renew": bool(plans),
+            "plan": PlanSerializer(plan).data if plan else None,
+            "plans": PlanSerializer(plans, many=True).data,
+            "needs_plan": needs_plan,
+            "service": {"id": service.id, "panel_username": service.panel_username},
+            "message": message,
+        })
 
     @action(detail=True, methods=["post"], url_path="renew")
     def renew(self, request, pk=None):
-        """Creates a paid-pending renewal order for this service's current
-        plan — same shape/flow as POST /orders/ (checkout picks up from here);
-        provided for completeness/other clients, the web UI itself creates the
-        order via the normal checkout flow after showing its own confirmation."""
+        """Creates a paid-pending renewal order for this service — on the same
+        account. Body `plan` (optional) switches / upgrades the plan; without it the
+        service's own plan is used (a service without one must send `plan`)."""
         from apps.orders.models import OrderType
         from apps.orders.serializers import OrderSerializer
-        from apps.orders.services import OrderError, create_order
+        from apps.orders.services import OrderError, create_order, renewable_plan, renewal_plans
         from apps.payments_sms.models import BankCard
         from apps.payments_sms.serializers import BankCardSerializer
 
         service = self.get_object()
-        plan = service.current_plan
-        if not plan or not plan.is_active:
-            return Response({"detail": "این پلن دیگر موجود نیست"}, status=400)
+        wanted = request.data.get("plan")
+        if wanted:
+            plan = renewal_plans(service).filter(pk=wanted).first()
+            if plan is None:
+                return Response({"detail": "این پلن برای تمدید این سرویس موجود نیست"}, status=400)
+        else:
+            plan = renewable_plan(service)
+            if plan is None:
+                return Response({"detail": "یک پلن برای تمدید انتخاب کنید", "code": "needs_plan"}, status=400)
 
         try:
             order = create_order(

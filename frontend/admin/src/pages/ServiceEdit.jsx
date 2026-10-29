@@ -27,6 +27,7 @@ const T = {
     username: 'نام کاربری سرویس (Username)', username_hint: 'شناسهٔ کانفیگ ساب برای اتصال کلاینت — روی پنل قابل تغییر نیست',
     buyer: 'کاربر خریدار (Purchaser Account)', buyer_hint: 'حساب سایت / ربات خریدار', buyer_orders: 'سفارش‌ها',
     plan: 'نام پلن خریداری‌شده (Plan Name)', plan_hint: 'پلنی که این اکانت بر اساس آن ساخته/تمدید شده', manual: 'دستی',
+    plan_edit: 'پلن سرویس (برای تمدید)', no_plan: 'بدون پلن', plan_edit_hint: 'تمدید مشتری با این پلن و روی همین اکانت انجام می‌شود؛ روی PasarGuard چیزی تغییر نمی‌کند', plan_inactive: 'غیرفعال',
     panel: 'نام پنل متصل (Connected Core Panel)', panel_hint: 'سرور PasarGuard و ادمین سازندهٔ اکانت',
     expiry: 'تاریخ انقضا / مدت اعتبار (Expiry Date)', expiry_hint: 'تاریخ جلالی — پایان همان روز به وقت تهران',
     pick_date: 'انتخاب تاریخ', no_expiry: 'بدون انقضا', days_left: '{n} روز باقی‌مانده', expired_ago: 'منقضی شده',
@@ -64,6 +65,7 @@ const T = {
     username: 'Service username', username_hint: 'Subscription config id used by clients — cannot be renamed on the panel',
     buyer: 'Purchaser account', buyer_hint: 'Site / bot account that owns it', buyer_orders: 'Orders',
     plan: 'Purchased plan', plan_hint: 'The plan this account was created/renewed from', manual: 'manual',
+    plan_edit: 'Service plan (for renewals)', no_plan: 'No plan', plan_edit_hint: 'The customer renews with this plan on this same account; nothing changes on PasarGuard', plan_inactive: 'inactive',
     panel: 'Connected core panel', panel_hint: 'PasarGuard server and the admin that created the account',
     expiry: 'Expiry date', expiry_hint: 'Jalali date — end of that day, Tehran time',
     pick_date: 'Pick a date', no_expiry: 'No expiry', days_left: '{n} days left', expired_ago: 'Expired',
@@ -144,6 +146,7 @@ function formFrom(d) {
     groupIds: [...(raw.group_ids || [])].sort((a, b) => a - b),
     note: raw.note || '',
     hwid: raw.hwid_limit ? String(raw.hwid_limit) : (!d.panel_raw && d.device_limit ? String(d.device_limit) : ''),
+    planId: d.plan_id ? String(d.plan_id) : '',
   }
 }
 
@@ -163,6 +166,7 @@ function diff(init, f) {
   if (f.note !== init.note) out.note = f.note
   const hw = Number(f.hwid || 0)
   if (hw !== Number(init.hwid || 0)) out.hwid_limit = hw
+  if (f.planId !== init.planId) out.plan = f.planId ? Number(f.planId) : null
   return out
 }
 
@@ -185,6 +189,7 @@ export default function ServiceEdit() {
   const [saving, setSaving] = useState(false)
   const [pickOpen, setPickOpen] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [plans, setPlans] = useState([])
 
   const applyData = (data) => {
     setD(data)
@@ -200,12 +205,20 @@ export default function ServiceEdit() {
 
   useEffect(() => {
     if (!d?.panel_id) return
+    api.get('/admin/plans/?limit=200')
+      .then((r) => setPlans((r.data.results || r.data || []).filter((p) => String(p.panel) === String(d.panel_id))))
+      .catch(() => setPlans([]))
+  }, [d?.panel_id])
+
+  useEffect(() => {
+    if (!d?.panel_id) return
     api.get(`/admin/panels/${d.panel_id}/groups/`)
       .then((r) => setGroups(r.data.groups || []))
       .catch(() => setGroups('fail'))
   }, [d?.panel_id])
 
   const canEdit = can('services.manage') && !!d?.panel_raw
+  const canPlan = can('services.manage')       // our record only — works even when PasarGuard is unreachable
   const changes = useMemo(() => (init && f ? diff(init, f) : {}), [init, f])
   const dirty = Object.keys(changes).length > 0
 
@@ -406,7 +419,7 @@ export default function ServiceEdit() {
           <span className={`sed-pill sed-tone-${tone(d.status)}`}><i className={onlineNow ? 'blink' : ''} />{statusLabel(d.status)}</span>
         </div>
         <div className="sed-msum-grid">
-          <div><span className="sed-lbl">{s.plan_short}</span><b>{planName || s.manual}</b></div>
+          <div><span className="sed-lbl">{s.plan_short}</span><b>{planName || s.no_plan}</b></div>
           <div><span className="sed-lbl">{s.panel_short}</span><b>{d.panel_name || '—'}</b></div>
         </div>
         {UsageBar}
@@ -432,7 +445,7 @@ export default function ServiceEdit() {
           </div>
           <div className="sed-head-acts">
             <button type="button" className="btn-ghost text-sm" onClick={() => setF(init)} disabled={!dirty || saving}>{s.reset_form}</button>
-            <button type="button" className="btn-primary text-sm sed-save" onClick={save} disabled={!canEdit || !dirty || saving}>
+            <button type="button" className="btn-primary text-sm sed-save" onClick={save} disabled={!(canEdit || (canPlan && Object.keys(changes).every((k) => k === "plan"))) || !dirty || saving}>
               {saving ? <span className="sed-spin" /> : <Ico d={P.check} w={16} sw={2.2} />}{s.save}
             </button>
           </div>
@@ -458,10 +471,19 @@ export default function ServiceEdit() {
               </div>
               <span className="sed-hint">{s.buyer_hint}{d.user_phone ? <> · <span dir="ltr">{d.user_phone}</span></> : null}</span>
             </div>
-            <div className="sed-fld sed-desk">
-              <span className="sed-lbl">{s.plan}</span>
-              <div className="sed-ro"><Ico d={P.tag} w={16} /><span className="truncate">{planName || s.manual}</span></div>
-              <span className="sed-hint">{s.plan_hint}</span>
+            <div className="sed-fld">
+              <label className="sed-lbl" htmlFor="sed-plan">{s.plan_edit}</label>
+              <select id="sed-plan" className="input" data-testid="plan-select" value={f.planId}
+                disabled={!canPlan} onChange={(e) => set('planId')(e.target.value)}>
+                <option value="">{s.no_plan}</option>
+                {plans.filter((p) => p.is_active || String(p.id) === f.planId).map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {((lang === 'fa' ? p.name_fa : p.name_en) || p.name_fa) + (p.is_active ? '' : ` (${s.plan_inactive})`)}
+                  </option>
+                ))}
+              </select>
+              {!f.planId && <span className="sed-noplan">{s.no_plan}</span>}
+              <span className="sed-hint">{s.plan_edit_hint}</span>
             </div>
           </div>
 
@@ -571,7 +593,7 @@ export default function ServiceEdit() {
           <span className="sed-hint">{s.foot}</span>
           <div className="sed-foot-acts">
             <button type="button" className="btn-ghost text-sm" onClick={() => navigate('/services')}>{s.cancel}</button>
-            <button type="button" className="btn-primary text-sm sed-save" onClick={save} disabled={!canEdit || !dirty || saving}>
+            <button type="button" className="btn-primary text-sm sed-save" onClick={save} disabled={!(canEdit || (canPlan && Object.keys(changes).every((k) => k === "plan"))) || !dirty || saving}>
               {saving ? <span className="sed-spin" /> : null}{s.save_final}
             </button>
           </div>
@@ -580,7 +602,7 @@ export default function ServiceEdit() {
 
       {/* mobile sticky save bar */}
       <div className="sed-mbar">
-        <button type="button" className="btn-primary sed-mbar-save" onClick={save} disabled={!canEdit || !dirty || saving}>
+        <button type="button" className="btn-primary sed-mbar-save" onClick={save} disabled={!(canEdit || (canPlan && Object.keys(changes).every((k) => k === "plan"))) || !dirty || saving}>
           {saving ? <span className="sed-spin" /> : <Ico d={P.check} w={18} sw={2.2} />}{s.save}
         </button>
         <button type="button" className="btn-ghost sed-mbar-cancel" onClick={() => (dirty ? setF(init) : navigate('/services'))}>{s.m_cancel}</button>
@@ -636,6 +658,8 @@ const CSS = `
 /* body + fields */
 .sed-body { padding: 24px; display: flex; flex-direction: column; gap: 22px; }
 .sed-mobile-h { display: none; }
+.sed-noplan { align-self: flex-start; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 700;
+  color: var(--c-warning-fg); background: color-mix(in srgb, var(--c-warning) 18%, transparent); }
 .sed-grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px 20px; }
 .sed-fld { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
 .sed-lbl { font-size: 12.5px; font-weight: 700; color: var(--c-text); }

@@ -16,6 +16,7 @@ from apps.panel.services import (
     create_manual_service,
     delete_service,
     link_existing_service,
+    set_service_plan,
     search_panel_users,
     reset_service_usage,
     revoke_subscription,
@@ -65,6 +66,8 @@ class ServiceListViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
             qs = qs.filter(status=ServiceStatus.DISABLED)
         elif kind == "expired":
             qs = qs.filter(status=ServiceStatus.EXPIRED)
+        elif kind == "no_plan":
+            qs = qs.filter(current_plan__isnull=True)
         elif kind == "online":
             since = timezone.now() - timezone.timedelta(minutes=ONLINE_WINDOW_MIN)
             qs = qs.filter(online_at__gte=since)
@@ -89,6 +92,7 @@ class ServiceListViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
             "active": by_status.get(ServiceStatus.ACTIVE, 0),
             "on_hold": by_status.get(ServiceStatus.ON_HOLD, 0),
             "disabled": by_status.get(ServiceStatus.DISABLED, 0),
+            "no_plan": Service.objects.filter(current_plan__isnull=True).count(),
         }
         return resp
 
@@ -160,6 +164,18 @@ class ServiceListViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
                 kw[key] = v[key]
         if "hwid_limit" in v:
             kw["hwid_limit"] = v["hwid_limit"] or 0
+        if "plan" in v:
+            try:
+                service = set_service_plan(service.id, v["plan"], staff=request.user)
+            except ValueError as exc:
+                return Response({"detail": str(exc)}, status=400)
+            if not kw:                         # only the plan changed: nothing to send to PasarGuard
+                raw = None
+                try:
+                    raw = client_for(service.panel).get_user(service.panel_username)
+                except PanelError as exc:
+                    log.info("plan change: live read of service %s failed: %s", service.id, exc)
+                return Response(AdminServiceRawSerializer(service, context={"panel_raw": raw}).data)
         try:
             service, raw = update_service(service.id, staff=request.user, **kw)
         except ValueError as exc:

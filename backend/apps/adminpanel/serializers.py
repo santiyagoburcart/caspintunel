@@ -657,6 +657,7 @@ class AdminServiceSerializer(serializers.ModelSerializer):
     user_id = serializers.IntegerField(read_only=True)
     plan = serializers.CharField(source="current_plan.name_fa", read_only=True, default=None)
     plan_en = serializers.CharField(source="current_plan.name_en", read_only=True, default=None)
+    plan_id = serializers.IntegerField(source="current_plan_id", read_only=True, default=None)
     panel_id = serializers.IntegerField(read_only=True)
     panel_name = serializers.CharField(source="panel.name", read_only=True, default=None)
     is_online = serializers.SerializerMethodField()
@@ -666,7 +667,7 @@ class AdminServiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Service
         fields = ("id", "panel_username", "user", "user_id", "user_name", "user_telegram", "user_deleted",
-                  "plan", "plan_en", "panel_id", "panel_name", "status",
+                  "plan", "plan_en", "plan_id", "panel_id", "panel_name", "status",
                   "expire_strategy", "data_limit", "data_used", "expire_at", "online_at",
                   "is_online", "last_synced_at", "subscription_url", "created_at",
                   "has_scheduled_renewal")
@@ -691,11 +692,10 @@ class AdminServiceRawSerializer(AdminServiceSerializer):
     panel_raw = serializers.SerializerMethodField()
 
     user_phone = serializers.CharField(source="user.phone", read_only=True, default="")
-    plan_id = serializers.IntegerField(source="current_plan_id", read_only=True)
 
     class Meta(AdminServiceSerializer.Meta):
         fields = AdminServiceSerializer.Meta.fields + (
-            "panel_raw", "user_phone", "plan_id", "on_hold_duration", "on_hold_timeout",
+            "panel_raw", "user_phone", "on_hold_duration", "on_hold_timeout",
             "device_limit", "source",
         )
 
@@ -719,6 +719,9 @@ class AdminServiceUpdateSerializer(serializers.Serializer):
     note = serializers.CharField(max_length=500, required=False, allow_blank=True)
     hwid_limit = serializers.IntegerField(min_value=0, max_value=1000, required=False, allow_null=True,
                                          help_text="device (HWID) limit; 0 / null = unlimited")
+    plan = serializers.PrimaryKeyRelatedField(queryset=Plan.objects.all(), required=False, allow_null=True,
+                                              help_text="our plan for this service (renewals); null = no plan. "
+                                                        "Changes nothing on PasarGuard.")
 
 
 class AdminServiceCreateSerializer(serializers.Serializer):

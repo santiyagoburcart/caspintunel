@@ -98,7 +98,19 @@ idempotent — see [sms-batch.md](sms-batch.md).
 
 A renewal is paid like a purchase (flows 1–2) with `type=renew` on an existing
 service, but it is **not applied immediately**: it waits for the end of the
-current cycle so the customer loses nothing.
+current cycle so the customer loses nothing. It always runs on the **same PasarGuard
+username and subscription link** — never an account-name step, never a new account.
+
+Which plan (`orders.services.renewal_plans` = active, fixed-volume, same panel;
+`renewable_plan` = the service's own plan if it is one of them):
+- own plan → one tap (site: summary dialog → checkout; bot `s:<id>:rn` → «✅ تمدید با همین پلن»);
+- «تغییر پلن / ارتقا» (site `checkout?renew=<id>&pick=1`, bot `s:<id>:rnp`) → any renewal plan;
+- no usable plan (e.g. linked manually by staff) → the plan list straight away with a short note.
+`GET /services/<id>/renew-info/` returns `plan`, `plans`, `needs_plan`. Custom-volume plans are
+refused for renewals (the renewal applies the plan's fixed volume). Discount codes apply as usual.
+After payment `schedule_renewal` makes the paid plan the service's plan (audit
+`service.plan_changed`, via `renewal`). Staff can set / change / clear a service's plan on
+Admin → Services → edit (or when linking an account); filter «بدون پلن» lists services without one.
 
 ```mermaid
 sequenceDiagram
@@ -110,10 +122,11 @@ sequenceDiagram
     participant PG as PasarGuard panel
     participant DB as MySQL
 
-    C->>API: renew service S with plan P
-    API->>DB: Order(type=renew, service=S)
+    C->>API: GET /services/S/renew-info/ → own plan, or plan list (needs_plan)
+    C->>API: renew service S with plan P (own plan, or changed / chosen)
+    API->>DB: Order(type=renew, service=S, plan=P) — no account name
     Note over C,API: payment as in flows 1–2
-    W->>DB: fulfill_order → schedule_renewal:<br/>ScheduledRenewal(S, P, renewal_mode + carry_over copied from P)
+    W->>DB: fulfill_order → schedule_renewal:<br/>ScheduledRenewal(S, P, renewal_mode + carry_over copied from P)<br/>S.current_plan = P
     W->>DB: order → completed (no "delivered" message yet)
     loop every 5 min
         B->>W: apply_due_scheduled_renewals

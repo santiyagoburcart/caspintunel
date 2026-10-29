@@ -22,7 +22,7 @@ WebSockets: `/ws/notifications/?token=<customer JWT>` (live site notifications) 
 
 ## Customer app
 - `GET /services/` · `GET /services/{id}/` · `GET /services/{id}/qr/` (PNG) ·
-  `POST /services/{id}/refresh/` · `POST /services/{id}/revoke/` · `GET /services/{id}/renew-info/` · `POST /services/{id}/renew/`
+  `POST /services/{id}/refresh/` · `POST /services/{id}/revoke/` · `GET /services/{id}/renew-info/` (`plan` own plan or null, `plans` renewal plans, `needs_plan`) · `POST /services/{id}/renew/` (`plan` optional: change / upgrade; required when the service has none)
 - `POST /orders/` (new / renew / add-on; returns the reserved unique amount) · `GET /orders/` · `GET /orders/{id}/` ·
   `GET /orders/{id}/checkout/` (resume an open invoice — survives leaving the browser for the bank app)
 - `GET /payments/cards/` · `POST /payments/receipt/` (multipart) · `GET /payments/{id}/receipt/` (owner or staff only)
