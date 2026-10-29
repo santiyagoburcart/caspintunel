@@ -13,6 +13,7 @@ from apps.notifications.models import NotificationType
 from apps.orders.models import Order, OrderStatus
 from apps.orders.services import mark_paid_and_fulfill
 
+from .checks import image_sha256, normalize_ref
 from .models import BankCard, ConfirmedBy, Payment, PaymentMethod, PaymentStatus
 
 log = logging.getLogger("caspintunel")
@@ -35,7 +36,7 @@ def default_bank_card() -> BankCard | None:
 
 
 @transaction.atomic
-def submit_receipt(*, order: Order, image, bank_card=None, user) -> Payment:
+def submit_receipt(*, order: Order, image, bank_card=None, user, receipt_ref: str = "") -> Payment:
     if order.user_id != user.id:
         raise PaymentError("not your order")
     if order.status not in (OrderStatus.PENDING_PAYMENT,):
@@ -57,6 +58,10 @@ def submit_receipt(*, order: Order, image, bank_card=None, user) -> Payment:
     payment.confirmed_by_staff = None
     payment.confirmed_at = None
     payment.receipt_image = image
+    # duplicate checks in the approval queue (checks.py): same image / same bank document number
+    payment.receipt_sha256 = image_sha256(image)
+    payment.receipt_ref = normalize_ref(receipt_ref)
+    payment.receipt_amount = None          # a new receipt: staff read its amount again
     payment.save()
 
     payment.refresh_from_db(fields=["receipt_image"])

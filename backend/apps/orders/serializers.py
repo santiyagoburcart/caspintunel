@@ -3,7 +3,7 @@ from rest_framework import serializers
 from apps.plans.models import Plan
 
 from .models import Order, OrderType
-from .services import DiscountCodeRefused, OrderError, create_order
+from .services import DiscountCodeRefused, OrderError, RenewalWaiting, create_order
 
 
 class OrderSerializer(serializers.ModelSerializer):
@@ -84,5 +84,8 @@ class OrderCreateSerializer(serializers.Serializer):
             # v1.26: the reason in the customer's language + a code the client can map
             raise serializers.ValidationError({"discount_code": [exc.message(validated.get("lang", "fa"))],
                                                "discount_error": exc.code})
+        except RenewalWaiting as exc:
+            # a paid renewal of this service still waits — one at a time
+            raise serializers.ValidationError({"detail": exc.message(validated.get("lang", "fa")), "code": exc.code})
         except OrderError as exc:
             raise serializers.ValidationError(str(exc))

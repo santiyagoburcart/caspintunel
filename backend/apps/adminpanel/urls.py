@@ -30,6 +30,7 @@ from .views.email import EmailSettingsView, EmailTestView
 from .views.finance import (
     AccountingView,
     PaymentDecisionView,
+    PaymentReceiptInfoView,
     PendingPaymentsView,
     SmsLogViewSet,
     TransactionViewSet,
@@ -78,6 +79,7 @@ urlpatterns = [
     path("auth/me/", StaffMeView.as_view(), name="admin-me"),
     path("accounting/", AccountingView.as_view(), name="admin-accounting"),
     path("payments/pending/", PendingPaymentsView.as_view(), name="admin-payments-pending"),
+    path("payments/<int:pk>/receipt-info/", PaymentReceiptInfoView.as_view(), name="admin-payment-receipt-info"),
     path("payments/<int:pk>/<str:action>/", PaymentDecisionView.as_view(), name="admin-payment-decision"),
     path("branding/", SiteConfigView.as_view(), name="admin-branding"),
     path("branding/qr-preview/", QrPreviewView.as_view(), name="admin-branding-qr-preview"),

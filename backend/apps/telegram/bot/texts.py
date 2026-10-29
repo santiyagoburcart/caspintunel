@@ -128,6 +128,16 @@ T: dict[str, tuple[str, str]] = {
                     "The renewal applies to this same account and subscription link."),
     "btn_renew_same": ("✅ تمدید با همین پلن", "✅ Renew with this plan"),
     "btn_renew_change": ("🔁 تغییر پلن / ارتقا", "🔁 Change plan / upgrade"),
+    "renew_waiting": ("✅ <b>تمدید پرداخت شد — با پایان حجم/زمان فعلی اعمال می‌شود</b>\nپلن تمدید: {plan}\n"
+                      "اعمال: با تمام شدن حجم فعلی یا در {d}، هرکدام زودتر.",
+                      "✅ <b>Renewal paid — it applies when the current volume/time ends</b>\nRenewal plan: {plan}\n"
+                      "Applies: when the current volume runs out or on {d}, whichever comes first."),
+    "renew_waiting_novol": ("✅ <b>تمدید پرداخت شد — با پایان حجم/زمان فعلی اعمال می‌شود</b>\nپلن تمدید: {plan}\n"
+                            "اعمال: با تمام شدن حجم فعلی.",
+                            "✅ <b>Renewal paid — it applies when the current volume/time ends</b>\nRenewal plan: {plan}\n"
+                            "Applies: when the current volume runs out."),
+    "renew_review": ("⏳ <b>رسید تمدید در حال بررسی است</b>\nپلن تمدید: {plan}\nتا نتیجه‌ی بررسی نمی‌توانید دوباره تمدید کنید.",
+                     "⏳ <b>Your renewal receipt is being reviewed</b>\nRenewal plan: {plan}\nYou can't renew again until it is decided."),
     # --- history ---
     "hist_title": ("🧾 <b>سوابق خرید</b> ({n})", "🧾 <b>Purchase history</b> ({n})"),
     "hist_empty": ("هنوز خریدی ثبت نشده است.", "No purchases yet."),

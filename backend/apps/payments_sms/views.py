@@ -64,6 +64,7 @@ class ReceiptUploadView(APIView):
                 image=ser.validated_data["receipt_image"],
                 bank_card=ser.validated_data.get("bank_card"),
                 user=request.user,
+                receipt_ref=ser.validated_data.get("receipt_ref") or "",
             )
         except PaymentError as exc:
             return Response({"detail": str(exc)}, status=400)

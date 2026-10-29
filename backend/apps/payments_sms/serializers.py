@@ -36,6 +36,8 @@ class ReceiptUploadSerializer(serializers.Serializer):
     bank_card = serializers.PrimaryKeyRelatedField(
         queryset=BankCard.objects.filter(is_active=True), required=False, allow_null=True
     )
+    # optional: the bank document / tracking number on the receipt (duplicate check)
+    receipt_ref = serializers.CharField(max_length=60, required=False, allow_blank=True, default="")
 
     def validate(self, attrs):
         # with one active card the client may omit it; with several the customer

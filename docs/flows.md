@@ -112,6 +112,17 @@ After payment `schedule_renewal` makes the paid plan the service's plan (audit
 `service.plan_changed`, via `renewal`). Staff can set / change / clear a service's plan on
 Admin → Services → edit (or when linking an account); filter «بدون پلن» lists services without one.
 
+**One renewal at a time** (v1.30.1, incident 2026-10-29: one transfer paid two renewal orders).
+`orders.services.waiting_renewal(service)` = an unapplied `ScheduledRenewal`, a `paid` renew order,
+or a renew order whose receipt / SMS-mismatch payment is still pending (`review`). While it exists:
+`create_order` / `quote_order` raise `RenewalWaiting` (site + Mini App `409 code=renewal_waiting`,
+bot shows the waiting screen), renew-info answers `can_renew: false` + `pending_renewal`, and the
+service (site card, checkout, bot) shows «تمدید پرداخت شد — با پایان حجم/زمان فعلی اعمال می‌شود»
+with the queued plan and when it applies (current volume runs out or the current expiry). A paid
+renewal never replaces a waiting one: `schedule_renewal` raises `RenewalConflict`, the order becomes
+`failed` (audit `renewal.conflict`), staff with `payment.approve` get a Telegram alert
+(`common/staff_alert.py`, else the backup chat) and the customer a "being reviewed" notice.
+
 ```mermaid
 sequenceDiagram
     autonumber
@@ -124,9 +135,14 @@ sequenceDiagram
 
     C->>API: GET /services/S/renew-info/ → own plan, or plan list (needs_plan)
     C->>API: renew service S with plan P (own plan, or changed / chosen)
+    API->>DB: waiting_renewal(S)? → refuse (409 renewal_waiting)
     API->>DB: Order(type=renew, service=S, plan=P) — no account name
     Note over C,API: payment as in flows 1–2
     W->>DB: fulfill_order → schedule_renewal:<br/>ScheduledRenewal(S, P, renewal_mode + carry_over copied from P)<br/>S.current_plan = P
+    opt another unapplied renewal on S
+        W->>DB: order → failed, audit renewal.conflict (waiting one kept)
+        W-->>C: "being reviewed" notice; staff alerted (Telegram)
+    end
     W->>DB: order → completed (no "delivered" message yet)
     loop every 5 min
         B->>W: apply_due_scheduled_renewals
@@ -143,6 +159,16 @@ sequenceDiagram
     W-->>C: "your service was renewed" (site + bot + email)
     Note over C: same username, same subscription link
 ```
+
+**Approval-queue warnings** (v1.30.1, `payments_sms/checks.py::payment_warnings`, read-only): each
+pending payment in Admin → Payments lists hints with links to the related transactions —
+`amount_mismatch` (receipt amount ≠ the order's unique amount), `recent_sms` (the same customer had a
+payment approved by bank SMS within 24 h; `same_service` marked), `duplicate_image` (same receipt
+`receipt_sha256`, voided ones included), `duplicate_ref` (same bank document / tracking number) and
+`renewal_waiting`. The image hash is set on upload (site + bot); the customer may type the tracking
+number on the site; staff record the receipt amount (explicit Rial / Toman) and number with
+`POST /admin/payments/<id>/receipt-info/` (audit `payment.receipt_info`). The approve dialog repeats
+the warning count. Nothing is approved or blocked automatically.
 
 ## 4. Service provisioning
 

@@ -225,6 +225,45 @@ class PendingPaymentsView(AdminAPIView):
         return Response({"results": data, "count": len(data)})
 
 
+class PaymentReceiptInfoView(AdminAPIView):
+    """POST /admin/payments/<id>/receipt-info/ — what the receipt says, typed by staff:
+    `receipt_amount` + `unit` (rial | toman, explicit) and `receipt_ref` (bank document /
+    tracking number). Only feeds the queue warnings; never approves or changes the order."""
+
+    perms_map = {"POST": ["payment.approve"]}
+
+    @extend_schema(request=dict, responses=AdminPendingPaymentSerializer,
+                   summary="Record the receipt's amount and bank document number")
+    def post(self, request, pk):
+        from apps.payments_sms.checks import normalize_ref, parse_amount
+
+        p = Payment.objects.select_related("order", "order__user").filter(pk=pk).first()
+        if p is None:
+            return Response({"detail": "payment not found"}, status=404)
+        unit = request.data.get("unit") or "toman"
+        if unit not in ("rial", "toman"):
+            return Response({"unit": ["rial or toman"]}, status=400)
+        changed = {}
+        if "receipt_amount" in request.data:
+            try:
+                amount = parse_amount(request.data.get("receipt_amount"), unit)
+            except ValueError as exc:
+                return Response({"receipt_amount": [str(exc)]}, status=400)
+            if amount != p.receipt_amount:
+                changed["receipt_amount"] = [str(p.receipt_amount) if p.receipt_amount is not None else None,
+                                             str(amount) if amount is not None else None]
+                p.receipt_amount = amount
+        if "receipt_ref" in request.data:
+            ref = normalize_ref(request.data.get("receipt_ref"))
+            if ref != p.receipt_ref:
+                changed["receipt_ref"] = [p.receipt_ref, ref]
+                p.receipt_ref = ref
+        if changed:
+            p.save(update_fields=["receipt_amount", "receipt_ref", "updated_at"])
+            write_audit(action="payment.receipt_info", staff=request.user, target=p, detail=changed)
+        return Response(AdminPendingPaymentSerializer(p, context={"request": request}).data)
+
+
 class PaymentDecisionView(AdminAPIView):
     """POST /admin/payments/<id>/(approve|reject) — the manual decision."""
 

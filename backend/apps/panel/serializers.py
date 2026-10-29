@@ -11,6 +11,7 @@ class ServiceSerializer(serializers.ModelSerializer):
     waiting_for_connection = serializers.SerializerMethodField()
     validity_days = serializers.SerializerMethodField()
     plan_name = serializers.CharField(source="current_plan.name_fa", read_only=True, default=None)
+    pending_renewal = serializers.SerializerMethodField()
 
     class Meta:
         model = Service
@@ -20,8 +21,16 @@ class ServiceSerializer(serializers.ModelSerializer):
             "expire_at", "days_left", "on_hold_duration", "on_hold_timeout",
             "online_at", "device_limit", "current_plan", "plan_name",
             "waiting_for_connection", "validity_days", "last_synced_at", "created_at",
+            "pending_renewal",
         )
         read_only_fields = fields
+
+    def get_pending_renewal(self, obj) -> dict | None:
+        """A renewal that is paid (or whose receipt is under review) and not applied yet —
+        see orders.services.waiting_renewal. While set, the service can't be renewed again."""
+        from apps.orders.services import pending_renewal_info
+
+        return pending_renewal_info(obj)
 
     def get_waiting_for_connection(self, obj) -> bool:
         # on-hold and never connected -> the clock hasn't started yet

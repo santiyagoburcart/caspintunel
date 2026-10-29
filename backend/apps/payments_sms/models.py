@@ -173,6 +173,12 @@ class Payment(TimeStampedModel):
         max_length=8, choices=PaymentStatus.choices, default=PaymentStatus.PENDING, db_index=True
     )
     receipt_image = models.ImageField(upload_to="receipts/%Y/%m/", null=True, blank=True)
+    # v1.30.1 duplicate-receipt checks (apps/payments_sms/checks.py): sha256 of the image
+    # bytes (set on upload), and what the receipt says — bank document / tracking number
+    # (digits only) and amount in tomans — typed by the customer (optional) or by staff
+    receipt_sha256 = models.CharField(max_length=64, blank=True, default="", db_index=True)
+    receipt_ref = models.CharField(max_length=40, blank=True, default="", db_index=True)
+    receipt_amount = models.DecimalField(max_digits=12, decimal_places=0, null=True, blank=True)
     sms_message = models.ForeignKey(
         SmsMessage, null=True, blank=True, on_delete=models.SET_NULL, related_name="payments"
     )

@@ -43,7 +43,7 @@ class OrderViewSet(mixins.CreateModelMixin, mixins.ListModelMixin,
         """v1.26: the price before payment — original, discount, final — for the
         purchase in the body (same fields as create) and an optional discount code.
         A refused code answers 400 with the reason (Persian / English) + discount_error."""
-        from .services import DiscountCodeRefused, OrderError, quote_order
+        from .services import DiscountCodeRefused, OrderError, RenewalWaiting, quote_order
 
         d = request.data
         lang = "en" if d.get("lang") == "en" else "fa"
@@ -53,6 +53,8 @@ class OrderViewSet(mixins.CreateModelMixin, mixins.ListModelMixin,
                             discount_code=(d.get("discount_code") or "").strip() or None)
         except DiscountCodeRefused as exc:
             return Response({"discount_code": [exc.message(lang)], "discount_error": exc.code}, status=400)
+        except RenewalWaiting as exc:
+            return Response({"detail": exc.message(lang), "code": exc.code}, status=409)
         except (OrderError, ValueError, TypeError) as exc:
             return Response({"detail": str(exc)}, status=400)
         from decimal import Decimal

@@ -319,15 +319,39 @@ def service_text(user, svc) -> str:
     return "\n".join(lines)
 
 
+def renewal_waiting_text(user, svc) -> str | None:
+    """The line for a renewal that is paid (or under review) and not applied yet, else None."""
+    from apps.orders.services import waiting_renewal
+
+    w = waiting_renewal(svc)
+    if w is None:
+        return None
+    name = html.escape(plan_name(user, w["plan"])) if w["plan"] else "—"
+    if w["state"] == "review":
+        return tr(user, "renew_review", plan=name)
+    if svc.expire_at:
+        return tr(user, "renew_waiting", plan=name, d=to_jalali_str(svc.expire_at, "%Y/%m/%d"))
+    return tr(user, "renew_waiting_novol", plan=name)
+
+
 def service_detail(user, svc) -> Screen:
     rows = []
+    waiting = renewal_waiting_text(user, svc)
+    renew = [] if waiting else [_b(tr(user, "btn_renew"), f"s:{svc.id}:rn")]   # one renewal at a time
     if svc.subscription_url:
         rows.append([_b(tr(user, "btn_link"), f"s:{svc.id}:link"), _b(tr(user, "btn_qr"), f"s:{svc.id}:qr")])
-        rows.append([_b(tr(user, "btn_revoke"), f"s:{svc.id}:revoke"), _b(tr(user, "btn_renew"), f"s:{svc.id}:rn")])
-    else:
-        rows.append([_b(tr(user, "btn_renew"), f"s:{svc.id}:rn")])
+        rows.append([_b(tr(user, "btn_revoke"), f"s:{svc.id}:revoke"), *renew])
+    elif renew:
+        rows.append(renew)
     rows.append(_nav(user, "m:svcs"))
-    return Screen(service_text(user, svc), _kb(rows))
+    text = service_text(user, svc)
+    if waiting:
+        text += "\n\n" + waiting
+    return Screen(text, _kb(rows))
+
+
+def renew_waiting_screen(user, svc, text: str) -> Screen:
+    return Screen(f"📦 <b>{html.escape(svc.panel_username)}</b>\n\n{text}", _kb([_nav(user, f"s:{svc.id}")]))
 
 
 def service_link(user, svc) -> Screen:
@@ -352,6 +376,9 @@ def renew_plans(user, svc) -> Screen:
     Every choice renews the SAME account and subscription link (no account name)."""
     from apps.orders.services import renewable_plan, renewal_plans
 
+    waiting = renewal_waiting_text(user, svc)
+    if waiting:
+        return renew_waiting_screen(user, svc, waiting)
     plans = list(renewal_plans(svc))
     rows = [[_b(plan_button_label(user, p), f"rn:{svc.id}:{p.id}")] for p in plans]
     text = tr(user, "renew_title", name=html.escape(svc.panel_username))
@@ -366,6 +393,9 @@ def renew_offer(user, svc) -> Screen:
     Falls back to the plan list when the service has no renewable plan."""
     from apps.orders.services import renewable_plan
 
+    waiting = renewal_waiting_text(user, svc)
+    if waiting:
+        return renew_waiting_screen(user, svc, waiting)
     plan = renewable_plan(svc)
     if plan is None:
         return renew_plans(user, svc)

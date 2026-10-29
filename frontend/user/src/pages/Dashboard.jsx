@@ -5,6 +5,7 @@ import { useI18n } from '../lib/i18n'
 import { jalali, gb, toman } from '../lib/format'
 import { Alert, Copyable, Spinner, StatusBadge } from '../components/ui'
 import { AuthImage } from '../components/AuthImage'
+import { RenewWaiting } from '../components/RenewWaiting'
 import { useToast } from '../components/Toast'
 import { ConfirmDialog, useConfirm } from '../components/ConfirmDialog'
 import { copyToClipboard } from '../lib/clipboard'
@@ -69,6 +70,11 @@ function useRenewFlow() {
     setModal({ checking: true })
     try {
       const { data } = await api.get(`/services/${serviceId}/renew-info/`)
+      if (data.pending_renewal) {
+        // one renewal at a time: say which one is paid / under review and when it applies
+        setModal({ checking: false, canRenew: false, waiting: data.pending_renewal })
+        return
+      }
       if (data.can_renew && data.needs_plan) {
         setModal(null)
         navigate(`/checkout?renew=${serviceId}`)
@@ -119,6 +125,14 @@ function RenewModal({ modal, t, lang, onClose, onProceed, onChangePlan }) {
             {t('change_plan_upgrade')}
           </button>
         )}
+      </ConfirmDialog>
+    )
+  }
+  if (modal.waiting) {
+    return (
+      <ConfirmDialog open tone="success" icon="refresh" title={t('renew')}
+        confirmLabel={t('ok')} hideCancel onConfirm={onClose} onCancel={onClose}>
+        <RenewWaiting pr={modal.waiting} t={t} lang={lang} />
       </ConfirmDialog>
     )
   }
@@ -361,6 +375,8 @@ function SvcCard({ s, t, lang, onRevoke, onRenewClick }) {
         </div>
       )}
 
+      {s.pending_renewal && <RenewWaiting pr={s.pending_renewal} t={t} lang={lang} />}
+
       {s.subscription_url && (
         <div className="csp-svc-sub">
           <span className="csp-svc-sub-label">{t('sub_link_label')}</span>
@@ -382,9 +398,12 @@ function SvcCard({ s, t, lang, onRevoke, onRenewClick }) {
             <DI d={D.link} w={16} />{t('change_sub_link')}
           </button>
         )}
-        <button type="button" className="csp-svc-btn csp-svc-btn--primary" onClick={onRenewClick}>
-          <DI d={D.renew} w={16} />{t('renew')}
-        </button>
+        {/* one renewal at a time: a paid / in-review renewal applies first */}
+        {!s.pending_renewal && (
+          <button type="button" className="csp-svc-btn csp-svc-btn--primary" onClick={onRenewClick}>
+            <DI d={D.renew} w={16} />{t('renew')}
+          </button>
+        )}
       </div>
 
       {qrOpen && <QrModal s={s} t={t} lang={lang} onClose={() => setQrOpen(false)} />}

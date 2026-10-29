@@ -13,7 +13,7 @@ from apps.crm import retention as R
 from apps.crm.models import DiscountCode, FollowUpCase, ServiceEndMark, ServiceWarning
 from apps.notifications.models import NotificationDelivery
 from apps.orders.models import Order
-from apps.orders.services import OrderError, create_order
+from apps.orders.services import OrderError, create_order, RenewalWaiting
 from apps.panel.models import Panel, Service
 from apps.payments_sms.models import Payment
 from apps.plans.models import Plan
@@ -220,6 +220,11 @@ def test_discount_code_issue_and_checkout(panel, plan):
     o.status = "paid"
     o.save()
     assert DiscountCode.objects.get(code=code).used_at is not None
+    # v1.30.1: while that paid renewal waits, no second renewal at all (one at a time)
+    with pytest.raises(RenewalWaiting):
+        create_order(user=u, plan_id=plan.id, order_type="renew", service_id=s.id, discount_code=code)
+    o.status = "completed"          # delivered (no queued renewal row in this test)
+    o.save()
     with pytest.raises(OrderError, match="already used"):
         create_order(user=u, plan_id=plan.id, order_type="renew", service_id=s.id, discount_code=code)
 

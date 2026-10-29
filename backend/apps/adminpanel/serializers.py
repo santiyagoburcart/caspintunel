@@ -508,13 +508,23 @@ class AdminPendingPaymentSerializer(serializers.ModelSerializer):
     bank_card_holder = serializers.CharField(source="bank_card.holder_name", read_only=True, default=None)
     bank_card_bank = serializers.CharField(source="bank_card.bank_name", read_only=True, default=None)
     sms_mismatch = serializers.SerializerMethodField()
+    tx = serializers.CharField(source="tx_number", read_only=True)
+    invoice_amount = serializers.DecimalField(source="order.amount_unique", max_digits=12, decimal_places=0, read_only=True)
+    warnings = serializers.SerializerMethodField()
 
     class Meta:
         model = Payment
-        fields = ("id", "order_id", "user", "user_telegram", "plan_name", "order_type",
-                  "order_source", "account_name", "method", "amount", "status",
+        fields = ("id", "tx", "order_id", "user", "user_telegram", "plan_name", "order_type",
+                  "order_source", "account_name", "method", "amount", "invoice_amount", "status",
                   "receipt_url", "reject_reason", "created_at",
-                  "bank_card", "bank_card_number", "bank_card_holder", "bank_card_bank", "sms_mismatch")
+                  "bank_card", "bank_card_number", "bank_card_holder", "bank_card_bank", "sms_mismatch",
+                  "receipt_ref", "receipt_amount", "warnings")
+
+    def get_warnings(self, obj) -> list:
+        """Duplicate / mismatch hints with the linked payments (payments_sms/checks.py)."""
+        from apps.payments_sms.checks import payment_warnings
+
+        return payment_warnings(obj)
 
     def get_sms_mismatch(self, obj) -> dict | None:
         """A deposit SMS that is close to this invoice but not equal (never auto-approved)."""

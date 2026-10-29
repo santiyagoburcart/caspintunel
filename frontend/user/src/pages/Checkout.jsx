@@ -5,6 +5,7 @@ import { useI18n } from '../lib/i18n'
 import { toman, gb } from '../lib/format'
 import { Alert, Copyable, Field, Spinner, StatusBadge } from '../components/ui'
 import { AuthImage } from '../components/AuthImage'
+import { RenewWaiting } from '../components/RenewWaiting'
 import { useToast } from '../components/Toast'
 
 // The pending order the customer is paying for survives reloads and tab
@@ -207,10 +208,15 @@ export default function Checkout() {
       const dmsg = e2?.response?.data?.discount_code?.[0]
       if (dmsg) { setCodeErr(dmsg); setQuote(null); setShowCode(true) }
       const msg = dmsg || apiError(e2, t('order_failed')); setErr(dmsg ? '' : msg); toast.error(msg)
+      // a renewal of this service was paid meanwhile (another tab / the bot): show it
+      if (renewId && String(e2?.response?.data?.code || '').includes('renewal_waiting')) {
+        api.get(`/services/${renewId}/renew-info/`).then((r) => setRenewInfo(r.data)).catch(() => {})
+      }
     }
     finally { setBusy(false) }
   }
 
+  const [receiptRef, setReceiptRef] = useState('')   // optional bank document / tracking number
   const uploadReceipt = async (file) => {
     setBusy(true); setErr('')
     toast.loading(t('action_in_progress'))
@@ -219,6 +225,7 @@ export default function Checkout() {
       fd.append('order', order.id)
       fd.append('receipt_image', file)
       if (selectedCard) fd.append('bank_card', selectedCard)
+      if (receiptRef.trim()) fd.append('receipt_ref', receiptRef.trim())
       await api.post('/payments/receipt/', fd)
       await refreshOrder()   // payment_status -> "pending"
       toast.success(t('receipt_saved'))
@@ -263,6 +270,17 @@ export default function Checkout() {
       : plan?.data_limit ? `${gb(plan.data_limit)} GB` : t('unlimited')
     const durationText = plan?.duration_days ? `${plan.duration_days} ${t('days')}` : t('no_expiry')
 
+    if (renewId && renewInfo?.pending_renewal) {
+      // one renewal at a time: the paid / in-review one applies first — nothing to buy here
+      return (
+        <div className="card mx-auto max-w-lg space-y-4">
+          <h1 className="text-lg font-bold">{t('renew')}{accountLabel && <> · <bdi dir="ltr">{accountLabel}</bdi></>}</h1>
+          <RenewWaiting pr={renewInfo.pending_renewal} t={t} lang={lang} />
+          <Link to="/" className="btn-primary inline-block">{t('go_dashboard')}</Link>
+        </div>
+      )
+    }
+
     return (
       <form onSubmit={createOrder} className="card mx-auto max-w-lg space-y-4">
         <style>{CHECKOUT_CSS}</style>
@@ -283,7 +301,7 @@ export default function Checkout() {
         {renewId && renewInfo?.needs_plan && (
           <div className="ckt-renew-banner" role="note" data-testid="renew-no-plan">{t('renew_no_plan_note')}</div>
         )}
-        {renewId && renewInfo && !renewInfo.can_renew && <Alert>{t('renew_unavailable')}</Alert>}
+        {renewId && renewInfo && !renewInfo.can_renew && !renewInfo.pending_renewal && <Alert>{t('renew_unavailable')}</Alert>}
 
         {showPicker ? (
           <Field label={renewId ? t('renew_pick_plan') : t('store')}>
@@ -575,6 +593,12 @@ export default function Checkout() {
           {needsReceipt && (() => {
             const needsCardChoice = (instructions?.cards || []).length > 1 && !selectedCard
             return (
+              <>
+              <Field label={t('receipt_ref_label')}>
+                <input className="input" dir="ltr" inputMode="numeric" maxLength={40} value={receiptRef}
+                  data-testid="receipt-ref" placeholder={t('receipt_ref_ph')}
+                  onChange={(e) => setReceiptRef(e.target.value)} />
+              </Field>
               <label className={`ckt-upload block rounded-2xl border-2 border-dashed p-6 text-center transition ${busy || needsCardChoice ? 'pointer-events-none opacity-60' : 'cursor-pointer'}`}
                 style={{ borderColor: 'var(--c-border)' }}>
                 <div className="mb-1 text-3xl">📸</div>
@@ -585,6 +609,7 @@ export default function Checkout() {
                 <input type="file" accept="image/*" hidden disabled={busy || needsCardChoice}
                   onChange={(e) => e.target.files[0] && uploadReceipt(e.target.files[0])} />
               </label>
+              </>
             )
           })()}
         </>

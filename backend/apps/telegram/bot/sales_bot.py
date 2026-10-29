@@ -22,7 +22,7 @@ from telebot import types
 
 from apps.accounts.models import User
 from apps.orders.models import Order
-from apps.orders.services import DiscountCodeRefused, OrderError, quote_order, rename_paid_order
+from apps.orders.services import DiscountCodeRefused, OrderError, RenewalWaiting, quote_order, rename_paid_order
 from apps.panel.exceptions import PanelError
 from apps.panel.services import revoke_subscription
 from apps.plans.models import Plan, PlanType
@@ -251,6 +251,10 @@ def _place_order(bot, chat_id, user, tg_id, msg=None) -> None:
     except DiscountCodeRefused as exc:              # e.g. used up since it was checked: ask again
         set_state(tg_id, dcode=None, awaiting="dcode")
         return render(bot, chat_id, sc.discount_bad(user, exc.message(user.language)), msg)
+    except RenewalWaiting:                          # a paid renewal of this service still waits
+        clear_state(tg_id)
+        svc = user.services.filter(pk=st["renew"][0]).first()
+        return render(bot, chat_id, sc.renew_offer(user, svc) if svc else sc.services(user), msg)
     except OrderError as exc:
         if not st.get("renew"):
             # e.g. the account name is taken: ask for another one
@@ -571,6 +575,11 @@ def _route(bot, chat_id, msg, user, tg, data: str) -> None:
         return bot.send_message(chat_id, tr(user, "ask_name"))
     if head == "rn":
         clear_state(tg)                                # a fresh draft: no code from an earlier purchase
+        svc = user.services.filter(pk=int(parts[1])).first()
+        if svc is not None:
+            waiting = sc.renewal_waiting_text(user, svc)
+            if waiting:                                # old button in the chat: one renewal at a time
+                return render(bot, chat_id, sc.renew_waiting_screen(user, svc, waiting), msg)
         set_state(tg, renew=[int(parts[1]), int(parts[2])], awaiting=None)
         return _after_draft(bot, chat_id, user, tg, msg)
     if head == "ga":
@@ -633,6 +642,9 @@ def _typed(bot, msg, user, awaiting: str) -> None:
             q = _draft_quote(user, st, text[:40])
         except DiscountCodeRefused as exc:
             return render(bot, chat_id, sc.discount_bad(user, exc.message(user.language)))
+        except RenewalWaiting as exc:
+            clear_state(tg)
+            return bot.send_message(chat_id, html.escape(exc.message(user.language)), reply_markup=sc.main_menu(user).markup)
         except OrderError as exc:
             return bot.send_message(chat_id, tr(user, "bad_name", err=html.escape(str(exc))).split("\n")[0])
         set_state(tg, dcode=q["code"], dc_done=True, awaiting=None)

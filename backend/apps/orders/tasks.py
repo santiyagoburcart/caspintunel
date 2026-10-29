@@ -57,7 +57,7 @@ def fulfill_order(self, order_id: int):
     time/volume the customer already paid for."""
     from apps.panel.services import add_service_data_limit, provision_service
 
-    from .services import schedule_renewal
+    from .services import RenewalConflict, schedule_renewal
 
     order = Order.objects.select_related("plan", "plan__panel", "service").get(pk=order_id)
     if order.status == OrderStatus.COMPLETED:
@@ -81,6 +81,8 @@ def fulfill_order(self, order_id: int):
         raise
     except PanelNameTaken as exc:
         return _ask_for_new_name(order, exc)
+    except RenewalConflict as exc:
+        return _renewal_conflict(order, exc)
     except PanelError as exc:
         log.error("fulfill_order(%s) permanently failed: %s", order_id, exc)
         write_audit(action="order.fulfillment_failed", target=order, detail={"error": str(exc)})
@@ -96,6 +98,48 @@ def fulfill_order(self, order_id: int):
     if order.type != OrderType.RENEW:
         _notify_delivered(order)
     return {"order": order_id, "status": "completed"}
+
+
+def _renewal_conflict(order: Order, exc) -> dict:
+    """A paid renewal whose service already has another paid renewal waiting: the waiting
+    one is kept, this order becomes `failed` (never queued twice) and staff decide —
+    usually a duplicate payment to void or refund. The customer is told it's being checked."""
+    from apps.common.staff_alert import alert_staff
+
+    order.status = OrderStatus.FAILED
+    order.sync_unique_lock()
+    order.save(update_fields=["status", "amount_unique_lock", "updated_at"])
+    payment = getattr(order, "payment", None)
+    write_audit(action="renewal.conflict", target=order, detail={
+        "service": order.service_id, "waiting_order": exc.waiting_order_id,
+        "payment": getattr(payment, "id", None)})
+    log.warning("order %s: service %s already has a waiting renewal (order %s) — not queued, staff alerted",
+                order.id, order.service_id, exc.waiting_order_id)
+    tx = getattr(payment, "tx_number", None) or getattr(payment, "id", "-")
+    alert_staff(
+        "⚠️ تمدید تکراری / Duplicate renewal\n"
+        f"Order #{order.id} ({order.user.username}, service {order.service.panel_username if order.service else '-'}) "
+        f"is paid (TX {tx}, {order.amount_unique} T), but order #{exc.waiting_order_id} is already a paid renewal "
+        f"waiting for this service.\nThe waiting renewal was kept; #{order.id} was NOT queued (status: failed). "
+        "Check Payments — void or refund the duplicate.",
+        perm="payment.approve", dedupe_key=f"renewconflict:{order.id}", ttl=86400)
+    try:
+        from apps.notifications.dispatch import notify_user
+        from apps.notifications.models import NotificationType
+
+        notify_user(
+            order.user,
+            title="پرداخت تمدید در حال بررسی",
+            body=(f"پرداخت سفارش #{order.id} ثبت شد، اما برای این سرویس یک تمدید پرداخت‌شده‌ی دیگر در انتظار اعمال است. "
+                  "پشتیبانی آن را بررسی می‌کند و با شما تماس می‌گیرد."),
+            title_en="Renewal payment under review",
+            body_en=(f"The payment for order #{order.id} was received, but this service already has another paid renewal "
+                     "waiting. Support will review it and contact you."),
+            ntype=NotificationType.ORDER_CONFIRMED, via_site=True, via_bot=True, via_email=True,
+        )
+    except Exception as exc2:  # noqa: BLE001
+        log.warning("renewal conflict notice to user failed: %s", exc2)
+    return {"order": order.id, "status": "failed", "conflict_with": exc.waiting_order_id}
 
 
 def _ask_for_new_name(order: Order, exc: PanelNameTaken) -> dict:

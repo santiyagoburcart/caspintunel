@@ -26,6 +26,15 @@ const T = {
     none_tab: 'موردی در این دسته نیست',
     live_on: 'به‌روزرسانی زنده', live_off: 'اتصال زنده قطع است — تا وصل شدن دوباره، صف هر 15 ثانیه خودکار به‌روز می‌شود',
     live_short_off: 'آفلاین',
+    w_amount: 'مبلغ فیش با مبلغ یکتای سفارش برابر نیست', w_receipt: 'فیش',
+    w_recent_sms: 'این مشتری در 24 ساعت اخیر پرداختی دارد که با پیامک بانک تأیید شده — شاید همین واریز باشد',
+    w_dup_image: 'همین تصویر رسید روی تراکنش دیگری هم ثبت شده است',
+    w_dup_ref: 'همین شماره سند/پیگیری روی تراکنش دیگری هم ثبت شده است',
+    w_renewal: 'این سرویس از قبل یک تمدید پرداخت‌شده در انتظار دارد (سفارش #{id}) — با تأیید، تمدید دوم صف نمی‌شود و سفارش «ناموفق» می‌شود',
+    w_same_service: 'همین سرویس', w_voided: 'حذف‌شده', w_open: 'مشاهده',
+    w_confirm: 'این پرداخت {n} هشدار دارد — پیش از تأیید، تراکنش‌های مرتبط را بررسی کنید.',
+    ri_title: 'اطلاعات فیش (برای بررسی تکراری)', ri_amount: 'مبلغ روی فیش', ri_ref: 'شماره سند / پیگیری',
+    ri_rial: 'ریال', ri_toman: 'تومان', ri_save: 'ثبت',
   },
   en: {
     title: 'Payment approval queue', none: 'Nothing to review',
@@ -43,6 +52,15 @@ const T = {
     none_tab: 'Nothing in this tab',
     live_on: 'Live updates', live_off: 'Live connection lost — the queue auto-refreshes every 15 s until it reconnects',
     live_short_off: 'Offline',
+    w_amount: "The receipt amount doesn't equal the order's unique amount", w_receipt: 'Receipt',
+    w_recent_sms: 'This customer had a payment approved by bank SMS in the last 24 h — it may be the same transfer',
+    w_dup_image: 'The same receipt image is on another transaction',
+    w_dup_ref: 'The same bank document / tracking number is on another transaction',
+    w_renewal: 'This service already has a paid renewal waiting (order #{id}) — approving will NOT queue a second one; the order becomes "failed"',
+    w_same_service: 'same service', w_voided: 'deleted', w_open: 'Open',
+    w_confirm: 'This payment has {n} warning(s) — check the linked transactions before approving.',
+    ri_title: 'Receipt details (duplicate check)', ri_amount: 'Amount on receipt', ri_ref: 'Document / tracking no.',
+    ri_rial: 'Rial', ri_toman: 'Toman', ri_save: 'Save',
   },
 }
 
@@ -142,9 +160,11 @@ export default function Payments() {
     // approving delivers the service — say so in the shared dialog first
     setBusyId(id)
     try {
+      const nw = p?.warnings?.length || 0
       const ok = await confirm({
-        tone: 'success', icon: 'check', badge: 'payment.approve',
-        title: t('approve_deliver_title'), message: t('approve_deliver_msg'),
+        tone: nw ? 'warning' : 'success', icon: 'check', badge: 'payment.approve',
+        title: t('approve_deliver_title'),
+        message: nw ? <>{t('approve_deliver_msg')}<br /><b>{s.w_confirm.replace('{n}', nw)}</b></> : t('approve_deliver_msg'),
         targetLabel: s.order, targetId: `#${p?.order_id ?? id}`,
         confirmLabel: t('approve_deliver_btn'), footnote: s.audit,
         action: () => api.post(`/admin/payments/${id}/${kind}/`, body),
@@ -225,6 +245,8 @@ export default function Payments() {
                 <small>{s.mm_hint}</small>
               </div>
             )}
+            {p.warnings?.length > 0 && <PayWarnings ws={p.warnings} s={s} lang={lang} onOpen={(pid) => navigate(`/payments/${pid}`)} />}
+            <ReceiptInfo p={p} s={s} onSaved={(row) => setRows((cur) => cur.map((r) => (r.id === row.id ? row : r)))} />
             {p.bank_card_number && (
               <div className="pq-customer-card">
                 {s.customer_card}: <b className="mono-num" dir="ltr">{p.bank_card_number}</b>
@@ -270,7 +292,94 @@ export default function Payments() {
   )
 }
 
+/* Duplicate / mismatch hints (backend payments_sms/checks.py), each with its linked payments. */
+function PayWarnings({ ws, s, lang, onOpen }) {
+  const title = (w) => ({
+    amount_mismatch: s.w_amount, recent_sms: s.w_recent_sms, duplicate_image: s.w_dup_image,
+    duplicate_ref: s.w_dup_ref, renewal_waiting: s.w_renewal.replace('{id}', w.order_id),
+  }[w.kind] || w.kind)
+  return (
+    <div className="pq-warns" data-testid="pay-warnings">
+      {ws.map((w) => (
+        <div key={w.kind} className="pq-warn" data-kind={w.kind} role="alert">
+          <b>⚠ {title(w)}</b>
+          {w.kind === 'amount_mismatch' && (
+            <span>{s.w_receipt}: <bdi dir="ltr" className="mono-num">{toman(w.receipt_amount, lang)}</bdi>
+              {' · '}{s.mm_invoice}: <bdi dir="ltr" className="mono-num">{toman(w.invoice_amount, lang)}</bdi>
+              {' · '}{s.mm_diff}: <bdi dir="ltr" className="mono-num">{(Number(w.diff) > 0 ? '+' : '') + toman(w.diff, lang)}</bdi></span>
+          )}
+          {w.kind === 'duplicate_ref' && <span className="mono-num" dir="ltr">{w.ref}</span>}
+          {(w.payments || []).map((x) => (
+            <button key={x.id} type="button" className="pq-warn-link" onClick={() => onOpen(x.id)}>
+              <span className="mono-num" dir="ltr">{x.tx}</span>
+              <span>{s.order} #{x.order_id}</span>
+              <bdi dir="ltr" className="mono-num">{toman(x.amount, lang)}</bdi>
+              <span>{jalali(x.confirmed_at || x.created_at, true, lang)}</span>
+              {x.same_service && <em>{s.w_same_service}</em>}
+              {x.voided && <em className="pq-warn-void">{s.w_voided}</em>}
+              <span className="pq-warn-open">{s.w_open} ›</span>
+            </button>
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/* What the receipt says, typed by staff — feeds the amount / document-number checks. */
+function ReceiptInfo({ p, s, onSaved }) {
+  const [amount, setAmount] = useState(p.receipt_amount != null ? String(p.receipt_amount) : '')
+  const [unit, setUnit] = useState(p.receipt_amount != null ? 'toman' : 'rial')
+  const [ref, setRef] = useState(p.receipt_ref || '')
+  const [busy, setBusy] = useState(false)
+  const save = async () => {
+    setBusy(true)
+    try {
+      const { data } = await api.post(`/admin/payments/${p.id}/receipt-info/`, { receipt_amount: amount, unit, receipt_ref: ref })
+      onSaved(data)
+    } catch { /* the toast (FeedbackBridge) shows the reason */ } finally { setBusy(false) }
+  }
+  return (
+    <div className="pq-ri" data-testid="receipt-info">
+      <div className="pq-ri-t">{s.ri_title}</div>
+      <div className="pq-ri-row">
+        <input className="input" dir="ltr" inputMode="numeric" aria-label={s.ri_amount} placeholder={s.ri_amount}
+          value={amount} onChange={(e) => setAmount(e.target.value)} />
+        <select className="input" aria-label={s.ri_amount} value={unit} onChange={(e) => setUnit(e.target.value)}>
+          <option value="rial">{s.ri_rial}</option><option value="toman">{s.ri_toman}</option>
+        </select>
+        <input className="input" dir="ltr" inputMode="numeric" aria-label={s.ri_ref} placeholder={s.ri_ref}
+          value={ref} onChange={(e) => setRef(e.target.value)} />
+        <button type="button" className="btn-ghost text-sm" disabled={busy} onClick={save}>{busy ? '…' : s.ri_save}</button>
+      </div>
+    </div>
+  )
+}
+
 const CSS = `
+.pq-warns { display: flex; flex-direction: column; gap: 6px; }
+.pq-warn { display: flex; flex-direction: column; gap: 4px; padding: 8px 12px; border-radius: 10px; font-size: 12.5px; line-height: 1.6;
+  color: var(--c-warning-fg); background: color-mix(in srgb, var(--c-warning) 12%, transparent); border: 1px solid color-mix(in srgb, var(--c-warning) 34%, transparent); }
+.pq-warn[data-kind="duplicate_image"], .pq-warn[data-kind="duplicate_ref"], .pq-warn[data-kind="renewal_waiting"] {
+  color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 10%, transparent); border-color: color-mix(in srgb, var(--c-danger) 30%, transparent); }
+.pq-warn > span { color: var(--c-text); }
+.pq-warn-link { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; text-align: start; padding: 6px 10px; border-radius: 8px;
+  min-height: 36px; font-size: 12px; color: var(--c-text); background: color-mix(in srgb, var(--c-bg) 70%, transparent); border: 1px solid var(--c-border); }
+.pq-warn-link em { font-style: normal; font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 999px;
+  background: color-mix(in srgb, var(--c-primary) 14%, transparent); color: var(--c-primary-fg); }
+.pq-warn-link em.pq-warn-void { background: color-mix(in srgb, var(--c-text-muted) 16%, transparent); color: var(--c-muted-fg); }
+.pq-warn-open { margin-inline-start: auto; color: var(--c-primary); font-weight: 600; }
+.pq-ri { display: flex; flex-direction: column; gap: 4px; }
+.pq-ri-t { font-size: 11.5px; color: var(--c-text-muted); }
+.pq-ri-row { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, .8fr) minmax(0, 1.5fr) auto; gap: 6px; align-items: center; }
+.pq-ri-row .input { font-size: 13px; padding-block: 6px; min-width: 0; }
+@media (max-width: 767px) {
+  .pq-ri-row { grid-template-columns: minmax(0, 1fr) 84px; }
+  .pq-ri-row .input { font-size: 16px; min-height: 44px; }
+  .pq-ri-row > :nth-child(3) { grid-column: 1 / 2; }
+  .pq-ri-row > button { min-height: 44px; }
+  .pq-warn-link { min-height: 44px; }
+}
 .pq-live { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; color: var(--c-warning);
   padding: 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--c-warning) 12%, transparent); }
 .pq-live i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0; }

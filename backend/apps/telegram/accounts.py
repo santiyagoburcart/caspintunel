@@ -197,12 +197,8 @@ def notify_staff_conflict(telegram_id: int, telegram_username: str, phone: str, 
     """Tell staff (linked staff with users.manage, else the backup chat) that a
     Telegram user shared a number that belongs to another Telegram-linked
     account. Best effort, at most once an hour per (Telegram id, phone)."""
-    from django.core.cache import cache
+    from apps.common.staff_alert import alert_staff
 
-    from apps.accounts.models import Staff
-
-    if not cache.add(f"tgconflict:{telegram_id}:{phone}", 1, 3600):
-        return 0
     owner = User.objects.filter(pk=owner_id).first()
     who = f"@{telegram_username}" if telegram_username else "-"
     text = ("⚠️ تداخل حساب تلگرام / Telegram account conflict\n"
@@ -210,30 +206,7 @@ def notify_staff_conflict(telegram_id: int, telegram_username: str, phone: str, 
             f"That number belongs to user #{owner_id} ({owner.username if owner else '?'}), "
             f"already linked to Telegram {owner.telegram_id if owner else '?'}.\n"
             "Nothing was merged — check it in Users.")
-    sent = 0
-    try:
-        from apps.telegram.config import sales_client
-
-        client = sales_client()
-        if client is not None:
-            for staff in Staff.objects.filter(is_active=True, telegram_id__isnull=False):
-                if staff.has_perm("users.manage"):
-                    try:
-                        client.send_message(staff.telegram_id, text, parse_mode=None)
-                        sent += 1
-                    except Exception as exc:  # noqa: BLE001
-                        log.warning("conflict DM to staff %s failed: %s", staff.pk, exc)
-        if not sent:
-            from apps.telegram.config import backup_client, get_bot_config
-            from apps.telegram.models import BotType
-
-            cfg, bclient = get_bot_config(BotType.BACKUP), backup_client()
-            if bclient and cfg and cfg.backup_chat_id:
-                bclient.send_message(cfg.backup_chat_id, text, parse_mode=None)
-                sent = 1
-    except Exception as exc:  # noqa: BLE001
-        log.warning("telegram conflict alert failed: %s", exc)
-    return sent
+    return alert_staff(text, perm="users.manage", dedupe_key=f"tgconflict:{telegram_id}:{phone}")
 
 
 # admin-note wording for the relations a merge moves (audit detail keeps the raw labels)

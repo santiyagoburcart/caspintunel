@@ -68,7 +68,7 @@ class ServiceViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.
         subscription link. `plan` = its own plan when that can be bought again (one-tap
         renewal); `plans` = every plan it may switch / upgrade to. A service without a
         usable plan (e.g. linked manually by staff) has `plan: null, needs_plan: true`."""
-        from apps.orders.services import renewable_plan, renewal_plans
+        from apps.orders.services import RenewalWaiting, pending_renewal_info, renewable_plan, renewal_plans, waiting_renewal
         from apps.plans.serializers import PlanSerializer
 
         service = self.get_object()
@@ -76,6 +76,15 @@ class ServiceViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.
         plans = list(renewal_plans(service))
         needs_plan = plan is None
         message = ""
+        waiting = waiting_renewal(service)
+        if waiting is not None:
+            # one renewal at a time: the paid one applies first (incident 2026-10-29)
+            return Response({
+                "can_renew": False, "plan": PlanSerializer(plan).data if plan else None, "plans": [],
+                "needs_plan": False, "pending_renewal": pending_renewal_info(service),
+                "service": {"id": service.id, "panel_username": service.panel_username},
+                "message": RenewalWaiting(waiting).message("fa"),
+            })
         if needs_plan:
             message = ("این سرویس پلن تمدید ندارد؛ یک پلن انتخاب کنید. تمدید روی همین اکانت و همین لینک اشتراک انجام می‌شود."
                        if plans else "در حال حاضر پلنی برای تمدید موجود نیست؛ با پشتیبانی تماس بگیرید.")
@@ -84,6 +93,7 @@ class ServiceViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.
             "plan": PlanSerializer(plan).data if plan else None,
             "plans": PlanSerializer(plans, many=True).data,
             "needs_plan": needs_plan,
+            "pending_renewal": None,
             "service": {"id": service.id, "panel_username": service.panel_username},
             "message": message,
         })
@@ -95,7 +105,7 @@ class ServiceViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.
         service's own plan is used (a service without one must send `plan`)."""
         from apps.orders.models import OrderType
         from apps.orders.serializers import OrderSerializer
-        from apps.orders.services import OrderError, create_order, renewable_plan, renewal_plans
+        from apps.orders.services import OrderError, RenewalWaiting, create_order, renewable_plan, renewal_plans
         from apps.payments_sms.models import BankCard
         from apps.payments_sms.serializers import BankCardSerializer
 
@@ -115,6 +125,9 @@ class ServiceViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.
                 user=request.user, plan_id=plan.id, order_type=OrderType.RENEW,
                 service_id=service.id, source="site",
             )
+        except RenewalWaiting as exc:
+            lang = "en" if getattr(request.user, "language", "fa") == "en" else "fa"
+            return Response({"detail": exc.message(lang), "code": exc.code}, status=409)
         except OrderError as exc:
             return Response({"detail": str(exc)}, status=400)
 

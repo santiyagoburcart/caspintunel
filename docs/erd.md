@@ -202,6 +202,9 @@ erDiagram
         decimal amount
         string status "pending | approved | rejected"
         string receipt_image "private media"
+        string receipt_sha256 "image hash (duplicate check)"
+        string receipt_ref "bank document / tracking no., digits"
+        decimal receipt_amount "amount on the receipt, tomans (staff)"
         bigint sms_message_id FK
         string confirmed_by "admin | system"
         bigint confirmed_by_staff_id FK
@@ -266,7 +269,7 @@ erDiagram
 | `sms_source` | Allow-list of bank senders and the default amount unit for unit-less SMS. |
 | `sms_app_device` | Operator phones (Android app / iPhone Shortcut) allowed to forward bank SMS. |
 | `sms_message` | Every forwarded SMS with the parsed amount, the matched order or the near-miss order (`less` / `more`), and a human-readable note (admin SMS log). |
-| `scheduled_renewal` | A paid renewal waiting for the service to reach the end of its cycle; applied once (`applied_at`). |
+| `scheduled_renewal` | A paid renewal waiting for the service to reach the end of its cycle; applied once (`applied_at`). One per service; an unapplied one is never replaced (a second paid renewal → order `failed` + staff alert). |
 
 ## 4. Agency panel (`agency`)
 

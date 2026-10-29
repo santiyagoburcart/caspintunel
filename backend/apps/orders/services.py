@@ -25,6 +25,36 @@ class OrderError(Exception):
     """Business-rule violation while creating an order."""
 
 
+class RenewalWaiting(OrderError):
+    """This service already has a renewal that is paid (or whose receipt is being
+    reviewed) and not applied yet — a second one is refused (incident 2026-10-29,
+    order #30: a customer paid one renewal and was charged for two)."""
+
+    code = "renewal_waiting"
+
+    def __init__(self, waiting: dict):
+        self.waiting = waiting
+        if waiting["state"] == "review":
+            self.fa = "رسید پرداخت تمدید این سرویس در حال بررسی است؛ تا نتیجه‌ی آن نمی‌توانید دوباره تمدید کنید."
+            self.en = "A renewal payment for this service is being reviewed; you can't renew again until it is decided."
+        else:
+            self.fa = "تمدید این سرویس پرداخت شده و در انتظار اعمال است — با پایان حجم/زمان فعلی اعمال می‌شود."
+            self.en = "A renewal for this service is already paid and waiting — it applies when the current volume/time ends."
+        super().__init__(self.en)
+
+    def message(self, lang="fa"):
+        return self.en if lang == "en" else self.fa
+
+
+class RenewalConflict(Exception):
+    """A paid renewal order found another, still unapplied renewal on its service.
+    The waiting one is never overwritten; staff are alerted instead."""
+
+    def __init__(self, waiting_order_id: int):
+        self.waiting_order_id = waiting_order_id
+        super().__init__(f"service already has a waiting renewal (order #{waiting_order_id})")
+
+
 def _reservation_deadline():
     minutes = int(get_setting("unique_amount_reservation_minutes", 30))
     return timezone.now() + timezone.timedelta(minutes=minutes)
@@ -130,6 +160,12 @@ def create_order(
         if order_type == OrderType.RENEW and plan.type == PlanType.CUSTOM_VOLUME:
             # a renewal applies the plan's fixed volume to the same account — custom volume has none
             raise OrderError("a custom-volume plan cannot be used for a renewal")
+        if order_type == OrderType.RENEW:
+            # one renewal at a time: lock the service row so two quick taps can't both pass
+            Service.objects.select_for_update().filter(pk=service.pk).first()
+            waiting = waiting_renewal(service)
+            if waiting is not None:
+                raise RenewalWaiting(waiting)
     elif order_type == OrderType.NEW:
         from apps.panel.models import Service
 
@@ -237,10 +273,15 @@ def quote_order(*, user, plan_id, order_type=OrderType.NEW, custom_volume_gb=Non
     if order_type in (OrderType.RENEW, OrderType.ADDON_VOLUME):
         from apps.panel.models import Service
 
-        if not Service.objects.filter(pk=service_id, user=user).exists():
+        service = Service.objects.filter(pk=service_id, user=user).first()
+        if service is None:
             raise OrderError("service not found")
         if order_type == OrderType.RENEW and plan.type == PlanType.CUSTOM_VOLUME:
             raise OrderError("a custom-volume plan cannot be used for a renewal")
+        if order_type == OrderType.RENEW:
+            waiting = waiting_renewal(service)
+            if waiting is not None:
+                raise RenewalWaiting(waiting)
     amount, _ = base_amount(plan, custom_volume_gb)
     out = {"original": amount, "discount": Decimal(0), "final": amount, "code": "", "percent": None}
     if discount_code:
@@ -320,6 +361,48 @@ def renewal_plans(service):
             .exclude(type=PlanType.CUSTOM_VOLUME).order_by("sort_order", "price", "id"))
 
 
+def waiting_renewal(service) -> dict | None:
+    """The renewal of this service that is paid (or under receipt review) but not applied
+    yet, as {"state": "paid" | "review", "order": Order, "plan": Plan} — else None.
+    "paid": queued (ScheduledRenewal) or paid and about to be queued. "review": a receipt /
+    SMS-mismatch payment for a renewal order still waits for staff."""
+    from .models import ScheduledRenewal
+
+    sr = (ScheduledRenewal.objects.filter(service_id=service.pk, applied_at__isnull=True)
+          .select_related("plan", "order").first())
+    if sr is not None:
+        return {"state": "paid", "order": sr.order, "plan": sr.plan}
+    base = Order.objects.filter(service_id=service.pk, type=OrderType.RENEW).select_related("plan").order_by("-id")
+    o = base.filter(status=OrderStatus.PAID).first()
+    if o is not None:
+        return {"state": "paid", "order": o, "plan": o.plan}
+    o = base.filter(status=OrderStatus.PENDING_PAYMENT, payment__status=PaymentStatus.PENDING,
+                    payment__voided_at__isnull=True).first()
+    if o is not None:
+        return {"state": "review", "order": o, "plan": o.plan}
+    return None
+
+
+def pending_renewal_info(service) -> dict | None:
+    """waiting_renewal() as plain data for the site / Mini App (service card, renew-info).
+    It applies when the current volume runs out or at `applies_by` (the current expiry),
+    whichever comes first."""
+    w = waiting_renewal(service)
+    if w is None:
+        return None
+    plan = w["plan"]
+    return {
+        "state": w["state"],
+        "order_id": w["order"].id,
+        "plan_id": plan.id if plan else None,
+        "plan_name": plan.name_fa if plan else None,
+        "plan_name_en": (plan.name_en or plan.name_fa) if plan else None,
+        "data_limit": plan.data_limit if plan else None,
+        "duration_days": plan.duration_days if plan else None,
+        "applies_by": service.expire_at,
+    }
+
+
 def renewable_plan(service):
     """The service's own plan when it can be bought again for a renewal, else None
     (no plan — e.g. a manually linked account — or the plan was retired)."""
@@ -338,16 +421,19 @@ def schedule_renewal(order: Order) -> ScheduledRenewal:
     from .models import ScheduledRenewal
 
     plan = order.plan
-    renewal, _created = ScheduledRenewal.objects.update_or_create(
-        service_id=order.service_id,
-        defaults={
-            "plan": plan,
-            "order": order,
-            "renewal_mode": plan.renewal_mode,
-            "carry_over_data": plan.carry_over_data,
-            "applied_at": None,
-        },
-    )
+    fields = {"plan": plan, "order": order, "renewal_mode": plan.renewal_mode,
+              "carry_over_data": plan.carry_over_data, "applied_at": None}
+    with transaction.atomic():
+        renewal = ScheduledRenewal.objects.select_for_update().filter(service_id=order.service_id).first()
+        if renewal is not None and renewal.applied_at is None and renewal.order_id != order.id:
+            # another paid renewal still waits: never replace it (that silently dropped a paid renewal)
+            raise RenewalConflict(renewal.order_id)
+        if renewal is None:
+            renewal = ScheduledRenewal.objects.create(service_id=order.service_id, **fields)
+        else:   # the row of an already applied renewal (one per service), or a retry of this order
+            for k, v in fields.items():
+                setattr(renewal, k, v)
+            renewal.save()
     write_audit(action="renewal.scheduled", target=order, detail={"plan": plan.id})
     # the customer paid for this plan: it is the service's plan from now on (the next
     # one-tap renewal offers it); the renewal itself is applied by the scheduled job
