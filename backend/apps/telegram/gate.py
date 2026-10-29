@@ -35,8 +35,13 @@ def missing_channel_memberships(telegram_id: int, client=None) -> list[RequiredC
     return missing
 
 
+def phone_required() -> bool:
+    """force_share_phone: no customer account exists before the phone is shared."""
+    return bool(get_setting("force_share_phone", False))
+
+
 def needs_phone(user) -> bool:
-    return bool(get_setting("force_share_phone", False)) and not user.phone
+    return phone_required() and (user is None or not user.phone)
 
 
 def check_access(user, telegram_id: int, client=None) -> GateResult:

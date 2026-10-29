@@ -176,9 +176,26 @@ def test_phone_gate_applies_like_the_bot(client, sales_bot):
     set_setting("force_share_phone", "true", "bool")
     r = client.post(URL, {"init_data": _sign(_fields(tg_id=5551))}, format="json")
     assert r.status_code == 403 and r.json()["code"] == "phone_required"
-    u = User.objects.get(telegram_id=5551)          # the account exists (created like the bot)
-    u.phone = "09121234567"; u.save(update_fields=["phone"])
-    assert client.post(URL, {"init_data": _sign(_fields(tg_id=5551))}, format="json").status_code == 200
+    assert not User.objects.filter(telegram_id=5551).exists()     # nothing created before the phone
+    # an old phoneless bot account is still gated
+    User.objects.create_user("tg_old", "Str0ngPass!", telegram_id=5552)
+    r = client.post(URL, {"init_data": _sign(_fields(tg_id=5552))}, format="json")
+    assert r.status_code == 403 and r.json()["code"] == "phone_required"
+
+
+def test_miniapp_after_contact_logs_into_the_site_account(client, sales_bot):
+    """site signup, then the mini app: the contact links Telegram to the SAME account"""
+    from apps.settings_app.utils import set_setting
+    from apps.telegram.accounts import handle_contact
+
+    set_setting("force_share_phone", "true", "bool")
+    site = User.objects.create_user("webuser", "Str0ngPass!", phone="09107323128")
+    assert client.post(URL, {"init_data": _sign(_fields(tg_id=5553))}, format="json").status_code == 403
+    handle_contact(5553, "+989107323128", contact_user_id=5553)          # requestContact -> bot
+    r = client.post(URL, {"init_data": _sign(_fields(tg_id=5553))}, format="json")
+    assert r.status_code == 200 and r.json()["user"]["username"] == "webuser" and r.json()["created"] is False
+    site.refresh_from_db()
+    assert site.check_password("Str0ngPass!") and User.objects.count() == 1
 
 
 def test_empty_miniapp_url_falls_back_to_the_site(monkeypatch):

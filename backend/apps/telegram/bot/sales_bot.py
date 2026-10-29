@@ -28,9 +28,9 @@ from apps.panel.services import revoke_subscription
 from apps.plans.models import Plan, PlanType
 from apps.settings_app.models import SiteConfig
 
-from ..accounts import change_password_via_bot, ensure_bot_user, link_telegram_phone
+from ..accounts import change_password_via_bot, ensure_bot_user, handle_contact
 from ..config import get_bot_config
-from ..gate import check_access, needs_phone
+from ..gate import check_access, needs_phone, phone_required
 from ..models import BotType
 from ..shop import buy_new, order_awaiting_receipt, renew, submit_bot_receipt
 from . import keyboards as kb
@@ -89,13 +89,33 @@ def _sync_menu_button(bot: telebot.TeleBot) -> None:
 
 
 # --- helpers ---------------------------------------------------------
+def _tg_name(tg_user) -> str:
+    return " ".join(filter(None, [getattr(tg_user, "first_name", ""), getattr(tg_user, "last_name", "")]))
+
+
 def _user(tg_user):
+    """(user, created, password). With force_share_phone on, an unknown
+    Telegram user gets NO account here — (None, False, None) — the account is
+    only made (or found by phone) when they share their number."""
+    if phone_required():
+        user = User.objects.filter(telegram_id=tg_user.id).first()
+        if user is None:
+            return None, False, None
     user, created, password = ensure_bot_user(
         tg_user.id,
         telegram_username=getattr(tg_user, "username", "") or "",
-        name=" ".join(filter(None, [getattr(tg_user, "first_name", ""), getattr(tg_user, "last_name", "")])),
+        name=_tg_name(tg_user),
     )
     return user, created, password
+
+
+def _customer(bot, chat_id, tg_user):
+    """The customer account behind this Telegram user, or None after asking
+    for the phone (no account yet while force_share_phone is on)."""
+    user, *_ = _user(tg_user)
+    if user is None:
+        _ask_phone(bot, chat_id, None)
+    return user
 
 
 def _t(user, fa: str, en: str) -> str:
@@ -138,10 +158,10 @@ MSG_CONFLICT = (
     "⚠️ این شماره قبلاً به حساب تلگرام دیگری متصل شده است. لطفاً با پشتیبانی تماس بگیرید.",
     "⚠️ This number is already linked to a different Telegram account. Please contact support.",
 )
-MSG_MERGED = (
-    "✅ حساب شما در سایت به ربات متصل شد. برای ورود به سایت، از دکمه «تغییر رمز عبور» در ربات یک رمز جدید تنظیم کنید.",
-    "✅ Your website account is now linked to the bot. To sign in on the website, set a new password "
-    "with the “Change password” button in the bot.",
+MSG_LINKED = (
+    "✅ حساب سایت شما به تلگرام متصل شد؛ با همان نام کاربری و رمز قبلی وارد شوید.\nنام کاربری: <code>{u}</code>",
+    "✅ Your website account is now linked to Telegram; sign in with your existing username and password.\n"
+    "Username: <code>{u}</code>",
 )
 MSG_PHONE_SAVED = ("شماره ثبت شد ✅", "Phone number saved ✅")
 
@@ -277,10 +297,17 @@ def _register(bot: telebot.TeleBot):
             bot.send_message(msg.chat.id, staff_link_reply(payload[len(STAFF_LINK_PREFIX):], msg.from_user.id))
             return
         user, created, password = _user(msg.from_user)
-        if created and payload:
-            _apply_referral(user, payload)
         clear_state(msg.from_user.id)
         text = tr(user, "welcome", site=html.escape(SiteConfig.load().site_name_fa))
+        if user is None:
+            # phone first: only the welcome + the share button; the account is made on contact share
+            if payload.startswith("ref_"):
+                set_state(msg.from_user.id, ref=payload)
+            bot.send_message(msg.chat.id, text)
+            _ask_phone(bot, msg.chat.id, None)
+            return
+        if created and payload:
+            _apply_referral(user, payload)
         if created:
             text += tr(user, "welcome_new", u=user.username, p=password)
         bot.send_message(msg.chat.id, text)
@@ -294,8 +321,8 @@ def _register(bot: telebot.TeleBot):
         if staff is not None:                       # linked staff: the staff inbox, no customer account
             clear_state(msg.from_user.id)
             return render(bot, msg.chat.id, tbot.staff_list(staff))
-        user, *_ = _user(msg.from_user)
-        if _enforce_gate(bot, msg.chat.id, user, msg.from_user.id):
+        user = _customer(bot, msg.chat.id, msg.from_user)
+        if user is not None and _enforce_gate(bot, msg.chat.id, user, msg.from_user.id):
             clear_state(msg.from_user.id)
             render(bot, msg.chat.id, tbot.home(user))
 
@@ -307,8 +334,8 @@ def _register(bot: telebot.TeleBot):
             staff = tbot.staff_for(msg.from_user.id)
             if staff is not None:
                 return _ticket_file(bot, msg, staff=staff, st=st)
-        user, *_ = _user(msg.from_user)
-        if not _phone_gate(bot, msg.chat.id, user):
+        user = _customer(bot, msg.chat.id, msg.from_user)
+        if user is None or not _phone_gate(bot, msg.chat.id, user):
             return
         if st.get("awaiting") in ("tk_body", "tk_reply"):
             if _enforce_gate(bot, msg.chat.id, user, msg.from_user.id):
@@ -343,22 +370,32 @@ def _register(bot: telebot.TeleBot):
     @bot.message_handler(content_types=["contact"])
     def contact(msg):
         close_old_connections()
-        user, *_ = _user(msg.from_user)
-        if not msg.contact or msg.contact.user_id != msg.from_user.id:
+        tg = msg.from_user
+        known = User.objects.filter(telegram_id=tg.id).first()
+        if not msg.contact or msg.contact.user_id != tg.id:
             # a forwarded / someone else's contact card — only your own number counts
-            _ask_phone(bot, msg.chat.id, user, MSG_NOT_OWN)
+            _ask_phone(bot, msg.chat.id, known, MSG_NOT_OWN)
             return
-        res = link_telegram_phone(user, msg.contact.phone_number)
+        res = handle_contact(tg.id, msg.contact.phone_number, contact_user_id=msg.contact.user_id,
+                             telegram_username=getattr(tg, "username", "") or "", name=_tg_name(tg))
         if res.status in ("not_iranian", "invalid"):
-            _ask_phone(bot, msg.chat.id, user, MSG_NOT_IRANIAN)
+            _ask_phone(bot, msg.chat.id, known, MSG_NOT_IRANIAN)
             return
         if res.status == "conflict":
-            bot.send_message(msg.chat.id, _t(user, *MSG_CONFLICT), reply_markup=types.ReplyKeyboardRemove())
+            bot.send_message(msg.chat.id, _t(known, *MSG_CONFLICT), reply_markup=types.ReplyKeyboardRemove())
             return
         user = res.user
-        done = MSG_MERGED if res.status == "merged" else MSG_PHONE_SAVED
-        bot.send_message(msg.chat.id, _t(user, *done), reply_markup=types.ReplyKeyboardRemove())
-        if _enforce_gate(bot, msg.chat.id, user, msg.from_user.id):
+        if res.status in ("linked", "merged"):
+            text = _t(user, *MSG_LINKED).format(u=html.escape(user.username))
+        elif res.status == "created":
+            ref = get_state(tg.id).get("ref") or ""
+            if ref:
+                _apply_referral(user, ref)
+            text = _t(user, *MSG_PHONE_SAVED) + tr(user, "welcome_new", u=user.username, p=res.password)
+        else:
+            text = _t(user, *MSG_PHONE_SAVED)
+        bot.send_message(msg.chat.id, text, reply_markup=types.ReplyKeyboardRemove())
+        if _enforce_gate(bot, msg.chat.id, user, tg.id):
             render(bot, msg.chat.id, sc.main_menu(user))
 
     @bot.callback_query_handler(func=lambda c: True)
@@ -379,7 +416,9 @@ def _register(bot: telebot.TeleBot):
                 log.exception("staff callback %s failed: %s", c.data, exc)
                 bot.send_message(c.message.chat.id, "⚠️ مشکلی پیش آمد.")
             return
-        user, *_ = _user(c.from_user)
+        user = _customer(bot, c.message.chat.id, c.from_user)
+        if user is None:
+            return
         data = c.data or ""
         chat_id, msg, tg = c.message.chat.id, c.message, c.from_user.id
         try:
@@ -413,8 +452,8 @@ def _register(bot: telebot.TeleBot):
             if staff is not None:
                 return tbot.handle_staff_input(bot, msg.chat.id, staff, msg.from_user.id, st,
                                                text=(msg.text or "").strip(), render=render, clear_state=clear_state)
-        user, *_ = _user(msg.from_user)
-        if not _enforce_gate(bot, msg.chat.id, user, msg.from_user.id):
+        user = _customer(bot, msg.chat.id, msg.from_user)
+        if user is None or not _enforce_gate(bot, msg.chat.id, user, msg.from_user.id):
             return
         awaiting = get_state(msg.from_user.id).get("awaiting")
         if msg.content_type == "text" and awaiting and not (msg.text or "").startswith("/"):

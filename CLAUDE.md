@@ -69,8 +69,10 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   (it would cascade orders/payments and change revenue). Deleted users are excluded from lists, stats,
   pickers, referral codes, scheduled renewals.
 - Phones: always through `apps/accounts/phone.py` (`normalize_ir_phone` → `09xxxxxxxxx`); uniqueness is
-  app-level. A Telegram contact that matches a site account merges the bot account into it
-  (`telegram/accounts.py::link_telegram_phone`) and invalidates the unverified site password.
+  app-level. Every Telegram contact goes through `telegram/accounts.py::handle_contact` (own contact only;
+  with `force_share_phone` no account exists before it — bot and Mini App). A matching site account gets the
+  Telegram link and **keeps its username, password and sessions** (never `set_unusable_password` — that locked
+  out 3 customers, incident 2026-10-29); a number linked to another Telegram id is refused + staff alerted.
 - Staff JWTs carry `tv` = `Staff.token_version`; always resolve the staff with
   `adminpanel.tokens.staff_for_payload()` (never a bare `Staff.objects.get(pk=payload[...])`). Password change or
   `manage.py revoke_staff_sessions [--username X]` ends staff sessions (customers untouched). Spent refresh

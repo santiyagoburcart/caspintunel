@@ -164,9 +164,15 @@ retry on `PanelUnavailable`; a permanent `PanelError` is audited and flagged.
 - **Sales bot** (`bot_sales`): site parity — buy / renew / custom volume /
   receipt upload / services (each as a QR photo + tap-to-copy link) / purchase
   history / account / rules / guide / support message. Gate: forced channels +
-  shared phone (asked again on any message). First contact creates a site
-  account with a random username + password (`ensure_bot_user`); a contact
-  that matches an existing site phone merges into that account. Screens are
+  shared phone (asked again on any message). With `force_share_phone` on, `/start`
+  creates **no** account: the account is made or found when the user shares their
+  own contact (`telegram/accounts.py::handle_contact`, `contact.user_id` must equal the
+  sender). Phone owned by an account without Telegram → Telegram is linked to it
+  (or a leftover bot account is merged into it); username, password and sessions are
+  never changed (`user.linked_telegram` / `user.merged_telegram` audit). Phone owned by
+  an account linked to another Telegram id → refused, `user.telegram_link_conflict`
+  audit + DM to linked staff with `users.manage` (else the backup chat). No match →
+  new account with a random username + password (`ensure_bot_user`). Screens are
   pure functions; the router edits the current message; typed steps live in
   Redis (`tgbot:state:<tg_id>`).
 - **Mini App**: the user SPA inside Telegram; `POST /auth/telegram/miniapp/`

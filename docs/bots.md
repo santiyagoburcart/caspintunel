@@ -15,8 +15,12 @@ function, tested with the DB only), `bot/texts.py` (fa/en, Latin digits),
 
 ## Gates
 Forced channels (the bot must be an admin of each) and a shared phone number are
-checked on every update. A Telegram contact whose phone matches a site account
-merges the bot account into it. First-time users get a random site account.
+checked on every update. With the phone gate on, `/start` only greets and asks for the
+phone — no account exists until the user shares their **own** contact. The shared
+phone (normalized) then decides: an existing site account → Telegram is linked to it and
+it keeps its username + password («حساب سایت شما به تلگرام متصل شد؛ با همان نام کاربری و
+رمز قبلی وارد شوید»); an account already linked to another Telegram id → refused + staff
+alerted; nothing → a new account with a random username + password.
 
 ## Main menu
 🛒 Buy · 📦 My services · 🧾 Purchase history · 👤 My account · 📜 Rules ·

@@ -120,6 +120,13 @@ class TelegramMiniAppLoginView(GenericAPIView):
 
         tg = parsed["user"]
         from apps.telegram.accounts import ensure_bot_user
+        from apps.telegram.gate import phone_required
+
+        # same rule as the bot: with force_share_phone on, no account exists before the phone
+        # is shared — the app asks Telegram for the contact, the bot links / creates it, the app retries
+        if phone_required() and not User.objects.filter(telegram_id=int(tg["id"])).exists():
+            return Response({"detail": "share your phone number with the bot first", "code": "phone_required"},
+                            status=status.HTTP_403_FORBIDDEN)
 
         user, created, _pw = ensure_bot_user(
             int(tg["id"]),

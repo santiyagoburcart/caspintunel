@@ -78,70 +78,162 @@ def ensure_bot_user(telegram_id: int, *, telegram_username: str | None = None,
 
 
 @dataclass
-class PhoneLinkResult:
-    """Outcome of a Telegram contact share.
+class ContactResult:
+    """Outcome of a Telegram contact share (`handle_contact`).
 
-    status: "linked" (phone saved), "already" (same phone as before),
-    "merged" (joined an existing site account — `user` is now that account),
-    "not_iranian" (rejected by iran_phone_only), "invalid", or "conflict"
-    (the number belongs to a different Telegram-linked account).
+    status:
+      "created"     no account had this Telegram id or phone -> new account (`password` set, send it once)
+      "linked"      an existing site account had the phone -> Telegram attached to it (no bot account existed)
+      "merged"      a bot account existed AND a site account had the phone -> bot account folded into it
+      "phone_saved" the Telegram account had no (or another) phone -> phone stored on it
+      "already"     same phone as before
+      "conflict"    the phone belongs to an account linked to a DIFFERENT Telegram id (staff notified)
+      "not_own"     the contact card is not the sender's own number
+      "not_iranian" / "invalid"  rejected number
+    In "linked" / "merged" the site account keeps its username and password.
     """
     status: str
-    user: object
+    user: object = None
     phone: str = ""
+    password: str | None = None
     moved: dict = field(default_factory=dict)
 
     @property
     def ok(self) -> bool:
-        return self.status in ("linked", "already", "merged")
+        return self.status in ("created", "linked", "merged", "phone_saved", "already")
+
+
+def _clean_contact_phone(raw_phone: str):
+    """(phone, None) or (None, "not_iranian" | "invalid")."""
+    phone = normalize_ir_phone(raw_phone)
+    if phone:
+        return phone, None
+    if iran_phone_only():
+        return None, "not_iranian"
+    phone = normalize_phone(raw_phone)
+    return (phone, None) if phone else (None, "invalid")
 
 
 @transaction.atomic
-def link_telegram_phone(user, raw_phone: str) -> PhoneLinkResult:
-    """Store the phone a Telegram user shared (Telegram-verified, e.g.
-    "+989107323128" -> "09107323128") and, if it matches a SITE account that
-    has no Telegram link yet, merge this bot account into it."""
-    phone = normalize_ir_phone(raw_phone)
-    if phone is None:
-        if iran_phone_only():
-            return PhoneLinkResult("not_iranian", user)
-        phone = normalize_phone(raw_phone)
-        if phone is None:
-            return PhoneLinkResult("invalid", user)
+def handle_contact(telegram_id: int, raw_phone: str, *, contact_user_id=None,
+                   telegram_username: str = "", name: str = "") -> ContactResult:
+    """The one place a shared Telegram contact is turned into an account.
 
-    owner = (User.objects.select_for_update().filter(phone=phone)
-             .exclude(pk=user.pk).order_by("id").first())
-    if owner is None:
-        if user.phone == phone:
-            return PhoneLinkResult("already", user, phone)
-        # the Telegram number is verified by Telegram, so it wins over
-        # whatever (unverified) value the account had before
-        user.phone = phone
-        user.save(update_fields=["phone", "updated_at"])
-        return PhoneLinkResult("linked", user, phone)
-    if owner.telegram_id:
-        log.warning("bot contact %s for tg %s matches user %s already linked to tg %s",
-                    phone, user.telegram_id, owner.pk, owner.telegram_id)
-        return PhoneLinkResult("conflict", user, phone)
-    merged, moved = merge_bot_account_into_site(bot_user=user, site_user=owner, phone=phone)
-    return PhoneLinkResult("merged", merged, phone, moved)
+    The phone comes from Telegram (verified), so it is the key: an existing
+    account with that phone is reused — never a second account. A site
+    account's username and password are never changed by this."""
+    telegram_id = int(telegram_id)
+    if contact_user_id is None or int(contact_user_id) != telegram_id:
+        log.warning("tg %s shared a contact that is not their own (contact user %s)", telegram_id, contact_user_id)
+        return ContactResult("not_own")
+    phone, bad = _clean_contact_phone(raw_phone)
+    if bad:
+        return ContactResult(bad)
+
+    current = User.objects.select_for_update().filter(telegram_id=telegram_id).first()
+    owner_qs = User.objects.select_for_update().filter(phone=phone)
+    if current is not None:
+        owner_qs = owner_qs.exclude(pk=current.pk)
+    owner = owner_qs.order_by("id").first()
+
+    if owner is not None and owner.telegram_id:
+        # the number is someone else's Telegram-linked account: never merge, a human decides
+        log.warning("tg %s shared %s, which belongs to user %s linked to tg %s",
+                    telegram_id, phone, owner.pk, owner.telegram_id)
+        write_audit(action="user.telegram_link_conflict", target=owner, staff="telegram-bot", detail={
+            "telegram_id": telegram_id, "phone": phone, "owner": owner.pk,
+            "owner_telegram_id": owner.telegram_id, "bot_user": current.pk if current else None,
+        })
+        transaction.on_commit(lambda: notify_staff_conflict(telegram_id, telegram_username, phone, owner.pk))
+        return ContactResult("conflict", current, phone)
+
+    if current is not None:
+        if owner is None:
+            if current.phone == phone:
+                return ContactResult("already", current, phone)
+            old = current.phone
+            # Telegram verified this number, so it wins over an older (unverified) value
+            current.phone = phone
+            current.save(update_fields=["phone", "updated_at"])
+            write_audit(action="user.phone_from_telegram", target=current, staff="telegram-bot",
+                        detail={"telegram_id": telegram_id, "phone": phone, "old_phone": old})
+            return ContactResult("phone_saved", current, phone)
+        merged, moved = merge_bot_account_into_site(bot_user=current, site_user=owner, phone=phone)
+        return ContactResult("merged", merged, phone, moved=moved)
+
+    if owner is not None:
+        return ContactResult("linked", link_telegram_to_account(owner, telegram_id, telegram_username, name), phone)
+
+    user, created, password = ensure_bot_user(telegram_id, telegram_username=telegram_username,
+                                              phone=phone, name=name)
+    return ContactResult("created" if created else "already", user, phone, password=password)
 
 
-def link_phone(user, phone: str) -> None:
-    """Back-compat wrapper (kept for callers that only need the side effect)."""
-    link_telegram_phone(user, phone)
+def link_telegram_to_account(user, telegram_id: int, telegram_username: str = "", name: str = ""):
+    """Attach a Telegram id to an existing (site) account. Username, password
+    and sessions stay as they are."""
+    user = User.objects.select_for_update().get(pk=user.pk)
+    user.telegram_id = telegram_id
+    fields = ["telegram_id", "updated_at"]
+    if telegram_username and user.telegram_username != telegram_username:
+        user.telegram_username = telegram_username
+        fields.append("telegram_username")
+    if name and not user.name:
+        user.name = name
+        fields.append("name")
+    stamp = timezone.now().strftime("%Y-%m-%d %H:%M")
+    user.admin_note = ((user.admin_note + "\n") if user.admin_note else "") + (
+        f"[{stamp}] Telegram {telegram_id} linked via bot contact {user.phone} "
+        "(username and password unchanged).")
+    fields.append("admin_note")
+    user.save(update_fields=fields)
+    write_audit(action="user.linked_telegram", target=user, staff="telegram-bot",
+                detail={"telegram_id": telegram_id, "phone": user.phone, "username": user.username})
+    log.info("linked tg %s to existing user %s", telegram_id, user.pk)
+    return user
 
 
-def _revoke_sessions(user) -> int:
-    """Blacklist every refresh token; access tokens die through the
-    password-hash claim (accounts.authentication) once the password changes."""
-    from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
+def notify_staff_conflict(telegram_id: int, telegram_username: str, phone: str, owner_id: int) -> int:
+    """Tell staff (linked staff with users.manage, else the backup chat) that a
+    Telegram user shared a number that belongs to another Telegram-linked
+    account. Best effort, at most once an hour per (Telegram id, phone)."""
+    from django.core.cache import cache
 
-    n = 0
-    for tok in OutstandingToken.objects.filter(user=user):
-        _, created = BlacklistedToken.objects.get_or_create(token=tok)
-        n += int(created)
-    return n
+    from apps.accounts.models import Staff
+
+    if not cache.add(f"tgconflict:{telegram_id}:{phone}", 1, 3600):
+        return 0
+    owner = User.objects.filter(pk=owner_id).first()
+    who = f"@{telegram_username}" if telegram_username else "-"
+    text = ("⚠️ تداخل حساب تلگرام / Telegram account conflict\n"
+            f"Telegram {telegram_id} ({who}) shared {phone}.\n"
+            f"That number belongs to user #{owner_id} ({owner.username if owner else '?'}), "
+            f"already linked to Telegram {owner.telegram_id if owner else '?'}.\n"
+            "Nothing was merged — check it in Users.")
+    sent = 0
+    try:
+        from apps.telegram.config import sales_client
+
+        client = sales_client()
+        if client is not None:
+            for staff in Staff.objects.filter(is_active=True, telegram_id__isnull=False):
+                if staff.has_perm("users.manage"):
+                    try:
+                        client.send_message(staff.telegram_id, text, parse_mode=None)
+                        sent += 1
+                    except Exception as exc:  # noqa: BLE001
+                        log.warning("conflict DM to staff %s failed: %s", staff.pk, exc)
+        if not sent:
+            from apps.telegram.config import backup_client, get_bot_config
+            from apps.telegram.models import BotType
+
+            cfg, bclient = get_bot_config(BotType.BACKUP), backup_client()
+            if bclient and cfg and cfg.backup_chat_id:
+                bclient.send_message(cfg.backup_chat_id, text, parse_mode=None)
+                sent = 1
+    except Exception as exc:  # noqa: BLE001
+        log.warning("telegram conflict alert failed: %s", exc)
+    return sent
 
 
 # admin-note wording for the relations a merge moves (audit detail keeps the raw labels)
@@ -161,10 +253,9 @@ def merge_bot_account_into_site(*, bot_user, site_user, phone: str):
     """Move everything the bot-only account owns into the site account, link
     the Telegram id to the site account and retire the bot account.
 
-    The site account's phone was never verified (anyone could have typed it),
-    while the Telegram phone is — so the site password is invalidated and
-    every existing site session revoked; the owner sets a new password from
-    the bot. Returns (site_user, moved-counts)."""
+    The site account keeps its username, password and sessions (the phone is
+    verified by Telegram, so this is the same person). The bot account's
+    generated credentials stop working. Returns (site_user, moved-counts)."""
     site_user = User.objects.select_for_update().get(pk=site_user.pk)
     bot_user = User.objects.select_for_update().get(pk=bot_user.pk)
     tg_id = bot_user.telegram_id
@@ -200,20 +291,18 @@ def merge_bot_account_into_site(*, bot_user, site_user, phone: str):
 
     site_user.telegram_id = tg_id
     site_user.phone = phone
-    site_user.set_unusable_password()
-    revoked = _revoke_sessions(site_user)
 
     stamp = timezone.now().strftime("%Y-%m-%d %H:%M")
     summary = ", ".join(f"{_FRIENDLY.get(k, k)}: {v}" for k, v in moved.items()) or "nothing"
     note = (f"[{stamp}] Telegram account merged via bot contact {phone}: bot user "
             f"'{bot_username}' (#{bot_user.pk}, tg {tg_id}) -> this account. Moved: {summary}. "
-            f"Site password invalidated, {revoked} session(s) revoked.")
+            "Username and password unchanged.")
     site_user.admin_note = (site_user.admin_note + "\n" if site_user.admin_note else "") + note
     site_user.save()
 
     write_audit(action="user.merged_telegram", target=site_user, staff="telegram-bot", detail={
         "site_user": site_user.pk, "bot_user": bot_user.pk, "bot_username": bot_username,
-        "telegram_id": tg_id, "phone": phone, "moved": moved, "sessions_revoked": revoked,
+        "telegram_id": tg_id, "phone": phone, "moved": moved, "password_kept": True,
     })
     log.info("merged bot user %s (tg %s) into site user %s: %s", bot_user.pk, tg_id, site_user.pk, moved)
 

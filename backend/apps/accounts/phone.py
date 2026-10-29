@@ -23,10 +23,17 @@ IR_PHONE_ERROR_EN = "The mobile number must be Iranian and start with 09 (e.g. 0
 IR_PHONE_ERROR = f"{IR_PHONE_ERROR_FA} / {IR_PHONE_ERROR_EN}"
 
 PHONE_REQUIRED_ERROR = "شماره موبایل الزامی است / A mobile number is required"
-PHONE_TAKEN_ERROR = "این شماره موبایل قبلاً ثبت شده است / This mobile number is already registered"
+PHONE_TAKEN_ERROR = (
+    "این شماره موبایل قبلاً ثبت شده است؛ حساب دوم ساخته نمی‌شود. با همان حساب وارد شوید یا از «فراموشی رمز عبور» "
+    "رمز جدید بگیرید. / "
+    "This mobile number is already registered — a second account can't be created. Sign in to that account "
+    "or use “Forgot password” to set a new one."
+)
 PHONE_TAKEN_BY_BOT_ERROR = (
-    "این شماره قبلاً در ربات ثبت شده است؛ برای اتصال حساب‌ها، شماره را از داخل ربات ارسال کنید. / "
-    "This number is already registered in the Telegram bot — to link the accounts, share the number from inside the bot."
+    "این شماره قبلاً در ربات تلگرام حساب دارد؛ حساب دوم ساخته نمی‌شود. با نام کاربری و رمزی که ربات فرستاد وارد شوید، "
+    "یا در ربات از دکمهٔ «تغییر رمز عبور» رمز جدید بگذارید. / "
+    "This number already has an account from the Telegram bot — a second account can't be created. Sign in with "
+    "the username and password the bot sent you, or set a new one with “Change password” in the bot."
 )
 
 

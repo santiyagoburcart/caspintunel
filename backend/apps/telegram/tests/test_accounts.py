@@ -1,7 +1,7 @@
 import pytest
 
 from apps.accounts.models import Source, User
-from apps.telegram.accounts import ensure_bot_user, link_phone
+from apps.telegram.accounts import ensure_bot_user, handle_contact
 
 pytestmark = pytest.mark.django_db
 
@@ -28,10 +28,10 @@ def test_returning_user_is_synced_not_recreated():
 
 def test_link_phone_normalizes_and_telegram_number_wins():
     user, *_ = ensure_bot_user(777)
-    link_phone(user, "+989120001122")
+    handle_contact(777, "+989120001122", contact_user_id=777)
     user.refresh_from_db()
     assert user.phone == "09120001122"
     # Telegram-verified: a later share replaces the stored value
-    link_phone(user, "989350001122")
+    handle_contact(777, "989350001122", contact_user_id=777)
     user.refresh_from_db()
     assert user.phone == "09350001122"

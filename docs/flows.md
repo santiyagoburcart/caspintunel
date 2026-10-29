@@ -318,22 +318,33 @@ sequenceDiagram
 
     U->>T: /start (or any message)
     T->>Bot: update (long polling)
-    Bot->>DB: ensure_bot_user(telegram_id)
-    alt first contact
-        DB-->>Bot: new User(source=bot) with random username + password
+    alt force_share_phone on and no account with this telegram_id
+        Bot-->>U: welcome + "share phone" button (no account created)
+        U->>Bot: shares contact
+        Bot->>Bot: contact.user_id == sender? else refuse
+        Bot->>DB: handle_contact — normalize phone, find account by phone
+        alt account with that phone, no Telegram
+            DB-->>Bot: link telegram_id to it (username + password kept), audit user.linked_telegram
+        else account linked to another Telegram id
+            Bot-->>U: refused, contact support
+            Bot->>T: DM staff (users.manage) / backup chat, audit user.telegram_link_conflict
+        else no account
+            DB-->>Bot: new User(source=bot) — random username + password sent once
+        end
+    else gate off / account exists
+        Bot->>DB: ensure_bot_user(telegram_id)
     end
     Bot->>T: getChatMember for each required channel
-    alt missing channel or no phone
-        Bot-->>U: join channels / share contact (asked again on any message)
-        U->>Bot: shares contact
-        Bot->>DB: link_telegram_phone — matches a site account?<br/>→ merge bot account into it, revoke unverified site password
+    alt missing channel
+        Bot-->>U: join channels (asked again on any message)
     end
     Bot-->>U: main menu (screen edited in place)
 
     U->>T: opens the Mini App
     T->>API: SPA loads, POST /auth/telegram/miniapp/ {initData}
     API->>API: HMAC check with the sales-bot token, auth_date ≤ max age
-    API->>DB: ensure_bot_user(telegram_id) — link or create (+ phone gate)
+    API->>DB: phone gate on and no account → 403 phone_required (nothing created);<br/>the SPA asks Telegram for the contact → bot handle_contact → retry
+    API->>DB: ensure_bot_user(telegram_id) — existing account
     API-->>T: JWT pair — the SPA never shows a login form inside Telegram
 ```
 

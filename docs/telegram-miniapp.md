@@ -47,6 +47,10 @@ shows a "not configured" message.
 Only after validation succeeds:
 
 ```python
+if phone_required() and no User has this telegram_id:
+    return 403 {"code": "phone_required"}   # nothing created; the SPA asks Telegram for
+                                            # the contact, the bot's handle_contact links /
+                                            # creates the account, then the SPA retries
 user, created, _pw = ensure_bot_user(int(tg["id"]),
                                      telegram_username=tg.get("username"),
                                      name="<first last>")

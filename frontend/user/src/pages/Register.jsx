@@ -63,7 +63,10 @@ export default function Register() {
           </span>
         </label>
         <button className="btn-primary w-full" disabled={busy || !agreed}>{busy ? <Spinner /> : t('register')}</button>
-        <div className="text-sm text-muted"><Link to="/login" className="hover:text-primary">{t('login')}</Link></div>
+        <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted">
+          <Link to="/login" className="hover:text-primary">{t('login')}</Link>
+          <Link to="/reset" className="hover:text-primary">{t('forgot')}</Link>
+        </div>
       </form>
     </AuthShell>
   )

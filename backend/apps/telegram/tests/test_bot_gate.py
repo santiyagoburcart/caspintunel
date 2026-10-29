@@ -58,7 +58,7 @@ class FakeBot:
         for commands, ctypes, func, fn in self.msg_handlers:
             if msg.content_type not in ctypes:
                 continue
-            if commands and not (msg.text or "").split("@")[0].lstrip("/") in commands:
+            if commands and not ((msg.text or "").split() or [""])[0].split("@")[0].lstrip("/") in commands:
                 continue
             if commands and not (msg.text or "").startswith("/"):
                 continue
@@ -132,7 +132,7 @@ def test_any_message_without_phone_is_blocked(bot, force_phone, make):
 
 @pytest.mark.parametrize("data", ["m:buy", "m:svcs", "m:acc", "m:home", "p:1", "m:pwd"])
 def test_any_button_without_phone_is_blocked(bot, force_phone, data):
-    bot.feed(_msg(text="/start"))                  # existing user, no phone yet
+    bot.feed(_msg(text="/start"))                  # no account yet
     sent = bot.click(data)
     assert _asks_phone(sent)
     assert not _shows_menu(sent) and ("<next-step>", None) not in sent
@@ -150,35 +150,74 @@ def test_gate_off_means_no_prompt(bot):
     assert _shows_menu(sent) and not _asks_phone(sent)
 
 
-def test_sharing_phone_unlocks_the_bot(bot, force_phone):
+def test_start_creates_no_account_until_the_phone_is_shared(bot, force_phone):
+    sent = bot.feed(_msg(text="/start"))
+    assert _asks_phone(sent) and any("خوش آمدید" in t for t, _ in sent)
+    assert not any("رمز عبور" in t for t, _ in sent)               # no credentials yet
+    assert not User.objects.filter(telegram_id=TG).exists()
+    bot.click("m:buy")
+    bot.feed(_msg(text="hi"))
+    assert not User.objects.exists()
+
+
+def test_sharing_phone_creates_the_account_and_sends_credentials(bot, force_phone):
     bot.feed(_msg(text="/start"))
     sent = bot.feed(_contact("+989351234567"))
-    assert any("ثبت شد" in t for t, _ in sent) and _shows_menu(sent)
-    assert User.objects.get(telegram_id=TG).phone == "09351234567"
+    u = User.objects.get(telegram_id=TG)
+    assert u.phone == "09351234567"
+    assert any("ثبت شد" in t and u.username in t and "رمز عبور" in t for t, _ in sent) and _shows_menu(sent)
     assert _shows_menu(bot.feed(_msg(text="hi")))
+
+
+def test_referral_from_start_is_applied_when_the_account_is_made(bot, force_phone):
+    inviter = User.objects.create_user("inviter", "Str0ngPass!", phone="09121112222")
+    bot.feed(_msg(text=f"/start ref_{inviter.referral_code}"))
+    assert not User.objects.filter(telegram_id=TG).exists()
+    bot.feed(_contact("+989351234567"))
+    assert User.objects.get(telegram_id=TG).referred_by_id == inviter.pk
 
 
 def test_foreign_contact_rejected_and_asked_again(bot, force_phone):
     bot.feed(_msg(text="/start"))
     sent = bot.feed(_contact("+14155552671"))
     assert _asks_phone(sent) and any("ایرانی" in t for t, _ in sent)
-    assert User.objects.get(telegram_id=TG).phone == ""
+    assert not User.objects.filter(telegram_id=TG).exists()
     assert _asks_phone(bot.feed(_msg(text="hi")))          # still gated
 
 
 def test_someone_elses_contact_is_refused(bot, force_phone):
+    site = User.objects.create_user("victim", "Str0ngPass!", phone="09351234567")
     bot.feed(_msg(text="/start"))
     sent = bot.feed(_contact("+989351234567", owner=999))
-    assert _asks_phone(sent)
-    assert User.objects.get(telegram_id=TG).phone == ""
+    assert _asks_phone(sent) and any("شمارهٔ خودتان" in t for t, _ in sent)
+    site.refresh_from_db()
+    assert site.telegram_id is None and not User.objects.filter(telegram_id=TG).exists()
 
 
-def test_contact_merges_into_site_account(bot, force_phone):
+def test_contact_links_the_site_account_keeping_username_and_password(bot, force_phone):
     site = User.objects.create_user("webuser", "Str0ngPass!", phone="09107323128")
     bot.feed(_msg(text="/start"))
     sent = bot.feed(_contact("+989107323128"))
-    assert any("حساب شما در سایت به ربات متصل شد" in t and "تغییر رمز عبور" in t for t, _ in sent)
+    assert any("حساب سایت شما به تلگرام متصل شد؛ با همان نام کاربری و رمز قبلی وارد شوید" in t
+               and "webuser" in t for t, _ in sent)
     site.refresh_from_db()
-    assert site.telegram_id == TG and not site.has_usable_password()
-    assert User.objects.filter(telegram_id=TG).count() == 1
-    assert _shows_menu(bot.feed(_msg(text="hi")))           # the merged account passes the gate
+    assert site.telegram_id == TG and site.username == "webuser" and site.check_password("Str0ngPass!")
+    assert User.objects.count() == 1
+    assert _shows_menu(bot.feed(_msg(text="hi")))           # the linked account passes the gate
+
+
+def test_contact_of_a_number_linked_to_another_telegram_is_refused(bot, force_phone, monkeypatch):
+    from apps.telegram import accounts
+
+    monkeypatch.setattr(accounts, "notify_staff_conflict", lambda *a: 0)
+    other = User.objects.create_user("webuser", "Str0ngPass!", phone="09107323128", telegram_id=4242)
+    bot.feed(_msg(text="/start"))
+    sent = bot.feed(_contact("+989107323128"))
+    assert any("پشتیبانی" in t for t, _ in sent)
+    other.refresh_from_db()
+    assert other.telegram_id == 4242 and not User.objects.filter(telegram_id=TG).exists()
+
+
+def test_gate_off_still_creates_on_start(bot):
+    sent = bot.feed(_msg(text="/start"))
+    assert any("رمز عبور" in t for t, _ in sent) and User.objects.filter(telegram_id=TG).exists()
