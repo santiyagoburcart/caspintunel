@@ -10,7 +10,6 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from rest_framework.authentication import SessionAuthentication
 
 from apps.accounts.authentication import JWTAuthentication
 from apps.accounts.models import Staff
@@ -96,7 +95,6 @@ class ReceiptFileView(APIView):
     authentication_classes = [
         StaffJWTAuthentication,
         JWTAuthentication,
-        SessionAuthentication,
     ]
     permission_classes = [permissions.AllowAny]  # authorised explicitly below
 

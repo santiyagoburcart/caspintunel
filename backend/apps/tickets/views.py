@@ -7,7 +7,6 @@ from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 from rest_framework import permissions
-from rest_framework.authentication import SessionAuthentication
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from apps.common.throttling import ScopedRateThrottle
@@ -144,7 +143,7 @@ class AttachmentFileView(APIView):
     staff with `tickets.view` whose topic scope covers the ticket. Prod hands off
     to nginx (`/_protected_media/`); `/media/tickets/` itself is 404 in nginx."""
 
-    authentication_classes = [StaffJWTAuthentication, JWTAuthentication, SessionAuthentication]
+    authentication_classes = [StaffJWTAuthentication, JWTAuthentication]
     permission_classes = [permissions.AllowAny]      # checked below
 
     def get(self, request, pk):

@@ -4,16 +4,56 @@ import axios from 'axios'
 const ACCESS = 'cta_access'
 const REFRESH = 'cta_refresh'
 export const SESSION_EXPIRED_KEY = 'cta_session_expired'
+// per-operator page state that a logout / another login must not leave behind
+const OPERATOR_SESSION_KEYS = ['ti_filters', 'an_period']
+
+const store = {
+  get: (k) => { try { return localStorage.getItem(k) } catch { return null } },
+  set: (k, v) => { try { localStorage.setItem(k, v) } catch { /* private mode */ } },
+  del: (k) => { try { localStorage.removeItem(k) } catch { /* private mode */ } },
+}
 
 export const tokens = {
-  get access() { return localStorage.getItem(ACCESS) },
-  get refresh() { return localStorage.getItem(REFRESH) },
+  get access() { return store.get(ACCESS) },
+  get refresh() { return store.get(REFRESH) },
   set({ access, refresh }) {
-    if (access) localStorage.setItem(ACCESS, access)
-    if (refresh) localStorage.setItem(REFRESH, refresh)
+    if (access) store.set(ACCESS, access)
+    if (refresh) store.set(REFRESH, refresh)
   },
-  clear() { localStorage.removeItem(ACCESS); localStorage.removeItem(REFRESH) },
+  clear() { store.del(ACCESS); store.del(REFRESH) },
 }
+
+/** Everything the panel keeps for a signed-in operator (tokens + per-operator page state). */
+export function clearAuthState() {
+  tokens.clear()
+  OPERATOR_SESSION_KEYS.forEach((k) => { try { sessionStorage.removeItem(k) } catch { /* ignore */ } })
+}
+
+// A JWT's payload, or null — only read to drop tokens that can never work (a customer
+// token, an expired refresh token); the server still verifies everything.
+function claims(t) {
+  try {
+    const p = t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+    return JSON.parse(atob(p + '='.repeat((4 - (p.length % 4)) % 4)))
+  } catch { return null }
+}
+const alive = (c) => !!c && (!c.exp || c.exp * 1000 > Date.now() + 5000)
+
+/** Panel tokens left by an older visit / version that can't work any more are dropped
+ * before the first request, so they are never sent (v1.30.2). */
+export function pruneStoredTokens() {
+  const a = tokens.access && claims(tokens.access)
+  const r = tokens.refresh && claims(tokens.refresh)
+  const accessOk = a && a.type === 'staff_access'
+  const refreshOk = r && r.type === 'staff_refresh' && alive(r)
+  if ((tokens.access && !accessOk) || (tokens.refresh && !refreshOk)) clearAuthState()
+  else if (tokens.access && !alive(a) && !tokens.refresh) clearAuthState()
+}
+pruneStoredTokens()
+
+// sign-in endpoints: never send a stored token and never try a refresh for them
+const AUTH_CALL = /^\/?(api\/v1\/)?admin\/auth\/(login|refresh|logout)\//
+export const isAuthCall = (url) => AUTH_CALL.test(url || '')
 
 export const api = axios.create({ baseURL: '/api/v1' })
 
@@ -42,7 +82,8 @@ export function clientId() {
 }
 
 api.interceptors.request.use((cfg) => {
-  if (tokens.access) cfg.headers.Authorization = `Bearer ${tokens.access}`
+  if (tokens.access && !isAuthCall(cfg.url)) cfg.headers.Authorization = `Bearer ${tokens.access}`
+  else delete cfg.headers.Authorization
   const cid = clientId()
   if (cid) cfg.headers['X-Client-Id'] = cid
   return cfg
@@ -50,40 +91,47 @@ api.interceptors.request.use((cfg) => {
 
 // clear the stale session and bounce to login — never let the raw JWT error
 // reach a page-level catch; the redirect is already underway when the caller
-// would otherwise see this promise settle, so it deliberately never resolves
-function sessionExpired() {
-  tokens.clear()
-  if (!location.pathname.endsWith('/login')) {
-    try { sessionStorage.setItem(SESSION_EXPIRED_KEY, '1') } catch { /* private browsing */ }
-    location.href = `${ADMIN_BASE}/login`
-  }
+// would otherwise see this promise settle, so it deliberately never resolves.
+// Already on the login page the error is returned instead (never a hanging spinner).
+function sessionExpired(error) {
+  clearAuthState()
+  if (location.pathname.endsWith('/login')) return Promise.reject(error)
+  try { sessionStorage.setItem(SESSION_EXPIRED_KEY, '1') } catch { /* private browsing */ }
+  location.href = `${ADMIN_BASE}/login`
   return new Promise(() => {})
 }
+
+const isCsrfFailure = (r) => r?.status === 403 && /csrf/i.test(String(r?.data?.detail || ''))
 
 let refreshing = null
 api.interceptors.response.use(
   (r) => { report(r.config, { ok: true, data: r.data, status: r.status }); return r },
   async (error) => {
     const { response, config } = error
-    if (response?.status === 401 && config && !config._retry) {
+    const auth = config && isAuthCall(config.url)
+    if (!auth && isCsrfFailure(response)) return sessionExpired(error)   // an old cookie session got in the way
+    if (!auth && response?.status === 401 && config && !config._retry) {
       config._retry = true
       if (tokens.refresh) {
         try {
+          // bare axios: no stored (stale) access token rides along
           refreshing = refreshing || axios.post('/api/v1/admin/auth/refresh/', { refresh: tokens.refresh })
           const { data } = await refreshing
-          refreshing = null
           tokens.set({ access: data.access, refresh: data.refresh })
           config.headers.Authorization = `Bearer ${data.access}`
           return api(config)
         } catch (e) {
+          // a refused refresh token = signed out; a network / server hiccup is not
+          if (!e?.response || e.response.status >= 500) { report(config, { ok: false, error }); return Promise.reject(error) }
+          return sessionExpired(error)
+        } finally {
           refreshing = null
-          return sessionExpired()
         }
       }
       // no refresh token to try, but we did send an access token that was
       // just rejected — it's stale, not "logged out"; a page with no token
       // at all falls through to the plain reject below (normal logged-out 401)
-      if (tokens.access) return sessionExpired()
+      if (tokens.access) return sessionExpired(error)
     }
     report(config, { ok: false, error })
     return Promise.reject(error)

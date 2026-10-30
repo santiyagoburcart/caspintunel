@@ -45,7 +45,7 @@ class StaffPermission(permissions.BasePermission):
     """
     Grants access to an authenticated `Staff` holding the permission codes the
     view declares (superadmins bypass). A Django superuser authenticated by the
-    normal customer JWT / session is also allowed — a bootstrap "break-glass".
+    normal customer JWT is also allowed — a bootstrap "break-glass".
 
     A view declares needs via `perms_map = {"GET": [...], "POST": [...]}` or a
     flat `required_perms = [...]`; a viewset may override single actions with

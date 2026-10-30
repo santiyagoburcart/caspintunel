@@ -2,7 +2,7 @@ from django.urls import include, path
 from rest_framework.routers import SimpleRouter
 
 from .views.apps import AppReleaseDetailView, AppReleaseDownloadView, AppReleaseListView, ShortcutQrView
-from .views.auth import StaffLoginView, StaffMeView, StaffRefreshView
+from .views.auth import StaffLoginView, StaffLogoutView, StaffMeView, StaffRefreshView
 from .views.branding import QrPreviewView, SiteConfigView
 from .views.docs import DocsListView, DocsPageView
 from .views.domain import (AccessDetectView, AccessDns01View, AccessSettingsView, AccessSwitchView, DomainRollbackView,
@@ -76,6 +76,7 @@ router.register("sms-sources", SmsSourceViewSet, basename="admin-sms-sources")
 urlpatterns = [
     path("auth/login/", StaffLoginView.as_view(), name="admin-login"),
     path("auth/refresh/", StaffRefreshView.as_view(), name="admin-refresh"),
+    path("auth/logout/", StaffLogoutView.as_view(), name="admin-logout"),
     path("auth/me/", StaffMeView.as_view(), name="admin-me"),
     path("accounting/", AccountingView.as_view(), name="admin-accounting"),
     path("payments/pending/", PendingPaymentsView.as_view(), name="admin-payments-pending"),

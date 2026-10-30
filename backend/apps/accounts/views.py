@@ -10,8 +10,9 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
+from apps.common.auth_reset import FreshAuthMixin
 from apps.common.models import write_audit
 
 from . import services
@@ -35,7 +36,7 @@ log = logging.getLogger("caspintunel")
 User = get_user_model()
 
 
-class RegisterView(GenericAPIView):
+class RegisterView(FreshAuthMixin, GenericAPIView):
     permission_classes = [permissions.AllowAny]
     serializer_class = RegisterSerializer
     throttle_scope = "auth"
@@ -68,12 +69,12 @@ class RegisterView(GenericAPIView):
         )
 
 
-class LoginView(TokenObtainPairView):
+class LoginView(FreshAuthMixin, TokenObtainPairView):
     serializer_class = LoginSerializer
     throttle_scope = "auth"
 
 
-class TelegramMiniAppLoginView(GenericAPIView):
+class TelegramMiniAppLoginView(FreshAuthMixin, GenericAPIView):
     """
     Exchange a validated Telegram Mini App `initData` for a normal user JWT.
 
@@ -157,8 +158,10 @@ class TelegramMiniAppLoginView(GenericAPIView):
         })
 
 
-class LogoutView(GenericAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+class LogoutView(FreshAuthMixin, GenericAPIView):
+    # holding the refresh token is the proof; an expired access token must not
+    # stop a logout (v1.30.2)
+    permission_classes = [permissions.AllowAny]
     serializer_class = LogoutSerializer
 
     @extend_schema(summary="Blacklist the given refresh token")
@@ -235,7 +238,7 @@ class EmailVerifyResendView(GenericAPIView):
         return Response({"email_status": result})
 
 
-class EmailVerifyConfirmView(GenericAPIView):
+class EmailVerifyConfirmView(FreshAuthMixin, GenericAPIView):
     permission_classes = [permissions.AllowAny]
     serializer_class = EmailVerifyConfirmSerializer
     throttle_scope = "auth"
@@ -252,7 +255,7 @@ class EmailVerifyConfirmView(GenericAPIView):
         return Response({"detail": "email verified", "user": UserSerializer(user).data})
 
 
-class PasswordResetRequestView(GenericAPIView):
+class PasswordResetRequestView(FreshAuthMixin, GenericAPIView):
     permission_classes = [permissions.AllowAny]
     serializer_class = PasswordResetRequestSerializer
     throttle_scope = "auth"
@@ -270,7 +273,7 @@ class PasswordResetRequestView(GenericAPIView):
         return Response({**result, "detail": detail})
 
 
-class PasswordResetConfirmView(GenericAPIView):
+class PasswordResetConfirmView(FreshAuthMixin, GenericAPIView):
     permission_classes = [permissions.AllowAny]
     serializer_class = PasswordResetConfirmSerializer
     throttle_scope = "auth"
@@ -303,3 +306,7 @@ class LegacyImportView(GenericAPIView):
             staff=request.user,
         )
         return Response(summary, status=status.HTTP_201_CREATED)
+
+
+class RefreshView(FreshAuthMixin, TokenRefreshView):
+    """simplejwt's refresh, never cached and never authenticated."""

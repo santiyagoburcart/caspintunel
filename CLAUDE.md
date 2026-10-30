@@ -82,6 +82,10 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   jtis live in the DB (`StaffRevokedToken`), never only in Redis.
 - JWT: `CHECK_REVOKE_TOKEN` + tolerant `apps.accounts.authentication.JWTAuthentication` (claim-less old
   tokens still accepted; unusable-password accounts rejected). Password change returns a fresh pair.
+- **Sign-in endpoints never authenticate** (`apps/common/auth_reset.py::FreshAuthMixin`) and the SPAs never attach a
+  stored token to them (`lib/api.js::isAuthCall`) — a staff token fails the customer JWT check, which kept operators out
+  until they cleared storage (incident 2026-10-30). API = JWT only (no `SessionAuthentication`); Django-admin cookies are
+  `ct_admin_sid` / `ct_admin_csrf` on Path `/admin/`. A new public auth endpoint gets the mixin + the SPA regex.
 - Live updates: WebSocket `/ws/notifications/` (customer JWT) and `/ws/admin/payments/` (staff JWT +
   `payment.view`) via `apps/notifications/live.py::push_payments_event` (sent on commit).
 - Frontend: fa/en for every string (per-page `T = {fa, en}` or `lib/i18n.jsx`), Jalali via `lib/format.js`.

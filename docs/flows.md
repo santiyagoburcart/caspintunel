@@ -387,6 +387,37 @@ sequenceDiagram
     API-->>T: JWT pair — the SPA never shows a login form inside Telegram
 ```
 
+## 6b. Site / panel sign-in with stale browser state (v1.30.2)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Customer / operator
+    participant SPA as SPA (lib/api.js)
+    participant API as web
+
+    SPA->>SPA: boot — pruneStoredTokens (wrong kind / expired refresh → removed)
+    SPA->>API: GET /auth/me/ (or /admin/auth/me/) with stored token
+    alt 5xx / no response (deploy)
+        SPA->>API: retry 3× with backoff — never a logout
+    else 401
+        SPA->>API: POST refresh (bare request, no Authorization)
+        alt 200
+            API-->>SPA: new pair → original request repeated
+        else 401 / 400 / 403
+            SPA->>SPA: clearAuthState → login form + "session expired"
+        end
+    end
+    U->>SPA: username + password
+    SPA->>SPA: clearAuthState (this app only)
+    SPA->>API: POST /auth/login/ or /admin/auth/login/ — no Authorization header
+    API->>API: FreshAuthMixin — no authenticator runs (old header / cookies ignored)
+    API-->>SPA: tokens, Cache-Control no-store, Set-Cookie sessionid/csrftoken expired
+    U->>SPA: logout
+    SPA->>SPA: clearAuthState
+    SPA->>API: POST logout {refresh} → refresh token revoked
+```
+
 ## 7. Ticket lifecycle and notifications
 
 ```mermaid

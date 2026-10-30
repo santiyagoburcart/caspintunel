@@ -409,12 +409,13 @@ def _admin_routes():
 def test_every_other_panel_api_is_403_for_a_group_manager(pg):
     """Default-deny: a group-manager staff gets 403 on EVERY /api/v1/admin/ route (settings,
     customers, orders, payments, transactions, tickets, CRM, agency, other groups …) for
-    every method — only its own profile and the login/refresh endpoints answer."""
+    every method — only its own profile and the login/refresh/logout endpoints answer."""
     make_manager(staff_client(superadmin=True), pg)
     mc = manager_client()
     routes = _admin_routes()
     assert len(routes) > 100, len(routes)
-    allowed = {"/api/v1/admin/auth/login/", "/api/v1/admin/auth/refresh/", "/api/v1/admin/auth/me/"}
+    allowed = {"/api/v1/admin/auth/login/", "/api/v1/admin/auth/refresh/", "/api/v1/admin/auth/logout/",
+               "/api/v1/admin/auth/me/"}
     before = {k: v["data_limit"] for k, v in pg["fake"].admins.items()}
     bad = []
     for url in routes:

@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.models import GROUP_MANAGER_PERM, Staff
+from apps.common.auth_reset import FreshAuthMixin
 
 from ..permissions import StaffJWTAuthentication
 from ..tokens import decode, issue_tokens, revoke_refresh, staff_for_payload
@@ -21,7 +22,7 @@ class RefreshSerializer(serializers.Serializer):
     refresh = serializers.CharField()
 
 
-class StaffLoginView(APIView):
+class StaffLoginView(FreshAuthMixin, APIView):
     permission_classes = [AllowAny]
     throttle_scope = "auth"
 
@@ -46,7 +47,7 @@ class StaffLoginView(APIView):
         return Response({**issue_tokens(staff), "staff": _staff_payload(staff)})
 
 
-class StaffRefreshView(APIView):
+class StaffRefreshView(FreshAuthMixin, APIView):
     permission_classes = [AllowAny]
     throttle_scope = "auth"
 
@@ -69,6 +70,25 @@ class StaffRefreshView(APIView):
         if not revoke_refresh(payload):
             return Response({"detail": "invalid refresh token", "code": "token_invalid"}, status=401)
         return Response(issue_tokens(staff))
+
+
+class StaffLogoutView(FreshAuthMixin, APIView):
+    """Revoke the panel's refresh token (v1.30.2: logout used to only forget it in the
+    browser, leaving it valid for its 7 days). Always 200 — an unknown, expired or
+    already-spent token has nothing left to revoke."""
+
+    permission_classes = [AllowAny]
+    throttle_scope = "auth"
+
+    @extend_schema(request=RefreshSerializer, responses=dict, summary="Panel operator logout")
+    def post(self, request):
+        try:
+            payload = decode(request.data.get("refresh", ""), "staff_refresh")
+        except jwt.InvalidTokenError:          # includes expired / already revoked
+            payload = None
+        if payload:
+            revoke_refresh(payload)
+        return Response({"ok": True})
 
 
 class StaffMeView(APIView):

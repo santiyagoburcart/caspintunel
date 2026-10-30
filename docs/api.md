@@ -3,8 +3,10 @@
 Base: `/api/v1/`. Full machine spec: `/api/schema/` — interactive: `/api/docs/`.
 
 Three token audiences:
-- **customer JWT** — `Authorization: Bearer <token>`, from `/api/v1/auth/login|register|telegram/miniapp`, refreshed at `auth/token/refresh`
-- **staff JWT** — `Authorization: Bearer <token>`, from `/api/v1/admin/auth/login|refresh` (HS256, claim `type=staff_access`)
+- **customer JWT** — `Authorization: Bearer <token>`, from `/api/v1/auth/login|register|telegram/miniapp`, refreshed at `auth/token/refresh`, ended at `auth/logout` `{refresh}` (works with an expired access token)
+- **staff JWT** — `Authorization: Bearer <token>`, from `/api/v1/admin/auth/login|refresh` (HS256, claim `type=staff_access`), revoked at `admin/auth/logout` `{refresh}`
+
+Sign-in endpoints (login, register, refresh, logout, password reset, email confirm, Mini App, staff login/refresh/logout) ignore any `Authorization` header and cookies, answer `Cache-Control: no-store` and expire the old `sessionid` / `csrftoken` root cookies. The API authenticates by JWT only — no session / CSRF.
 - **SMS device** — `X-Device-Token: <api_token>` (Android SMS Bridge app / iPhone shortcut)
 
 WebSockets: `/ws/notifications/?token=<customer JWT>` (live site notifications) ·
@@ -46,7 +48,7 @@ WebSockets: `/ws/notifications/?token=<customer JWT>` (live site notifications) 
 
 | Area | Endpoints |
 |---|---|
-| auth | `auth/login` · `auth/refresh` · `auth/me` |
+| auth | `auth/login` · `auth/refresh` · `auth/logout` · `auth/me` |
 | dashboard / monitoring | `dashboard/` · `monitoring/` · `health/` · `resources/` · `backups/` (+ `run/`) · `system/` (version + update) · `telegram-stats/` |
 | users | `users/` (CRUD, `stats/`, `{id}/orders/`, `{id}/set-password/`, `{id}/enable|disable/`, `legacy-import/`) · **`{id}/delete/`** `{reason}` — soft delete (perm `users.delete`) |
 | deleted users | `deleted-users/?search=&from=&to=&state=deleted|restored` · `deleted-users/{id}/` (full snapshot + restore conflicts) · `deleted-users/{id}/restore/` (409 + conflicting fields) |

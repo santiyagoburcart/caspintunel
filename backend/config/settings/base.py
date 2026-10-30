@@ -195,10 +195,9 @@ STORAGES = {
 # DRF / JWT / Swagger
 # ---------------------------------------------------------------------------
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": (
-        "apps.accounts.authentication.JWTAuthentication",
-        "rest_framework.authentication.SessionAuthentication",
-    ),
+    # JWT only: the SPAs never use Django sessions. SessionAuthentication made an old
+    # Django-admin cookie turn every API POST without a JWT into a CSRF 403 (v1.30.2).
+    "DEFAULT_AUTHENTICATION_CLASSES": ("apps.accounts.authentication.JWTAuthentication",),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_FILTER_BACKENDS": ("django_filters.rest_framework.DjangoFilterBackend",),
@@ -275,6 +274,22 @@ SPECTACULAR_SETTINGS = {
 # ---------------------------------------------------------------------------
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
 CORS_ALLOW_CREDENTIALS = True
+# Cookies: the SPAs keep their tokens in localStorage (customer `ct_*`, panel `cta_*`) and
+# set no cookies. Only Django's own /admin/ uses a session + CSRF cookie: own names, Path
+# /admin/ (never sent to the SPAs or the API), host-only (no Domain attribute, so www /
+# other subdomains never share or shadow them). Old `sessionid` / `csrftoken` cookies on
+# Path=/ are expired by every login / logout response (apps/common/auth_reset.py).
+SESSION_COOKIE_NAME = "ct_admin_sid"
+SESSION_COOKIE_PATH = "/admin/"
+SESSION_COOKIE_DOMAIN = None
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_NAME = "ct_admin_csrf"
+CSRF_COOKIE_PATH = "/admin/"
+CSRF_COOKIE_DOMAIN = None
+CSRF_COOKIE_SAMESITE = "Lax"
+LEGACY_ROOT_COOKIES = ("sessionid", "csrftoken")
+
 CSRF_TRUSTED_ORIGINS = env.list(
     "CSRF_TRUSTED_ORIGINS",
     default=[f"https://{DOMAIN}", f"https://www.{DOMAIN}"],

@@ -536,6 +536,44 @@ Production runs the code baked into images. `./update.sh`:
 pre-update dump if a migration must be undone). The panel **Update** button
 goes through the same script via `watch-update.sh`. Details: [deploy.md](deploy.md).
 
+## Sign-in state — cookies and browser storage (v1.30.2)
+
+Both SPAs keep their tokens in `localStorage` and send them as `Authorization: Bearer …`;
+**no app cookie is set**. The customer site, the Mini App, the reseller portal and
+`/panel/` share one origin, so every key is prefixed per app.
+
+| Where | Key | App | Lifetime / notes |
+|---|---|---|---|
+| localStorage | `ct_access` · `ct_refresh` | customer site + Mini App | customer JWT 30 min · refresh 7 d (rotated, blacklisted) |
+| localStorage | `cta_access` · `cta_refresh` | panel (staff + group managers) | staff JWT 30 min · refresh 7 d (rotated, `StaffRevokedToken`) |
+| localStorage | `agency_token` | reseller portal | `Agency <token>`, 10 d |
+| localStorage | `ct_checkout_active` | customer | open checkout; cleared on logout / login |
+| localStorage | `ct_lang` · `cta_lang` · `ct_mode` · `cta_nav_open` · `ct_cid` | both | preferences, client id (not auth) |
+| sessionStorage | `ct_session_expired` · `cta_session_expired` · `ct_tg_relaunch` | both | one-shot flags |
+| sessionStorage | `ti_filters` · `an_period` | panel | page filters; cleared on panel logout / login |
+| cookie | `ct_admin_sid` | Django `/admin/` only | HttpOnly, Secure, SameSite=Lax, Path=`/admin/`, host-only, 14 d |
+| cookie | `ct_admin_csrf` | Django `/admin/` only | Secure, SameSite=Lax, Path=`/admin/`, host-only, 1 y |
+| cookie (old) | `sessionid` · `csrftoken` (Path=`/`) | before v1.30.2 | expired by every login / logout response |
+
+Rules (`lib/api.js` in each SPA, `apps/common/auth_reset.py`):
+- **Sign-in endpoints run no authenticator** (`FreshAuthMixin`: customer login / register /
+  refresh / logout / password reset / email confirm / Mini App, staff login / refresh /
+  logout). A stored token is never attached to them and a sign-in clears the app's old state
+  first. Responses are `Cache-Control: no-store` and expire the old root cookies.
+- The API authenticates **JWT only** (`SessionAuthentication` removed): a Django-admin
+  session can never cause a CSRF 403 on the API; its cookies live under `/admin/`.
+- Tokens that can never work (wrong kind — e.g. a customer token in the panel slot — or an
+  expired refresh token) are dropped before the first request (`pruneStoredTokens`).
+- A refused refresh (401/400/403) or a CSRF 403 → clean sign-out and the login form (with
+  the "session expired" notice); a network error / 5xx is not a logout. On a sign-in page the
+  error goes back to the form — no request is left hanging.
+- `/me/` at boot retries a 5xx / network error (3×, backoff) — a deploy blip no longer lands
+  operators on the login page with their old tokens still stored.
+- Logout clears the app's tokens + per-account state and revokes the refresh token
+  (customer: blacklist; staff: `POST /admin/auth/logout/`). The other app's keys are untouched.
+- Telegram: the Mini App always signs in from `initData` (stored token dropped first); no
+  cookie is involved, so SameSite / ITP third-party rules don't apply.
+
 ## Security posture
 
 Secrets only in `.env`; panel password, bot tokens, panel API token and SMTP
