@@ -9,6 +9,7 @@ import { digits, gb, jalali, toman } from '../lib/format'
 import { copyToClipboard } from '../lib/clipboard'
 import { USER_ACTION_STRINGS, conflictText, useUserActions } from '../lib/userActions'
 import { Alert, Spinner } from '../components/ui'
+import { useConfirm } from '../components/ConfirmDialog'
 import { DateRangeModal, DRP_CSS } from '../components/DateRangePicker'
 
 const T = {
@@ -38,6 +39,20 @@ const T = {
     t_new: 'خرید جدید', t_renew: 'تمدید', t_addon_volume: 'افزایش حجم', t_manual: 'دستی', t_imported: 'اتصال سرویس موجود',
     p_approved: 'تأییدشده', p_pending: 'در انتظار', p_rejected: 'ردشده', system: 'سامانه پیامک', blu: 'سامانه بلو',
     lang_fa: 'فارسی', lang_en: 'انگلیسی',
+    purge: 'حذف دائمی', purge_n: 'حذف دائمی ({n})', select_all: 'انتخاب همه', select: 'انتخاب',
+    pg_title: 'حذف دائمی کاربر', pg_title_n: 'حذف دائمی {n} کاربر', pg_btn: 'بله، برای همیشه حذف کن',
+    pg_intro: 'این کار برگشت‌پذیر نیست. موارد زیر برای همیشه پاک می‌شوند:',
+    pg_users: 'کاربر', pg_services: 'سرویس', pg_tickets: 'تیکت ({m} پیام، {a} پیوست)',
+    pg_crm: 'دادهٔ CRM (پروفایل {p}، یادداشت {n}، پرونده {c}، رویداد {e}، کد تخفیف {d})',
+    pg_notifs: 'اعلان', pg_tokens: 'نشست / توکن ورود', pg_tg: 'اتصال تلگرام', pg_tg_yes: 'قطع و پاک می‌شود', pg_tg_no: 'متصل نبود',
+    pg_archive: 'بایگانی حذف (تصویر کامل مشخصات)',
+    pg_keep: 'می‌ماند (برای حسابداری): {o} سفارش و {p} پرداخت — ناشناس با نام «کاربر حذف‌شده #شناسه»، بدون موبایل، ایمیل و تلگرام. جمع‌ها و گزارش‌ها تغییر نمی‌کنند.',
+    pg_panel: 'حساب‌ها روی PasarGuard هم حذف شوند ({n} حساب هنوز وجود دارد)',
+    pg_panel_none: 'هیچ حسابی از این کاربر روی PasarGuard باقی نمانده است.',
+    pg_panel_unknown: 'وضعیت {n} حساب روی PasarGuard معلوم نیست (پنل در دسترس نیست) — با تیک روشن، حذف انجام نمی‌شود.',
+    pg_panel_fail: 'اگر حذف روی PasarGuard ناموفق باشد، هیچ چیز حذف نمی‌شود و دلیل نمایش داده می‌شود.',
+    pg_audit: 'در گزارش ممیزی با نام کاربری شما ثبت می‌شود (بدون اطلاعات شخصی).',
+    pg_failed: 'حذف نشد', pg_loading: 'در حال بررسی…',
   },
   en: {
     title: 'Deleted users', sub: 'Read-only archive of deleted users with a full snapshot taken at deletion time',
@@ -65,6 +80,20 @@ const T = {
     t_new: 'New purchase', t_renew: 'Renewal', t_addon_volume: 'Add-on volume', t_manual: 'Manual', t_imported: 'Linked existing',
     p_approved: 'Approved', p_pending: 'Pending', p_rejected: 'Rejected', system: 'SMS system', blu: 'Blu system',
     lang_fa: 'Persian', lang_en: 'English',
+    purge: 'Delete permanently', purge_n: 'Delete permanently ({n})', select_all: 'Select all', select: 'Select',
+    pg_title: 'Delete user permanently', pg_title_n: 'Delete {n} users permanently', pg_btn: 'Yes, delete forever',
+    pg_intro: 'This cannot be undone. Permanently removed:',
+    pg_users: 'user(s)', pg_services: 'service(s)', pg_tickets: 'ticket(s) ({m} messages, {a} attachments)',
+    pg_crm: 'CRM data (profile {p}, notes {n}, cases {c}, events {e}, discount codes {d})',
+    pg_notifs: 'notification(s)', pg_tokens: 'session / login token(s)', pg_tg: 'Telegram link', pg_tg_yes: 'removed', pg_tg_no: 'not linked',
+    pg_archive: 'deletion archive(s) (full profile snapshot)',
+    pg_keep: 'Kept for Accounting: {o} order(s) and {p} payment(s) — anonymized as “deleted user #id”, no phone, email or Telegram. Totals and reports do not change.',
+    pg_panel: 'Also delete the accounts on PasarGuard ({n} still exist)',
+    pg_panel_none: 'No PasarGuard account of this user is left.',
+    pg_panel_unknown: '{n} PasarGuard account(s) could not be checked (panel unreachable) — with the box ticked nothing will be deleted.',
+    pg_panel_fail: 'If PasarGuard fails, nothing is deleted and the reason is shown.',
+    pg_audit: 'Recorded in the audit log under your username (no personal data).',
+    pg_failed: 'Not deleted', pg_loading: 'Checking…',
   },
 }
 
@@ -85,6 +114,7 @@ const I = {
   archive: <><rect x="2" y="3" width="20" height="5" rx="1" /><path d="M4 8v11a2 2 0 002 2h12a2 2 0 002-2V8M10 12h4" /></>,
   warn: <><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><path d="M12 9v4M12 17h.01" /></>,
   bag: <><path d="M6 2l1.5 5M18 2l-1.5 5M3.5 7h17l-1.2 12.2a2 2 0 01-2 1.8H6.7a2 2 0 01-2-1.8L3.5 7z" /><path d="M8 11a4 4 0 008 0" /></>,
+  trash: <><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" /><path d="M10 11v6M14 11v6" /></>,
   copy: <><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" /></>,
 }
 
@@ -111,6 +141,12 @@ function ArchiveList() {
   const [range, setRange] = useState({ from: '', to: '' })
   const [dateOpen, setDateOpen] = useState(false)
   const [err, setErr] = useState('')
+  const { staff } = useAuth()
+  const isSuper = !!staff?.is_superadmin
+  const confirm = useConfirm()
+  const [sel, setSel] = useState(() => new Set())
+  const [busy, setBusy] = useState(false)
+  const [fails, setFails] = useState([])
 
   const params = useMemo(() => {
     const p = new URLSearchParams({ limit: PAGE, offset })
@@ -133,6 +169,52 @@ function ArchiveList() {
   const page = Math.floor(offset / PAGE) + 1
   const pages = Math.max(1, Math.ceil(count / PAGE))
   const open = (r) => navigate(`/users/deleted/${r.id}`)
+  const purgeable = (rows || []).filter((r) => !r.restored_at)
+  const toggle = (rid) => setSel((cur) => { const n = new Set(cur); n.has(rid) ? n.delete(rid) : n.add(rid); return n })
+  const allOn = purgeable.length > 0 && purgeable.every((r) => sel.has(r.id))
+
+  // permanent delete: read what goes (+ PasarGuard accounts) first, then the shared dialog
+  const purge = async (ids) => {
+    setFails([]); setBusy(true)
+    let pv
+    try {
+      pv = (await api.get('/admin/deleted-users/purge-preview/', { params: { ids: ids.join(',') } })).data.results
+    } catch (e) { setErr(apiError(e)); setBusy(false); return }
+    setBusy(false)
+    const bad = pv.filter((x) => x.error)
+    const okRows = pv.filter((x) => !x.error)
+    if (!okRows.length) { setFails(bad.map((x) => ({ id: x.id, username: x.username, detail: x.error }))); return }
+    const sum = (f) => okRows.reduce((a, x) => a + (f(x.removes) || 0), 0)
+    const tot = {
+      users: okRows.length, services: sum((r) => r.services), tickets: sum((r) => r.tickets),
+      msgs: sum((r) => r.ticket_messages), atts: sum((r) => r.ticket_attachments),
+      p: sum((r) => r.crm.profile), n: sum((r) => r.crm.notes), c: sum((r) => r.crm.cases), e: sum((r) => r.crm.events), d: sum((r) => r.crm.discount_codes),
+      notifs: sum((r) => r.notifications), tokens: sum((r) => r.tokens), tg: sum((r) => (r.telegram_linked ? 1 : 0)),
+      archives: sum((r) => r.archives), orders: sum((r) => r.kept_orders), payments: sum((r) => r.kept_payments),
+      existing: okRows.reduce((a, x) => a + x.panel_existing, 0), unknown: okRows.reduce((a, x) => a + x.panel_unknown, 0),
+    }
+    const panelFlag = { current: tot.existing > 0 || tot.unknown > 0 }
+    const one = okRows.length === 1
+    const okIds = okRows.map((x) => x.id)
+    let result = null
+    const ok = await confirm({
+      tone: 'danger', icon: 'trash', badge: 'users.purge',
+      title: one ? s.pg_title : s.pg_title_n.replace('{n}', okRows.length),
+      targetLabel: one ? s.col_user : s.pg_users,
+      targetId: one ? (okRows[0].username.length > 22 ? `${okRows[0].username.slice(0, 21)}…` : okRows[0].username) : String(okRows.length),
+      message: <PurgeSummary s={s} tot={tot} flag={panelFlag} skipped={bad} />,
+      confirmLabel: s.pg_btn, footnote: s.pg_audit,
+      action: async () => {
+        const body = { delete_on_panel: panelFlag.current }
+        if (one) { await api.post(`/admin/deleted-users/${okIds[0]}/purge/`, body); return }
+        result = (await api.post('/admin/deleted-users/bulk-purge/', { ...body, ids: okIds })).data
+      },
+    })
+    const failed = [...bad.map((x) => ({ id: x.id, username: x.username, detail: x.error })),
+      ...((result?.results || []).filter((x) => !x.ok).map((x) => ({ id: x.id, username: pv.find((y) => y.id === x.id)?.username, detail: x.detail })))]
+    setFails(failed)
+    if (ok) { setSel(new Set()); load() }
+  }
 
   return (
     <div className="du space-y-5">
@@ -167,6 +249,19 @@ function ArchiveList() {
       <DateRangeModal open={dateOpen} onClose={() => setDateOpen(false)} onApply={(r) => { setRange(r); setOffset(0) }} />
 
       <Alert>{err}</Alert>
+      {fails.length > 0 && (
+        <div className="du-fails" role="alert">
+          {fails.map((f) => <div key={f.id}><b>{s.pg_failed}: <bdi dir="ltr">{f.username}</bdi></b> — <span dir="auto">{f.detail}</span></div>)}
+        </div>
+      )}
+      {isSuper && sel.size > 0 && (
+        <div className="du-bulk">
+          <span>{digits(sel.size, lang)} ✓</span>
+          <button type="button" className="du-purge-btn" disabled={busy} onClick={() => purge([...sel])}>
+            <Ico d={I.trash} w={15} /> {busy ? s.pg_loading : s.purge_n.replace('{n}', digits(sel.size, lang))}
+          </button>
+        </div>
+      )}
 
       {rows === null ? (
         <div className="grid place-items-center py-16"><Spinner /></div>
@@ -174,18 +269,34 @@ function ArchiveList() {
         <div className="card text-center text-muted">{s.none}</div>
       ) : (
         <div className="card p-0 du-wrap">
+          {isSuper && purgeable.length > 0 && (
+            <label className="du-selall">
+              <input type="checkbox" checked={allOn}
+                onChange={() => setSel(allOn ? new Set() : new Set(purgeable.map((r) => r.id)))} />
+              <span>{s.select_all}</span>
+            </label>
+          )}
           <table className="du-table">
             <thead>
               <tr>
+                {isSuper && <th className="du-sel"><input type="checkbox" aria-label={s.select_all} checked={allOn}
+                  disabled={!purgeable.length}
+                  onChange={() => setSel(allOn ? new Set() : new Set(purgeable.map((r) => r.id)))} /></th>}
                 <th>{s.col_user}</th><th>{s.col_name}</th><th>{s.col_phone}</th><th>{s.col_tg}</th>
                 <th>{s.col_at}</th><th>{s.col_by}</th><th>{s.col_reason}</th>
                 <th className="du-c">{s.col_orders}</th><th>{s.col_paid}</th><th>{s.col_state}</th>
+                {isSuper && <th />}
               </tr>
             </thead>
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id} className="du-row" tabIndex={0} onClick={() => open(r)}
                   onKeyDown={(e) => e.key === 'Enter' && open(r)}>
+                  {isSuper && (
+                    <td data-label={s.select} className="du-sel" onClick={(e) => e.stopPropagation()}>
+                      {!r.restored_at && <input type="checkbox" aria-label={s.select} checked={sel.has(r.id)} onChange={() => toggle(r.id)} />}
+                    </td>
+                  )}
                   <td data-label={s.col_user}><b className="du-mono" dir="ltr">{r.original_username}</b></td>
                   <td data-label={s.col_name}>{r.original_name || '—'}</td>
                   <td data-label={s.col_phone} className="du-mono" dir="ltr">{r.original_phone || '—'}</td>
@@ -198,6 +309,15 @@ function ArchiveList() {
                   <td data-label={s.col_orders} className="du-c du-mono">{digits(r.orders_count, lang)}</td>
                   <td data-label={s.col_paid} className="du-mono">{toman(r.total_paid, lang)}</td>
                   <td data-label={s.col_state}><StatePill restored={!!r.restored_at} s={s} /></td>
+                  {isSuper && (
+                    <td className="du-act" onClick={(e) => e.stopPropagation()}>
+                      {!r.restored_at && (
+                        <button type="button" className="du-purge-btn" disabled={busy} onClick={() => purge([r.id])}>
+                          <Ico d={I.trash} w={14} /> {s.purge}
+                        </button>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -214,6 +334,38 @@ function ArchiveList() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+/* What a permanent delete removes / keeps (backend accounts/purge.py), with the PasarGuard choice. */
+function PurgeSummary({ s, tot, flag, skipped }) {
+  const [panel, setPanel] = useState(flag.current)
+  const set = (v) => { flag.current = v; setPanel(v) }
+  const n = (v) => Number(v || 0).toLocaleString('en-US')
+  return (
+    <div className="du-pg">
+      <p>{s.pg_intro}</p>
+      <ul>
+        <li><b>{n(tot.users)}</b> {s.pg_users}</li>
+        <li><b>{n(tot.services)}</b> {s.pg_services}</li>
+        <li><b>{n(tot.tickets)}</b> {s.pg_tickets.replace('{m}', n(tot.msgs)).replace('{a}', n(tot.atts))}</li>
+        <li>{s.pg_crm.replace('{p}', n(tot.p)).replace('{n}', n(tot.n)).replace('{c}', n(tot.c)).replace('{e}', n(tot.e)).replace('{d}', n(tot.d))}</li>
+        <li><b>{n(tot.notifs)}</b> {s.pg_notifs}</li>
+        <li><b>{n(tot.tokens)}</b> {s.pg_tokens}</li>
+        <li>{s.pg_tg}: <b>{tot.tg ? `${s.pg_tg_yes} (${n(tot.tg)})` : s.pg_tg_no}</b></li>
+        <li><b>{n(tot.archives)}</b> {s.pg_archive}</li>
+      </ul>
+      <p className="du-pg-keep">{s.pg_keep.replace('{o}', n(tot.orders)).replace('{p}', n(tot.payments))}</p>
+      {tot.services > 0 && (tot.existing > 0 || tot.unknown > 0) ? (
+        <label className="du-pg-panel">
+          <input type="checkbox" checked={panel} onChange={(e) => set(e.target.checked)} />
+          <span>{s.pg_panel.replace('{n}', n(tot.existing))}</span>
+        </label>
+      ) : tot.services > 0 && <p className="du-pg-note">{s.pg_panel_none}</p>}
+      {tot.unknown > 0 && panel && <p className="du-pg-warn">{s.pg_panel_unknown.replace('{n}', n(tot.unknown))}</p>}
+      {panel && tot.services > 0 && <p className="du-pg-note">{s.pg_panel_fail}</p>}
+      {skipped.length > 0 && <p className="du-pg-warn">{skipped.map((x) => `${x.username}: ${x.error}`).join(' · ')}</p>}
     </div>
   )
 }
@@ -393,6 +545,36 @@ function ArchiveDetail({ id }) {
 }
 
 const CSS = `
+.du-sel { width: 40px; } .du-sel input { width: 18px; height: 18px; accent-color: var(--c-danger); cursor: pointer; }
+.du-act { width: 1%; white-space: nowrap; }
+.du-selall { display: none; }
+.du-table td b.du-mono { overflow-wrap: anywhere; min-width: 0; }
+.du-purge-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 9px; font-size: 12.5px; font-weight: 700;
+  color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 10%, transparent); border: 1px solid color-mix(in srgb, var(--c-danger) 32%, transparent); }
+.du-purge-btn:disabled { opacity: .6; }
+.du-bulk { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; border-radius: 12px;
+  background: color-mix(in srgb, var(--c-danger) 8%, var(--c-surface)); border: 1px solid color-mix(in srgb, var(--c-danger) 28%, var(--c-border)); }
+.du-fails { display: flex; flex-direction: column; gap: 4px; padding: 10px 14px; border-radius: 12px; font-size: 12.5px; overflow-wrap: anywhere;
+  color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 10%, transparent); border: 1px solid color-mix(in srgb, var(--c-danger) 30%, transparent); }
+.du-fails span { color: var(--c-text); }
+.du-pg { display: flex; flex-direction: column; gap: 8px; text-align: start; font-size: 13px; line-height: 1.7; }
+.du-pg ul { margin: 0; padding-inline-start: 18px; list-style: disc; }
+.du-pg-keep { padding: 8px 10px; border-radius: 10px; font-size: 12.5px; color: var(--c-success-fg); background: color-mix(in srgb, var(--c-success) 10%, transparent); }
+.du-pg-panel { display: flex; align-items: flex-start; gap: 8px; padding: 10px; border-radius: 10px; font-weight: 600; cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--c-danger) 30%, var(--c-border)); }
+.du-pg-panel input { width: 18px; height: 18px; margin-top: 3px; flex-shrink: 0; accent-color: var(--c-danger); }
+.du-pg-note { font-size: 12px; color: var(--c-muted-fg); }
+.du-pg-warn { font-size: 12px; color: var(--c-warning-fg); overflow-wrap: anywhere; }
+@media (max-width: 767px) {
+  .du-purge-btn { min-height: 44px; padding-inline: 14px; }
+  .du-sel input { width: 22px; height: 22px; }
+  .du-selall { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 8px 16px 0; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .du-selall input { width: 22px; height: 22px; accent-color: var(--c-danger); }
+  .du-table td.du-sel, .du-table td.du-act { justify-content: flex-end; }
+  .du-table td.du-act::before { content: none; }
+  .du-table td.du-act .du-purge-btn { width: 100%; justify-content: center; }
+  .du-bulk .du-purge-btn { flex: 1; justify-content: center; }
+}
 .du-back { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--c-text-muted); }
 .du-back:hover { color: var(--c-primary); }
 .du-head { display: flex; align-items: flex-start; gap: 12px; }

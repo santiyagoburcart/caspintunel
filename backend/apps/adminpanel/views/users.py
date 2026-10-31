@@ -158,6 +158,8 @@ class DeletedUserArchiveViewSet(AdminViewSet):
     queryset = DeletedUserArchive.objects.none()
     http_method_names = ["get", "post", "head", "options"]
     perms_map = {"GET": ["users.view"], "*": ["users.delete"]}
+    # permanent delete: the permission AND a Super Admin (accounts/purge.py)
+    action_perms = {"purge_preview": ["users.purge"], "purge": ["users.purge"], "bulk_purge": ["users.purge"]}
     filter_backends = []
 
     def get_queryset(self):
@@ -212,3 +214,87 @@ class DeletedUserArchiveViewSet(AdminViewSet):
             "user_id": result.user.id, "username": result.user.username,
             "telegram_restored": result.telegram_restored, "warnings": result.warnings,
         })
+
+
+    # --- permanent delete (Super Admin) -----------------------------------------------
+    def _purge_gate(self, request):
+        if not getattr(request.user, "is_superadmin", False):
+            return Response({"detail": "only a Super Admin can permanently delete users", "code": "forbidden"},
+                            status=status.HTTP_403_FORBIDDEN)
+        return None
+
+    def _archives(self, raw) -> list[DeletedUserArchive]:
+        ids = []
+        for part in (raw if isinstance(raw, list) else str(raw or "").split(",")):
+            try:
+                ids.append(int(part))
+            except (TypeError, ValueError):
+                continue
+        found = {a.pk: a for a in DeletedUserArchive.objects.select_related("user").filter(pk__in=ids[:200])}
+        return [found[i] for i in dict.fromkeys(ids) if i in found]
+
+    @action(detail=False, methods=["get"], url_path="purge-preview")
+    def purge_preview(self, request):
+        """?ids=1,2 (archive ids) — what a permanent delete removes / keeps, and which
+        PasarGuard accounts still exist (read from the panel)."""
+        from apps.accounts.purge import PurgeError, preview
+
+        if (deny := self._purge_gate(request)):
+            return deny
+        rows = []
+        for a in self._archives(request.query_params.get("ids")):
+            row = {"id": a.pk, "user_id": a.user_id, "username": a.original_username}
+            if a.user is None:
+                row["error"] = "the user row no longer exists"
+            else:
+                try:
+                    row.update(preview(a.user))
+                except PurgeError as exc:
+                    row["error"], row["code"] = str(exc), exc.code
+            rows.append(row)
+        if not rows:
+            return Response({"detail": "pick at least one deleted user", "field": "ids"}, status=400)
+        return Response({"results": rows})
+
+    def _purge_one(self, archive, request, delete_on_panel):
+        from apps.accounts.purge import PurgeError, purge_user
+
+        if archive.user is None:
+            return {"id": archive.pk, "ok": False, "detail": "the user row no longer exists"}
+        try:
+            out = purge_user(archive.user, staff=request.user, delete_on_panel=delete_on_panel)
+        except PurgeError as exc:
+            return {"id": archive.pk, "ok": False, "code": exc.code, "detail": str(exc), "panel": exc.panel}
+        return {"id": archive.pk, "ok": True, **out}
+
+    @staticmethod
+    def _flag(request) -> bool:
+        v = request.data.get("delete_on_panel", True)
+        return v if isinstance(v, bool) else str(v).lower() in ("1", "true", "yes", "on")
+
+    @action(detail=True, methods=["post"])
+    def purge(self, request, pk=None):
+        """{delete_on_panel: bool} — permanently delete this user (see accounts/purge.py)."""
+        if (deny := self._purge_gate(request)):
+            return deny
+        archive = self.get_object()
+        r = self._purge_one(archive, request, self._flag(request))
+        if r["ok"]:
+            return Response({**r, "message": "Permanently deleted", "message_fa": "برای همیشه حذف شد"})
+        code = r.get("code")
+        return Response(r, status=502 if code == "panel_error" else 409)
+
+    @action(detail=False, methods=["post"], url_path="bulk-purge")
+    def bulk_purge(self, request):
+        """{ids, delete_on_panel} — one result per user; a PasarGuard failure leaves that user untouched."""
+        if (deny := self._purge_gate(request)):
+            return deny
+        archives = self._archives(request.data.get("ids"))
+        if not archives:
+            return Response({"detail": "pick at least one deleted user", "field": "ids"}, status=400)
+        flag = self._flag(request)
+        results = [self._purge_one(a, request, flag) for a in archives]
+        ok = sum(1 for r in results if r["ok"])
+        return Response({"results": results, "purged": ok, "failed": len(results) - ok,
+                         "message": f"{ok} of {len(results)} permanently deleted",
+                         "message_fa": f"{ok} از {len(results)} کاربر برای همیشه حذف شد"})

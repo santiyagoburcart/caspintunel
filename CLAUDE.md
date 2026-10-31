@@ -68,8 +68,9 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   + staff alert). Incident 2026-10-29: one transfer paid two renewals. Queue warnings live in `payments_sms/checks.py`.
 - Panel operations: **panel first, then read the account back and mirror it** (`apply_user_to_service`);
   only send changed fields (`update_service`). Never delete a panel account when "disable" is meant.
-- Users are **soft-deleted** only (`apps/accounts/deletion.py`); hard `DELETE /admin/users/<id>/` is 405
-  (it would cascade orders/payments and change revenue). Deleted users are excluded from lists, stats,
+- Users are **soft-deleted** first (`apps/accounts/deletion.py`); hard `DELETE /admin/users/<id>/` is 405
+  (it would cascade orders/payments and change revenue). Permanent delete = `apps/accounts/purge.py::purge_user` only
+  (Super Admin + `users.purge`): anonymizes the row, never deletes it, never touches orders / payments. Deleted users are excluded from lists, stats,
   pickers, referral codes, scheduled renewals.
 - Phones: always through `apps/accounts/phone.py` (`normalize_ir_phone` → `09xxxxxxxxx`); uniqueness is
   app-level. Every Telegram contact goes through `telegram/accounts.py::handle_contact` (own contact only;

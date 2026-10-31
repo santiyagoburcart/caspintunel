@@ -789,6 +789,37 @@ Release routine (development side): tests on the isolated stack
 push, `./update.sh`, GitHub release ([development.md](development.md)).
 
 
+## 5c2. Permanent delete of a soft-deleted user (v1.31.2)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor SA as Super Admin
+    participant UI as Deleted users page
+    participant API as /admin/deleted-users/…
+    participant P as accounts.purge
+    participant PG as PasarGuard
+    participant DB as MySQL
+
+    SA->>UI: «حذف دائمی» (row) or select + bulk
+    UI->>API: GET purge-preview/?ids= (users.purge + is_superadmin, else 403)
+    API->>P: preview → counts + GET /api/user/<name> per service
+    API-->>UI: removes / kept / panel accounts (exists, unknown)
+    UI->>SA: ConfirmDialog — list + «also delete on PasarGuard» (ON if any exists)
+    SA->>API: POST <id>/purge/ or bulk-purge/ {delete_on_panel}
+    opt delete_on_panel
+        P->>PG: GET every account first (any error → stop, nothing deleted)
+        P->>PG: DELETE + GET (404 = gone) per account
+    end
+    P->>DB: atomic: delete tickets (+files on commit), CRM rows, notifications,<br/>services, tokens, deletion archives; anonymize the user row
+    P->>DB: audit user.purged (counts only, no personal data)
+    API-->>UI: ok / per-user failures with the reason
+```
+
+Orders and payments are never touched: Accounting, Analytics and Transactions show the
+same totals, with the customer as «کاربر حذف‌شده #id». There is no automatic purge; a
+future one must call `purge_user`.
+
 ## 5d. Super Admin deletes (voids) a transaction → restore
 
 ```mermaid

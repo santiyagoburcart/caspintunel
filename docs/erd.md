@@ -38,6 +38,8 @@ erDiagram
         string language "fa | en"
         datetime terms_accepted_at
         datetime deleted_at "soft delete"
+        datetime purged_at "permanent delete: anonymous placeholder"
+        bigint purged_by_id FK "staff"
         bigint deleted_by_id FK
     }
     staff {
@@ -90,7 +92,7 @@ erDiagram
 
 | Table | Description |
 |---|---|
-| `user` | Customer account (site, bot or legacy import). Soft-deleted only; excluded from lists, stats and renewals once `deleted_at` is set. |
+| `user` | Customer account (site, bot or legacy import). Soft-deleted first; excluded from lists, stats and renewals once `deleted_at` is set. A Super Admin can then permanently delete it (v1.31.2, `accounts/purge.py`): the row stays as «کاربر حذف‌شده #id» (no name / phone / email / Telegram / card / notes, unusable password, `purged_at`) so orders and payments — and every total — are unchanged; services, tickets, CRM rows, notifications, tokens and its `deleted_user_archive` rows are deleted. |
 | `staff` | Admin-panel operator — a separate model from `user`, with its own JWT; `token_version` ends all sessions when bumped. Optional `email` and linked `telegram_id` receive ticket notifications. |
 | `role` / `permission` / `role_permission` | RBAC: roles bundle permission codes (`users.view`, `payment.approve`, `agency.view`, `agency.accounting`, `settings.email`, …). Super-admins bypass checks. `name_fa` / `description_fa` (v1.25.2) are shown when the panel is Persian (seeded for built-in roles and every permission). |
 | `staff_revoked_token` | Spent / revoked staff refresh tokens (by `jti`) until they expire. |

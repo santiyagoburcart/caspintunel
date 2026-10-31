@@ -72,6 +72,11 @@ class User(AbstractBaseUser, PermissionsMixin):
         "accounts.Staff", null=True, blank=True, on_delete=models.SET_NULL, related_name="deleted_users"
     )
     delete_reason = models.TextField(blank=True, default="")
+    # permanent delete (accounts/purge.py): the row stays as an anonymous placeholder for orders/payments
+    purged_at = models.DateTimeField(null=True, blank=True)
+    purged_by = models.ForeignKey(
+        "accounts.Staff", null=True, blank=True, on_delete=models.SET_NULL, related_name="purged_users"
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
