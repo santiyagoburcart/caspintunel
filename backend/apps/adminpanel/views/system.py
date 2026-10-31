@@ -35,12 +35,53 @@ EDITABLE_SETTINGS = [
     ("default_language", "str", "fa", None, None),
     ("product_display_mode", "str", "grouped", None, None),
     ("ios_shortcut_icloud_url", "str", "", None, None),
+    # --- Super Admin only (SUPER_ONLY below); each has its own card, not the generic form ---
+    # v1.32: deleted users auto-purge (apps/accounts/autopurge.py) — off until a Super Admin turns it on
+    ("deleted_purge_enabled", "bool", False, None, None),
+    ("deleted_purge_days", "int", 30, 1, 3650),
+    # v1.32: Blu collector health (override .env BLU_STALE_MINUTES / BLU_LATE_GRACE_MINUTES; no restart)
+    ("blu_ssh_check_minutes", "int", 5, 1, 1440),
+    ("blu_stale_minutes", "int", lambda: int(getattr(settings, "BLU_STALE_MINUTES", 360) or 360), 1, 10080),
+    ("blu_late_grace_minutes", "int", lambda: int(getattr(settings, "BLU_LATE_GRACE_MINUTES", 30) or 0), 0, 1440),
+    # v1.32: rounded-amount auto-approve (apps/payments_sms/rounded.py)
+    ("rounded_auto_enabled", "bool", True, None, None),
+    ("rounded_max_toman", "int", 2000, 0, 1000000),
+    ("rounded_max_percent", "str", "1", None, None),
 ]
 _SPEC = {k: (t, d, lo, hi) for (k, t, d, lo, hi) in EDITABLE_SETTINGS}
+
+# only a Super Admin may change these (403 otherwise, even with settings.manage)
+SUPER_ONLY = {"deleted_purge_enabled", "deleted_purge_days", "blu_ssh_check_minutes", "blu_stale_minutes",
+              "blu_late_grace_minutes", "rounded_auto_enabled", "rounded_max_toman", "rounded_max_percent"}
+# changes to these are audited with old → new values (no personal data in them)
+_AUDIT_VALUES = SUPER_ONLY
+
+
+def _default(d):
+    return d() if callable(d) else d
+
+
+def setting_value(key: str):
+    """The current value of an EDITABLE_SETTINGS key (DB row, else its default)."""
+    _t, d, _lo, _hi = _SPEC[key]
+    return get_setting(key, _default(d))
+
+
+def _clean_percent(value: str) -> str:
+    from decimal import Decimal, InvalidOperation
+
+    try:
+        d = Decimal(str(value).strip())
+    except InvalidOperation as exc:
+        raise ValueError("rounded_max_percent must be a number (e.g. 1 or 0.5)") from exc
+    if not (Decimal("0") <= d <= Decimal("10")) or d.as_tuple().exponent < -2:
+        raise ValueError("rounded_max_percent must be between 0 and 10, at most 2 decimals")
+    return format(d.normalize(), "f")
 
 # str settings with a validator (returns the cleaned value or raises ValueError)
 _VALIDATORS = {
     "ios_shortcut_icloud_url": shortcut.clean_icloud_url,
+    "rounded_max_percent": _clean_percent,
 }
 
 # str settings restricted to a fixed choice set
@@ -59,14 +100,21 @@ class SettingsView(AdminAPIView):
     @extend_schema(responses=dict, summary="Runtime settings")
     def get(self, request):
         return Response({"settings": [
-            {"key": k, "type": t, "value": get_setting(k, d)}
-            for (k, t, d, _lo, _hi) in EDITABLE_SETTINGS
+            {"key": k, "type": t, "value": get_setting(k, _default(d)), "min": lo, "max": hi,
+             "super_only": k in SUPER_ONLY}
+            for (k, t, d, lo, hi) in EDITABLE_SETTINGS
         ]})
 
     @extend_schema(request=dict, responses=dict, summary="Update runtime settings")
     def put(self, request):
+        data = request.data or {}
+        locked = sorted(k for k in data if k in SUPER_ONLY)
+        if locked and not getattr(request.user, "is_superadmin", False):
+            return Response({"detail": f"only a Super Admin can change {', '.join(locked)}",
+                             "detail_fa": "فقط سوپرادمین می‌تواند این تنظیمات را تغییر دهد."}, status=403)
+        before = {k: setting_value(k) for k in data if k in _AUDIT_VALUES}
         changed = []
-        for key, raw in (request.data or {}).items():
+        for key, raw in data.items():
             spec = _SPEC.get(key)
             if not spec:
                 continue  # ignore unknown / read-only keys
@@ -94,7 +142,15 @@ class SettingsView(AdminAPIView):
             set_setting(key, val, vtype)
             changed.append(key)
         if changed:
-            write_audit(action="settings.updated", staff=request.user, detail={"keys": changed})
+            detail = {"keys": changed}
+            values = {k: {"from": before[k], "to": setting_value(k)} for k in changed if k in before}
+            if values:
+                detail["values"] = values
+            write_audit(action="settings.updated", staff=request.user, detail=detail)
+            if "blu_ssh_check_minutes" in changed:
+                from apps.ops.schedule import reconcile_blu_service_schedule
+
+                reconcile_blu_service_schedule()
         return self.get(request)
 
     patch = put

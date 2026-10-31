@@ -409,7 +409,9 @@ TELEGRAM_PROXY_URL = env("TELEGRAM_PROXY_URL", default="")
 # HMAC-SHA256 shared secret (>= 32 chars); empty or shorter = webhook answers 503.
 BLU_PUSH_SECRET = env("BLU_PUSH_SECRET", default="")
 BLU_LATE_GRACE_MINUTES = env.int("BLU_LATE_GRACE_MINUTES", default=30)   # deposit after the reservation ended
-BLU_STALE_MINUTES = env.int("BLU_STALE_MINUTES", default=15)             # no batch for this long = collector offline
+BLU_STALE_MINUTES = env.int("BLU_STALE_MINUTES", default=360)            # no batch for this long = collector offline
+# v1.32: both are fallbacks — the Super Admin values on the Blu tab (Setting rows) win, no restart
+BLU_COLLECTOR_POLL_SECONDS = env.int("BLU_COLLECTOR_POLL_SECONDS", default=45)  # the collector's own poll (info only)
 # collector service check over SSH (blu_service.py): empty host = off. Key / known_hosts / config
 # are mounted read-only into the worker at BLU_SSH_DIR.
 BLU_SSH_HOST = env("BLU_SSH_HOST", default="")

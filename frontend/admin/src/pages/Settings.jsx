@@ -11,6 +11,7 @@ import { useDeleteConfirm } from '../lib/confirmDelete'
 import { CASPIAN_GROUPS, NAV_ICONS } from '../components/adminNav'
 import { useLiveTickets } from '../lib/liveTickets'
 import { useTheme } from '../theme/ThemeProvider'
+import { AutoPurgeCard, RoundedCard, SUPER_CSS } from '../components/SuperSettings'
 
 function HubIco({ d, w = 18 }) {
   return (
@@ -27,6 +28,8 @@ const HUB_ICONS = {
   pages: <path d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />,
   sms_devices: <><path d="M7 4h10a1 1 0 011 1v14a1 1 0 01-1 1H7a1 1 0 01-1-1V5a1 1 0 011-1z" /><line x1="11" y1="18" x2="13" y2="18" /></>,
   sms_sources: <><path d="M3 21h18M4 10h16M6 21V10M18 21V10M12 3l9 5H3l9-5z" /></>,
+  auto_purge: <><path d="M14.74 9l-.346 9m-4.788 0L9.26 9M4.772 5.79h14.456M9.75 5.79V4.5a1.5 1.5 0 011.5-1.5h1.5a1.5 1.5 0 011.5 1.5v1.29" /><path d="M5.84 5.79l1.07 13.88a2.25 2.25 0 002.24 2.08h5.7a2.25 2.25 0 002.24-2.08l1.07-13.88" /></>,
+  rounded: <><circle cx="12" cy="12" r="9" /><path d="M8.5 12.5l2.5 2.5 4.5-5" /></>,
   email: <path d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />,
   alerts: <><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></>,
   unique_amount: <><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" /></>,
@@ -61,6 +64,8 @@ const HUB = {
     sms_sources: { t: 'شماره‌های بانکی', d: 'شماره‌های فرستندهٔ مجاز پیامک بانک' },
     alerts: { t: 'هشدارها', d: 'آستانهٔ هشدار حجم و انقضا' },
     unique_amount: { t: 'مبلغ تصادفی', d: 'بازهٔ مبلغ افزودهٔ خودکار کارت‌به‌کارت' },
+    rounded: { t: 'مبلغ گرد شده', d: 'تأیید خودکار واریزِ کمی کمتر از فاکتور' },
+    auto_purge: { t: 'حذف دائمی خودکار', d: 'پاک‌سازی روزانهٔ کاربران حذف‌شدهٔ قدیمی' },
     requirements: { t: 'الزامات', d: 'تأیید ایمیل، کد معرف و عضویت اجباری' },
     backup: { t: 'بک‌آپ و پشتیبان‌گیری', d: 'فاصلهٔ پشتیبان‌گیری و مدت نگهداری محلی' },
     branding: { t: 'برندینگ', d: 'لوگو، فاویکون، نام و دامنهٔ سامانه' },
@@ -104,6 +109,8 @@ const HUB = {
     sms_sources: { t: 'Bank numbers', d: 'Authorized sender numbers for bank SMS' },
     alerts: { t: 'Alerts', d: 'Volume and expiry warning thresholds' },
     unique_amount: { t: 'Unique amount', d: 'Auto-added card-to-card amount range' },
+    rounded: { t: 'Rounded amount', d: 'Auto-approve a deposit slightly below the invoice' },
+    auto_purge: { t: 'Auto-purge', d: 'Daily permanent delete of old deleted users' },
     requirements: { t: 'Requirements', d: 'Email verification, referral, forced join' },
     backup: { t: 'Backup & scheduling', d: 'Backup interval and local retention' },
     branding: { t: 'Branding', d: 'Logo, favicon, name and domain' },
@@ -145,7 +152,7 @@ const HUB_COLOR = {
   themes: '#DB2777', branding: '#DB2777',
   panel: '#1464BA',
   bots: '#7C3AED', email: '#0891B2',
-  sms_devices: '#11AB53', sms_sources: '#11AB53', unique_amount: '#11AB53',
+  sms_devices: '#11AB53', sms_sources: '#11AB53', unique_amount: '#11AB53', rounded: '#11AB53', auto_purge: 'var(--c-danger)',
   alerts: 'var(--c-warning)',
   requirements: '#D97706', roles: '#D97706',
   backup: '#1464BA',
@@ -175,6 +182,8 @@ const SETTINGS_SECTIONS = ['g_config', [
   ['/settings/backup', 'backup', 'settings.manage', null],
   ['/settings/requirements', 'requirements', 'settings.manage', null],
   ['/settings/display', 'display', 'settings.manage', null],
+  ['/settings/rounded-amount', 'rounded', 'superadmin', null],
+  ['/settings/auto-purge', 'auto_purge', 'superadmin', null],
 ]]
 const HUB_GROUPS = [
   ...CASPIAN_GROUPS.map(([g, items]) => [g, [
@@ -189,7 +198,9 @@ const HUB_GROUPS = [
 // edited elsewhere: the iPhone Shortcut iCloud link lives on Apps & tools (validated there)
 const OWN_PAGE_SETTINGS = new Set(['ios_shortcut_icloud_url'])
 const FORM_SECTIONS = ['unique-amount', 'alerts', 'sync', 'backup', 'requirements', 'display']
-const SOLO_SECTIONS = [...FORM_SECTIONS, 'sms-devices', 'sms-sources']
+// v1.32 Super Admin cards (components/SuperSettings.jsx) save their own keys
+const SUPER_SECTIONS = ['rounded-amount', 'auto-purge']
+const SOLO_SECTIONS = [...FORM_SECTIONS, 'sms-devices', 'sms-sources', ...SUPER_SECTIONS]
 
 const roleText = (staff, lang) => (staff?.role ? ((lang === 'fa' && staff.role_fa) || staff.role)
   : staff?.is_superadmin ? (lang === 'fa' ? 'ابرمدیر' : 'superadmin') : '')
@@ -746,7 +757,7 @@ function SmsDevicesSection({ t, s, lang }) {
 
 export default function Settings() {
   const { t, lang } = useI18n()
-  const { can } = useAuth()
+  const { can, staff } = useAuth()
   const toast = useToast()
   const s = T[lang] || T.fa
   const h = HINT[lang] || HINT.fa
@@ -761,7 +772,7 @@ export default function Settings() {
     api.get('/admin/settings/')
       .then((r) => {
         // settings with their own page are left out, so this form never sends a stale copy
-        const rows = r.data.settings.filter((x) => !OWN_PAGE_SETTINGS.has(x.key))
+        const rows = r.data.settings.filter((x) => !OWN_PAGE_SETTINGS.has(x.key) && !x.super_only)
         const f = Object.fromEntries(rows.map((x) => [x.key, x.value]))
         setRows(rows); setForm(f); setInitial(f); setErr('')
       })
@@ -999,6 +1010,8 @@ export default function Settings() {
           <p className="text-xs text-muted leading-6 mt-1">{s.info}</p>
         </div>
       </div>
+
+      {staff?.is_superadmin && <><style>{SUPER_CSS}</style><RoundedCard /><AutoPurgeCard /></>}
 
       <SmsSourcesSection t={t} s={s} lang={lang} />
       <SmsDevicesSection t={t} s={s} lang={lang} />

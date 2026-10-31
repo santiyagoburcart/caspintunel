@@ -78,6 +78,9 @@ export const T = {
     bulk_act_note: 'گزینهٔ سرویس برای هر تراکنشی که سرویس دارد اعمال می‌شود.',
     restore_title: 'بازگردانی تراکنش', restore_msg: 'تراکنش دوباره در فهرست و جمع‌ها حساب می‌شود و وضعیت سفارش برمی‌گردد. تغییرات PasarGuard برنمی‌گردد.',
     done_del: 'حذف شد', done_restore: 'بازگردانده شد', will: 'آنچه انجام می‌شود',
+    rounded: 'مبلغ گرد شده', undo: 'لغو تأیید', undo_title: 'لغو تأیید خودکار (مبلغ گرد شده)',
+    undo_msg: 'این تأیید مثل حذف تراکنش باطل می‌شود (از حسابداری خارج می‌شود) و واریز برای بررسی دستی برمی‌گردد. پیش‌فرض: سرویس بماند.',
+    undo_reason: 'توضیح (اختیاری)', done_undo: 'تأیید خودکار لغو شد',
     res_kept: 'سرویس دست‌نخورده ماند', res_no_service: 'سرویسی نداشت', res_disabled: 'سرویس {u} روی PasarGuard غیرفعال شد',
     res_deleted: 'سرویس {u} از PasarGuard حذف شد', res_missing_on_panel: 'سرویس {u} روی PasarGuard نبود؛ اینجا غیرفعال شد', bulk_res: '{ok} انجام شد، {failed} ناموفق', until: 'قابل بازگردانی تا',
   },
@@ -101,6 +104,9 @@ export const T = {
     bulk_act_note: 'The service choice applies to each transaction that has a service.',
     restore_title: 'Restore transaction', restore_msg: 'The transaction counts again in the list and totals and its order status comes back. PasarGuard changes are not undone.',
     done_del: 'Deleted', done_restore: 'Restored', will: 'What will happen',
+    rounded: 'rounded amount', undo: 'Undo approval', undo_title: 'Undo auto-approval (rounded amount)',
+    undo_msg: 'The approval is voided like a transaction delete (it leaves Accounting) and the deposit goes back for manual review. Default: keep the service.',
+    undo_reason: 'Note (optional)', done_undo: 'Auto-approval undone',
     res_kept: 'service left as it was', res_no_service: 'it had no service', res_disabled: 'service {u} disabled on PasarGuard',
     res_deleted: 'service {u} deleted from PasarGuard', res_missing_on_panel: 'service {u} was not on PasarGuard; disabled here', bulk_res: '{ok} done, {failed} failed', until: 'Restorable until',
   },
@@ -190,6 +196,26 @@ export function useTxDelete(s, t, lang, done) {
     })
     if (ok) { toast.success(`${s.done_del} · ${resultText(s, res?.service_result, p.service?.panel_username)}`); done() }
   }
+  // «لغو تأیید» of a rounded-amount auto-approval: the same void, keep service by default
+  const undo = async (r) => {
+    let p
+    try { p = (await api.get(`/admin/transactions/${r.id}/delete-preview/`)).data } catch (e) { toast.error(apiError(e)); return }
+    const box = { v: 'keep' }
+    let res
+    const ok = await confirm({
+      tone: 'warning', icon: 'warning', title: s.undo_title, message: s.undo_msg, confirmLabel: s.undo,
+      targetLabel: s.tx_col, targetId: r.tx_number,
+      reason: { label: s.undo_reason },
+      content: (
+        <div className="tx-del">
+          <DeleteDetails p={p} s={s} t={t} lang={lang} />
+          <ServiceChoice box={box} s={s} actions={p.actions} />
+        </div>
+      ),
+      action: async (reason) => { res = (await api.post(`/admin/transactions/${r.id}/undo-rounded/`, { reason: reason || '', service_action: chosen(box) })).data },
+    })
+    if (ok) { toast.success(`${s.done_undo} · ${resultText(s, res?.service_result, p.service?.panel_username)}`); done() }
+  }
   const restore = async (r) => {
     const ok = await confirm({
       tone: 'primary', title: s.restore_title, message: s.restore_msg, confirmLabel: s.restore,
@@ -223,7 +249,7 @@ export function useTxDelete(s, t, lang, done) {
       done()
     }
   }
-  return { del, restore, bulk }
+  return { del, restore, bulk, undo }
 }
 
 function TxTable({ s, t, lang }) {
@@ -375,7 +401,8 @@ function TxTable({ s, t, lang }) {
                       </td>
                       <td data-label={s.type_col}>{s['type_' + r.order_type] || r.order_type || '—'}</td>
                       <td data-label={s.src_col}>{r.order_source === 'bot' ? s.src_bot : s.src_site}</td>
-                      <td data-label={s.method}>{r.method ? enumLabel(t, 'm_', r.method) : '—'}</td>
+                      <td data-label={s.method}>{r.method ? enumLabel(t, 'm_', r.method) : '—'}
+                        {r.auto_rule === 'rounded' && <span className="tx-rounded">{s.rounded}</span>}</td>
                       <td dir="ltr" className="tx-mono tx-card" data-label={s.card}>{groupCard(r.card)}</td>
                       <td data-label={s.confirmer}>{confirmer(r)}</td>
                       <td className="tx-mono tx-date" data-label={s.date}>{jalali(r.created_at, true, lang)}</td>
@@ -424,6 +451,8 @@ const CSS = `
 .tx-num .tx-pill { margin-inline-start: 6px; }
 .tx-row--void td { opacity: .6; }
 .tx-row--void td.tx-c { opacity: 1; }
+.tx-rounded { display: inline-block; margin-inline-start: 6px; font-size: 10.5px; font-weight: 700; padding: 1px 8px; border-radius: 999px;
+  color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 12%, transparent); white-space: nowrap; }
 .tx-del-btn { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 700;
   border: 1px solid color-mix(in srgb, var(--c-danger) 40%, transparent); color: var(--c-danger-fg); background: transparent; margin-inline-start: 6px; }
 .tx-del-btn:hover { background: color-mix(in srgb, var(--c-danger) 10%, transparent); }

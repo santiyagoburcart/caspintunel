@@ -203,8 +203,53 @@ def _alert_back_online() -> None:
 
 
 # --- health + offline alert -----------------------------------------------------------
+def _db_or_env(key: str, env_name: str, env_default: int, lo: int) -> tuple[int, str]:
+    """A Super Admin value from the panel (Setting row) wins over .env; read at call time (no restart)."""
+    from apps.settings_app.utils import get_setting
+
+    v = get_setting(key, None)
+    if v is not None:
+        try:
+            return max(lo, int(v)), "panel"
+        except (TypeError, ValueError):
+            pass
+    raw = getattr(settings, env_name, env_default)
+    try:
+        value = int(raw if raw not in (None, "") else env_default)
+    except (TypeError, ValueError):
+        value = env_default
+    return max(lo, value), "env"
+
+
+def stale_minutes() -> tuple[int, str]:
+    return _db_or_env("blu_stale_minutes", "BLU_STALE_MINUTES", 360, 1)
+
+
+def late_grace_minutes() -> tuple[int, str]:
+    return _db_or_env("blu_late_grace_minutes", "BLU_LATE_GRACE_MINUTES", 30, 0)
+
+
+def ssh_check_minutes() -> int:
+    from apps.settings_app.utils import get_setting
+
+    try:
+        return max(1, int(get_setting("blu_ssh_check_minutes", 5) or 5))
+    except (TypeError, ValueError):
+        return 5
+
+
+def blu_settings() -> dict:
+    """What the «واریزهای بلو» tab shows (and a Super Admin edits there)."""
+    stale, stale_src = stale_minutes()
+    grace, grace_src = late_grace_minutes()
+    return {"ssh_check_minutes": ssh_check_minutes(), "stale_minutes": stale, "late_grace_minutes": grace,
+            "source": {"stale_minutes": stale_src, "late_grace_minutes": grace_src},
+            # the collector's own poll (its POLL_INTERVAL on the Iran server) — information only
+            "collector_poll_seconds": int(getattr(settings, "BLU_COLLECTOR_POLL_SECONDS", 45) or 45)}
+
+
 def stale_after() -> timedelta:
-    return timedelta(minutes=max(1, int(getattr(settings, "BLU_STALE_MINUTES", 15) or 15)))
+    return timedelta(minutes=stale_minutes()[0])
 
 
 def collector_health() -> dict:
@@ -212,7 +257,8 @@ def collector_health() -> dict:
     connected = bool(c.last_batch_at and timezone.now() - c.last_batch_at <= stale_after())
     return {"enabled": bool(push_secret()), "connected": connected, "last_batch_at": c.last_batch_at,
             "last_batch_id": c.last_batch_id, "last_items": c.last_items, "batches": c.batches,
-            "stale_minutes": int(stale_after().total_seconds() // 60), "service": _service()}
+            "stale_minutes": int(stale_after().total_seconds() // 60), "service": _service(),
+            "settings": blu_settings()}
 
 
 def _service() -> dict:

@@ -63,6 +63,9 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   look-alikes are logged as "amount mismatch" (SMS log filter) and never approved. (Incident 2026-10-15, order #46.)
   A deposit within ±20 % of an open invoice (or equal only after ×10/÷10) is linked to it (`SmsMessage.mismatch_order` +
   `less`/`more`) and gets a PENDING `sms_mismatch` payment for manual review (Payments queue, live `sms_mismatch` event).
+  **The ONE exception = `payments_sms/rounded.py` (v1.32, SMS + Blu):** a deposit slightly BELOW exactly one open invoice
+  (≤ max(`rounded_max_toman`, `rounded_max_percent`)), inside its window, with a receipt or a known payer card. Never above,
+  never with 2+ candidates, never twice for one deposit; paid amount + `shortfall` recorded; undo = void. Don't widen it elsewhere.
 - **One renewal per service at a time** (`orders.services.waiting_renewal`): no new renewal order while one is queued,
   paid or under receipt review, and `schedule_renewal` never replaces an unapplied `ScheduledRenewal` (→ order `failed`
   + staff alert). Incident 2026-10-29: one transfer paid two renewals. Queue warnings live in `payments_sms/checks.py`.
@@ -70,7 +73,8 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   only send changed fields (`update_service`). Never delete a panel account when "disable" is meant.
 - Users are **soft-deleted** first (`apps/accounts/deletion.py`); hard `DELETE /admin/users/<id>/` is 405
   (it would cascade orders/payments and change revenue). Permanent delete = `apps/accounts/purge.py::purge_user` only
-  (Super Admin + `users.purge`): anonymizes the row, never deletes it, never touches orders / payments. Deleted users are excluded from lists, stats,
+  (Super Admin + `users.purge`): anonymizes the row, never deletes it, never touches orders / payments. The daily auto-purge
+  (`accounts/autopurge.py`, setting off by default) calls the same function — never a copy. Deleted users are excluded from lists, stats,
   pickers, referral codes, scheduled renewals.
 - Phones: always through `apps/accounts/phone.py` (`normalize_ir_phone` → `09xxxxxxxxx`); uniqueness is
   app-level. Every Telegram contact goes through `telegram/accounts.py::handle_contact` (own contact only;
@@ -196,7 +200,8 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   touched; matched once, in Celery, only inside the order's window (`created_at − 2 min … unique_expire_at + grace`) — unique
   amounts are reused. Card numbers stay masked (first6******last4), also in `raw`. The secret is only in `.env`.
   Collector health = `blu_service.py`: ONE fixed read-only SSH command (is-active + journal); never add other remote
-  commands there. The key is mounted read-only into `celery_worker` only.
+  commands there. The key is mounted read-only into `celery_worker` only. Stale threshold / late grace / SSH interval are
+  Super Admin `setting` rows (win over `.env`); `/admin/settings/` keys in `SUPER_ONLY` are 403 for everyone else.
 
 ## Panel account names
 - Never attach a customer to a panel account we did not create: names are checked in our DB **and** on the panel

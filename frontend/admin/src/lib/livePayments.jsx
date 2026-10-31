@@ -44,6 +44,14 @@ export function LivePaymentsProvider({ children }) {
         : `Blu collector service problem: ${({ inactive: 'inactive', ssh: 'SSH failing', errors: 'repeated errors' })[msg.kind] || msg.kind}`)
       return
     }
+    // v1.32 rounded-amount auto-approve (backend payments_sms/rounded.py)
+    if (msg.event === 'rounded_approved') {
+      const n = (v) => Number(v || 0).toLocaleString('en-US')
+      toast.success(fa
+        ? `تأیید خودکار – مبلغ گرد شده: سفارش #${msg.order_id} — واریز ${n(msg.paid)}، فاکتور ${n(msg.invoice_amount)} تومان (کسری ${n(msg.shortfall)}).`
+        : `Auto-approved — rounded amount: order #${msg.order_id} — paid ${n(msg.paid)} T, invoice ${n(msg.invoice_amount)} T (short ${n(msg.shortfall)}).`)
+      return
+    }
     // a deposit (bank SMS or Blu) close to an open invoice but not equal: never approved, needs a person
     if (msg.event !== 'sms_mismatch' && msg.event !== 'blu_mismatch') return
     const blu = msg.event === 'blu_mismatch'

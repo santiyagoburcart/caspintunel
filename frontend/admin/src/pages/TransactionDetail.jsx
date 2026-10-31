@@ -7,6 +7,7 @@ import { Alert, Spinner } from '../components/ui'
 import { useConfirm } from '../components/ConfirmDialog'
 import { useAuth } from '../lib/auth'
 import { T as TX_T, useTxDelete } from './Transactions'
+import RoundedReason from '../components/RoundedReason'
 
 /* ------------------------------------------------------------------ *
  *  Transaction Detail — direct port of the Stitch screens
@@ -116,7 +117,7 @@ export default function TransactionDetail() {
   }, [id])
   useEffect(() => { load() }, [load])
   const xs = TX_T[lang] || TX_T.fa
-  const { del, restore } = useTxDelete(xs, t, lang, load)
+  const { del, restore, undo } = useTxDelete(xs, t, lang, load)
 
   const { src: receiptSrc, state: receiptState } = useReceiptBlob(r?.receipt_url)
 
@@ -199,7 +200,8 @@ export default function TransactionDetail() {
   const hasAudit = confirmer || r.confirmed_at || r.reject_reason
 
   const rows = [
-    [t('txd_amount'), <b className="txd-amt-v">{toman(r.amount, lang)}</b>, true],
+    [t('txd_amount'), <b className="txd-amt-v">{toman(r.amount, lang)}</b>, true,
+      r.auto_rule === 'rounded' && r.shortfall != null ? `${xs.rounded} · −${toman(r.shortfall, lang)}` : null],
     ...(showUnique ? [[t('txd_amount_unique'), <b>{toman(r.amount_unique, lang)}</b>]] : []),
     [t('txd_requester'), (
       <span>
@@ -228,6 +230,9 @@ export default function TransactionDetail() {
         <span className="txd-txno" dir="ltr">{r.tx_number}</span>
         {r.voided && (
           <span className="txd-void">{xs.deleted}: {r.void_reason} · {r.voided_by || '—'} · {jalali(r.voided_at, true, lang)} · {xs.until} {jalali(r.restorable_until, false, lang)}</span>
+        )}
+        {superadmin && !r.voided && r.auto_rule === 'rounded' && (
+          <button type="button" className="txd-undo" onClick={() => undo(r)} data-testid="undo-rounded">{xs.undo}</button>
         )}
         {superadmin && !r.voided && <button type="button" className="tx-del-btn txd-del" onClick={() => del(r)}>{xs.del}</button>}
         {superadmin && r.voided && new Date(r.restorable_until) > new Date() && (
@@ -289,6 +294,8 @@ export default function TransactionDetail() {
               <dd><StatusPill status={r.status} t={t} /></dd>
             </div>
           </dl>
+
+          {r.auto_reason?.rule === 'rounded' && <RoundedReason r={r.auto_reason} />}
 
           {/* status switcher — always visible, current state pre-selected (ref screen 1) */}
           <div className="txd-status">
@@ -433,6 +440,9 @@ const CSS = `
 .txd-txbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 6px 0 12px; }
 .txd-txno { font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: 15px; }
 .txd-void { font-size: 12.5px; font-weight: 600; color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 10%, transparent); padding: 4px 10px; border-radius: 8px; }
+.txd-undo { padding: 5px 12px; border-radius: 8px; font-size: 12.5px; font-weight: 700; border: 1px solid var(--c-warning);
+  color: var(--c-warning-fg); background: transparent; }
+@media (max-width: 767px) { .txd-undo { min-height: 44px; } }
 .txd-del, .txd-restore { padding: 5px 12px; border-radius: 8px; font-size: 12.5px; font-weight: 700; }
 .txd-del { border: 1px solid color-mix(in srgb, var(--c-danger) 40%, transparent); color: var(--c-danger-fg); background: transparent; }
 .txd-restore { border: 1px solid var(--c-primary); color: var(--c-primary); background: transparent; }

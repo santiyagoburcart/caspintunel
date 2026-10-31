@@ -27,3 +27,15 @@ def blu_stale_check_task():
     from .blu import check_stale
 
     return check_stale()
+
+
+@shared_task(bind=True, max_retries=2, default_retry_delay=20)
+def rounded_retry_task(self, order_id: int):
+    """A receipt was uploaded: a deposit linked to this order as slightly LESS may now be
+    approved by the rounded-amount rule (rounded.py)."""
+    from .rounded import retry_for_order
+
+    try:
+        return retry_for_order(order_id)
+    except Exception as exc:  # noqa: BLE001 — lock timeout: try again
+        raise self.retry(exc=exc)

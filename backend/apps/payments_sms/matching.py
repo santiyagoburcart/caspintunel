@@ -143,9 +143,20 @@ def ingest_sms(*, device, raw_text: str, sender: str | None = None, received_at=
         late = " (delivered late; order was open when the SMS arrived)" if msg.delivered_late else ""
         _note(msg, f"matched order #{payment.order_id} ({payment.amount} T, SMS {amount.describe()}) — auto-confirmed{late}")
         return msg, result
+    # v1.32: a little LESS than exactly one open invoice + evidence → approved (rounded.py)
+    from . import rounded
+
+    rpay, rdec = rounded.try_sms(msg, amount)
+    if rpay is not None:
+        result.update(matched=True, order_id=rpay.order_id, amount=str(rpay.amount),
+                      payment_status=rpay.status, rounded=True)
+        return msg, result
     suspect = near_order(amount, msg.received_at)
     if suspect is not None:
         kind = flag_mismatch(msg, suspect, amount)
+        if rdec is not None:
+            rounded.remember(suspect, rdec.reason)
+            _note(msg, f"{msg.note} · {rounded.note_text(rdec.reason)}")
         result.update(reason="amount mismatch", mismatch=kind, order_id=suspect.id)
         return msg, result
     result["reason"] = "no pending order matches the amount in this SMS"
@@ -291,6 +302,9 @@ def _auto_confirm(order: Order, msg: SmsMessage) -> Payment:
             confirmed_by_staff=None,
             confirmed_at=timezone.now(),
             reject_reason="",
+            auto_rule="",
+            auto_reason={},
+            shortfall=None,
         ),
     )
     mark_paid_and_fulfill(order)
@@ -313,9 +327,9 @@ BLU_CREATED_SKEW = timedelta(minutes=2)    # deposit seconds before the order ro
 
 
 def _blu_grace() -> timedelta:
-    from django.conf import settings
+    from .blu import late_grace_minutes
 
-    return timedelta(minutes=int(getattr(settings, "BLU_LATE_GRACE_MINUTES", 30) or 0))
+    return timedelta(minutes=late_grace_minutes()[0])
 
 
 def _blu_window_ok(order: Order, at) -> bool:
@@ -389,18 +403,29 @@ def match_blu_transaction(pk: int):
             _blu_note(tx, f"order #{paid.id} was already paid (SMS / receipt) — duplicate, not approved again",
                       status=BluStatus.DUPLICATE, matched_order=paid)
             return tx
+        # v1.32: a little LESS than exactly one open invoice + evidence → approved (rounded.py)
+        from . import rounded
+
+        rpay, rdec = rounded.try_blu(tx)
+        if rpay is not None:
+            return tx
         amount = blu_amount(tx)
         suspect = near_order(amount, at)
         if suspect is not None:
             flag_blu_mismatch(tx, suspect)
+            if rdec is not None:
+                rounded.remember(suspect, rdec.reason)
+                _blu_note(tx, f"{tx.match_note} · {rounded.note_text(rdec.reason)}")
             return tx
         _blu_note(tx, f"no pending order of exactly {tx.amount_toman:,} T at the deposit time")
         return tx
 
 
-def confirm_blu(order: Order, tx, *, staff=None) -> Payment:
+def confirm_blu(order: Order, tx, *, staff=None, rounded: dict | None = None) -> Payment:
     """Approve `order` with Blu deposit `tx` — like _auto_confirm (or a staff attach when
-    `staff` is given). The caller holds the row locks inside a transaction."""
+    `staff` is given). `rounded` = the conditions of a rounded-amount approval (rounded.py):
+    the payment then records the PAID amount and the shortfall. The caller holds the row
+    locks inside a transaction."""
     from apps.notifications.live import push_payments_event
     from apps.orders.services import mark_paid_and_fulfill
 
@@ -412,9 +437,12 @@ def confirm_blu(order: Order, tx, *, staff=None) -> Payment:
         order=order,
         defaults=dict(
             method=PaymentMethod.BLU_AUTO,
-            amount=order.amount_unique,
+            amount=Decimal(tx.amount_toman) if rounded else order.amount_unique,
             status=PaymentStatus.APPROVED,
             blu_transaction=tx,
+            auto_rule="rounded" if rounded else "",
+            auto_reason=rounded or {},
+            shortfall=(Decimal(order.amount_unique) - Decimal(tx.amount_toman)) if rounded else None,
             bank_card=(existing.bank_card if existing and existing.bank_card_id else default_bank_card()),
             confirmed_by=ConfirmedBy.ADMIN if staff else ConfirmedBy.SYSTEM,
             confirmed_by_staff=staff,
@@ -429,10 +457,15 @@ def confirm_blu(order: Order, tx, *, staff=None) -> Payment:
     detail = {"blu_transaction": tx.id, "order": order.id, "amount": str(order.amount_unique),
               "deposit_toman": str(tx.amount_toman) if tx.amount_toman is not None else None,
               "receipt": tx.receipt, "reference": tx.reference}
-    write_audit(action="payment.blu_attached" if staff else "payment.blu_auto_confirmed",
-                staff=staff, target=payment, detail=detail)
-    push_payments_event("blu_approved", order_id=order.id, payment_id=payment.id)
+    if not rounded:          # a rounded approval writes its own audit entry (rounded._approved)
+        write_audit(action="payment.blu_attached" if staff else "payment.blu_auto_confirmed",
+                    staff=staff, target=payment, detail=detail)
+        push_payments_event("blu_approved", order_id=order.id, payment_id=payment.id)
     how = f"attached by {staff.username}" if staff else "auto-confirmed"
+    if rounded:
+        from .rounded import note_text
+
+        how = note_text(rounded)
     _blu_note(tx, f"matched order #{order.id} ({order.amount_unique:,} T) — {how}",
               status=BluStatus.MATCHED, matched_order=order, matched_payment=payment)
     log.info("Blu %s %s order %s (%s T)", tx.id, how, order.id, order.amount_unique)

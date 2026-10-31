@@ -70,6 +70,10 @@ def submit_receipt(*, order: Order, image, bank_card=None, user, receipt_ref: st
 
     write_audit(action="payment.receipt_uploaded", target=payment, staff=None)
     push_payments_event("receipt_uploaded", order_id=order.id, payment_id=payment.id)
+    # v1.32: a deposit a little below this invoice may now qualify (rounded.py — receipt = evidence)
+    from .tasks import rounded_retry_task
+
+    transaction.on_commit(lambda: rounded_retry_task.delay(order.id))
     return payment
 
 

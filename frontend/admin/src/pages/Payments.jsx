@@ -9,6 +9,7 @@ import { useToast } from '../components/Toast'
 import { useConfirm } from '../components/ConfirmDialog'
 import { useLivePayments, usePaymentsEvents } from '../lib/livePayments'
 import BluDeposits from '../components/BluDeposits'
+import RoundedReason from '../components/RoundedReason'
 
 const T = {
   fa: {
@@ -271,6 +272,7 @@ function PaymentQueue() {
                 <small>{s.mm_hint}</small>
               </div>
             )}
+            {p.auto_reason?.rule === 'rounded' && <RoundedReason r={p.auto_reason} compact />}
             {p.warnings?.length > 0 && <PayWarnings ws={p.warnings} s={s} lang={lang} onOpen={(pid) => navigate(`/payments/${pid}`)} />}
             <ReceiptInfo p={p} s={s} onSaved={(row) => setRows((cur) => cur.map((r) => (r.id === row.id ? row : r)))} />
             {p.bank_card_number && (

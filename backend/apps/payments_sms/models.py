@@ -141,6 +141,10 @@ class ConfirmedBy(models.TextChoices):
     SYSTEM = "system", "System"
 
 
+class AutoRule(models.TextChoices):
+    ROUNDED = "rounded", "Auto-approved — rounded amount"
+
+
 class VoidServiceAction(models.TextChoices):
     """What a Super Admin chose for the linked order / service when deleting (voiding) a payment."""
     KEEP = "keep", "Keep the order and service"
@@ -207,6 +211,13 @@ class Payment(TimeStampedModel):
     void_service_action = models.CharField(max_length=8, choices=VoidServiceAction.choices, blank=True, default="")
     # the order status before the void (cancel) — put back by a restore
     void_prev_order_status = models.CharField(max_length=16, blank=True, default="")
+    # v1.32 rounded-amount auto-approve (payments_sms/rounded.py): auto_rule "rounded" = approved
+    # although the deposit was a little LESS than the invoice; `amount` is then what was paid and
+    # `shortfall` the difference. auto_reason = which conditions matched (also kept, with why it
+    # did not apply, on a mismatch payment left for manual review).
+    auto_rule = models.CharField(max_length=16, blank=True, default="", db_default="", db_index=True)
+    auto_reason = models.JSONField(default=dict, blank=True, null=True)   # null: old rows / old release inserts
+    shortfall = models.DecimalField(max_digits=12, decimal_places=0, null=True, blank=True)
 
     class Meta:
         db_table = "payment"

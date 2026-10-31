@@ -10,8 +10,8 @@ anonymous placeholder because orders point at it:
 Removed: services (and, if asked, their PasarGuard accounts), tickets with messages
 and attachment files, CRM data (profile, notes, follow-up cases, timeline, personal
 discount codes), notifications, login tokens, the Telegram link, and the deletion
-archives (they hold the original profile). There is no automatic purge yet; one must
-call `purge_user` too, never a copy of it.
+archives (they hold the original profile). The automatic purge (accounts/autopurge.py,
+daily, off by default) calls `purge_user` too, never a copy of it.
 
 PasarGuard goes first: every account is read before anything is deleted, so an
 unreachable panel stops the purge with nothing changed. The audit entry carries

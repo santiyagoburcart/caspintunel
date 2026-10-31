@@ -40,6 +40,10 @@ const T = {
     p_approved: 'تأییدشده', p_pending: 'در انتظار', p_rejected: 'ردشده', system: 'سامانه پیامک', blu: 'سامانه بلو',
     lang_fa: 'فارسی', lang_en: 'انگلیسی',
     purge: 'حذف دائمی', purge_n: 'حذف دائمی ({n})', select_all: 'انتخاب همه', select: 'انتخاب',
+    ap_on: 'حذف دائمی خودکار روشن است: کاربرانی که بیش از {d} روز در سطل مانده‌اند، روزی یک بار برای همیشه حذف می‌شوند (همراه حساب پاسارگارد).',
+    ap_off: 'حذف دائمی خودکار خاموش است — کاربران حذف‌شده تا وقتی دستی پاک نشوند، می‌مانند.',
+    ap_next_run: 'اجرای بعدی', ap_next_purge: 'نزدیک‌ترین حذف', ap_due: '{n} کاربر در اجرای بعدی', ap_settings: 'تنظیمات ›',
+    purge_at: 'حذف دائمی',
     pg_title: 'حذف دائمی کاربر', pg_title_n: 'حذف دائمی {n} کاربر', pg_btn: 'بله، برای همیشه حذف کن',
     pg_intro: 'این کار برگشت‌پذیر نیست. موارد زیر برای همیشه پاک می‌شوند:',
     pg_users: 'کاربر', pg_services: 'سرویس', pg_tickets: 'تیکت ({m} پیام، {a} پیوست)',
@@ -81,6 +85,10 @@ const T = {
     p_approved: 'Approved', p_pending: 'Pending', p_rejected: 'Rejected', system: 'SMS system', blu: 'Blu system',
     lang_fa: 'Persian', lang_en: 'English',
     purge: 'Delete permanently', purge_n: 'Delete permanently ({n})', select_all: 'Select all', select: 'Select',
+    ap_on: 'Auto-purge is on: users that sat in the trash for more than {d} days are permanently deleted once a day (PasarGuard accounts too).',
+    ap_off: 'Auto-purge is off — deleted users stay until someone deletes them permanently.',
+    ap_next_run: 'Next run', ap_next_purge: 'Next purge', ap_due: '{n} user(s) on the next run', ap_settings: 'Settings ›',
+    purge_at: 'Purged on',
     pg_title: 'Delete user permanently', pg_title_n: 'Delete {n} users permanently', pg_btn: 'Yes, delete forever',
     pg_intro: 'This cannot be undone. Permanently removed:',
     pg_users: 'user(s)', pg_services: 'service(s)', pg_tickets: 'ticket(s) ({m} messages, {a} attachments)',
@@ -164,6 +172,8 @@ function ArchiveList() {
       .catch((e) => { setRows([]); setErr(apiError(e, t('load_error'))) })
   }, [params, t])
   useEffect(load, [load])
+  const [ap, setAp] = useState(null)
+  useEffect(() => { api.get('/admin/deleted-users/auto-purge/').then((r) => setAp(r.data)).catch(() => {}) }, [rows === null])
 
   const doSearch = () => { setOffset(0); setQuery(q.trim()) }
   const page = Math.floor(offset / PAGE) + 1
@@ -249,6 +259,19 @@ function ArchiveList() {
       <DateRangeModal open={dateOpen} onClose={() => setDateOpen(false)} onApply={(r) => { setRange(r); setOffset(0) }} />
 
       <Alert>{err}</Alert>
+      {ap && (
+        <div className={'du-ap' + (ap.enabled ? ' on' : '')} data-testid="auto-purge-banner">
+          <span>{ap.enabled ? s.ap_on.replace('{d}', digits(ap.days, lang)) : s.ap_off}</span>
+          {ap.enabled && (
+            <span className="du-ap-dates">
+              {ap.next_run && <span>{s.ap_next_run}: <b className="du-mono">{jalali(ap.next_run, true, lang)}</b></span>}
+              {ap.next_purge_at && <span>{s.ap_next_purge}: <b className="du-mono">{jalali(ap.next_purge_at, false, lang)}</b></span>}
+              {ap.due_now > 0 && <span className="du-ap-due">{s.ap_due.replace('{n}', digits(ap.due_now, lang))}</span>}
+            </span>
+          )}
+          {isSuper && <Link to="/settings/auto-purge" className="du-ap-link">{s.ap_settings}</Link>}
+        </div>
+      )}
       {fails.length > 0 && (
         <div className="du-fails" role="alert">
           {fails.map((f) => <div key={f.id}><b>{s.pg_failed}: <bdi dir="ltr">{f.username}</bdi></b> — <span dir="auto">{f.detail}</span></div>)}
@@ -308,7 +331,9 @@ function ArchiveList() {
                   <td data-label={s.col_reason} className="du-reason" title={r.reason}>{r.reason}</td>
                   <td data-label={s.col_orders} className="du-c du-mono">{digits(r.orders_count, lang)}</td>
                   <td data-label={s.col_paid} className="du-mono">{toman(r.total_paid, lang)}</td>
-                  <td data-label={s.col_state}><StatePill restored={!!r.restored_at} s={s} /></td>
+                  <td data-label={s.col_state}><StatePill restored={!!r.restored_at} s={s} />
+                    {r.purge_at && <span className="du-purge-at">{s.purge_at}: <span className="du-mono">{jalali(r.purge_at, false, lang)}</span></span>}
+                  </td>
                   {isSuper && (
                     <td className="du-act" onClick={(e) => e.stopPropagation()}>
                       {!r.restored_at && (
@@ -554,6 +579,15 @@ const CSS = `
 .du-purge-btn:disabled { opacity: .6; }
 .du-bulk { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; border-radius: 12px;
   background: color-mix(in srgb, var(--c-danger) 8%, var(--c-surface)); border: 1px solid color-mix(in srgb, var(--c-danger) 28%, var(--c-border)); }
+.du-ap { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 10px 14px; border-radius: 12px; font-size: 12.5px;
+  border: 1px solid var(--c-border); color: var(--c-text-muted); overflow-wrap: anywhere; }
+.du-ap.on { color: var(--c-text); border-color: color-mix(in srgb, var(--c-danger) 35%, var(--c-border));
+  background: color-mix(in srgb, var(--c-danger) 6%, transparent); }
+.du-ap > span:first-child { flex: 1 1 260px; min-width: 0; }
+.du-ap-dates { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.du-ap-due { color: var(--c-danger-fg); font-weight: 700; }
+.du-ap-link { color: var(--c-primary); font-weight: 700; min-height: 44px; display: inline-flex; align-items: center; }
+.du-purge-at { display: block; margin-top: 3px; font-size: 11px; color: var(--c-danger-fg); }
 .du-fails { display: flex; flex-direction: column; gap: 4px; padding: 10px 14px; border-radius: 12px; font-size: 12.5px; overflow-wrap: anywhere;
   color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 10%, transparent); border: 1px solid color-mix(in srgb, var(--c-danger) 30%, transparent); }
 .du-fails span { color: var(--c-text); }

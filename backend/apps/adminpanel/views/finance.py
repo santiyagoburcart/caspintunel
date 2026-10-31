@@ -105,6 +105,25 @@ class TransactionViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, views
         data["service_result"] = p.service_result      # kept | no_service | disabled | deleted | missing_on_panel
         return Response(data)
 
+    @extend_schema(request=dict, responses=TransactionSerializer,
+                   summary="Undo a rounded-amount auto-approval (Super Admin) — voids it like a delete")
+    @action(detail=True, methods=["post"], url_path="undo-rounded")
+    def undo_rounded(self, request, pk=None):
+        """«لغو تأیید»: {reason?, service_action? (default keep)} — rounded.undo."""
+        from apps.payments_sms.rounded import undo
+        from apps.payments_sms.voiding import VoidError
+
+        try:
+            p = undo(pk, staff=request.user, reason=request.data.get("reason", ""),
+                     service_action=request.data.get("service_action") or "keep")
+        except VoidError as exc:
+            return self._void_err(exc)
+        data = dict(TransactionSerializer(Payment.objects.get(pk=p.pk)).data)
+        data["service_result"] = p.service_result
+        data["message"] = f"Auto-approval undone ({p.tx_number}); the deposit is back for review"
+        data["message_fa"] = f"تأیید خودکار لغو شد ({p.tx_number})؛ واریز برای بررسی دستی برگشت"
+        return Response(data)
+
     @extend_schema(request=None, responses=TransactionSerializer, summary="Restore a deleted transaction (Super Admin)")
     @action(detail=True, methods=["post"], url_path="restore")
     def restore(self, request, pk=None):
@@ -236,6 +255,9 @@ def _blu_row(tx) -> dict:
         "receipt": tx.receipt, "reference": tx.reference, "status": tx.status,
         "matched_order": tx.matched_order_id, "matched_payment": tx.matched_payment_id,
         "match_note": tx.match_note, "received_at": tx.received_at,
+        # v1.32: approved by the rounded-amount rule (payments_sms/rounded.py)
+        "rounded": bool(tx.matched_payment_id and tx.matched_payment.auto_rule == "rounded"),
+        "shortfall": tx.matched_payment.shortfall if tx.matched_payment_id else None,
     }
 
 
@@ -250,7 +272,7 @@ class BluTransactionListView(AdminAPIView):
         from apps.payments_sms.blu import collector_health
         from apps.payments_sms.models import BluStatus, BluTransaction
 
-        qs = BluTransaction.objects.order_by("-occurred_at", "-id")
+        qs = BluTransaction.objects.select_related("matched_payment").order_by("-occurred_at", "-id")
         st = request.query_params.get("status")
         if st:
             if st not in BluStatus.values:
@@ -453,7 +475,15 @@ class AccountingView(AdminAPIView):
             "daily": daily,
             # v1.26: discount codes on the approved payments of this range (apps/crm/discounts.py)
             "discounts": _discounts(start, end),
+            # v1.32: rounded-amount auto-approvals — revenue above already counts what was PAID
+            "rounded": _rounded(approved),
         })
+
+
+def _rounded(approved) -> dict:
+    agg = approved.filter(auto_rule="rounded").aggregate(count=Count("id"), shortfall=Sum("shortfall"),
+                                                         paid=Sum("amount"))
+    return {"count": agg["count"] or 0, "shortfall": str(agg["shortfall"] or 0), "paid": str(agg["paid"] or 0)}
 
 
 def _discounts(start, end) -> dict:

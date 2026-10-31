@@ -160,7 +160,40 @@ SSH (`systemctl is-active blu-collector.service; journalctl -u … --since -10mi
 key, known_hosts and ssh config mounted read-only at `/run/blu-ssh`. Alerts (Telegram +
 live `blu_service`) only when the service is not active, SSH fails 3 times in a row, or the
 journal shows ≥ 3 error lines; one "back online" when it is fine again. 1–2 SSH failures
-change nothing.
+change nothing. Since v1.32 the check interval, the offline threshold and the late grace are
+Super Admin settings on the «واریزهای بلو» tab (DB values win over `.env`, no restart).
+
+## 2c. Rounded-amount auto-approve (v1.32, Blu + SMS)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant M as matching (SMS ingest / Blu task)
+    participant R as rounded.evaluate
+    participant DB as MySQL
+    participant Q as Admin (WebSocket + Telegram)
+    actor SA as Super Admin
+
+    M->>M: exact amount? → normal auto-confirm (unchanged)
+    M->>R: deposit, time, payer last4 (Blu)
+    R->>DB: open orders with deposit < invoice ≤ deposit + max(2,000 T, 1 %), inside the window
+    alt rule off / no such order (e.g. over-payment)
+        R-->>M: not this rule → near-miss review as before
+    else 2+ orders fit
+        R-->>M: why_not multiple_orders → «مبلغ نامطابق» queue (reason stored)
+    else this deposit already auto-approved another order (SMS + Blu copy)
+        R-->>M: why_not deposit_already_used → queue
+    else 1 order, no receipt and an unknown card
+        R-->>M: why_not no_evidence → queue (reason stored on the pending payment)
+    else 1 order + (receipt uploaded OR card last4 paid this customer's order before)
+        R->>DB: Payment approved, auto_rule rounded, amount = paid, shortfall
+        R->>DB: mark_paid_and_fulfill; audit payment.rounded_auto_confirmed
+        R-->>Q: rounded_approved + Telegram (payment.approve)
+    end
+    Note over M,DB: a receipt uploaded later → rounded_retry_task re-checks the linked deposit
+    SA->>DB: Transaction → «لغو تأیید» = void_payment (keep service by default)
+    DB->>DB: deposit back to unmatched / SMS near-miss; audit payment.rounded_undone
+```
 
 ## 3. Renewal
 
@@ -817,8 +850,15 @@ sequenceDiagram
 ```
 
 Orders and payments are never touched: Accounting, Analytics and Transactions show the
-same totals, with the customer as «کاربر حذف‌شده #id». There is no automatic purge; a
-future one must call `purge_user`.
+same totals, with the customer as «کاربر حذف‌شده #id».
+
+**Automatic purge (v1.32).** Settings → «حذف دائمی خودکار» (Super Admin, off by default, N = 30
+days): the daily beat task `accounts: auto-purge deleted users` calls the same `purge_user`
+(`delete_on_panel=True`, staff "system") for every user deleted more than N days ago. A
+PasarGuard problem purges nothing for that user (same read-first rule); it stays in the trash,
+is retried the next day, and staff with `users.purge` get one alert per day. Each purge writes
+`user.purged`, each run `users.auto_purged` (ids + error codes only). The Deleted users page
+shows the next run and each row's purge date.
 
 ## 5d. Super Admin deletes (voids) a transaction → restore
 

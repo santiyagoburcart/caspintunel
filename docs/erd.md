@@ -220,6 +220,9 @@ erDiagram
         string void_reason
         string void_service_action "keep | disable | delete"
         string void_prev_order_status "put back by restore"
+        string auto_rule "'' | rounded (v1.32)"
+        json auto_reason "rounded rule: conditions matched / why not"
+        decimal shortfall "invoice − paid (rounded only)"
     }
     bank_card {
         bigint id PK
@@ -304,7 +307,7 @@ erDiagram
 | Table | Description |
 |---|---|
 | `order` | Purchase intent. `amount_unique` = price + a random surcharge, reserved via the unique `amount_unique_lock` while pending/paid (never a value the same user had in the last 24 h). Expires after `unique_amount_reservation_minutes`. |
-| `payment` | One per order: receipt (card-to-card), SMS / Blu auto-confirm, or an SMS / Blu near-miss under review. Approved / rejected only through `approve_payment` / `reject_payment`. `number` = human transaction number `TX-000123` (v1.25). A Super Admin "delete" voids it (`voided_*`, `payments_sms/voiding.py`): out of every list and total, restorable for 30 days; never a hard delete. |
+| `payment` | One per order: receipt (card-to-card), SMS / Blu auto-confirm, or an SMS / Blu near-miss under review. Approved / rejected only through `approve_payment` / `reject_payment`. `number` = human transaction number `TX-000123` (v1.25). A Super Admin "delete" voids it (`voided_*`, `payments_sms/voiding.py`): out of every list and total, restorable for 30 days; never a hard delete. Since v1.32 `auto_rule = rounded` marks a rounded-amount auto-approval (`amount` = what was paid, `shortfall` = the rest; Accounting counts `amount`); `auto_reason` keeps which conditions matched (or, on a payment left for review, why the rule did not apply). |
 | `bank_card` | Receiving cards shown at checkout; per-card deposit report in Accounting. |
 | `sms_source` | Allow-list of bank senders and the default amount unit for unit-less SMS. |
 | `sms_app_device` | Operator phones (Android app / iPhone Shortcut) allowed to forward bank SMS. |

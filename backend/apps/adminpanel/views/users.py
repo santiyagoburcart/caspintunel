@@ -190,6 +190,22 @@ class DeletedUserArchiveViewSet(AdminViewSet):
     def get_serializer_class(self):
         return DeletedUserArchiveDetailSerializer if self.action == "retrieve" else DeletedUserArchiveListSerializer
 
+    def get_serializer_context(self):
+        ctx = super().get_serializer_context()
+        if self.action == "list":
+            from apps.accounts.autopurge import status as auto_purge_status
+
+            ctx["auto_purge"] = auto_purge_status()
+        return ctx
+
+    @action(detail=False, methods=["get"], url_path="auto-purge")
+    def auto_purge(self, request):
+        """Auto-purge setting + next run, for the banner on the Deleted users page (Settings changes it)."""
+        from apps.accounts.autopurge import status as auto_purge_status
+
+        days = request.query_params.get("days")
+        return Response(auto_purge_status(days=int(days) if (days or "").isdigit() else None))
+
     def create(self, request, *args, **kwargs):
         return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
 

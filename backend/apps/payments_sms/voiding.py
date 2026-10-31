@@ -277,7 +277,24 @@ def restore_payment(payment_id: int, *, staff) -> Payment:
         p.void_prev_order_status = ""
         p.save(update_fields=["voided_at", "voided_by", "void_reason", "void_service_action",
                               "void_prev_order_status", "updated_at"])
+        if p.auto_rule == "rounded":
+            _relink_rounded(p)
         write_audit(action="payment.restored", staff=staff, target=p, detail=detail)
         push_payments_event("payment_restored", order_id=order.id, payment_id=p.id,
                             by=getattr(staff, "username", None))
     return p
+
+
+def _relink_rounded(p: Payment) -> None:
+    """A restored rounded auto-approval takes its deposit back (released by rounded.undo), unless
+    staff used that deposit for something else meanwhile."""
+    from .models import BluStatus, BluTransaction, SmsMessage
+
+    if p.blu_transaction_id:
+        BluTransaction.objects.filter(pk=p.blu_transaction_id, status=BluStatus.UNMATCHED,
+                                      matched_payment__isnull=True).update(
+            status=BluStatus.MATCHED, matched_order=p.order_id, matched_payment=p.id,
+            match_note=f"rounded auto-approval restored ({p.tx_number})")
+    if p.sms_message_id:
+        SmsMessage.objects.filter(pk=p.sms_message_id, matched_order__isnull=True).update(
+            matched_order=p.order_id, mismatch_order=None, mismatch_kind="")

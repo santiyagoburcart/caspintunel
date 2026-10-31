@@ -6,6 +6,8 @@ import { useI18n } from '../lib/i18n'
 import { jalali, toman } from '../lib/format'
 import { Alert, Spinner } from './ui'
 import { useConfirm } from './ConfirmDialog'
+import { useToast } from './Toast'
+import { apiError } from '../lib/api'
 import { usePaymentsEvents } from '../lib/livePayments'
 
 // Blu Bank deposits pushed by the Iran-side collector (backend payments_sms/blu.py).
@@ -25,6 +27,14 @@ const T = {
     svc: 'سرویس روی سرور ایران', svc_active: 'فعال', svc_inactive: 'غیرفعال', svc_unknown: 'نامعلوم',
     svc_check: 'آخرین بررسی', svc_never: 'هنوز بررسی نشده', svc_err: 'آخرین خطا',
     svc_ssh: 'اتصال SSH {n} بار پشت سر هم ناموفق', svc_errs: '{n} خطا در 10 دقیقهٔ اخیر',
+    rounded: 'تأیید خودکار – مبلغ گرد شده', shortfall: 'کسری',
+    set_h: 'تنظیمات پایش جمع‌کننده', set_sub: 'در پایگاه داده ذخیره می‌شود، بر .env مقدم است و بدون ری‌استارت اعمال می‌شود.',
+    set_ssh: 'فاصلهٔ بررسی SSH (دقیقه)', set_ssh_h: 'پیش‌فرض 5 — کمینه 1',
+    set_stale: 'آستانهٔ قطع‌شدن (دقیقه)', set_stale_h: 'پیش‌فرض 360 — بدون دسته در این مدت = هشدار آفلاین',
+    set_grace: 'مهلت واریز دیرهنگام (دقیقه)', set_grace_h: 'پیش‌فرض 30 — پس از پایان رزرو مبلغ',
+    set_poll: 'خود جمع‌کننده حدوداً هر {n} ثانیه حساب بلو را می‌خواند (روی سرور ایران؛ فقط نمایش).',
+    set_src_env: 'از .env', set_src_panel: 'از پنل', set_save: 'ذخیره', set_super: 'فقط سوپرادمین می‌تواند تغییر دهد.',
+    set_saved: 'تنظیمات بلو ذخیره شد',
   },
   en: {
     health_on: 'Collector connected', health_off: 'Collector offline', health_never: 'No batch from the collector yet',
@@ -41,6 +51,14 @@ const T = {
     svc: 'Service on the Iran server', svc_active: 'active', svc_inactive: 'inactive', svc_unknown: 'unknown',
     svc_check: 'Last check', svc_never: 'not checked yet', svc_err: 'Last error',
     svc_ssh: 'SSH failed {n} times in a row', svc_errs: '{n} errors in the last 10 min',
+    rounded: 'Auto-approved — rounded amount', shortfall: 'short',
+    set_h: 'Collector monitoring settings', set_sub: 'Stored in the database, override .env, apply without a restart.',
+    set_ssh: 'SSH check interval (min)', set_ssh_h: 'default 5 — minimum 1',
+    set_stale: 'Offline threshold (min)', set_stale_h: 'default 360 — no batch for this long = offline alert',
+    set_grace: 'Late deposit grace (min)', set_grace_h: 'default 30 — after the amount reservation ends',
+    set_poll: 'The collector itself reads the Blu account about every {n} s (on the Iran server; information only).',
+    set_src_env: 'from .env', set_src_panel: 'from the panel', set_save: 'Save', set_super: 'Only a Super Admin can change these.',
+    set_saved: 'Blu settings saved',
   },
 }
 
@@ -49,7 +67,7 @@ const TONE = { unmatched: 'warning', matched: 'success', duplicate: 'muted', ign
 
 export default function BluDeposits() {
   const { lang } = useI18n()
-  const { can } = useAuth()
+  const { can, staff } = useAuth()
   const s = T[lang] || T.fa
   const [data, setData] = useState(null)
   const [err, setErr] = useState('')
@@ -77,6 +95,9 @@ export default function BluDeposits() {
     <div className="space-y-3">
       <style>{CSS}</style>
       <Health c={data.collector} s={s} lang={lang} />
+      {data.collector?.settings && (
+        <BluSettings v={data.collector.settings} s={s} lang={lang} canEdit={!!staff?.is_superadmin} onSaved={load} />
+      )}
       <Alert>{err}</Alert>
       <div className="pq-tabs">
         {FILTERS.map((f) => (
@@ -117,7 +138,52 @@ function Health({ c, s, lang }) {
   )
 }
 
-/* systemctl is-active + recent journal errors, read over SSH every 5 min (backend blu_service.py) */
+/* Super Admin: SSH check interval, offline threshold, late grace (Setting rows; win over .env) */
+const SET_FIELDS = [['ssh_check_minutes', 'blu_ssh_check_minutes', 'set_ssh', 1, 1440],
+  ['stale_minutes', 'blu_stale_minutes', 'set_stale', 1, 10080], ['late_grace_minutes', 'blu_late_grace_minutes', 'set_grace', 0, 1440]]
+
+function BluSettings({ v, s, lang, canEdit, onSaved }) {
+  const toast = useToast()
+  const init = Object.fromEntries(SET_FIELDS.map(([k]) => [k, String(v[k] ?? '')]))
+  const [form, setForm] = useState(init)
+  const [busy, setBusy] = useState(false)
+  const key = SET_FIELDS.map(([k]) => v[k]).join('|')
+  useEffect(() => { setForm(init) }, [key])
+  const dirty = SET_FIELDS.some(([k]) => String(v[k]) !== form[k])
+  const save = async (e) => {
+    e.preventDefault(); setBusy(true)
+    try {
+      await api.put('/admin/settings/', Object.fromEntries(SET_FIELDS.map(([k, sk]) => [sk, Number(form[k])])))
+      toast.success(s.set_saved); onSaved()
+    } catch (e2) { toast.error(apiError(e2)) } finally { setBusy(false) }
+  }
+  return (
+    <form className="card blu-set" onSubmit={save} data-testid="blu-settings">
+      <div className="blu-set-head">
+        <div className="min-w-0">
+          <b className="text-sm">{s.set_h}</b>
+          <p className="text-xs text-muted mt-0.5">{canEdit ? s.set_sub : s.set_super}</p>
+        </div>
+        {canEdit && <button className="btn-primary text-sm blu-set-save" disabled={busy || !dirty}>{busy ? '…' : s.set_save}</button>}
+      </div>
+      <div className="blu-set-grid">
+        {SET_FIELDS.map(([k, , label, lo, hi]) => (
+          <label key={k} className="blu-set-f">
+            <span className="text-xs font-semibold">{s[label]}
+              {v.source?.[k] && <span className="blu-src">{v.source[k] === 'panel' ? s.set_src_panel : s.set_src_env}</span>}
+            </span>
+            <input className="input mono-num" dir="ltr" type="number" min={lo} max={hi} disabled={!canEdit}
+              value={form[k]} onChange={(e) => setForm({ ...form, [k]: e.target.value })} />
+            <span className="text-xs text-muted">{s[label + '_h']}</span>
+          </label>
+        ))}
+      </div>
+      <p className="blu-poll">{s.set_poll.replace('{n}', v.collector_poll_seconds)}</p>
+    </form>
+  )
+}
+
+/* systemctl is-active + recent journal errors, read over SSH every few minutes (backend blu_service.py) */
 function Service({ v, s, lang }) {
   if (!v?.configured) return null
   const st = !v.checked_at ? 'never' : v.ssh_failures > 0 && !v.state ? 'unknown' : v.state === 'active' ? 'active' : 'inactive'
@@ -161,6 +227,10 @@ function Deposit({ tx, s, lang, canAttach, onDone }) {
         </span>
         <span className={`blu-pill blu-pill--${tone}`}>{s['st_' + tx.status] || tx.status}</span>
       </div>
+      {tx.rounded && (
+        <div className="blu-rounded" data-testid="blu-rounded">{s.rounded}
+          {tx.shortfall != null && <span> · {s.shortfall} {toman(tx.shortfall, lang)}</span>}</div>
+      )}
       <div className="blu-grid text-sm">
         <span className="text-muted">{jalali(tx.occurred_at, true, lang)}</span>
         {tx.payer_name && <span>{s.payer}: {tx.payer_name}</span>}
@@ -217,9 +287,21 @@ const CSS = `
 .blu-attach { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; align-items: center; }
 .blu-attach .input { font-size: 13px; padding-block: 6px; min-width: 0; }
 .blu-open { color: var(--c-primary); }
+.blu-set { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.blu-set-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.blu-set-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 10px; }
+.blu-set-f { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.blu-set-f .input { font-size: 13px; padding-block: 6px; }
+.blu-src { margin-inline-start: 6px; font-weight: 600; font-size: 10.5px; padding: 1px 7px; border-radius: 999px;
+  color: var(--c-muted-fg); background: color-mix(in srgb, var(--c-text-muted) 14%, transparent); }
+.blu-poll { font-size: 12px; color: var(--c-muted-fg); border-top: 1px solid var(--c-border); padding-top: 8px; }
+.blu-rounded { font-size: 12px; font-weight: 700; color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 10%, transparent);
+  border-radius: 8px; padding: 4px 10px; }
 @media (max-width: 767px) {
   .blu-attach .input { font-size: 16px; min-height: 44px; }
-  .blu-attach button, .blu-open { min-height: 44px; }
+  .blu-attach button, .blu-open, .blu-set-save { min-height: 44px; }
+  .blu-set-f .input { font-size: 16px; min-height: 44px; }
+  .blu-set-save { width: 100%; }
   .blu-open { width: 100%; }
 }
 `

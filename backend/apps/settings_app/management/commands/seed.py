@@ -411,15 +411,11 @@ class Command(BaseCommand):
                 "enabled": True,
             },
         )
-        PeriodicTask.objects.update_or_create(
-            name="payments: Blu collector service check (SSH)",
-            defaults={
-                "task": "apps.payments_sms.tasks.blu_service_check_task",
-                "interval": every_5,
-                "kwargs": _json.dumps({}),
-                "enabled": True,
-            },
-        )
+        # interval = the Super Admin setting blu_ssh_check_minutes (Blu tab) — never reset here
+        from apps.ops.schedule import ensure_auto_purge_schedule, reconcile_blu_service_schedule
+
+        reconcile_blu_service_schedule()
+        ensure_auto_purge_schedule()
         PeriodicTask.objects.update_or_create(
             name="panel: apply due scheduled renewals",
             defaults={

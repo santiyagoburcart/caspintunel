@@ -120,7 +120,7 @@ SHA-256 stored).
 | `panel` | multi-panel `Panel` + `PasarGuardClient` (token cache, typed errors), `Service`, payload mappers, idempotent provision / renew / sync, scheduled renewals (reset / carry-over) always on the same account + link, admin full edit, staff set / change a service's plan (`set_service_plan`, filter «بدون پلن»), manual create, link an existing panel account |
 | `plans` | `Plan` (fixed / custom-volume), `group_ids` per plan with panel-default fallback, renewal mode + carry-over |
 | `orders` | `Order` (new / renew / add-on / manual / imported), atomic unique-amount reservation (`amount_unique_lock`), checkout resume, `ScheduledRenewal` (one renewal at a time: `waiting_renewal` / `RenewalWaiting`; never replaced — `RenewalConflict` → order `failed` + staff alert via `common/staff_alert.py`), `fulfill_order` + `retry_unfulfilled_orders` |
-| `payments_sms` | `BankCard`, `Payment`, card-to-card receipts, `SmsSource` / `SmsAppDevice` / `SmsMessage`, unit-aware parser, **exact-match auto-confirm + near-miss review** (`matching.py`), `approve_payment` / `reject_payment`; **approval-queue warnings** (`checks.py`: receipt amount, recent SMS payment, duplicate image hash / bank document number, waiting renewal); **transaction numbers** `TX-000123` (`Payment.number`) and the Super Admin **void / restore** (`voiding.py`, 30 days) — voided payments are left out of every total (`Payment.objects.live()`); **Blu Bank deposits** (`blu.py`: HMAC-signed webhook `/payments/blu/webhook/`, `BluTransaction` + `BluCollector` health; `matching.match_blu_transaction`: same exact-amount rule inside the order's time window, duplicate after SMS, near-miss → `blu_mismatch` review; staff attach) — [blu-webhook.md](blu-webhook.md) |
+| `payments_sms` | `BankCard`, `Payment`, card-to-card receipts, `SmsSource` / `SmsAppDevice` / `SmsMessage`, unit-aware parser, **exact-match auto-confirm + near-miss review** (`matching.py`), `approve_payment` / `reject_payment`; **approval-queue warnings** (`checks.py`: receipt amount, recent SMS payment, duplicate image hash / bank document number, waiting renewal); **transaction numbers** `TX-000123` (`Payment.number`) and the Super Admin **void / restore** (`voiding.py`, 30 days) — voided payments are left out of every total (`Payment.objects.live()`); **Blu Bank deposits** (`blu.py`: HMAC-signed webhook `/payments/blu/webhook/`, `BluTransaction` + `BluCollector` health; `matching.match_blu_transaction`: same exact-amount rule inside the order's time window, duplicate after SMS, near-miss → `blu_mismatch` review; staff attach) — [blu-webhook.md](blu-webhook.md); **rounded-amount auto-approve** (`rounded.py`, v1.32: a deposit slightly BELOW exactly one open invoice, inside its window, with a receipt or a known payer card → approved with `auto_rule = rounded`, paid amount + `shortfall`; Super Admin «لغو تأیید» = void; re-checked when a receipt is uploaded) |
 | `notifications` | `Notification` / `NotificationDelivery`, `dispatch.notify_user` (site / bot / email, each channel isolated), WebSockets: customer notifications + staff live payments queue |
 | `telegram` | `TelegramClient`, `ensure_bot_user`, forced-channel + phone gate, sales bot (pure `bot/screens.py` + fa/en `bot/texts.py`), backup bot + `run_database_backup`, channel member stats ([bots.md](bots.md)) |
 | `settings_app` | `Setting` (typed KV), `SiteConfig` (branding singleton), `Theme`, `Page` (CMS), `AppRelease` (operator apps), `EmailSettings`, iPhone Shortcut builder, `paths` (admin / portal paths), `domain` (Cloudflare token + domain wizard: `DomainConfig`, `DomainChange`), `seed` |
@@ -152,14 +152,16 @@ setting is saved (`apps/ops/schedule.py`).
 | crm: inactivity detection + stages | `crm.tasks.crm_detect_task` (inactivity cases, auto-close on reconnect, optional friendly message, win-back queue + auto won-back, stage refresh) | 60 min |
 | tickets: auto-close stale | `tickets.tasks.auto_close_tickets_task` (awaiting the customer for `tickets_auto_close_days`) | 60 min |
 | domain: host results + retire old domain | `settings_app.tasks.domain_tick_task` (folds in the host's result; asks the host to remove the old domain when the transition is over) | 5 min |
-| payments: Blu collector service check (SSH) | `payments_sms.tasks.blu_service_check_task` → `blu_service.check_service`: one read-only SSH command to `BLU_SSH_HOST` (`systemctl is-active` + last 10 min of `journalctl` for the collector unit); alert once when inactive, SSH fails 3× in a row or ≥ `BLU_ERROR_REPEAT` error lines, one "back online" | 5 min |
-| payments: Blu collector offline check | `payments_sms.tasks.blu_stale_check_task` (no batch for `BLU_STALE_MINUTES` → one Telegram + live `blu_collector` alert; cleared by the next batch) | 5 min |
+| payments: Blu collector service check (SSH) | `payments_sms.tasks.blu_service_check_task` → `blu_service.check_service`: one read-only SSH command to `BLU_SSH_HOST` (`systemctl is-active` + last 10 min of `journalctl` for the collector unit); alert once when inactive, SSH fails 3× in a row or ≥ `BLU_ERROR_REPEAT` error lines, one "back online" | `blu_ssh_check_minutes` (Blu tab, Super Admin; default 5, min 1 — `ops.schedule.reconcile_blu_service_schedule` on save and in `seed`) |
+| payments: Blu collector offline check | `payments_sms.tasks.blu_stale_check_task` (no batch for `blu_stale_minutes` — panel value, else `.env` `BLU_STALE_MINUTES`, default 360 → one Telegram + live `blu_collector` alert; cleared by the next batch) | 5 min |
+| accounts: auto-purge deleted users (daily) | `accounts.tasks.auto_purge_deleted_users_task` → `accounts.autopurge.run`: no-op while `deleted_purge_enabled` is off (default); else `purge_user(delete_on_panel=True)` for users deleted more than `deleted_purge_days` (default 30) ago, max 200 per run; a PasarGuard problem keeps that user (retried next day, one staff alert per day); audit `user.purged` per user + `users.auto_purged` per run | 1440 min |
 
 On-demand tasks: `fulfill_order`, `provision_service_task`, `renew_service_task`,
 `sync_service_task`, `apply_scheduled_renewal_task`,
 `deliver_notification_task`, `reconcile_backup_schedule_task`,
 `notify_ticket_task` (ticket notifications, queued on commit),
-`match_blu_transaction_task` (one new Blu deposit, queued on commit by the webhook). Panel tasks
+`match_blu_transaction_task` (one new Blu deposit, queued on commit by the webhook),
+`rounded_retry_task` (a receipt was uploaded: re-check a slightly-lower deposit linked to that order). Panel tasks
 retry on `PanelUnavailable`; a permanent `PanelError` is audited and flagged.
 
 ## Bots
@@ -629,3 +631,21 @@ that matters → `AuditLog`. Payments become approved only through
   dropped scheduled renewal is not re-created (see the audit entry).
 * **Audit**: `payment.voided` / `payment.restored` (staff, time, reason, amount, TX, order, choice,
   panel result); live event `payment_voided` / `payment_restored` on the staff payments socket.
+
+
+## Super Admin runtime settings (v1.32)
+
+`/admin/settings/` (`adminpanel/views/system.py`) refuses these keys with 403 for anyone but a
+Super Admin (`SUPER_ONLY`); each change is audited with old → new values. They are read at call
+time, so they apply without a restart (`.env` values are only the fallback):
+
+| Key | Default | Where | Used by |
+|---|---|---|---|
+| `deleted_purge_enabled` / `deleted_purge_days` | off / 30 | Settings → «حذف دائمی خودکار» | `accounts/autopurge.py`; the Deleted users page shows the next run and each row's purge date |
+| `blu_ssh_check_minutes` | 5 (min 1) | Payments → «واریزهای بلو» | beat interval of the SSH service check |
+| `blu_stale_minutes` | `.env` `BLU_STALE_MINUTES` (360) | same | `blu.stale_after` |
+| `blu_late_grace_minutes` | `.env` `BLU_LATE_GRACE_MINUTES` (30) | same | `matching._blu_grace` (exact + rounded matching) |
+| `rounded_auto_enabled` / `rounded_max_toman` / `rounded_max_percent` | on / 2000 / 1 | Settings → «مبلغ گرد شده» | `payments_sms/rounded.py` (tolerance = max of the two) |
+
+The Blu tab also shows the collector's own poll interval (`BLU_COLLECTOR_POLL_SECONDS`, 45 s;
+information only — it is configured on the Iran server).

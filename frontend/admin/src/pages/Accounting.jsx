@@ -37,6 +37,8 @@ const T = {
     by_panel: 'بر اساس پنل', by_method: 'بر اساس روش پرداخت', by_source: 'بر اساس منبع ورودی', by_card: 'بر اساس کارت مقصد',
     none_found: 'داده‌ای برای این بازه ثبت نشده است',
     dc_title: 'کدهای تخفیف در این بازه', dc_uses: 'استفاده', dc_disc: 'جمع تخفیف', dc_rev: 'درآمد با کد', dc_cust: 'مشتری', dc_all: 'همهٔ کدها',
+    rd_title: 'تأیید خودکار – مبلغ گرد شده', rd_count: 'تعداد', rd_short: 'جمع کسری', rd_paid: 'دریافتی (در درآمد)',
+    rd_note: 'درآمد بالا مبلغ واقعی واریز را می‌شمارد، نه مبلغ فاکتور.',
     recent: 'تراکنش‌های اخیر', view_all: 'مشاهده همه',
     of_total: 'از کل درآمد دوره',
   },
@@ -50,6 +52,8 @@ const T = {
     by_panel: 'By panel', by_method: 'By payment method', by_source: 'By source', by_card: 'By destination card',
     none_found: 'No data recorded for this range',
     dc_title: 'Discount codes in this range', dc_uses: 'uses', dc_disc: 'Total discount', dc_rev: 'Revenue with codes', dc_cust: 'customers', dc_all: 'All codes',
+    rd_title: 'Auto-approved — rounded amount', rd_count: 'Count', rd_short: 'Total shortfall', rd_paid: 'Received (in revenue)',
+    rd_note: 'Revenue above counts what was actually paid, not the invoice amount.',
     recent: 'Recent transactions', view_all: 'View all',
     of_total: 'of period revenue',
   },
@@ -243,6 +247,18 @@ export default function Accounting() {
                     <span>−{toman(r.discount, lang)}</span><span>{toman(r.revenue, lang)}</span></li>
                 ))}</ul>
               )}
+            </div>
+          )}
+
+          {d.rounded?.count > 0 && (
+            <div className="card acc-dc" data-testid="acc-rounded">
+              <div className="acc-recent-head"><span className="font-bold text-sm">{s.rd_title}</span></div>
+              <dl className="acc-dc-kpis">
+                <div><dt>{s.rd_count}</dt><dd dir="ltr">{digits(d.rounded.count, lang)}</dd></div>
+                <div><dt>{s.rd_short}</dt><dd>−{toman(d.rounded.shortfall, lang)}</dd></div>
+                <div><dt>{s.rd_paid}</dt><dd>{toman(d.rounded.paid, lang)}</dd></div>
+              </dl>
+              <p className="text-xs text-muted" style={{ padding: '0 16px 12px' }}>{s.rd_note}</p>
             </div>
           )}
 

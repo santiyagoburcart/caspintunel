@@ -77,13 +77,23 @@ class DeletedUserArchiveListSerializer(serializers.ModelSerializer):
     deleted_by = serializers.SerializerMethodField()
     restored_by = serializers.SerializerMethodField()
     user_is_deleted = serializers.SerializerMethodField()
+    purge_at = serializers.SerializerMethodField()
 
     class Meta:
         model = DeletedUserArchive
         fields = ("id", "user", "original_username", "original_name", "original_phone",
                   "original_email", "original_telegram_id", "original_telegram_username",
                   "deleted_at", "deleted_by", "reason", "orders_count", "total_paid",
-                  "restored_at", "restored_by", "user_is_deleted")
+                  "restored_at", "restored_by", "user_is_deleted", "purge_at")
+
+    def get_purge_at(self, obj):
+        """When the auto-purge will permanently delete this user (null while it is off)."""
+        ap = self.context.get("auto_purge")
+        if not ap or not ap.get("enabled") or not self.get_user_is_deleted(obj) or obj.restored_at is not None:
+            return None
+        from apps.accounts.autopurge import purge_date
+
+        return purge_date(obj.user.deleted_at, ap["days"], ap["next_run"])
 
     def get_deleted_by(self, obj) -> str:
         return obj.deleted_by.username if obj.deleted_by_id else obj.deleted_by_label
@@ -439,6 +449,7 @@ class TransactionSerializer(serializers.ModelSerializer):
             "receipt_url", "order_source", "order_type", "order_status",
             "created_at", "updated_at",
             "voided", "voided_at", "voided_by", "void_reason", "void_service_action", "restorable_until",
+            "auto_rule", "auto_reason", "shortfall",
         )
 
     def get_receipt_url(self, obj) -> str | None:
@@ -518,7 +529,7 @@ class AdminPendingPaymentSerializer(serializers.ModelSerializer):
                   "order_source", "account_name", "method", "amount", "invoice_amount", "status",
                   "receipt_url", "reject_reason", "created_at",
                   "bank_card", "bank_card_number", "bank_card_holder", "bank_card_bank", "sms_mismatch",
-                  "receipt_ref", "receipt_amount", "warnings")
+                  "receipt_ref", "receipt_amount", "warnings", "auto_reason")
 
     def get_warnings(self, obj) -> list:
         """Duplicate / mismatch hints with the linked payments (payments_sms/checks.py)."""
