@@ -630,10 +630,10 @@ sequenceDiagram
     A->>UI: Switch (confirm)
     UI->>API: POST domain/<id>/apply/
     API->>H: request {apply, old, new, transition_days}
-    H->>N: render nginx/domain/active.conf (new + old → 301), nginx -t, reload
+    H->>N: render nginx/domain/active.conf (new, www.new → 301 new, old → 301), nginx -t, reload
     H->>H: .env DOMAIN / ALLOWED_HOSTS / CSRF / PUBLIC_BASE_URL / MAIL_DOMAIN / sender
     H->>H: recreate app containers (web + daphne rolling, celery, bots, mailserver)
-    H->>N: verify https://new/api/v1/health/ = 200, old → 301, mail server = mail.new
+    H->>N: verify https://new/api/v1/health/ = 200, www.new → 301 new, old → 301, mail server = mail.new
     alt any step fails
         H->>H: restore .env + nginx config + containers
         H-->>API: status: rolled back + reason
@@ -677,6 +677,7 @@ sequenceDiagram
             W-->>UI: ok — mode shown in the header
         end
     end
+    Note over W: nginx re-render (scripts/domain.sh access) keeps www → 301 https://domain in every mode
 ```
 
 ## 14. Deploy (`./update.sh`)

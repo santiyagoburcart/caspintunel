@@ -205,6 +205,8 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
 - Mail moves with the domain (DKIM made by the mail server, MX/SPF/DMARC/DKIM via Cloudflare, `MAIL_DOMAIN`, mail cert);
   only the PTR is manual. Never copy DKIM private keys out of `mail/config/opendkim`.
 - The Cloudflare token is write-only (encrypted `DomainConfig.cloudflare_token`, never in an API response or log).
+- `www.<domain>` only redirects (301 / 308 → `https://<domain>$request_uri`, rendered by `domain.sh render`, kept by
+  every access-mode re-render, checked by `verify`); never serve the site on `www` again (separate browser storage).
 - Wizard errors go through `settings_app/domain_errors.py` (`DomainError(key, …)` / `E.cloudflare` / `E.host`): fa + en
   text with the fix, raw code + message kept in `raw` for the page's "details" line. Add a key there, not a bare string.
 

@@ -6,7 +6,7 @@
 server {
     listen 443 ssl;
     http2 on;
-    server_name ${SSL_DOMAIN} www.${SSL_DOMAIN};
+    server_name ${SSL_DOMAIN};
 
     ssl_certificate     ${SSL_CERT};
     ssl_certificate_key ${SSL_KEY};
@@ -31,4 +31,23 @@ server {
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $connection_upgrade;
     }
+}
+
+# www → the bare domain (301; 308 keeps POST + body), same as the domain wizard's config
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name www.${SSL_DOMAIN};
+    ssl_certificate     ${SSL_CERT};
+    ssl_certificate_key ${SSL_KEY};
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+    location /.well-known/acme-challenge/ { root /var/www/certbot; }
+    location / { if ($request_method !~ ^(GET|HEAD)$) { return 308 https://${SSL_DOMAIN}$request_uri; } return 301 https://${SSL_DOMAIN}$request_uri; }
+}
+server {
+    listen 80;
+    server_name www.${SSL_DOMAIN};
+    location /.well-known/acme-challenge/ { root /var/www/certbot; }
+    location / { if ($request_method !~ ^(GET|HEAD)$) { return 308 https://${SSL_DOMAIN}$request_uri; } return 301 https://${SSL_DOMAIN}$request_uri; }
 }

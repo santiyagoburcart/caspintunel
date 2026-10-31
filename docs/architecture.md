@@ -573,6 +573,9 @@ Rules (`lib/api.js` in each SPA, `apps/common/auth_reset.py`):
   (customer: blacklist; staff: `POST /admin/auth/logout/`). The other app's keys are untouched.
 - Telegram: the Mini App always signs in from `initData` (stored token dropped first); no
   cookie is involved, so SameSite / ITP third-party rules don't apply.
+- **One host** (v1.30.3): `www.<domain>` answers only with a redirect to `https://<domain>` (301, path + query
+  kept; 308 for POST etc.), so all of this lives in one browser origin — a sign-in on `www` can no longer be a separate,
+  stale session. Rendered by `scripts/domain.sh` (domain wizard + every access mode); cookies stay host-only.
 
 ## Security posture
 

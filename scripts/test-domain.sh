@@ -178,6 +178,10 @@ HOSTRUN apply-request
 check "https://new.test answers (health 200) with the new certificate" '[ "$(probe new.test https://new.test/api/v1/health/)" = "200 " ] && cert_cn new.test | grep -q "CN *= *new.test"'
 check "https://old.test → 301 https://new.test (path + query kept)" '[ "$(probe old.test "https://old.test/store?a=1")" = "301 https://new.test/store?a=1" ]'
 check "http://www.old.test → 301 https://new.test" '[ "$(probe www.old.test http://www.old.test/x)" = "301 https://new.test/x" ]'
+check "https://www.new.test → 301 https://new.test (path + query kept)" '[ "$(probe www.new.test "https://www.new.test/store?a=1")" = "301 https://new.test/store?a=1" ]'
+check "http://www.new.test → 301 https://new.test (one hop)" '[ "$(probe www.new.test "http://www.new.test/p?q=2")" = "301 https://new.test/p?q=2" ]'
+check "POST to www.new.test → 308 https://new.test (method + body kept)" '[ "$(probe www.new.test https://www.new.test/api/v1/auth/login/ POST)" = "308 https://new.test/api/v1/auth/login/" ]'
+check "www keeps the certificate (served for SNI www.new.test); the site vhost serves only new.test" 'cert_cn www.new.test | grep -q "CN *= *new.test" && grep -q "server_name new.test;" "$T/nginx/domain/active.conf" && grep -q "server_name www.new.test;" "$T/nginx/domain/active.conf"'
 check "POST to the old domain → 308 (method + body kept)" '[ "$(probe old.test https://old.test/api/v1/sms/ POST)" = "308 https://new.test/api/v1/sms/" ]'
 check ".env: DOMAIN, PUBLIC_BASE_URL, hosts + CSRF (old kept)" '[ "$(envv DOMAIN)" = new.test ] && [ "$(envv PUBLIC_BASE_URL)" = https://new.test ] && envv ALLOWED_HOSTS | grep -q "old.test.*new.test,www.new.test" && envv CSRF_TRUSTED_ORIGINS | grep -q "https://new.test,https://www.new.test"'
 check "mail server moved: mail.new.test, STARTTLS cert covers mail.new.test" '[ "$(mail_host)" = mail.new.test ] && mail_cert | grep -q "DNS:mail.new.test"'
@@ -237,6 +241,9 @@ thru() {  # IP PORT PATH [curl args…] → body, through that address (like a b
   local ip=$1 port=$2 path=$3; shift 3
   $C exec -T web curl -sk --max-time 15 --resolve "new.test:$port:$ip" "$@" "https://new.test:$port$path"
 }
+wwwthru() {  # IP PORT PATH → "code redirect" for www.new.test through that address
+  $C exec -T web curl -sk -o /dev/null --max-time 15 -w '%{http_code} %{redirect_url}' --resolve "www.new.test:$2:$1" "https://www.new.test:$2$3" 2>/dev/null || true
+}
 code() { local ip=$1 port=$2 path=$3; shift 3; thru "$ip" "$port" "$path" -o /dev/null -w '%{http_code}' "$@"; }
 ax() { API GET /domain/ | J "$1"; }
 wait_switch() {  # until the switch is no longer running; on a timeout show why (and let the checks fail)
@@ -251,6 +258,7 @@ check "auto-detect: the tunnel source this server sees = the tunnel container ($
 API POST /domain/access/settings/ "{\"tunnel_sources\": [\"$IRAN\"]}" >/dev/null
 check "saving the sources queues the nginx render for the host" '[ "$(J "d[\"action\"]" < "$T/backups/.domain-request.json")" = access ]'
 HOSTRUN apply-request >/dev/null
+check "access re-render keeps www → new.test" '[ "$(probe www.new.test "https://www.new.test/x?y=1")" = "301 https://new.test/x?y=1" ]'
 check "host: nginx re-rendered (realip.conf + X-Conn-Addr), nginx -t ok, status ok" '[ -s "$T/nginx/domain/realip.conf" ] && grep -q "real_ip_header CF-Connecting-IP" "$T/nginx/domain/realip.conf" && grep -q "X-Conn-Addr" "$T/nginx/domain/active.conf" && [ "$(ax "d[\"access\"][\"switch\"][\"nginx\"][\"state\"]")" = ok ]'
 
 API POST /domain/access/ '{"mode": "tunnel"}' >/dev/null
@@ -258,6 +266,7 @@ wait_switch
 check "switch to tunnel: ok, mode tunnel" '[ "$(ax "d[\"access\"][\"switch\"][\"status\"] + \" \" + d[\"access\"][\"mode\"]")" = "ok tunnel" ]'
 check "DNS: new.test + www → the Iran IP (DNS only); mail.new.test still → this server" '[ "$(arecs)" = "mail.new.test=$IP/False new.test=$IRAN/False www.new.test=$IRAN/False" ]'
 check "site answers through the tunnel" '[ "$(code "$IRAN" 443 /)" = 200 ] && [ "$(code "$IRAN" 443 /api/v1/health/)" = 200 ]'
+check "tunnel: www.new.test → 301 https://new.test (path + query kept)" '[ "$(wwwthru "$IRAN" 443 "/store?a=1")" = "301 https://new.test/store?a=1" ]'
 # per-IP limits: through the tunnel every visitor has the same address → keyed per client instead
 LIM=$(for i in $(seq 1 12); do code "$IRAN" 443 /api/v1/auth/login/ -X POST -H "X-Client-Id: client-$i-aaaaaaaa" -H "Content-Type: application/json" --data '{"username":"x","password":"y"}'; echo; done | grep -c 429 || true)
 check "12 logins from 12 visitors through the tunnel: none throttled (auth = 10/min per client)" '[ "$LIM" = 0 ]'
@@ -276,6 +285,7 @@ check "PROXY listener rendered (8843 ssl proxy_protocol, only the tunnel sources
 P=$(thru "$IRAN" 8443 "/api/v1/domain-probe/$NONCE/")
 check "through a PROXY-protocol tunnel Django sees the real client (198.51.100.9), peer = tunnel" '[ "$(echo "$P" | J "d[\"client\"] + \" \" + d[\"conn\"]")" = "198.51.100.9 $IRAN" ]'
 NG=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$($C ps -q nginx)")
+check "PROXY tunnel: www.new.test → 301 https://new.test" '[ "$(wwwthru "$IRAN" 8443 "/store?a=1")" = "301 https://new.test/store?a=1" ]'
 check "the PROXY listener refuses anyone who is not a tunnel source" '[ "$(code "$NG" 8843 /api/v1/health/ --haproxy-protocol)" = 000 ]'
 check "a visitor through a PROXY tunnel is not 'via tunnel' (real IP known)" '[ "$($C exec -T web python manage.py shell -c "
 from django.test import RequestFactory
@@ -296,6 +306,7 @@ check "site still answers through the old tunnel" '[ "$(code "$IRAN" 443 /api/v1
 API POST /domain/access/back/ '{}' >/dev/null
 wait_switch
 check "back: direct, DNS → this server" '[ "$(ax "d[\"access\"][\"mode\"]")" = direct ] && [ "$(arecs)" = "mail.new.test=$IP/False new.test=$IP/False www.new.test=$IP/False" ]'
+check "direct again: www.new.test → 301 https://new.test" '[ "$(probe www.new.test "https://www.new.test/store?a=1")" = "301 https://new.test/store?a=1" ]'
 
 # DNS-01 with the Cloudflare token
 cat > "$T/fake-reconfigure.sh" <<'SH'

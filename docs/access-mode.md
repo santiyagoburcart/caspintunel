@@ -18,6 +18,10 @@ request through the tunnel and shows the address this server saw) and **PROXY
 protocol per port** (off by default) are panel fields. Backhaul, GRE, GRE over
 IPv6, GOST, plain port forwards — anything that delivers TCP 443 (and 80) here works.
 
+`www` keeps pointing where `@` points in every mode; nginx answers it with a 301 to `https://<domain>` (docs/domain.md
+"`www` → bare domain"). The re-render after a mode / source / PROXY change (`scripts/domain.sh access`) keeps that
+redirect, including on the PROXY-protocol listeners.
+
 ## A switch (`settings_app/access.py`, Celery task)
 
 1. **check** — Cloudflare token + zone; proxy mode: SSL/TLS Full (strict) (set via API, else stop).

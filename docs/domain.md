@@ -38,6 +38,15 @@ test `explain` (+ `error`, `error_fa`), the last host result `explain`.
 | switch | `nginx_test`, `apply_health`, `apply_redirect`, `apply_container`, `apply_mail`, `apply_env`, `apply_moved`, `rb_none`, `apply_other` |
 | wizard rules | `bad_domain`, `same_domain`, `busy_change`, `queued`, `need_dns`, `need_tls`, `need_mail`, `nothing_rb`, … |
 
+## `www` → bare domain (v1.30.3)
+
+With `www` on (the default), the certificate still covers `www.<domain>`, but nginx serves the site **only** on the
+bare domain: `www.<domain>` on 443, 80 and the tunnel's PROXY-protocol listeners answers **301** to
+`https://<domain>$request_uri` (path + query kept; **308** for POST etc. so a body survives; ACME challenges still
+answered, so webroot renewals of `www` work). One host = one browser storage, so a sign-in never splits between the
+two names. It is part of the rendered config, so the wizard (apply / rollback / retire) and the access-mode re-render
+(Direct / Cloudflare / Iran tunnel) all keep it, and `verify` checks it. Cookies stay host-only (no `Domain=`).
+
 ## The wizard
 
 | Step | Where | What happens |
@@ -50,13 +59,14 @@ test `explain` (+ `error`, `error_fa`), the last host result `explain`.
 | e) transition | host | the old domain answers **301** to the new one (308 for POST etc., so e.g. the SMS app's POSTs keep their body) for `transition_days` (setting, default 14; 0 = none). Then the beat task asks the host to remove it, or **Remove the old domain now** |
 | f) checklist | panel | manual steps with links: iPhone Shortcut URL, Android SMS app URL, BotFather (login domain / Mini App link), **reverse DNS (PTR)** of the IP → `mail.<new>` in the Hetzner console (the only manual mail step), tell resellers / customers |
 
-**Apply** (`scripts/domain.sh`): certificate check → `nginx/domain/active.conf` (HTTPS vhost of the new domain + the
-old domain's redirect vhosts) → `nginx -t` + reload → `.env`: `DOMAIN`, `PUBLIC_BASE_URL`, `ALLOWED_HOSTS` and
+**Apply** (`scripts/domain.sh`): certificate check → `nginx/domain/active.conf` (HTTPS vhost of the new domain, the
+**`www` → bare-domain redirect vhosts** and the old domain's redirect vhosts) → `nginx -t` + reload → `.env`: `DOMAIN`, `PUBLIC_BASE_URL`, `ALLOWED_HOSTS` and
 `CSRF_TRUSTED_ORIGINS` (+ the new names; the old ones stay until the transition ends), `MINIAPP_URL` (if it used the old
 domain), `CLOUDFLARE_ZONE`, **`MAIL_DOMAIN`** = new (mail server hostname `mail.<new>`, its TLS cert from
 `live/<new>/`, postmaster) and `DEFAULT_FROM_EMAIL` `@old` → `@new` → app containers recreated with the new `.env`
 (`web`, `daphne` rolling like `update.sh`; celery, bots, **mailserver**) → **verify through nginx over TLS**:
-`https://<new>/api/v1/health/` = 200, the old domain redirects, and the mail server is healthy as `mail.<new>`. Any failure:
+`https://<new>/api/v1/health/` = 200, `https://www.<new>/…` and `http://www.<new>/…` answer 301 to `https://<new>/…`
+(path + query kept), the old domain redirects, and the mail server is healthy as `mail.<new>`. Any failure:
 `.env`, the nginx config and the containers go back to the previous state and the reason is shown.
 
 After a successful apply the panel updates the email sender (`email_settings.from_email` `@old` → `@new`), `site_config.site_domain` (portal / renew / ticket / bot / Shortcut links —
