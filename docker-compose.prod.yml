@@ -68,6 +68,10 @@ services:
       - ./VERSION:/app/VERSION:ro
       - media_data:/app/media
       - ./backups:/app/backups
+      # Blu collector service check (payments_sms/blu_service.py): SSH key + host key + config, read-only
+      - ${BLU_SSH_KEY_FILE:-/root/.ssh/id_ed25519_iran}:/run/blu-ssh/id_ed25519_iran:ro
+      - ${BLU_SSH_KNOWN_HOSTS:-/root/.ssh/known_hosts}:/run/blu-ssh/known_hosts:ro
+      - ${BLU_SSH_CONFIG_FILE:-/root/.ssh/config}:/run/blu-ssh/config:ro
 
   celery_beat:
     environment:

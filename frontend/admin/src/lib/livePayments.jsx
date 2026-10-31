@@ -37,6 +37,13 @@ export function LivePaymentsProvider({ children }) {
         : `Blu deposit collector silent for ${msg.minutes} min — Blu auto-confirm is paused`)
       return
     }
+    // the collector's systemd service on the Iran server (backend blu_service.py)
+    if (msg.event === 'blu_service') {
+      if (msg.ok) toast.success(fa ? 'سرویس جمع‌کنندهٔ بلو دوباره سالم است' : 'Blu collector service is healthy again')
+      else toast.error(fa ? `مشکل سرویس جمع‌کنندهٔ بلو: ${({ inactive: 'غیرفعال', ssh: 'SSH ناموفق', errors: 'خطای تکراری' })[msg.kind] || msg.kind}`
+        : `Blu collector service problem: ${({ inactive: 'inactive', ssh: 'SSH failing', errors: 'repeated errors' })[msg.kind] || msg.kind}`)
+      return
+    }
     // a deposit (bank SMS or Blu) close to an open invoice but not equal: never approved, needs a person
     if (msg.event !== 'sms_mismatch' && msg.event !== 'blu_mismatch') return
     const blu = msg.event === 'blu_mismatch'

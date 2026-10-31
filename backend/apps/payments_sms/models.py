@@ -289,6 +289,15 @@ class BluCollector(models.Model):
     batches = models.PositiveIntegerField(default=0)
     # set when the "offline" alert went out; cleared (with a "back online" alert) by the next batch
     stale_alerted_at = models.DateTimeField(null=True, blank=True)
+    # v1.31.1 service check over SSH (blu_service.py): systemctl is-active + recent journal errors
+    svc_state = models.CharField(max_length=16, blank=True, default="")
+    svc_checked_at = models.DateTimeField(null=True, blank=True)
+    svc_error_line = models.CharField(max_length=255, blank=True, default="")
+    svc_error_count = models.PositiveIntegerField(default=0)
+    ssh_failures = models.PositiveIntegerField(default=0)
+    ssh_error = models.CharField(max_length=255, blank=True, default="")
+    # current alert ("" | inactive | ssh | errors) — one Telegram per problem, one "back online"
+    svc_alert = models.CharField(max_length=16, blank=True, default="")
 
     class Meta:
         db_table = "blu_collector"

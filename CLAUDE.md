@@ -194,6 +194,8 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
 - Blu deposits (docs/blu-webhook.md): signature checked on the RAW body before parsing; `bank_id` unique, existing rows never
   touched; matched once, in Celery, only inside the order's window (`created_at − 2 min … unique_expire_at + grace`) — unique
   amounts are reused. Card numbers stay masked (first6******last4), also in `raw`. The secret is only in `.env`.
+  Collector health = `blu_service.py`: ONE fixed read-only SSH command (is-active + journal); never add other remote
+  commands there. The key is mounted read-only into `celery_worker` only.
 
 ## Panel account names
 - Never attach a customer to a panel account we did not create: names are checked in our DB **and** on the panel

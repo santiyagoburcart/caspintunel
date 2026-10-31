@@ -22,6 +22,9 @@ const T = {
     a_title: 'اتصال واریز به سفارش', a_btn: 'بله، تأیید و تحویل سرویس',
     a_msg: 'واریز {amount} به سفارش #{id} وصل می‌شود؛ پرداخت تأیید و سرویس تحویل داده می‌شود.',
     a_audit: 'این عملیات با نام کاربری شما در گزارش ممیزی ثبت می‌شود.',
+    svc: 'سرویس روی سرور ایران', svc_active: 'فعال', svc_inactive: 'غیرفعال', svc_unknown: 'نامعلوم',
+    svc_check: 'آخرین بررسی', svc_never: 'هنوز بررسی نشده', svc_err: 'آخرین خطا',
+    svc_ssh: 'اتصال SSH {n} بار پشت سر هم ناموفق', svc_errs: '{n} خطا در 10 دقیقهٔ اخیر',
   },
   en: {
     health_on: 'Collector connected', health_off: 'Collector offline', health_never: 'No batch from the collector yet',
@@ -35,6 +38,9 @@ const T = {
     a_title: 'Attach deposit to order', a_btn: 'Yes, approve and deliver',
     a_msg: 'The {amount} deposit will be attached to order #{id}; the payment is approved and the service delivered.',
     a_audit: 'This action is recorded under your username in the audit log.',
+    svc: 'Service on the Iran server', svc_active: 'active', svc_inactive: 'inactive', svc_unknown: 'unknown',
+    svc_check: 'Last check', svc_never: 'not checked yet', svc_err: 'Last error',
+    svc_ssh: 'SSH failed {n} times in a row', svc_errs: '{n} errors in the last 10 min',
   },
 }
 
@@ -99,13 +105,30 @@ function Health({ c, s, lang }) {
   return (
     <div className="blu-health card" data-state={state} role="status">
       <span className="blu-dot" />
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <b>{label}</b>
         {c.last_batch_at && (
           <div className="text-xs text-muted">{s.last_batch}: {jalali(c.last_batch_at, true, lang)}</div>
         )}
         {state === 'off' && <div className="blu-hint">{s.offline_hint.replace('{m}', c.stale_minutes)}</div>}
+        <Service v={c.service} s={s} lang={lang} />
       </div>
+    </div>
+  )
+}
+
+/* systemctl is-active + recent journal errors, read over SSH every 5 min (backend blu_service.py) */
+function Service({ v, s, lang }) {
+  if (!v?.configured) return null
+  const st = !v.checked_at ? 'never' : v.ssh_failures > 0 && !v.state ? 'unknown' : v.state === 'active' ? 'active' : 'inactive'
+  const word = { active: s.svc_active, inactive: `${s.svc_inactive}${v.state && v.state !== 'inactive' ? ` (${v.state})` : ''}`, unknown: s.svc_unknown, never: s.svc_never }[st]
+  return (
+    <div className="blu-svc" data-state={st} data-alert={v.alert || undefined} data-testid="blu-service">
+      <div><span className="blu-svc-dot" />{s.svc}: <b>{word}</b>
+        {v.checked_at && <span className="text-muted"> · {s.svc_check}: {jalali(v.checked_at, true, lang)}</span>}</div>
+      {v.ssh_failures > 0 && <div className="blu-svc-warn">{s.svc_ssh.replace('{n}', v.ssh_failures)}{v.ssh_error ? ` — ${v.ssh_error}` : ''}</div>}
+      {v.error_count > 0 && <div className="blu-svc-warn">{s.svc_errs.replace('{n}', v.error_count)}</div>}
+      {v.error_line && <div className="blu-note">{s.svc_err}: <bdi dir="ltr">{v.error_line}</bdi></div>}
     </div>
   )
 }
@@ -174,6 +197,14 @@ const CSS = `
 .blu-health[data-state="off"] b { color: var(--c-danger-fg); }
 .blu-health[data-state="disabled"] .blu-dot, .blu-health[data-state="never"] .blu-dot { background: var(--c-warning); }
 .blu-hint { font-size: 12px; margin-top: 2px; color: var(--c-danger-fg); }
+.blu-svc { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; padding-top: 8px; font-size: 12.5px;
+  border-top: 1px solid var(--c-border); overflow-wrap: anywhere; }
+.blu-svc-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-inline-end: 6px; background: var(--c-text-muted); }
+.blu-svc[data-state="active"] .blu-svc-dot { background: var(--c-success); }
+.blu-svc[data-state="inactive"] .blu-svc-dot { background: var(--c-danger); }
+.blu-svc[data-state="inactive"] b { color: var(--c-danger-fg); }
+.blu-svc[data-state="active"] b { color: var(--c-success-fg); }
+.blu-svc-warn { color: var(--c-warning-fg); }
 .blu-card--open { border-color: color-mix(in srgb, var(--c-warning) 55%, var(--c-border));
   background: linear-gradient(color-mix(in srgb, var(--c-warning) 7%, transparent), color-mix(in srgb, var(--c-warning) 7%, transparent)), var(--c-surface); }
 .blu-pill { font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }

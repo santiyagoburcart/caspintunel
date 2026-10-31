@@ -153,6 +153,15 @@ never later against a newer order. Every 5 min `blu_stale_check_task` sends one
 `BLU_STALE_MINUTES` without a batch; the next batch clears it ("back online").
 Contract: [blu-webhook.md](blu-webhook.md).
 
+The collector only pushes when there are new deposits, so "no batch" is not a reliable
+outage signal (`BLU_STALE_MINUTES` is 360 in production). The real health check is
+`blu_service_check_task` (every 5 min): the worker runs one fixed, read-only command over
+SSH (`systemctl is-active blu-collector.service; journalctl -u … --since -10min`) with the
+key, known_hosts and ssh config mounted read-only at `/run/blu-ssh`. Alerts (Telegram +
+live `blu_service`) only when the service is not active, SSH fails 3 times in a row, or the
+journal shows ≥ 3 error lines; one "back online" when it is fine again. 1–2 SSH failures
+change nothing.
+
 ## 3. Renewal
 
 A renewal is paid like a purchase (flows 1–2) with `type=renew` on an existing

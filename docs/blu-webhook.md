@@ -10,7 +10,20 @@ same exact-amount rule as the bank SMS (`payments_sms/matching.py`).
 |---|---|---|
 | `BLU_PUSH_SECRET` | empty | HMAC-SHA256 secret shared with the collector, at least 32 characters. Empty or shorter → the webhook answers 503 (feature off). Changing it needs `docker compose up -d` of the backend containers (a restart does not reload `.env`). |
 | `BLU_LATE_GRACE_MINUTES` | 30 | how long after an order's reservation ended a deposit may still pay it |
-| `BLU_STALE_MINUTES` | 15 | no batch for this long → one "collector offline" alert |
+| `BLU_STALE_MINUTES` | 15 (production 360) | no batch for this long → one "collector offline" alert. The collector sends nothing when there are no new deposits, so keep this long. |
+| `BLU_SSH_HOST` | empty | SSH host (alias in the mounted ssh config) for the service check; empty = off |
+| `BLU_COLLECTOR_SERVICE` | `blu-collector.service` | systemd unit checked |
+| `BLU_ERROR_REPEAT` | 3 | journal error lines within 10 min that count as "repeating" |
+
+## Service check over SSH (v1.31.1)
+
+Every 5 min the Celery worker runs exactly
+`systemctl is-active <unit>; journalctl -u <unit> --since -10min --no-pager -o short-iso -q`
+on `BLU_SSH_HOST` (BatchMode, strict host key). Files mounted read-only into `celery_worker`
+(`docker-compose.prod.yml`): `BLU_SSH_KEY_FILE` → `/run/blu-ssh/id_ed25519_iran`,
+`BLU_SSH_KNOWN_HOSTS` → `/run/blu-ssh/known_hosts`, `BLU_SSH_CONFIG_FILE` → `/run/blu-ssh/config`
+(defaults: the files in `/root/.ssh`). The tab shows active / inactive, last check and the last
+error line (secrets and card numbers masked).
 
 ## Request
 

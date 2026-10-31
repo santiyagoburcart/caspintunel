@@ -14,6 +14,14 @@ def match_blu_transaction_task(self, pk: int):
 
 
 @shared_task
+def blu_service_check_task():
+    """Read-only SSH check of the collector service on the Iran server (blu_service.py)."""
+    from .blu_service import check_service
+
+    return check_service()
+
+
+@shared_task
 def blu_stale_check_task():
     """No batch from the Blu collector for BLU_STALE_MINUTES → one Telegram + panel alert."""
     from .blu import check_stale

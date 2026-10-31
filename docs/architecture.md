@@ -152,6 +152,7 @@ setting is saved (`apps/ops/schedule.py`).
 | crm: inactivity detection + stages | `crm.tasks.crm_detect_task` (inactivity cases, auto-close on reconnect, optional friendly message, win-back queue + auto won-back, stage refresh) | 60 min |
 | tickets: auto-close stale | `tickets.tasks.auto_close_tickets_task` (awaiting the customer for `tickets_auto_close_days`) | 60 min |
 | domain: host results + retire old domain | `settings_app.tasks.domain_tick_task` (folds in the host's result; asks the host to remove the old domain when the transition is over) | 5 min |
+| payments: Blu collector service check (SSH) | `payments_sms.tasks.blu_service_check_task` → `blu_service.check_service`: one read-only SSH command to `BLU_SSH_HOST` (`systemctl is-active` + last 10 min of `journalctl` for the collector unit); alert once when inactive, SSH fails 3× in a row or ≥ `BLU_ERROR_REPEAT` error lines, one "back online" | 5 min |
 | payments: Blu collector offline check | `payments_sms.tasks.blu_stale_check_task` (no batch for `BLU_STALE_MINUTES` → one Telegram + live `blu_collector` alert; cleared by the next batch) | 5 min |
 
 On-demand tasks: `fulfill_order`, `provision_service_task`, `renew_service_task`,

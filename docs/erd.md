@@ -280,6 +280,13 @@ erDiagram
         int last_items
         int batches
         datetime stale_alerted_at
+        string svc_state "systemctl is-active (SSH check)"
+        datetime svc_checked_at
+        string svc_error_line "last journal error, masked"
+        int svc_error_count "error lines in 10 min"
+        int ssh_failures "in a row"
+        string ssh_error
+        string svc_alert "'' | inactive | ssh | errors"
     }
     scheduled_renewal {
         bigint id PK
@@ -301,7 +308,7 @@ erDiagram
 | `sms_app_device` | Operator phones (Android app / iPhone Shortcut) allowed to forward bank SMS. |
 | `sms_message` | Every forwarded SMS with the parsed amount, the matched order or the near-miss order (`less` / `more`), and a human-readable note (admin SMS log). |
 | `blu_transaction` | One Blu Bank account row pushed by the Iran-side collector (v1.31). `bank_id` unique = retries are no-ops. Debits are stored as `ignored`. A deposit auto-confirms only an order whose unique amount equals it exactly and whose time window contains it (`matched`); an order already paid by SMS → `duplicate`; a near amount stays `unmatched` linked to the order (`blu_mismatch` payment for review). Card numbers are stored masked. |
-| `blu_collector` | One row: the collector's last signed batch (an empty batch = heartbeat) and whether the offline alert went out. |
+| `blu_collector` | One row: the collector's last signed batch (an empty batch = heartbeat) and whether the offline alert went out; since v1.31.1 also the SSH service check (state, last check, last error line, SSH failures, current alert). |
 | `scheduled_renewal` | A paid renewal waiting for the service to reach the end of its cycle; applied once (`applied_at`). One per service; an unapplied one is never replaced (a second paid renewal → order `failed` + staff alert). |
 
 ## 4. Agency panel (`agency`)

@@ -212,7 +212,13 @@ def collector_health() -> dict:
     connected = bool(c.last_batch_at and timezone.now() - c.last_batch_at <= stale_after())
     return {"enabled": bool(push_secret()), "connected": connected, "last_batch_at": c.last_batch_at,
             "last_batch_id": c.last_batch_id, "last_items": c.last_items, "batches": c.batches,
-            "stale_minutes": int(stale_after().total_seconds() // 60)}
+            "stale_minutes": int(stale_after().total_seconds() // 60), "service": _service()}
+
+
+def _service() -> dict:
+    from .blu_service import service_health
+
+    return service_health()
 
 
 def check_stale() -> str:

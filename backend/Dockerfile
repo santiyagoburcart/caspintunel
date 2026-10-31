@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         default-mysql-client \
         pkg-config \
         netcat-openbsd \
+        openssh-client \
         curl \
         gzip \
     && rm -rf /var/lib/apt/lists/*
