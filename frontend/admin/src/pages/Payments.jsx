@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api, apiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 import { jalali, toman } from '../lib/format'
@@ -8,6 +8,7 @@ import { ReceiptThumb } from '../components/ReceiptThumb'
 import { useToast } from '../components/Toast'
 import { useConfirm } from '../components/ConfirmDialog'
 import { useLivePayments, usePaymentsEvents } from '../lib/livePayments'
+import BluDeposits from '../components/BluDeposits'
 
 const T = {
   fa: {
@@ -27,7 +28,7 @@ const T = {
     live_on: 'به‌روزرسانی زنده', live_off: 'اتصال زنده قطع است — تا وصل شدن دوباره، صف هر 15 ثانیه خودکار به‌روز می‌شود',
     live_short_off: 'آفلاین',
     w_amount: 'مبلغ فیش با مبلغ یکتای سفارش برابر نیست', w_receipt: 'فیش',
-    w_recent_sms: 'این مشتری در 24 ساعت اخیر پرداختی دارد که با پیامک بانک تأیید شده — شاید همین واریز باشد',
+    w_recent_sms: 'این مشتری در 24 ساعت اخیر پرداختی دارد که با پیامک بانک / واریز بلو تأیید شده — شاید همین واریز باشد',
     w_dup_image: 'همین تصویر رسید روی تراکنش دیگری هم ثبت شده است',
     w_dup_ref: 'همین شماره سند/پیگیری روی تراکنش دیگری هم ثبت شده است',
     w_renewal: 'این سرویس از قبل یک تمدید پرداخت‌شده در انتظار دارد (سفارش #{id}) — با تأیید، تمدید دوم صف نمی‌شود و سفارش «ناموفق» می‌شود',
@@ -35,6 +36,7 @@ const T = {
     w_confirm: 'این پرداخت {n} هشدار دارد — پیش از تأیید، تراکنش‌های مرتبط را بررسی کنید.',
     ri_title: 'اطلاعات فیش (برای بررسی تکراری)', ri_amount: 'مبلغ روی فیش', ri_ref: 'شماره سند / پیگیری',
     ri_rial: 'ریال', ri_toman: 'تومان', ri_save: 'ثبت',
+    v_queue: 'صف تأیید', v_blu: 'واریزهای بلو', mm_blu: 'واریز بلو',
   },
   en: {
     title: 'Payment approval queue', none: 'Nothing to review',
@@ -53,7 +55,7 @@ const T = {
     live_on: 'Live updates', live_off: 'Live connection lost — the queue auto-refreshes every 15 s until it reconnects',
     live_short_off: 'Offline',
     w_amount: "The receipt amount doesn't equal the order's unique amount", w_receipt: 'Receipt',
-    w_recent_sms: 'This customer had a payment approved by bank SMS in the last 24 h — it may be the same transfer',
+    w_recent_sms: 'This customer had a payment approved by bank SMS / Blu in the last 24 h — it may be the same transfer',
     w_dup_image: 'The same receipt image is on another transaction',
     w_dup_ref: 'The same bank document / tracking number is on another transaction',
     w_renewal: 'This service already has a paid renewal waiting (order #{id}) — approving will NOT queue a second one; the order becomes "failed"',
@@ -61,12 +63,37 @@ const T = {
     w_confirm: 'This payment has {n} warning(s) — check the linked transactions before approving.',
     ri_title: 'Receipt details (duplicate check)', ri_amount: 'Amount on receipt', ri_ref: 'Document / tracking no.',
     ri_rial: 'Rial', ri_toman: 'Toman', ri_save: 'Save',
+    v_queue: 'Approval queue', v_blu: 'Blu deposits', mm_blu: 'Blu deposit',
   },
 }
 
 const TABS = ['all', 'receipt', 'active', 'expired']
+const VIEWS = ['queue', 'blu']
 
+/* Approval queue | Blu deposits (?view=blu keeps the choice on reload / back). */
 export default function Payments() {
+  const { lang } = useI18n()
+  const s = T[lang] || T.fa
+  const [sp, setSp] = useSearchParams()
+  const view = sp.get('view') === 'blu' ? 'blu' : 'queue'
+  return (
+    <div className="space-y-3">
+      <style>{CSS}</style>
+      <div className="pq-views" role="tablist">
+        {VIEWS.map((v) => (
+          <button key={v} type="button" role="tab" aria-selected={view === v}
+            className={'pq-view' + (view === v ? ' on' : '')}
+            onClick={() => setSp(v === 'queue' ? {} : { view: v }, { replace: true })}>
+            {s['v_' + v]}
+          </button>
+        ))}
+      </div>
+      {view === 'blu' ? <BluDeposits /> : <PaymentQueue />}
+    </div>
+  )
+}
+
+function PaymentQueue() {
   const { t, lang } = useI18n()
   const toast = useToast()
   const confirm = useConfirm()
@@ -177,7 +204,6 @@ export default function Payments() {
 
   return (
     <div className="space-y-3">
-      <style>{CSS}</style>
       <div className="pq-head flex flex-wrap items-start justify-between gap-2">
         <div>
           <h1 className="text-lg font-bold">{s.title}</h1>
@@ -238,7 +264,7 @@ export default function Payments() {
             {p.sms_mismatch && (
               <div className="pq-mm" data-kind={p.sms_mismatch.kind} role="status">
                 <b>{p.sms_mismatch.kind === 'less' ? s.mm_less : s.mm_more}</b>
-                <span>{s.mm_sms}: <bdi dir="ltr" className="mono-num">{p.sms_mismatch.sms_amount != null ? toman(p.sms_mismatch.sms_amount, lang) : `${Number(p.sms_mismatch.sms_raw || 0).toLocaleString('en-US')} ${p.sms_mismatch.sms_unit}`}</bdi>
+                <span>{p.sms_mismatch.source === 'blu' ? s.mm_blu : s.mm_sms}: <bdi dir="ltr" className="mono-num">{p.sms_mismatch.sms_amount != null ? toman(p.sms_mismatch.sms_amount, lang) : `${Number(p.sms_mismatch.sms_raw || 0).toLocaleString('en-US')} ${p.sms_mismatch.sms_unit}`}</bdi>
                   {' · '}{s.mm_invoice}: <bdi dir="ltr" className="mono-num">{toman(p.sms_mismatch.invoice_amount, lang)}</bdi>
                   {p.sms_mismatch.sms_amount != null && <>{' · '}{s.mm_diff}: <bdi dir="ltr" className="mono-num">{(Number(p.sms_mismatch.sms_amount) - Number(p.sms_mismatch.invoice_amount) > 0 ? '+' : '') + toman(Number(p.sms_mismatch.sms_amount) - Number(p.sms_mismatch.invoice_amount), lang)}</bdi></>}
                 </span>
@@ -357,6 +383,13 @@ function ReceiptInfo({ p, s, onSaved }) {
 }
 
 const CSS = `
+.pq-views { display: inline-flex; gap: 2px; padding: 3px; border-radius: 12px; border: 1px solid var(--c-border); background: var(--c-surface); }
+.pq-view { padding: 7px 16px; border-radius: 9px; font-size: 13.5px; font-weight: 700; color: var(--c-text-muted); }
+.pq-view.on { background: color-mix(in srgb, var(--c-primary) 14%, transparent); color: var(--c-primary-fg); }
+@media (max-width: 767px) {
+  .pq-views { display: flex; width: 100%; }
+  .pq-view { flex: 1 1 0; min-height: 44px; }
+}
 .pq-warns { display: flex; flex-direction: column; gap: 6px; }
 .pq-warn { display: flex; flex-direction: column; gap: 4px; padding: 8px 12px; border-radius: 10px; font-size: 12.5px; line-height: 1.6;
   color: var(--c-warning-fg); background: color-mix(in srgb, var(--c-warning) 12%, transparent); border: 1px solid color-mix(in srgb, var(--c-warning) 34%, transparent); }

@@ -171,6 +171,8 @@ erDiagram
     order ||--o| payment : "paid by"
     bank_card |o--o{ payment : "into"
     sms_message |o--o{ payment : "evidence"
+    blu_transaction |o--o{ payment : "evidence"
+    order |o--o{ blu_transaction : "matched_order"
     staff |o--o{ payment : "confirmed_by_staff"
     sms_source |o--o{ sms_message : "sender"
     sms_app_device |o--o{ sms_message : "forwarded by"
@@ -198,7 +200,7 @@ erDiagram
         bigint id PK
         bigint order_id FK "one per order"
         bigint bank_card_id FK
-        string method "card_manual | sms_auto | sms_mismatch | gateway"
+        string method "card_manual | sms_auto | sms_mismatch | blu_auto | blu_mismatch | gateway"
         decimal amount
         string status "pending | approved | rejected"
         string receipt_image "private media"
@@ -206,6 +208,7 @@ erDiagram
         string receipt_ref "bank document / tracking no., digits"
         decimal receipt_amount "amount on the receipt, tomans (staff)"
         bigint sms_message_id FK
+        bigint blu_transaction_id FK
         string confirmed_by "admin | system"
         bigint confirmed_by_staff_id FK
         string reject_reason
@@ -250,6 +253,34 @@ erDiagram
         string mismatch_kind "less | more"
         string note "why matched / not matched"
     }
+    blu_transaction {
+        bigint id PK
+        string bank_id UK "collector item id (idempotency)"
+        bigint amount_irr
+        decimal amount_toman "null unless amount_irr % 10 == 0"
+        datetime occurred_at "bank timestamp (UTC)"
+        string direction "بستانکار = deposit"
+        string payer_name
+        string payer_card "masked first6******last4"
+        string payer_last4
+        string receipt "tracking no."
+        string reference "reference no."
+        string account_iban
+        bigint balance_after_irr
+        json raw "item, card numbers masked"
+        string status "unmatched | matched | duplicate | ignored"
+        bigint matched_order_id FK
+        bigint matched_payment_id FK
+        string match_note
+    }
+    blu_collector {
+        bigint id PK "single row"
+        datetime last_batch_at
+        string last_batch_id
+        int last_items
+        int batches
+        datetime stale_alerted_at
+    }
     scheduled_renewal {
         bigint id PK
         bigint service_id FK "one per service"
@@ -264,11 +295,13 @@ erDiagram
 | Table | Description |
 |---|---|
 | `order` | Purchase intent. `amount_unique` = price + a random surcharge, reserved via the unique `amount_unique_lock` while pending/paid (never a value the same user had in the last 24 h). Expires after `unique_amount_reservation_minutes`. |
-| `payment` | One per order: receipt (card-to-card), SMS auto-confirm, or SMS near-miss under review. Approved / rejected only through `approve_payment` / `reject_payment`. `number` = human transaction number `TX-000123` (v1.25). A Super Admin "delete" voids it (`voided_*`, `payments_sms/voiding.py`): out of every list and total, restorable for 30 days; never a hard delete. |
+| `payment` | One per order: receipt (card-to-card), SMS / Blu auto-confirm, or an SMS / Blu near-miss under review. Approved / rejected only through `approve_payment` / `reject_payment`. `number` = human transaction number `TX-000123` (v1.25). A Super Admin "delete" voids it (`voided_*`, `payments_sms/voiding.py`): out of every list and total, restorable for 30 days; never a hard delete. |
 | `bank_card` | Receiving cards shown at checkout; per-card deposit report in Accounting. |
 | `sms_source` | Allow-list of bank senders and the default amount unit for unit-less SMS. |
 | `sms_app_device` | Operator phones (Android app / iPhone Shortcut) allowed to forward bank SMS. |
 | `sms_message` | Every forwarded SMS with the parsed amount, the matched order or the near-miss order (`less` / `more`), and a human-readable note (admin SMS log). |
+| `blu_transaction` | One Blu Bank account row pushed by the Iran-side collector (v1.31). `bank_id` unique = retries are no-ops. Debits are stored as `ignored`. A deposit auto-confirms only an order whose unique amount equals it exactly and whose time window contains it (`matched`); an order already paid by SMS → `duplicate`; a near amount stays `unmatched` linked to the order (`blu_mismatch` payment for review). Card numbers are stored masked. |
+| `blu_collector` | One row: the collector's last signed batch (an empty batch = heartbeat) and whether the offline alert went out. |
 | `scheduled_renewal` | A paid renewal waiting for the service to reach the end of its cycle; applied once (`applied_at`). One per service; an unapplied one is never replaced (a second paid renewal → order `failed` + staff alert). |
 
 ## 4. Agency panel (`agency`)

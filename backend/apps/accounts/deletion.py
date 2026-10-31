@@ -55,7 +55,7 @@ def _staff_label(staff) -> str:
 
 def _confirmer(payment) -> str | None:
     if payment.confirmed_by == "system":
-        return "SMS system"
+        return "Blu system" if payment.method == "blu_auto" else "SMS system"
     if payment.confirmed_by_staff_id:
         return payment.confirmed_by_staff.username
     return payment.confirmed_by or None

@@ -218,11 +218,93 @@ class PendingPaymentsView(AdminAPIView):
     def get(self, request):
         qs = (
             Payment.objects.live().filter(status=PaymentStatus.PENDING)
-            .select_related("order", "order__user", "order__plan", "bank_card", "sms_message")
+            .select_related("order", "order__user", "order__plan", "bank_card", "sms_message", "blu_transaction")
             .order_by("created_at")
         )
         data = AdminPendingPaymentSerializer(qs, many=True, context={"request": request}).data
         return Response({"results": data, "count": len(data)})
+
+
+def _blu_row(tx) -> dict:
+    from apps.payments_sms.blu import mask_card
+
+    return {
+        "id": tx.id, "amount_toman": tx.amount_toman, "amount_irr": tx.amount_irr,
+        "occurred_at": tx.occurred_at, "occurred_jalali": to_jalali_str(tx.occurred_at),
+        "type_label": tx.type_label, "payer_name": tx.payer_name,
+        "payer_card": mask_card(tx.payer_card) if tx.payer_card else (f"******{tx.payer_last4}" if tx.payer_last4 else ""),
+        "receipt": tx.receipt, "reference": tx.reference, "status": tx.status,
+        "matched_order": tx.matched_order_id, "matched_payment": tx.matched_payment_id,
+        "match_note": tx.match_note, "received_at": tx.received_at,
+    }
+
+
+class BluTransactionListView(AdminAPIView):
+    """GET /admin/payments/blu-transactions/?status=&limit= — Blu deposits, newest first,
+    plus the collector's health (last batch, connected / offline)."""
+
+    perms_map = {"GET": ["payment.view"]}
+
+    @extend_schema(responses=dict, summary="Blu Bank deposits + collector health")
+    def get(self, request):
+        from apps.payments_sms.blu import collector_health
+        from apps.payments_sms.models import BluStatus, BluTransaction
+
+        qs = BluTransaction.objects.order_by("-occurred_at", "-id")
+        st = request.query_params.get("status")
+        if st:
+            if st not in BluStatus.values:
+                return Response({"status": [f"one of {', '.join(BluStatus.values)}"]}, status=400)
+            qs = qs.filter(status=st)
+        try:
+            limit = max(1, min(500, int(request.query_params.get("limit") or 100)))
+        except ValueError:
+            limit = 100
+        counts = {k: 0 for k in BluStatus.values}
+        for row in BluTransaction.objects.values("status").annotate(n=Count("id")):
+            counts[row["status"]] = row["n"]
+        rows = [_blu_row(tx) for tx in qs[:limit]]
+        return Response({"collector": collector_health(), "counts": counts, "results": rows, "count": len(rows)})
+
+
+class BluAttachView(AdminAPIView):
+    """POST /admin/payments/blu-transactions/<id>/attach/ {order_id} — staff match an
+    unmatched deposit to an order: approves it (confirmed_by admin) and fulfils it."""
+
+    perms_map = {"POST": ["payment.approve"]}
+
+    @extend_schema(request=dict, responses=dict, summary="Attach a Blu deposit to an order (approves it)")
+    def post(self, request, pk):
+        from django.db import transaction
+
+        from apps.orders.models import Order, OrderStatus
+        from apps.payments_sms.matching import confirm_blu
+        from apps.payments_sms.models import BluStatus, BluTransaction
+        from apps.payments_sms.services import _FULFILLABLE
+
+        try:
+            order_id = int(str(request.data.get("order_id") or "").strip().lstrip("#"))
+        except ValueError:
+            return Response({"detail": "enter the order number", "field": "order_id"}, status=400)
+        with transaction.atomic():
+            tx = BluTransaction.objects.select_for_update().filter(pk=pk).first()
+            if tx is None:
+                return Response({"detail": "deposit not found"}, status=404)
+            if tx.status != BluStatus.UNMATCHED:
+                return Response({"detail": f"this deposit is already {tx.status}", "code": "not_unmatched"}, status=409)
+            order = Order.objects.select_for_update().filter(pk=order_id).first()
+            if order is None:
+                return Response({"detail": f"order #{order_id} not found", "field": "order_id"}, status=404)
+            paid = Payment.objects.live().filter(order=order, status=PaymentStatus.APPROVED).first()
+            if paid is not None or order.status in (OrderStatus.PAID, OrderStatus.COMPLETED):
+                return Response({"detail": f"order #{order.id} is already paid", "code": "already_paid"}, status=409)
+            if order.status not in _FULFILLABLE:
+                return Response({"detail": f"order #{order.id} is {order.status}", "code": "order_state"}, status=409)
+            payment = confirm_blu(order, tx, staff=request.user)
+        return Response({"ok": True, "order_id": order.id, "payment_id": payment.id,
+                         "message": f"Order #{order.id} approved with this Blu deposit",
+                         "message_fa": f"سفارش #{order.id} با این واریز بلو تأیید شد",
+                         "deposit": _blu_row(BluTransaction.objects.get(pk=pk))})
 
 
 class PaymentReceiptInfoView(AdminAPIView):
@@ -487,7 +569,7 @@ def _transactions_csv(qs, lang: str):
     w.writerow(CSV_HEAD[lang])
     for p in qs.iterator(chunk_size=500):
         o = p.order
-        confirmer = ("SMS system" if p.confirmed_by == "system" else
+        confirmer = (("Blu system" if p.method == "blu_auto" else "SMS system") if p.confirmed_by == "system" else
                      (p.confirmed_by_staff.username if p.confirmed_by_staff_id else (p.confirmed_by or "")))
         w.writerow([
             p.tx_number, to_jalali_str(p.created_at, "%Y/%m/%d %H:%M"), int(p.amount), p.status, p.method,

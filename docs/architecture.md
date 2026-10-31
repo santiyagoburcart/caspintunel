@@ -120,7 +120,7 @@ SHA-256 stored).
 | `panel` | multi-panel `Panel` + `PasarGuardClient` (token cache, typed errors), `Service`, payload mappers, idempotent provision / renew / sync, scheduled renewals (reset / carry-over) always on the same account + link, admin full edit, staff set / change a service's plan (`set_service_plan`, filter «بدون پلن»), manual create, link an existing panel account |
 | `plans` | `Plan` (fixed / custom-volume), `group_ids` per plan with panel-default fallback, renewal mode + carry-over |
 | `orders` | `Order` (new / renew / add-on / manual / imported), atomic unique-amount reservation (`amount_unique_lock`), checkout resume, `ScheduledRenewal` (one renewal at a time: `waiting_renewal` / `RenewalWaiting`; never replaced — `RenewalConflict` → order `failed` + staff alert via `common/staff_alert.py`), `fulfill_order` + `retry_unfulfilled_orders` |
-| `payments_sms` | `BankCard`, `Payment`, card-to-card receipts, `SmsSource` / `SmsAppDevice` / `SmsMessage`, unit-aware parser, **exact-match auto-confirm + near-miss review** (`matching.py`), `approve_payment` / `reject_payment`; **approval-queue warnings** (`checks.py`: receipt amount, recent SMS payment, duplicate image hash / bank document number, waiting renewal); **transaction numbers** `TX-000123` (`Payment.number`) and the Super Admin **void / restore** (`voiding.py`, 30 days) — voided payments are left out of every total (`Payment.objects.live()`) |
+| `payments_sms` | `BankCard`, `Payment`, card-to-card receipts, `SmsSource` / `SmsAppDevice` / `SmsMessage`, unit-aware parser, **exact-match auto-confirm + near-miss review** (`matching.py`), `approve_payment` / `reject_payment`; **approval-queue warnings** (`checks.py`: receipt amount, recent SMS payment, duplicate image hash / bank document number, waiting renewal); **transaction numbers** `TX-000123` (`Payment.number`) and the Super Admin **void / restore** (`voiding.py`, 30 days) — voided payments are left out of every total (`Payment.objects.live()`); **Blu Bank deposits** (`blu.py`: HMAC-signed webhook `/payments/blu/webhook/`, `BluTransaction` + `BluCollector` health; `matching.match_blu_transaction`: same exact-amount rule inside the order's time window, duplicate after SMS, near-miss → `blu_mismatch` review; staff attach) — [blu-webhook.md](blu-webhook.md) |
 | `notifications` | `Notification` / `NotificationDelivery`, `dispatch.notify_user` (site / bot / email, each channel isolated), WebSockets: customer notifications + staff live payments queue |
 | `telegram` | `TelegramClient`, `ensure_bot_user`, forced-channel + phone gate, sales bot (pure `bot/screens.py` + fa/en `bot/texts.py`), backup bot + `run_database_backup`, channel member stats ([bots.md](bots.md)) |
 | `settings_app` | `Setting` (typed KV), `SiteConfig` (branding singleton), `Theme`, `Page` (CMS), `AppRelease` (operator apps), `EmailSettings`, iPhone Shortcut builder, `paths` (admin / portal paths), `domain` (Cloudflare token + domain wizard: `DomainConfig`, `DomainChange`), `seed` |
@@ -152,11 +152,13 @@ setting is saved (`apps/ops/schedule.py`).
 | crm: inactivity detection + stages | `crm.tasks.crm_detect_task` (inactivity cases, auto-close on reconnect, optional friendly message, win-back queue + auto won-back, stage refresh) | 60 min |
 | tickets: auto-close stale | `tickets.tasks.auto_close_tickets_task` (awaiting the customer for `tickets_auto_close_days`) | 60 min |
 | domain: host results + retire old domain | `settings_app.tasks.domain_tick_task` (folds in the host's result; asks the host to remove the old domain when the transition is over) | 5 min |
+| payments: Blu collector offline check | `payments_sms.tasks.blu_stale_check_task` (no batch for `BLU_STALE_MINUTES` → one Telegram + live `blu_collector` alert; cleared by the next batch) | 5 min |
 
 On-demand tasks: `fulfill_order`, `provision_service_task`, `renew_service_task`,
 `sync_service_task`, `apply_scheduled_renewal_task`,
 `deliver_notification_task`, `reconcile_backup_schedule_task`,
-`notify_ticket_task` (ticket notifications, queued on commit). Panel tasks
+`notify_ticket_task` (ticket notifications, queued on commit),
+`match_blu_transaction_task` (one new Blu deposit, queued on commit by the webhook). Panel tasks
 retry on `PanelUnavailable`; a permanent `PanelError` is audited and flagged.
 
 ## Bots

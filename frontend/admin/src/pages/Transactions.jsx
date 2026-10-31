@@ -63,7 +63,7 @@ export const T = {
     all: 'همه', pending: 'در انتظار', approved: 'تأییدشده', rejected: 'ردشده',
     amount: 'مبلغ', user: 'کاربر', method: 'روش', card: 'کارت', confirmer: 'تأییدکننده',
     date: 'تاریخ', receipt: 'رسید', status: 'وضعیت', none: 'تراکنشی نیست', reason: 'دلیل رد',
-    by_admin: 'ادمین', by_system: 'سیستم پیامک', src_site: 'سایت', src_bot: 'ربات',
+    by_admin: 'ادمین', by_system: 'سیستم پیامک', by_blu: 'سیستم بلو', src_site: 'سایت', src_bot: 'ربات',
     type_col: 'نوع', src_col: 'منبع',
     type_new: 'خرید جدید', type_renew: 'تمدید', type_addon_volume: 'افزودن حجم',
     not_delivered: 'پرداخت تأییدشده ولی سرویس تحویل نشده — به‌صورت خودکار تلاش مجدد می‌شود',
@@ -86,7 +86,7 @@ export const T = {
     all: 'All', pending: 'Pending', approved: 'Approved', rejected: 'Rejected',
     amount: 'Amount', user: 'User', method: 'Method', card: 'Card', confirmer: 'Confirmed by',
     date: 'Date', receipt: 'Receipt', status: 'Status', none: 'No transactions', reason: 'Reject reason',
-    by_admin: 'admin', by_system: 'SMS system', src_site: 'Website', src_bot: 'Bot',
+    by_admin: 'admin', by_system: 'SMS system', by_blu: 'Blu system', src_site: 'Website', src_bot: 'Bot',
     type_col: 'Type', src_col: 'Source',
     type_new: 'New purchase', type_renew: 'Renewal', type_addon_volume: 'Add-on volume',
     not_delivered: 'Payment approved but service not delivered — auto-retrying',
@@ -284,6 +284,7 @@ function TxTable({ s, t, lang }) {
     if (!r.confirmer) return '—'
     if (r.confirmer === 'admin') return s.by_admin
     if (r.confirmer === 'SMS system') return s.by_system
+    if (r.confirmer === 'Blu system') return s.by_blu
     return r.confirmer
   }
 

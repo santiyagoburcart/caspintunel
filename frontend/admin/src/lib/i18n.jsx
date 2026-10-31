@@ -90,7 +90,7 @@ const dict = {
     // statuses
     st_active: 'فعال', st_on_hold: 'در انتظار اتصال', st_expired: 'منقضی',
     st_limited: 'اتمام حجم', st_disabled: 'غیرفعال', st_pending: 'در حال ساخت',
-    m_card_manual: 'کارت‌به‌کارت', m_sms_auto: 'تأیید خودکار پیامک', m_sms_mismatch: 'پیامک — مبلغ نامطابق', m_gateway: 'درگاه',
+    m_card_manual: 'کارت‌به‌کارت', m_sms_auto: 'تأیید خودکار پیامک', m_sms_mismatch: 'پیامک — مبلغ نامطابق', m_blu_auto: 'تأیید خودکار بلو', m_blu_mismatch: 'بلو — مبلغ نامطابق', m_gateway: 'درگاه',
     os_pending_payment: 'در انتظار پرداخت', os_paid: 'پرداخت‌شده', os_completed: 'موفق',
     os_rejected: 'ردشده', os_failed: 'ناموفق', os_expired: 'منقضی‌شده', os_cancelled: 'لغوشده',
     src_site: 'سایت', src_bot: 'ربات', src_admin: 'ادمین',
@@ -235,7 +235,7 @@ const dict = {
     permissions: 'Permissions',
     st_active: 'Active', st_on_hold: 'Awaiting first connection', st_expired: 'Expired',
     st_limited: 'Data used up', st_disabled: 'Disabled', st_pending: 'Provisioning',
-    m_card_manual: 'Card transfer', m_sms_auto: 'SMS auto-confirm', m_sms_mismatch: 'SMS — amount mismatch', m_gateway: 'Gateway',
+    m_card_manual: 'Card transfer', m_sms_auto: 'SMS auto-confirm', m_sms_mismatch: 'SMS — amount mismatch', m_blu_auto: 'Blu auto-confirm', m_blu_mismatch: 'Blu — amount mismatch', m_gateway: 'Gateway',
     os_pending_payment: 'Awaiting payment', os_paid: 'Paid', os_completed: 'Successful',
     os_rejected: 'Rejected', os_failed: 'Failed', os_expired: 'Expired', os_cancelled: 'Cancelled',
     src_site: 'Website', src_bot: 'Bot', src_admin: 'Admin',

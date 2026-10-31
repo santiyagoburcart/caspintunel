@@ -219,6 +219,7 @@ REST_FRAMEWORK = {
         "receipt": "20/hour",      # receipt upload
         "ticket": "60/hour",       # open a ticket / reply (per account)
         "sms_ingest": "240/min",   # SMS bridge app / iPhone shortcut
+        "blu_webhook": "120/min",  # Blu collector (signed batches, one a minute + retries)
         "tunnel_total": env("THROTTLE_TUNNEL_TOTAL", default="6000/min"),  # everyone through the Iran tunnel together
     },
     # nginx hands Django exactly one trusted client address in X-Forwarded-For
@@ -403,6 +404,12 @@ GITHUB_REPO = env("GITHUB_REPO", default="caspintunel")
 GITHUB_OWNER = env("GITHUB_OWNER", default="santiyagoburcart")
 
 TELEGRAM_PROXY_URL = env("TELEGRAM_PROXY_URL", default="")
+
+# Blu Bank deposits pushed by the Iran-side collector (apps/payments_sms/blu.py).
+# HMAC-SHA256 shared secret (>= 32 chars); empty or shorter = webhook answers 503.
+BLU_PUSH_SECRET = env("BLU_PUSH_SECRET", default="")
+BLU_LATE_GRACE_MINUTES = env.int("BLU_LATE_GRACE_MINUTES", default=30)   # deposit after the reservation ended
+BLU_STALE_MINUTES = env.int("BLU_STALE_MINUTES", default=15)             # no batch for this long = collector offline
 
 # ---------------------------------------------------------------------------
 # Logging — never crash on an outage; log and move on

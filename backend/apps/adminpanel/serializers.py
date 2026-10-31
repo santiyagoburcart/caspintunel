@@ -451,7 +451,7 @@ class TransactionSerializer(serializers.ModelSerializer):
 
     def get_confirmer(self, obj) -> str | None:
         if obj.confirmed_by == "system":
-            return "SMS system"
+            return "Blu system" if obj.method == "blu_auto" else "SMS system"
         if obj.confirmed_by_staff_id:
             return obj.confirmed_by_staff.username
         if obj.confirmed_by == "admin":
@@ -484,7 +484,7 @@ class AdminUserOrderSerializer(serializers.ModelSerializer):
         if not payment:
             return None
         if payment.confirmed_by == "system":
-            return "SMS system"
+            return "Blu system" if payment.method == "blu_auto" else "SMS system"
         if payment.confirmed_by_staff_id:
             return payment.confirmed_by_staff.username
         if payment.confirmed_by == "admin":
@@ -530,8 +530,15 @@ class AdminPendingPaymentSerializer(serializers.ModelSerializer):
         """A deposit SMS that is close to this invoice but not equal (never auto-approved)."""
         m = obj.sms_message
         if m is None or m.mismatch_order_id != obj.order_id or not m.mismatch_kind:
-            return None
-        return {"kind": m.mismatch_kind, "sms_id": m.id, "sms_amount": m.parsed_amount, "sms_raw": m.parsed_raw,
+            tx = obj.blu_transaction
+            if (tx is None or tx.status != "unmatched" or tx.matched_order_id != obj.order_id
+                    or tx.amount_toman is None or tx.amount_toman == obj.order.amount_unique):
+                return None
+            return {"source": "blu", "kind": "less" if tx.amount_toman < obj.order.amount_unique else "more",
+                    "blu_id": tx.id, "sms_amount": tx.amount_toman, "sms_raw": tx.amount_irr, "sms_unit": "rial",
+                    "invoice_amount": obj.order.amount_unique, "received_at": tx.occurred_at,
+                    "receipt": tx.receipt, "reference": tx.reference}
+        return {"source": "sms", "kind": m.mismatch_kind, "sms_id": m.id, "sms_amount": m.parsed_amount, "sms_raw": m.parsed_raw,
                 "sms_unit": m.parsed_unit, "invoice_amount": obj.order.amount_unique, "received_at": m.received_at}
 
     def get_receipt_url(self, obj) -> str | None:

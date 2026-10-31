@@ -4,6 +4,8 @@
 
 name: caspintunel
 
+# every backend service (web, daphne, celery, bots) reads .env — incl. BLU_PUSH_SECRET (Blu webhook);
+# after changing a value recreate them (docker compose up -d), a restart keeps the old environment
 x-backend-env: &backend-env
   env_file: [.env]
 

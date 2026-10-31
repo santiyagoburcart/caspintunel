@@ -1,0 +1,56 @@
+# Blu Bank deposits — collector webhook (v1.31)
+
+An Iran-side collector reads the Blu account history and pushes deposits to the
+panel. The panel stores each one once and auto-confirms an order only with the
+same exact-amount rule as the bank SMS (`payments_sms/matching.py`).
+
+## Settings (`.env`)
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `BLU_PUSH_SECRET` | empty | HMAC-SHA256 secret shared with the collector, at least 32 characters. Empty or shorter → the webhook answers 503 (feature off). Changing it needs `docker compose up -d` of the backend containers (a restart does not reload `.env`). |
+| `BLU_LATE_GRACE_MINUTES` | 30 | how long after an order's reservation ended a deposit may still pay it |
+| `BLU_STALE_MINUTES` | 15 | no batch for this long → one "collector offline" alert |
+
+## Request
+
+`POST /api/v1/payments/blu/webhook/` — no account, throttle scope `blu_webhook` (120/min).
+
+| Header | Value |
+|---|---|
+| `X-Blu-Timestamp` | unix seconds; refused when more than 300 s from the server clock |
+| `X-Blu-Signature` | `hex(HMAC_SHA256(secret, "<timestamp>." + raw body bytes))` |
+| `X-Blu-Batch-Id` | uuid, logged and kept as "last batch" |
+
+Body: `{"source": "blu", "batch_id": "…", "sent_at": "…", "items": [ … ]}`. Per item only
+`id`, `amount_irr` and `timestamp` (unix seconds, UTC) are required; also read:
+`direction`, `type`, `jalali_date`, `time`, `counterparty_name`, `payer_card`,
+`payer_card_last4`, `receipt` (شماره پیگیری), `reference` (شماره مرجع),
+`account_iban`, `balance_after_irr`. The whole item is kept in `raw` with every
+full card number masked. `items: []` is a heartbeat.
+
+## Responses
+
+| Status | When |
+|---|---|
+| 200 `{"ok": true, "received": n, "created": m}` | signature valid and JSON well-formed — also for retries (`created: 0`) and for batches with bad items (those are logged and skipped) |
+| 400 | body is not JSON or has no `items` list |
+| 403 | timestamp missing / not digits / too far off, or signature mismatch |
+| 503 | `BLU_PUSH_SECRET` not configured |
+
+## Matching (Celery, after commit)
+
+1. `amount_irr` not a multiple of 10 → stays `unmatched` ("not a whole toman").
+2. Order `pending_payment` with `amount_unique_lock == amount_irr / 10`, and the deposit
+   between `created_at − 2 min` and `unique_expire_at + BLU_LATE_GRACE_MINUTES` →
+   approved (`blu_auto`, confirmed by system), fulfilled, `blu_approved` live event.
+   Outside that window (the unique amount was reused) → stays `unmatched`.
+3. The same amount already paid inside that window (e.g. by the iPhone SMS) → `duplicate`.
+4. Within ±20 % (or equal after ×10 / ÷10) of an open invoice → pending `blu_mismatch`
+   payment in the Payments queue, Telegram to staff with `payment.approve`; never approved
+   automatically.
+5. Otherwise `unmatched`. Staff can attach it to an order from Payments → «واریزهای بلو»
+   (`POST /api/v1/admin/payments/blu-transactions/<id>/attach/`, `payment.approve`).
+
+The deposit's reference / tracking numbers are on the payment too, so a receipt with the
+same document number on another order shows the "duplicate document" warning.

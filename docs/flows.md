@@ -94,6 +94,65 @@ the SMS arrived never matches (5 min clock skew allowed). The iPhone Shortcut
 and uploads the whole queue to `/payments/sms/inbound-batch/`, which is
 idempotent — see [sms-batch.md](sms-batch.md).
 
+## 2b. Blu Bank deposit auto-confirm (v1.31)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Blu collector (Iran server)
+    participant API as web /payments/blu/webhook/
+    participant B as blu.ingest_batch
+    participant W as Celery match_blu_transaction_task
+    participant DB as MySQL
+    participant Q as Admin queue (WebSocket)
+    actor A as Admin
+
+    C->>API: {items:[…]} + X-Blu-Timestamp + X-Blu-Signature
+    alt BLU_PUSH_SECRET unset / shorter than 32
+        API-->>C: 503
+    else timestamp not digits, > 300 s off, or HMAC(raw body) mismatch
+        API-->>C: 403
+    else body not JSON / no items list
+        API-->>C: 400
+    else signed + well-formed
+        loop each item (a bad item is logged and skipped)
+            B->>DB: get_or_create(bank_id) — an existing row is left untouched
+            Note over B,DB: direction ≠ بستانکار → status ignored
+        end
+        B->>DB: BluCollector.last_batch_at (empty batch = heartbeat)
+        API-->>C: 200 {ok, received, created}
+        B-)W: on commit: one task per NEW deposit
+        W->>DB: lock row; amount_toman null → note, stay unmatched
+        W->>DB: lock Order(pending_payment, amount_unique_lock == amount_toman)
+        alt found, deposit inside created_at−2 min … unique_expire_at + BLU_LATE_GRACE
+            W->>DB: Payment(blu_auto, approved, confirmed_by=system, receipt_ref)
+            W->>W: mark_paid_and_fulfill → fulfill_order
+            W->>DB: audit payment.blu_auto_confirmed; tx matched
+            W-->>Q: blu_approved
+        else found but outside the window (reused amount)
+            W->>DB: note, stay unmatched
+        else same amount already paid in that window (SMS first)
+            W->>DB: tx duplicate + matched_order (never approved twice)
+        else near miss (±20 %, ×10/÷10) of an open invoice
+            W->>DB: Payment(blu_mismatch, PENDING) + tx linked, unmatched
+            W-->>Q: blu_mismatch + Telegram to payment.approve staff
+            A->>API: approve_payment (tx → matched) / reject_payment
+        else nothing
+            W->>DB: note "no pending order", stay unmatched
+        end
+    end
+    A->>API: Payments → واریزهای بلو → «اتصال به سفارش» (payment.approve)
+    API->>DB: confirm_blu(order, tx, staff) — confirmed_by admin
+```
+
+The iPhone SMS stays as the fallback: when Blu confirmed an order first, the later
+SMS finds no pending order (no double confirm); when the SMS was first, the Blu
+deposit becomes `duplicate`. A deposit is matched only once, when it arrives —
+never later against a newer order. Every 5 min `blu_stale_check_task` sends one
+"collector offline" alert (Telegram + live `blu_collector`) after
+`BLU_STALE_MINUTES` without a batch; the next batch clears it ("back online").
+Contract: [blu-webhook.md](blu-webhook.md).
+
 ## 3. Renewal
 
 A renewal is paid like a purchase (flows 1–2) with `type=renew` on an existing

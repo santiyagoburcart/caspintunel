@@ -304,3 +304,176 @@ def _auto_confirm(order: Order, msg: SmsMessage) -> Payment:
     push_payments_event("sms_approved", order_id=order.id, payment_id=payment.id)
     log.info("SMS %s auto-confirmed order %s (%s)", msg.id, order.id, order.amount_unique)
     return payment
+
+
+# ---------------------------------------------------------------------------
+# Blu Bank deposits (blu.py stores them; this matches them — same exact-amount rule)
+# ---------------------------------------------------------------------------
+BLU_CREATED_SKEW = timedelta(minutes=2)    # deposit seconds before the order row was written
+
+
+def _blu_grace() -> timedelta:
+    from django.conf import settings
+
+    return timedelta(minutes=int(getattr(settings, "BLU_LATE_GRACE_MINUTES", 30) or 0))
+
+
+def _blu_window_ok(order: Order, at) -> bool:
+    """Unique amounts are reused once a reservation ends: a deposit only pays an order
+    when it happened between the order's creation and the end of its reservation (+grace)."""
+    return order.created_at - BLU_CREATED_SKEW <= at <= order.unique_expire_at + _blu_grace()
+
+
+def _blu_note(tx, text: str, **fields) -> None:
+    from .models import BluTransaction
+
+    tx.match_note = text[:255]
+    for k, v in fields.items():
+        setattr(tx, k, v)
+    BluTransaction.objects.filter(pk=tx.pk).update(match_note=tx.match_note, **fields)
+
+
+def _blu_paid_order(tx) -> Order | None:
+    """An order of the same unique amount already paid (e.g. by the iPhone SMS first)
+    whose window contains this deposit."""
+    at, grace = tx.occurred_at, _blu_grace()
+    candidates = (Order.objects.filter(amount_unique=tx.amount_toman,
+                                       status__in=(OrderStatus.PAID, OrderStatus.COMPLETED),
+                                       created_at__lte=at + BLU_CREATED_SKEW,
+                                       unique_expire_at__gte=at - grace)
+                  .order_by("-created_at"))
+    for o in candidates[:5]:
+        if Payment.objects.live().filter(order=o, status=PaymentStatus.APPROVED).exists():
+            return o
+    return None
+
+
+def blu_amount(tx) -> SmsAmount:
+    return SmsAmount(raw=int(tx.amount_irr), unit=RIAL, unit_from="sms", toman=Decimal(tx.amount_irr) / 10)
+
+
+def match_blu_transaction(pk: int):
+    """Auto-confirm the pending order whose unique amount is EXACTLY this deposit (whole
+    tomans), inside the order's time window. Already paid → `duplicate`; close amount →
+    flagged for manual review (never approved); otherwise it stays `unmatched`."""
+    from .models import BluStatus, BluTransaction
+
+    with transaction.atomic():
+        tx = BluTransaction.objects.select_for_update().filter(pk=pk).first()
+        if tx is None or tx.status != BluStatus.UNMATCHED or tx.matched_order_id:
+            return tx
+        if tx.amount_toman is None:
+            _blu_note(tx, f"amount not a whole toman ({tx.amount_irr:,} Rial)")
+            return tx
+        at = tx.occurred_at
+        order = (Order.objects.select_for_update()
+                 .filter(status=OrderStatus.PENDING_PAYMENT, amount_unique_lock=tx.amount_toman).first())
+        if order is not None and order.status != OrderStatus.PENDING_PAYMENT:
+            order = None                     # paid by a concurrent SMS while we waited for the lock
+        if order is not None and not _blu_window_ok(order, at):
+            _blu_note(tx, f"order #{order.id} has this amount but the deposit is outside its window "
+                          f"(created {order.created_at:%Y-%m-%d %H:%M}, reservation until "
+                          f"{order.unique_expire_at:%Y-%m-%d %H:%M} UTC) — reused amount, not matched")
+            return tx
+        if order is not None:
+            existing = Payment.objects.select_for_update().filter(order=order).first()
+            if existing is not None and existing.status == PaymentStatus.APPROVED and existing.voided_at is None:
+                _blu_note(tx, f"order #{order.id} is already paid (payment {existing.tx_number}) — duplicate",
+                          status=BluStatus.DUPLICATE, matched_order=order)
+                return tx
+            confirm_blu(order, tx)
+            return tx
+
+        paid = _blu_paid_order(tx)
+        if paid is not None:
+            _blu_note(tx, f"order #{paid.id} was already paid (SMS / receipt) — duplicate, not approved again",
+                      status=BluStatus.DUPLICATE, matched_order=paid)
+            return tx
+        amount = blu_amount(tx)
+        suspect = near_order(amount, at)
+        if suspect is not None:
+            flag_blu_mismatch(tx, suspect)
+            return tx
+        _blu_note(tx, f"no pending order of exactly {tx.amount_toman:,} T at the deposit time")
+        return tx
+
+
+def confirm_blu(order: Order, tx, *, staff=None) -> Payment:
+    """Approve `order` with Blu deposit `tx` — like _auto_confirm (or a staff attach when
+    `staff` is given). The caller holds the row locks inside a transaction."""
+    from apps.notifications.live import push_payments_event
+    from apps.orders.services import mark_paid_and_fulfill
+
+    from .models import BluStatus
+    from .services import _FULFILLABLE, default_bank_card
+
+    existing = Payment.objects.filter(order=order).first()
+    payment, _ = Payment.objects.update_or_create(
+        order=order,
+        defaults=dict(
+            method=PaymentMethod.BLU_AUTO,
+            amount=order.amount_unique,
+            status=PaymentStatus.APPROVED,
+            blu_transaction=tx,
+            bank_card=(existing.bank_card if existing and existing.bank_card_id else default_bank_card()),
+            confirmed_by=ConfirmedBy.ADMIN if staff else ConfirmedBy.SYSTEM,
+            confirmed_by_staff=staff,
+            confirmed_at=timezone.now(),
+            reject_reason="",
+            # the bank's document number feeds the duplicate-receipt warnings (checks.py)
+            receipt_ref=(existing.receipt_ref if existing and existing.receipt_ref else (tx.reference or tx.receipt)),
+        ),
+    )
+    if order.status in _FULFILLABLE:
+        mark_paid_and_fulfill(order)
+    detail = {"blu_transaction": tx.id, "order": order.id, "amount": str(order.amount_unique),
+              "deposit_toman": str(tx.amount_toman) if tx.amount_toman is not None else None,
+              "receipt": tx.receipt, "reference": tx.reference}
+    write_audit(action="payment.blu_attached" if staff else "payment.blu_auto_confirmed",
+                staff=staff, target=payment, detail=detail)
+    push_payments_event("blu_approved", order_id=order.id, payment_id=payment.id)
+    how = f"attached by {staff.username}" if staff else "auto-confirmed"
+    _blu_note(tx, f"matched order #{order.id} ({order.amount_unique:,} T) — {how}",
+              status=BluStatus.MATCHED, matched_order=order, matched_payment=payment)
+    log.info("Blu %s %s order %s (%s T)", tx.id, how, order.id, order.amount_unique)
+    return payment
+
+
+def flag_blu_mismatch(tx, order: Order) -> str:
+    """A deposit close to an open invoice: never approved. A pending "blu_mismatch" payment
+    puts the order in the Payments queue (an existing pending receipt gets the deposit
+    attached); staff get a live event + Telegram. The deposit stays `unmatched`, linked."""
+    from apps.common.staff_alert import alert_staff
+    from apps.notifications.live import push_payments_event
+
+    from .services import default_bank_card
+
+    t, inv = Decimal(tx.amount_toman), Decimal(order.amount_unique)
+    kind = "less" if t < inv else "more"
+    payment = Payment.objects.select_for_update().filter(order=order).first()
+    if payment is None:
+        payment = Payment.objects.create(order=order, method=PaymentMethod.BLU_MISMATCH, amount=order.amount_unique,
+                                         status=PaymentStatus.PENDING, blu_transaction=tx,
+                                         bank_card=default_bank_card(), receipt_ref=tx.reference or tx.receipt)
+    elif payment.status == PaymentStatus.PENDING and payment.blu_transaction_id is None:
+        payment.blu_transaction = tx
+        payment.save(update_fields=["blu_transaction", "updated_at"])
+    word = "LESS" if kind == "less" else "MORE"
+    _blu_note(tx, f"amount mismatch — {word} than invoice, NOT approved, review by hand: deposit "
+                  f"{tx.amount_toman:,} T, order #{order.id} expects {order.amount_unique:,} T",
+              matched_order=order)
+    write_audit(action="payment.blu_amount_mismatch", target=payment,
+                detail={"blu_transaction": tx.id, "order": order.id, "kind": kind,
+                        "deposit_toman": str(tx.amount_toman), "invoice": str(order.amount_unique)})
+    push_payments_event("blu_mismatch", order_id=order.id, payment_id=payment.id, kind=kind,
+                        sms_amount=str(tx.amount_toman), invoice_amount=str(order.amount_unique))
+    fa = "کمتر" if kind == "less" else "بیشتر"
+    transaction.on_commit(lambda: alert_staff(
+        f"⚠️ مبلغ نامطابق (بلو): واریز {tx.amount_toman:,} تومان، {fa} از فاکتور سفارش #{order.id} "
+        f"({order.amount_unique:,} تومان). خودکار تأیید نشد — در صف پرداخت بررسی کنید.\n"
+        f"Blu amount mismatch: deposit {tx.amount_toman:,} T vs order #{order.id} invoice "
+        f"{order.amount_unique:,} T — review it in the payment queue.",
+        perm="payment.approve", dedupe_key=f"blu:mismatch:{tx.id}"))
+    log.warning("Blu %s: amount %s than order %s (%s vs %s T) — not approved",
+                tx.id, kind, order.id, tx.amount_toman, order.amount_unique)
+    return kind

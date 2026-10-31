@@ -29,14 +29,23 @@ export function LivePaymentsProvider({ children }) {
   const { lang } = useI18n()
   const notify = useRef(null)
   notify.current = (msg) => {
-    // a deposit SMS close to an open invoice but not equal: never approved, needs a person
-    if (msg.event !== 'sms_mismatch') return
-    const n = (v) => Number(v || 0).toLocaleString('en-US')
     const fa = lang === 'fa'
+    // the Blu collector went silent / came back (backend payments_sms/blu.py)
+    if (msg.event === 'blu_collector') {
+      if (msg.connected) toast.success(fa ? 'جمع‌کنندهٔ واریزهای بلو دوباره وصل شد' : 'Blu deposit collector is back online')
+      else toast.error(fa ? `از جمع‌کنندهٔ واریزهای بلو ${msg.minutes} دقیقه است خبری نیست — تأیید خودکار بلو متوقف است`
+        : `Blu deposit collector silent for ${msg.minutes} min — Blu auto-confirm is paused`)
+      return
+    }
+    // a deposit (bank SMS or Blu) close to an open invoice but not equal: never approved, needs a person
+    if (msg.event !== 'sms_mismatch' && msg.event !== 'blu_mismatch') return
+    const blu = msg.event === 'blu_mismatch'
+    const n = (v) => Number(v || 0).toLocaleString('en-US')
     const what = msg.kind === 'more' ? (fa ? 'بیشتر از فاکتور' : 'MORE than the invoice') : (fa ? 'کمتر از فاکتور' : 'LESS than the invoice')
+    const src = blu ? (fa ? 'واریز بلو' : 'Blu deposit') : (fa ? 'پیامک' : 'SMS')
     toast.error(fa
-      ? `مبلغ نامطابق در پیامک (${what}) — سفارش #${msg.order_id}: پیامک ${n(msg.sms_amount)} تومان، فاکتور ${n(msg.invoice_amount)} تومان. در صف پرداخت بررسی کنید.`
-      : `SMS amount mismatch (${what}) — order #${msg.order_id}: SMS ${n(msg.sms_amount)} T, invoice ${n(msg.invoice_amount)} T. Review it in the payment queue.`)
+      ? `مبلغ نامطابق در ${src} (${what}) — سفارش #${msg.order_id}: ${src} ${n(msg.sms_amount)} تومان، فاکتور ${n(msg.invoice_amount)} تومان. در صف پرداخت بررسی کنید.`
+      : `${src} amount mismatch (${what}) — order #${msg.order_id}: ${src} ${n(msg.sms_amount)} T, invoice ${n(msg.invoice_amount)} T. Review it in the payment queue.`)
   }
 
   const refreshCount = useCallback(() => {

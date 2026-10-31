@@ -29,6 +29,8 @@ from .views.catalog import (
 from .views.email import EmailSettingsView, EmailTestView
 from .views.finance import (
     AccountingView,
+    BluAttachView,
+    BluTransactionListView,
     PaymentDecisionView,
     PaymentReceiptInfoView,
     PendingPaymentsView,
@@ -80,6 +82,8 @@ urlpatterns = [
     path("auth/me/", StaffMeView.as_view(), name="admin-me"),
     path("accounting/", AccountingView.as_view(), name="admin-accounting"),
     path("payments/pending/", PendingPaymentsView.as_view(), name="admin-payments-pending"),
+    path("payments/blu-transactions/", BluTransactionListView.as_view(), name="admin-blu-transactions"),
+    path("payments/blu-transactions/<int:pk>/attach/", BluAttachView.as_view(), name="admin-blu-attach"),
     path("payments/<int:pk>/receipt-info/", PaymentReceiptInfoView.as_view(), name="admin-payment-receipt-info"),
     path("payments/<int:pk>/<str:action>/", PaymentDecisionView.as_view(), name="admin-payment-decision"),
     path("branding/", SiteConfigView.as_view(), name="admin-branding"),

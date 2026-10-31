@@ -191,6 +191,9 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
 ## SMS ingest (docs/sms-batch.md)
 - SMS are matched at `received_at` (when the phone got them) via `matching.open_orders_at`; keep `inbound-batch`
   idempotent (`dedupe_key` unique) — never match or approve an SMS twice. The old `/inbound/` stays for the Android app.
+- Blu deposits (docs/blu-webhook.md): signature checked on the RAW body before parsing; `bank_id` unique, existing rows never
+  touched; matched once, in Celery, only inside the order's window (`created_at − 2 min … unique_expire_at + grace`) — unique
+  amounts are reused. Card numbers stay masked (first6******last4), also in `raw`. The secret is only in `.env`.
 
 ## Panel account names
 - Never attach a customer to a panel account we did not create: names are checked in our DB **and** on the panel

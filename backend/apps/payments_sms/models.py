@@ -125,6 +125,8 @@ class PaymentMethod(models.TextChoices):
     CARD_MANUAL = "card_manual", "Card-to-card (manual)"
     SMS_AUTO = "sms_auto", "SMS auto-match"
     SMS_MISMATCH = "sms_mismatch", "SMS — amount mismatch (manual review)"
+    BLU_AUTO = "blu_auto", "Blu auto-match"
+    BLU_MISMATCH = "blu_mismatch", "Blu — amount mismatch (manual review)"
     GATEWAY = "gateway", "Gateway"
 
 
@@ -182,6 +184,10 @@ class Payment(TimeStampedModel):
     sms_message = models.ForeignKey(
         SmsMessage, null=True, blank=True, on_delete=models.SET_NULL, related_name="payments"
     )
+    # the Blu Bank deposit that paid (blu_auto / manual attach) or nearly matched (blu_mismatch) it
+    blu_transaction = models.ForeignKey(
+        "payments_sms.BluTransaction", null=True, blank=True, on_delete=models.SET_NULL, related_name="payments"
+    )
     gateway_ref = models.CharField(max_length=128, null=True, blank=True)
     confirmed_by = models.CharField(max_length=8, choices=ConfirmedBy.choices, null=True, blank=True)
     confirmed_by_staff = models.ForeignKey(
@@ -222,3 +228,72 @@ class Payment(TimeStampedModel):
         if self.number is None and self.pk:
             self.number = self.pk
             type(self).objects.filter(pk=self.pk, number__isnull=True).update(number=self.pk)
+
+
+# ---------------------------------------------------------------------------
+# Blu Bank deposits pushed by the Iran-side collector (apps/payments_sms/blu.py)
+# ---------------------------------------------------------------------------
+BLU_CREDIT = "بستانکار"
+
+
+class BluStatus(models.TextChoices):
+    UNMATCHED = "unmatched", "Unmatched"
+    MATCHED = "matched", "Matched"
+    DUPLICATE = "duplicate", "Duplicate (order already paid)"
+    IGNORED = "ignored", "Ignored (not a deposit)"
+
+
+class BluTransaction(models.Model):
+    """One account-history row from Blu, stored once (bank_id is the idempotency key).
+    Card numbers are kept masked as the collector sends them (first6******last4)."""
+
+    bank_id = models.CharField(max_length=255, unique=True)
+    amount_irr = models.BigIntegerField()
+    # whole tomans; null when the Rial amount is not a multiple of 10 (never matched)
+    amount_toman = models.DecimalField(max_digits=12, decimal_places=0, null=True, blank=True)
+    occurred_at = models.DateTimeField(db_index=True)
+    direction = models.CharField(max_length=32, blank=True, default="")
+    type_label = models.CharField(max_length=64, blank=True, default="")
+    jalali_date = models.CharField(max_length=16, blank=True, default="")
+    time_str = models.CharField(max_length=16, blank=True, default="")
+    payer_name = models.CharField(max_length=128, blank=True, default="")
+    payer_card = models.CharField(max_length=32, blank=True, default="")
+    payer_last4 = models.CharField(max_length=4, blank=True, default="", db_index=True)
+    receipt = models.CharField(max_length=32, blank=True, default="", db_index=True)      # شماره پیگیری
+    reference = models.CharField(max_length=32, blank=True, default="", db_index=True)    # شماره مرجع
+    account_iban = models.CharField(max_length=34, blank=True, default="")
+    balance_after_irr = models.BigIntegerField(null=True, blank=True)
+    raw = models.JSONField(default=dict)
+    status = models.CharField(max_length=10, choices=BluStatus.choices, default=BluStatus.UNMATCHED, db_index=True)
+    matched_order = models.ForeignKey("orders.Order", null=True, blank=True, on_delete=models.SET_NULL,
+                                      related_name="blu_transactions")
+    matched_payment = models.ForeignKey(Payment, null=True, blank=True, on_delete=models.SET_NULL,
+                                        related_name="+")
+    match_note = models.CharField(max_length=255, blank=True, default="")
+    received_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "blu_transaction"
+        ordering = ("-occurred_at", "-id")
+
+    def __str__(self) -> str:
+        return f"blu#{self.pk} {self.amount_irr} IRR {self.status}"
+
+
+class BluCollector(models.Model):
+    """Single row (pk=1): collector health — the last signed batch (an empty batch is a heartbeat)."""
+
+    last_batch_at = models.DateTimeField(null=True, blank=True)
+    last_batch_id = models.CharField(max_length=64, blank=True, default="")
+    last_items = models.PositiveIntegerField(default=0)
+    batches = models.PositiveIntegerField(default=0)
+    # set when the "offline" alert went out; cleared (with a "back online" alert) by the next batch
+    stale_alerted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "blu_collector"
+
+    @classmethod
+    def get(cls) -> "BluCollector":
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj

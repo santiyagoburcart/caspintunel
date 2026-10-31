@@ -2,6 +2,7 @@ from django.urls import path
 
 from .views import (
     BankCardListView,
+    BluWebhookView,
     PaymentApproveView,
     PaymentPendingListView,
     PaymentRejectView,
@@ -27,4 +28,6 @@ urlpatterns = [
     path("sms/inbound-batch/", SmsInboundBatchView.as_view(), name="sms-inbound-batch"),
     path("sms/ping/", SmsPingView.as_view(), name="sms-ping"),
     path("sms/sources/", SmsSourcesView.as_view(), name="sms-sources"),
+    # Blu Bank collector (Iran side) — HMAC-signed batches, no account
+    path("blu/webhook/", BluWebhookView.as_view(), name="blu-webhook"),
 ]

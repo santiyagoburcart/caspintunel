@@ -113,6 +113,13 @@ def approve_payment(payment_id: int, *, actor=None, bank_card=None) -> Payment:
                                 "reject_reason", "bank_card", "updated_at"])
 
     payment.order = order
+    if payment.blu_transaction_id:
+        # a Blu deposit flagged "amount mismatch" that staff accepted: it is now used
+        from .models import BluStatus, BluTransaction
+
+        BluTransaction.objects.filter(pk=payment.blu_transaction_id, status=BluStatus.UNMATCHED).update(
+            status=BluStatus.MATCHED, matched_order=order, matched_payment=payment,
+            match_note=f"approved by staff in the payment queue (order #{order.id})"[:255])
     if order.status in _FULFILLABLE:
         mark_paid_and_fulfill(order)
     else:

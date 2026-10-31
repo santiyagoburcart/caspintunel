@@ -20,7 +20,7 @@ const T = {
     none: 'No bank cards registered yet',
   },
 }
-const METHODS = ['card_manual', 'sms_auto', 'sms_mismatch', 'gateway']
+const METHODS = ['card_manual', 'sms_auto', 'sms_mismatch', 'blu_auto', 'blu_mismatch', 'gateway']
 
 /** value/onApply shape: { banks: string[], methods: string[] } */
 export function BankFilterSheet({ open, onClose, value, onApply }) {

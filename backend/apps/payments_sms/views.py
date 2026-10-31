@@ -249,3 +249,42 @@ def _log_rejected_inbound(request, errors) -> None:
         device=request.auth, raw_text=(text or "")[:2000], sender=(sender or "")[:64],
         note=f"rejected by the server (400: invalid {fields}){hint}"[:255],
     )
+
+
+class BluWebhookView(APIView):
+    """Signed deposit batches from the Iran-side Blu collector (blu.py). The signature is
+    checked on the raw body before any parsing; one bad item never fails the batch."""
+
+    authentication_classes = []
+    permission_classes = [permissions.AllowAny]
+    parser_classes = []                     # the raw bytes are what was signed
+    throttle_scope = "blu_webhook"
+
+    @extend_schema(request=None, responses=dict, summary="Blu collector: signed batch of deposits (empty = heartbeat)")
+    def post(self, request):
+        import json
+        import logging
+
+        from . import blu
+
+        log = logging.getLogger("caspintunel")
+        secret = blu.push_secret()
+        if not secret:
+            return Response({"ok": False, "detail": "Blu webhook is not configured"},
+                            status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        raw = request.body
+        why = blu.verify(secret, request.META.get("HTTP_X_BLU_TIMESTAMP"),
+                         request.META.get("HTTP_X_BLU_SIGNATURE"), raw)
+        batch_id = (request.META.get("HTTP_X_BLU_BATCH_ID") or "").strip()[:64]
+        if why:
+            log.warning("Blu webhook refused (batch %s): %s", batch_id or "-", why)
+            return Response({"ok": False, "detail": "invalid signature"}, status=status.HTTP_403_FORBIDDEN)
+        try:
+            body = json.loads(raw.decode("utf-8"))
+        except (UnicodeDecodeError, ValueError):
+            return Response({"ok": False, "detail": "body is not valid JSON"}, status=status.HTTP_400_BAD_REQUEST)
+        items = body.get("items") if isinstance(body, dict) else None
+        if not isinstance(items, list):
+            return Response({"ok": False, "detail": "items (a list) is required"}, status=status.HTTP_400_BAD_REQUEST)
+        result = blu.ingest_batch(items, batch_id=batch_id or str(body.get("batch_id") or "")[:64])
+        return Response(result)

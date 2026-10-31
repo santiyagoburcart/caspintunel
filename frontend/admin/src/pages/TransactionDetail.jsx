@@ -194,6 +194,7 @@ export default function TransactionDetail() {
   const confirmer = !r.confirmer ? null
     : r.confirmer === 'admin' ? t('src_admin')
     : r.confirmer === 'SMS system' ? t('m_sms_auto')
+    : r.confirmer === 'Blu system' ? t('m_blu_auto')
     : r.confirmer
   const hasAudit = confirmer || r.confirmed_at || r.reject_reason
 

@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import BankCard, Payment, SmsAppDevice, SmsMessage, SmsSource
+from .models import BankCard, BluCollector, BluTransaction, Payment, SmsAppDevice, SmsMessage, SmsSource
 
 
 @admin.register(BankCard)
@@ -44,5 +44,19 @@ class PaymentAdmin(admin.ModelAdmin):
     list_display = ("id", "order", "method", "amount", "status", "bank_card", "confirmed_by", "confirmed_at")
     list_filter = ("status", "method", "confirmed_by", "bank_card")
     search_fields = ("order__user__username", "gateway_ref")
-    raw_id_fields = ("order", "sms_message", "confirmed_by_staff")
+    raw_id_fields = ("order", "sms_message", "blu_transaction", "confirmed_by_staff")
     readonly_fields = ("created_at", "updated_at")
+
+
+@admin.register(BluTransaction)
+class BluTransactionAdmin(admin.ModelAdmin):
+    list_display = ("id", "amount_toman", "amount_irr", "occurred_at", "payer_last4", "status", "matched_order")
+    list_filter = ("status",)
+    search_fields = ("bank_id", "receipt", "reference", "payer_last4")
+    raw_id_fields = ("matched_order", "matched_payment")
+    readonly_fields = ("bank_id", "received_at", "raw")
+
+
+@admin.register(BluCollector)
+class BluCollectorAdmin(admin.ModelAdmin):
+    list_display = ("id", "last_batch_at", "last_batch_id", "last_items", "batches", "stale_alerted_at")

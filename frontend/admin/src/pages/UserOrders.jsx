@@ -16,7 +16,7 @@ const T = {
     col_method: 'روش پرداخت', col_status: 'وضعیت', col_confirmer: 'تأییدکننده',
     col_account: 'نام اکانت', col_invoice: 'فاکتور',
     invoice_link: 'جزئیات فاکتور', no_invoice: '—',
-    confirmer_system: 'سامانه پیامک', confirmer_admin: 'ادمین',
+    confirmer_system: 'سامانه پیامک', confirmer_blu: 'سامانه بلو', confirmer_admin: 'ادمین',
     none: 'این کاربر هنوز سفارشی ثبت نکرده است', load_error: 'خطا در دریافت اطلاعات',
     renew_tag: 'تمدید', new_tag: 'خرید جدید', addon_tag: 'افزایش حجم',
     manual_tag: 'دستی', imported_tag: 'اتصال سرویس موجود',
@@ -31,7 +31,7 @@ const T = {
     col_method: 'Payment method', col_status: 'Status', col_confirmer: 'Confirmed by',
     col_account: 'Account name', col_invoice: 'Invoice',
     invoice_link: 'Invoice details', no_invoice: '—',
-    confirmer_system: 'SMS system', confirmer_admin: 'Admin',
+    confirmer_system: 'SMS system', confirmer_blu: 'Blu system', confirmer_admin: 'Admin',
     none: 'This user has not placed any orders yet', load_error: 'Failed to load data',
     renew_tag: 'Renewal', new_tag: 'New purchase', addon_tag: 'Add-on volume',
     manual_tag: 'Manual', imported_tag: 'Linked existing',
@@ -94,6 +94,7 @@ function StatusPill({ status, t }) {
 function confirmerLabel(row, s) {
   if (!row.confirmer) return '—'
   if (row.confirmer === 'SMS system') return s.confirmer_system
+  if (row.confirmer === 'Blu system') return s.confirmer_blu
   if (row.confirmer === 'admin') return s.confirmer_admin
   return row.confirmer
 }

@@ -5,9 +5,10 @@ linked records before they approve.
 
 Kinds:
 - amount_mismatch   the amount on the receipt ≠ the order's unique amount
-- recent_sms        the same customer had a payment approved by bank SMS within 24 h
+- recent_sms        the same customer had a payment approved by bank SMS / Blu within 24 h
 - duplicate_image   the same receipt image (sha256) is on another payment
-- duplicate_ref     the same bank document / tracking number is on another payment
+- duplicate_ref     the same bank document / tracking number is on another payment (typed on a
+                    receipt, or the receipt / reference number of a linked Blu deposit)
 - renewal_waiting   a renewal order whose service already has another paid renewal waiting
 """
 from __future__ import annotations
@@ -16,6 +17,8 @@ import hashlib
 import re
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
+
+from django.db.models import Q
 
 from .models import Payment, PaymentMethod, PaymentStatus
 
@@ -70,6 +73,16 @@ def _others(p: Payment):
     return Payment.objects.exclude(pk=p.pk).select_related("order", "order__user").order_by("-id")
 
 
+def payment_refs(p: Payment) -> list[str]:
+    """Every bank document number known for a payment: typed on the receipt, and the Blu
+    deposit's tracking (receipt) + reference numbers."""
+    refs = [p.receipt_ref]
+    tx = p.blu_transaction if p.blu_transaction_id else None
+    if tx is not None:
+        refs += [tx.receipt, tx.reference]
+    return list(dict.fromkeys(r for r in refs if r))
+
+
 def payment_warnings(p: Payment) -> list[dict]:
     order = p.order
     out: list[dict] = []
@@ -82,7 +95,8 @@ def payment_warnings(p: Payment) -> list[dict]:
         around = p.created_at
         recent = [x for x in _others(p).filter(
             order__user_id=order.user_id, status=PaymentStatus.APPROVED, voided_at__isnull=True,
-            method__in=(PaymentMethod.SMS_AUTO, PaymentMethod.SMS_MISMATCH),
+            method__in=(PaymentMethod.SMS_AUTO, PaymentMethod.SMS_MISMATCH,
+                        PaymentMethod.BLU_AUTO, PaymentMethod.BLU_MISMATCH),
             confirmed_at__gte=around - RECENT_SMS_WINDOW, confirmed_at__lte=around + RECENT_SMS_WINDOW)[:5]]
         if recent:
             links = [_link(x) for x in recent]
@@ -95,10 +109,13 @@ def payment_warnings(p: Payment) -> list[dict]:
         if same:
             out.append({"kind": "duplicate_image", "payments": [_link(x) for x in same]})
 
-    if p.receipt_ref:
-        same = list(_others(p).filter(receipt_ref=p.receipt_ref)[:5])
+    refs = payment_refs(p)
+    if refs:
+        same = list(_others(p).filter(Q(receipt_ref__in=refs) | Q(blu_transaction__receipt__in=refs)
+                                      | Q(blu_transaction__reference__in=refs)).distinct()[:5])
         if same:
-            out.append({"kind": "duplicate_ref", "ref": p.receipt_ref, "payments": [_link(x) for x in same]})
+            hit = next((r for r in refs if any(r in payment_refs(x) for x in same)), refs[0])
+            out.append({"kind": "duplicate_ref", "ref": hit, "payments": [_link(x) for x in same]})
 
     if order is not None and order.type == "renew" and order.service_id:
         from apps.orders.services import waiting_renewal

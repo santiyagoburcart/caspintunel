@@ -401,6 +401,15 @@ class Command(BaseCommand):
             },
         )
         PeriodicTask.objects.update_or_create(
+            name="payments: Blu collector offline check",
+            defaults={
+                "task": "apps.payments_sms.tasks.blu_stale_check_task",
+                "interval": every_5,
+                "kwargs": _json.dumps({}),
+                "enabled": True,
+            },
+        )
+        PeriodicTask.objects.update_or_create(
             name="panel: apply due scheduled renewals",
             defaults={
                 "task": "apps.panel.tasks.apply_due_scheduled_renewals",

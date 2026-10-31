@@ -36,7 +36,7 @@ const T = {
     s_usage: 'مصرف', s_expiry: 'انقضا', s_sub: 'لینک ساب', no_services: 'سرویسی نداشت',
     unlimited: 'نامحدود', no_expiry: 'بدون انقضا', copy: 'کپی', copied: 'کپی شد', missing: 'روی پنل وجود نداشت',
     t_new: 'خرید جدید', t_renew: 'تمدید', t_addon_volume: 'افزایش حجم', t_manual: 'دستی', t_imported: 'اتصال سرویس موجود',
-    p_approved: 'تأییدشده', p_pending: 'در انتظار', p_rejected: 'ردشده', system: 'سامانه پیامک',
+    p_approved: 'تأییدشده', p_pending: 'در انتظار', p_rejected: 'ردشده', system: 'سامانه پیامک', blu: 'سامانه بلو',
     lang_fa: 'فارسی', lang_en: 'انگلیسی',
   },
   en: {
@@ -63,7 +63,7 @@ const T = {
     s_usage: 'Usage', s_expiry: 'Expiry', s_sub: 'Sub link', no_services: 'No services',
     unlimited: 'unlimited', no_expiry: 'No expiry', copy: 'Copy', copied: 'Copied', missing: 'not found on the panel',
     t_new: 'New purchase', t_renew: 'Renewal', t_addon_volume: 'Add-on volume', t_manual: 'Manual', t_imported: 'Linked existing',
-    p_approved: 'Approved', p_pending: 'Pending', p_rejected: 'Rejected', system: 'SMS system',
+    p_approved: 'Approved', p_pending: 'Pending', p_rejected: 'Rejected', system: 'SMS system', blu: 'Blu system',
     lang_fa: 'Persian', lang_en: 'English',
   },
 }
@@ -254,7 +254,7 @@ function ArchiveDetail({ id }) {
   const conflicts = a.restore_conflicts || {}
   const hasConflicts = Object.keys(conflicts).length > 0
   const payLabel = (st) => s[`p_${st}`] || st
-  const confirmer = (c) => (c === 'SMS system' ? s.system : c)
+  const confirmer = (c) => (c === 'SMS system' ? s.system : c === 'Blu system' ? s.blu : c)
 
   const restore = async () => {
     const res = await userActions.restore(a)
