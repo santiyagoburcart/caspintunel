@@ -49,4 +49,5 @@ services:
       - ./mobile_shortcut:/app/mobile_shortcut:ro
       - ./docs:/app/docs:ro                           # admin "Documentation" page
       - ./mobile_sms/release:/app/app_releases:ro
+      - ./frontend/admin/src:/app/frontend_admin_src:ro   # panel menu ↔ routes ↔ permissions (test_mobile_nav)
     command: ["python", "-m", "pytest", "-p", "no:warnings"]

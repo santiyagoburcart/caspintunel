@@ -404,6 +404,13 @@ def _canned_row(c) -> dict:
 class CannedRepliesView(_StaffView):
     perms_map = {"GET": ["tickets.reply"], "POST": ["tickets.manage_topics"]}
 
+    def get_permissions(self):
+        # ?all=1 is the Ticket topics page (managers edit inactive replies too): it needs the
+        # topic-manager permission, not tickets.reply — the composer's list keeps tickets.reply
+        manage = self.request.method == "GET" and self.request.query_params.get("all") == "1"
+        self.perms_map = {"GET": ["tickets.manage_topics"] if manage else ["tickets.reply"], "POST": ["tickets.manage_topics"]}
+        return super().get_permissions()
+
     @extend_schema(summary="Saved replies (?topic=<id> → that topic's + general ones, active only; ?all=1 for managers)")
     def get(self, request):
         qs = CannedReply.objects.all()

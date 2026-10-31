@@ -21,7 +21,7 @@ const nav = [
   ['/transactions', 'transactions', 'payment.view'],
   ['/sms-log', 'sms_log', 'payment.view'],
   ['/accounting', 'accounting', 'accounting.view'],
-  ['/analytics', 'analytics', 'accounting.view'],
+  ['/analytics', 'analytics', ['accounting.view', 'crm.view']],
   ['/cards', 'cards', 'payment.view'],
   ['/monitoring', 'monitoring', 'monitoring.view'],
   ['/panel-link', 'panel_link', 'settings.manage'],
@@ -36,7 +36,7 @@ const nav = [
   ['/pages', 'pages', 'pages.manage'],
   ['/themes', 'themes', 'themes.manage'],
   ['/roles', 'roles', 'roles.manage'],
-  ['/tickets/topics', 'ticket_topics', 'tickets.manage_topics'],
+  ['/tickets/topics', 'ticket_topics', ['tickets.view', 'tickets.manage_topics']],
   ['/docs', 'docs', 'settings.manage'],
 ]
 
@@ -86,9 +86,10 @@ function useSideNav() {
   const [drawer, setDrawer] = useState(false)
   useEffect(() => {
     const mq = window.matchMedia(WIDE_Q)
+    const phone = window.matchMedia('(max-width: 767px)')
     const on = () => { setWide(mq.matches); setDrawer(false) }
-    mq.addEventListener ? mq.addEventListener('change', on) : mq.addListener(on)
-    return () => { mq.removeEventListener ? mq.removeEventListener('change', on) : mq.removeListener(on) }
+    for (const q of [mq, phone]) q.addEventListener ? q.addEventListener('change', on) : q.addListener(on)
+    return () => { for (const q of [mq, phone]) q.removeEventListener ? q.removeEventListener('change', on) : q.removeListener(on) }
   }, [])
   const open = wide ? docked : drawer
   const toggle = useCallback(() => {
@@ -125,9 +126,9 @@ function MenuButton({ open, onClick, t, className }) {
   )
 }
 
-// signed-in account + theme / language / logout — bottom of the sidebar and the
-// mobile drawer, the same for every role (a group manager has no Settings tab,
-// so this is its only way out on a phone).
+// signed-in account + theme / language / logout — bottom of the desktop sidebar.
+// On Caspian phones the same block lives in the Settings tab (staff: pages/Settings.jsx,
+// group managers: GroupManager.jsx settings tab).
 const roleLabel = (staff, lang) => (staff?.role ? ((lang === 'fa' && staff.role_fa) || staff.role)
   : staff?.is_superadmin ? (lang === 'fa' ? 'ابرمدیر' : 'superadmin') : '')
 
@@ -401,10 +402,10 @@ function CaspianLayout() {
 
       <div className="csp-main">
         {/* mobile top bar (≤767px): brand on tab roots, back + page title on
-            inner pages; language + dark/light toggle always reachable */}
+            inner pages; language + dark/light toggle always reachable. No ☰ on phones
+            (v1.30.4): navigation = bottom tabs + the Settings tab; the avatar opens it. */}
         <header className="csp-mtop">
           <div className="csp-mtop-end">
-            <MenuButton className="csp-mtop-lang csp-mtop-ico csp-mtop-menu" open={side.open} onClick={side.toggle} t={t} />
             {!locked && (
               <button type="button" className="csp-mtop-lang csp-mtop-ico" onClick={toggle}
                 aria-label={mode === 'dark' ? t('light_mode') : t('dark_mode')}>
@@ -414,11 +415,9 @@ function CaspianLayout() {
             <button type="button" className="csp-mtop-lang" onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')}>
               {lang === 'fa' ? 'EN' : 'فا'}
             </button>
-            {!inner && (
-              <Link to={gm ? '/my-groups/settings' : '/settings'} className="csp-mtop-avatar" aria-label={t('settings')} data-testid="avatar">
-                {(staff?.username || '?').charAt(0).toUpperCase()}
-              </Link>
-            )}
+            <Link to={gm ? '/my-groups/settings' : '/settings'} className="csp-mtop-avatar" aria-label={t('settings')} data-testid="avatar">
+              {(staff?.username || '?').charAt(0).toUpperCase()}
+            </Link>
           </div>
           {inner ? (
             <div className="csp-mtop-brand csp-mtop-inner">
@@ -620,15 +619,12 @@ const CASPIAN_CSS = `
  * ================================================================= */
 .csp-mtop { display: none; }
 .csp-botnav { display: none; }
-/* phones: ☰ in the top bar opens the rail as a drawer (menu + account / logout) */
-@media (max-width: 767px) {
-  .csp-shell.nav-overlay.nav-open .csp-rail { display: block; z-index: 60; width: min(18rem, 84vw); box-shadow: 0 12px 48px rgb(0 0 0 / .28); }
-  .csp-shell.nav-overlay.nav-open .csp-backdrop { position: fixed; inset: 0; z-index: 55; background: rgb(0 0 0 / .35); }
-}
+/* phones: no rail / drawer at all (v1.30.4) — bottom tabs + the Settings tab only */
+@media (max-width: 767px) { .csp-rail, .csp-backdrop { display: none !important; } }
 .csp-acc { padding: 12px 16px 16px; }
 
 @media (max-width: 767px) {
-  /* --- top bar: hamburger · brand · online + avatar --- */
+  /* --- top bar: brand / back + title · theme · language · avatar (→ Settings tab) --- */
   .csp-mtop {
     display: flex; align-items: center; justify-content: space-between; gap: 8px;
     position: sticky; top: 0; z-index: 45;

@@ -47,8 +47,9 @@ export function AuthProvider({ children }) {
     if (refresh) api.post('/admin/auth/logout/', { refresh }, { quiet: true }).catch(() => {})
   }
 
-  const can = (code) =>
-    !!staff && (staff.is_superadmin || staff.permissions?.includes('*') || staff.permissions?.includes(code))
+  // a list means "all of these" (a page whose API needs several, e.g. Analytics)
+  const can = (code) => Array.isArray(code) ? code.every((c) => can(c))
+    : !!staff && (staff.is_superadmin || staff.permissions?.includes('*') || staff.permissions?.includes(code))
 
   return <Ctx.Provider value={{ staff, loading, login, logout, refreshMe, can }}>{children}</Ctx.Provider>
 }

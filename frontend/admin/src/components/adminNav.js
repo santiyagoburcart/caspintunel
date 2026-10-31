@@ -23,7 +23,7 @@ export const CASPIAN_GROUPS = [
     ['/transactions', 'transactions', 'payment.view', 'transactions'],
     ['/sms-log', 'sms_log', 'payment.view', 'sms'],
     ['/accounting', 'accounting', 'accounting.view', 'accounting'],
-    ['/analytics', 'analytics', 'accounting.view', 'analytics'],
+    ['/analytics', 'analytics', ['accounting.view', 'crm.view'], 'analytics'],   // its API needs both
     ['/cards', 'cards', 'payment.view', 'cards'],
     ['/discounts', 'discounts', 'discounts.view', 'discounts'],
   ]],
@@ -39,7 +39,7 @@ export const CASPIAN_GROUPS = [
     ['/pages', 'pages', 'pages.manage', 'pages'],
     ['/themes', 'themes', 'themes.manage', 'themes'],
     ['/roles', 'roles', 'roles.manage', 'roles'],
-    ['/tickets/topics', 'ticket_topics', 'tickets.manage_topics', 'ticketTopics'],
+    ['/tickets/topics', 'ticket_topics', ['tickets.view', 'tickets.manage_topics'], 'ticketTopics'],   // topics + settings are read with tickets.view
     ['/docs', 'docs', 'settings.manage', 'docs'],
   ]],
 ]

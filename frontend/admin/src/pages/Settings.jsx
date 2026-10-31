@@ -8,8 +8,9 @@ import { Alert, Field, Spinner, Toggle } from '../components/ui'
 import { useToast } from '../components/Toast'
 import { copyToClipboard } from '../lib/clipboard'
 import { useDeleteConfirm } from '../lib/confirmDelete'
-import { CASPIAN_BOTNAV, CASPIAN_GROUPS, NAV_ICONS } from '../components/adminNav'
+import { CASPIAN_GROUPS, NAV_ICONS } from '../components/adminNav'
 import { useLiveTickets } from '../lib/liveTickets'
+import { useTheme } from '../theme/ThemeProvider'
 
 function HubIco({ d, w = 18 }) {
   return (
@@ -85,7 +86,12 @@ const HUB = {
     monitoring: { t: 'مانیتورینگ', d: 'سلامت سرویس‌ها، منابع سرور و بک‌آپ‌ها' },
     sync: { t: 'همگام‌سازی سرویس‌ها', d: 'فاصلهٔ همگام‌سازی خودکار با پنل' },
     display: { t: 'زبان و نمایش', d: 'زبان پیش‌فرض و نحوهٔ نمایش محصولات' },
+    dashboard: { t: 'داشبورد', d: 'نمای کلی فروش، کاربران و وضعیت سامانه' },
+    users: { t: 'کاربران', d: 'جست‌وجو، ویرایش و سفارش‌های کاربران' },
+    payments: { t: 'صف پرداخت‌ها', d: 'بررسی و تأیید رسیدها و پرداخت‌های در انتظار' },
+    services: { t: 'سرویس‌ها', d: 'همهٔ سرویس‌های کاربران، حجم، انقضا و ویرایش' },
     g_config: 'تنظیمات عمومی', g_account: 'حساب',
+    lang: 'زبان', theme: 'پوسته', light: 'روشن', dark: 'تاریک',
     logout: 'خروج از حساب مدیریت',
   },
   en: {
@@ -123,7 +129,12 @@ const HUB = {
     monitoring: { t: 'Monitoring', d: 'Service health, server resources and backups' },
     sync: { t: 'Service sync', d: 'Automatic panel sync interval' },
     display: { t: 'Language & display', d: 'Default language and product display mode' },
+    dashboard: { t: 'Dashboard', d: 'Sales, users and system status at a glance' },
+    users: { t: 'Users', d: 'Search, edit and view customer orders' },
+    payments: { t: 'Payments queue', d: 'Review and approve pending receipts and payments' },
+    services: { t: 'Services', d: 'Every customer service, usage, expiry and edit' },
     g_config: 'General settings', g_account: 'Account',
+    lang: 'Language', theme: 'Theme', light: 'Light', dark: 'Dark',
     logout: 'Log out of the admin account',
   },
 }
@@ -142,15 +153,17 @@ const HUB_COLOR = {
   transactions: '#11AB53', sms_log: '#1464BA', accounting: '#11AB53', cards: '#11AB53', discounts: '#DB2777',
   apps: '#0891B2', plans: '#1464BA', deleted: 'var(--c-danger)', notifications: '#7C3AED',
   tickets: '#7C3AED', ticket_topics: '#7C3AED', crm: '#0891B2', analytics: '#11AB53',
+  dashboard: '#1464BA', users: '#1464BA', payments: '#11AB53', services: '#0891B2',
   monitoring: '#0891B2', sync: '#1464BA', display: '#64748B', docs: '#64748B', agency: '#7C3AED', paths: '#D97706', domain: '#0891B2',
 }
 
-// the mobile index of every admin page that isn't a bottom-nav tab — built
-// from the desktop sidebar's own list (components/adminNav.js), so it has the
-// same groups, order, icons and permission rules. Deleted users (a Users
-// sub-page) and the General settings sections are mobile-only extras.
+// the mobile index of EVERY admin page (v1.30.4: bottom-tab pages too, so nothing is only
+// reachable one way) — built from the desktop sidebar's own list (components/adminNav.js),
+// so it has the same groups, order, icons and permission rules. Deleted users (a Users
+// sub-page) and the General settings sections are mobile-only extras; /settings itself is
+// this page. Sub-pages (agency, CRM, analytics tabs, details) are reached from their page.
 // [route, text-key, permission, desktop-icon | null]
-const BOTTOM_TABS = new Set(CASPIAN_BOTNAV.map(([to]) => to))
+const SELF = '/settings'
 const HUB_TEXT = { panel_link: 'panel', email_settings: 'email', domain_cf: 'domain' }   // desktop i18n key → HUB text key
 const HUB_EXTRA = { nav_group_users: [['/users/deleted', 'deleted', 'users.view', null]] }
 const SETTINGS_SECTIONS = ['g_config', [
@@ -165,7 +178,7 @@ const SETTINGS_SECTIONS = ['g_config', [
 ]]
 const HUB_GROUPS = [
   ...CASPIAN_GROUPS.map(([g, items]) => [g, [
-    ...items.filter(([to]) => !BOTTOM_TABS.has(to)).map(([to, key, p, icon]) => [to, HUB_TEXT[key] || key, p, icon]),
+    ...items.filter(([to]) => to !== SELF).map(([to, key, p, icon]) => [to, HUB_TEXT[key] || key, p, icon]),
     ...(HUB_EXTRA[g] || []),
   ]]),
   SETTINGS_SECTIONS,
@@ -178,9 +191,13 @@ const OWN_PAGE_SETTINGS = new Set(['ios_shortcut_icloud_url'])
 const FORM_SECTIONS = ['unique-amount', 'alerts', 'sync', 'backup', 'requirements', 'display']
 const SOLO_SECTIONS = [...FORM_SECTIONS, 'sms-devices', 'sms-sources']
 
+const roleText = (staff, lang) => (staff?.role ? ((lang === 'fa' && staff.role_fa) || staff.role)
+  : staff?.is_superadmin ? (lang === 'fa' ? 'ابرمدیر' : 'superadmin') : '')
+
 function SettingsHub() {
-  const { t, lang } = useI18n()
-  const { logout, can } = useAuth()
+  const { t, lang, setLang } = useI18n()
+  const { staff, logout, can } = useAuth()
+  const { mode, toggle, locked } = useTheme()
   const { badge } = useLiveTickets()
   const go = useNavigate()
   const h = HUB[lang] || HUB.fa
@@ -217,7 +234,26 @@ function SettingsHub() {
       ))}
       <section className="st-hub-group">
         <h3 className="st-hub-gh">{h.g_account}</h3>
-        <div className="card p-0 st-hub-list">
+        <div className="card p-0 st-hub-list" data-testid="hub-account">
+          <div className="st-hub-item">
+            <span className="st-hub-ico st-hub-av">{(staff?.username || '?').charAt(0).toUpperCase()}</span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-semibold text-sm truncate" dir="ltr" style={{ textAlign: 'start' }}>{staff?.username}</span>
+              <span className="block text-xs text-muted mt-0.5 truncate">{roleText(staff, lang)}</span>
+            </span>
+          </div>
+          <div className="st-hub-item">
+            <span className="st-hub-ico" style={{ background: 'color-mix(in srgb, #64748B 14%, transparent)', color: '#64748B' }}><HubIco d={<path d={NAV_ICONS.domain} />} /></span>
+            <span className="min-w-0 flex-1 font-semibold text-sm">{h.lang}</span>
+            <HubSeg label={h.lang} value={lang} onPick={setLang} opts={[['fa', 'فارسی'], ['en', 'English']]} />
+          </div>
+          {!locked && (
+            <div className="st-hub-item">
+              <span className="st-hub-ico" style={{ background: 'color-mix(in srgb, #DB2777 14%, transparent)', color: '#DB2777' }}><HubIco d={<path d={NAV_ICONS[mode === 'dark' ? 'moon' : 'sun']} />} /></span>
+              <span className="min-w-0 flex-1 font-semibold text-sm">{h.theme}</span>
+              <HubSeg label={h.theme} value={mode} onPick={() => toggle()} opts={[['light', h.light], ['dark', h.dark]]} />
+            </div>
+          )}
           <button type="button" className="st-hub-item st-hub-item--danger" onClick={() => { logout(); go('/login') }}>
             <span className="st-hub-ico st-hub-ico--danger"><HubIco d={HUB_ICONS.logout} /></span>
             <span className="min-w-0 flex-1"><span className="block font-semibold text-sm">{h.logout}</span></span>
@@ -225,6 +261,17 @@ function SettingsHub() {
         </div>
       </section>
     </div>
+  )
+}
+
+function HubSeg({ value, opts, onPick, label }) {
+  return (
+    <span className="st-seg" role="radiogroup" aria-label={label}>
+      {opts.map(([v, txt]) => (
+        <button key={v} type="button" role="radio" aria-checked={value === v} className={value === v ? 'on' : ''}
+          onClick={() => value !== v && onPick(v)}>{txt}</button>
+      ))}
+    </span>
   )
 }
 
@@ -997,6 +1044,10 @@ const CSS = `
 .st-hub-item:hover { background: color-mix(in srgb, var(--c-primary) 5%, transparent); }
 .st-hub-ico { width: 36px; height: 36px; border-radius: 11px; flex-shrink: 0; display: grid; place-items: center;
   background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary); }
+.st-hub-av { background: var(--c-primary); color: #fff; font-weight: 800; font-size: 14px; border-radius: 999px; }
+.st-seg { display: inline-flex; flex-shrink: 0; padding: 3px; gap: 2px; border-radius: 10px; border: 1px solid var(--c-border); }
+.st-seg button { min-height: 44px; min-width: 52px; padding: 0 10px; border-radius: 8px; font-size: 12.5px; font-weight: 700; color: var(--c-text-muted); background: transparent; border: 0; }
+.st-seg button.on { background: var(--c-primary); color: #fff; }
 .st-hub-ico--danger { background: color-mix(in srgb, var(--c-danger) 12%, transparent); color: var(--c-danger); }
 .st-hub-item--danger { color: var(--c-danger); }
 @media (max-width: 767px) {

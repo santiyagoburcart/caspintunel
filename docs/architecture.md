@@ -410,11 +410,19 @@ Inter, JetBrains Mono) and every asset bundled, no CDN.
 - `frontend/user` — customer site, Telegram Mini App, reseller portal (`/agency/`).
 - `frontend/admin` — admin panel. Desktop: grouped collapsible sidebar
   (≥ 1280 px docked, 768–1279 px overlay drawer). Phones (≤ 767 px, Caspian):
-  bottom nav = dashboard · users · payment queue (centre, live badge) ·
-  services · settings; **Settings is the index of every other page**, built
-  from the same list as the sidebar (`components/adminNav.js` — same groups,
-  icons, permissions), plus Deleted users and the settings sections, each with
-  its own route (`/panel/settings/<section>`).
+  **no ☰ / drawer** (removed v1.30.4) — bottom nav = dashboard · users · payment queue
+  (centre, live badge) · services · settings; **Settings is the index of every page**
+  (bottom-tab pages included), built from the same list as the sidebar
+  (`components/adminNav.js` — same groups, icons, permissions), plus Deleted users and the
+  settings sections, each with its own route (`/panel/settings/<section>`), and an
+  **Account** block (user · role, language, theme, logout). The header avatar opens it.
+  Sub-pages (agency, CRM and analytics tabs, details) are reached from their page. Group
+  managers: bottom tabs = their whole menu, last tab = their Settings (profile, password,
+  language, theme, logout). A menu permission may be a list = all of them (Analytics needs
+  `accounting.view` + `crm.view`, Ticket topics `tickets.view` + `tickets.manage_topics`);
+  `adminpanel/tests/test_mobile_nav.py` checks every menu page opens with exactly its
+  permission and every route is reachable. Classic themes (Aurora / Frost) keep their own
+  phone header menu (they have no bottom nav).
 - One `ConfirmDialog`, one **toast** for every write (`components/Toast.jsx`,
   identical in both SPAs, fed by `FeedbackBridge` in the admin): top centre, a
   self-drawing check / X, a countdown ring (success 4 s, error 6 s; hover /

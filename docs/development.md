@@ -25,8 +25,10 @@ bot handler tests stub `close_old_connections`. Decode tests use `zxing-cpp`
   (`lib/clipboard.js`); never `window.confirm/alert/prompt`;
 - phones (≤ 767 px): inputs 16 px (no iOS zoom), tap targets ≥ 44 px, compact
   record-grid cards instead of wide tables, page subtitles hidden, KPI tiles 2 per row;
-- a new admin page goes in the sidebar (`components/Layout.jsx`), the mobile
-  Settings index (`pages/Settings.jsx` `HUB_GROUPS`) and `MOBILE_TITLES`.
+- a new admin page goes in `components/adminNav.js` (sidebar + mobile Settings index follow
+  automatically; give it fa/en text in `pages/Settings.jsx` `HUB`), the classic `nav` list in
+  `components/Layout.jsx`, `MOBILE_TITLES`, and `PAGE_API` in `adminpanel/tests/test_mobile_nav.py`
+  (its permission must be exactly what its API needs; a list = all of them).
 
 ## Releasing
 1. bump `VERSION`, commit, tag `vX.Y.Z`, push `main` + the tag;

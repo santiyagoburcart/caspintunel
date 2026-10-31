@@ -100,8 +100,9 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
 - **One popup for everything**: `components/ConfirmDialog.jsx` (identical in both SPAs) + `useConfirm()`.
   Never use `window.confirm/alert/prompt`. **One copy helper**: `lib/clipboard.js::copyToClipboard`.
 - Fonts are bundled (`@fontsource`, no CDN): fa = Vazirmatn, en = Inter, `<code>` = JetBrains Mono.
-- Mobile (≤767px, Caspian admin): bottom nav + Settings page = index of every page not in the bottom nav.
-  Sidebar and that index both come from `components/adminNav.js` — add a new admin page there (+ `MOBILE_TITLES`).
+- Mobile (≤767px, Caspian admin): **no ☰ / drawer** — bottom nav + Settings tab = index of EVERY page + account
+  (profile, language, theme, logout); avatar opens it. Sidebar and index both come from `components/adminNav.js` — add a
+  new admin page there (+ hub text, `MOBILE_TITLES`, `PAGE_API` in `test_mobile_nav.py`); a list permission = all of them.
   Phone density: record-grid cards (not stacked tables), KPI tiles 2 per row, subtitles hidden, inputs 16px,
   targets ≥44px. Badge/pill **text** uses `--c-*-fg` (contrast-safe); "expired" is always `muted` gray.
 - Subscription QR = `apps/common/qrcard.py::qr_card_png` everywhere (bot, site modal, downloads): never
