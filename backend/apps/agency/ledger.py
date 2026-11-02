@@ -9,8 +9,9 @@ changes PAMP's numbers.
   * An unlimited admin counts as its LAST FINITE limit (PanelAdmin.last_limit_bytes,
     0 only if it never had one): giving it a limit again charges only new − last.
     Lowering a limit or removing it creates no automatic credit (use an adjustment).
-  * No price set for the day → the charge is still recorded (amount 0, noted) so
-    the grant is never lost; fix it with an adjustment.
+  * v1.34: no price for the day → NO charge (billing.NoPrice «قیمت هر گیگ برای این ادمین
+    تعریف نشده» + a Telegram to staff); callers check the price BEFORE changing PasarGuard
+    (billing.ensure_price). Every charge issues an invoice (billing.issue_for_entry).
   * Balance = charges + adjustments − payments (voided entries excluded).
 """
 from __future__ import annotations
@@ -64,22 +65,28 @@ def quote_quota_charge(username: str, old_limit_bytes: int, new_limit_bytes: int
 
 
 def record_quota_charge(username: str, old_limit_bytes: int, new_limit_bytes: int, by: str = "",
-                        day: date_cls | None = None, note: str = "") -> LedgerEntry | None:
+                        day: date_cls | None = None, note: str = "", invoice: bool = True) -> LedgerEntry | None:
     """Called after a successful limit change on the panel (or when a group manager's
-    volume is approved — then `day` is the day the volume was given). Only an increase charges."""
+    volume is approved — then `day` is the day the volume was given). Only an increase charges.
+    Issues the invoice unless `invoice=False` (the caller issues it with its request)."""
+    from .billing import issue_for_entry, missing_price
+
     old, new = int(old_limit_bytes or 0), int(new_limit_bytes or 0)
     if new <= old:
         return None
     gb = Decimal(new - old) / GB
     day = day or today()
     price = price_at(username, day)
-    amount = _round(gb * price.price_per_gb) if price else Decimal(0)
-    if not price:
-        note = (note + " · " if note else "") + "no price per GB set for this date — add an adjustment"
-    return LedgerEntry.objects.create(
+    if not price:          # callers check first; this only guards a path that forgot to
+        raise missing_price(username, gb.quantize(Decimal("0.01")))
+    amount = _round(gb * price.price_per_gb)
+    e = LedgerEntry.objects.create(
         admin_username=username, kind=LedgerEntry.KIND_QUOTA, amount=amount, date=day,
-        gb=gb.quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP), price_per_gb=price.price_per_gb if price else None,
+        gb=gb.quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP), price_per_gb=price.price_per_gb,
         old_limit_bytes=old, new_limit_bytes=new, created_by=by[:150], note=note[:255])
+    if invoice:
+        issue_for_entry(e, by=by)
+    return e
 
 
 def add_entry(username: str, kind: str, amount, day: date_cls, *, method: str = "", note: str = "", by: str = "",
@@ -103,20 +110,41 @@ def add_entry(username: str, kind: str, amount, day: date_cls, *, method: str = 
         raise ValueError("an adjustment cannot be zero")
     if kind == LedgerEntry.KIND_PAYMENT and method not in dict(LedgerEntry.METHODS):
         raise ValueError("unknown payment method")
-    return LedgerEntry.objects.create(
+    gb_d = Decimal(str(gb)) if gb not in (None, "") else None
+    price = None
+    if kind == LedgerEntry.KIND_CHARGE and gb_d:
+        # v1.34: a charge with GB is GB × the admin's price of that day (no price → no charge)
+        from .billing import ensure_price
+
+        if gb_d <= 0:
+            raise ValueError("GB must be positive")
+        price = ensure_price(username, gb_d, day, context="manual charge").price_per_gb
+        amount = _round(gb_d * price)
+    e = LedgerEntry.objects.create(
         admin_username=username, kind=kind, amount=amount, date=day, method=method if kind == LedgerEntry.KIND_PAYMENT else "",
-        note=note[:255], created_by=by[:150], gb=Decimal(str(gb)) if gb not in (None, "") else None)
+        note=note[:255], created_by=by[:150], gb=gb_d, price_per_gb=price)
+    if kind == LedgerEntry.KIND_CHARGE:
+        from .billing import issue_for_entry
+
+        issue_for_entry(e, by=by)
+    return e
 
 
 @transaction.atomic
-def void(entry_id: int, reason: str, by: str = "") -> LedgerEntry:
+def void(entry_id: int, reason: str, by: str = "", _from_invoice: bool = False) -> LedgerEntry:
     e = LedgerEntry.objects.select_for_update().get(pk=entry_id)
     if e.voided:
         raise ValueError("already voided")
     if not reason.strip():
         raise ValueError("a reason is required")
+    if not _from_invoice and e.invoices.filter(status__in=("paid", "pending")).exists():
+        raise ValueError("this charge's invoice is paid or under review — void the payment first")
     e.voided, e.void_reason = True, f"{reason.strip()[:200]} ({by})" if by else reason.strip()[:255]
     e.save(update_fields=["voided", "void_reason"])
+    if not _from_invoice:
+        from .billing import on_ledger_void
+
+        on_ledger_void(e)        # its unpaid invoice is voided too
     return e
 
 

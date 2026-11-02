@@ -24,8 +24,13 @@ _RETRY = dict(
 def expire_stale_reservations_task():
     from .services import expire_stale_reservations
 
+    from apps.agency.billing import expire_stale
+
     with transaction.atomic():
-        return {"expired": expire_stale_reservations()}
+        out = {"expired": expire_stale_reservations()}
+    with transaction.atomic():
+        out["agency_expired"] = expire_stale()     # v1.34 unfinished agency checkouts
+    return out
 
 
 @shared_task

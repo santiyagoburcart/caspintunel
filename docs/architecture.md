@@ -683,3 +683,25 @@ information only — it is configured on the Iran server).
   tickets waiting, agency approvals — on the desktop sidebar, the phone bottom tabs, every row of the
   Settings index and the in-page tabs (Payments → queue, Agency → Approvals).
 - **Monitoring** shows a «کالکتور بلو» card (`/admin/monitoring/` → `blu`, same data as the Blu tab).
+
+
+## Agency invoices and payments (v1.34, docs/agency.md#invoices-and-payments-v134)
+
+- `apps/agency/billing.py`: every agency charge issues an `AgencyInvoice` (GB × the admin's price per GB of
+  that day — `ledger.price_at`); **no price → no charge** (`NoPrice`, «قیمت هر گیگ برای این ادمین تعریف نشده»,
+  checked before PasarGuard is touched, Telegram to `agency.accounting`). One «تسویه مانده قبلی» invoice per
+  admin for balances from before invoices.
+- Admin volume requests from the `/agency/` portal are `VolumeRequest(kind="request")` in the same Approvals queue
+  and Telegram buttons; approval (agency.manage + agency.accounting, never a group manager) raises the limit on
+  PasarGuard from the last finite limit, then charge + invoice.
+- `AgencyPayment`: the admin pays one invoice, a group manager (`agency.gm.invoices`) several of its groups'
+  invoices — full totals, checkout like a customer (card, unique amount, timer, receipt). Unique amounts share the
+  customer pool (each picker skips the other's locks; a deposit equal to both is never auto-approved).
+  `payments_sms.matching` / `rounded` match SMS / Blu deposits against agency payments after customer orders: exact
+  → approved (`approve_payment`: invoices paid, ledger payment entries, portal notice), ±20 % / ×10 → review,
+  rounded rule (receipt or a payer card that paid this payer before), duplicates. Staff review in Agency →
+  Accounting → «واریزهای نمایندگان» (`agency.payments`). Never counted in customer revenue, Transactions,
+  Analytics or the customer queue; its own badge (`/admin/agency/payments/badge/`, live `agency_review`).
+- Alerts (Telegram + panel + sound / push): new admin request, receipt uploaded, auto-approved, mismatch, waiting
+  > `pending_payment_alert_minutes` (`pending_alert._agency`). Unfinished checkouts expire with the order
+  reservations (`expire_stale_reservations_task`).

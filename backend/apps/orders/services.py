@@ -322,9 +322,13 @@ def _assign_unique_amount(order: Order, base: Decimal) -> None:
         Order.objects.filter(user=order.user, created_at__gte=timezone.now() - timedelta(hours=24))
         .values_list("amount_unique", flat=True)
     )
+    # v1.34: one pool with agency payments (apps/agency/billing.py) — skip what they hold
+    from apps.agency.billing import agency_locked_amounts
+
+    agency_held = agency_locked_amounts()
     for surcharge in _surcharge_range():
         candidate = base + Decimal(surcharge)
-        if candidate in recent:
+        if candidate in recent or candidate in agency_held:
             continue
         order.amount_unique = candidate
         order.amount_unique_lock = candidate

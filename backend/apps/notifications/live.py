@@ -36,7 +36,8 @@ def _send(event: str, data: dict) -> None:
             STAFF_PAYMENTS_GROUP,
             {
                 "type": "payments.event",
-                "payload": {"event": event, "pending_count": pending_payments_count(), **data},
+                "payload": {"event": event, "pending_count": pending_payments_count(),
+                            "agency_review": _agency_review(), **data},
             },
         )
     except Exception as exc:  # noqa: BLE001 — a push failure must never break the payment flow
@@ -57,6 +58,7 @@ _PUSH_EVENTS = {
     "blu_mismatch": ("مبلغ نامطابق (بلو)", "Amount mismatch (Blu)", "payment.approve"),
     "rounded_approved": ("تأیید خودکار – مبلغ گرد شده", "Auto-approved — rounded amount", "payment.view"),
     "payment_pending_alert": ("پرداخت تأییدنشده", "Unconfirmed payment", "payment.approve"),
+    "agency_pending_alert": ("واریز نماینده در انتظار", "Agency payment waiting", "agency.payments"),
 }
 
 
@@ -70,7 +72,18 @@ def _web_push(event: str, data: dict) -> None:
         fa, en, perm = spec
         order = data.get("order_id")
         body = f"سفارش #{order} · order #{order}" if order else ""
-        url = f"/payments/{data['payment_id']}" if data.get("payment_id") else "/payments"
+        url = ("/agency/ledger/payments" if event.startswith("agency_")
+               else f"/payments/{data['payment_id']}" if data.get("payment_id") else "/payments")
         push_to_staff(perm, f"{fa} · {en}", body, url=url, tag=f"{event}:{data.get('payment_id', '')}")
     except Exception as exc:  # noqa: BLE001
         log.warning("payments web push failed: %s", exc)
+
+
+def _agency_review() -> int:
+    """v1.34: agency payments waiting for review (their own badge, never in pending_count)."""
+    try:
+        from apps.agency.billing import badge
+
+        return badge()
+    except Exception:  # noqa: BLE001
+        return 0

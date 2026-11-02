@@ -62,11 +62,14 @@ def test_amount_rounds_half_up_and_unlimited_counts_as_zero():
     assert e.amount == Decimal("250")
 
 
-def test_no_charge_for_a_decrease_or_removal_and_missing_price_is_still_recorded():
+def test_no_charge_for_a_decrease_or_removal_and_missing_price_blocks_the_charge():
+    from apps.agency.billing import NoPrice
+
     assert ledger.record_quota_charge("ali", 100 * GB, 50 * GB) is None
     assert ledger.record_quota_charge("ali", 100 * GB, 0) is None
-    e = ledger.record_quota_charge("cyrus", GB, 3 * GB)
-    assert e.amount == 0 and "no price" in e.note
+    with pytest.raises(NoPrice):                     # v1.34: no price per GB → no charge at all
+        ledger.record_quota_charge("cyrus", GB, 3 * GB)
+    assert not LedgerEntry.objects.filter(admin_username="cyrus").exists()
 
 
 def test_balance_statement_void_and_csv():

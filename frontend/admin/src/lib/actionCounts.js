@@ -8,9 +8,11 @@ import { useLiveApprovals } from './liveApprovals'
 export function useActionCounts() {
   const { pendingCount } = useLivePayments()
   const { badge } = useLiveTickets()
-  const { pending } = useLiveApprovals()
+  const { pending, agencyReview } = useLiveApprovals()
   const pay = pendingCount || 0
-  return { '/payments': pay, '/transactions': pay, '/tickets': badge || 0, '/agency': pending || 0 }
+  // v1.34: Agency = approvals + agency payments waiting for review (kept apart from customer payments)
+  return { '/payments': pay, '/transactions': pay, '/tickets': badge || 0, '/agency': (pending || 0) + (agencyReview || 0),
+    '/agency/ledger': agencyReview || 0 }
 }
 
 export const fmtCount = (n) => (n > 99 ? '99+' : String(n))

@@ -146,6 +146,10 @@ def evaluate(deposit, at, *, source: str, payer_last4: str = "", tx_id: int | No
     if deposit <= 0 or deposit != deposit.to_integral_value():
         return None
     cands = _candidates(deposit, at, source, cfg)
+    # v1.34: agency payments are candidates too (one pool — "exactly one" counts both kinds)
+    from apps.agency import billing as agency
+
+    cands += agency.rounded_candidates(deposit, at, cfg, tolerance)
     if not cands:
         return None
     reason = {"rule": AutoRule.ROUNDED, "source": source, "deposit": str(deposit),
@@ -156,14 +160,20 @@ def evaluate(deposit, at, *, source: str, payer_last4: str = "", tx_id: int | No
         reason.update(applied=False, why_not="multiple_orders")
         return Decision(False, None, reason)
     order = cands[0]
+    is_agency = hasattr(order, "payer_username")
     inv = Decimal(order.amount_unique)
     reason.update(order=order.id, invoice=str(inv), shortfall=str(inv - deposit), tolerance=str(tolerance(inv, cfg)))
+    if is_agency:
+        reason.update(target="agency", agency_payment=order.number, order=None)
     used = _already_used(deposit, at, source)
     if used is not None:
         reason.update(applied=False, why_not="deposit_already_used", used_order=used.id)
         return Decision(False, order, reason)
-    receipt = _has_receipt(order)
-    card = _known_card(order, payer_last4, tx_id)
+    if is_agency:
+        receipt, card = agency.has_receipt(order), agency.known_card(order, payer_last4, tx_id)
+    else:
+        receipt = _has_receipt(order)
+        card = _known_card(order, payer_last4, tx_id)
     reason.update(receipt=receipt, card_last4=payer_last4 or "", card_known=card)
     if not (receipt or card):
         reason.update(applied=False, why_not="no_evidence")
@@ -273,6 +283,10 @@ def try_sms(msg, amount) -> tuple[Payment | None, Decision | None]:
     d = evaluate(deposit, msg.received_at, source="sms")
     if d is None or not d.approve:
         return None, d
+    if hasattr(d.order, "payer_username"):           # v1.34 agency payment
+        from apps.agency import billing as agency
+
+        return agency.approve_payment(d.order.pk, source="sms_auto", deposit=deposit, sms=msg, rounded=d.reason), d
     order = _lock_open(d.order, msg.received_at, "sms")
     if order is None:
         return None, None
@@ -284,6 +298,12 @@ def try_blu(tx) -> tuple[Payment | None, Decision | None]:
     d = evaluate(tx.amount_toman, tx.occurred_at, source="blu", payer_last4=tx.payer_last4, tx_id=tx.pk)
     if d is None or not d.approve:
         return None, d
+    if hasattr(d.order, "payer_username"):           # v1.34 agency payment
+        from apps.agency import billing as agency
+
+        p = agency.approve_payment(d.order.pk, source="blu_auto", deposit=tx.amount_toman, tx=tx, rounded=d.reason)
+        agency._mark_tx(tx, p, rounded=True)
+        return p, d
     order = _lock_open(d.order, tx.occurred_at, "blu")
     if order is None:
         return None, None

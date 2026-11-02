@@ -44,6 +44,18 @@ export function LivePaymentsProvider({ children }) {
         : `Blu collector problem: ${({ inactive: 'service inactive', ssh: 'SSH failing', poll: 'polling failing', session: 'Blu session expired — sign in again' })[msg.kind] || msg.kind}`)
       return
     }
+    // v1.34 agency payments + admin requests (backend apps/agency/billing.py) — never the customer queue
+    if (msg.event && msg.event.startsWith('agency_')) {
+      const T = {
+        agency_request: ['درخواست شارژ تازه از ادمین نمایندگی — نمایندگی ← تأییدها', 'New volume request from an agency admin — Agency → Approvals', 'success'],
+        agency_receipt: ['رسید واریز نماینده رسید — نمایندگی ← واریزهای نمایندگان', 'Agency payment receipt — Agency → Agency payments', 'success'],
+        agency_approved: ['واریز نماینده تأیید شد', 'Agency payment approved', 'success'],
+        agency_mismatch: ['مبلغ نامطابق در واریز نماینده — بررسی کنید', 'Agency payment amount mismatch — review it', 'error'],
+        agency_pending_alert: [`واریز نماینده ${msg.number || ''} ${msg.minutes || ''} دقیقه است بررسی نشده`, `Agency payment ${msg.number || ''} waiting ${msg.minutes || ''} min`, 'error'],
+      }[msg.event]
+      if (T && !(msg.event === 'agency_approved' && msg.source === 'manual')) toast[T[2]](fa ? T[0] : T[1])
+      return
+    }
     // v1.33 a payment pending longer than the setting (backend payments_sms/pending_alert.py)
     if (msg.event === 'payment_pending_alert') {
       toast.error(fa ? `پرداخت ${msg.tx} (سفارش #${msg.order_id}) ${msg.minutes} دقیقه است تأیید نشده — در صف پرداخت بررسی کنید.`

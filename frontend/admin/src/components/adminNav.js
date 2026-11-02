@@ -52,6 +52,7 @@ export const GM_GROUPS = [
     ['/my-groups', 'gm_admins', 'agency.gm.view_admins', 'agency'],
     ['/my-groups/new', 'gm_new_admin', 'agency.gm.create_admin', 'users'],
     ['/my-groups/accounting', 'gm_accounting', 'agency.gm.accounting', 'accounting'],
+    ['/my-groups/invoices', 'gm_invoices', 'agency.gm.invoices', 'payments'],
     ['/my-groups/activity', 'gm_activity', 'agency.gm.activity', 'monitoring'],
     ['/my-groups/settings', 'settings', null, 'settings'],
   ]],
@@ -60,6 +61,7 @@ export const GM_BOTNAV = [
   ['/my-groups', 'gm_admins', 'agency.gm.view_admins', 'agency'],
   ['/my-groups/new', 'gm_new_admin', 'agency.gm.create_admin', 'users', true],
   ['/my-groups/accounting', 'gm_accounting', 'agency.gm.accounting', 'accounting'],
+  ['/my-groups/invoices', 'gm_invoices', 'agency.gm.invoices', 'payments'],
   ['/my-groups/activity', 'gm_activity', 'agency.gm.activity', 'monitoring'],
   // v1.25.5: profile, own password, language, theme and logout — like staff's Settings tab
   ['/my-groups/settings', 'settings', null, 'settings'],

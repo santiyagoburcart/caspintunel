@@ -20,6 +20,8 @@ from django.http import Http404
 from rest_framework import status
 from rest_framework.response import Response
 
+from apps.agency.billing import BillingError
+
 from apps.agency import actions, api
 from apps.agency.models import AdminGroup, PanelAdmin, SyncLog
 from apps.common.models import write_audit
@@ -323,6 +325,8 @@ class AgencyLedgerView(AdminAPIView):
                 raise Http404
         except _Bad as exc:
             return Response(exc.payload, status=400)
+        except BillingError as exc:              # v1.34: no price per GB → no charge
+            return Response(exc.payload(), status=exc.status)
         except (ValueError, ArithmeticError) as exc:
             return Response({"detail": str(exc) or "invalid value"}, status=400)
         except Exception as exc:  # noqa: BLE001 — e.g. decimal.InvalidOperation on garbage input

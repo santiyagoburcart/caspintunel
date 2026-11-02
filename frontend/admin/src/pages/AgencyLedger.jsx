@@ -30,6 +30,7 @@ export const LT = {
     adj_amount: 'مبلغ را به عدد مثبت وارد کنید', adj_more: 'بدهی {u} {a} بیشتر می‌شود', adj_less: 'بدهی {u} {a} کمتر می‌شود',
     adj_admin: 'ادمین', adj_up: 'افزایش بدهی', adj_down: 'کاهش بدهی',
     price_hint: 'قیمت جدید فقط از این تاریخ به بعد اعمال می‌شود؛ شارژهای قبلی تغییر نمی‌کنند.',
+    charge_hint: 'با واردکردن حجم، مبلغ = حجم × قیمت هر گیگ همان روز (بدون قیمت، شارژ ثبت نمی‌شود). هر شارژ یک فاکتور صادر می‌کند.',
     quota_note: 'با افزایش سقف یک نماینده از همین پنل (پس از انتقال نهایی)، شارژ حجم خودکار ثبت می‌شود: افزایش گیگ × قیمت همان روز.',
     off_panel: 'روی پنل نیست', limit_change: '{a} → {b}',
   },
@@ -47,6 +48,7 @@ export const LT = {
     adj_amount: 'Enter a positive amount', adj_more: '{u} will owe {a} more', adj_less: '{u} will owe {a} less',
     adj_admin: 'Admin', adj_up: 'debt up', adj_down: 'debt down',
     price_hint: 'A new price only applies from this date on; earlier charges do not change.',
+    charge_hint: 'With a volume, the amount = GB × that day\'s price per GB (no price → no charge). Every charge issues an invoice.',
     quota_note: 'Raising a reseller limit from this panel (after the cut-over) records a quota charge automatically: GB increase × that day\'s price.',
     off_panel: 'not on the panel', limit_change: 'limit {a} → {b}',
   },
@@ -115,6 +117,7 @@ function EntryForm({ s, kind, box, username, admins, lang }) {
           {(v.direction === 'increase' ? s.adj_more : s.adj_less).replace('{u}', who).replace('{a}', toman(amt, lang))}</p>
         : <p className="lg-hint lg-wide">{s.adjust_hint}</p>)}
       {kind === 'price' && <p className="lg-hint lg-wide">{s.price_hint}</p>}
+      {kind === 'manual_charge' && <p className="lg-hint lg-wide">{s.charge_hint}</p>}
     </div>
   )
 }

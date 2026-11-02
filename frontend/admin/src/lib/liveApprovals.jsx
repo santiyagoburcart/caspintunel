@@ -3,6 +3,7 @@ import { api } from './api'
 import { useAuth } from './auth'
 import { useI18n } from './i18n'
 import { useToast } from '../components/Toast'
+import { usePaymentsEvents } from './livePayments'
 
 /**
  * Agency → Approvals: volume given by group managers that waits for staff
@@ -10,12 +11,14 @@ import { useToast } from '../components/Toast'
  * back; the count is the badge on the Agency menu entry, and a rise shows an
  * in-site notification (toast).
  */
-const Ctx = createContext({ pending: 0, refresh: () => {} })
+const Ctx = createContext({ pending: 0, agencyReview: 0, refresh: () => {} })
 
 export function LiveApprovalsProvider({ children }) {
   const { staff, can } = useAuth()
   const enabled = !!staff && can('agency.view')
   const [pending, setPending] = useState(0)
+  // v1.34: agency payments waiting for review (their own count, never the customer queue)
+  const [agencyReview, setAgencyReview] = useState(0)
   const last = useRef(null)
   const toast = useToast()
   const { lang } = useI18n()
@@ -33,10 +36,18 @@ export function LiveApprovalsProvider({ children }) {
       last.current = n
       setPending(n)
     }).catch(() => {})
+    api.get('/admin/agency/payments/badge/').then((r) => setAgencyReview(r.data.review || 0)).catch(() => {})
   }, [])
 
+  // the payments socket carries the agency review count + new admin requests (v1.34)
+  usePaymentsEvents((e) => {
+    if (!enabled) return
+    if (typeof e.agency_review === 'number') setAgencyReview(e.agency_review)
+    if (e.event === 'agency_request') refresh()
+  })
+
   useEffect(() => {
-    if (!enabled) { setPending(0); last.current = null; return undefined }
+    if (!enabled) { setPending(0); setAgencyReview(0); last.current = null; return undefined }
     refresh()
     const t = setInterval(() => { if (document.visibilityState === 'visible') refresh() }, 30000)
     const onVisible = () => { if (document.visibilityState === 'visible') refresh() }
@@ -44,7 +55,7 @@ export function LiveApprovalsProvider({ children }) {
     return () => { clearInterval(t); document.removeEventListener('visibilitychange', onVisible) }
   }, [enabled])
 
-  return <Ctx.Provider value={{ pending, refresh }}>{children}</Ctx.Provider>
+  return <Ctx.Provider value={{ pending, agencyReview, setAgencyReview, refresh }}>{children}</Ctx.Provider>
 }
 
 export const useLiveApprovals = () => useContext(Ctx)

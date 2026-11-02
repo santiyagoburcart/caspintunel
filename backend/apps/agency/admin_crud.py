@@ -306,6 +306,16 @@ def create(panel, data: dict, *, by: str = "", charge: bool = True, source: str 
         group = AdminGroup.objects.filter(pk=data["group_id"]).first()
         if group is None:
             raise AdminCrudError("unknown group", "invalid", "group_id")
+    if limit > 0 and charge and price is None and is_agency_panel(panel):
+        # v1.34: a charged creation needs a price per GB — checked before anything reaches PasarGuard
+        from decimal import Decimal as _D
+
+        from . import ledger
+        from .billing import NO_PRICE_FA, missing_price
+
+        if ledger.price_at(payload["username"]) is None:
+            missing_price(payload["username"], (_D(limit) / _D(1024 ** 3)).quantize(_D("0.01")), context="new admin")
+            raise AdminCrudError(f"{NO_PRICE_FA} — enter a price per GB for the new admin", "no_price", "price_per_gb")
     c = PasarGuardClient(panel)
     try:
         c._request("POST", "/api/admin", json=payload)

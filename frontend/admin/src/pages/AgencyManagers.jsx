@@ -36,13 +36,13 @@ export const GM_T = {
     pick_group: 'حداقل یک گروه انتخاب کنید.', need_role: 'برای هر گروه حداقل یک نقش مجاز انتخاب کنید.',
     a_title: 'تأییدها', a_intro: 'حجمی که مدیران گروه داده‌اند؛ روی PasarGuard اعمال شده است. تأیید ← شارژ در حسابداری (با منطق آخرین سقف). رد ← همین حجم از PasarGuard برداشته می‌شود و شارژی ثبت نمی‌شود.',
     st_pending: 'در انتظار', st_approved: 'تأییدشده', st_rejected: 'ردشده', st_all: 'همه',
-    k_create: 'ادمین جدید', k_add: 'افزودن حجم', group: 'گروه', manager: 'مدیر', admin: 'ادمین', gb: 'حجم', price: 'قیمت هر گیگ', amount: 'مبلغ',
+    k_create: 'ادمین جدید', k_add: 'افزودن حجم', k_request: 'درخواست ادمین', requested_by: 'درخواست‌کننده', req_note: 'یادداشت ادمین', invoice: 'فاکتور', group: 'گروه', manager: 'مدیر', admin: 'ادمین', gb: 'حجم', price: 'قیمت هر گیگ', amount: 'مبلغ',
     date: 'تاریخ', approve: 'تأیید', reject: 'رد', approve_sel: 'تأیید انتخاب‌شده‌ها', sel_all: 'انتخاب همه', none_pending: 'موردی در انتظار نیست.',
     no_price: 'قیمت ندارد', price_in: 'قیمت هر گیگ (تومان) برای این ادمین', price_need: 'این ادمین برای آن تاریخ قیمت ندارد — قیمت را وارد کنید (از همان تاریخ ثبت می‌شود).',
     approve_msg: 'شارژ در حسابداری ثبت می‌شود و در تاریخچهٔ سقف به این تغییر وصل می‌شود.', approved: 'تأیید شد', rejected: 'رد شد — حجم برگشت داده شد',
     reject_msg: 'همین حجم از سقف فعلی این ادمین روی PasarGuard کم می‌شود (هرگز نامحدود نمی‌شود). شارژی ثبت نمی‌شود.', reason: 'دلیل (اختیاری)',
     limit_change: 'سقف', bulk_done: '{n} مورد تأیید شد', bulk_failed: '{n} مورد تأیید نشد: ', decided: 'تصمیم', total: 'جمع',
-    lg_admin: 'بر اساس ادمین', lg_group: 'بر اساس گروه', g_debt: 'بدهی کل گروه', g_pending: 'تأییدنشده', g_statement: 'صورت‌حساب گروه', admins: 'ادمین‌ها', managers: 'مدیران',
+    lg_admin: 'بر اساس ادمین', lg_group: 'بر اساس گروه', lg_invoices: 'فاکتورها', lg_payments: 'واریزهای نمایندگان', g_debt: 'بدهی کل گروه', g_pending: 'تأییدنشده', g_statement: 'صورت‌حساب گروه', admins: 'ادمین‌ها', managers: 'مدیران',
     opening: 'مانده از قبل', charges: 'جمع شارژ', payments: 'جمع پرداخت', closing: 'مانده پایان بازه', balance: 'مانده', kind: 'نوع', note_c: 'توضیح',
     range: 'بازهٔ تاریخ', all_time: 'همهٔ زمان‌ها', csv: 'CSV', xlsx: 'Excel', print: 'چاپ', pending_items: 'در انتظار تأیید (در مانده حساب نشده)', no_entries: 'گردشی در این بازه نیست.',
     k_quota_charge: 'شارژ حجم', k_manual_charge: 'بدهکاری', k_adjustment: 'اصلاحیه', k_payment: 'پرداخت', voided: 'باطل‌شده', back: 'همهٔ گروه‌ها',
@@ -68,13 +68,13 @@ export const GM_T = {
     pick_group: 'Pick at least one group.', need_role: 'Pick at least one allowed role for each group.',
     a_title: 'Approvals', a_intro: 'Volume given by group managers — already live on PasarGuard. Approve → charge in accounting (last-limit logic). Reject → that volume is taken back on PasarGuard, no charge.',
     st_pending: 'Pending', st_approved: 'Approved', st_rejected: 'Rejected', st_all: 'All',
-    k_create: 'New admin', k_add: 'Added volume', group: 'Group', manager: 'Manager', admin: 'Admin', gb: 'Volume', price: 'Price / GB', amount: 'Amount',
+    k_create: 'New admin', k_add: 'Added volume', k_request: 'Admin request', requested_by: 'Requested by', req_note: 'Admin note', invoice: 'Invoice', group: 'Group', manager: 'Manager', admin: 'Admin', gb: 'Volume', price: 'Price / GB', amount: 'Amount',
     date: 'Date', approve: 'Approve', reject: 'Reject', approve_sel: 'Approve selected', sel_all: 'Select all', none_pending: 'Nothing is waiting.',
     no_price: 'no price', price_in: 'Price per GB (Toman) for this admin', price_need: 'This admin has no price for that date — enter one (saved from that date on).',
     approve_msg: 'The charge is written to accounting and linked to this change in the limit history.', approved: 'Approved', rejected: 'Rejected — the volume was taken back',
     reject_msg: "This volume is taken off the admin's current PasarGuard limit (never made unlimited). No charge.", reason: 'Reason (optional)',
     limit_change: 'Limit', bulk_done: '{n} approved', bulk_failed: '{n} not approved: ', decided: 'Decision', total: 'Total',
-    lg_admin: 'By admin', lg_group: 'By group', g_debt: 'Group total debt', g_pending: 'Unapproved', g_statement: 'Group statement', admins: 'Admins', managers: 'Managers',
+    lg_admin: 'By admin', lg_group: 'By group', lg_invoices: 'Invoices', lg_payments: 'Agency payments', g_debt: 'Group total debt', g_pending: 'Unapproved', g_statement: 'Group statement', admins: 'Admins', managers: 'Managers',
     opening: 'Opening balance', charges: 'Charges', payments: 'Payments', closing: 'Closing balance', balance: 'Balance', kind: 'Type', note_c: 'Note',
     range: 'Date range', all_time: 'All time', csv: 'CSV', xlsx: 'Excel', print: 'Print', pending_items: 'Pending approval (not in the balance)', no_entries: 'No entries in this range.',
     k_quota_charge: 'Quota charge', k_manual_charge: 'Charge', k_adjustment: 'Adjustment', k_payment: 'Payment', voided: 'voided', back: 'All groups',
@@ -363,7 +363,8 @@ export function AgencyApprovalsView({ Header }) {
   const pend = rows.filter((r) => r.status === 'pending')
   const selRows = pend.filter((r) => sel.includes(r.id))
 
-  const details = (r) => ({ rows: [[s.group, r.group], [s.manager, r.manager], [s.admin, r.admin], [s.gb, gbText(r.gb)],
+  const details = (r) => ({ rows: [[s.group, r.group], ...(r.kind === 'request' ? [[s.requested_by, `${r.requested_by} (${s.k_request})`], ...(r.note ? [[s.req_note, r.note]] : [])] : [[s.manager, r.manager]]),
+    [s.admin, r.admin], [s.gb, gbText(r.gb)],
     [s.limit_change, `${limText(r.old_limit_bytes)} → ${limText(r.new_limit_bytes)}`],
     [s.amount, r.price_per_gb != null ? `${gbText(r.gb)} × ${toman(r.price_per_gb, lang)} = ${toman(r.amount, lang)}` : s.no_price]] })
   const approve = async (r) => {
@@ -432,8 +433,9 @@ export function AgencyApprovalsView({ Header }) {
                     )}
                     <td data-label={s.date}>{jalali(r.created_at, false, lang)}<small className="gm-sub">{jalali(r.created_at, true, lang).split(/[،,]\s*/).pop()} · #{r.id}</small></td>
                     <td data-label={s.group}><bdi>{r.group}</bdi></td>
-                    <td data-label={s.manager}><N>{r.manager}</N></td>
-                    <td data-label={s.admin} className="ag-t-name"><Link to={`/agency/admins/${encodeURIComponent(r.admin)}/history`}>{r.admin}</Link><span className="ag-t-grp">{s['k_' + r.kind]}</span></td>
+                    <td data-label={s.manager}>{r.kind === 'request' ? <span className="gm-req" data-testid="req-badge">{s.k_request}</span> : <N>{r.manager}</N>}</td>
+                    <td data-label={s.admin} className="ag-t-name"><Link to={`/agency/admins/${encodeURIComponent(r.admin)}/history`}>{r.admin}</Link><span className="ag-t-grp">{s['k_' + r.kind]}</span>
+                      {r.note && <small className="gm-sub">{r.note}</small>}{r.invoice && <small className="gm-sub">{s.invoice} <bdi dir="ltr">{r.invoice}</bdi></small>}</td>
                     <td data-label={s.gb}><N>+{gbText(r.gb)}</N></td>
                     <td data-label={s.limit_change}><N>{limText(r.old_limit_bytes)} → {limText(r.new_limit_bytes)}</N></td>
                     <td data-label={s.amount}>{r.price_per_gb != null ? <><N>{toman(r.amount, lang)}</N><small className="gm-sub"><N>{gbText(r.gb)} × {toman(r.price_per_gb, lang)}</N></small></> : <span className="gm-warn">{s.no_price}</span>}</td>
@@ -498,10 +500,18 @@ export function ActivityRow({ a, s, lang }) {
 // ------------------------------------------------------------------ accounting → by group
 export function LedgerSubNav() {
   const [s] = useS()
+  const { can } = useAuth()
+  const { agencyReview } = useLiveApprovals()
   return (
     <nav className="gm-seg gm-subnav">
       <NavLink end to="/agency/ledger" className={({ isActive }) => 'gm-segb' + (isActive ? ' on' : '')}>{s.lg_admin}</NavLink>
       <NavLink to="/agency/ledger/groups" className={({ isActive }) => 'gm-segb' + (isActive ? ' on' : '')}>{s.lg_group}</NavLink>
+      {can('agency.accounting') && <NavLink to="/agency/ledger/invoices" className={({ isActive }) => 'gm-segb' + (isActive ? ' on' : '')}>{s.lg_invoices}</NavLink>}
+      {can('agency.payments') && (
+        <NavLink to="/agency/ledger/payments" className={({ isActive }) => 'gm-segb' + (isActive ? ' on' : '')} data-testid="lg-payments-tab">
+          {s.lg_payments}{agencyReview > 0 && <span className="ag-tab-badge">{agencyReview > 99 ? '99+' : agencyReview}</span>}
+        </NavLink>
+      )}
     </nav>
   )
 }
@@ -644,6 +654,7 @@ function StatementBody({ st, s, lang }) {
 }
 
 export const GM_CSS = `
+.gm-req { display: inline-block; font-size: 11.5px; font-weight: 800; padding: 2px 9px; border-radius: 999px; color: #fff; background: #0891B2; white-space: nowrap; }
 .gm-portal { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 13px; }
 .gm-portal span { font-weight: 700; color: var(--c-muted-fg); }
 .gm-card[data-off] { opacity: .75; }

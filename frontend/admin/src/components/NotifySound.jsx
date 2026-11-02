@@ -37,7 +37,9 @@ const T = {
 }
 const BASE = `${ADMIN_BASE.replace(/\/$/, '')}/`
 const PAY_EVENTS = { receipt_uploaded: 'default', sms_mismatch: 'alert', blu_mismatch: 'alert', payment_pending_alert: 'alert',
-  rounded_approved: 'success' }
+  rounded_approved: 'success',
+  // v1.34 agency payments / requests
+  agency_request: 'default', agency_receipt: 'default', agency_approved: 'success', agency_mismatch: 'alert', agency_pending_alert: 'alert' }
 const TICKET_EVENTS = new Set(['new_ticket', 'user_reply', 'assigned'])
 
 export const prefsOf = (staff) => ({ sound: true, volume: 60, ...(staff?.notify_prefs || {}) })

@@ -49,6 +49,9 @@ from .views.integrations import (
 )
 from .views.monitoring import BackupViewSet, HealthView, MonitoringView, ResourcesView
 from .views.push import StaffPrefsView, StaffPushView
+from .views.agency_billing import (AgencyInvoicesView, AgencyInvoiceVoidView, AgencyPaymentActionView,
+                                   AgencyPaymentReceiptView, AgencyPaymentsBadgeView, AgencyPaymentsView,
+                                   AgencySettlementView)
 from .views.notifications import NotificationViewSet
 from .views.ops import DashboardView, ServiceListViewSet, TelegramStatsView
 from .views.system import SettingsView, SystemView
@@ -124,6 +127,13 @@ urlpatterns = [
     path("agency/managers/options/", AgencyManagerOptionsView.as_view(), name="admin-agency-manager-options"),
     path("agency/managers/<int:manager_id>/", AgencyManagersView.as_view(), name="admin-agency-manager"),
     path("agency/managers/<int:manager_id>/password/", AgencyManagerPasswordView.as_view(), name="admin-agency-manager-password"),
+    path("agency/invoices/", AgencyInvoicesView.as_view(), name="admin-agency-invoices"),
+    path("agency/invoices/settlement/", AgencySettlementView.as_view(), name="admin-agency-settlement"),
+    path("agency/invoices/<int:pk>/void/", AgencyInvoiceVoidView.as_view(), name="admin-agency-invoice-void"),
+    path("agency/payments/", AgencyPaymentsView.as_view(), name="admin-agency-payments"),
+    path("agency/payments/badge/", AgencyPaymentsBadgeView.as_view(), name="admin-agency-payments-badge"),
+    path("agency/payments/<int:pk>/receipt/", AgencyPaymentReceiptView.as_view(), name="admin-agency-payment-receipt"),
+    path("agency/payments/<int:pk>/<str:action>/", AgencyPaymentActionView.as_view(), name="admin-agency-payment-action"),
     path("agency/approvals/", AgencyApprovalsView.as_view(), name="admin-agency-approvals"),
     path("agency/approvals/badge/", AgencyApprovalsBadgeView.as_view(), name="admin-agency-approvals-badge"),
     path("agency/approvals/bulk-approve/", AgencyApprovalsBulkView.as_view(), name="admin-agency-approvals-bulk"),

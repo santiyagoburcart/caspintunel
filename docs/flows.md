@@ -648,6 +648,37 @@ sequenceDiagram
     A-)S: silent "✅ resolved" message
 ```
 
+## 5c5. Agency invoices, admin requests and payments (v1.34)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor A as Agency admin (/agency/)
+    participant P as portal API
+    participant B as agency.billing
+    actor S as Staff (agency.manage + accounting / agency.payments)
+    participant PG as PasarGuard
+    participant D as SMS / Blu matching
+
+    A->>P: «درخواست شارژ» {gb, note} (quote = GB × price; no price → error + Telegram to staff)
+    P->>B: VolumeRequest(kind request) → Approvals queue + Telegram Approve / Reject
+    S->>B: approve (panel or Telegram)
+    B->>PG: limit = last finite limit + GB (read back)
+    B->>B: quota charge + AgencyInvoice (INV-…), portal notice
+    A->>P: «پرداخت» on the invoice
+    P->>B: AgencyPayment: unique amount (pool shared with customer orders), timer, card
+    A-->>D: card-to-card transfer (optional receipt upload → pending review + Telegram)
+    D->>B: exact deposit inside the window → approve_payment
+    B->>B: invoices paid · ledger payment entry per admin · notice · Telegram "auto-approved"
+    alt near miss (±20 %, ×10) or receipt only
+        D->>B: pending_review → «واریزهای نمایندگان» → staff approve / reject (reason to the payer)
+    end
+```
+
+Group managers do the same from `/panel/my-groups/invoices` for their groups' admins, selecting several unpaid
+invoices for one payment. Staff charges (limit raise, manual charge with GB) and approved group-manager volume
+issue invoices the same way.
+
 ## 9. Staff Telegram linking
 
 ```mermaid

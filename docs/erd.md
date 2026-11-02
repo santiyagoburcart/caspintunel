@@ -460,7 +460,7 @@ erDiagram
         bigint group_id FK
         bigint manager_id FK
         string admin_username
-        string kind "create | add"
+        string kind "create | add | request (v1.34 admin request)"
         decimal gb
         bigint old_limit_bytes
         bigint new_limit_bytes
@@ -468,7 +468,61 @@ erDiagram
         string decided_by
         bigint ledger_entry_id FK
         bigint limit_change_id FK
+        string requested_by "kind request: the admin"
+        string note
     }
+
+    agency_invoice {
+        bigint id PK "INV-000123"
+        string admin_username
+        bigint group_id FK
+        string kind "quota_charge | manual_charge | request | settlement"
+        decimal gb
+        decimal price_per_gb
+        decimal amount
+        string status "unpaid | pending | paid | voided"
+        bigint ledger_entry_id FK "the charge (none for settlement)"
+        bigint volume_request_id FK
+    }
+
+    agency_payment {
+        bigint id PK "AP-000123"
+        string payer_kind "admin | manager"
+        string payer_username
+        bigint manager_id FK
+        decimal amount "invoices' total"
+        decimal amount_unique
+        decimal amount_unique_lock UK "while matchable (shared pool with orders)"
+        datetime unique_expire_at
+        string status "pending_payment | pending_review | approved | rejected | expired | cancelled"
+        string receipt_image "private media receipts/agency/"
+        string method "sms_auto | blu_auto | manual"
+        bigint sms_message_id FK
+        bigint blu_transaction_id FK
+        string mismatch_kind "less | more"
+        string auto_rule "rounded"
+        decimal paid_amount
+        decimal shortfall
+    }
+
+    agency_payment_item {
+        bigint id PK
+        bigint payment_id FK
+        bigint invoice_id FK
+        decimal amount
+    }
+
+    agency_notice {
+        bigint id PK
+        string admin_username "portal"
+        bigint manager_id FK "group manager"
+        string kind
+        string title
+        datetime read_at
+    }
+    agency_ledger_entry ||--o{ agency_invoice : "charge"
+    agency_payment ||--|{ agency_payment_item : "covers"
+    agency_invoice ||--o{ agency_payment_item : "paid by"
 ```
 
 | Table | Description |
@@ -484,6 +538,10 @@ erDiagram
 | `agency_group_manager_group` | Which agency groups a manager runs, and the PasarGuard roles (= inbound sets) it may give per group. |
 | `agency_manager_session` | Legacy group-manager portal logins (before v1.25); no longer accepted, kept for one release (drop next). |
 | `agency_volume_request` | "Pending approval": volume a manager gave (new admin / +GB), already live on PasarGuard; approve → quota charge, reject → volume taken back. |
+| `agency_invoice` | v1.34: one per agency charge (staff limit raise, manual charge, approved group-manager volume / admin request) = GB × price; or one «تسویه مانده قبلی» per admin for balances from before invoices (no ledger entry). Voiding an unpaid invoice voids its charge. |
+| `agency_payment` | v1.34: an agency admin (portal, one invoice) or a group manager (several of its groups' invoices) paying the full total. Unique amount from the same pool as customer orders; matched by SMS / Blu like orders; approval = invoices paid + payment entries in the ledger. Never in customer revenue / Transactions. |
+| `agency_payment_item` | Which invoices a payment covers (and their amounts). |
+| `agency_notice` | Notifications in the /agency/ portal (admin) or the group-manager panel (request approved / rejected, invoice issued, payment approved / rejected). |
 | `agency_ledger_entry` | The reseller's account: automatic quota charges on limit increases, manual charges, signed adjustments, payments; voidable, never deleted. Balance = charges − payments. |
 
 ## 5. Tickets (`tickets`)

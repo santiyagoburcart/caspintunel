@@ -32,6 +32,9 @@ def data():
     PanelAdmin.objects.create(username="bea", total_user_limit=5 * GB, total_user_used=7 * GB)
     PanelAdmin.objects.create(username="cyrus", status="disabled", has_data_limit=True, admin_limit_bytes=GB,
                               pamp_blocked=True)
+    from apps.agency import ledger as _ledger
+
+    _ledger.set_price("ali", 1000, _ledger.today())       # v1.34: a raise needs a price per GB (invoice)
     UserTrafficSnapshot.objects.create(panel_admin=a, user_username="u1", used_traffic_bytes=2 * GB)
     AdminGroup.objects.create(owner_username="ali", member_usernames="bea")
     SyncLog.objects.create(status="success", admins_synced=3)

@@ -258,7 +258,14 @@ def _blu_row(tx) -> dict:
         # v1.32: approved by the rounded-amount rule (payments_sms/rounded.py)
         "rounded": bool(tx.matched_payment_id and tx.matched_payment.auto_rule == "rounded"),
         "shortfall": tx.matched_payment.shortfall if tx.matched_payment_id else None,
+        # v1.34: a deposit that paid (or nearly matched) an agency payment, not a customer order
+        "agency_payment": _agency_of(tx),
     }
+
+
+def _agency_of(tx):
+    ap = next(iter(tx.agency_payments.all()), None)
+    return {"id": ap.id, "number": ap.number, "payer": ap.payer_username, "status": ap.status} if ap else None
 
 
 class BluTransactionListView(AdminAPIView):
@@ -272,7 +279,8 @@ class BluTransactionListView(AdminAPIView):
         from apps.payments_sms.blu import collector_health
         from apps.payments_sms.models import BluStatus, BluTransaction
 
-        qs = BluTransaction.objects.select_related("matched_payment").order_by("-occurred_at", "-id")
+        qs = (BluTransaction.objects.select_related("matched_payment").prefetch_related("agency_payments")
+              .order_by("-occurred_at", "-id"))
         st = request.query_params.get("status")
         if st:
             if st not in BluStatus.values:

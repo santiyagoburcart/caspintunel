@@ -32,7 +32,7 @@ const T = {
     svc: 'سرویس روی سرور ایران', svc_active: 'فعال', svc_inactive: 'غیرفعال', svc_unknown: 'نامعلوم',
     svc_check: 'آخرین بررسی', svc_never: 'هنوز بررسی نشده', svc_err: 'آخرین خطا',
     svc_ssh: 'اتصال SSH {n} بار پشت سر هم ناموفق', svc_errs: '{n} خطا در 10 دقیقهٔ اخیر',
-    rounded: 'تأیید خودکار – مبلغ گرد شده', shortfall: 'کسری',
+    rounded: 'تأیید خودکار – مبلغ گرد شده', shortfall: 'کسری', agency: 'واریز نماینده',
     set_h: 'تنظیمات پایش جمع‌کننده', set_sub: 'در پایگاه داده ذخیره می‌شود، بر .env مقدم است و بدون ری‌استارت اعمال می‌شود.',
     set_ssh: 'فاصلهٔ بررسی SSH (دقیقه)', set_ssh_h: 'پیش‌فرض 5 — کمینه 1',
     set_stale: 'هشدار پس از چند دقیقه بدون خواندن موفق', set_stale_h: 'پیش‌فرض 10 — کمینه 2',
@@ -61,7 +61,7 @@ const T = {
     svc: 'Service on the Iran server', svc_active: 'active', svc_inactive: 'inactive', svc_unknown: 'unknown',
     svc_check: 'Last check', svc_never: 'not checked yet', svc_err: 'Last error',
     svc_ssh: 'SSH failed {n} times in a row', svc_errs: '{n} errors in the last 10 min',
-    rounded: 'Auto-approved — rounded amount', shortfall: 'short',
+    rounded: 'Auto-approved — rounded amount', shortfall: 'short', agency: 'Agency payment',
     set_h: 'Collector monitoring settings', set_sub: 'Stored in the database, override .env, apply without a restart.',
     set_ssh: 'SSH check interval (min)', set_ssh_h: 'default 5 — minimum 1',
     set_stale: 'Alert after N min without a successful poll', set_stale_h: 'default 10 — minimum 2',
@@ -250,6 +250,9 @@ function Deposit({ tx, s, lang, canAttach, onDone }) {
         </span>
         <span className={`blu-pill blu-pill--${tone}`}>{s['st_' + tx.status] || tx.status}</span>
       </div>
+      {tx.agency_payment && (
+        <div className="blu-agency" data-testid="blu-agency">{s.agency} <bdi dir="ltr">{tx.agency_payment.number}</bdi> · <bdi>{tx.agency_payment.payer}</bdi></div>
+      )}
       {tx.rounded && (
         <div className="blu-rounded" data-testid="blu-rounded">{s.rounded}
           {tx.shortfall != null && <span> · {s.shortfall} {toman(tx.shortfall, lang)}</span>}</div>
@@ -263,7 +266,7 @@ function Deposit({ tx, s, lang, canAttach, onDone }) {
         {tx.matched_order && <span>{s.order} #{tx.matched_order}</span>}
       </div>
       {tx.match_note && <div className="blu-note" dir="ltr">{tx.match_note}</div>}
-      {tx.status === 'unmatched' && canAttach && (
+      {tx.status === 'unmatched' && canAttach && !tx.agency_payment && (
         <div className="blu-attach">
           <input className="input" dir="ltr" inputMode="numeric" aria-label={s.order_ph} placeholder={s.order_ph}
             value={orderId} onChange={(e) => setOrderId(e.target.value)} />
@@ -320,6 +323,7 @@ const CSS = `
 .blu-src { margin-inline-start: 6px; font-weight: 600; font-size: 10.5px; padding: 1px 7px; border-radius: 999px;
   color: var(--c-muted-fg); background: color-mix(in srgb, var(--c-text-muted) 14%, transparent); }
 .blu-poll { font-size: 12px; color: var(--c-muted-fg); border-top: 1px solid var(--c-border); padding-top: 8px; }
+.blu-agency { font-size: 12px; font-weight: 700; color: #fff; background: #0891B2; border-radius: 8px; padding: 4px 10px; overflow-wrap: anywhere; }
 .blu-rounded { font-size: 12px; font-weight: 700; color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 10%, transparent);
   border-radius: 8px; padding: 4px 10px; }
 @media (max-width: 767px) {

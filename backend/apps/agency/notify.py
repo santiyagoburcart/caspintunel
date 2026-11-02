@@ -46,6 +46,21 @@ def approval_requested(req) -> int:
     from apps.common.links import admin_link
 
     cache.delete("agency:approvals:badge")
+    if req.kind == "request":
+        # v1.34: the admin asked in the /agency/ portal — nothing is live until approved
+        from . import ledger
+
+        q = ledger.quote_quota_charge(req.admin_username, req.old_limit_bytes, req.new_limit_bytes)
+        amount = f" · {q['amount']:,} تومان" if q and q.get("price_per_gb") is not None else ""
+        note = f"\nیادداشت: {req.note}" if req.note else ""
+        text = (f"🟢 درخواست ادمین #{req.id} (پرتال نمایندگان)\n"
+                f"ادمین {req.admin_username} · گروه {req.group_name or '—'} · +{_gb(req.gb)} GB{amount}{note}\n"
+                f"Admin request #{req.id}: {req.admin_username} (group {req.group_name or '—'}) asks for "
+                f"+{_gb(req.gb)} GB — approving raises the limit on PasarGuard and issues the invoice.\n"
+                f"{admin_link('/agency/approvals')}")
+        return alert_staff(text, perm=PERM, buttons=approval_buttons(req.id), dedupe_key=f"agency:req:{req.id}",
+                           ttl=86400, push=_push(f"درخواست ادمین #{req.id} · Admin request", f"{req.admin_username} +{_gb(req.gb)} GB",
+                                                "/agency/approvals", f"agency-req:{req.id}"))
     what_fa = "ساخت ادمین" if req.kind == "create" else "افزایش حجم"
     what_en = "new admin" if req.kind == "create" else "volume added"
     text = (f"🟡 درخواست تأیید نمایندگی #{req.id}: {what_fa}\n"
@@ -134,7 +149,7 @@ def handle_callback(bot, chat_id, message, tg_id, data: str) -> str:
         return "confirm"
     if act == "rc":
         try:
-            M.reject(rid, staff, "rejected from Telegram")
+            M.reject(rid, staff, "رد از تلگرام · rejected from Telegram")
         except M.ManagerError as exc:
             bot.send_message(chat_id, f"⚠️ {exc}")
             return exc.code

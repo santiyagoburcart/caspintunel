@@ -24,6 +24,8 @@ GM_PERMS = {
     "agency.gm.view_users": ("Group manager: view admins' users", "مدیر گروه: دیدن کاربران ادمین‌ها"),
     "agency.gm.accounting": ("Group manager: view accounting / group statement", "مدیر گروه: دیدن حسابداری و صورت‌حساب گروه"),
     "agency.gm.activity": ("Group manager: view activity", "مدیر گروه: دیدن فعالیت"),
+    # v1.34: the group's invoices — list them and pay several at once
+    "agency.gm.invoices": ("Group manager: view and pay the group's invoices", "مدیر گروه: دیدن و پرداخت فاکتورهای گروه"),
 }
 
 

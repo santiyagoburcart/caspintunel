@@ -132,6 +132,20 @@ def ingest_sms(*, device, raw_text: str, sender: str | None = None, received_at=
               else "no sender reported, and an allow-list of bank numbers is set")
         return msg, result
 
+    # v1.34 agency payments share the unique-amount pool: a deposit equal to BOTH an open customer
+    # order and an agency payment is never auto-approved (both go to review)
+    from apps.agency import billing as agency
+
+    if amount is not None and amount.whole:
+        ap = agency.exact(amount.toman, msg.received_at)
+        if ap is not None and open_orders_at(msg.received_at).filter(amount_unique=amount.toman).exists():
+            agency.hold_ambiguous(ap, amount.toman, sms=msg)
+            suspect = open_orders_at(msg.received_at).filter(amount_unique=amount.toman).order_by("created_at").first()
+            flag_mismatch(msg, suspect, amount)
+            _note(msg, f"amount equals customer order #{suspect.id} AND agency payment {ap.number} — not approved, review both")
+            result.update(reason="ambiguous", order_id=suspect.id, agency_payment=ap.number)
+            return msg, result
+
     payment = match_sms_message(msg, amount)
     if payment is not None:
         result.update(
@@ -143,21 +157,46 @@ def ingest_sms(*, device, raw_text: str, sender: str | None = None, received_at=
         late = " (delivered late; order was open when the SMS arrived)" if msg.delivered_late else ""
         _note(msg, f"matched order #{payment.order_id} ({payment.amount} T, SMS {amount.describe()}) — auto-confirmed{late}")
         return msg, result
+    # v1.34: an agency payment of exactly this amount (agency/billing.py)
+    if amount is not None and amount.whole:
+        res, ap = agency.match_deposit(amount.toman, msg.received_at, sms=msg)
+        if res == "approved":
+            _note(msg, f"matched agency payment {ap.number} ({ap.payer_username}) — auto-confirmed")
+            result.update(matched=True, agency_payment=ap.number, amount=str(amount.toman))
+            return msg, result
+        if res == "duplicate":
+            _note(msg, f"agency payment {ap.number} was already paid — duplicate, not approved again")
+            result.update(reason="duplicate", agency_payment=ap.number)
+            return msg, result
+
     # v1.32: a little LESS than exactly one open invoice + evidence → approved (rounded.py)
     from . import rounded
 
     rpay, rdec = rounded.try_sms(msg, amount)
     if rpay is not None:
+        if hasattr(rpay, "payer_username"):          # an agency payment (v1.34)
+            _note(msg, f"agency payment {rpay.number}: {rounded.note_text(rdec.reason)}")
+            result.update(matched=True, agency_payment=rpay.number, rounded=True)
+            return msg, result
         result.update(matched=True, order_id=rpay.order_id, amount=str(rpay.amount),
                       payment_status=rpay.status, rounded=True)
         return msg, result
     suspect = near_order(amount, msg.received_at)
     if suspect is not None:
         kind = flag_mismatch(msg, suspect, amount)
-        if rdec is not None:
+        if rdec is not None and not hasattr(rdec.order, "payer_username"):
             rounded.remember(suspect, rdec.reason)
             _note(msg, f"{msg.note} · {rounded.note_text(rdec.reason)}")
         result.update(reason="amount mismatch", mismatch=kind, order_id=suspect.id)
+        return msg, result
+    ap = agency.near(amount.toman, msg.received_at) if amount is not None else None
+    if ap is not None:
+        kind = agency.flag_mismatch(ap, amount.toman, sms=msg)
+        if rdec is not None and isinstance(rdec.order, type(ap)) and rdec.order.pk == ap.pk:
+            type(ap).objects.filter(pk=ap.pk).update(auto_reason=rdec.reason)
+        _note(msg, f"amount mismatch — agency payment {ap.number} expects {ap.amount_unique:,} T, SMS {amount.describe()}"
+                   " — NOT approved, review in «واریزهای نمایندگان»")
+        result.update(reason="amount mismatch", mismatch=kind, agency_payment=ap.number)
         return msg, result
     result["reason"] = "no pending order matches the amount in this SMS"
     _note(msg, _why_unmatched(amount))
@@ -389,6 +428,16 @@ def match_blu_transaction(pk: int):
                           f"(created {order.created_at:%Y-%m-%d %H:%M}, reservation until "
                           f"{order.unique_expire_at:%Y-%m-%d %H:%M} UTC) — reused amount, not matched")
             return tx
+        from apps.agency import billing as agency
+
+        if order is not None and agency.exact(tx.amount_toman, at) is not None:
+            # v1.34: equal to a customer order AND an agency payment — nobody is auto-approved
+            ap = agency.exact(tx.amount_toman, at)
+            agency.hold_ambiguous(ap, tx.amount_toman, tx=tx)
+            flag_blu_mismatch(tx, order)
+            _blu_note(tx, f"amount equals order #{order.id} AND agency payment {ap.number} — not approved, review both",
+                      matched_order=order)
+            return tx
         if order is not None:
             existing = Payment.objects.select_for_update().filter(order=order).first()
             if existing is not None and existing.status == PaymentStatus.APPROVED and existing.voided_at is None:
@@ -398,6 +447,13 @@ def match_blu_transaction(pk: int):
             confirm_blu(order, tx)
             return tx
 
+        res, ap = agency.match_deposit(tx.amount_toman, at, tx=tx)       # v1.34 agency payments
+        if res == "approved":
+            return tx
+        if res == "duplicate":
+            _blu_note(tx, f"agency payment {ap.number} was already paid — duplicate, not approved again",
+                      status=BluStatus.DUPLICATE)
+            return tx
         paid = _blu_paid_order(tx)
         if paid is not None:
             _blu_note(tx, f"order #{paid.id} was already paid (SMS / receipt) — duplicate, not approved again",
@@ -413,9 +469,18 @@ def match_blu_transaction(pk: int):
         suspect = near_order(amount, at)
         if suspect is not None:
             flag_blu_mismatch(tx, suspect)
-            if rdec is not None:
+            if rdec is not None and not hasattr(rdec.order, "payer_username"):
                 rounded.remember(suspect, rdec.reason)
                 _blu_note(tx, f"{tx.match_note} · {rounded.note_text(rdec.reason)}")
+            return tx
+        ap = agency.near(tx.amount_toman, at)
+        if ap is not None:
+            agency.flag_mismatch(ap, tx.amount_toman, tx=tx)
+            if rdec is not None and getattr(rdec.order, "pk", None) == ap.pk and hasattr(rdec.order, "payer_username"):
+                type(ap).objects.filter(pk=ap.pk).update(auto_reason=rdec.reason)
+            _blu_note(tx, f"amount mismatch — agency payment {ap.number} expects {ap.amount_unique:,} T, deposit "
+                          f"{tx.amount_toman:,} T — NOT approved, review in «واریزهای نمایندگان»"
+                          + (f" · {rounded.note_text(rdec.reason)}" if rdec is not None else ""))
             return tx
         _blu_note(tx, f"no pending order of exactly {tx.amount_toman:,} T at the deposit time")
         return tx

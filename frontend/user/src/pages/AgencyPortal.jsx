@@ -7,6 +7,7 @@ import { ACCENT_CSS, Ic } from '../components/AgencyIcons'
 import { useToast } from '../components/Toast'
 import { Link } from 'react-router-dom'
 import { PORTAL_PATH } from '../lib/paths'
+import { PortalBilling } from '../components/AgencyBilling'
 
 // Reseller portal (PAMP's per-admin portal). Separate from the customer site:
 // own token ("Agency <token>"), own HTTP client — the customer JWT, its 401
@@ -108,6 +109,7 @@ export default function AgencyPortal() {
             {data?.mode === 'not_found' && <div className="ap-card ap-empty">{s.not_found}</div>}
             {data && data.mode === 'group' && <h2 className="ap-group">{s.group}</h2>}
             {data?.accounts.map((a) => <Account key={a.username} a={a} s={s} lang={lang} balance={data.balances[a.username]} />)}
+            {data && data.mode !== 'not_found' && <PortalBilling http={http} lang={lang} onChange={load} />}
           </>
         )}
       </main>

@@ -70,6 +70,7 @@ def run(now=None) -> dict:
             push_payments_event("payment_pending_alert", order_id=p.order_id, payment_id=p.id, minutes=age,
                                 tx=p.tx_number)
             out["alerted"] += 1
+        out["agency_alerted"] = _agency(now, n)
     # one silent follow-up when an alerted payment got handled
     done = (Payment.objects.filter(pending_alerted_at__isnull=False, pending_resolved_at__isnull=True,
                                    pending_alerted_at__gte=now - LOOKBACK)
@@ -84,3 +85,27 @@ def run(now=None) -> dict:
                     perm="payment.approve", silent=True, dedupe_key=f"pending-resolved:{p.id}", ttl=86400)
         out["resolved"] += 1
     return out
+
+
+def _agency(now, n: int) -> int:
+    """v1.34: agency payments under review (receipt / near-miss deposit) longer than N minutes —
+    one alert to staff with agency.payments, never repeated."""
+    from apps.agency.models import AgencyPayment
+    from apps.common.links import admin_link
+    from apps.common.staff_alert import alert_staff
+    from apps.notifications.live import push_payments_event
+
+    sent = 0
+    due = (AgencyPayment.objects.filter(status=AgencyPayment.PENDING_REVIEW, pending_alerted_at__isnull=True,
+                                        updated_at__lte=now - timedelta(minutes=n), created_at__gte=now - LOOKBACK)
+           .order_by("created_at")[:MAX_PER_RUN])
+    for p in due:
+        if not AgencyPayment.objects.filter(pk=p.pk, pending_alerted_at__isnull=True).update(pending_alerted_at=now):
+            continue
+        age = int((now - (p.receipt_uploaded_at or p.updated_at)).total_seconds() // 60)
+        alert_staff(f"⏳ واریز نماینده {p.number} ({p.payer_username}) {age} دقیقه است بررسی نشده · {p.amount_unique:,} تومان\n"
+                    f"Agency payment {p.number} ({p.payer_username}) waiting {age} min.\n{admin_link('/agency/ledger/payments')}",
+                    perm="agency.payments", dedupe_key=f"agency-pending:{p.id}", ttl=86400)
+        push_payments_event("agency_pending_alert", payment_id=p.id, minutes=age, number=p.number)
+        sent += 1
+    return sent

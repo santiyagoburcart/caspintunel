@@ -1,5 +1,6 @@
 from django.urls import path, re_path
 
+from . import billing_views as bv
 from . import manager_views as mv
 from . import portal_views as v
 
@@ -8,6 +9,14 @@ urlpatterns = [
     path("portal/logout/", v.PortalLogoutView.as_view(), name="agency-portal-logout"),
     path("portal/me/", v.PortalMeView.as_view(), name="agency-portal-me"),
     path("portal/statement/", v.PortalStatementView.as_view(), name="agency-portal-statement"),
+    # v1.34 invoices / requests / payments (billing_views.py)
+    path("portal/invoices/", bv.PortalInvoicesView.as_view(), name="agency-portal-invoices"),
+    path("portal/requests/", bv.PortalRequestsView.as_view(), name="agency-portal-requests"),
+    path("portal/requests/quote/", bv.PortalRequestQuoteView.as_view(), name="agency-portal-request-quote"),
+    path("portal/payments/", bv.PortalPaymentsView.as_view(), name="agency-portal-payments"),
+    path("portal/payments/<int:pk>/", bv.PortalPaymentView.as_view(), name="agency-portal-payment"),
+    path("portal/payments/<int:pk>/<str:action>/", bv.PortalPaymentView.as_view(), name="agency-portal-payment-action"),
+    path("portal/notices/", bv.PortalNoticesView.as_view(), name="agency-portal-notices"),
     # group managers (apps/agency/managers.py)
     path("manager/login/", mv.ManagerLoginGoneView.as_view(), name="agency-manager-login"),
     path("manager/logout/", mv.ManagerLoginGoneView.as_view(), name="agency-manager-logout"),
@@ -19,5 +28,10 @@ urlpatterns = [
     path("manager/groups/<int:group_id>/statement/", mv.ManagerGroupStatementView.as_view(), name="agency-manager-group-statement"),
     path("manager/activity/", mv.ManagerActivityView.as_view(), name="agency-manager-activity"),
     path("manager/password/", mv.ManagerPasswordView.as_view(), name="agency-manager-password"),
+    path("manager/invoices/", bv.ManagerInvoicesView.as_view(), name="agency-manager-invoices"),
+    path("manager/payments/", bv.ManagerPaymentsView.as_view(), name="agency-manager-payments"),
+    path("manager/payments/<int:pk>/", bv.ManagerPaymentView.as_view(), name="agency-manager-payment"),
+    path("manager/payments/<int:pk>/<str:action>/", bv.ManagerPaymentView.as_view(), name="agency-manager-payment-action"),
+    path("manager/notices/", bv.ManagerNoticesView.as_view(), name="agency-manager-notices"),
     re_path(r"^manager/.*$", mv.ManagerForbiddenView.as_view(), name="agency-manager-forbidden"),
 ]

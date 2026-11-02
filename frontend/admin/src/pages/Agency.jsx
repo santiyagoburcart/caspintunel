@@ -11,6 +11,7 @@ import { useToast } from '../components/Toast'
 import AgencyLimitHistory from './AgencyLimitHistory'
 import { ACCENT_CSS, Ic } from '../components/AgencyIcons'
 import { AgencyLedgerOverview, BalanceText, LedgerCard, LT } from './AgencyLedger'
+import { AdminInvoicesCard, AgencyInvoicesView, AgencyPaymentsView } from './AgencyBilling'
 import { AdminSettingsTab, AgencyAdminCreate } from './AgencyAdminForms'
 import { AgencyApprovalsView, AgencyGroupStatementView, AgencyLedgerGroupsView, AgencyManagersView, GroupActivity, LedgerSubNav } from './AgencyManagers'
 import { useLiveApprovals } from '../lib/liveApprovals'
@@ -124,10 +125,10 @@ const Lim = ({ b, tb, s, block, strong }) => {
 function Header({ s, switches }) {
   const { can } = useAuth()
   const { lang } = useI18n()
-  const { pending } = useLiveApprovals()
+  const { pending, agencyReview } = useLiveApprovals()
   const tabs = [['/agency', s.tab_dash, true], ['/agency/admins', s.tab_admins], ['/agency/groups', s.tab_groups],
     ['/agency/managers', s.tab_managers], ['/agency/approvals', s.tab_approvals, false, pending],
-    ...(can('agency.accounting') ? [['/agency/ledger', (LT[lang] || LT.fa).tab]] : []),
+    ...(can('agency.accounting') || can('agency.payments') ? [['/agency/ledger', (LT[lang] || LT.fa).tab, false, agencyReview]] : []),
     ['/agency/sync-logs', s.tab_logs], ['/agency/settings', s.tab_settings]]
   return (
     <>
@@ -448,7 +449,7 @@ export function AgencyAdminDetail() {
 
       {tab === 'settings' && <AdminSettingsTab username={d.username} writable={writable} onDeleted={() => go('/agency/admins')} />}
       {tab === 'history' && <AgencyLimitHistory username={d.username} />}
-      {tab === 'accounting' && <LedgerCard username={d.username} />}
+      {tab === 'accounting' && <><LedgerCard username={d.username} /><AdminInvoicesCard username={d.username} /></>}
       {tab === 'send' && <>
         <PortalLinkCard s={s} username={d.username} />
         <p className="ag-note card ag-card text-sm text-muted">{s.send_pw_note}</p>
@@ -584,6 +585,8 @@ function useHeader() {
 export function AgencyManagers() { return <AgencyManagersView Header={useHeader()} /> }
 export function AgencyApprovals() { return <AgencyApprovalsView Header={useHeader()} /> }
 export function AgencyLedgerGroups() { return <AgencyLedgerGroupsView Header={useHeader()} /> }
+export function AgencyLedgerInvoices() { return <AgencyInvoicesView Header={useHeader()} /> }
+export function AgencyLedgerPayments() { return <AgencyPaymentsView Header={useHeader()} /> }
 export function AgencyGroupStatement() { return <AgencyGroupStatementView Header={useHeader()} /> }
 
 // ------------------------------------------------------------------ groups

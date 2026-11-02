@@ -276,3 +276,25 @@ Agency → Group managers shows one card per manager: status, last sign-in, crea
 manager's panel role, ticked / struck through, with a link to Roles & permissions); **Unapproved
 volume cap** (pending of cap, bar, pending requests). The edit form picks roles as chips (names
 only). The list API adds `panel_role`, `permissions[{code,en,fa,on}]` and `assignments[].all_roles`.
+
+
+## Invoices and payments (v1.34)
+
+- **Invoices** (Agency → Accounting → «فاکتورها», admin page → Accounting): every charge — staff limit raise, manual
+  charge (with GB: GB × price), approved group-manager volume, approved admin request — issues `INV-000123` =
+  GB × the admin's price per GB of that day. No price → the action is refused with «قیمت هر گیگ برای این ادمین
+  تعریف نشده» and staff with `agency.accounting` get a Telegram (admin + GB); set the price, then retry.
+  Statuses: unpaid → pending (receipt / near-miss deposit under review) → paid; voided (staff, unpaid only — voids
+  the charge too). Balances from before invoices: one «تسویه مانده قبلی» invoice per admin (admin page → Accounting).
+- **Admin requests** (`/agency/` → «درخواست شارژ»): GB + optional note, price preview. They appear in Agency →
+  Approvals marked «درخواست ادمین» (who asked, group, note) and on Telegram with Approve / Reject. Only staff with
+  agency.manage + agency.accounting approve (never a group manager): the limit goes up on PasarGuard at once (from
+  the last finite limit), charge + invoice. A rejection reason is shown to the admin.
+- **Paying**: the admin pays one invoice in the portal; a group manager (`agency.gm.invoices`) selects several of its
+  groups' unpaid invoices at `/panel/my-groups/invoices` for one payment. Checkout: card, unique amount (shared pool
+  with customer orders), timer, optional receipt. SMS / Blu deposits confirm it like a customer order (exact amount in
+  the window; ±20 % → review; rounded-amount rule with a receipt or a known payer card; duplicates refused). Staff
+  review the rest in Agency → Accounting → «واریزهای نمایندگان» (`agency.payments`). Approval: invoices paid, a
+  payment entry per admin in the ledger (a rounded shortfall stays owed), the payer notified in the portal / panel.
+- Agency payments never appear in customer Transactions, Accounting revenue, Analytics or the customer queue; Blu
+  deposits that paid one are labelled «واریز نماینده» on the Blu tab.

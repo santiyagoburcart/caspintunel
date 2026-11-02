@@ -329,7 +329,7 @@ def test_every_forbidden_action_is_403(pg):
         ("post", "admins/", {"group_id": pg["g2"].id, "username": "x1x", "password": "Secret-Pass#12", "role_id": 6, "initial_gb": 5}),
         ("post", "admins/", {"group_id": pg["g1"].id, "username": "x2x", "password": "Secret-Pass#12", "role_id": 4, "initial_gb": 5}),
         ("post", "admins/", {"group_id": pg["g1"].id, "username": "x3x", "password": "Secret-Pass#12", "role_id": 6, "initial_gb": 0}),
-        ("post", "payments/", {"admin": "g1-a", "amount": 1000}),
+        ("post", "admins/g1-a/payments/", {"admin": "g1-a", "amount": 1000}),     # no ledger payments
         ("post", "ledger/g1-a/entries/", {"kind": "payment", "amount": 1000}),
         ("post", "prices/", {"admin": "g1-a", "price_per_gb": 1}),
         ("post", "roles/", {}),

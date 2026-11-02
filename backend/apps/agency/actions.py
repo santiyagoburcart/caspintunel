@@ -115,6 +115,16 @@ def set_limit(username: str, action: str, value_gb, by: str = "") -> tuple[bool,
     new_limit_bytes = new_limit_for(base, action, value_gb)
     if new_limit_bytes is None:
         return False, "Unknown action"
+    if new_limit_bytes > base:
+        # caspintunel v1.34: no price per GB → no charge and no limit change (billing.NoPrice)
+        from decimal import Decimal
+
+        from .billing import NO_PRICE_FA, NoPrice, ensure_price
+
+        try:
+            ensure_price(username, (Decimal(new_limit_bytes - base) / gb).quantize(Decimal("0.01")), context="limit raise")
+        except NoPrice:
+            return False, f"{NO_PRICE_FA} — No price per GB is set for {username}; set it in Agency → Accounting, then retry."
 
     success, message = client.set_admin_data_limit(username, new_limit_bytes)
     if not success:

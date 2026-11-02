@@ -11,6 +11,7 @@ import { copyToClipboard } from '../lib/clipboard'
 import { ACCENT_CSS, Ic } from '../components/AgencyIcons'
 import { useToast } from '../components/Toast'
 import { GroupStatement as StaffGroupStatement } from './AgencyManagers'
+import { ManagerInvoices } from '../components/AgencyBilling'
 
 // Group-manager pages inside the main panel (v1.25). A group manager signs in at
 // /panel/ like any staff (role "Group manager") and sees only this menu
@@ -109,9 +110,9 @@ async function download(url, params, name) {
   setTimeout(() => URL.revokeObjectURL(a.href), 2000)
 }
 
-const TABS = { undefined: 'admins', new: 'new', accounting: 'acc', activity: 'act', settings: 'set' }
+const TABS = { undefined: 'admins', new: 'new', accounting: 'acc', activity: 'act', settings: 'set', invoices: 'inv' }
 // v1.27: each page needs its own permission of the manager's role (server answers 403 too)
-const TAB_PERM = { admins: 'agency.gm.view_admins', new: 'agency.gm.create_admin', acc: 'agency.gm.accounting', act: 'agency.gm.activity' }
+const TAB_PERM = { admins: 'agency.gm.view_admins', new: 'agency.gm.create_admin', acc: 'agency.gm.accounting', act: 'agency.gm.activity', inv: 'agency.gm.invoices' }
 
 export default function GroupManager() {
   const { lang } = useI18n()
@@ -145,6 +146,7 @@ export default function GroupManager() {
           {tab === 'acc' && me.groups.length > 0 && <Accounting me={me} s={s} lang={lang} />}
           {tab === 'act' && <Activity s={s} lang={lang} />}
           {tab === 'set' && <SettingsTab me={me} s={s} />}
+          {tab === 'inv' && <ManagerInvoices http={http} lang={lang} />}
         </>
       )}
     </div>

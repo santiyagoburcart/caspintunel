@@ -84,14 +84,16 @@ def test_notes_in_persian(en, fa):
 
 
 def test_statements_carry_note_fa_and_persian_exports(gm):
-    ledger.record_quota_charge("Iman", 0, 100 * GB, by="boss")
+    # v1.34: no price → no charge (billing.NoPrice); with a price the note is translated as before
+    ledger.set_price("Iman", 1000, ledger.today())
+    ledger.record_quota_charge("Iman", 0, 100 * GB, by="boss", note="approved request #5 — group manager x")
     e = LedgerEntry.objects.get()
-    assert ledger.statement("Iman")["entries"][0]["note_fa"].startswith("برای این تاریخ")
+    assert ledger.statement("Iman")["entries"][0]["note_fa"].startswith("درخواست #5 تأیید شد")
     st = managers.group_statement(AdminGroup.objects.get())
     assert st["entries"][0]["note_fa"] == to_fa(e.note)
     rows = managers.group_statement_rows(st, "fa")
-    assert any("برای این تاریخ" in str(c) for row in rows for c in row)
-    assert any("no price per GB" in str(c) for row in managers.group_statement_rows(st, "en") for c in row)
+    assert any("درخواست #5 تأیید شد" in str(c) for row in rows for c in row)
+    assert any("approved request #5" in str(c) for row in managers.group_statement_rows(st, "en") for c in row)
     c = _client(gm.staff)
     r = c.get(f"/api/v1/agency/manager/groups/{AdminGroup.objects.get().id}/statement/")
-    assert r.json()["entries"][0]["note_fa"].startswith("برای این تاریخ")
+    assert r.json()["entries"][0]["note_fa"].startswith("درخواست #5 تأیید شد")

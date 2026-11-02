@@ -457,8 +457,10 @@ class ManagerSession(models.Model):
 class VolumeRequest(models.Model):
     """"Pending approval": volume a group manager gave (new admin or +GB), already live on
     PasarGuard. Approve → quota charge in the ledger; reject → the volume is taken back."""
-    KINDS = [("create", "New admin"), ("add", "Added volume")]
+    KINDS = [("create", "New admin"), ("add", "Added volume"), ("request", "Admin request")]
     STATUSES = [("pending", "Pending"), ("approved", "Approved"), ("rejected", "Rejected")]
+    # kind "request" (v1.34): asked by the agency admin in the /agency/ portal — NOT live until a
+    # staff member approves it (then the limit goes up on PasarGuard and an invoice is issued)
 
     group = models.ForeignKey(AdminGroup, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     group_name = models.CharField(max_length=150, blank=True, default="")
@@ -477,7 +479,135 @@ class VolumeRequest(models.Model):
     revert_note = models.CharField(max_length=255, blank=True, default="")
     ledger_entry = models.ForeignKey(LedgerEntry, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     limit_change = models.ForeignKey(AdminLimitChange, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    requested_by = models.CharField(max_length=255, blank=True, default="", db_default="")   # kind "request": the admin
+    note = models.CharField(max_length=255, blank=True, default="", db_default="")
 
     class Meta:
         db_table = "agency_volume_request"
+        ordering = ("-created_at", "-id")
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# v1.34 invoices + agency payments (apps/agency/billing.py, docs/agency.md → "Invoices").
+# Every agency charge issues an invoice; agency admins / group managers pay them like a
+# customer checkout (unique amount, SMS / Blu auto-confirm, receipt). Kept apart from
+# customer payments: never in customer revenue, Transactions or Analytics.
+# ═════════════════════════════════════════════════════════════════════════════
+def _num(prefix, n):
+    return f"{prefix}-{int(n):06d}" if n else ""
+
+
+class AgencyInvoice(models.Model):
+    KIND_QUOTA, KIND_CHARGE, KIND_REQUEST, KIND_SETTLEMENT = "quota_charge", "manual_charge", "request", "settlement"
+    KINDS = [(KIND_QUOTA, "Volume (staff)"), (KIND_CHARGE, "Manual charge"), (KIND_REQUEST, "Volume request / group manager"),
+             (KIND_SETTLEMENT, "Previous balance")]
+    UNPAID, PENDING, PAID, VOIDED = "unpaid", "pending", "paid", "voided"
+    STATUSES = [(UNPAID, "Unpaid"), (PENDING, "Pending review"), (PAID, "Paid"), (VOIDED, "Voided")]
+
+    admin_username = models.CharField(max_length=255, db_index=True)
+    group = models.ForeignKey(AdminGroup, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    group_name = models.CharField(max_length=150, blank=True, default="")
+    kind = models.CharField(max_length=16, choices=KINDS)
+    gb = models.DecimalField(max_digits=14, decimal_places=4, null=True, blank=True)
+    price_per_gb = models.DecimalField(max_digits=12, decimal_places=0, null=True, blank=True)
+    amount = models.DecimalField(max_digits=14, decimal_places=0)
+    status = models.CharField(max_length=8, choices=STATUSES, default=UNPAID, db_index=True)
+    ledger_entry = models.ForeignKey(LedgerEntry, null=True, blank=True, on_delete=models.SET_NULL, related_name="invoices")
+    volume_request = models.ForeignKey(VolumeRequest, null=True, blank=True, on_delete=models.SET_NULL, related_name="invoices")
+    note = models.CharField(max_length=255, blank=True, default="")
+    created_by = models.CharField(max_length=150, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+    voided_at = models.DateTimeField(null=True, blank=True)
+    void_reason = models.CharField(max_length=255, blank=True, default="")
+
+    class Meta:
+        db_table = "agency_invoice"
+        ordering = ("-created_at", "-id")
+
+    @property
+    def number(self) -> str:
+        return _num("INV", self.pk)
+
+
+class AgencyPayment(models.Model):
+    PENDING_PAYMENT, PENDING_REVIEW, APPROVED, REJECTED, EXPIRED, CANCELLED = (
+        "pending_payment", "pending_review", "approved", "rejected", "expired", "cancelled")
+    STATUSES = [(PENDING_PAYMENT, "Waiting for the transfer"), (PENDING_REVIEW, "Waiting for review"),
+                (APPROVED, "Approved"), (REJECTED, "Rejected"), (EXPIRED, "Expired"), (CANCELLED, "Cancelled")]
+    ACTIVE = (PENDING_PAYMENT, PENDING_REVIEW)          # these hold the unique amount
+
+    payer_kind = models.CharField(max_length=8, choices=[("admin", "Agency admin"), ("manager", "Group manager")])
+    payer_username = models.CharField(max_length=255, db_index=True)
+    manager = models.ForeignKey(GroupManager, null=True, blank=True, on_delete=models.SET_NULL, related_name="payments")
+    amount = models.DecimalField(max_digits=14, decimal_places=0, help_text="the invoices' total")
+    amount_unique = models.DecimalField(max_digits=14, decimal_places=0)
+    # same idea as Order.amount_unique_lock: unique while the payment can still be matched
+    amount_unique_lock = models.DecimalField(max_digits=14, decimal_places=0, null=True, blank=True, unique=True,
+                                             editable=False)
+    unique_expire_at = models.DateTimeField()
+    status = models.CharField(max_length=16, choices=STATUSES, default=PENDING_PAYMENT, db_index=True)
+    bank_card = models.ForeignKey("payments_sms.BankCard", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    receipt_image = models.ImageField(upload_to="receipts/agency/%Y/%m/", null=True, blank=True)
+    receipt_sha256 = models.CharField(max_length=64, blank=True, default="", db_index=True)
+    receipt_ref = models.CharField(max_length=40, blank=True, default="", db_index=True)
+    receipt_uploaded_at = models.DateTimeField(null=True, blank=True)
+    # how it was confirmed: sms_auto | blu_auto | manual (staff) — and the deposit that paid it
+    method = models.CharField(max_length=12, blank=True, default="")
+    sms_message = models.ForeignKey("payments_sms.SmsMessage", null=True, blank=True, on_delete=models.SET_NULL,
+                                    related_name="agency_payments")
+    blu_transaction = models.ForeignKey("payments_sms.BluTransaction", null=True, blank=True, on_delete=models.SET_NULL,
+                                        related_name="agency_payments")
+    mismatch_kind = models.CharField(max_length=4, blank=True, default="")          # less | more (near miss)
+    mismatch_amount = models.DecimalField(max_digits=14, decimal_places=0, null=True, blank=True)
+    paid_amount = models.DecimalField(max_digits=14, decimal_places=0, null=True, blank=True)
+    auto_rule = models.CharField(max_length=16, blank=True, default="")
+    auto_reason = models.JSONField(default=dict, blank=True, null=True)
+    shortfall = models.DecimalField(max_digits=14, decimal_places=0, null=True, blank=True)
+    confirmed_by = models.CharField(max_length=8, blank=True, default="")             # system | admin
+    confirmed_by_staff = models.ForeignKey("accounts.Staff", null=True, blank=True, on_delete=models.SET_NULL,
+                                           related_name="+")
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    reject_reason = models.CharField(max_length=255, blank=True, default="")
+    pending_alerted_at = models.DateTimeField(null=True, blank=True)
+    pending_resolved_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "agency_payment"
+        ordering = ("-created_at", "-id")
+
+    @property
+    def number(self) -> str:
+        return _num("AP", self.pk)
+
+    def sync_unique_lock(self):
+        self.amount_unique_lock = self.amount_unique if self.status in self.ACTIVE else None
+
+
+class AgencyPaymentItem(models.Model):
+    payment = models.ForeignKey(AgencyPayment, on_delete=models.CASCADE, related_name="items")
+    invoice = models.ForeignKey(AgencyInvoice, on_delete=models.CASCADE, related_name="payment_items")
+    amount = models.DecimalField(max_digits=14, decimal_places=0)
+
+    class Meta:
+        db_table = "agency_payment_item"
+        unique_together = ("payment", "invoice")
+
+
+class AgencyNotice(models.Model):
+    """A notification in the /agency/ portal (admin_username) or the group-manager panel (manager)."""
+    admin_username = models.CharField(max_length=255, blank=True, default="", db_index=True)
+    manager = models.ForeignKey(GroupManager, null=True, blank=True, on_delete=models.CASCADE, related_name="notices")
+    kind = models.CharField(max_length=24, blank=True, default="")
+    title = models.CharField(max_length=200)
+    title_en = models.CharField(max_length=200, blank=True, default="")
+    body = models.TextField(blank=True, default="")
+    body_en = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    read_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "agency_notice"
         ordering = ("-created_at", "-id")

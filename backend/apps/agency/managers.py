@@ -849,7 +849,10 @@ def request_row(r: VolumeRequest) -> dict:
             "old_limit_bytes": r.old_limit_bytes, "new_limit_bytes": r.new_limit_bytes,
             "price_per_gb": price, "amount": amount, "created_at": r.created_at, "decided_at": r.decided_at,
             "decided_by": r.decided_by, "reason": r.reason, "revert_note": r.revert_note,
-            "ledger_entry": r.ledger_entry_id, "limit_change": r.limit_change_id}
+            "ledger_entry": r.ledger_entry_id, "limit_change": r.limit_change_id,
+            # v1.34: «درخواست ادمین» from the portal (who asked, their note) + the issued invoice
+            "requested_by": r.requested_by, "note": r.note, "missing_price": price is None,
+            "invoice": next((i.number for i in r.invoices.all()), None) if r.status == "approved" else None}
 
 
 def approve(request_id: int, by, *, price=None, may_price: bool = False) -> VolumeRequest:
@@ -865,7 +868,10 @@ def approve(request_id: int, by, *, price=None, may_price: bool = False) -> Volu
         day = _day(r)
         if ledger.price_at(r.admin_username, day) is None:
             if price in (None, ""):
-                raise ManagerError(f"{r.admin_username} has no price per GB for {day} — enter one to approve",
+                from .billing import NO_PRICE_FA, missing_price
+
+                missing_price(r.admin_username, r.gb, context=f"approval #{r.id}")
+                raise ManagerError(f"{NO_PRICE_FA} — {r.admin_username} has no price per GB for {day}; enter one to approve",
                                    "no_price", "price_per_gb")
             if not may_price:
                 raise ManagerError("setting a price needs agency.accounting", "forbidden")
@@ -873,10 +879,21 @@ def approve(request_id: int, by, *, price=None, may_price: bool = False) -> Volu
                 ledger.set_price(r.admin_username, price, day, note=f"set when approving request #{r.id}", by=staff_label)
             except (ValueError, InvalidOperation) as exc:
                 raise ManagerError("enter a valid price per GB", "invalid", "price_per_gb") from exc
-        e = ledger.record_quota_charge(r.admin_username, r.old_limit_bytes, r.new_limit_bytes, by=staff_label, day=day,
-                                       note=f"approved request #{r.id} — group manager {r.manager_username}")
+        if r.kind == "request":
+            # v1.34 admin request from the /agency/ portal: PasarGuard first, then charge + invoice
+            from .billing import approve_request
+
+            e = approve_request(r, by, staff_label)
+        else:
+            from .billing import issue_for_entry
+
+            e = ledger.record_quota_charge(r.admin_username, r.old_limit_bytes, r.new_limit_bytes, by=staff_label, day=day,
+                                           note=f"approved request #{r.id} — group manager {r.manager_username}",
+                                           invoice=False)
+            issue_for_entry(e, volume_request=r, by=staff_label)
         r.status, r.decided_at, r.decided_by, r.ledger_entry = "approved", timezone.now(), staff_label[:150], e
-        r.save(update_fields=["status", "decided_at", "decided_by", "ledger_entry"])
+        r.save(update_fields=["status", "decided_at", "decided_by", "ledger_entry", "old_limit_bytes",
+                              "new_limit_bytes", "limit_change"])
         if r.limit_change_id:
             AdminLimitChange.objects.filter(pk=r.limit_change_id).update(ledger_entry=e)
     write_audit(action="agency.approval.approved", staff=by, target=r, detail={
@@ -898,6 +915,8 @@ def reject(request_id: int, by, reason: str = "") -> VolumeRequest:
     r0 = VolumeRequest.objects.filter(pk=request_id).first()
     if r0 is None:
         raise ManagerError("request not found", "not_found")
+    if r0.kind == "request":
+        return _reject_admin_request(r0.pk, by, staff_label, reason)
     with _AdminLock(r0.admin_username), transaction.atomic():
         # the row stays locked across the panel call, so an approval in another tab waits
         r = VolumeRequest.objects.select_for_update().get(pk=r0.pk)
@@ -933,6 +952,24 @@ def reject(request_id: int, by, reason: str = "") -> VolumeRequest:
         "request": r.id, "group_id": r.group_id, "group": r.group_name, "manager": r.manager_username,
         "admin": r.admin_username, "gb": str(r.gb), "old_limit_bytes": live, "new_limit_bytes": target,
         "reason": r.reason})
+    cache.delete("agency:approvals:badge")
+    return r
+
+
+def _reject_admin_request(pk: int, by, staff_label: str, reason: str) -> VolumeRequest:
+    """v1.34: an admin's own request was never live on PasarGuard — only the answer is recorded."""
+    from .billing import reject_request
+
+    with transaction.atomic():
+        r = VolumeRequest.objects.select_for_update().get(pk=pk)
+        if r.status != "pending":
+            raise ManagerError(f"already {r.status}", "not_pending")
+        r.status, r.decided_at, r.decided_by = "rejected", timezone.now(), staff_label[:150]
+        r.reason = (reason or "").strip()[:255]
+        r.save(update_fields=["status", "decided_at", "decided_by", "reason"])
+        reject_request(r, r.reason)
+    write_audit(action="agency.approval.rejected", staff=by, target=r, detail={
+        "request": r.id, "kind": "request", "admin": r.admin_username, "gb": str(r.gb), "reason": r.reason})
     cache.delete("agency:approvals:badge")
     return r
 

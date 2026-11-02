@@ -205,6 +205,14 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   Liveness = last successful poll ("poll ok" journal line), session/login/OTP errors, service state — NEVER "no deposit
   for N minutes" (a quiet account is not an outage; that alert fired nightly and was removed in v1.33.1).
 
+## Agency invoices / payments (v1.34, docs/agency.md#invoices-and-payments-v134)
+- Every agency charge goes through `ledger.record_quota_charge` / `add_entry` → `billing.issue_for_entry`; no price per GB
+  = no charge (`billing.ensure_price` BEFORE touching PasarGuard). Never record a 0-amount charge again.
+- Agency payments are `AgencyPayment`, never `payments_sms.Payment`: keep them out of customer revenue, Transactions,
+  Analytics and the customer queue. Their unique amounts share the order pool (`agency_locked_amounts` ↔ `customer_locked`).
+- SMS / Blu: customer orders are matched first, agency payments after (`billing.match_deposit`, `near`, rounded
+  candidates); a deposit equal to both is held for review (`hold_ambiguous`).
+
 ## Panel account names
 - Never attach a customer to a panel account we did not create: names are checked in our DB **and** on the panel
   (`orders.services.check_account_name`); a 409 on create is adopted only for our own earlier attempt (note
