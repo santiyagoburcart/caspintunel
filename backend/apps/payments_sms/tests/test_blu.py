@@ -45,7 +45,6 @@ def env(monkeypatch, settings):
 
     settings.BLU_PUSH_SECRET = SECRET
     settings.BLU_LATE_GRACE_MINUTES = 30
-    settings.BLU_STALE_MINUTES = 15
     monkeypatch.setattr(tasks.fulfill_order, "delay", lambda *_: None)
     events, alerts = [], []
     monkeypatch.setattr(live, "push_payments_event", lambda event, **d: events.append((event, d)))
@@ -304,7 +303,8 @@ def test_admin_list_needs_payment_view_and_shows_health():
     r = staff_client(["payment.view"], "viewer").get("/api/v1/admin/payments/blu-transactions/?status=unmatched")
     assert r.status_code == 200
     body = r.json()
-    assert body["collector"]["connected"] is True and body["collector"]["enabled"] is True
+    assert body["collector"]["enabled"] is True and body["collector"]["quiet_minutes"] is not None
+    assert body["collector"]["state"] == "unknown"           # no SSH host in tests: health not checked
     assert body["results"][0]["id"] and body["counts"]["unmatched"] == 1
 
 
@@ -327,15 +327,13 @@ def test_attach_requires_payment_approve_and_approves():
 
 
 # --- collector health ---------------------------------------------------------------
-def test_stale_collector_alerts_once_then_recovers(env):
-    assert check_stale() == "never"                      # never spoke: nothing to alert
-    post([])
-    assert check_stale() == "ok"
-    BluCollector.objects.filter(pk=1).update(last_batch_at=timezone.now() - timedelta(minutes=20))
-    assert check_stale() == "alert"
-    assert check_stale() == "alerted"                    # one alert per outage
-    assert sum("بلو" in t for t, _ in env["alerts"]) == 1
-    assert ("blu_collector", {"connected": False, "minutes": 20}) in env["events"]
-    post([])                                             # heartbeat again
-    assert BluCollector.get().stale_alerted_at is None
-    assert any("back online" in t for t, _ in env["alerts"])
+def test_silence_without_deposits_never_alerts(env):
+    """v1.33.1: a quiet account is not an outage — no alert, only neutral info on the tab."""
+    post([item(1000, id="Q1", at=timezone.now() - timedelta(hours=9))])
+    BluCollector.objects.filter(pk=1).update(last_batch_at=timezone.now() - timedelta(hours=9))
+    assert check_stale() == "retired"
+    assert not env["alerts"] and not [e for e, _ in env["events"] if e == "blu_collector"]
+    col = staff_client("super", "boss").get("/api/v1/admin/payments/blu-transactions/").json()["collector"]
+    assert 9 * 60 - 2 <= col["quiet_minutes"] <= 9 * 60 + 2
+    post([])                                             # a batch never sends "back online" any more
+    assert not env["alerts"]

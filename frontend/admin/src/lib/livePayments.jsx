@@ -40,8 +40,8 @@ export function LivePaymentsProvider({ children }) {
     // the collector's systemd service on the Iran server (backend blu_service.py)
     if (msg.event === 'blu_service') {
       if (msg.ok) toast.success(fa ? 'سرویس جمع‌کنندهٔ بلو دوباره سالم است' : 'Blu collector service is healthy again')
-      else toast.error(fa ? `مشکل سرویس جمع‌کنندهٔ بلو: ${({ inactive: 'غیرفعال', ssh: 'SSH ناموفق', errors: 'خطای تکراری' })[msg.kind] || msg.kind}`
-        : `Blu collector service problem: ${({ inactive: 'inactive', ssh: 'SSH failing', errors: 'repeated errors' })[msg.kind] || msg.kind}`)
+      else toast.error(fa ? `مشکل جمع‌کنندهٔ بلو: ${({ inactive: 'سرویس غیرفعال', ssh: 'SSH ناموفق', poll: 'خواندن حساب ناموفق', session: 'نشست بلو منقضی شده — دوباره وارد شوید' })[msg.kind] || msg.kind}`
+        : `Blu collector problem: ${({ inactive: 'service inactive', ssh: 'SSH failing', poll: 'polling failing', session: 'Blu session expired — sign in again' })[msg.kind] || msg.kind}`)
       return
     }
     // v1.33 a payment pending longer than the setting (backend payments_sms/pending_alert.py)

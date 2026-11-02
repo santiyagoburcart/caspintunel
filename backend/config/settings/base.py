@@ -413,15 +413,13 @@ VAPID_PRIVATE_KEY = env("VAPID_PRIVATE_KEY", default="")
 VAPID_SUBJECT = env("VAPID_SUBJECT", default="")
 BLU_PUSH_SECRET = env("BLU_PUSH_SECRET", default="")
 BLU_LATE_GRACE_MINUTES = env.int("BLU_LATE_GRACE_MINUTES", default=30)   # deposit after the reservation ended
-BLU_STALE_MINUTES = env.int("BLU_STALE_MINUTES", default=360)            # no batch for this long = collector offline
-# v1.32: both are fallbacks — the Super Admin values on the Blu tab (Setting rows) win, no restart
+# v1.32: a fallback — the Super Admin value on the Blu tab (Setting row) wins, no restart
 BLU_COLLECTOR_POLL_SECONDS = env.int("BLU_COLLECTOR_POLL_SECONDS", default=45)  # the collector's own poll (info only)
 # collector service check over SSH (blu_service.py): empty host = off. Key / known_hosts / config
 # are mounted read-only into the worker at BLU_SSH_DIR.
 BLU_SSH_HOST = env("BLU_SSH_HOST", default="")
 BLU_SSH_DIR = env("BLU_SSH_DIR", default="/run/blu-ssh")
 BLU_COLLECTOR_SERVICE = env("BLU_COLLECTOR_SERVICE", default="blu-collector.service")
-BLU_ERROR_REPEAT = env.int("BLU_ERROR_REPEAT", default=3)                # error lines in 10 min = "repeating"
 
 # ---------------------------------------------------------------------------
 # Logging — never crash on an outage; log and move on

@@ -153,8 +153,7 @@ setting is saved (`apps/ops/schedule.py`).
 | crm: inactivity detection + stages | `crm.tasks.crm_detect_task` (inactivity cases, auto-close on reconnect, optional friendly message, win-back queue + auto won-back, stage refresh) | 60 min |
 | tickets: auto-close stale | `tickets.tasks.auto_close_tickets_task` (awaiting the customer for `tickets_auto_close_days`) | 60 min |
 | domain: host results + retire old domain | `settings_app.tasks.domain_tick_task` (folds in the host's result; asks the host to remove the old domain when the transition is over) | 5 min |
-| payments: Blu collector service check (SSH) | `payments_sms.tasks.blu_service_check_task` → `blu_service.check_service`: one read-only SSH command to `BLU_SSH_HOST` (`systemctl is-active` + last 10 min of `journalctl` for the collector unit); alert once when inactive, SSH fails 3× in a row or ≥ `BLU_ERROR_REPEAT` error lines, one "back online" | `blu_ssh_check_minutes` (Blu tab, Super Admin; default 5, min 1 — `ops.schedule.reconcile_blu_service_schedule` on save and in `seed`) |
-| payments: Blu collector offline check | `payments_sms.tasks.blu_stale_check_task` (no batch for `blu_stale_minutes` — panel value, else `.env` `BLU_STALE_MINUTES`, default 360 → one Telegram + live `blu_collector` alert; cleared by the next batch) | 5 min |
+| payments: Blu collector service check (SSH) | `payments_sms.tasks.blu_service_check_task` → `blu_service.check_service`: one read-only SSH command to `BLU_SSH_HOST` (`systemctl is-active` + last 10 min of `journalctl` for the collector unit). v1.33.1 liveness = last "poll ok" line (`last_poll_ok_at`); alert once per incident when the service is inactive, a session / login / OTP error shows, no successful poll for `blu_poll_stale_minutes` (default 10; without "poll ok" lines: ≥ 80 % of the window's polls failed) or SSH fails 3× in a row; one silent "healthy again". "No deposit for a while" never alerts (the old offline check is retired) | `blu_ssh_check_minutes` (Blu tab, Super Admin; default 5, min 1 — `ops.schedule.reconcile_blu_service_schedule` on save and in `seed`) |
 | accounts: auto-purge deleted users (daily) | `accounts.tasks.auto_purge_deleted_users_task` → `accounts.autopurge.run`: no-op while `deleted_purge_enabled` is off (default); else `purge_user(delete_on_panel=True)` for users deleted more than `deleted_purge_days` (default 30) ago, max 200 per run; a PasarGuard problem keeps that user (retried next day, one staff alert per day); audit `user.purged` per user + `users.auto_purged` per run | 1440 min |
 
 On-demand tasks: `fulfill_order`, `provision_service_task`, `renew_service_task`,
@@ -645,7 +644,7 @@ time, so they apply without a restart (`.env` values are only the fallback):
 |---|---|---|---|
 | `deleted_purge_enabled` / `deleted_purge_days` | off / 30 | Settings → «حذف دائمی خودکار» | `accounts/autopurge.py`; the Deleted users page shows the next run and each row's purge date |
 | `blu_ssh_check_minutes` | 5 (min 1) | Payments → «واریزهای بلو» | beat interval of the SSH service check |
-| `blu_stale_minutes` | `.env` `BLU_STALE_MINUTES` (360) | same | `blu.stale_after` |
+| `blu_poll_stale_minutes` | 10 (min 2) | same | `blu_service.poll_stale_minutes` (no successful poll → alert; v1.33.1, replaced `blu_stale_minutes`) |
 | `blu_late_grace_minutes` | `.env` `BLU_LATE_GRACE_MINUTES` (30) | same | `matching._blu_grace` (exact + rounded matching) |
 | `rounded_auto_enabled` / `rounded_max_toman` / `rounded_max_percent` | on / 2000 / 1 | Settings → «مبلغ گرد شده» | `payments_sms/rounded.py` (tolerance = max of the two) |
 

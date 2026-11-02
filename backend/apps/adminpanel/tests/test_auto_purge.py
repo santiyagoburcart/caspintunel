@@ -109,7 +109,7 @@ def test_only_super_admin_changes_it(trashed):  # noqa: F811
     role.permissions.set([Permission.objects.get_or_create(code="settings.manage", defaults={"name": "s"})[0]])
     s = Staff(username="mgr", role=role); s.set_password("Str0ngPass!"); s.save()
     c = APIClient(); c.credentials(HTTP_AUTHORIZATION=f"Bearer {issue_tokens(s)['access']}")
-    for body in ({"deleted_purge_enabled": True}, {"blu_stale_minutes": 10}, {"rounded_auto_enabled": False}):
+    for body in ({"deleted_purge_enabled": True}, {"blu_poll_stale_minutes": 10}, {"rounded_auto_enabled": False}):
         assert c.put("/api/v1/admin/settings/", body, format="json").status_code == 403
     assert c.put("/api/v1/admin/settings/", {"alert_expire_days": 4}, format="json").status_code == 200
     # the change is audited with old → new values

@@ -302,7 +302,7 @@ class BluCollector(models.Model):
     last_batch_id = models.CharField(max_length=64, blank=True, default="")
     last_items = models.PositiveIntegerField(default=0)
     batches = models.PositiveIntegerField(default=0)
-    # set when the "offline" alert went out; cleared (with a "back online" alert) by the next batch
+    # (until v1.33.1: when the "no deposit for N min" alert went out — that alert is retired)
     stale_alerted_at = models.DateTimeField(null=True, blank=True)
     # v1.31.1 service check over SSH (blu_service.py): systemctl is-active + recent journal errors
     svc_state = models.CharField(max_length=16, blank=True, default="")
@@ -311,8 +311,12 @@ class BluCollector(models.Model):
     svc_error_count = models.PositiveIntegerField(default=0)
     ssh_failures = models.PositiveIntegerField(default=0)
     ssh_error = models.CharField(max_length=255, blank=True, default="")
-    # current alert ("" | inactive | ssh | errors) — one Telegram per problem, one "back online"
+    # current alert ("" | inactive | ssh | session | poll) — one Telegram per incident, one "back online"
     svc_alert = models.CharField(max_length=16, blank=True, default="")
+    # v1.33.1 liveness = the last SUCCESSFUL poll, read from the collector's journal ("poll ok" lines,
+    # once the collector prints them); poll_error_count = "poll error" lines in the last window
+    last_poll_ok_at = models.DateTimeField(null=True, blank=True)
+    poll_error_count = models.PositiveIntegerField(default=0)
 
     class Meta:
         db_table = "blu_collector"

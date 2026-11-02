@@ -184,22 +184,11 @@ def ingest_batch(items: list, *, batch_id: str = "") -> dict:
 
 
 def _record_batch(batch_id: str, items: int) -> None:
+    # v1.33.1: a batch only means "there were deposits" — liveness is the SSH poll check
     c = BluCollector.get()
-    was_stale = c.stale_alerted_at is not None
     BluCollector.objects.filter(pk=c.pk).update(
         last_batch_at=timezone.now(), last_batch_id=(batch_id or "")[:64], last_items=items,
         batches=F("batches") + 1, stale_alerted_at=None)
-    if was_stale:
-        transaction.on_commit(_alert_back_online)
-
-
-def _alert_back_online() -> None:
-    from apps.common.staff_alert import alert_staff
-    from apps.notifications.live import push_payments_event
-
-    alert_staff("✅ جمع‌کنندهٔ واریزهای بلو دوباره وصل شد.\nBlu deposit collector is back online.",
-                perm="payment.view", silent=True)
-    push_payments_event("blu_collector", connected=True)
 
 
 # --- health + offline alert -----------------------------------------------------------
@@ -221,10 +210,6 @@ def _db_or_env(key: str, env_name: str, env_default: int, lo: int) -> tuple[int,
     return max(lo, value), "env"
 
 
-def stale_minutes() -> tuple[int, str]:
-    return _db_or_env("blu_stale_minutes", "BLU_STALE_MINUTES", 360, 1)
-
-
 def late_grace_minutes() -> tuple[int, str]:
     return _db_or_env("blu_late_grace_minutes", "BLU_LATE_GRACE_MINUTES", 30, 0)
 
@@ -240,25 +225,40 @@ def ssh_check_minutes() -> int:
 
 def blu_settings() -> dict:
     """What the «واریزهای بلو» tab shows (and a Super Admin edits there)."""
-    stale, stale_src = stale_minutes()
+    from .blu_service import poll_stale_minutes
+
     grace, grace_src = late_grace_minutes()
-    return {"ssh_check_minutes": ssh_check_minutes(), "stale_minutes": stale, "late_grace_minutes": grace,
-            "source": {"stale_minutes": stale_src, "late_grace_minutes": grace_src},
+    return {"ssh_check_minutes": ssh_check_minutes(), "poll_stale_minutes": poll_stale_minutes(),
+            "late_grace_minutes": grace, "source": {"late_grace_minutes": grace_src},
             # the collector's own poll (its POLL_INTERVAL on the Iran server) — information only
             "collector_poll_seconds": int(getattr(settings, "BLU_COLLECTOR_POLL_SECONDS", 45) or 45)}
 
 
-def stale_after() -> timedelta:
-    return timedelta(minutes=stale_minutes()[0])
+def last_deposit_at():
+    t = BluTransaction.objects.filter(status__in=(BluStatus.MATCHED, BluStatus.UNMATCHED, BluStatus.DUPLICATE)) \
+        .order_by("-occurred_at").values_list("occurred_at", flat=True).first()
+    return t
 
 
 def collector_health() -> dict:
+    """Health = the SSH poll check (service, last successful poll, session errors). How long the
+    account has had no deposit is shown as neutral information only — never an alert."""
     c = BluCollector.get()
-    connected = bool(c.last_batch_at and timezone.now() - c.last_batch_at <= stale_after())
-    return {"enabled": bool(push_secret()), "connected": connected, "last_batch_at": c.last_batch_at,
-            "last_batch_id": c.last_batch_id, "last_items": c.last_items, "batches": c.batches,
-            "stale_minutes": int(stale_after().total_seconds() // 60), "service": _service(),
-            "settings": blu_settings()}
+    svc = _service()
+    last_dep = last_deposit_at()
+    quiet = int((timezone.now() - last_dep).total_seconds() // 60) if last_dep else None
+    if not svc.get("configured"):
+        state = "unknown"
+    elif svc.get("alert"):
+        state = svc["alert"]                      # inactive | ssh | session | poll
+    elif not svc.get("checked_at"):
+        state = "unknown"
+    else:
+        state = "ok"
+    return {"enabled": bool(push_secret()), "state": state, "connected": state == "ok",
+            "last_batch_at": c.last_batch_at, "last_batch_id": c.last_batch_id, "last_items": c.last_items,
+            "batches": c.batches, "last_deposit_at": last_dep, "quiet_minutes": quiet,
+            "service": svc, "settings": blu_settings()}
 
 
 def _service() -> dict:
@@ -268,26 +268,6 @@ def _service() -> dict:
 
 
 def check_stale() -> str:
-    """Beat task: one Telegram + panel alert when no batch arrived for BLU_STALE_MINUTES
-    (only once the collector has spoken at least once; cleared by the next batch)."""
-    if not push_secret():
-        return "disabled"
-    c = BluCollector.get()
-    if c.last_batch_at is None:
-        return "never"
-    age = timezone.now() - c.last_batch_at
-    if age <= stale_after():
-        return "ok"
-    if c.stale_alerted_at is not None:
-        return "alerted"
-    from apps.common.staff_alert import alert_staff
-    from apps.notifications.live import push_payments_event
-
-    minutes = int(age.total_seconds() // 60)
-    alert_staff(f"⚠️ از جمع‌کنندهٔ واریزهای بلو {minutes} دقیقه است خبری نیست — تأیید خودکار بلو متوقف است "
-                f"(پیامک آیفون همچنان کار می‌کند).\n"
-                f"Blu deposit collector silent for {minutes} min — Blu auto-confirm is paused.",
-                perm="payment.view", dedupe_key=f"blu:stale:{c.last_batch_at.timestamp():.0f}", ttl=86400)
-    BluCollector.objects.filter(pk=c.pk).update(stale_alerted_at=timezone.now())
-    push_payments_event("blu_collector", connected=False, minutes=minutes)
-    return "alert"
+    """Retired in v1.33.1: "no deposit for N minutes" is not an outage (it fired every quiet
+    night). Kept so an old beat entry or a queued task does nothing."""
+    return "retired"

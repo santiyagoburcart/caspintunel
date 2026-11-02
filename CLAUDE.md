@@ -202,6 +202,8 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   Collector health = `blu_service.py`: ONE fixed read-only SSH command (is-active + journal); never add other remote
   commands there. The key is mounted read-only into `celery_worker` only. Stale threshold / late grace / SSH interval are
   Super Admin `setting` rows (win over `.env`); `/admin/settings/` keys in `SUPER_ONLY` are 403 for everyone else.
+  Liveness = last successful poll ("poll ok" journal line), session/login/OTP errors, service state — NEVER "no deposit
+  for N minutes" (a quiet account is not an outage; that alert fired nightly and was removed in v1.33.1).
 
 ## Panel account names
 - Never attach a customer to a panel account we did not create: names are checked in our DB **and** on the panel

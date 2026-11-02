@@ -1,6 +1,6 @@
-"""Collector service check over SSH (blu_service.py): fixed read-only command, alerts only
-for inactive / 3 SSH failures in a row / repeated errors, one "back online". No real SSH:
-subprocess.run is replaced by a fake."""
+"""Collector service check over SSH (blu_service.py): fixed read-only command; v1.33.1 alerts only
+for inactive / 3 SSH failures in a row / session-login-OTP errors / no successful poll for N min,
+one "back online". No real SSH: subprocess.run is replaced by a fake."""
 import subprocess
 
 import pytest
@@ -26,7 +26,6 @@ def fake(monkeypatch, settings):
 
     settings.BLU_SSH_HOST = "iran"
     settings.BLU_COLLECTOR_SERVICE = "blu-collector.service"
-    settings.BLU_ERROR_REPEAT = 3
     state = {"out": "active\n---JOURNAL---\n" + OK_JOURNAL, "rc": 0, "err": "", "calls": [], "raise": None}
     alerts, events = [], []
 
@@ -102,16 +101,63 @@ def test_two_ssh_failures_then_success_never_alerts(fake):
     assert check_service() == "ok" and not fake["alerts"]
 
 
-def test_repeated_errors_alert_with_masked_last_line(fake):
-    set_out(fake, journal=OK_JOURNAL + ERR)
-    assert check_service() == "ok"                          # one error is not "repeating"
-    set_out(fake, journal=ERR * 3)
-    assert check_service() == "alert:errors"
+def ts(minutes_ago=0):
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    return (timezone.now() - timedelta(minutes=minutes_ago)).strftime("%Y-%m-%dT%H:%M:%S+0000")
+
+
+def poll_err(n, what="timeout", ago=1):
+    return "".join(f"{ts(ago)} IR1 node[1]: {ts(ago)} poll error: {what}\n" for _ in range(n))
+
+
+def test_a_few_poll_timeouts_or_push_errors_never_alert(fake):
+    set_out(fake, journal=OK_JOURNAL + poll_err(5) + ERR * 4)     # bursts seen in production; ERR = webhook push
+    assert check_service() == "ok" and not fake["alerts"]
     c = BluCollector.get()
-    assert c.svc_error_count == 3
+    assert c.poll_error_count == 5
     assert "6037991234565440" not in c.svc_error_line and "603799******5440" in c.svc_error_line
-    assert "secret=***" in c.svc_error_line
-    assert "6037991234565440" not in fake["alerts"][0]
+
+
+def test_polling_failing_for_the_whole_window_alerts_once(fake):
+    set_out(fake, journal=poll_err(12, 'blu-api 500 /transactions: {"error":"read ETIMEDOUT"}'))
+    assert check_service() == "alert:poll"
+    assert check_service() == "poll"                       # same incident: no second message
+    assert len(fake["alerts"]) == 1 and "با موفقیت نخوانده" in fake["alerts"][0]
+    set_out(fake)
+    assert check_service() == "recovered" and "healthy again" in fake["alerts"][-1]
+
+
+def test_session_expired_says_sign_in_again(fake):
+    set_out(fake, journal=OK_JOURNAL + poll_err(1, "blu-api 401 /transactions: session expired, OTP required"))
+    assert check_service() == "alert:session"
+    assert "نشست بلو منقضی شده — دوباره وارد شوید" in fake["alerts"][0]
+    assert BluCollector.get().svc_alert == "session"
+
+
+def test_poll_ok_lines_become_the_liveness_signal(fake):
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    set_out(fake, journal=f"{ts(1)} IR1 node[1]: poll ok new=0 latest=0\n")
+    assert check_service() == "ok"
+    c = BluCollector.get()
+    assert c.last_poll_ok_at and timezone.now() - c.last_poll_ok_at < timedelta(minutes=3)
+    # no "poll ok" for longer than blu_poll_stale_minutes (default 10) → alert, even without error lines
+    BluCollector.objects.filter(pk=1).update(last_poll_ok_at=timezone.now() - timedelta(minutes=11))
+    set_out(fake, journal="")
+    assert check_service() == "alert:poll" and "11 دقیقه" in fake["alerts"][0]
+    set_out(fake, journal=f"{ts(0)} IR1 node[1]: poll ok new=1 latest=0\n")
+    assert check_service() == "recovered"
+    from apps.settings_app.utils import set_setting
+
+    set_setting("blu_poll_stale_minutes", 30, "int")
+    BluCollector.objects.filter(pk=1).update(last_poll_ok_at=timezone.now() - timedelta(minutes=20))
+    set_out(fake, journal="")
+    assert check_service() == "ok"                         # within the 30-minute setting
 
 
 def test_tab_shows_service_health(fake):

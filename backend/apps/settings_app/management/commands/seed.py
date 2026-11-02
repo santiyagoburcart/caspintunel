@@ -402,15 +402,8 @@ class Command(BaseCommand):
                 "enabled": True,
             },
         )
-        PeriodicTask.objects.update_or_create(
-            name="payments: Blu collector offline check",
-            defaults={
-                "task": "apps.payments_sms.tasks.blu_stale_check_task",
-                "interval": every_5,
-                "kwargs": _json.dumps({}),
-                "enabled": True,
-            },
-        )
+        # v1.33.1: the "no deposit for N min" check is retired (liveness = the SSH poll check)
+        PeriodicTask.objects.filter(name="payments: Blu collector offline check").delete()
         # interval = the Super Admin setting blu_ssh_check_minutes (Blu tab) — never reset here
         from apps.ops.schedule import ensure_auto_purge_schedule, reconcile_blu_service_schedule
 

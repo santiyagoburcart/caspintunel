@@ -148,20 +148,36 @@ sequenceDiagram
 The iPhone SMS stays as the fallback: when Blu confirmed an order first, the later
 SMS finds no pending order (no double confirm); when the SMS was first, the Blu
 deposit becomes `duplicate`. A deposit is matched only once, when it arrives —
-never later against a newer order. Every 5 min `blu_stale_check_task` sends one
-"collector offline" alert (Telegram + live `blu_collector`) after
-`BLU_STALE_MINUTES` without a batch; the next batch clears it ("back online").
-Contract: [blu-webhook.md](blu-webhook.md).
+never later against a newer order. Contract: [blu-webhook.md](blu-webhook.md).
 
-The collector only pushes when there are new deposits, so "no batch" is not a reliable
-outage signal (`BLU_STALE_MINUTES` is 360 in production). The real health check is
-`blu_service_check_task` (every 5 min): the worker runs one fixed, read-only command over
-SSH (`systemctl is-active blu-collector.service; journalctl -u … --since -10min`) with the
-key, known_hosts and ssh config mounted read-only at `/run/blu-ssh`. Alerts (Telegram +
-live `blu_service`) only when the service is not active, SSH fails 3 times in a row, or the
-journal shows ≥ 3 error lines; one "back online" when it is fine again. 1–2 SSH failures
-change nothing. Since v1.32 the check interval, the offline threshold and the late grace are
-Super Admin settings on the «واریزهای بلو» tab (DB values win over `.env`, no restart).
+The collector only pushes when there are new deposits, so "no batch" is never an outage signal
+(v1.33.1: that alert is retired; the tab and Monitoring show «X ساعت بدون واریزی» as info). The
+health check is `blu_service_check_task` (every `blu_ssh_check_minutes`, default 5): the worker runs
+one fixed, read-only command over SSH (`systemctl is-active blu-collector.service; journalctl -u …
+--since -10min`) with the key, known_hosts and ssh config mounted read-only at `/run/blu-ssh`.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant B as celery beat
+    participant W as blu_service.check_service
+    participant IR as Iran server (read-only SSH)
+    actor S as Staff (payment.view)
+
+    B->>W: tick
+    W->>IR: systemctl is-active + journalctl --since -10min
+    alt SSH fails (3rd time in a row)
+        W-)S: "SSH failing — state unknown" (once)
+    else service not active
+        W-)S: "collector service not active" (once)
+    else session / login / OTP error on a poll
+        W-)S: «نشست بلو منقضی شده — دوباره وارد شوید» (once)
+    else last "poll ok" older than blu_poll_stale_minutes (or, without poll-ok lines, ≥ 80 % polls failed)
+        W-)S: "no successful poll for N min — Blu auto-confirm paused" (once)
+    else healthy
+        W-)S: silent "healthy again" (only after an incident)
+    end
+```
 
 ## 2c. Rounded-amount auto-approve (v1.32, Blu + SMS)
 

@@ -10,15 +10,13 @@ same exact-amount rule as the bank SMS (`payments_sms/matching.py`).
 |---|---|---|
 | `BLU_PUSH_SECRET` | empty | HMAC-SHA256 secret shared with the collector, at least 32 characters. Empty or shorter → the webhook answers 503 (feature off). Changing it needs `docker compose up -d` of the backend containers (a restart does not reload `.env`). |
 | `BLU_LATE_GRACE_MINUTES` | 30 | how long after an order's reservation ended a deposit may still pay it (fallback — see below) |
-| `BLU_STALE_MINUTES` | 360 | no batch for this long → one "collector offline" alert. The collector sends nothing when there are no new deposits, so keep this long. (fallback — see below) |
 | `BLU_COLLECTOR_POLL_SECONDS` | 45 | the collector's own poll interval, shown on the tab (information only) |
 | `BLU_SSH_HOST` | empty | SSH host (alias in the mounted ssh config) for the service check; empty = off |
 | `BLU_COLLECTOR_SERVICE` | `blu-collector.service` | systemd unit checked |
-| `BLU_ERROR_REPEAT` | 3 | journal error lines within 10 min that count as "repeating" |
 
 **Panel overrides (v1.32).** On the «واریزهای بلو» tab a Super Admin sets the SSH check
-interval (`blu_ssh_check_minutes`, default 5, min 1), the offline threshold (`blu_stale_minutes`)
-and the late grace (`blu_late_grace_minutes`). They are stored in the `setting` table, win over
+interval (`blu_ssh_check_minutes`, default 5, min 1), the alert threshold "no successful poll for N
+minutes" (`blu_poll_stale_minutes`, default 10, min 2) and the late grace (`blu_late_grace_minutes`). They are stored in the `setting` table, win over
 `.env` and apply without a restart (the tab says which source each value comes from).
 
 ## Service check over SSH (v1.31.1)
@@ -79,3 +77,33 @@ full card number masked. `items: []` is a heartbeat.
 
 The deposit's reference / tracking numbers are on the payment too, so a receipt with the
 same document number on another order shows the "duplicate document" warning.
+
+## Liveness (v1.33.1)
+
+A batch only arrives when there are deposits, so "no batch for N minutes" is not an outage (the old
+`BLU_STALE_MINUTES` alert fired every quiet night and is retired). Health now comes from the SSH check
+(`blu_service.py`, same single read-only command):
+
+| Signal (journal of the last 10 min) | Alert |
+|---|---|
+| service not `active` | «سرویس جمع‌کننده … فعال نیست» |
+| a poll / login line mentioning session, expired, login, OTP, 401, unauthorized, token | «نشست بلو منقضی شده — دوباره وارد شوید» |
+| last "poll ok" line older than `blu_poll_stale_minutes` (default 10) | «… دقیقه است حساب را با موفقیت نخوانده» |
+| no "poll ok" lines at all yet: ≥ 80 % of the expected polls in the window are "poll error" (45 s poll → 11) | same |
+| SSH to the Iran server failed 3 checks in a row | «اتصال SSH … ناموفق» |
+
+One alert per incident, one silent "healthy again". Push failures to our webhook never count.
+How long the account has had no deposit is shown on the tab and on Monitoring as neutral info
+(«X ساعت بدون واریزی»).
+
+**Line the collector should print once per successful poll** (it does not today — until it does,
+the inference from "poll error" lines is used):
+
+```
+poll ok new=<number of new items in this poll>
+```
+
+e.g. `console.log(`poll ok new=${fresh.length}`)` right after a successful `/transactions` call,
+whether or not it found anything. Only the words `poll ok` matter (case-insensitive); the time is
+taken from the journal. From the first such line on, "no successful poll for N minutes" is the
+liveness signal.

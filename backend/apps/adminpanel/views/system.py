@@ -41,9 +41,10 @@ EDITABLE_SETTINGS = [
     # v1.32: deleted users auto-purge (apps/accounts/autopurge.py) — off until a Super Admin turns it on
     ("deleted_purge_enabled", "bool", False, None, None),
     ("deleted_purge_days", "int", 30, 1, 3650),
-    # v1.32: Blu collector health (override .env BLU_STALE_MINUTES / BLU_LATE_GRACE_MINUTES; no restart)
+    # v1.32 / v1.33.1: Blu collector health (no-successful-poll threshold; late grace overrides .env; no restart)
     ("blu_ssh_check_minutes", "int", 5, 1, 1440),
-    ("blu_stale_minutes", "int", lambda: int(getattr(settings, "BLU_STALE_MINUTES", 360) or 360), 1, 10080),
+    # v1.33.1: no successful poll for this long → alert (replaced blu_stale_minutes = "no deposit")
+    ("blu_poll_stale_minutes", "int", 10, 2, 1440),
     ("blu_late_grace_minutes", "int", lambda: int(getattr(settings, "BLU_LATE_GRACE_MINUTES", 30) or 0), 0, 1440),
     # v1.32: rounded-amount auto-approve (apps/payments_sms/rounded.py)
     ("rounded_auto_enabled", "bool", True, None, None),
@@ -53,7 +54,7 @@ EDITABLE_SETTINGS = [
 _SPEC = {k: (t, d, lo, hi) for (k, t, d, lo, hi) in EDITABLE_SETTINGS}
 
 # only a Super Admin may change these (403 otherwise, even with settings.manage)
-SUPER_ONLY = {"deleted_purge_enabled", "deleted_purge_days", "blu_ssh_check_minutes", "blu_stale_minutes",
+SUPER_ONLY = {"deleted_purge_enabled", "deleted_purge_days", "blu_ssh_check_minutes", "blu_poll_stale_minutes",
               "blu_late_grace_minutes", "rounded_auto_enabled", "rounded_max_toman", "rounded_max_percent"}
 # changes to these are audited with old → new values (no personal data in them)
 _AUDIT_VALUES = SUPER_ONLY

@@ -23,7 +23,7 @@ def blu_service_check_task():
 
 @shared_task
 def blu_stale_check_task():
-    """No batch from the Blu collector for BLU_STALE_MINUTES → one Telegram + panel alert."""
+    """Retired in v1.33.1 (blu.check_stale) — liveness is blu_service_check_task."""
     from .blu import check_stale
 
     return check_stale()

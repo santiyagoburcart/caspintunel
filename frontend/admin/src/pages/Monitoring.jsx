@@ -222,22 +222,21 @@ const STG_CSS = `
 
 // v1.33: the Blu deposit collector — same data as Payments → «واریزهای بلو» (linked there)
 const BT = {
-  fa: { title: 'کالکتور بلو', open: 'واریزهای بلو ›', connected: 'متصل', offline: 'آفلاین', never: 'هنوز دسته‌ای نرسیده',
-    disabled: 'پیکربندی نشده', svc_inactive: 'سرویس غیرفعال', ssh: 'SSH ناموفق', last_batch: 'آخرین دسته', last_check: 'آخرین بررسی سرویس',
+  fa: { title: 'کالکتور بلو', open: 'واریزهای بلو ›', connected: 'سالم', poll: 'خواندن ناموفق', session: 'نشست منقضی — ورود دوباره', never: 'بررسی نشده',
+    disabled: 'پیکربندی نشده', svc_inactive: 'سرویس غیرفعال', ssh: 'SSH ناموفق', last_batch: 'آخرین واریز', last_check: 'آخرین بررسی سرویس',
+    last_ok: 'آخرین خواندن موفق', quiet: 'بدون واریزی', h: 'ساعت', m: 'دقیقه',
     last_error: 'آخرین خطا', service: 'سرویس روی سرور ایران', active: 'فعال', unknown: 'نامعلوم', none: '—' },
-  en: { title: 'Blu collector', open: 'Blu deposits ›', connected: 'connected', offline: 'offline', never: 'no batch yet',
-    disabled: 'not configured', svc_inactive: 'service inactive', ssh: 'SSH failing', last_batch: 'Last batch', last_check: 'Last service check',
+  en: { title: 'Blu collector', open: 'Blu deposits ›', connected: 'healthy', poll: 'polling failing', session: 'session expired — sign in', never: 'not checked',
+    disabled: 'not configured', svc_inactive: 'service inactive', ssh: 'SSH failing', last_batch: 'Last deposit', last_check: 'Last service check',
+    last_ok: 'Last successful poll', quiet: 'without a deposit', h: 'h', m: 'min',
     last_error: 'Last error', service: 'Service on the Iran server', active: 'active', unknown: 'unknown', none: '—' },
 }
 
+// v1.33.1: health = the SSH poll check; time without a deposit is information only
 export function bluState(b) {
   if (!b) return null
-  const sv = b.service || {}
   if (!b.enabled) return 'disabled'
-  if (sv.configured && sv.checked_at && sv.state && sv.state !== 'active') return 'svc_inactive'
-  if (sv.configured && sv.ssh_failures >= 3) return 'ssh'
-  if (!b.last_batch_at) return 'never'
-  return b.connected ? 'connected' : 'offline'
+  return { ok: 'connected', poll: 'poll', session: 'session', inactive: 'svc_inactive', ssh: 'ssh' }[b.state] || 'never'
 }
 
 function BluCard({ b, lang, caspian }) {
@@ -257,7 +256,9 @@ function BluCard({ b, lang, caspian }) {
         <Link to="/payments?view=blu" className="blu-mon-link">{t.open}</Link>
       </div>
       <dl className="blu-mon-kv">
-        <div><dt>{t.last_batch}</dt><dd className="mono-num">{b.last_batch_at ? jalali(b.last_batch_at, true, lang) : t.none}</dd></div>
+        <div><dt>{t.last_batch}</dt><dd className="mono-num">{b.last_deposit_at ? jalali(b.last_deposit_at, true, lang) : t.none}
+          {b.quiet_minutes != null && <small className="blu-mon-quiet" data-testid="mon-quiet"> · {b.quiet_minutes >= 60 ? `${Math.floor(b.quiet_minutes / 60)} ${t.h}` : `${b.quiet_minutes} ${t.m}`} {t.quiet}</small>}</dd></div>
+        {sv.last_poll_ok_at && <div><dt>{t.last_ok}</dt><dd className="mono-num">{jalali(sv.last_poll_ok_at, true, lang)}</dd></div>}
         {svcWord && <div><dt>{t.service}</dt><dd>{svcWord}</dd></div>}
         {sv.configured && <div><dt>{t.last_check}</dt><dd className="mono-num">{sv.checked_at ? jalali(sv.checked_at, true, lang) : t.none}</dd></div>}
         {(sv.error_line || sv.ssh_error) && <div className="blu-mon-wide"><dt>{t.last_error}</dt><dd><bdi dir="ltr">{sv.error_line || sv.ssh_error}</bdi></dd></div>}
@@ -270,10 +271,11 @@ const BLU_MON_CSS = `
 .blu-mon-h { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
 .blu-mon-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c-warning); flex: none; }
 .blu-mon[data-state="connected"] .blu-mon-dot { background: var(--c-success); }
-.blu-mon[data-state="offline"] .blu-mon-dot, .blu-mon[data-state="svc_inactive"] .blu-mon-dot, .blu-mon[data-state="ssh"] .blu-mon-dot { background: var(--c-danger); }
+.blu-mon[data-state="poll"] .blu-mon-dot, .blu-mon[data-state="session"] .blu-mon-dot, .blu-mon[data-state="svc_inactive"] .blu-mon-dot, .blu-mon[data-state="ssh"] .blu-mon-dot { background: var(--c-danger); }
+.blu-mon-quiet { font-weight: 600; color: var(--c-text-muted); }
 .blu-mon-state { font-size: 12px; font-weight: 700; padding: 2px 9px; border-radius: 999px; color: var(--c-warning-fg); background: color-mix(in srgb, var(--c-warning) 14%, transparent); }
 .blu-mon[data-state="connected"] .blu-mon-state { color: var(--c-success-fg); background: color-mix(in srgb, var(--c-success) 14%, transparent); }
-.blu-mon[data-state="offline"] .blu-mon-state, .blu-mon[data-state="svc_inactive"] .blu-mon-state, .blu-mon[data-state="ssh"] .blu-mon-state { color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 12%, transparent); }
+.blu-mon[data-state="poll"] .blu-mon-state, .blu-mon[data-state="session"] .blu-mon-state, .blu-mon[data-state="svc_inactive"] .blu-mon-state, .blu-mon[data-state="ssh"] .blu-mon-state { color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 12%, transparent); }
 .blu-mon-link { margin-inline-start: auto; color: var(--c-primary); font-weight: 700; font-size: 13px; min-height: 44px; display: inline-flex; align-items: center; }
 .blu-mon-kv { display: grid; gap: 8px; margin-top: 8px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); }
 .blu-mon-kv > div { min-width: 0; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--c-border); }

@@ -13,9 +13,14 @@ import { usePaymentsEvents } from '../lib/livePayments'
 // Blu Bank deposits pushed by the Iran-side collector (backend payments_sms/blu.py).
 const T = {
   fa: {
-    health_on: 'جمع‌کننده متصل است', health_off: 'جمع‌کننده آفلاین است', health_never: 'هنوز دسته‌ای از جمع‌کننده نرسیده',
+    health_on: 'جمع‌کننده سالم است', health_never: 'وضعیت جمع‌کننده هنوز بررسی نشده',
     health_disabled: 'وب‌هوک بلو پیکربندی نشده (BLU_PUSH_SECRET)', last_batch: 'آخرین دسته',
-    offline_hint: 'بیش از {m} دقیقه خبری نیست — تأیید خودکار بلو متوقف است؛ پیامک آیفون همچنان کار می‌کند.',
+    h_poll: 'جمع‌کننده حساب را با موفقیت نمی‌خواند', h_session: 'نشست بلو منقضی شده — دوباره وارد شوید',
+    h_inactive: 'سرویس جمع‌کننده غیرفعال است', h_ssh: 'اتصال SSH به سرور ایران ناموفق — وضعیت نامعلوم',
+    paused: 'تأیید خودکار بلو متوقف است؛ پیامک آیفون همچنان کار می‌کند.', last_ok: 'آخرین خواندن موفق',
+    no_poll_log: 'جمع‌کننده خواندن‌های موفق را در لاگ ثبت نمی‌کند؛ سلامت از روی فعال‌بودن سرویس و خطاهای لاگ تشخیص داده می‌شود.',
+    quiet_h: '{n} ساعت بدون واریزی', quiet_m: '{n} دقیقه بدون واریزی', quiet_note: '(فقط اطلاع — حساب ساکت یعنی قطعی نیست)',
+    last_dep: 'آخرین واریز',
     f_all: 'همه', f_unmatched: 'تطبیق‌نشده', f_matched: 'تأییدشده', f_duplicate: 'تکراری', f_ignored: 'نادیده',
     st_unmatched: 'تطبیق‌نشده', st_matched: 'تأییدشده', st_duplicate: 'تکراری', st_ignored: 'نادیده',
     payer: 'واریزکننده', card: 'کارت', receipt: 'شماره پیگیری', reference: 'شماره مرجع', order: 'سفارش',
@@ -30,16 +35,21 @@ const T = {
     rounded: 'تأیید خودکار – مبلغ گرد شده', shortfall: 'کسری',
     set_h: 'تنظیمات پایش جمع‌کننده', set_sub: 'در پایگاه داده ذخیره می‌شود، بر .env مقدم است و بدون ری‌استارت اعمال می‌شود.',
     set_ssh: 'فاصلهٔ بررسی SSH (دقیقه)', set_ssh_h: 'پیش‌فرض 5 — کمینه 1',
-    set_stale: 'آستانهٔ قطع‌شدن (دقیقه)', set_stale_h: 'پیش‌فرض 360 — بدون دسته در این مدت = هشدار آفلاین',
+    set_stale: 'هشدار پس از چند دقیقه بدون خواندن موفق', set_stale_h: 'پیش‌فرض 10 — کمینه 2',
     set_grace: 'مهلت واریز دیرهنگام (دقیقه)', set_grace_h: 'پیش‌فرض 30 — پس از پایان رزرو مبلغ',
     set_poll: 'خود جمع‌کننده حدوداً هر {n} ثانیه حساب بلو را می‌خواند (روی سرور ایران؛ فقط نمایش).',
     set_src_env: 'از .env', set_src_panel: 'از پنل', set_save: 'ذخیره', set_super: 'فقط سوپرادمین می‌تواند تغییر دهد.',
     set_saved: 'تنظیمات بلو ذخیره شد',
   },
   en: {
-    health_on: 'Collector connected', health_off: 'Collector offline', health_never: 'No batch from the collector yet',
+    health_on: 'Collector healthy', health_never: 'Collector not checked yet',
     health_disabled: 'Blu webhook is not configured (BLU_PUSH_SECRET)', last_batch: 'Last batch',
-    offline_hint: 'Silent for more than {m} min — Blu auto-confirm is paused; the iPhone SMS still works.',
+    h_poll: 'Collector is not polling the account successfully', h_session: 'Blu session expired — sign in again',
+    h_inactive: 'Collector service is inactive', h_ssh: 'SSH to the Iran server failing — state unknown',
+    paused: 'Blu auto-confirm is paused; the iPhone SMS still works.', last_ok: 'Last successful poll',
+    no_poll_log: 'The collector does not log successful polls; health comes from the service state and journal errors.',
+    quiet_h: '{n} h without a deposit', quiet_m: '{n} min without a deposit', quiet_note: '(info only — a quiet account is not an outage)',
+    last_dep: 'Last deposit',
     f_all: 'All', f_unmatched: 'Unmatched', f_matched: 'Approved', f_duplicate: 'Duplicate', f_ignored: 'Ignored',
     st_unmatched: 'Unmatched', st_matched: 'Approved', st_duplicate: 'Duplicate', st_ignored: 'Ignored',
     payer: 'Payer', card: 'Card', receipt: 'Tracking no.', reference: 'Reference no.', order: 'Order',
@@ -54,7 +64,7 @@ const T = {
     rounded: 'Auto-approved — rounded amount', shortfall: 'short',
     set_h: 'Collector monitoring settings', set_sub: 'Stored in the database, override .env, apply without a restart.',
     set_ssh: 'SSH check interval (min)', set_ssh_h: 'default 5 — minimum 1',
-    set_stale: 'Offline threshold (min)', set_stale_h: 'default 360 — no batch for this long = offline alert',
+    set_stale: 'Alert after N min without a successful poll', set_stale_h: 'default 10 — minimum 2',
     set_grace: 'Late deposit grace (min)', set_grace_h: 'default 30 — after the amount reservation ends',
     set_poll: 'The collector itself reads the Blu account about every {n} s (on the Iran server; information only).',
     set_src_env: 'from .env', set_src_panel: 'from the panel', set_save: 'Save', set_super: 'Only a Super Admin can change these.',
@@ -119,20 +129,33 @@ export default function BluDeposits() {
   )
 }
 
+export function quietText(min, s) {
+  if (min == null) return ''
+  return min >= 60 ? s.quiet_h.replace('{n}', Math.floor(min / 60)) : s.quiet_m.replace('{n}', min)
+}
+
+// v1.33.1: health = the SSH poll check (service, last successful poll, session errors); time
+// without a deposit is neutral information only
 function Health({ c, s, lang }) {
   if (!c) return null
-  const state = !c.enabled ? 'disabled' : c.connected ? 'on' : c.last_batch_at ? 'off' : 'never'
-  const label = { disabled: s.health_disabled, on: s.health_on, off: s.health_off, never: s.health_never }[state]
+  const st = c.state || 'unknown'
+  const state = !c.enabled ? 'disabled' : st === 'ok' ? 'on' : st === 'unknown' ? 'never' : 'off'
+  const label = !c.enabled ? s.health_disabled
+    : { ok: s.health_on, unknown: s.health_never, poll: s.h_poll, session: s.h_session, inactive: s.h_inactive, ssh: s.h_ssh }[st] || st
+  const sv = c.service || {}
   return (
-    <div className="blu-health card" data-state={state} role="status">
+    <div className="blu-health card" data-state={state} data-kind={st} role="status" data-testid="blu-health">
       <span className="blu-dot" />
       <div className="min-w-0 flex-1">
         <b>{label}</b>
-        {c.last_batch_at && (
-          <div className="text-xs text-muted">{s.last_batch}: {jalali(c.last_batch_at, true, lang)}</div>
+        {state === 'off' && <div className="blu-hint">{s.paused}</div>}
+        {sv.last_poll_ok_at && <div className="text-xs text-muted">{s.last_ok}: {jalali(sv.last_poll_ok_at, true, lang)}</div>}
+        {c.quiet_minutes != null && (
+          <div className="blu-quiet" data-testid="blu-quiet">{quietText(c.quiet_minutes, s)}
+            {c.last_deposit_at && <span> · {s.last_dep}: {jalali(c.last_deposit_at, true, lang)}</span>} <span className="text-muted">{s.quiet_note}</span></div>
         )}
-        {state === 'off' && <div className="blu-hint">{s.offline_hint.replace('{m}', c.stale_minutes)}</div>}
-        <Service v={c.service} s={s} lang={lang} />
+        <Service v={sv} s={s} lang={lang} />
+        {sv.configured && !sv.poll_ok_logged && <div className="blu-note">{s.no_poll_log}</div>}
       </div>
     </div>
   )
@@ -140,7 +163,7 @@ function Health({ c, s, lang }) {
 
 /* Super Admin: SSH check interval, offline threshold, late grace (Setting rows; win over .env) */
 const SET_FIELDS = [['ssh_check_minutes', 'blu_ssh_check_minutes', 'set_ssh', 1, 1440],
-  ['stale_minutes', 'blu_stale_minutes', 'set_stale', 1, 10080], ['late_grace_minutes', 'blu_late_grace_minutes', 'set_grace', 0, 1440]]
+  ['poll_stale_minutes', 'blu_poll_stale_minutes', 'set_stale', 2, 1440], ['late_grace_minutes', 'blu_late_grace_minutes', 'set_grace', 0, 1440]]
 
 function BluSettings({ v, s, lang, canEdit, onSaved }) {
   const toast = useToast()
@@ -267,6 +290,8 @@ const CSS = `
 .blu-health[data-state="off"] b { color: var(--c-danger-fg); }
 .blu-health[data-state="disabled"] .blu-dot, .blu-health[data-state="never"] .blu-dot { background: var(--c-warning); }
 .blu-hint { font-size: 12px; margin-top: 2px; color: var(--c-danger-fg); }
+.blu-quiet { font-size: 12px; margin-top: 4px; color: var(--c-text); overflow-wrap: anywhere; }
+.blu-health .blu-note { margin-top: 6px; }
 .blu-svc { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; padding-top: 8px; font-size: 12.5px;
   border-top: 1px solid var(--c-border); overflow-wrap: anywhere; }
 .blu-svc-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-inline-end: 6px; background: var(--c-text-muted); }
