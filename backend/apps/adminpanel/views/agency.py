@@ -315,7 +315,8 @@ class AgencyLedgerView(AdminAPIView):
                             detail={"admin": username, "price_per_gb": str(p.price_per_gb), "valid_from": str(p.valid_from)})
             elif what == "entries":
                 e = ledger.add_entry(username, d.get("kind"), d.get("amount"), _date(d.get("date")) or ledger.today(),
-                                     method=d.get("method", ""), note=d.get("note", ""), by=by, gb=d.get("gb"))
+                                     method=d.get("method", ""), note=d.get("note", ""), by=by, gb=d.get("gb"),
+                                     direction=d.get("direction"))
                 write_audit(action=f"agency.ledger_{e.kind}", staff=request.user, target=e,
                             detail={"admin": username, "amount": str(e.amount)})
             else:

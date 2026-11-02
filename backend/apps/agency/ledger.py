@@ -83,10 +83,20 @@ def record_quota_charge(username: str, old_limit_bytes: int, new_limit_bytes: in
 
 
 def add_entry(username: str, kind: str, amount, day: date_cls, *, method: str = "", note: str = "", by: str = "",
-              gb=None) -> LedgerEntry:
+              gb=None, direction: str | None = None) -> LedgerEntry:
+    """`direction` (v1.33, adjustments): "increase" = owes more, "decrease" = owes less; the
+    amount is then a positive number and the sign comes from the direction. Without it the
+    old signed amount is still accepted (API compatibility)."""
     if kind not in (LedgerEntry.KIND_CHARGE, LedgerEntry.KIND_ADJUST, LedgerEntry.KIND_PAYMENT):
         raise ValueError("kind must be manual_charge, adjustment or payment")
     amount = _round(Decimal(str(amount)))
+    if kind == LedgerEntry.KIND_ADJUST and direction not in (None, ""):
+        if direction not in ("increase", "decrease"):
+            raise ValueError("direction must be increase or decrease")
+        if amount <= 0:
+            raise ValueError("enter a positive amount — the direction button sets more / less debt")
+        if direction == "decrease":
+            amount = -amount
     if kind != LedgerEntry.KIND_ADJUST and amount <= 0:
         raise ValueError("amount must be positive")
     if kind == LedgerEntry.KIND_ADJUST and amount == 0:

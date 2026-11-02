@@ -27,6 +27,8 @@ EDITABLE_SETTINGS = [
     ("unique_amount_max", "int", 1500, 1, 100000),
     ("alert_volume_percent", "int", 80, 1, 100),
     ("alert_expire_days", "int", 3, 1, 60),
+    # v1.33: payment still pending after N minutes → one Telegram + panel alert (0 = off)
+    ("pending_payment_alert_minutes", "int", 5, 0, 1440),
     ("email_verification_required", "bool", False, None, None),
     ("referral_required", "bool", False, None, None),
     ("iran_phone_only", "bool", True, None, None),

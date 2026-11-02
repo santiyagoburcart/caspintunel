@@ -407,6 +407,10 @@ TELEGRAM_PROXY_URL = env("TELEGRAM_PROXY_URL", default="")
 
 # Blu Bank deposits pushed by the Iran-side collector (apps/payments_sms/blu.py).
 # HMAC-SHA256 shared secret (>= 32 chars); empty or shorter = webhook answers 503.
+# v1.33 Web Push (apps/notifications/webpush.py): base64url P-256 keys; empty = browser push off
+VAPID_PUBLIC_KEY = env("VAPID_PUBLIC_KEY", default="")
+VAPID_PRIVATE_KEY = env("VAPID_PRIVATE_KEY", default="")
+VAPID_SUBJECT = env("VAPID_SUBJECT", default="")
 BLU_PUSH_SECRET = env("BLU_PUSH_SECRET", default="")
 BLU_LATE_GRACE_MINUTES = env.int("BLU_LATE_GRACE_MINUTES", default=30)   # deposit after the reservation ended
 BLU_STALE_MINUTES = env.int("BLU_STALE_MINUTES", default=360)            # no batch for this long = collector offline

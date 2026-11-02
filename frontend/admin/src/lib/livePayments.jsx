@@ -44,6 +44,12 @@ export function LivePaymentsProvider({ children }) {
         : `Blu collector service problem: ${({ inactive: 'inactive', ssh: 'SSH failing', errors: 'repeated errors' })[msg.kind] || msg.kind}`)
       return
     }
+    // v1.33 a payment pending longer than the setting (backend payments_sms/pending_alert.py)
+    if (msg.event === 'payment_pending_alert') {
+      toast.error(fa ? `پرداخت ${msg.tx} (سفارش #${msg.order_id}) ${msg.minutes} دقیقه است تأیید نشده — در صف پرداخت بررسی کنید.`
+        : `Payment ${msg.tx} (order #${msg.order_id}) unconfirmed for ${msg.minutes} min — check the payment queue.`)
+      return
+    }
     // v1.32 rounded-amount auto-approve (backend payments_sms/rounded.py)
     if (msg.event === 'rounded_approved') {
       const n = (v) => Number(v || 0).toLocaleString('en-US')

@@ -25,7 +25,10 @@ export const LT = {
     date: 'تاریخ', amount: 'مبلغ (تومان)', gb: 'حجم (گیگ)', note: 'یادداشت', method: 'روش', running: 'مانده',
     add_price: 'قیمت جدید', add_charge: 'بدهکاری دستی', add_adjust: 'اصلاحیه', add_payment: 'ثبت پرداخت', export: 'خروجی CSV',
     void: 'باطل کردن', voided: 'باطل‌شده', void_reason: 'دلیل باطل کردن', save: 'ثبت',
-    adjust_hint: 'مثبت = بدهی بیشتر، منفی = بدهی کمتر', date_hint: 'شمسی، مثلاً 1405/07/24',
+    adjust_hint: 'نوع اصلاحیه را انتخاب کنید و مبلغ را مثبت وارد کنید.', date_hint: 'شمسی، مثلاً 1405/07/24',
+    adj_inc: 'افزایش بدهی', adj_dec: 'کاهش بدهی', adj_pick: 'اول «افزایش بدهی» یا «کاهش بدهی» را انتخاب کنید',
+    adj_amount: 'مبلغ را به عدد مثبت وارد کنید', adj_more: 'بدهی {u} {a} بیشتر می‌شود', adj_less: 'بدهی {u} {a} کمتر می‌شود',
+    adj_admin: 'ادمین', adj_up: 'افزایش بدهی', adj_down: 'کاهش بدهی',
     price_hint: 'قیمت جدید فقط از این تاریخ به بعد اعمال می‌شود؛ شارژهای قبلی تغییر نمی‌کنند.',
     quota_note: 'با افزایش سقف یک نماینده از همین پنل (پس از انتقال نهایی)، شارژ حجم خودکار ثبت می‌شود: افزایش گیگ × قیمت همان روز.',
     off_panel: 'روی پنل نیست', limit_change: '{a} → {b}',
@@ -39,7 +42,10 @@ export const LT = {
     date: 'Date', amount: 'Amount (Toman)', gb: 'Volume (GB)', note: 'Note', method: 'Method', running: 'Balance',
     add_price: 'New price', add_charge: 'Manual charge', add_adjust: 'Adjustment', add_payment: 'Record payment', export: 'Export CSV',
     void: 'Void', voided: 'voided', void_reason: 'Reason for voiding', save: 'Save',
-    adjust_hint: 'positive = owes more, negative = owes less', date_hint: 'Jalali, e.g. 1405/07/24',
+    adjust_hint: 'Pick the kind of adjustment and enter a positive amount.', date_hint: 'Jalali, e.g. 1405/07/24',
+    adj_inc: 'Increase debt', adj_dec: 'Decrease debt', adj_pick: 'Pick “Increase debt” or “Decrease debt” first',
+    adj_amount: 'Enter a positive amount', adj_more: '{u} will owe {a} more', adj_less: '{u} will owe {a} less',
+    adj_admin: 'Admin', adj_up: 'debt up', adj_down: 'debt down',
     price_hint: 'A new price only applies from this date on; earlier charges do not change.',
     quota_note: 'Raising a reseller limit from this panel (after the cut-over) records a quota charge automatically: GB increase × that day\'s price.',
     off_panel: 'not on the panel', limit_change: 'limit {a} → {b}',
@@ -61,12 +67,32 @@ export function BalanceText({ value, lang }) {
   return <bdi dir="ltr" className="lg-bal" data-sign={n > 0 ? 'owes' : n < 0 ? 'credit' : 'zero'}>{signed(n, lang)}</bdi>
 }
 
-function EntryForm({ s, kind, box }) {
-  const [v, setV] = useState({ date: todayJ(), amount: '', gb: '', note: '', method: 'card', price: '' })
-  const set = (k) => (e) => { const nv = { ...v, [k]: e.target.value }; setV(nv); Object.assign(box, nv) }
+function EntryForm({ s, kind, box, username, admins, lang }) {
+  const [v, setV] = useState({ date: todayJ(), amount: '', gb: '', note: '', method: 'card', price: '', direction: '',
+    admin: username || (admins && admins.length === 1 ? admins[0] : '') })
+  const put = (nv) => { setV(nv); Object.assign(box, nv) }
+  // v1.33: an adjustment amount is a positive number; the direction buttons give the sign
+  const set = (k) => (e) => put({ ...v, [k]: kind === 'adjustment' && k === 'amount' ? e.target.value.replace(/[-−]/g, '') : e.target.value })
   useEffect(() => { Object.assign(box, v) }, [])
+  const amt = Number(latin(v.amount))
+  const who = v.admin || username || '—'
   return (
     <div className="lg-form">
+      {kind === 'adjustment' && (
+        <div className="lg-wide lg-dir" role="radiogroup" aria-label={s.add_adjust}>
+          <button type="button" role="radio" aria-checked={v.direction === 'increase'} data-on={v.direction === 'increase' || undefined}
+            className="lg-dir-btn lg-dir-btn--inc" onClick={() => put({ ...v, direction: 'increase' })} data-testid="adj-inc">▲ {s.adj_inc}</button>
+          <button type="button" role="radio" aria-checked={v.direction === 'decrease'} data-on={v.direction === 'decrease' || undefined}
+            className="lg-dir-btn lg-dir-btn--dec" onClick={() => put({ ...v, direction: 'decrease' })} data-testid="adj-dec">▼ {s.adj_dec}</button>
+        </div>
+      )}
+      {kind === 'adjustment' && admins && (
+        <label className="lg-wide"><span>{s.adj_admin}</span>
+          <select className="input" value={v.admin} onChange={set('admin')} aria-label={s.adj_admin}>
+            <option value="">—</option>
+            {admins.map((a) => <option key={a} value={a}>{a}</option>)}
+          </select></label>
+      )}
       <label><span>{kind === 'price' ? s.from : s.date}</span>
         <input className="input" dir="ltr" value={v.date} onChange={set('date')} placeholder={s.date_hint} aria-label={s.date} /></label>
       {kind === 'price' ? (
@@ -84,10 +110,36 @@ function EntryForm({ s, kind, box }) {
         <label><span>{s.gb}</span><input className="input" dir="ltr" inputMode="decimal" value={v.gb} onChange={set('gb')} aria-label={s.gb} /></label>
       )}
       <label className="lg-wide"><span>{s.note}</span><input className="input" value={v.note} onChange={set('note')} aria-label={s.note} /></label>
-      {kind === 'adjustment' && <p className="lg-hint lg-wide">{s.adjust_hint}</p>}
+      {kind === 'adjustment' && (v.direction && amt > 0
+        ? <p className="lg-wide lg-result" data-dir={v.direction} data-testid="adj-result">
+          {(v.direction === 'increase' ? s.adj_more : s.adj_less).replace('{u}', who).replace('{a}', toman(amt, lang))}</p>
+        : <p className="lg-hint lg-wide">{s.adjust_hint}</p>)}
       {kind === 'price' && <p className="lg-hint lg-wide">{s.price_hint}</p>}
     </div>
   )
+}
+
+/** v1.33 «اصلاحیه»: two buttons (increase / decrease debt), a positive amount and the result in
+ * words. `username` for one admin, or `admins` (group statement) to pick one. Existing entries
+ * are not touched. */
+export async function addAdjustment({ confirm, s, lang, username, admins, onDone }) {
+  const box = {}
+  await confirm({
+    tone: 'warning', title: s.add_adjust, targetLabel: username || undefined, confirmLabel: s.save,
+    content: <EntryForm s={s} kind="adjustment" box={box} username={username} admins={admins} lang={lang} />,
+    action: async () => {
+      const who = username || box.admin
+      if (!who) throw new Error(s.adj_admin)
+      if (!box.direction) throw new Error(s.adj_pick)
+      const amount = latin(box.amount)
+      if (!(Number(amount) > 0)) throw new Error(s.adj_amount)
+      let date
+      try { date = isoFromJ(box.date) } catch { throw new Error(s.date_hint) }
+      const r = await api.post(`/admin/agency/ledger/${encodeURIComponent(who)}/entries/`,
+        { kind: 'adjustment', direction: box.direction, amount, date, note: box.note })
+      onDone?.(r.data, who)
+    },
+  })
 }
 
 /** Statement card for one admin (admin detail page). */
@@ -101,9 +153,10 @@ export function LedgerCard({ username }) {
   useEffect(() => { load() }, [username])
 
   const add = async (kind, title, tone = 'primary') => {
+    if (kind === 'adjustment') { await addAdjustment({ confirm, s, lang, username, onDone: setSt }); return }
     const box = {}
     await confirm({
-      tone, title, targetLabel: username, confirmLabel: s.save, content: <EntryForm s={s} kind={kind} box={box} />,
+      tone, title, targetLabel: username, confirmLabel: s.save, content: <EntryForm s={s} kind={kind} box={box} lang={lang} />,
       action: async () => {
         let date
         try { date = isoFromJ(box.date) } catch { throw new Error(s.date_hint) }
@@ -157,7 +210,7 @@ export function LedgerCard({ username }) {
             <ul className="lg-list">
               {[...st.entries].reverse().map((e) => (
                 <li key={e.id} data-voided={e.voided || undefined}>
-                  <span className="lg-kind" data-kind={e.kind}>{s['k_' + e.kind]}</span>
+                  <span className="lg-kind" data-kind={e.kind}>{s['k_' + e.kind]}{e.kind === 'adjustment' && <> · {Number(e.signed) < 0 ? s.adj_down : s.adj_up}</>}</span>
                   <span className="lg-date">{jalali(e.date, false, lang)}</span>
                   <span className="lg-amt"><bdi dir="ltr">{e.kind === 'payment' ? '−' : e.signed < 0 ? '−' : '+'}{toman(Math.abs(Number(e.amount)), lang)}</bdi></span>
                   <span className="lg-run">{s.running}: <BalanceText value={e.balance} lang={lang} /></span>
@@ -224,7 +277,16 @@ export function AgencyLedgerOverview({ Header }) {
   )
 }
 
-const LG_CSS = `
+export const LG_CSS = `
+.lg-dir { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+.lg-dir-btn { min-height: 44px; border-radius: 12px; font-weight: 800; font-size: 13.5px; border: 1.5px solid currentColor; background: transparent; }
+.lg-dir-btn--inc { color: var(--c-danger-fg); }
+.lg-dir-btn--dec { color: var(--c-success-fg); }
+.lg-dir-btn--inc[data-on] { color: #fff; background: var(--c-danger); border-color: var(--c-danger); }
+.lg-dir-btn--dec[data-on] { color: #fff; background: #11AB53; border-color: #11AB53; }
+.lg-result { overflow-wrap: anywhere; font-size: 13.5px; font-weight: 800; padding: 8px 12px; border-radius: 10px; }
+.lg-result[data-dir="increase"] { color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 10%, transparent); }
+.lg-result[data-dir="decrease"] { color: var(--c-success-fg); background: color-mix(in srgb, #11AB53 12%, transparent); }
 .lg-bal { font-family: 'JetBrains Mono', ui-monospace, monospace; font-weight: 800; }
 .lg-bal[data-sign="owes"] { color: var(--c-danger-fg); } .lg-bal[data-sign="credit"] { color: var(--c-success-fg); } .lg-bal[data-sign="zero"] { color: var(--c-muted-fg); }
 .lg-head-bal { font-size: 13px; font-weight: 700; }
@@ -247,8 +309,9 @@ const LG_CSS = `
   background: color-mix(in srgb, var(--c-danger) 11%, transparent); border: 1px solid color-mix(in srgb, var(--c-danger) 30%, transparent); }
 .lg-void:hover { background: color-mix(in srgb, var(--c-danger) 19%, transparent); }
 .lg-prices { font-size: 12.5px; display: flex; flex-direction: column; gap: 4px; }
-.lg-form { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; margin-top: 10px; text-align: start; }
-.lg-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 700; }
+.lg-form { display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); margin-top: 10px; text-align: start; min-width: 0; }
+.lg-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 700; min-width: 0; }
+.lg-form .input { width: 100%; min-width: 0; }
 .lg-form .lg-wide { grid-column: 1 / -1; }
 .lg-total { display: flex; align-items: center; justify-content: space-between; font-weight: 800; }
 @media (max-width: 767px) {
@@ -256,7 +319,7 @@ const LG_CSS = `
   .lg-amt, .lg-run { text-align: start; }
   .lg-meta { grid-column: 1 / -1; }
   .lg-void { grid-column: 1 / -1; justify-self: start; min-height: 40px; }
-  .lg-form { grid-template-columns: 1fr; }
+  .lg-form { grid-template-columns: minmax(0, 1fr); }
   .lg-form .input { font-size: 16px; height: 44px; }
   .lg-actions .ag-act { flex: 1 1 calc(50% - 8px); }
 }

@@ -148,6 +148,7 @@ setting is saved (`apps/ops/schedule.py`).
 | ops: health checks | `ops.tasks.health_check_task` | 2 min |
 | ops: resource sample | `ops.tasks.resource_sample_task` | 5 min |
 | ops: service alerts | `ops.tasks.service_alerts_task` → `crm.retention.run_warnings` (pre-expiry warnings; the old fixed alert only when `retention_warnings_enabled` is off) | 30 min |
+| payments: unconfirmed payment alert | `payments_sms.tasks.pending_payment_alert_task` → `pending_alert.run`: a payment pending longer than `pending_payment_alert_minutes` (Settings → Alerts, default 5, 0 = off; only rows of the last 24 h) → ONE Telegram to `payment.approve` staff with a link + live `payment_pending_alert` + browser push (`pending_alerted_at`); a silent "resolved" follow-up once it is approved / rejected / deleted | 1 min |
 | ops: prune old backups | `ops.tasks.prune_backups_task` → `retention.run_cleanup` | 60 min |
 | crm: inactivity detection + stages | `crm.tasks.crm_detect_task` (inactivity cases, auto-close on reconnect, optional friendly message, win-back queue + auto won-back, stage refresh) | 60 min |
 | tickets: auto-close stale | `tickets.tasks.auto_close_tickets_task` (awaiting the customer for `tickets_auto_close_days`) | 60 min |
@@ -161,7 +162,8 @@ On-demand tasks: `fulfill_order`, `provision_service_task`, `renew_service_task`
 `deliver_notification_task`, `reconcile_backup_schedule_task`,
 `notify_ticket_task` (ticket notifications, queued on commit),
 `match_blu_transaction_task` (one new Blu deposit, queued on commit by the webhook),
-`rounded_retry_task` (a receipt was uploaded: re-check a slightly-lower deposit linked to that order). Panel tasks
+`rounded_retry_task` (a receipt was uploaded: re-check a slightly-lower deposit linked to that order),
+`send_push_task` (Web Push to a list of subscriptions). Panel tasks
 retry on `PanelUnavailable`; a permanent `PanelError` is audited and flagged.
 
 ## Bots
@@ -649,3 +651,36 @@ time, so they apply without a restart (`.env` values are only the fallback):
 
 The Blu tab also shows the collector's own poll interval (`BLU_COLLECTOR_POLL_SECONDS`, 45 s;
 information only — it is configured on the Iran server).
+
+
+## Notifications: Telegram, sound, browser push (v1.33)
+
+- **Staff alerts** all go through `apps/common/staff_alert.py::alert_staff(text, perm, …)`: a DM from the
+  sales bot to every active staff member with the permission and a linked Telegram, else the backup chat.
+  Messages ring (`disable_notification=false`, explicit in `telegram/client.py`); `silent=True` only for
+  low-priority follow-ups ("back online", "healthy again", "resolved"); backup files are sent silently.
+  Optional inline `buttons` (DMs only — the backup chat belongs to the other bot) and `push` (browser push
+  to the same staff).
+- **Agency events** (`apps/agency/notify.py`; before v1.33 `managers._notify_staff` only cleared the badge
+  cache, so nothing reached Telegram): approval requests (manager created an admin / added volume) with
+  **Approve / Reject** buttons (`ag:a|r|rc|x:<id>`, handled in `sales_bot` before the customer flow; same
+  permission checks and the same `managers.approve / reject` as the panel; reject asks to confirm), cap
+  reached, admin enabled / disabled / role / password changed by a manager (role + password silent). All to
+  `agency.manage`. The PAMP enforcement (blocking at 100 %) is ported verbatim and sends nothing.
+- **Panel sound** (`frontend/admin/src/components/NotifySound.jsx`, `lib/notifySound.js`): a WebAudio chime
+  (no audio file) on new payments-queue items, mismatches, unconfirmed-payment alerts, rounded approvals,
+  approvals, ticket events and Blu outages. Per staff member: `Staff.notify_prefs` {sound, volume}
+  (`GET/PATCH /admin/auth/me/prefs/`), header speaker button / Settings → Account. Browsers allow audio only
+  after a gesture: the first tap unlocks it, until then an «فعال‌سازی صدا» chip is shown. Customer site:
+  the bell chimes on a new notification; on/off = `User.notify_sound` (Profile → preferences).
+- **Web Push** (`apps/notifications/webpush.py`, `pywebpush`): VAPID keys in `.env` (empty = hidden). Staff:
+  `/admin/push/` (+ `subscribe|unsubscribe|test`), customers: `/notifications/push/…`. Sent for staff
+  alerts with `push`, payment events that need a person (`notifications/live.py`), ticket alerts, and
+  every site notification of a customer (`notify_user`). The worker `push-sw.js` (both SPAs' `public/`)
+  only shows notifications: registered with scope `<base>push-sw/` where no page lives, no fetch handler,
+  no caches — the v1.28 cleanup still removes every other worker and all caches. iPhone / iPad: only for a
+  site added to the Home Screen (iOS 16.4+); the UI explains it.
+- **Counts, not dots** (`frontend/admin/src/lib/actionCounts.js`): pending payments (Payments + Transactions),
+  tickets waiting, agency approvals — on the desktop sidebar, the phone bottom tabs, every row of the
+  Settings index and the in-page tabs (Payments → queue, Agency → Approvals).
+- **Monitoring** shows a «کالکتور بلو» card (`/admin/monitoring/` → `blu`, same data as the Blu tab).

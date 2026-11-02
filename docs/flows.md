@@ -590,6 +590,48 @@ sequenceDiagram
     C->>Bot: Close / Reopen
 ```
 
+## 5c3. Agency approval from Telegram (v1.33)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor M as Group manager
+    participant API as agency/manager/
+    participant N as agency.notify
+    participant TG as Sales bot
+    actor S as Staff (Telegram linked)
+
+    M->>API: create admin / add volume (live on PasarGuard, VolumeRequest pending)
+    API-)N: on commit: approval_requested(req) (+ cap_reached when the cap is now full)
+    N->>TG: DM to every staff with agency.manage + Approve / Reject buttons (none linked → backup chat, no buttons)
+    N-)S: browser push (subscribed browsers)
+    S->>TG: ✅ Approve (ag:a:id)
+    TG->>N: handle_callback: linked active staff? agency.manage AND agency.accounting?
+    N->>API: managers.approve(id, staff) — quota charge, same as the panel (no price → "approve in the panel")
+    TG-->>S: message edited "Approved by …"
+    S->>TG: ❌ Reject (ag:r:id) → confirm (ag:rc:id)
+    N->>API: managers.reject(id, staff) — volume taken back on PasarGuard, no charge
+```
+
+## 5c4. Unconfirmed payment alert (v1.33)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant B as celery beat (1 min)
+    participant A as pending_alert.run
+    participant DB as MySQL
+    actor S as Staff (payment.approve)
+
+    B->>A: tick
+    A->>DB: live payments pending > pending_payment_alert_minutes (≤ 24 h old), pending_alerted_at null
+    A->>DB: claim (pending_alerted_at = now) — never twice
+    A-)S: Telegram with the panel link + live payment_pending_alert (toast + sound) + browser push
+    Note over A,DB: later the payment is approved / rejected / deleted
+    A->>DB: pending_resolved_at = now
+    A-)S: silent "✅ resolved" message
+```
+
 ## 9. Staff Telegram linking
 
 ```mermaid

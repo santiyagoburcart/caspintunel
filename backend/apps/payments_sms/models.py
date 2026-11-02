@@ -218,6 +218,10 @@ class Payment(TimeStampedModel):
     auto_rule = models.CharField(max_length=16, blank=True, default="", db_default="", db_index=True)
     auto_reason = models.JSONField(default=dict, blank=True, null=True)   # null: old rows / old release inserts
     shortfall = models.DecimalField(max_digits=12, decimal_places=0, null=True, blank=True)
+    # v1.33 unconfirmed-payment alert (payments_sms/pending_alert.py): when the one alert went out,
+    # and when the "resolved" follow-up did
+    pending_alerted_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    pending_resolved_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = "payment"

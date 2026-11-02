@@ -267,7 +267,10 @@ export const CDLG_CSS = `
 .cdlg--success { --tone: #11AB53; --tone-hover: #0E9447; }
 .cdlg--primary { --tone: #1464BA; --tone-hover: #0F4E92; }
 .cdlg--warning { --tone: #D97706; --tone-hover: #B45309; }
-.cdlg-glow { position: absolute; top: -48px; inset-inline-end: -48px; width: 128px; height: 128px; border-radius: 50%;
+/* the glow stays inside the box sideways: placed outside it (as before v1.33) it made the dialog
+   horizontally scrollable, and focusing a field scrolled the content 48px off-screen. Its blur
+   still spills over the edge (blur is not scrollable overflow). */
+.cdlg-glow { position: absolute; top: -48px; inset-inline-end: 0; width: 128px; height: 128px; border-radius: 50%;
   background: color-mix(in srgb, var(--tone) 18%, transparent); filter: blur(28px); pointer-events: none; }
 .cdlg > *:not(.cdlg-glow) { position: relative; }
 .cdlg-grab { display: none; }

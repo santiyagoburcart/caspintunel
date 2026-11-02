@@ -27,10 +27,14 @@ import '@fontsource/jetbrains-mono/400.css'
 import '@fontsource/jetbrains-mono/600.css'
 import './index.css'
 
-// This site has no service worker: remove any left by an older build, with its caches,
+// No caching service worker on this site: remove any left by an older build, with its caches,
 // so every entry point (browser, Telegram in-app browser, Mini App) shows the current site.
+// v1.33: the only worker kept is the push one (lib/webPush.js) — scope "/push-sw/", no page
+// lives there, it serves and caches nothing.
 try {
-  navigator.serviceWorker?.getRegistrations?.().then((rs) => rs.forEach((r) => r.unregister())).catch(() => {})
+  navigator.serviceWorker?.getRegistrations?.().then((rs) => rs.forEach((r) => {
+    if (!String(r.scope || '').endsWith('/push-sw/')) r.unregister()
+  })).catch(() => {})
   if (window.caches?.keys) caches.keys().then((ks) => ks.forEach((k) => caches.delete(k))).catch(() => {})
 } catch { /* not supported */ }
 

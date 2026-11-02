@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 import { useTheme } from '../theme/ThemeProvider'
-import { digits as D, gb, relTime, bps } from '../lib/format'
+import { digits as D, gb, relTime, bps, jalali } from '../lib/format'
 import { Spinner } from '../components/ui'
 import { Sparkline, PulseDot, PillTabs } from '../components/caspian'
 
@@ -218,6 +218,68 @@ const STG_CSS = `
   color:var(--c-danger-fg, var(--c-danger)); background:color-mix(in srgb, var(--c-danger) 10%, transparent); }
 .stg-warn .fn { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; opacity:.9; margin-top:2px; }
 @media (max-width:480px){ .stg-row { grid-template-columns:1fr; gap:2px; } .stg-row .v { text-align:start; white-space:normal; } }
+`
+
+// v1.33: the Blu deposit collector — same data as Payments → «واریزهای بلو» (linked there)
+const BT = {
+  fa: { title: 'کالکتور بلو', open: 'واریزهای بلو ›', connected: 'متصل', offline: 'آفلاین', never: 'هنوز دسته‌ای نرسیده',
+    disabled: 'پیکربندی نشده', svc_inactive: 'سرویس غیرفعال', ssh: 'SSH ناموفق', last_batch: 'آخرین دسته', last_check: 'آخرین بررسی سرویس',
+    last_error: 'آخرین خطا', service: 'سرویس روی سرور ایران', active: 'فعال', unknown: 'نامعلوم', none: '—' },
+  en: { title: 'Blu collector', open: 'Blu deposits ›', connected: 'connected', offline: 'offline', never: 'no batch yet',
+    disabled: 'not configured', svc_inactive: 'service inactive', ssh: 'SSH failing', last_batch: 'Last batch', last_check: 'Last service check',
+    last_error: 'Last error', service: 'Service on the Iran server', active: 'active', unknown: 'unknown', none: '—' },
+}
+
+export function bluState(b) {
+  if (!b) return null
+  const sv = b.service || {}
+  if (!b.enabled) return 'disabled'
+  if (sv.configured && sv.checked_at && sv.state && sv.state !== 'active') return 'svc_inactive'
+  if (sv.configured && sv.ssh_failures >= 3) return 'ssh'
+  if (!b.last_batch_at) return 'never'
+  return b.connected ? 'connected' : 'offline'
+}
+
+function BluCard({ b, lang, caspian }) {
+  const t = BT[lang] || BT.fa
+  const st = bluState(b)
+  if (!st) return null
+  const sv = b.service || {}
+  const svcWord = !sv.configured ? null : !sv.checked_at ? t.unknown : sv.state === 'active' ? t.active : (sv.state || t.unknown)
+  const Tag = caspian ? 'section' : 'div'
+  return (
+    <Tag className={(caspian ? 'cm-card' : 'card') + ' blu-mon'} data-state={st} data-testid="mon-blu">
+      <style>{BLU_MON_CSS}</style>
+      <div className="blu-mon-h">
+        <span className="blu-mon-dot" />
+        <b className={caspian ? 'cm-h2' : 'title'}>{t.title}</b>
+        <span className="blu-mon-state">{t[st]}</span>
+        <Link to="/payments?view=blu" className="blu-mon-link">{t.open}</Link>
+      </div>
+      <dl className="blu-mon-kv">
+        <div><dt>{t.last_batch}</dt><dd className="mono-num">{b.last_batch_at ? jalali(b.last_batch_at, true, lang) : t.none}</dd></div>
+        {svcWord && <div><dt>{t.service}</dt><dd>{svcWord}</dd></div>}
+        {sv.configured && <div><dt>{t.last_check}</dt><dd className="mono-num">{sv.checked_at ? jalali(sv.checked_at, true, lang) : t.none}</dd></div>}
+        {(sv.error_line || sv.ssh_error) && <div className="blu-mon-wide"><dt>{t.last_error}</dt><dd><bdi dir="ltr">{sv.error_line || sv.ssh_error}</bdi></dd></div>}
+      </dl>
+    </Tag>
+  )
+}
+
+const BLU_MON_CSS = `
+.blu-mon-h { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.blu-mon-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c-warning); flex: none; }
+.blu-mon[data-state="connected"] .blu-mon-dot { background: var(--c-success); }
+.blu-mon[data-state="offline"] .blu-mon-dot, .blu-mon[data-state="svc_inactive"] .blu-mon-dot, .blu-mon[data-state="ssh"] .blu-mon-dot { background: var(--c-danger); }
+.blu-mon-state { font-size: 12px; font-weight: 700; padding: 2px 9px; border-radius: 999px; color: var(--c-warning-fg); background: color-mix(in srgb, var(--c-warning) 14%, transparent); }
+.blu-mon[data-state="connected"] .blu-mon-state { color: var(--c-success-fg); background: color-mix(in srgb, var(--c-success) 14%, transparent); }
+.blu-mon[data-state="offline"] .blu-mon-state, .blu-mon[data-state="svc_inactive"] .blu-mon-state, .blu-mon[data-state="ssh"] .blu-mon-state { color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 12%, transparent); }
+.blu-mon-link { margin-inline-start: auto; color: var(--c-primary); font-weight: 700; font-size: 13px; min-height: 44px; display: inline-flex; align-items: center; }
+.blu-mon-kv { display: grid; gap: 8px; margin-top: 8px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); }
+.blu-mon-kv > div { min-width: 0; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--c-border); }
+.blu-mon-kv dt { font-size: 11.5px; color: var(--c-text-muted); font-weight: 700; }
+.blu-mon-kv dd { font-size: 13px; font-weight: 700; margin-top: 2px; overflow-wrap: anywhere; }
+.blu-mon-wide { grid-column: 1 / -1; }
 `
 
 function fmtDur(sec, m, d) {
@@ -584,6 +646,9 @@ function LegacyMonitoring() {
           </div>
         </div>
       )}
+
+      {/* ---- Blu collector (v1.33) ---- */}
+      {data.blu && <div className="grid r1"><BluCard b={data.blu} lang={lang} /></div>}
 
       {/* ---- recent backups ---- */}
       <div className="grid r1">
@@ -1315,6 +1380,9 @@ function CaspianMonitoring() {
             <StorageRows st={data.storage} dw={data.disk_watch} lang={lang} />
           </section>
         )}
+
+        {/* ================= BLU COLLECTOR (v1.33) ================= */}
+        {data.blu && <BluCard b={data.blu} lang={lang} caspian />}
 
         {/* ================= RECENT BACKUPS (last) ================= */}
         <section className="cm-card">

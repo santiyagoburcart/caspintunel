@@ -1,3 +1,5 @@
+import { SoundButton } from './NotifySound'
+import { fmtCount, useActionCounts } from '../lib/actionCounts'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
@@ -52,12 +54,9 @@ function SideIcon({ name }) {
 // ---- Aurora / Frost sidebar (unchanged) ----
 /** live pending-payments count on the Payments nav entry */
 function PendingBadge({ to }) {
-  const { pendingCount } = useLivePayments()
-  const { badge } = useLiveTickets()
-  const { pending: approvals } = useLiveApprovals()
-  const n = to === '/payments' ? pendingCount : to === '/tickets' ? badge : to === '/agency' ? approvals : 0
+  const n = useActionCounts()[to] || 0
   if (!n) return null
-  return <span className="nav-pending-badge" aria-label={`${n}`}>{n > 99 ? '99+' : n}</span>
+  return <span className="nav-pending-badge" aria-label={`${n}`}>{fmtCount(n)}</span>
 }
 
 function NavLinks({ items, t, onNavigate }) {
@@ -292,6 +291,7 @@ function LegacyLayout() {
             <button className="btn-ghost shrink-0 hidden md:inline-flex" onClick={toggle}>{mode === 'dark' ? '☀️' : '🌙'}</button>
           )}
           <button className="btn-ghost shrink-0" onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')}>{lang === 'fa' ? 'EN' : 'فا'}</button>
+          {!isGroupManager(staff) && <SoundButton className="btn-ghost shrink-0" />}
           <span className="ms-auto min-w-0 truncate text-muted">
             {staff?.username}{staff?.role ? ` · ${(lang === 'fa' && staff.role_fa) || staff.role}` : staff?.is_superadmin ? ` · ${lang === 'fa' ? 'ابرمدیر' : 'superadmin'}` : ''}
           </span>
@@ -412,6 +412,7 @@ function CaspianLayout() {
                 <SideIcon name={mode === 'dark' ? 'sun' : 'moon'} />
               </button>
             )}
+            {!gm && <SoundButton className="csp-mtop-lang csp-mtop-ico" />}
             <button type="button" className="csp-mtop-lang" onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')}>
               {lang === 'fa' ? 'EN' : 'فا'}
             </button>
@@ -450,6 +451,7 @@ function CaspianLayout() {
           <button className="csp-tb-btn" onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')}>
             {lang === 'fa' ? 'EN' : 'فا'}
           </button>
+          {!gm && <SoundButton className="csp-tb-btn csp-tb-ico" />}
           {gm ? <AvatarMenu settingsTo="/my-groups/settings" /> : (
             <>
               <span className="csp-tb-user">

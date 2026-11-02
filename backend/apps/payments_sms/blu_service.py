@@ -163,7 +163,8 @@ def _recovered() -> None:
     from apps.common.staff_alert import alert_staff
     from apps.notifications.live import push_payments_event
 
-    alert_staff("✅ سرویس جمع‌کنندهٔ بلو دوباره سالم است.\nBlu collector service is healthy again.", perm="payment.view")
+    alert_staff("✅ سرویس جمع‌کنندهٔ بلو دوباره سالم است.\nBlu collector service is healthy again.", perm="payment.view",
+                silent=True)
     push_payments_event("blu_service", ok=True)
 
 

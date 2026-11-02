@@ -73,3 +73,27 @@ class NotificationDelivery(models.Model):
 
     def __str__(self) -> str:
         return f"delivery#{self.pk} {self.channel} {self.status}"
+
+
+class PushSubscription(models.Model):
+    """v1.33 Web Push: one browser subscription of a customer (user) or a staff member.
+    Deleted when the push service answers 404 / 410 (expired)."""
+
+    endpoint = models.TextField()
+    endpoint_hash = models.CharField(max_length=64, unique=True)
+    p256dh = models.CharField(max_length=255)
+    auth = models.CharField(max_length=255)
+    user = models.ForeignKey("accounts.User", null=True, blank=True, on_delete=models.CASCADE,
+                             related_name="push_subscriptions")
+    staff = models.ForeignKey("accounts.Staff", null=True, blank=True, on_delete=models.CASCADE,
+                              related_name="push_subscriptions")
+    user_agent = models.CharField(max_length=255, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_ok_at = models.DateTimeField(null=True, blank=True)
+    failures = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        db_table = "push_subscription"
+
+    def __str__(self) -> str:
+        return f"push#{self.pk} {'staff' if self.staff_id else 'user'}"

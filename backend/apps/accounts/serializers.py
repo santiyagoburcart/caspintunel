@@ -20,7 +20,7 @@ class UserSerializer(serializers.ModelSerializer):
             "id", "username", "email", "email_verified", "name", "phone",
             "telegram_id", "telegram_username", "bank_card_number",
             "referral_code", "referral_count", "source", "language",
-            "is_legacy", "is_active", "created_at",
+            "is_legacy", "is_active", "created_at", "notify_sound",
         )
         read_only_fields = (
             "id", "email_verified", "referral_code", "referral_count",

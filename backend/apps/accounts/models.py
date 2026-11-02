@@ -56,6 +56,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     )
     source = models.CharField(max_length=8, choices=Source.choices, default=Source.SITE)
     language = models.CharField(max_length=2, choices=Language.choices, default=Language.FA)
+    # v1.33: play a short sound on new site notifications (customer settings)
+    notify_sound = models.BooleanField(default=True, db_default=True)
     is_legacy = models.BooleanField(default=False)
     admin_note = models.TextField(blank=True, default="", help_text="Internal staff-only note; never shown to the user")
     terms_accepted_at = models.DateTimeField(
@@ -174,6 +176,8 @@ class Staff(TimeStampedModel):
     # shown to customers on ticket replies when the setting tickets_show_staff_name is on
     display_name = models.CharField(max_length=60, blank=True, default="")
     telegram_id = models.BigIntegerField(null=True, blank=True, unique=True)
+    # v1.33: panel sound preferences {sound: bool, volume: 0-100} (per staff member, all browsers)
+    notify_prefs = models.JSONField(default=dict, blank=True, null=True)
     telegram_linked_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:

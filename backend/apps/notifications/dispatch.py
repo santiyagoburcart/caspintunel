@@ -124,6 +124,16 @@ def notify_user(user, *, title: str, body: str, title_en: str = "", body_en: str
             delivery.status = status
             delivery.error = error
             delivery.save(update_fields=["status", "error"])
+    if via_site:
+        # v1.33: a browser push too (only browsers this customer subscribed — webpush.py)
+        try:
+            from .webpush import push_to_user
+
+            en = getattr(user, "language", "fa") == "en"
+            push_to_user(user, (en and note.title_en) or note.title, (en and note.body_en) or note.body,
+                         url=note.link or "/", tag=f"n{note.id}")
+        except Exception as exc:  # noqa: BLE001
+            log.warning("web push to user %s failed: %s", user.id, exc)
     return note
 
 

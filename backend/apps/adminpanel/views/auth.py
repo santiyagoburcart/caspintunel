@@ -122,7 +122,15 @@ def _staff_payload(staff: Staff) -> dict:
         "is_superadmin": staff.is_superadmin,
         "permissions": perms,
         "last_login": staff.last_login,
+        # v1.33: panel sound preferences (views/push.py)
+        "notify_prefs": _prefs(staff),
         # v1.25: the panel shows a group manager only its own menu (Agency pages scoped to its groups)
         "group_manager": ({"id": gm.id, "username": gm.username, "display_name": gm.display_name}
                           if gm is not None else None),
     }
+
+
+def _prefs(staff) -> dict:
+    from .push import staff_prefs
+
+    return staff_prefs(staff)

@@ -252,6 +252,14 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   callback_data ≤64 bytes; keep old callback names working (users' chat history). Tests use a fake bot, never
   the live one.
 
+## Notifications (v1.33, docs/architecture.md#notifications-telegram-sound-browser-push-v133)
+- Staff alerts: always `alert_staff` (DM by permission, backup-chat fallback); ring by default, `silent=True` only
+  for low priority. Agency events: `agency/notify.py` (buttons `ag:*`, same permission checks + `managers.approve/reject`
+  as the panel). Never add notification calls inside the verbatim PAMP enforcement (`agency/tasks.py`).
+- Web Push worker `push-sw.js` must stay notification-only (no fetch handler, no caches, scope `<base>push-sw/`);
+  the user SPA's v1.28 cleanup unregisters every other worker. VAPID keys only in `.env`.
+- "Needs action" counts come from `lib/actionCounts.js` — counts, never dots.
+
 ## Secrets / .env
 - Mail: every app email uses `EMAIL_BACKEND = apps.common.mail.DynamicEmailBackend`, which picks the server
   at send time: **admin-panel relay (`EmailSettings`, enabled) → `.env` `EMAIL_*` (external host) → local

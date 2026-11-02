@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api, apiError, tokens } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useI18n } from '../lib/i18n'
@@ -7,6 +7,8 @@ import { Alert, Copyable, Field, PasswordField, PhoneInput, Spinner, Toggle, use
 import { localizeError } from '../lib/phone'
 import { useToast } from '../components/Toast'
 import { copyToClipboard } from '../lib/clipboard'
+import { playChime, unlockSound } from '../lib/notifySound'
+import { currentSubscription, needsHomeScreen, pushSupported, subscribePush, unsubscribePush } from '../lib/webPush'
 
 export default function Profile() {
   return <CaspianProfile />
@@ -288,6 +290,7 @@ function CaspianProfile() {
                 </div>
                 <Toggle checked={lang === 'en'} onChange={(v) => setLang(v ? 'en' : 'fa')} label={t('language')} />
               </div>
+              <NotifyPrefs />
             </div>
           </div>
 
@@ -330,6 +333,8 @@ const CSS = `
 @media (max-width: 900px) { .csp-pf-grid { grid-template-columns: 1fr; } }
 .csp-pf-col { display: flex; flex-direction: column; gap: 16px; }
 
+.csp-pf-note { font-size: 12px; line-height: 1.8; color: var(--c-text-muted); padding: 2px 4px; }
+.csp-pf-link { align-self: flex-start; min-height: 44px; font-size: 13px; font-weight: 700; color: var(--c-primary); background: transparent; border: 0; }
 .csp-pf-card {
   background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 18px; padding: 18px;
   display: flex; flex-direction: column; gap: 14px;
@@ -423,3 +428,69 @@ const CSS = `
   .csp-pf-card, .csp-card { padding: 14px; }
 }
 `
+
+
+// v1.33: sound on new notifications (saved on the account) + browser push for this browser
+const NP = {
+  fa: { sound: 'صدای اعلان‌ها', sound_d: 'تأیید پرداخت، پاسخ تیکت، یادآوری تمدید', push: 'اعلان مرورگر',
+    push_d: 'وقتی سایت بسته است — فقط همین مرورگر', on: 'روشن', off: 'خاموش', test: 'اعلان آزمایشی',
+    denied: 'اجازهٔ اعلان در مرورگر رد شده است — از تنظیمات سایت در مرورگر آن را باز کنید.',
+    unsupported: 'این مرورگر از اعلان‌های Push پشتیبانی نمی‌کند.',
+    ios: 'در آیفون / آیپد: در Safari «اشتراک‌گذاری» ← «Add to Home Screen» را بزنید، سایت را از آیکون صفحهٔ اصلی باز کنید و این گزینه را روشن کنید (iOS 16.4 به بالا).' },
+  en: { sound: 'Notification sound', sound_d: 'payment approved, ticket reply, renewal reminder', push: 'Browser notifications',
+    push_d: 'while the site is closed — this browser only', on: 'on', off: 'off', test: 'Test notification',
+    denied: 'Notifications are blocked for this site — allow them in the browser’s site settings.',
+    unsupported: 'This browser does not support push notifications.',
+    ios: 'On iPhone / iPad: in Safari tap Share → “Add to Home Screen”, open the site from that icon, then turn this on (iOS 16.4+).' },
+}
+
+function NotifyPrefs() {
+  const { lang } = useI18n()
+  const s = NP[lang] || NP.fa
+  const { user, refreshMe } = useAuth()
+  const [push, setPush] = useState(null)
+  const [sub, setSub] = useState(false)
+  const toast = useToast()
+  const setMsg = (m) => { if (m) toast.error(m) }
+  const [busy, setBusy] = useState(false)
+  useEffect(() => {
+    api.get('/notifications/push/').then((r) => setPush(r.data)).catch(() => setPush({ enabled: false }))
+    currentSubscription('/').then((x) => setSub(!!x)).catch(() => {})
+  }, [])
+  const setSound = async (v) => {
+    try { await api.patch('/auth/me/', { notify_sound: v }); if (v) { await unlockSound(); playChime(60) } refreshMe() } catch (e) { setMsg(apiError(e)) }
+  }
+  const togglePush = async (on) => {
+    setBusy(true); setMsg('')
+    try {
+      if (on) {
+        const json = await subscribePush('/', push.public_key)
+        await api.post('/notifications/push/subscribe/', { subscription: json })
+        setSub(true)
+      } else {
+        const endpoint = await unsubscribePush('/')
+        if (endpoint) await api.post('/notifications/push/unsubscribe/', { endpoint })
+        setSub(false)
+      }
+    } catch (e) { setMsg(e?.message === 'denied' ? s.denied : e?.message === 'unsupported' ? s.unsupported : apiError(e)) } finally { setBusy(false) }
+  }
+  const sound = user?.notify_sound !== false
+  return (
+    <>
+      <div className="csp-pf-pref">
+        <span className="csp-pf-pref-ico"><PI d="M11 5L6 9H2v6h4l5 4V5zM15.5 8.5a5 5 0 010 7" w={17} /></span>
+        <div className="csp-pf-pref-txt"><span>{s.sound}</span><small>{sound ? s.on : s.off} · {s.sound_d}</small></div>
+        <Toggle checked={sound} onChange={setSound} label={s.sound} />
+      </div>
+      {push?.enabled && (pushSupported() ? (
+        <div className="csp-pf-pref">
+          <span className="csp-pf-pref-ico"><PI d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2a2 2 0 01-.6 1.4L4 17h5m6 0v1a3 3 0 11-6 0v-1" w={17} /></span>
+          <div className="csp-pf-pref-txt"><span>{s.push}</span><small>{s.push_d}</small></div>
+          <Toggle checked={sub} onChange={busy ? () => {} : togglePush} label={s.push} />
+        </div>
+      ) : <p className="csp-pf-note">{needsHomeScreen() ? s.ios : s.unsupported}</p>)}
+      {push?.enabled && pushSupported() && needsHomeScreen() && <p className="csp-pf-note">{s.ios}</p>}
+      {sub && <button type="button" className="csp-pf-link" onClick={() => api.post('/notifications/push/test/', {})}>{s.test}</button>}
+    </>
+  )
+}

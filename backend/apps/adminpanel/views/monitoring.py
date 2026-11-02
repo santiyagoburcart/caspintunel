@@ -91,10 +91,23 @@ class MonitoringView(AdminAPIView):
             ).data,
             "storage": storage_snapshot(),
             "disk_watch": _disk_watch(),
+            # v1.33: the Blu deposit collector (same data as Payments → «واریزهای بلو»)
+            "blu": _blu(),
         })
 
 
 # --------------------------------------------------------------------------
+def _blu() -> dict | None:
+    from apps.payments_sms.blu import collector_health
+
+    try:
+        h = collector_health()
+    except Exception:  # noqa: BLE001 - never break the page over it
+        return None
+    h.pop("settings", None)
+    return h
+
+
 def _disk_watch() -> dict | None:
     """Alert thresholds + the host's daily biggest-folders report (apps/ops/disk.py)."""
     from apps.ops.disk import report_snapshot

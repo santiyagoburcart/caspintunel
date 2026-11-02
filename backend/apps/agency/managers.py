@@ -23,6 +23,7 @@ a limit, unlimited, delete admins, owner roles, payments, prices, other groups.
 from __future__ import annotations
 
 import hashlib
+import logging
 import re
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
@@ -38,6 +39,8 @@ from apps.common.models import AuditLog, write_audit
 
 from .models import (AdminGroup, AdminLimitChange, GroupManager, GroupManagerAssignment, LedgerEntry, ManagerSession,
                      PanelAdmin, VolumeRequest)
+
+log = logging.getLogger("caspintunel")
 
 GB = 1024 ** 3
 D0 = Decimal(0)
@@ -552,6 +555,12 @@ def _check_cap(m: GroupManager, gb: Decimal):
         return
     used = pending_gb(m)
     if used + gb > m.max_unapproved_gb:
+        try:                       # v1.33: staff hear about it once (agency/notify.py)
+            from . import notify
+
+            notify.cap_reached(m, m.max_unapproved_gb, used)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("agency cap notification failed: %s", exc)
         raise ManagerError("your unapproved volume cap is reached — new volume waits until staff approve",
                            "cap_reached", "gb", cap_gb=str(m.max_unapproved_gb), pending_gb=str(used),
                            left_gb=str(max(D0, m.max_unapproved_gb - used)))
@@ -583,8 +592,36 @@ class _AdminLock:
 
 
 def _notify_staff(req: VolumeRequest):
-    """Staff see it in Agency → Approvals (menu badge + in-site toast, polled)."""
+    """Staff see it in Agency → Approvals (menu badge + in-site toast) and, since v1.33, on
+    Telegram with Approve / Reject buttons + a browser push (agency/notify.py). Sent after
+    commit; a notification problem never fails the manager's action."""
     cache.delete("agency:approvals:badge")
+
+    def send():
+        try:
+            from . import notify
+
+            notify.approval_requested(req)
+            m = req.manager
+            st = cap_state(m) if m is not None else None
+            if st and st["reached"]:
+                notify.cap_reached(m, st["max_gb"], st["pending_gb"])
+        except Exception as exc:  # noqa: BLE001
+            log.warning("agency approval notification failed: %s", exc)
+
+    transaction.on_commit(send)
+
+
+def _notify_admin_change(m: GroupManager, username: str, what: str):
+    def send():
+        try:
+            from . import notify
+
+            notify.admin_changed(m, username, what)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("agency admin-change notification failed: %s", exc)
+
+    transaction.on_commit(send)
 
 
 # ------------------------------------------------------------------ manager actions
@@ -679,6 +716,7 @@ def change_password(m: GroupManager, username: str, password) -> dict:
     except admin_crud.AdminCrudError as exc:
         raise _from_crud(exc) from exc
     _audit(m, "password_changed", a, admin=username)          # never the password
+    _notify_admin_change(m, username, "password")
     return {"ok": True, "message": f"Password of {username} changed"}
 
 
@@ -702,6 +740,7 @@ def change_role(m: GroupManager, username: str, role_id) -> dict:
     cat = _safe_catalog()
     _audit(m, "role_changed", a, admin=username, old_role_id=old, new_role_id=rid,
            old_role=(mgr_role(old, cat) or {}).get("name"), new_role=mgr_role(rid, cat)["name"])
+    _notify_admin_change(m, username, "role")
     return {"ok": True, "role": mgr_role(rid, cat), "message": f"Admin role of {username} changed"}
 
 
@@ -752,6 +791,7 @@ def set_admin_status(m: GroupManager, username: str, enable: bool) -> dict:
         except admin_crud.AdminCrudError as exc:
             raise _from_crud(exc) from exc
     _audit(m, "admin_enabled" if enable else "admin_disabled", a, admin=username)
+    _notify_admin_change(m, username, "enabled" if enable else "disabled")
     return {"ok": True, "status": "active" if enable else "disabled"}
 
 

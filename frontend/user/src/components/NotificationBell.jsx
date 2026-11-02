@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom'
 import { api, tokens } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 import { timeAgo } from '../lib/format'
+import { useAuth } from '../lib/auth'
+import { onSoundState, playChime, unlockSound } from '../lib/notifySound'
 
 const TYPE_ICON = {
   order_confirmed: 'M5 13l4 4L19 7',
@@ -45,6 +47,12 @@ export default function NotificationBell({ className = '' }) {
   const panelRef = useRef(null)
   const isMobile = useIsMobile()
   const go = useNavigate()
+  // v1.33: a short sound on a new notification (Profile → preferences; on by default)
+  const { user } = useAuth()
+  const soundOn = useRef(true)
+  soundOn.current = user?.notify_sound !== false
+  const [blocked, setBlocked] = useState(false)
+  useEffect(() => onSoundState((st) => setBlocked(st.blocked && !st.unlocked)), [])
 
   const loadList = () => {
     api.get('/notifications/').then(({ data }) => setItems(data.results || data)).catch(() => {})
@@ -72,6 +80,7 @@ export default function NotificationBell({ className = '' }) {
           if (!data.notification) return
           setItems((prev) => [data.notification, ...prev].slice(0, 20))
           setUnread((u) => data.unread_count ?? u + 1)
+          if (soundOn.current) playChime(60, 'default')
         } catch { /* ignore malformed frame */ }
       }
       ws.onclose = () => {
@@ -156,8 +165,17 @@ export default function NotificationBell({ className = '' }) {
     </>
   )
 
+  const enableChip = blocked && soundOn.current && createPortal(
+    <button type="button" className="ct-sound-chip" onClick={() => unlockSound()} data-testid="enable-sound">
+      🔔 {lang === 'en' ? 'Turn on notification sound' : 'صدای اعلان‌ها فعال شود'}
+      <style>{`.ct-sound-chip { position: fixed; z-index: 60; inset-inline-start: 14px; bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+        min-height: 44px; padding: 0 14px; border-radius: 999px; font-size: 13px; font-weight: 700; color: #fff;
+        background: var(--c-primary); border: 0; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
+        @media (min-width: 768px) { .ct-sound-chip { bottom: 18px; } }`}</style>
+    </button>, document.body)
   return (
     <div ref={boxRef} className={`ct-nbell ${className}`}>
+      {enableChip}
       <button className="ct-nbell-btn" onClick={() => setOpen((o) => !o)} aria-label={t('notifications')}>
         <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
           strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

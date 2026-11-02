@@ -9,7 +9,8 @@ import { useToast } from '../components/Toast'
 import { copyToClipboard } from '../lib/clipboard'
 import { useDeleteConfirm } from '../lib/confirmDelete'
 import { CASPIAN_GROUPS, NAV_ICONS } from '../components/adminNav'
-import { useLiveTickets } from '../lib/liveTickets'
+import { fmtCount, useActionCounts } from '../lib/actionCounts'
+import { SoundPanel, SpeakerIcon, prefsOf } from '../components/NotifySound'
 import { useTheme } from '../theme/ThemeProvider'
 import { AutoPurgeCard, RoundedCard, SUPER_CSS } from '../components/SuperSettings'
 
@@ -95,7 +96,7 @@ const HUB = {
     users: { t: 'کاربران', d: 'جست‌وجو، ویرایش و سفارش‌های کاربران' },
     payments: { t: 'صف پرداخت‌ها', d: 'بررسی و تأیید رسیدها و پرداخت‌های در انتظار' },
     services: { t: 'سرویس‌ها', d: 'همهٔ سرویس‌های کاربران، حجم، انقضا و ویرایش' },
-    g_config: 'تنظیمات عمومی', g_account: 'حساب',
+    g_config: 'تنظیمات عمومی', g_account: 'حساب', sound: 'صدا و اعلان‌ها',
     lang: 'زبان', theme: 'پوسته', light: 'روشن', dark: 'تاریک',
     logout: 'خروج از حساب مدیریت',
   },
@@ -140,7 +141,7 @@ const HUB = {
     users: { t: 'Users', d: 'Search, edit and view customer orders' },
     payments: { t: 'Payments queue', d: 'Review and approve pending receipts and payments' },
     services: { t: 'Services', d: 'Every customer service, usage, expiry and edit' },
-    g_config: 'General settings', g_account: 'Account',
+    g_config: 'General settings', g_account: 'Account', sound: 'Sound & notifications',
     lang: 'Language', theme: 'Theme', light: 'Light', dark: 'Dark',
     logout: 'Log out of the admin account',
   },
@@ -209,7 +210,8 @@ function SettingsHub() {
   const { t, lang, setLang } = useI18n()
   const { staff, logout, can } = useAuth()
   const { mode, toggle, locked } = useTheme()
-  const { badge } = useLiveTickets()
+  const counts = useActionCounts()
+  const [soundOpen, setSoundOpen] = useState(false)
   const go = useNavigate()
   const h = HUB[lang] || HUB.fa
   const groups = HUB_GROUPS.map(([g, items]) => [g, items.filter(([, , p]) => !p || can(p))]).filter(([, items]) => items.length)
@@ -235,7 +237,7 @@ function SettingsHub() {
                     <span className="block font-semibold text-sm">{h[key].t}</span>
                     <span className="block text-xs text-muted mt-0.5 truncate">{h[key].d}</span>
                   </span>
-                  {to === '/tickets' && badge > 0 && <span className="nav-pending-badge">{badge > 99 ? '99+' : badge}</span>}
+                  {counts[to] > 0 && <span className="nav-pending-badge" data-testid="hub-count">{fmtCount(counts[to])}</span>}
                   <span className="st-hub-chev"><HubIco d={HUB_ICONS.chevron} w={16} /></span>
                 </Link>
               )
@@ -265,6 +267,12 @@ function SettingsHub() {
               <HubSeg label={h.theme} value={mode} onPick={() => toggle()} opts={[['light', h.light], ['dark', h.dark]]} />
             </div>
           )}
+          <button type="button" className="st-hub-item" onClick={() => setSoundOpen(true)} data-testid="hub-sound">
+            <span className="st-hub-ico" style={{ background: 'color-mix(in srgb, #7C3AED 14%, transparent)', color: '#7C3AED' }}><SpeakerIcon on={prefsOf(staff).sound} /></span>
+            <span className="min-w-0 flex-1 font-semibold text-sm">{h.sound}</span>
+            <span className="st-hub-chev"><HubIco d={HUB_ICONS.chevron} w={16} /></span>
+          </button>
+          {soundOpen && <SoundPanel onClose={() => setSoundOpen(false)} />}
           <button type="button" className="st-hub-item st-hub-item--danger" onClick={() => { logout(); go('/login') }}>
             <span className="st-hub-ico st-hub-ico--danger"><HubIco d={HUB_ICONS.logout} /></span>
             <span className="min-w-0 flex-1"><span className="block font-semibold text-sm">{h.logout}</span></span>
@@ -379,6 +387,7 @@ const HINT = {
     unique_amount_max: 'سقف مبلغ افزوده — تومان',
     alert_volume_percent: 'مثلاً 80% مصرف',
     alert_expire_days: 'ارسال نوتیفیکیشن پیش از اتمام مهلت',
+    pending_payment_alert_minutes: 'پیش‌فرض: 5 — یک هشدار تلگرام و پنل؛ 0 = خاموش',
     service_sync_interval_minutes: 'پیش‌فرض: 60 — هر چند دقیقه وضعیت سرویس‌ها از پنل‌ها خوانده شود',
   },
   en: {
@@ -389,13 +398,14 @@ const HINT = {
     unique_amount_max: 'ceiling of the added amount — toman',
     alert_volume_percent: 'e.g. at 80% usage',
     alert_expire_days: 'notify this many days before expiry',
+    pending_payment_alert_minutes: 'default: 5 — one Telegram + panel alert; 0 = off',
     service_sync_interval_minutes: 'default: 60 — how often services are re-read from the panels',
   },
 }
 const RANGE = {
   backup_interval_minutes: [5, 43200], backup_retention_days: [1, 365], unique_amount_reservation_minutes: [5, 720],
   unique_amount_min: [1, 100000], unique_amount_max: [1, 100000],
-  alert_volume_percent: [1, 100], alert_expire_days: [1, 60],
+  alert_volume_percent: [1, 100], alert_expire_days: [1, 60], pending_payment_alert_minutes: [0, 1440],
   service_sync_interval_minutes: [1, 1440],
 }
 

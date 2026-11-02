@@ -36,6 +36,7 @@ erDiagram
         string source "site | bot"
         bool is_legacy "imported from the old system"
         string language "fa | en"
+        bool notify_sound "v1.33 sound on new site notifications"
         datetime terms_accepted_at
         datetime deleted_at "soft delete"
         datetime purged_at "permanent delete: anonymous placeholder"
@@ -53,6 +54,7 @@ erDiagram
         string display_name "shown to customers if enabled"
         bigint telegram_id UK "linked via the sales bot"
         datetime telegram_linked_at
+        json notify_prefs "v1.33 {sound, volume}"
     }
     role {
         bigint id PK
@@ -93,7 +95,7 @@ erDiagram
 | Table | Description |
 |---|---|
 | `user` | Customer account (site, bot or legacy import). Soft-deleted first; excluded from lists, stats and renewals once `deleted_at` is set. A Super Admin can then permanently delete it (v1.31.2, `accounts/purge.py`): the row stays as «کاربر حذف‌شده #id» (no name / phone / email / Telegram / card / notes, unusable password, `purged_at`) so orders and payments — and every total — are unchanged; services, tickets, CRM rows, notifications, tokens and its `deleted_user_archive` rows are deleted. |
-| `staff` | Admin-panel operator — a separate model from `user`, with its own JWT; `token_version` ends all sessions when bumped. Optional `email` and linked `telegram_id` receive ticket notifications. |
+| `staff` | Admin-panel operator — a separate model from `user`, with its own JWT; `token_version` ends all sessions when bumped. Optional `email` and linked `telegram_id` receive ticket notifications (and, since v1.33, every staff alert they have the permission for, incl. agency approvals with buttons). `notify_prefs` = panel sound on/off + volume. |
 | `role` / `permission` / `role_permission` | RBAC: roles bundle permission codes (`users.view`, `payment.approve`, `agency.view`, `agency.accounting`, `settings.email`, …). Super-admins bypass checks. `name_fa` / `description_fa` (v1.25.2) are shown when the panel is Persian (seeded for built-in roles and every permission). |
 | `staff_revoked_token` | Spent / revoked staff refresh tokens (by `jti`) until they expire. |
 | `deleted_user_archive` | Full snapshot of a user taken right before a soft delete; restore writes `restored_at/_by`. |
@@ -223,6 +225,8 @@ erDiagram
         string auto_rule "'' | rounded (v1.32)"
         json auto_reason "rounded rule: conditions matched / why not"
         decimal shortfall "invoice − paid (rounded only)"
+        datetime pending_alerted_at "v1.33 unconfirmed-payment alert sent"
+        datetime pending_resolved_at "v1.33 silent resolved follow-up sent"
     }
     bank_card {
         bigint id PK
@@ -763,6 +767,17 @@ erDiagram
         bool via_bot
         bool via_email
     }
+    push_subscription {
+        bigint id PK
+        text endpoint
+        string endpoint_hash UK "sha256(endpoint)"
+        string p256dh
+        string auth
+        bigint user_id FK "customer, or"
+        bigint staff_id FK "staff"
+        datetime last_ok_at
+        int failures
+    }
     notification_delivery {
         bigint id PK
         bigint notification_id FK
@@ -778,6 +793,7 @@ erDiagram
 |---|---|
 | `notification` | A message to one user (event) or everyone (broadcast), with the channels to use and an optional `link` the bell opens (ticket replies → the chat). |
 | `notification_delivery` | One delivery attempt per recipient and channel; a failing channel never blocks the others. |
+| `push_subscription` | v1.33 Web Push: one browser of a customer or a staff member (`PushManager.subscribe`). Sent to by `notifications/webpush.py` (Celery); a 404 / 410 from the push service deletes the row. |
 
 ## 8. Settings, CMS, Telegram and ops (`settings_app`, `telegram`, `ops`)
 

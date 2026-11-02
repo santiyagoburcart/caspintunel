@@ -198,7 +198,7 @@ def _alert_back_online() -> None:
     from apps.notifications.live import push_payments_event
 
     alert_staff("✅ جمع‌کنندهٔ واریزهای بلو دوباره وصل شد.\nBlu deposit collector is back online.",
-                perm="payment.view")
+                perm="payment.view", silent=True)
     push_payments_event("blu_collector", connected=True)
 
 

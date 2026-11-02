@@ -2,6 +2,7 @@ from django.db.models import BooleanField, Case, When
 from rest_framework import mixins, permissions, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .models import DeliveryChannel, DeliveryStatus, NotificationDelivery
 from .serializers import NotificationDeliverySerializer
@@ -48,3 +49,36 @@ class NotificationDeliveryViewSet(mixins.ListModelMixin, viewsets.GenericViewSet
         from .dispatch import _unread_site_count
 
         return Response({"unread_count": _unread_site_count(request.user)})
+
+
+class CustomerPushView(APIView):
+    """v1.33 Web Push for the signed-in customer: GET status · POST subscribe / unsubscribe / test."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from . import webpush
+
+        return Response({"enabled": webpush.enabled(), "public_key": webpush.public_key(),
+                         "subscriptions": request.user.push_subscriptions.count()})
+
+    def post(self, request, action):
+        from . import webpush
+
+        if not webpush.enabled():
+            return Response({"detail": "browser push is not configured", "code": "disabled"}, status=503)
+        d = request.data or {}
+        if action == "subscribe":
+            try:
+                webpush.save_subscription(d.get("subscription") or d, user=request.user,
+                                          user_agent=request.META.get("HTTP_USER_AGENT", ""))
+            except ValueError as exc:
+                return Response({"detail": str(exc)}, status=400)
+            return Response({"ok": True})
+        if action == "unsubscribe":
+            webpush.delete_subscription(d.get("endpoint", ""), user=request.user)
+            return Response({"ok": True})
+        if action == "test":
+            n = webpush.push_to_user(request.user, "🔔 تست اعلان · Test notification", "caspintunel", url="/", tag="test")
+            return Response({"ok": bool(n), "sent": n})
+        return Response({"detail": "not found"}, status=404)

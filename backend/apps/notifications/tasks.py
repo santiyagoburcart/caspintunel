@@ -22,3 +22,11 @@ def deliver_notification_task(notification_id: int):
         )
         return {"notification": note.id, "recipients": 1}
     return broadcast(note)
+
+
+@shared_task
+def send_push_task(sub_ids, payload):
+    """Web Push to these subscriptions (webpush.py)."""
+    from .webpush import send_now
+
+    return send_now(list(sub_ids), dict(payload))

@@ -12,6 +12,7 @@ import { useToast } from '../components/Toast'
 import { DateRangeModal, DRP_CSS } from '../components/DateRangePicker'
 import { Ic } from '../components/AgencyIcons'
 import { useLiveApprovals } from '../lib/liveApprovals'
+import { LG_CSS, LT, addAdjustment } from './AgencyLedger'
 
 // Agency → group managers, approvals, group statements and group activity
 // (backend: apps/agency/managers.py, adminpanel/views/agency_managers.py).
@@ -560,15 +561,24 @@ export function GroupStatement({ url }) {
   const params = useMemo(() => ({ ...(range.from ? { from: range.from } : {}), ...(range.to ? { to: range.to } : {}) }), [range])
   const [st, setSt] = useState(null)
   const [err, setErr] = useState('')
-  useEffect(() => { setSt(null); api.get(url, { params }).then((r) => { setSt(r.data); setErr('') }).catch((e) => { setErr(apiError(e)); setSt(false) }) }, [url, params])
+  const [tick, setTick] = useState(0)
+  const { can } = useAuth()
+  const confirm = useConfirm()
+  useEffect(() => { setSt(null); api.get(url, { params }).then((r) => { setSt(r.data); setErr('') }).catch((e) => { setErr(apiError(e)); setSt(false) }) }, [url, params, tick])
+  // v1.33: «اصلاحیه» from the group statement — pick the admin, then increase / decrease debt
+  const adjust = () => addAdjustment({ confirm, s: LT[lang] || LT.fa, lang, admins: st?.group?.admins || [], onDone: () => setTick((n) => n + 1) })
   const exp = (fmt) => download(url, { ...params, export: fmt, lang }, `group-statement.${fmt}`).catch((e) => toast.error(apiError(e)))
   return (
     <section className="card ag-card gm-st">
       <style>{DRP_CSS}</style>
       <style>{GM_CSS}</style>
+      <style>{LG_CSS}</style>
       <div className="ag-card-h">
         <h3 className="ag-sh" data-ac="blue"><Ic n="doc" size={15} />{s.g_statement}{st && <> — <bdi>{st.group.name}</bdi></>}</h3>
         <div className="ag-actions gm-noprint">
+          {st && can('agency.accounting') && (
+            <button type="button" className="ag-act" data-tone="warning" onClick={adjust} data-testid="gs-adjust"><Ic n="sliders" />{(LT[lang] || LT.fa).add_adjust}</button>
+          )}
           <button type="button" className="ag-act" data-tone="neutral" onClick={() => setPick(true)}><Ic n="clock" />{range.from ? `${jalali(range.from, false, lang)} – ${jalali(range.to || range.from, false, lang)}` : s.all_time}</button>
           <button type="button" className="ag-act" data-tone="neutral" onClick={() => exp('csv')}><Ic n="download" />{s.csv}</button>
           <button type="button" className="ag-act" data-tone="neutral" onClick={() => exp('xlsx')}><Ic n="download" />{s.xlsx}</button>
@@ -608,7 +618,7 @@ function StatementBody({ st, s, lang }) {
                 <tr key={e.id} data-voided={e.voided || undefined}>
                   <td data-label={s.date}>{jalali(e.date, false, lang)}</td>
                   <td data-label={s.admin}><bdi>{e.admin}</bdi></td>
-                  <td data-label={s.kind}><span className="lg-kind" data-kind={e.kind}>{s['k_' + e.kind]}</span></td>
+                  <td data-label={s.kind}><span className="lg-kind" data-kind={e.kind}>{s['k_' + e.kind]}{e.kind === 'adjustment' && <> · {Number(e.signed) < 0 ? (LT[lang] || LT.fa).adj_down : (LT[lang] || LT.fa).adj_up}</>}</span></td>
                   <td data-label={s.gb}>{e.gb ? <N>{gbText(e.gb)}</N> : '—'}</td>
                   <td data-label={s.amount}><span className="gm-bal" data-sign={e.voided ? 'zero' : Number(e.signed) < 0 ? 'credit' : 'owes'}><N>{Number(e.signed) < 0 ? '−' : '+'}{toman(Math.abs(Number(e.amount)), lang)}</N></span></td>
                   <td data-label={s.balance}><N>{money(e.balance, lang)}</N></td>

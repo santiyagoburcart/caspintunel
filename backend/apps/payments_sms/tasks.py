@@ -39,3 +39,11 @@ def rounded_retry_task(self, order_id: int):
         return retry_for_order(order_id)
     except Exception as exc:  # noqa: BLE001 — lock timeout: try again
         raise self.retry(exc=exc)
+
+
+@shared_task
+def pending_payment_alert_task():
+    """Payments pending longer than pending_payment_alert_minutes → one alert each (pending_alert.py)."""
+    from .pending_alert import run
+
+    return run()

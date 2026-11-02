@@ -176,7 +176,15 @@ def _texts(kind, ticket, msg) -> tuple[str, str]:
 def _to_staff(kind, ticket, msg) -> int:
     title, body = _texts(kind, ticket, msg)
     sent = 0
-    for staff in recipients(ticket):
+    people = recipients(ticket)
+    try:                                    # v1.33: browser push to the same people
+        from apps.notifications.webpush import push_to_staff
+
+        push_to_staff(None, title, body, url=f"/tickets/{ticket.id}", tag=f"ticket:{ticket.id}",
+                      staff_ids=[s.id for s in people])
+    except Exception as exc:  # noqa: BLE001
+        log.warning("ticket web push failed: %s", exc)
+    for staff in people:
         if staff.telegram_id:
             _bot(staff, ticket, title, body)
         if staff.email:

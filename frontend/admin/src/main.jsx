@@ -8,6 +8,7 @@ import { AuthProvider } from './lib/auth'
 import { LivePaymentsProvider } from './lib/livePayments'
 import { LiveTicketsProvider } from './lib/liveTickets'
 import { LiveApprovalsProvider } from './lib/liveApprovals'
+import { NotifySound } from './components/NotifySound'
 import { I18nProvider } from './lib/i18n'
 import { ThemeProvider } from './theme/ThemeProvider'
 import { ToastProvider } from './components/Toast'
@@ -41,6 +42,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
               <LivePaymentsProvider>
                 <LiveTicketsProvider>
                   <LiveApprovalsProvider>
+                    <NotifySound />
                     <App />
                   </LiveApprovalsProvider>
                 </LiveTicketsProvider>

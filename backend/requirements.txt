@@ -24,6 +24,10 @@ whitenoise==6.8.2
 
 # --- crypto / utils ---
 cryptography==44.0.1
+# v1.33 Web Push (apps/notifications/webpush.py)
+pywebpush==1.14.1
+py-vapid==1.9.2
+http-ece==1.2.1
 jdatetime==5.0.0
 Pillow==11.1.0
 requests==2.32.3

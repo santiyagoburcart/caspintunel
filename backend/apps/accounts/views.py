@@ -185,8 +185,10 @@ class MeView(GenericAPIView):
     @extend_schema(summary="Update own profile (name, phone, email, language, cards)")
     def patch(self, request):
         user = request.user
-        editable = {"name", "phone", "email", "language", "bank_card_number", "telegram_username"}
+        editable = {"name", "phone", "email", "language", "bank_card_number", "telegram_username", "notify_sound"}
         data = {k: v for k, v in request.data.items() if k in editable}
+        if "notify_sound" in data:      # v1.33: sound on new site notifications
+            data["notify_sound"] = data["notify_sound"] is True or str(data["notify_sound"]).lower() in ("1", "true", "on")
         new_email = data.get("email")
         if new_email and new_email != user.email:
             if User.objects.filter(email__iexact=new_email).exclude(pk=user.pk).exists():

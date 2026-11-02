@@ -416,6 +416,16 @@ class Command(BaseCommand):
 
         reconcile_blu_service_schedule()
         ensure_auto_purge_schedule()
+        every_1, _ = IntervalSchedule.objects.get_or_create(every=1, period=IntervalSchedule.MINUTES)
+        PeriodicTask.objects.update_or_create(
+            name="payments: unconfirmed payment alert",
+            defaults={
+                "task": "apps.payments_sms.tasks.pending_payment_alert_task",
+                "interval": every_1,
+                "kwargs": _json.dumps({}),
+                "enabled": True,
+            },
+        )
         PeriodicTask.objects.update_or_create(
             name="panel: apply due scheduled renewals",
             defaults={

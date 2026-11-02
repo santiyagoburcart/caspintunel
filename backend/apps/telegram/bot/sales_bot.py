@@ -409,6 +409,16 @@ def _register(bot: telebot.TeleBot):
             bot.answer_callback_query(c.id)      # stop the client spinner right away
         except Exception:  # noqa: BLE001
             pass
+        if (c.data or "").startswith("ag:"):
+            # v1.33 agency approvals from Telegram — staff only, permission-checked (agency/notify.py)
+            from apps.agency import notify as agency_notify
+
+            try:
+                agency_notify.handle_callback(bot, c.message.chat.id, c.message, c.from_user.id, c.data)
+            except Exception as exc:  # noqa: BLE001
+                log.exception("agency callback %s failed: %s", c.data, exc)
+                bot.send_message(c.message.chat.id, "⚠️ مشکلی پیش آمد.")
+            return
         if (c.data or "").startswith("st:"):
             staff = tbot.staff_for(c.from_user.id)
             if staff is None:

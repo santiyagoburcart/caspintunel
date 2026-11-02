@@ -9,6 +9,7 @@ import { useToast } from '../components/Toast'
 import { useConfirm } from '../components/ConfirmDialog'
 import { useLivePayments, usePaymentsEvents } from '../lib/livePayments'
 import BluDeposits from '../components/BluDeposits'
+import { fmtCount, useActionCounts } from '../lib/actionCounts'
 import RoundedReason from '../components/RoundedReason'
 
 const T = {
@@ -77,6 +78,7 @@ export default function Payments() {
   const s = T[lang] || T.fa
   const [sp, setSp] = useSearchParams()
   const view = sp.get('view') === 'blu' ? 'blu' : 'queue'
+  const pending = useActionCounts()['/payments']
   return (
     <div className="space-y-3">
       <style>{CSS}</style>
@@ -86,6 +88,7 @@ export default function Payments() {
             className={'pq-view' + (view === v ? ' on' : '')}
             onClick={() => setSp(v === 'queue' ? {} : { view: v }, { replace: true })}>
             {s['v_' + v]}
+            {v === 'queue' && pending > 0 && <span className="ag-tab-badge pq-view-n" data-testid="queue-count">{fmtCount(pending)}</span>}
           </button>
         ))}
       </div>
@@ -426,6 +429,8 @@ const CSS = `
 .pq-tabs { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; border-radius: 12px; background: color-mix(in srgb, var(--c-text-muted) 12%, transparent); }
 .pq-tab { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 9px; font-size: 13px; font-weight: 600; color: var(--c-text-muted); }
 .pq-tab.on { background: var(--c-primary); color: #fff; }
+.pq-view-n { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; margin-inline-start: 6px;
+  border-radius: 999px; font-size: 11px; font-weight: 800; color: #fff; background: var(--c-danger); vertical-align: middle; }
 .pq-tab-n { font-size: 11px; font-weight: 700; padding: 0 6px; min-width: 18px; text-align: center; border-radius: 999px;
   background: color-mix(in srgb, currentColor 22%, transparent); font-family: 'JetBrains Mono', monospace; }
 .pq-card--exp { border-color: color-mix(in srgb, var(--c-warning) 40%, var(--c-border)); }

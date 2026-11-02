@@ -48,6 +48,7 @@ from .views.integrations import (
     TelegramConfigView,
 )
 from .views.monitoring import BackupViewSet, HealthView, MonitoringView, ResourcesView
+from .views.push import StaffPrefsView, StaffPushView
 from .views.notifications import NotificationViewSet
 from .views.ops import DashboardView, ServiceListViewSet, TelegramStatsView
 from .views.system import SettingsView, SystemView
@@ -80,6 +81,9 @@ urlpatterns = [
     path("auth/refresh/", StaffRefreshView.as_view(), name="admin-refresh"),
     path("auth/logout/", StaffLogoutView.as_view(), name="admin-logout"),
     path("auth/me/", StaffMeView.as_view(), name="admin-me"),
+    path("auth/me/prefs/", StaffPrefsView.as_view(), name="admin-me-prefs"),
+    path("push/", StaffPushView.as_view(), name="admin-push"),
+    path("push/<str:action>/", StaffPushView.as_view(), name="admin-push-action"),
     path("accounting/", AccountingView.as_view(), name="admin-accounting"),
     path("payments/pending/", PendingPaymentsView.as_view(), name="admin-payments-pending"),
     path("payments/blu-transactions/", BluTransactionListView.as_view(), name="admin-blu-transactions"),

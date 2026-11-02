@@ -60,9 +60,11 @@ class TelegramClient:
         return self._call("getMe")
 
     def send_message(self, chat_id, text, *, reply_markup=None, parse_mode="HTML",
-                     disable_web_page_preview=True):
+                     disable_web_page_preview=True, disable_notification=False):
+        # v1.33: always explicit — a message rings unless the caller marks it low priority
         params = dict(chat_id=chat_id, text=text, parse_mode=parse_mode,
-                      disable_web_page_preview=disable_web_page_preview)
+                      disable_web_page_preview=disable_web_page_preview,
+                      disable_notification="true" if disable_notification else "false")
         if reply_markup is not None:
             import json
 
@@ -70,16 +72,18 @@ class TelegramClient:
         return self._call("sendMessage", **params)
 
     def send_photo(self, chat_id, photo_bytes: bytes, *, caption=None, filename="qr.png", parse_mode=None):
-        params = dict(chat_id=chat_id, caption=caption or "")
+        params = dict(chat_id=chat_id, caption=caption or "", disable_notification="false")
         if parse_mode:
             params["parse_mode"] = parse_mode
         return self._call("sendPhoto", files={"photo": (filename, photo_bytes, "image/png")}, **params)
 
-    def send_document(self, chat_id, file_path: str, *, caption=None, http_timeout=180):
-        # uploads of a few MB regularly needed more than the default 20 s
+    def send_document(self, chat_id, file_path: str, *, caption=None, http_timeout=180, disable_notification=True):
+        # uploads of a few MB regularly needed more than the default 20 s; backup files are
+        # low priority (silent by default)
         with open(file_path, "rb") as fh:
             return self._call("sendDocument", files={"document": fh}, http_timeout=http_timeout,
-                              chat_id=chat_id, caption=caption or "")
+                              chat_id=chat_id, caption=caption or "",
+                              disable_notification="true" if disable_notification else "false")
 
     def get_chat_member(self, chat_id, user_id) -> dict:
         return self._call("getChatMember", chat_id=chat_id, user_id=user_id)
@@ -100,3 +104,13 @@ class TelegramClient:
             log.warning("getChatMember(%s, %s) failed: %s", chat_id, user_id, exc)
             return False
         return status in _MEMBER_OK
+
+    def edit_message_text(self, chat_id, message_id, text, *, reply_markup=None, parse_mode=None):
+        params = dict(chat_id=chat_id, message_id=message_id, text=text, disable_web_page_preview=True)
+        if parse_mode:
+            params["parse_mode"] = parse_mode
+        if reply_markup is not None:
+            import json
+
+            params["reply_markup"] = json.dumps(reply_markup)
+        return self._call("editMessageText", **params)
