@@ -10,6 +10,7 @@ import { useConfirm } from '../components/ConfirmDialog'
 import { useToast } from '../components/Toast'
 import AgencyLimitHistory from './AgencyLimitHistory'
 import { ACCENT_CSS, Ic } from '../components/AgencyIcons'
+import { GroupDebt } from '../components/AgencyBilling'
 import { AgencyLedgerOverview, BalanceText, LedgerCard, LT } from './AgencyLedger'
 import { AdminInvoicesCard, AgencyInvoicesView, AgencyPaymentsView, PortalAccessCard } from './AgencyBilling'
 import { AdminSettingsTab, AgencyAdminCreate } from './AgencyAdminForms'
@@ -760,6 +761,7 @@ export function AgencyGroups() {
                 ))}
               </div>
             )}
+            {can('agency.accounting') && <GroupDebt api={api} groupId={g.id} lang={lang} />}
             {g.note && <p className="text-xs text-muted mt-2">{s.note}: {g.note}</p>}
             <div className="ag-g-foot">
               <GroupActivity groupId={g.id} />

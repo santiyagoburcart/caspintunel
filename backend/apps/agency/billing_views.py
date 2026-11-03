@@ -12,7 +12,7 @@ portal/payments/<id>/            GET  checkout (card, unique amount, timer)
 portal/payments/<id>/receipt/    POST multipart receipt_image [+ receipt_ref]
 portal/payments/<id>/cancel/     POST
 portal/notices/                  GET  · POST {read: true}
-manager/invoices/ · manager/payments/ (POST {invoice_ids}) · manager/payments/<id>/… · manager/notices/
+manager/debt/ · manager/payments/all/ (POST {expected_total}) · manager/invoices/ · manager/payments/ (POST {invoice_ids}) · manager/payments/<id>/… · manager/notices/
 """
 from django.utils import timezone
 from rest_framework import serializers, status
@@ -167,6 +167,26 @@ class ManagerInvoicesView(_MgrB):
         data["admins"] = B.admin_balances(names)
         data["groups"] = [{"id": a.group_id, "name": M.group_title(a.group)} for a in M.assignments(self.m)]
         return Response(data)
+
+
+class ManagerDebtView(_MgrB):
+    """v1.35.2 «کل بدهی گروه» + «ریز بدهی» (live from the ledger)."""
+
+    def get(self, request):
+        d = B.debt_breakdown(M.visible_usernames(self.m))
+        d["groups"] = [{"id": a.group_id, "name": M.group_title(a.group)} for a in M.assignments(self.m)]
+        open_p = AgencyPayment.objects.filter(payer_kind="manager", manager=self.m,
+                                              status=AgencyPayment.PENDING_PAYMENT).order_by("-id").first()
+        d["open_payment"] = B.payment_row(open_p) if open_p else None
+        return Response(d)
+
+
+class ManagerPayAllView(_MgrB):
+    """v1.35.2 «پرداخت کل بدهی»: POST {expected_total} → one payment for exactly the current total."""
+
+    def post(self, request):
+        p = B.pay_all(self.m, M.visible_usernames(self.m), (request.data or {}).get("expected_total"))
+        return Response(B.payment_row(p), status=status.HTTP_201_CREATED)
 
 
 class ManagerSettlementView(_MgrB):

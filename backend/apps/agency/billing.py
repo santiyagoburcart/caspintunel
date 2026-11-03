@@ -226,24 +226,27 @@ def settlement_quote(username: str) -> dict:
     from . import ledger
 
     bal = ledger.balances().get(username, D0)
-    existing = AgencyInvoice.objects.filter(admin_username=username, kind=AgencyInvoice.KIND_SETTLEMENT) \
-        .exclude(status=AgencyInvoice.VOIDED).first()
+    # v1.35.2: an OPEN settlement invoice blocks a second one; after it is paid, debt added later without an
+    # invoice (e.g. «افزایش بدهی») can get a new one — the amount below never counts anything twice
+    existing = AgencyInvoice.objects.filter(admin_username=username, kind=AgencyInvoice.KIND_SETTLEMENT,
+                                            status__in=(AgencyInvoice.UNPAID, AgencyInvoice.PENDING)).first()
     from . import allocation
 
     # v1.35.1: an invoice settled outside the system keeps its charge in the balance — not "old balance"
     amount = bal - open_total(username) - allocation.outside_total(username)
     return {"balance": bal, "open_invoices": open_total(username), "amount": max(D0, amount),
-            "existing": existing.number if existing else None, "allowed": existing is None and amount > 0}
+            "existing": existing.number if existing else None, "allowed": amount > 0}
 
 
 @transaction.atomic
 def issue_settlement(username: str, *, by: str = "") -> AgencyInvoice:
     """«تسویه مانده قبلی»: the balance not covered by open invoices, once per admin."""
-    if not PanelAdmin.objects.filter(username=username).exists():
+    if not (PanelAdmin.objects.filter(username=username).exists()
+            or LedgerEntry.objects.filter(admin_username=username).exists()):
         raise BillingError("unknown admin", "not_found")
     list(PanelAdmin.objects.select_for_update().filter(username=username))     # serialize per admin
     q = settlement_quote(username)
-    if q["existing"]:
+    if q["amount"] <= 0 and q["existing"]:
         raise BillingError(f"this admin already has a previous-balance invoice ({q['existing']})", "conflict",
                            fa=f"برای این ادمین فاکتور تسویهٔ مانده قبلی صادر شده است ({q['existing']})")
     if q["amount"] <= 0:
@@ -984,3 +987,72 @@ def admin_balances(usernames: list[str]) -> list[dict]:
                     "old_balance": q["amount"], "settlement": q["existing"], "can_settle": q["allowed"],
                     "payer": payer_for(n), "mismatch": allocation.mismatch(n)})
     return out
+
+
+# ------------------------------------------------------------------ group debt (v1.35.2)
+def debt_breakdown(usernames: list[str]) -> dict:
+    """«کل بدهی گروه», live from the ledger: per admin its open invoice remainders + the old balance not
+    invoiced yet (balance − open invoices − settled outside). `payable` = what «پرداخت کل بدهی» pays
+    (items under review are already in a payment). `ledger_debt` = Σ max(0, balance) for the check."""
+    from . import allocation, ledger
+
+    bal = ledger.balances()
+    admins, total, review, ledger_debt, outside = [], D0, D0, D0, D0
+    for n in usernames:
+        b = bal.get(n, D0)
+        items, open_sum, rv = [], D0, D0
+        for i in AgencyInvoice.objects.filter(admin_username=n, status__in=allocation.OPEN).order_by("created_at", "id"):
+            rem = allocation.remaining(i)
+            if rem <= 0:
+                continue
+            open_sum += rem
+            if i.status == AgencyInvoice.PENDING:
+                rv += rem
+            items.append({"type": "invoice", "id": i.id, "number": i.number, "kind": i.kind, "gb": i.gb,
+                          "amount": rem, "full": i.amount, "partial": i.paid_amount > 0, "date": i.created_at,
+                          "status": i.status})
+        out = allocation.outside_total(n)
+        old = max(D0, b - open_sum - out)
+        if old > 0:
+            items.append({"type": "old", "amount": old})
+        t = open_sum + old
+        g = group_of(n)
+        admins.append({"admin": n, "group": _group_name(g), "group_id": g.id if g else None, "total": t, "review": rv,
+                       "ledger_debt": max(D0, b), "balance": b, "items": items, "payer": payer_for(n)})
+        total, review, ledger_debt, outside = total + t, review + rv, ledger_debt + max(D0, b), outside + out
+    admins.sort(key=lambda a: (-a["total"], a["admin"].lower()))
+    return {"total": total, "payable": total - review, "review": review, "ledger_debt": ledger_debt,
+            "outside": outside, "admins": admins}
+
+
+@transaction.atomic
+def pay_all(manager: GroupManager, usernames: list[str], expected=None) -> AgencyPayment:
+    """«پرداخت کل بدهی»: exactly the current payable total — settlement invoices for old balances, then ONE
+    payment (one unique amount) for every unpaid item. A total that changed since the page loaded → 409
+    `total_changed` with the new amount (nothing is created)."""
+    names = [n for n in usernames if payer_for(n) == "manager"]
+    list(PanelAdmin.objects.select_for_update().filter(username__in=names))      # serialize with other payers
+    d = debt_breakdown(names)
+    if expected not in (None, ""):
+        try:
+            exp = Decimal(str(expected))
+        except Exception:  # noqa: BLE001
+            raise BillingError("invalid expected total", "invalid", field="expected_total")
+        if exp != d["payable"]:
+            raise BillingError(f"the total changed: {d['payable']:,}", "conflict", reason="total_changed",
+                               fa=f"مبلغ کل تغییر کرد: {d['payable']:,} تومان", total=d["payable"])
+    if d["payable"] <= 0:
+        raise BillingError("nothing to pay", "conflict", fa="بدهی قابل پرداختی نیست", reason="nothing", total=D0)
+    ids = []
+    for a in d["admins"]:
+        for it in a["items"]:
+            if it["type"] == "invoice" and it["status"] == AgencyInvoice.UNPAID:
+                ids.append(it["id"])
+            elif it["type"] == "old":
+                ids.append(issue_settlement(a["admin"], by=f"manager:{manager.username}").id)
+    p = create_payment(ids, payer_kind="manager", payer_username=manager.username, manager=manager, allowed_admins=names)
+    if p.amount != d["payable"]:          # cannot happen: same lock, same numbers — never charge a wrong total
+        raise BillingError("the total changed — reload", "conflict", reason="total_changed", total=p.amount)
+    write_audit(action="agency.payment.pay_all", staff=f"agency:{manager.username}", target=p,
+                detail={"total": str(p.amount), "admins": [a["admin"] for a in d["admins"] if a["total"] > 0]})
+    return p

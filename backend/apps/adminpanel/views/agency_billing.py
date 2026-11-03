@@ -4,6 +4,7 @@ GET  agency/invoices/?admin=&status=&group=          agency.accounting
 GET  agency/invoices/settlement/?admin=              quote of «تسویه مانده قبلی»   (agency.accounting)
 POST agency/invoices/settlement/ {admin}             issue it (once per admin)
 POST agency/invoices/<id>/void/ {reason}             unpaid only, voids its charge too
+GET  agency/groups/<id>/debt/                       v1.35.2 «کل بدهی گروه» (agency.accounting)
 POST agency/invoices/<id>/settle-outside/ {note}     v1.35.1 «تسویه خارج از سیستم»: settled, charge + ledger unchanged
 GET  agency/payments/?status=review|all|<status>     «واریزهای نمایندگان»            (agency.payments)
 GET  agency/payments/badge/                          waiting for review (agency.view)
@@ -87,6 +88,19 @@ class AgencyInvoiceVoidView(_B):
         write_audit(action="agency.invoice.voided", staff=request.user, target=inv,
                     detail={"invoice": inv.number, "reason": inv.void_reason})
         return Response(B.invoice_row(inv))
+
+
+class AgencyGroupDebtView(_B):
+    """v1.35.2 GET agency/groups/<id>/debt/ — «کل بدهی گروه» for staff (same numbers as the group manager sees)."""
+    perms_map = {"GET": ACCOUNTING}
+
+    def get(self, request, group_id):
+        from apps.agency.models import AdminGroup
+
+        g = AdminGroup.objects.filter(pk=group_id).first()
+        if g is None:
+            raise Http404
+        return Response(B.debt_breakdown(g.get_all_usernames()))
 
 
 class AgencyInvoiceOutsideView(_B):

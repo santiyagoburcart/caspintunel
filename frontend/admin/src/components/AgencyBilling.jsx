@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { jalali, toman } from '../lib/format'
 import { copyToClipboard } from '../lib/clipboard'
 import { useToast } from './Toast'
+import { useConfirm } from './ConfirmDialog'
 import { Ic } from './AgencyIcons'
 
 // v1.34 /agency/ portal: invoices + «پرداخت», «درخواست شارژ», my requests, notices and the
@@ -287,6 +288,35 @@ export const AB_CSS = `
 .ab-seg { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .ab-segb { min-height: 40px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--c-border); background: transparent; color: var(--c-text); font-size: 13px; font-weight: 700; }
 .ab-segb.on { background: var(--c-primary); border-color: var(--c-primary); color: #fff; }
+.ab-gd { gap: 8px; margin-top: 12px; }
+.ab-gd-h { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 48px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--c-border);
+  background: color-mix(in srgb, var(--c-danger) 5%, transparent); color: var(--c-text); font-size: 14px; font-weight: 700; width: 100%; }
+.ab-gd-h b { margin-inline-start: auto; font-size: 17px; color: var(--c-danger-fg); }
+.ab-gd-h b[data-zero] { color: var(--c-success-fg); }
+.ab-big { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; padding: 20px 16px; }
+.ab-big-l { font-size: 14px; font-weight: 700; }
+.ab-big-n { font-size: clamp(28px, 7vw, 40px); font-weight: 900; color: var(--c-danger-fg); line-height: 1.15; overflow-wrap: anywhere; }
+.ab-big-n[data-zero] { color: var(--c-success-fg); }
+.ab-btn--big { min-height: 52px; width: min(360px, 100%); font-size: 16px; border-radius: 14px; }
+.ab-btn:disabled { opacity: .6; }
+.ab-tabs { margin-bottom: 0; }
+.ab-tabs .ab-segb { min-height: 44px; padding: 0 16px; }
+.ab-adm details > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 48px; padding: 4px 12px; }
+.ab-adm details > summary::-webkit-details-marker { display: none; }
+.ab-adm { border: 1px solid var(--c-border); border-radius: 12px; min-width: 0; }
+.ab-adm details[open] > summary { border-bottom: 1px solid var(--c-border); }
+.ab-adm-n, .ab-adm-t { display: flex; flex-direction: column; gap: 1px; min-width: 0; font-size: 13.5px; font-weight: 700; overflow-wrap: anywhere; }
+.ab-adm-t { align-items: flex-end; text-align: end; }
+.ab-items2 { display: flex; flex-direction: column; padding: 4px 12px 8px; }
+.ab-items2 li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 0; font-size: 13px; min-width: 0; overflow-wrap: anywhere; }
+.ab-items2 li + li { border-top: 1px dashed var(--c-border); }
+.ab-items2 li[data-type="old"] span { font-weight: 700; }
+.ab-items2 .ab-pill { margin-inline-start: 6px; }
+.ab-adv > summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 800; font-size: 14px; }
+.ab-adv[open] > summary { margin-bottom: 6px; }
+.ab-chk--row { display: grid !important; grid-template-columns: auto minmax(0, 1fr) auto; width: 100%; min-height: 44px; font-size: 13px; }
+.ab-chk-t { overflow-wrap: anywhere; }
+.ab-items2 .ab-num, .ab-chk-t .ab-num { white-space: nowrap; }
 .ab-chk { display: inline-flex; align-items: center; gap: 8px; min-height: 32px; }
 .ab-chk input { width: 20px; height: 20px; }
 .ab-paybar { position: sticky; bottom: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px;
@@ -300,116 +330,198 @@ export const AB_CSS = `
 
 // ---- group manager (/panel/my-groups/invoices): select several unpaid invoices → one payment
 const MT = {
-  fa: { bal_h: 'مانده هر ادمین', bal_admin: 'ادمین', bal_balance: 'بدهی', bal_open: 'در فاکتورهای باز', bal_old: 'مانده قبلی (بی‌فاکتور)',
-    bal_pay: 'پرداخت مانده قبلی', bal_none: 'ادمینی در گروه‌های شما نیست.', bal_issued: 'فاکتور تسویه: {n}',
-    rq_h: 'درخواست شارژ برای ادمین', rq_admin: 'ادمین', rq_pick: 'انتخاب ادمین', rq_send: 'ارسال درخواست برای تأیید',
-    rq_list: 'درخواست‌های من', rq_none: 'درخواستی ثبت نکرده‌اید.', group_total: 'جمع پرداخت‌نشدهٔ گروه',
-    h: 'فاکتورهای گروه', sel: '{n} فاکتور انتخاب شد · {a}', pay_sel: 'پرداخت انتخاب‌شده‌ها', all: 'همه',
-    f_unpaid: 'پرداخت‌نشده', f_pending: 'در حال بررسی', f_paid: 'پرداخت‌شده', f_all: 'همه', admin: 'ادمین', my_pay: 'پرداخت‌های من',
+  fa: { rq_h: 'درخواست شارژ برای ادمین', rq_admin: 'ادمین', rq_pick: 'انتخاب ادمین', rq_send: 'ارسال درخواست برای تأیید',
+    rq_list: 'درخواست‌های من', rq_none: 'درخواستی ثبت نکرده‌اید.',
+    t_debt: 'بدهی', t_hist: 'سابقه پرداخت‌ها', total_h: 'کل بدهی گروه', pay_all: 'پرداخت کل بدهی', nothing: 'بدهی‌ای ندارید ✓',
+    review: '{a} در حال بررسی (در یک پرداخت دیگر)', payable: 'قابل پرداخت: {a}', open_pay: 'یک پرداخت نیمه‌تمام دارید — ادامه',
+    changed_t: 'مبلغ کل تغییر کرد', changed: 'از وقتی صفحه باز شد، بدهی گروه تغییر کرده است. مبلغ جدید:', pay_new: 'پرداخت {a}',
+    br_h: 'ریز بدهی', show_all: 'نمایش همه', hide_zero: 'فقط بدهکارها', old_line: 'مانده قبلی (بی‌فاکتور)', no_admins: 'ادمینی در گروه‌های شما نیست.',
+    zero: 'بدون بدهی', items: '{n} قلم', in_review: 'در حال بررسی', partial: 'پرداخت جزئی — از {f}',
+    sel_h: 'پرداخت انتخابی (پیشرفته)', sel_hint: 'فقط وقتی لازم است بخشی از بدهی را بپردازید.', sel: '{n} قلم انتخاب شد · {a}', pay_sel: 'پرداخت انتخاب‌شده‌ها',
+    hist_none: 'هنوز پرداختی ثبت نکرده‌اید.', open: 'ادامهٔ پرداخت', group: 'گروه', ledger_check: 'دفتر حساب: {a}',
     p_pending_payment: 'در انتظار واریز', p_pending_review: 'در حال بررسی', p_approved: 'تأیید شد', p_rejected: 'رد شد',
-    p_expired: 'منقضی', p_cancelled: 'لغو شد', open: 'ادامهٔ پرداخت' },
-  en: { bal_h: 'Balance per admin', bal_admin: 'Admin', bal_balance: 'Owes', bal_open: 'In open invoices', bal_old: 'Old balance (no invoice)',
-    bal_pay: 'Pay old balance', bal_none: 'No admins in your groups.', bal_issued: 'Settlement invoice: {n}',
-    rq_h: 'Request volume for an admin', rq_admin: 'Admin', rq_pick: 'Choose an admin', rq_send: 'Send for approval',
-    rq_list: 'My requests', rq_none: 'No requests yet.', group_total: 'Group total unpaid',
-    h: 'Group invoices', sel: '{n} selected · {a}', pay_sel: 'Pay selected', all: 'All',
-    f_unpaid: 'Unpaid', f_pending: 'Under review', f_paid: 'Paid', f_all: 'All', admin: 'Admin', my_pay: 'My payments',
+    p_expired: 'منقضی', p_cancelled: 'لغو شد' },
+  en: { rq_h: 'Request volume for an admin', rq_admin: 'Admin', rq_pick: 'Choose an admin', rq_send: 'Send for approval',
+    rq_list: 'My requests', rq_none: 'No requests yet.',
+    t_debt: 'Debt', t_hist: 'Payment history', total_h: 'Total group debt', pay_all: 'Pay the whole debt', nothing: 'Nothing owed ✓',
+    review: '{a} under review (in another payment)', payable: 'Payable: {a}', open_pay: 'You have an unfinished payment — continue',
+    changed_t: 'The total changed', changed: 'The group debt changed since the page was opened. New amount:', pay_new: 'Pay {a}',
+    br_h: 'Debt breakdown', show_all: 'Show all', hide_zero: 'Only admins who owe', old_line: 'Old balance (no invoice)', no_admins: 'No admins in your groups.',
+    zero: 'nothing owed', items: '{n} items', in_review: 'under review', partial: 'partly paid — of {f}',
+    sel_h: 'Pay selected items (advanced)', sel_hint: 'Only when you need to pay part of the debt.', sel: '{n} selected · {a}', pay_sel: 'Pay selected',
+    hist_none: 'No payments yet.', open: 'Continue', group: 'Group', ledger_check: 'Ledger: {a}',
     p_pending_payment: 'Waiting for transfer', p_pending_review: 'Under review', p_approved: 'Approved', p_rejected: 'Rejected',
-    p_expired: 'Expired', p_cancelled: 'Cancelled', open: 'Continue' },
+    p_expired: 'Expired', p_cancelled: 'Cancelled' },
+}
+
+/** v1.35.2 «ریز بدهی»: read-only, one collapsible row per admin (zero-debt admins hidden unless «نمایش همه»).
+ * Used by the group-manager page and the staff group card. */
+export function DebtBreakdown({ d, lang, testid = 'debt-breakdown' }) {
+  const s = BT[lang] || BT.fa
+  const m = MT[lang] || MT.fa
+  const [all, setAll] = useState(false)
+  const rows = (d?.admins || []).filter((a) => all || Number(a.total) > 0)
+  const hidden = (d?.admins || []).length - rows.length
+  return (
+    <div className="ab-br" data-testid={testid}>
+      <div className="ab-h"><h2><Ic n="doc" size={16} />{m.br_h}</h2>
+        {(hidden > 0 || all) && <button type="button" className="ab-link" onClick={() => setAll(!all)} data-testid="br-toggle">{all ? m.hide_zero : `${m.show_all} (+${hidden})`}</button>}</div>
+      {!(d?.admins || []).length ? <p className="ab-muted">{m.no_admins}</p> : rows.length === 0 ? <p className="ab-muted">{m.nothing}</p> : (
+        <ul className="ab-list">{rows.map((a) => (
+          <li key={a.admin} className="ab-adm">
+            <details>
+              <summary>
+                <span className="ab-adm-n"><bdi>{a.admin}</bdi>{a.group && <small className="ab-muted">{a.group}</small>}</span>
+                <span className="ab-adm-t">{Number(a.total) > 0 ? <b><B>{toman(a.total, lang)}</B></b> : <span className="ab-muted">{m.zero}</span>}
+                  {a.items.length > 0 && <small className="ab-muted">{m.items.replace('{n}', a.items.length)}</small>}</span>
+              </summary>
+              {a.items.length > 0 && <ul className="ab-items2">{a.items.map((it, i) => (
+                <li key={i} data-type={it.type}>
+                  {it.type === 'old' ? <span>{m.old_line}</span> : (
+                    <span><B>{it.number}</B>{it.gb ? <> · <B>{gbt(it.gb)} GB</B></> : <> · {s['k_' + it.kind]}</>}
+                      <small className="ab-muted"> · {jalali(it.date, false, lang)}</small>
+                      {it.status === 'pending' && <small className="ab-pill" data-st="pending">{m.in_review}</small>}
+                      {it.partial && <small className="ab-muted"> · {m.partial.replace('{f}', toman(it.full, lang))}</small>}</span>)}
+                  <b><B>{toman(it.amount, lang)}</B></b>
+                </li>))}</ul>}
+            </details>
+          </li>))}</ul>
+      )}
+    </div>
+  )
+}
+
+/** v1.35.2 staff: «کل بدهی گروه» on a group card (Agency → Groups), same numbers as the group manager sees. */
+export function GroupDebt({ api, groupId, lang }) {
+  const m = MT[lang] || MT.fa
+  const [d, setD] = useState(null)
+  const [open, setOpen] = useState(false)
+  useEffect(() => { api.get(`/admin/agency/groups/${groupId}/debt/`).then((r) => setD(r.data)).catch(() => setD(false)) }, [groupId])
+  if (!d) return null
+  const differs = Number(d.ledger_debt) !== Number(d.total)
+  return (
+    <div className="ab ab-gd" data-testid="group-debt">
+      <style>{AB_CSS}</style>
+      <button type="button" className="ab-gd-h" onClick={() => setOpen(!open)} aria-expanded={open}>
+        <span>{m.total_h}</span>
+        <b data-zero={Number(d.total) === 0 || undefined}><B>{toman(d.total, lang)}</B></b>
+        <span className="ab-gd-c" aria-hidden="true">{open ? '▴' : '▾'}</span>
+      </button>
+      {differs && <small className="ab-muted">{m.ledger_check.replace('{a}', toman(d.ledger_debt, lang))}</small>}
+      {open && <DebtBreakdown d={d} lang={lang} testid="group-debt-breakdown" />}
+    </div>
+  )
 }
 
 export function ManagerInvoices({ http, lang, canRequest = false }) {
   const s = BT[lang] || BT.fa
   const m = MT[lang] || MT.fa
   const toast = useToast()
-  const [f, setF] = useState('unpaid')
-  const [inv, setInv] = useState(null)
-  const [sel, setSel] = useState(new Set())
+  const confirm = useConfirm()
+  const [tab, setTab] = useState('debt')
+  const [d, setD] = useState(null)
   const [pay, setPay] = useState(null)
-  const [pays, setPays] = useState([])
+  const [pays, setPays] = useState(null)
   const [notes, setNotes] = useState(null)
+  const [sel, setSel] = useState(new Set())
+  const [busy, setBusy] = useState(false)
   const load = () => {
-    http.get('/invoices/', { params: { status: f } }).then((r) => setInv(r.data)).catch((e) => { setInv({ results: [], unpaid_total: 0 }); toast.error(errL(e, lang, '!')) })
-    http.get('/payments/').then((r) => setPays(r.data.results)).catch(() => {})
+    http.get('/debt/').then((r) => setD(r.data)).catch((e) => { setD({ admins: [], total: 0, payable: 0 }); toast.error(errL(e, lang, '!')) })
+    http.get('/payments/').then((r) => setPays(r.data.results)).catch(() => setPays([]))
     http.get('/notices/').then((r) => setNotes(r.data)).catch(() => {})
   }
-  useEffect(() => { setSel(new Set()); load() }, [f])
-  const rows = inv?.results || []
-  const chosen = rows.filter((r) => sel.has(r.id))
-  const total = chosen.reduce((a, r) => a + owed(r), 0)
-  const toggle = (id) => setSel((cur) => { const n = new Set(cur); n.has(id) ? n.delete(id) : n.add(id); return n })
-  const payOld = async (admin) => {
+  useEffect(() => { load() }, [])
+  const payAll = async (expected) => {
+    setBusy(true)
     try {
-      const inv = (await http.post('/invoices/settlement/', { admin }, { quiet: true })).data
-      setPay((await http.post('/payments/', { invoice_ids: [inv.id] }, { quiet: true })).data)
+      setPay((await http.post('/payments/all/', { expected_total: String(expected) }, { quiet: true })).data)
+    } catch (e) {
+      const x = e?.response?.data
+      if (x?.reason === 'total_changed') {
+        const fresh = (await http.get('/debt/')).data
+        setD(fresh)
+        setBusy(false)
+        if (Number(fresh.payable) > 0) {
+          await confirm({ tone: 'warning', title: m.changed_t, message: m.changed, targetLabel: m.total_h, targetId: toman(fresh.payable, lang),
+            confirmLabel: m.pay_new.replace('{a}', toman(fresh.payable, lang)),
+            action: async () => { setPay((await http.post('/payments/all/', { expected_total: String(fresh.payable) }, { quiet: true })).data) } })
+        }
+        return
+      }
+      toast.error(errL(e, lang, '!')); load()
+    }
+    setBusy(false)
+  }
+  // advanced: pick invoice / old-balance items
+  const items = (d?.admins || []).flatMap((a) => a.items.filter((it) => it.type === 'old' || it.status === 'unpaid')
+    .map((it) => ({ ...it, admin: a.admin, key: it.type === 'old' ? `old:${a.admin}` : `inv:${it.id}` })))
+  const chosen = items.filter((it) => sel.has(it.key))
+  const selTotal = chosen.reduce((t, it) => t + Number(it.amount), 0)
+  const toggle = (k) => setSel((cur) => { const n = new Set(cur); n.has(k) ? n.delete(k) : n.add(k); return n })
+  const paySel = async () => {
+    try {
+      const ids = chosen.filter((it) => it.type === 'invoice').map((it) => it.id)
+      for (const it of chosen.filter((x) => x.type === 'old')) ids.push((await http.post('/invoices/settlement/', { admin: it.admin }, { quiet: true })).data.id)
+      setPay((await http.post('/payments/', { invoice_ids: ids }, { quiet: true })).data)
     } catch (e) { toast.error(errL(e, lang, '!')); load() }
   }
-  const paySel = async () => {
-    try { setPay((await http.post('/payments/', { invoice_ids: chosen.map((r) => r.id) }, { quiet: true })).data) } catch (e) { toast.error(errL(e, lang, '!')) }
-  }
+  const total = Number(d?.total || 0)
+  const payable = Number(d?.payable || 0)
   return (
     <div className="ab">
       <style>{AB_CSS}</style>
       {pay && <Checkout http={http} lang={lang} p={pay} onClose={() => { setPay(null); setSel(new Set()); load() }} />}
       <Notices s={s} lang={lang} data={notes} onRead={async () => { await http.post('/notices/', { read: true }, { quiet: true }); load() }} />
-      <section className="ap-card ab-sum" data-testid="gm-total">
-        <span>{m.group_total}{inv?.groups?.length ? <> · {inv.groups.map((g) => g.name).join('، ')}</> : null}</span>
-        <b><B>{inv ? toman(inv.unpaid_total, lang) : '…'}</B></b>
-      </section>
-      <section className="ap-card" data-testid="gm-balances">
-        <div className="ab-h"><h2><Ic n="wallet" size={16} />{m.bal_h}</h2></div>
-        {!inv ? <div className="ap-spin" /> : !(inv.admins || []).length ? <p className="ab-muted">{m.bal_none}</p> : (
-          <ul className="ab-list">
-            {inv.admins.map((a) => (
-              <li key={a.admin} className="ab-inv">
-                <div className="ab-inv-top"><b><bdi>{a.admin}</bdi></b><span>{m.bal_balance}: <B>{toman(a.balance, lang)}</B></span></div>
-                <div className="ab-inv-mid"><span className="ab-muted">{m.bal_open}: <B>{toman(a.open_invoices, lang)}</B></span>
-                  <span>{m.bal_old}: <b><B>{toman(a.old_balance, lang)}</B></b></span></div>
-                {a.can_settle && <button type="button" className="ab-btn" onClick={() => payOld(a.admin)} data-testid="gm-pay-old">{m.bal_pay}</button>}
-                {a.settlement && <span className="ab-muted">{m.bal_issued.replace('{n}', a.settlement)}</span>}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-      <section className="ap-card" data-testid="gm-invoices">
-        <div className="ab-h"><h2><Ic n="doc" size={16} />{m.h}</h2>
-          {inv && <span className="ab-total">{s.unpaid_total}: <B>{toman(inv.unpaid_total, lang)}</B></span>}</div>
-        <div className="ab-seg">{['unpaid', 'pending', 'paid', 'all'].map((k) => (
-          <button key={k} type="button" className={'ab-segb' + (f === k ? ' on' : '')} onClick={() => setF(k)}>{m['f_' + k]}</button>))}</div>
-        {!inv ? <div className="ap-spin" /> : rows.length === 0 ? <p className="ab-muted">{s.none_inv}</p> : (
-          <ul className="ab-list">
-            {rows.map((r) => (
-              <li key={r.id} className="ab-inv" data-st={r.status}>
-                <div className="ab-inv-top">
-                  <label className="ab-chk">{r.status === 'unpaid' && <input type="checkbox" checked={sel.has(r.id)} onChange={() => toggle(r.id)} aria-label={r.number} />}
-                    <b><B>{r.number}</B></b></label>
-                  <span className="ab-pill" data-st={r.partial ? 'partial' : r.status}>{invSt(r, s)}</span>
+      <div className="ab-seg ab-tabs" role="tablist">
+        {['debt', 'hist'].map((k) => (
+          <button key={k} type="button" role="tab" aria-selected={tab === k} className={'ab-segb' + (tab === k ? ' on' : '')} onClick={() => setTab(k)} data-testid={'gm-tab-' + k}>
+            {m['t_' + k]}{k === 'hist' && (pays || []).some((p) => p.status === 'pending_review') && <span className="ab-badge">{(pays || []).filter((p) => p.status === 'pending_review').length}</span>}</button>))}
+      </div>
+      {tab === 'debt' ? (
+        <>
+          <section className="ap-card ab-big" data-testid="gm-total">
+            <span className="ab-big-l">{m.total_h}{d?.groups?.length ? <small className="ab-muted"> · {d.groups.map((g) => g.name).join('، ')}</small> : null}</span>
+            <b className="ab-big-n" data-zero={total === 0 || undefined}><B>{d ? toman(total, lang) : '…'}</B></b>
+            {d && Number(d.review) > 0 && <span className="ab-muted">{m.review.replace('{a}', toman(d.review, lang))}</span>}
+            {d && (payable > 0
+              ? <button type="button" className="ab-btn ab-btn--big" disabled={busy} onClick={() => payAll(payable)} data-testid="gm-pay-all">
+                {m.pay_all}{Number(d.review) > 0 && <> · <B>{toman(payable, lang)}</B></>}</button>
+              : total === 0 && <span className="ab-ok">{m.nothing}</span>)}
+            {d?.open_payment && <button type="button" className="ab-link" onClick={() => setPay(d.open_payment)} data-testid="gm-open-pay">{m.open_pay}</button>}
+          </section>
+          <section className="ap-card"><DebtBreakdown d={d} lang={lang} /></section>
+          {canRequest && <ManagerRequest http={http} lang={lang} admins={(d?.admins || []).map((a) => a.admin)} />}
+          {items.length > 0 && (
+            <details className="ap-card ab-adv" data-testid="gm-advanced">
+              <summary>{m.sel_h}</summary>
+              <p className="ab-muted">{m.sel_hint}</p>
+              <ul className="ab-list">{items.map((it) => (
+                <li key={it.key} className="ab-inv"><label className="ab-chk ab-chk--row">
+                  <input type="checkbox" checked={sel.has(it.key)} onChange={() => toggle(it.key)} aria-label={it.number || m.old_line} />
+                  <span className="ab-chk-t"><bdi>{it.admin}</bdi> · {it.type === 'old' ? m.old_line : <B>{it.number}</B>}</span>
+                  <b><B>{toman(it.amount, lang)}</B></b></label></li>))}</ul>
+              {chosen.length > 0 && (
+                <div className="ab-paybar" data-testid="gm-paybar">
+                  <span>{m.sel.replace('{n}', chosen.length).replace('{a}', toman(selTotal, lang))}</span>
+                  <button type="button" className="ab-btn" onClick={paySel} data-testid="gm-pay">{m.pay_sel}</button>
                 </div>
-                <div className="ab-inv-mid"><span><bdi>{r.admin}</bdi> · {s['k_' + r.kind]}{r.gb ? <> · <B>{gbt(r.gb)} GB</B></> : null}</span><InvAmount r={r} s={s} lang={lang} /></div>
-                <div className="ab-inv-bot"><span className="ab-muted">{r.group} · {jalali(r.created_at, false, lang)}</span></div>
-              </li>
-            ))}
-          </ul>
-        )}
-        {chosen.length > 0 && (
-          <div className="ab-paybar" data-testid="gm-paybar">
-            <span>{m.sel.replace('{n}', chosen.length).replace('{a}', toman(total, lang))}</span>
-            <button type="button" className="ab-btn" onClick={paySel} data-testid="gm-pay">{m.pay_sel}</button>
-          </div>
-        )}
-      </section>
-      {canRequest && <ManagerRequest http={http} lang={lang} admins={(inv?.admins || []).map((a) => a.admin)} />}
-      {pays.length > 0 && (
-        <section className="ap-card">
-          <div className="ab-h"><h2><Ic n="money" size={16} />{m.my_pay}</h2></div>
-          <ul className="ab-list">{pays.slice(0, 10).map((p) => (
-            <li key={p.id} className="ab-inv">
-              <div className="ab-inv-top"><b><B>{p.number}</B></b><span className="ab-pill" data-st={p.status}>{m['p_' + p.status]}</span></div>
-              <div className="ab-inv-mid"><span className="ab-muted">{p.invoices.length} × · {jalali(p.created_at, true, lang)}</span><b><B>{toman(p.amount_unique, lang)}</B></b></div>
-              {p.reject_reason && <p className="ab-reason">{s.reason}: {p.reject_reason}</p>}
-              {['pending_payment', 'pending_review'].includes(p.status) && <button type="button" className="ab-link" onClick={() => setPay(p)}>{m.open}</button>}
-            </li>))}</ul>
+              )}
+            </details>
+          )}
+        </>
+      ) : (
+        <section className="ap-card" data-testid="gm-history">
+          <div className="ab-h"><h2><Ic n="money" size={16} />{m.t_hist}</h2></div>
+          {pays === null ? <div className="ap-spin" /> : pays.length === 0 ? <p className="ab-muted">{m.hist_none}</p> : (
+            <ul className="ab-list">{pays.map((p) => (
+              <li key={p.id} className="ab-inv">
+                <div className="ab-inv-top"><b><B>{p.number}</B></b><span className="ab-pill" data-st={p.status}>{m['p_' + p.status]}</span></div>
+                <div className="ab-inv-mid"><span className="ab-muted">{p.invoices.map((i) => i.number).join('، ')}</span><b><B>{toman(p.amount_unique, lang)}</B></b></div>
+                <div className="ab-inv-bot"><span className="ab-muted">{jalali(p.created_at, true, lang)}{p.admins?.length ? <> · {p.admins.join('، ')}</> : null}</span>
+                  {['pending_payment', 'pending_review'].includes(p.status) && <button type="button" className="ab-link" onClick={() => setPay(p)}>{m.open}</button>}</div>
+                {p.reject_reason && <p className="ab-reason">{s.reason}: {p.reject_reason}</p>}
+              </li>))}</ul>
+          )}
         </section>
       )}
     </div>

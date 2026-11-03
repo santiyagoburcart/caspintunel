@@ -236,7 +236,7 @@ export function LedgerCard({ username }) {
     if (kind === 'adjustment') { await addAdjustment({ confirm, s, lang, username, onDone: setSt }); return }
     const box = {}
     await confirm({
-      tone, title, targetLabel: username, confirmLabel: s.save, content: <EntryForm s={s} kind={kind} box={box} lang={lang} />,
+      tone, title, targetLabel: username, confirmLabel: s.save, content: <EntryForm s={s} kind={kind} box={box} lang={lang} username={username} />,
       action: async () => {
         let date
         try { date = isoFromJ(box.date) } catch { throw new Error(s.date_hint) }
@@ -409,6 +409,7 @@ export const LG_CSS = `
 .lg-inv-amt { font-weight: 800; text-align: end; font-family: 'JetBrains Mono', ui-monospace, monospace; }
 .lg-inv-amt small, .lg-inv-d { color: var(--c-muted-fg); font-weight: 600; font-size: 11px; }
 .lg-inv-plan { font-size: 12.5px; font-weight: 700; color: var(--c-success-fg); background: color-mix(in srgb, #11AB53 10%, transparent); border-radius: 10px; padding: 8px 10px; overflow-wrap: anywhere; }
+.lg-inv-plan bdi, .ab-items2 bdi, .ab-chk-t bdi { white-space: nowrap; }
 .lg-mismatch { font-size: 12.5px; font-weight: 700; color: var(--c-warning-fg); background: color-mix(in srgb, var(--c-warning) 13%, transparent); border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; }
 .lg-total { display: flex; align-items: center; justify-content: space-between; font-weight: 800; }
 @media (max-width: 767px) {

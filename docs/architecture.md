@@ -707,6 +707,9 @@ information only — it is configured on the Iran server).
   covered by credit); `paid_amount` / `settled_via` on the invoice, partial = unpaid with a remainder. `ledger.add_entry(settle=
   auto|selected|none, invoice_ids)`; `enforce` keeps open invoices ≤ ledger debt after every entry, void and new invoice;
   voiding a source releases its rows. `manage.py reconcile_agency_invoices [--apply]` (preview by default).
+- v1.35.2 group debt: `billing.debt_breakdown` (open invoice remainders + old balances, live from the ledger) feeds the
+  group-manager page and Agency → Groups; `billing.pay_all` = settlement invoices + one `AgencyPayment` for exactly the
+  current total (409 `total_changed` when it moved). No new tables.
 - Alerts (Telegram + panel + sound / push): new admin request, receipt uploaded, auto-approved, mismatch, waiting
   > `pending_payment_alert_minutes` (`pending_alert._agency`). Unfinished checkouts expire with the order
   reservations (`expire_stale_reservations_task`).

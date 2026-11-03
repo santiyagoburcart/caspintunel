@@ -721,6 +721,29 @@ sequenceDiagram
     Note over A,I: a new invoice also runs enforce (credit paid before the charge settles it)
 ```
 
+## 5c8. Group manager pays the whole group debt (v1.35.2)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor G as Group manager (/panel/my-groups/invoices)
+    participant V as ManagerPayAllView
+    participant B as billing
+    participant P as checkout (SMS / Blu)
+
+    G->>V: GET manager/debt/ → «کل بدهی گروه» + «ریز بدهی»
+    G->>V: POST manager/payments/all/ {expected_total}
+    V->>B: pay_all: lock admins, debt_breakdown
+    alt total changed
+        B-->>G: 409 total_changed + new total → page shows it, asks again
+    else same total
+        B->>B: issue_settlement for each old balance
+        B->>B: create_payment(all unpaid items) → one unique amount
+        B-->>G: checkout (card, timer, receipt)
+        P->>B: matching deposit → approve_payment → allocations → invoices paid, ledger down
+    end
+```
+
 ## 9. Staff Telegram linking
 
 ```mermaid

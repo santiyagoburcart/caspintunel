@@ -319,6 +319,20 @@ Invoices are settled by **allocation rows** (`agency_invoice_allocation`, `apps/
   differ («ناهماهنگی …»).
 - Old data: `manage.py reconcile_agency_invoices` previews per admin (read-only); `--apply` writes the same plan (audited).
 
+## Group debt page (v1.35.2, `/panel/my-groups/invoices`)
+
+- **«کل بدهی گروه»** (`billing.debt_breakdown`, `GET /agency/manager/debt/`): live from the ledger — every group admin's open
+  invoice remainders + its old balance not invoiced yet (balance − open invoices − settled outside). Without outside settlements
+  it equals Σ max(0, ledger balance). Items already in a payment under review are shown but not payable.
+- **«پرداخت کل بدهی»** (`billing.pay_all`, `POST /agency/manager/payments/all/ {expected_total}`): issues the settlement invoices for
+  old balances and bundles every unpaid item into ONE payment with one unique amount → the normal checkout (card, timer, receipt,
+  SMS / Blu auto-confirm). If the total changed since the page loaded → 409 `total_changed` + the new total (nothing created);
+  the page shows the new amount and asks again. Only admins whose invoices the manager pays (`payer_for`).
+- **«ریز بدهی»**: read-only, collapsible per admin (invoice number, GB, amount, date; old balance as one line); zero-debt admins
+  hidden unless «نمایش همه». «پرداخت انتخابی (پیشرفته)» stays collapsed at the bottom; payments are in «سابقه پرداخت‌ها».
+- A new «تسویه مانده قبلی» invoice is allowed whenever an un-invoiced balance remains and none is open (debt added after a paid one).
+- Staff: Agency → Groups → each group shows the same «کل بدهی گروه» (`GET /admin/agency/groups/<id>/debt/`, agency.accounting).
+
 ## Access rules (v1.35)
 
 - **Who pays an admin's invoices — one place only** (`billing.payer_for`): the group manager when the admin's group has

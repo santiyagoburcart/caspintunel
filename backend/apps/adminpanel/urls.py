@@ -49,7 +49,7 @@ from .views.integrations import (
 )
 from .views.monitoring import BackupViewSet, HealthView, MonitoringView, ResourcesView
 from .views.push import StaffPrefsView, StaffPushView
-from .views.agency_billing import (AgencyInvoicesView, AgencyInvoiceVoidView, AgencyInvoiceOutsideView, AgencyPaymentActionView,
+from .views.agency_billing import (AgencyInvoicesView, AgencyInvoiceVoidView, AgencyInvoiceOutsideView, AgencyGroupDebtView, AgencyPaymentActionView,
                                    AgencyPaymentReceiptView, AgencyPaymentsBadgeView, AgencyPaymentsView, AgencyPortalAccessView,
                                    AgencySettlementView)
 from .views.notifications import NotificationViewSet
@@ -122,6 +122,7 @@ urlpatterns = [
     path("agency/sync-now/", AgencySyncNowView.as_view(), name="admin-agency-sync-now"),
     path("agency/groups/", AgencyGroupsView.as_view(), name="admin-agency-groups"),
     path("agency/groups/<int:group_id>/", AgencyGroupsView.as_view(), name="admin-agency-group"),
+    path("agency/groups/<int:group_id>/debt/", AgencyGroupDebtView.as_view(), name="admin-agency-group-debt"),
     path("agency/groups/<int:group_id>/activity/", AgencyGroupActivityView.as_view(), name="admin-agency-group-activity"),
     path("agency/managers/", AgencyManagersView.as_view(), name="admin-agency-managers"),
     path("agency/managers/options/", AgencyManagerOptionsView.as_view(), name="admin-agency-manager-options"),
