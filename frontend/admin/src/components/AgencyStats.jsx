@@ -20,6 +20,7 @@ export const ST = {
     t_online: 'کاربرانی که همین الان به سرور وصل‌اند.',
     t_last: 'آخرین باری که یکی از کاربران این ادمین آنلاین بوده است.',
     t_usage: 'مصرف ÷ سقف ادمین.',
+    t_limit: 'حداکثر حجمی که این ادمین می‌تواند به کاربرانش بدهد (روی پاسارگارد).',
   },
   en: {
     sold: 'Sold', used: 'Used', remaining: 'Remaining', sold_limit: 'Sell limit left', hidden: 'Hidden traffic',
@@ -36,6 +37,7 @@ export const ST = {
     t_online: 'Users connected right now.',
     t_last: 'The last time one of this admin’s users was online.',
     t_usage: 'Used ÷ the admin’s limit.',
+    t_limit: 'The most this admin can give its users in total (set on PasarGuard).',
   },
 }
 export const useST = (lang) => ST[lang] || ST.fa

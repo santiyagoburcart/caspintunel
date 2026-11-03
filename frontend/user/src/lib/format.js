@@ -56,3 +56,29 @@ export function timeAgo(value, lang = 'fa') {
   }
   return lang === 'en' ? AGO_EN.now : AGO_FA.now
 }
+
+// v1.38.2 (copied from the panel) relative time for the portal bell
+const rtf = {
+  fa: new Intl.RelativeTimeFormat('fa-u-nu-latn', { numeric: 'auto' }),
+  en: new Intl.RelativeTimeFormat('en', { numeric: 'auto' }),
+}
+const STEPS = [
+  ['year', 31536000],
+  ['month', 2592000],
+  ['day', 86400],
+  ['hour', 3600],
+  ['minute', 60],
+  ['second', 1],
+]
+// Relative time from an ISO timestamp — "3 ساعت پیش" / "3 hours ago".
+export function relTime(value, lang = 'fa') {
+  if (!value) return '—'
+  const diff = (new Date(value).getTime() - Date.now()) / 1000
+  const abs = Math.abs(diff)
+  for (const [unit, secs] of STEPS) {
+    if (abs >= secs || unit === 'second') {
+      return (rtf[lang] || rtf.fa).format(Math.round(diff / secs), unit)
+    }
+  }
+  return '—'
+}

@@ -176,6 +176,17 @@ def notice(*, admin: str = "", manager: GroupManager | None = None, kind: str, t
             except Exception as exc:  # noqa: BLE001
                 log.warning("manager push failed: %s", exc)
         transaction.on_commit(push)
+    elif admin and manager is None:                       # v1.38.2: the reseller's own browsers (/agency/ portal)
+        def push_reseller():
+            try:
+                from apps.notifications import webpush
+                from .portal import PORTAL_NOTICES_URL
+
+                webpush.push_to_reseller(admin, f"{title} · {title_en}"[:120], body or body_en, url=PORTAL_NOTICES_URL(),
+                                         tag=f"ag-notice:{kind}")
+            except Exception as exc:  # noqa: BLE001
+                log.warning("reseller push failed: %s", exc)
+        transaction.on_commit(push_reseller)
 
 
 def managers_of(username: str) -> list[GroupManager]:
@@ -307,6 +318,18 @@ def on_ledger_void(entry: LedgerEntry) -> None:
         allocation.on_invoice_void(inv)
 
 
+def invoice_source(inv: AgencyInvoice) -> str:
+    """v1.38.2 where an invoice came from (one "request" kind covered two sources):
+    admin_request — the admin's own «درخواست شارژ» (portal) · manager — volume a group manager added / a new admin ·
+    manual — staff raised the limit or charged by hand · settlement — the old balance before invoices."""
+    if inv.kind == AgencyInvoice.KIND_SETTLEMENT:
+        return "settlement"
+    vr = inv.volume_request
+    if vr is not None:
+        return "admin_request" if vr.kind == "request" else "manager"
+    return "manual"
+
+
 def invoice_row(inv: AgencyInvoice) -> dict:
     from . import allocation
 
@@ -316,7 +339,7 @@ def invoice_row(inv: AgencyInvoice) -> dict:
             "group_id": inv.group_id, "kind": inv.kind, "gb": inv.gb, "price_per_gb": inv.price_per_gb,
             "amount": inv.amount, "status": inv.status, "note": inv.note, "created_at": inv.created_at,
             "paid_at": inv.paid_at, "voided_at": inv.voided_at, "void_reason": inv.void_reason,
-            "request": inv.volume_request_id,
+            "request": inv.volume_request_id, "source": invoice_source(inv),
             "open_payment": {"id": open_p[0], "status": open_p[1]} if open_p else None,
             # v1.35.1: partial payments / how it was settled
             "paid_amount": inv.paid_amount, "remaining": allocation.remaining(inv), "settled_via": inv.settled_via,
@@ -523,8 +546,6 @@ def create_payment(invoice_ids: list[int], *, payer_kind: str, payer_username: s
     ids = sorted({int(i) for i in invoice_ids or []})
     if not ids:
         raise BillingError("choose at least one invoice", "invalid", fa="دست‌کم یک فاکتور انتخاب کنید")
-    if payer_kind == "admin" and len(ids) != 1:
-        raise BillingError("pay one invoice at a time", "invalid", fa="هر بار یک فاکتور را پرداخت کنید")
     invs = list(AgencyInvoice.objects.select_for_update().filter(pk__in=ids))
     if len(invs) != len(ids) or any(i.admin_username not in allowed_admins for i in invs):
         raise BillingError("not your invoice", "forbidden", fa="این فاکتور متعلق به شما نیست")
@@ -1013,14 +1034,15 @@ def debt_breakdown(usernames: list[str]) -> dict:
     for n in usernames:
         b = bal.get(n, D0)
         items, open_sum, rv = [], D0, D0
-        for i in AgencyInvoice.objects.filter(admin_username=n, status__in=allocation.OPEN).order_by("created_at", "id"):
+        for i in (AgencyInvoice.objects.filter(admin_username=n, status__in=allocation.OPEN).select_related("volume_request")
+                  .order_by("created_at", "id")):
             rem = allocation.remaining(i)
             if rem <= 0:
                 continue
             open_sum += rem
             if i.status == AgencyInvoice.PENDING:
                 rv += rem
-            items.append({"type": "invoice", "id": i.id, "number": i.number, "kind": i.kind, "gb": i.gb,
+            items.append({"type": "invoice", "id": i.id, "number": i.number, "kind": i.kind, "gb": i.gb, "source": invoice_source(i),
                           "amount": rem, "full": i.amount, "partial": i.paid_amount > 0, "date": i.created_at,
                           "status": i.status})
         out = allocation.outside_total(n)
@@ -1038,11 +1060,16 @@ def debt_breakdown(usernames: list[str]) -> dict:
 
 
 @transaction.atomic
-def pay_all(manager: GroupManager, usernames: list[str], expected=None) -> AgencyPayment:
+def pay_all(manager: GroupManager | None, usernames: list[str], expected=None, *, admin: str = "") -> AgencyPayment:
     """«پرداخت کل بدهی»: exactly the current payable total — settlement invoices for old balances, then ONE
     payment (one unique amount) for every unpaid item. A total that changed since the page loaded → 409
-    `total_changed` with the new amount (nothing is created)."""
-    names = [n for n in usernames if payer_for(n) == "manager"]
+    `total_changed` with the new amount (nothing is created).
+    Group manager: `manager` set. v1.38.2 /agency/ portal: `manager=None, admin=<reseller>` (direct accounts only)."""
+    kind = "manager" if manager is not None else "admin"
+    payer = manager.username if manager is not None else admin
+    if not payer:
+        raise BillingError("no payer", "invalid")
+    names = [n for n in usernames if payer_for(n) == kind]
     list(PanelAdmin.objects.select_for_update().filter(username__in=names))      # serialize with other payers
     d = debt_breakdown(names)
     if expected not in (None, ""):
@@ -1061,10 +1088,10 @@ def pay_all(manager: GroupManager, usernames: list[str], expected=None) -> Agenc
             if it["type"] == "invoice" and it["status"] == AgencyInvoice.UNPAID:
                 ids.append(it["id"])
             elif it["type"] == "old":
-                ids.append(issue_settlement(a["admin"], by=f"manager:{manager.username}").id)
-    p = create_payment(ids, payer_kind="manager", payer_username=manager.username, manager=manager, allowed_admins=names)
+                ids.append(issue_settlement(a["admin"], by=f"{kind}:{payer}").id)
+    p = create_payment(ids, payer_kind=kind, payer_username=payer, manager=manager, allowed_admins=names)
     if p.amount != d["payable"]:          # cannot happen: same lock, same numbers — never charge a wrong total
         raise BillingError("the total changed — reload", "conflict", reason="total_changed", total=p.amount)
-    write_audit(action="agency.payment.pay_all", staff=f"agency:{manager.username}", target=p,
+    write_audit(action="agency.payment.pay_all", staff=f"agency:{payer}", target=p,
                 detail={"total": str(p.amount), "admins": [a["admin"] for a in d["admins"] if a["total"] > 0]})
     return p

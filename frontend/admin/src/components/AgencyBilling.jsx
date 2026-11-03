@@ -15,7 +15,8 @@ export const BT = {
     st_unpaid: 'پرداخت‌نشده', st_pending: 'در حال بررسی', st_paid: 'پرداخت‌شده', st_voided: 'باطل‌شده',
     sv_payment: 'پرداخت‌شده', sv_manual: 'پرداخت‌شده (دستی)', sv_adjustment: 'تسویه با اصلاحیه', sv_outside: 'تسویه خارج از سیستم',
     sv_balance: 'تسویه با مانده حساب', sv_mixed: 'پرداخت‌شده', st_partial: 'پرداخت جزئی', paid_rem: 'پرداخت‌شده {p} · مانده {r}',
-    k_quota_charge: 'شارژ حجم', k_manual_charge: 'بدهکاری', k_request: 'درخواست / مدیر گروه', k_settlement: 'تسویه مانده قبلی',
+    k_quota_charge: 'شارژ حجم', k_manual_charge: 'بدهکاری', k_request: 'درخواست شارژ', k_settlement: 'تسویه مانده قبلی',
+    src_admin_request: 'درخواست ادمین', src_manager: 'مدیر گروه', src_manual: 'شارژ دستی', src_settlement: 'تسویه مانده قبلی',
     req_h: 'درخواست شارژ', req_for: 'درخواست شارژ برای: {u}', gb: 'حجم (گیگ)', note: 'یادداشت (اختیاری)', send: 'ارسال درخواست', preview: 'مبلغ: {gb} گیگ × {p} = {a}',
     no_price: 'قیمت هر گیگ برای این ادمین تعریف نشده', my_req: 'درخواست‌های من', none_req: 'درخواستی ثبت نکرده‌اید.',
     r_pending: 'در انتظار تأیید', r_approved: 'تأیید شد', r_rejected: 'رد شد', reason: 'دلیل', invoice: 'فاکتور',
@@ -31,7 +32,8 @@ export const BT = {
     st_unpaid: 'Unpaid', st_pending: 'Pending review', st_paid: 'Paid', st_voided: 'Voided',
     sv_payment: 'Paid', sv_manual: 'Paid (manual)', sv_adjustment: 'Settled by adjustment', sv_outside: 'Settled outside the system',
     sv_balance: 'Settled by the balance', sv_mixed: 'Paid', st_partial: 'Partly paid', paid_rem: 'paid {p} · {r} left',
-    k_quota_charge: 'Volume', k_manual_charge: 'Charge', k_request: 'Request / group manager', k_settlement: 'Previous balance',
+    k_quota_charge: 'Volume', k_manual_charge: 'Charge', k_request: 'Volume request', k_settlement: 'Previous balance',
+    src_admin_request: 'Admin request', src_manager: 'Group manager', src_manual: 'Manual charge', src_settlement: 'Previous balance',
     req_h: 'Request volume', req_for: 'Volume request for: {u}', gb: 'Volume (GB)', note: 'Note (optional)', send: 'Send request', preview: 'Amount: {gb} GB × {p} = {a}',
     no_price: 'No price per GB is set for this admin', my_req: 'My requests', none_req: 'No requests yet.',
     r_pending: 'Waiting for approval', r_approved: 'Approved', r_rejected: 'Rejected', reason: 'Reason', invoice: 'Invoice',
@@ -89,7 +91,7 @@ export function PortalBilling({ http, lang, onChange }) {
               <li key={r.id} className="ab-inv" data-st={r.status}>
                 <div className="ab-inv-top"><b><B>{r.number}</B></b><span className="ab-pill" data-st={r.partial ? 'partial' : r.status}>{invSt(r, s)}</span></div>
                 <div className="ab-inv-mid">
-                  <span>{s['k_' + r.kind]}{r.gb ? <> · <B>{gbt(r.gb)} GB</B></> : null}{r.admin ? <> · <bdi>{r.admin}</bdi></> : null}</span>
+                  <span>{s['src_' + r.source] || s['k_' + r.kind]}{r.gb ? <> · <B>{gbt(r.gb)} GB</B></> : null}{r.admin ? <> · <bdi>{r.admin}</bdi></> : null}</span>
                   <InvAmount r={r} s={s} lang={lang} />
                 </div>
                 <div className="ab-inv-bot"><span className="ab-muted">{jalali(r.created_at, false, lang)}</span>
@@ -379,7 +381,7 @@ export function DebtBreakdown({ d, lang, testid = 'debt-breakdown' }) {
               {a.items.length > 0 && <ul className="ab-items2">{a.items.map((it, i) => (
                 <li key={i} data-type={it.type}>
                   {it.type === 'old' ? <span>{m.old_line}</span> : (
-                    <span><B>{it.number}</B>{it.gb ? <> · <B>{gbt(it.gb)} GB</B></> : <> · {s['k_' + it.kind]}</>}
+                    <span><B>{it.number}</B><> · {s['src_' + it.source] || s['k_' + it.kind]}</>{it.gb ? <> · <B>{gbt(it.gb)} GB</B></> : null}
                       <small className="ab-muted"> · {jalali(it.date, false, lang)}</small>
                       {it.status === 'pending' && <small className="ab-pill" data-st="pending">{m.in_review}</small>}
                       {it.partial && <small className="ab-muted"> · {m.partial.replace('{f}', toman(it.full, lang))}</small>}</span>)}

@@ -685,6 +685,21 @@ information only — it is configured on the Iran server).
 - **Monitoring** shows a «کالکتور بلو» card (`/admin/monitoring/` → `blu`, same data as the Blu tab).
 
 
+## Reseller portal layout (v1.38.2)
+
+- `/agency/` (user SPA, `pages/AgencyPortal.jsx`) = a shell with sections at `<portal>/<section>` (dashboard, request,
+  requests, invoices, statement, notifications, settings); desktop sidebar, phone ☰ drawer; «خروج» (red, ConfirmDialog) at
+  the bottom of the menu. Read-only sub-admins: dashboard / notifications / settings only (billing routes redirect).
+- Shared with the group-manager panel, identical files in both SPAs: `components/AgencyBell.jsx` (bell + notifications
+  page; `GmBell.jsx` wraps it), `components/AgencyStats.jsx` (tile labels + (i) tooltips), `components/ReceiptDrop.jsx`.
+- Portal billing (`billing_views.py`): `portal/debt/`, `portal/payments/all/` (`billing.pay_all` with `admin=`), several
+  `invoice_ids` per payment, `portal/invoices/settlement/`, paged `portal/notices/`, `portal/push/…`. Invoices carry
+  `source` (`billing.invoice_source`).
+- Web Push for resellers: `push_subscription.reseller` (additive column), `webpush.push_to_reseller`, called from
+  `billing.notice(admin=…)` on commit; the click opens `<portal>/notifications` (`portal.PORTAL_NOTICES_URL`).
+- Stale tabs: index.html is never cached and assets are content-hashed; additionally the portal compares its bundle with a
+  fresh index.html (every 5 min / on focus) and shows «نسخهٔ تازه … بارگذاری دوباره».
+
 ## Receipt picker and group-manager UI (v1.38.1)
 
 - **One receipt picker** — `components/ReceiptDrop.jsx` (identical in both SPAs, like ConfirmDialog): tap / click or drag,

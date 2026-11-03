@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { jalali, toman } from '../lib/format'
 import { copyToClipboard } from '../lib/clipboard'
 import { useToast } from './Toast'
+import { useConfirm } from './ConfirmDialog'
 import { Ic } from './AgencyIcons'
 import ReceiptDrop, { uploadPct } from './ReceiptDrop'
 
@@ -14,7 +15,13 @@ export const BT = {
     st_unpaid: 'پرداخت‌نشده', st_pending: 'در حال بررسی', st_paid: 'پرداخت‌شده', st_voided: 'باطل‌شده',
     sv_payment: 'پرداخت‌شده', sv_manual: 'پرداخت‌شده (دستی)', sv_adjustment: 'تسویه با اصلاحیه', sv_outside: 'تسویه خارج از سیستم',
     sv_balance: 'تسویه با مانده حساب', sv_mixed: 'پرداخت‌شده', st_partial: 'پرداخت جزئی', paid_rem: 'پرداخت‌شده {p} · مانده {r}',
-    k_quota_charge: 'شارژ حجم', k_manual_charge: 'بدهکاری', k_request: 'درخواست / مدیر گروه', k_settlement: 'تسویه مانده قبلی',
+    k_quota_charge: 'شارژ حجم', k_manual_charge: 'بدهکاری', k_request: 'درخواست شارژ', k_settlement: 'تسویه مانده قبلی',
+    src_admin_request: 'درخواست ادمین', src_manager: 'مدیر گروه', src_manual: 'شارژ دستی', src_settlement: 'تسویه مانده قبلی',
+    total_h: 'کل بدهی شما', pay_all: 'پرداخت کل بدهی', nothing: 'بدهی‌ای ندارید ✓', review: '{a} در حال بررسی (در یک پرداخت دیگر)', open_pay: 'یک پرداخت نیمه‌تمام دارید — ادامه',
+    changed_t: 'مبلغ کل تغییر کرد', changed: 'از وقتی صفحه باز شد، بدهی شما تغییر کرده است. مبلغ جدید:', pay_new: 'پرداخت {a}',
+    sel_h: 'پرداخت انتخابی (پیشرفته)', sel_hint: 'فقط وقتی لازم است بخشی از بدهی را بپردازید.', sel: '{n} قلم انتخاب شد · {a}', pay_sel: 'پرداخت انتخاب‌شده‌ها', old_line: 'مانده قبلی (بی‌فاکتور)',
+    inc: 'شامل فاکتورهای پرداخت‌نشده و مانده قبلی', all_inv: 'همهٔ فاکتورها', f_all: 'همه', f_unpaid: 'پرداخت‌نشده', f_pending: 'در حال بررسی', f_paid: 'پرداخت‌شده', hist_h: 'سابقه پرداخت‌ها', hist_none: 'هنوز پرداختی ثبت نکرده‌اید.', open: 'ادامهٔ پرداخت',
+    p_pending_payment: 'در انتظار واریز', p_pending_review: 'در حال بررسی', p_approved: 'تأیید شد', p_rejected: 'رد شد', p_expired: 'منقضی', p_cancelled: 'لغو شد',
     req_h: 'درخواست شارژ', req_for: 'درخواست شارژ برای: {u}', gb: 'حجم (گیگ)', note: 'یادداشت (اختیاری)', send: 'ارسال درخواست', preview: 'مبلغ: {gb} گیگ × {p} = {a}',
     no_price: 'قیمت هر گیگ برای این ادمین تعریف نشده', my_req: 'درخواست‌های من', none_req: 'درخواستی ثبت نکرده‌اید.',
     r_pending: 'در انتظار تأیید', r_approved: 'تأیید شد', r_rejected: 'رد شد', reason: 'دلیل', invoice: 'فاکتور',
@@ -30,7 +37,13 @@ export const BT = {
     st_unpaid: 'Unpaid', st_pending: 'Pending review', st_paid: 'Paid', st_voided: 'Voided',
     sv_payment: 'Paid', sv_manual: 'Paid (manual)', sv_adjustment: 'Settled by adjustment', sv_outside: 'Settled outside the system',
     sv_balance: 'Settled by the balance', sv_mixed: 'Paid', st_partial: 'Partly paid', paid_rem: 'paid {p} · {r} left',
-    k_quota_charge: 'Volume', k_manual_charge: 'Charge', k_request: 'Request / group manager', k_settlement: 'Previous balance',
+    k_quota_charge: 'Volume', k_manual_charge: 'Charge', k_request: 'Volume request', k_settlement: 'Previous balance',
+    src_admin_request: 'Admin request', src_manager: 'Group manager', src_manual: 'Manual charge', src_settlement: 'Previous balance',
+    total_h: 'Your total debt', pay_all: 'Pay the whole debt', nothing: 'Nothing owed ✓', review: '{a} under review (in another payment)', open_pay: 'You have an unfinished payment — continue',
+    changed_t: 'The total changed', changed: 'Your debt changed since the page was opened. New amount:', pay_new: 'Pay {a}',
+    sel_h: 'Pay selected items (advanced)', sel_hint: 'Only when you need to pay part of the debt.', sel: '{n} selected · {a}', pay_sel: 'Pay selected', old_line: 'Old balance (no invoice)',
+    inc: 'Unpaid invoices plus the old balance', all_inv: 'All invoices', f_all: 'All', f_unpaid: 'Unpaid', f_pending: 'Under review', f_paid: 'Paid', hist_h: 'Payment history', hist_none: 'No payments yet.', open: 'Continue',
+    p_pending_payment: 'Waiting for transfer', p_pending_review: 'Under review', p_approved: 'Approved', p_rejected: 'Rejected', p_expired: 'Expired', p_cancelled: 'Cancelled',
     req_h: 'Request volume', req_for: 'Volume request for: {u}', gb: 'Volume (GB)', note: 'Note (optional)', send: 'Send request', preview: 'Amount: {gb} GB × {p} = {a}',
     no_price: 'No price per GB is set for this admin', my_req: 'My requests', none_req: 'No requests yet.',
     r_pending: 'Waiting for approval', r_approved: 'Approved', r_rejected: 'Rejected', reason: 'Reason', invoice: 'Invoice',
@@ -57,48 +70,154 @@ function InvAmount({ r, s, lang }) {
     {r.partial && <small className="ab-muted"><B>{s.paid_rem.replace('{p}', toman(r.paid_amount, lang)).replace('{r}', toman(r.remaining, lang))}</B></small>}</span>
 }
 
-export function PortalBilling({ http, lang, onChange, me }) {
+/** v1.38.2 the invoice's source (one «درخواست» kind covered the admin's own request and a group manager's volume). */
+export const srcLabel = (r, s) => s['src_' + r.source] || s['k_' + r.kind] || r.kind
+
+/** v1.38.2 /agency/ «فاکتورها و پرداخت»: «کل بدهی» + «پرداخت کل بدهی» (one payment, one unique amount), «پرداخت انتخابی»
+ * (collapsed), the invoice list with its own «پرداخت», and the payment history. Same flow as the group-manager page. */
+export function PortalInvoices({ http, lang, onChange }) {
   const s = BT[lang] || BT.fa
   const toast = useToast()
+  const confirm = useConfirm()
+  const [d, setD] = useState(null)
   const [inv, setInv] = useState(null)
-  const [reqs, setReqs] = useState(null)
-  const [notes, setNotes] = useState(null)
+  const [pays, setPays] = useState(null)
   const [pay, setPay] = useState(null)
+  const [sel, setSel] = useState(new Set())
+  const [busy, setBusy] = useState(false)
+  const [filter, setFilter] = useState('all')
   const load = () => {
+    http.get('/debt/').then((r) => setD(r.data)).catch((e) => { setD({ admins: [], total: 0, payable: 0 }); toast.error(errL(e, lang, '!')) })
     http.get('/invoices/').then((r) => setInv(r.data)).catch(() => setInv({ results: [], unpaid_total: 0 }))
-    http.get('/requests/').then((r) => setReqs(r.data.results)).catch(() => setReqs([]))
-    http.get('/notices/').then((r) => setNotes(r.data)).catch(() => setNotes({ results: [], unread: 0 }))
+    http.get('/payments/').then((r) => setPays(r.data.results)).catch(() => setPays([]))
   }
   useEffect(() => { load() }, [])
-  const startPay = async (id) => {
-    try { setPay((await http.post('/payments/', { invoice_id: id })).data) } catch (e) { toast.error(errL(e, lang, '!')) }
+  const open = (p) => setPay(p)
+  const payAll = async (expected) => {
+    setBusy(true)
+    try {
+      open((await http.post('/payments/all/', { expected_total: String(expected) })).data)
+    } catch (e) {
+      const x = e?.response?.data
+      if (x?.reason === 'total_changed') {
+        const fresh = (await http.get('/debt/')).data
+        setD(fresh); setBusy(false)
+        if (Number(fresh.payable) > 0) {
+          await confirm({ tone: 'warning', title: s.changed_t, message: s.changed, targetLabel: s.total_h, targetId: toman(fresh.payable, lang),
+            confirmLabel: s.pay_new.replace('{a}', toman(fresh.payable, lang)),
+            action: async () => { open((await http.post('/payments/all/', { expected_total: String(fresh.payable) })).data) } })
+        }
+        return
+      }
+      toast.error(errL(e, lang, '!')); load()
+    }
+    setBusy(false)
   }
+  const payOne = async (id) => {
+    try { open((await http.post('/payments/', { invoice_id: id })).data) } catch (e) { toast.error(errL(e, lang, '!')); load() }
+  }
+  const multi = (d?.admins || []).length > 1
+  const items = (d?.admins || []).flatMap((a) => a.items.filter((it) => it.type === 'old' || it.status === 'unpaid')
+    .map((it) => ({ ...it, admin: a.admin, key: it.type === 'old' ? `old:${a.admin}` : `inv:${it.id}` })))
+  const chosen = items.filter((it) => sel.has(it.key))
+  const selTotal = chosen.reduce((sum, it) => sum + Number(it.amount), 0)
+  const toggle = (k) => setSel((cur) => { const n = new Set(cur); n.has(k) ? n.delete(k) : n.add(k); return n })
+  const paySel = async () => {
+    try {
+      const ids = chosen.filter((it) => it.type === 'invoice').map((it) => it.id)
+      for (const it of chosen.filter((x) => x.type === 'old')) ids.push((await http.post('/invoices/settlement/', { admin: it.admin })).data.id)
+      open((await http.post('/payments/', { invoice_ids: ids })).data)
+    } catch (e) { toast.error(errL(e, lang, '!')); load() }
+  }
+  const total = Number(d?.total || 0)
+  const payable = Number(d?.payable || 0)
+  const rows = (inv?.results || []).filter((r) => filter === 'all' || (filter === 'unpaid' ? r.status === 'unpaid' : r.status === filter))
   return (
     <div className="ab">
       <style>{AB_CSS}</style>
-      {pay && <Checkout http={http} lang={lang} p={pay} onClose={() => { setPay(null); load(); onChange?.() }} />}
-      <Notices s={s} lang={lang} data={notes} onRead={async () => { await http.post('/notices/', { read: true }); load() }} />
+      {pay && <Checkout http={http} lang={lang} p={pay} onClose={() => { setPay(null); setSel(new Set()); load(); onChange?.() }} />}
+      <section className="ap-card ab-big" data-testid="ab-total">
+        <span className="ab-big-l">{s.total_h}</span>
+        <b className="ab-big-n" data-zero={total === 0 || undefined}><B>{d ? toman(total, lang) : '…'}</B></b>
+        <span className="ab-muted">{s.inc}</span>
+        {d && Number(d.review) > 0 && <span className="ab-muted">{s.review.replace('{a}', toman(d.review, lang))}</span>}
+        {d && (payable > 0
+          ? <button type="button" className="ab-btn ab-btn--big" disabled={busy} onClick={() => payAll(payable)} data-testid="ab-pay-all">
+            {s.pay_all}{Number(d.review) > 0 && <> · <B>{toman(payable, lang)}</B></>}</button>
+          : total === 0 && <span className="ab-ok">{s.nothing}</span>)}
+        {d?.open_payment && <button type="button" className="ab-link" onClick={() => open(d.open_payment)} data-testid="ab-open-pay">{s.open_pay}</button>}
+      </section>
+      {items.length > 1 && (
+        <details className="ap-card ab-adv" data-testid="ab-advanced">
+          <summary>{s.sel_h}</summary>
+          <p className="ab-muted">{s.sel_hint}</p>
+          <ul className="ab-list">{items.map((it) => (
+            <li key={it.key} className="ab-inv"><label className="ab-chk ab-chk--row">
+              <input type="checkbox" checked={sel.has(it.key)} onChange={() => toggle(it.key)} aria-label={it.number || s.old_line} />
+              <span className="ab-chk-t">{multi && <><bdi>{it.admin}</bdi> · </>}{it.type === 'old' ? s.old_line : <><B>{it.number}</B> · {srcLabel(it, s)}</>}</span>
+              <b><B>{toman(it.amount, lang)}</B></b></label></li>))}</ul>
+          {chosen.length > 0 && (
+            <div className="ab-paybar" data-testid="ab-paybar">
+              <span>{s.sel.replace('{n}', chosen.length).replace('{a}', toman(selTotal, lang))}</span>
+              <button type="button" className="ab-btn" onClick={paySel} data-testid="ab-pay-sel">{s.pay_sel}</button>
+            </div>
+          )}
+        </details>
+      )}
       <section className="ap-card" data-testid="ab-invoices">
-        <div className="ab-h"><h2><Ic n="doc" size={16} />{s.inv_h}</h2>
-          {inv && <span className="ab-total">{s.unpaid_total}: <B>{toman(inv.unpaid_total, lang)}</B></span>}</div>
-        {!inv ? <div className="ap-spin" /> : inv.results.length === 0 ? <p className="ab-muted">{s.none_inv}</p> : (
+        <div className="ab-h"><h2><Ic n="doc" size={16} />{s.all_inv}</h2>
+          {inv && Number(inv.unpaid_total) > 0 && <span className="ab-total">{s.unpaid_total}: <B>{toman(inv.unpaid_total, lang)}</B></span>}</div>
+        <div className="ab-seg" role="radiogroup" aria-label={s.all_inv}>
+          {['all', 'unpaid', 'pending', 'paid'].map((k) => (
+            <button key={k} type="button" role="radio" aria-checked={filter === k} className={'ab-segb' + (filter === k ? ' on' : '')} onClick={() => setFilter(k)}>{s['f_' + k]}</button>))}
+        </div>
+        {!inv ? <div className="ap-spin" /> : rows.length === 0 ? <p className="ab-muted">{s.none_inv}</p> : (
           <ul className="ab-list">
-            {inv.results.map((r) => (
+            {rows.map((r) => (
               <li key={r.id} className="ab-inv" data-st={r.status}>
                 <div className="ab-inv-top"><b><B>{r.number}</B></b><span className="ab-pill" data-st={r.partial ? 'partial' : r.status}>{invSt(r, s)}</span></div>
                 <div className="ab-inv-mid">
-                  <span>{s['k_' + r.kind]}{r.gb ? <> · <B>{gbt(r.gb)} GB</B></> : null}{r.admin ? <> · <bdi>{r.admin}</bdi></> : null}</span>
+                  <span><span className="ab-src" data-src={r.source} data-testid="ab-src">{srcLabel(r, s)}</span>{r.gb ? <> · <B>{gbt(r.gb)} GB</B></> : null}{multi && r.admin ? <> · <bdi>{r.admin}</bdi></> : null}</span>
                   <InvAmount r={r} s={s} lang={lang} />
                 </div>
                 <div className="ab-inv-bot"><span className="ab-muted">{jalali(r.created_at, false, lang)}</span>
-                  {r.status === 'unpaid' && <button type="button" className="ab-btn" onClick={() => startPay(r.id)} data-testid="ab-pay">{s.pay}</button>}
+                  {r.status === 'unpaid' && <button type="button" className="ab-btn" onClick={() => payOne(r.id)} data-testid="ab-pay">{s.pay}</button>}
                 </div>
               </li>
             ))}
           </ul>
         )}
       </section>
-      <RequestForm http={http} s={s} lang={lang} onSent={load} me={me} />
+      <section className="ap-card" data-testid="ab-history">
+        <div className="ab-h"><h2><Ic n="money" size={16} />{s.hist_h}</h2></div>
+        {pays === null ? <div className="ap-spin" /> : pays.length === 0 ? <p className="ab-muted">{s.hist_none}</p> : (
+          <ul className="ab-list">{pays.map((p) => (
+            <li key={p.id} className="ab-inv">
+              <div className="ab-inv-top"><b><B>{p.number}</B></b><span className="ab-pill" data-st={p.status}>{s['p_' + p.status] || p.status}</span></div>
+              <div className="ab-inv-mid"><span className="ab-muted">{p.invoices.map((i) => i.number).join('، ')}</span><b><B>{toman(p.amount_unique, lang)}</B></b></div>
+              <div className="ab-inv-bot"><span className="ab-muted">{jalali(p.created_at, true, lang)}</span>
+                {['pending_payment', 'pending_review'].includes(p.status) && <button type="button" className="ab-link" onClick={() => open(p)}>{s.open}</button>}</div>
+              {p.reject_reason && <p className="ab-reason">{s.reason}: {p.reject_reason}</p>}
+            </li>))}</ul>
+        )}
+      </section>
+    </div>
+  )
+}
+
+/** «درخواست شارژ» (one section of the portal). */
+export function PortalRequest({ http, lang, me, onSent }) {
+  const s = BT[lang] || BT.fa
+  return <div className="ab"><style>{AB_CSS}</style><RequestForm http={http} s={s} lang={lang} onSent={onSent || (() => {})} me={me} /></div>
+}
+
+/** «درخواست‌های من». */
+export function PortalRequests({ http, lang }) {
+  const s = BT[lang] || BT.fa
+  const [reqs, setReqs] = useState(null)
+  useEffect(() => { http.get('/requests/').then((r) => setReqs(r.data.results)).catch(() => setReqs([])) }, [])
+  return (
+    <div className="ab"><style>{AB_CSS}</style>
       <section className="ap-card" data-testid="ab-requests">
         <div className="ab-h"><h2><Ic n="clock" size={16} />{s.my_req}</h2></div>
         {!reqs ? <div className="ap-spin" /> : reqs.length === 0 ? <p className="ab-muted">{s.none_req}</p> : (
@@ -108,6 +227,7 @@ export function PortalBilling({ http, lang, onChange, me }) {
                 <div className="ab-inv-top"><b><B>+{gbt(r.gb)} GB</B></b><span className="ab-pill" data-st={r.status}>{s['r_' + r.status]}</span></div>
                 <div className="ab-inv-mid"><span className="ab-muted">{jalali(r.created_at, true, lang)}</span>
                   {r.amount != null && <b><B>{toman(r.amount, lang)}</B></b>}</div>
+                {r.note && <p className="ab-muted">{r.note}</p>}
                 {r.reason && <p className="ab-reason">{s.reason}: {r.reason}</p>}
                 {r.invoice && <p className="ab-muted">{s.invoice}: <B>{r.invoice}</B></p>}
               </li>
@@ -116,25 +236,6 @@ export function PortalBilling({ http, lang, onChange, me }) {
         )}
       </section>
     </div>
-  )
-}
-
-function Notices({ s, lang, data, onRead }) {
-  if (!data || !data.results.length) return null
-  return (
-    <section className="ap-card" data-testid="ab-notices">
-      <div className="ab-h"><h2><Ic n="alert" size={16} />{s.notices}{data.unread > 0 && <span className="ab-badge">{data.unread}</span>}</h2>
-        {data.unread > 0 && <button type="button" className="ab-link" onClick={onRead}>{s.mark_read}</button>}</div>
-      <ul className="ab-list">
-        {data.results.slice(0, 8).map((n) => (
-          <li key={n.id} className="ab-note" data-unread={!n.read || undefined}>
-            <b>{(lang === 'en' && n.title_en) || n.title}</b>
-            {(n.body || n.body_en) && <span>{(lang === 'en' && n.body_en) || n.body}</span>}
-            <small className="ab-muted">{jalali(n.created_at, true, lang)}</small>
-          </li>
-        ))}
-      </ul>
-    </section>
   )
 }
 
@@ -243,6 +344,43 @@ export function Checkout({ http, lang, p: initial, onClose }) {
 }
 
 export const AB_CSS = `
+.ab-sum { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; font-weight: 700; }
+.ab-sum b { font-size: 18px; color: var(--c-danger-fg); }
+.ab-seg { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.ab-segb { min-height: 40px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--c-border); background: transparent; color: var(--c-text); font-size: 13px; font-weight: 700; }
+.ab-segb.on { background: var(--c-primary); border-color: var(--c-primary); color: #fff; }
+@media (max-width: 767px) { .ab-segb { min-height: 44px; } }
+.ab-big { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; padding: 20px 16px; }
+.ab-big-l { font-size: 14px; font-weight: 700; }
+.ab-big-n { font-size: clamp(28px, 7vw, 40px); font-weight: 900; color: var(--c-danger-fg); line-height: 1.15; overflow-wrap: anywhere; }
+.ab-big-n[data-zero] { color: var(--c-success-fg); }
+.ab-btn--big { min-height: 52px; width: min(360px, 100%); font-size: 16px; border-radius: 14px; }
+.ab-btn:disabled { opacity: .6; }
+.ab-tabs { margin-bottom: 0; }
+.ab-tabs .ab-segb { min-height: 44px; padding: 0 16px; }
+.ab-adm details > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 48px; padding: 4px 12px; }
+.ab-adm details > summary::-webkit-details-marker { display: none; }
+.ab-adm { border: 1px solid var(--c-border); border-radius: 12px; min-width: 0; }
+.ab-adm details[open] > summary { border-bottom: 1px solid var(--c-border); }
+.ab-adm-n, .ab-adm-t { display: flex; flex-direction: column; gap: 1px; min-width: 0; font-size: 13.5px; font-weight: 700; overflow-wrap: anywhere; }
+.ab-adm-t { align-items: flex-end; text-align: end; }
+.ab-items2 { display: flex; flex-direction: column; padding: 4px 12px 8px; }
+.ab-items2 li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 0; font-size: 13px; min-width: 0; overflow-wrap: anywhere; }
+.ab-items2 li + li { border-top: 1px dashed var(--c-border); }
+.ab-items2 li[data-type="old"] span { font-weight: 700; }
+.ab-items2 .ab-pill { margin-inline-start: 6px; }
+.ab-adv > summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 800; font-size: 14px; }
+.ab-adv[open] > summary { margin-bottom: 6px; }
+.ab-chk--row { display: grid !important; grid-template-columns: auto minmax(0, 1fr) auto; width: 100%; min-height: 44px; font-size: 13px; }
+.ab-chk-t { overflow-wrap: anywhere; }
+.ab-items2 .ab-num, .ab-chk-t .ab-num { white-space: nowrap; }
+.ab-chk { display: inline-flex; align-items: center; gap: 8px; min-height: 32px; }
+.ab-chk input { width: 20px; height: 20px; }
+.ab-paybar { position: sticky; bottom: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px;
+  padding: 10px 12px; border-radius: 12px; background: var(--c-bg); border: 1px solid color-mix(in srgb, var(--c-primary) 40%, var(--c-border)); font-size: 13.5px; font-weight: 700; }
+.ab-src { font-weight: 700; }
+.ab-src[data-src="manager"] { color: var(--c-primary); }
+.ab-paybar { bottom: 0; }
 .ab { display: flex; flex-direction: column; gap: 14px; }
 .ab-h { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
 .ab-h h2 { display: flex; align-items: center; gap: 6px; font-size: 15.5px; font-weight: 800; }

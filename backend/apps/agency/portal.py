@@ -191,3 +191,14 @@ def portal_payload(username: str) -> dict:
     return {"username": username, "mode": mode, "accounts": accounts,
             "balances": {n: bal.get(n, 0) for n in names} if access["mode"] == "full" else {},
             "access": access}
+
+
+def PORTAL_NOTICES_URL() -> str:      # noqa: N802 — a computed constant
+    """v1.38.2 where a reseller push opens: <portal path>/notifications (the path follows Settings → Paths)."""
+    try:
+        from apps.settings_app.paths import state
+
+        base = state().get("portal") or "/agency"
+    except Exception:  # noqa: BLE001
+        base = "/agency"
+    return base.rstrip("/") + "/notifications"

@@ -11,7 +11,11 @@ portal/payments/                 GET  my payments · POST {invoice_id}   (one in
 portal/payments/<id>/            GET  checkout (card, unique amount, timer)
 portal/payments/<id>/receipt/    POST multipart receipt_image [+ receipt_ref]
 portal/payments/<id>/cancel/     POST
-portal/notices/                  GET  · POST {read: true}
+portal/notices/                  GET latest · ?page= (20 each) · POST {read: true} all, or {id} one
+portal/debt/                     GET  v1.38.2 «کل بدهی» (open invoices + old balance) + open payment
+portal/payments/all/             POST {expected_total} — «پرداخت کل بدهی» (one payment, 409 total_changed)
+portal/invoices/settlement/      POST — issue my «تسویه مانده قبلی» invoice («پرداخت انتخابی»)
+portal/push/[subscribe|unsubscribe|test]   GET status · POST — Web Push for this reseller
 manager/debt/ · manager/payments/all/ (POST {expected_total}) · manager/invoices/ · manager/payments/ (POST {invoice_ids}) · manager/payments/<id>/… · manager/notices/
 """
 from django.utils import timezone
@@ -35,10 +39,13 @@ def _berr(exc: B.BillingError) -> Response:
     return Response(exc.payload(), status=exc.status)
 
 
+def _notice(n) -> dict:
+    return {"id": n.id, "kind": n.kind, "title": n.title, "title_en": n.title_en, "body": n.body,
+            "body_en": n.body_en, "created_at": n.created_at, "read": n.read_at is not None}
+
+
 def notice_rows(qs) -> dict:
-    rows = [{"id": n.id, "kind": n.kind, "title": n.title, "title_en": n.title_en, "body": n.body,
-             "body_en": n.body_en, "created_at": n.created_at, "read": n.read_at is not None} for n in qs[:50]]
-    return {"results": rows, "unread": qs.filter(read_at__isnull=True).count()}
+    return {"results": [_notice(n) for n in qs[:50]], "unread": qs.filter(read_at__isnull=True).count()}
 
 
 def request_row(r: VolumeRequest) -> dict:
@@ -56,7 +63,7 @@ class _PortalB(_Portal):
         super().initial(request, *args, **kwargs)
         if not portal.portal_enabled():
             raise B.BillingError("The reseller portal is not open yet.", "forbidden", fa="پرتال نمایندگان هنوز فعال نشده است.")
-        if not isinstance(self, PortalNoticesView):
+        if not isinstance(self, (PortalNoticesView, PortalPushView)):
             self.initial2()
 
     def handle_exception(self, exc):
@@ -105,10 +112,40 @@ class PortalPaymentsView(_PortalB):
         return Response({"results": [B.payment_row(p) for p in qs[:50]]})
 
     def post(self, request):
-        inv = (request.data or {}).get("invoice_id")
-        p = B.create_payment([inv] if inv else [], payer_kind="admin", payer_username=request.user.username,
+        d = request.data or {}
+        ids = d.get("invoice_ids") or ([d["invoice_id"]] if d.get("invoice_id") else [])   # v1.38.2: several at once
+        p = B.create_payment(ids if isinstance(ids, list) else [ids], payer_kind="admin", payer_username=request.user.username,
                              allowed_admins=self.allowed)
         return Response(B.payment_row(p), status=201)
+
+
+class PortalDebtView(_PortalB):
+    """v1.38.2 «کل بدهی» for the portal (same numbers as the group manager's page, direct accounts only)."""
+
+    def get(self, request):
+        d = B.debt_breakdown(self.allowed)
+        open_p = AgencyPayment.objects.filter(payer_kind="admin", payer_username=request.user.username,
+                                              status=AgencyPayment.PENDING_PAYMENT).order_by("-id").first()
+        d["open_payment"] = B.payment_row(open_p) if open_p else None
+        return Response(d)
+
+
+class PortalPayAllView(_PortalB):
+    def post(self, request):
+        p = B.pay_all(None, self.allowed, (request.data or {}).get("expected_total"), admin=request.user.username)
+        return Response(B.payment_row(p), status=status.HTTP_201_CREATED)
+
+
+class PortalSettlementView(_PortalB):
+    """«پرداخت انتخابی» of an old balance: issues that account's «تسویه مانده قبلی» invoice (once)."""
+
+    def post(self, request):
+        admin = str((request.data or {}).get("admin") or request.user.username)
+        if admin not in self.allowed:
+            raise B.BillingError("not your account", "forbidden", fa="این حساب متعلق به شما نیست")
+        inv = B.issue_settlement(admin, by=f"admin:{request.user.username}")
+        return Response({**B.invoice_row(inv), "message": f"Invoice {inv.number} issued",
+                         "message_fa": f"فاکتور {inv.number} صادر شد"}, status=201)
 
 
 class PortalPaymentView(_PortalB):
@@ -134,14 +171,73 @@ class PortalPaymentView(_PortalB):
         return Response({"detail": "not found"}, status=404)
 
 
+def paged_notices(qs, page_param) -> dict:
+    """The bell (latest 50) or the notifications page (?page=, 20 each)."""
+    if not page_param:
+        return notice_rows(qs)
+    size = 20
+    count = qs.count()
+    pages = max(1, -(-count // size))
+    try:
+        page = min(max(1, int(page_param)), pages)
+    except ValueError:
+        page = 1
+    rows = [_notice(n) for n in qs[(page - 1) * size: page * size]]
+    return {"results": rows, "unread": qs.filter(read_at__isnull=True).count(), "count": count, "page": page, "pages": pages}
+
+
 class PortalNoticesView(_PortalB):
+    """Read-only sub-admins see their notices too (no initial2 check)."""
+
+    def _qs(self, request):
+        return AgencyNotice.objects.filter(admin_username=request.user.username, manager__isnull=True)
+
     def get(self, request):
-        return Response(notice_rows(AgencyNotice.objects.filter(admin_username=request.user.username, manager__isnull=True)))
+        return Response(paged_notices(self._qs(request), request.query_params.get("page")))
 
     def post(self, request):
-        AgencyNotice.objects.filter(admin_username=request.user.username, manager__isnull=True,
-                                    read_at__isnull=True).update(read_at=timezone.now())
-        return Response({"ok": True})
+        qs = self._qs(request).filter(read_at__isnull=True)
+        nid = (request.data or {}).get("id")
+        if nid:
+            qs = qs.filter(pk=nid)
+        qs.update(read_at=timezone.now())
+        return Response({"ok": True, "unread": self._qs(request).filter(read_at__isnull=True).count()})
+
+
+class PortalPushView(_PortalB):
+    """v1.38.2 Web Push for this reseller's browsers (notices arrive while the portal is closed)."""
+
+    def get(self, request):
+        from apps.notifications import webpush
+        from apps.notifications.models import PushSubscription
+
+        return Response({"enabled": webpush.enabled(), "public_key": webpush.public_key(),
+                         "subscriptions": PushSubscription.objects.filter(reseller=request.user.username).count()})
+
+    def post(self, request, action=None):
+        from apps.notifications import webpush
+
+        if not webpush.enabled():
+            return Response({"detail": "browser push is not configured on the server", "code": "disabled",
+                             "detail_fa": "اعلان مرورگر روی سرور فعال نیست"}, status=503)
+        d = request.data or {}
+        if action == "subscribe":
+            try:
+                webpush.save_subscription(d.get("subscription") or d, reseller=request.user.username,
+                                          user_agent=request.META.get("HTTP_USER_AGENT", ""))
+            except ValueError as exc:
+                return Response({"detail": str(exc)}, status=400)
+            return Response({"ok": True, "message": "Browser notifications are on", "message_fa": "اعلان مرورگر روشن شد"})
+        if action == "unsubscribe":
+            webpush.delete_subscription(d.get("endpoint", ""), reseller=request.user.username)
+            return Response({"ok": True, "message": "Browser notifications are off for this browser",
+                             "message_fa": "اعلان مرورگر برای این مرورگر خاموش شد"})
+        if action == "test":
+            n = webpush.push_to_reseller(request.user.username, "🔔 تست اعلان · Test notification", "caspintunel",
+                                         url=portal.PORTAL_NOTICES_URL(), tag="test")
+            return Response({"ok": bool(n), "sent": n, "message": f"Test sent to {n} browser(s)",
+                             "message_fa": f"اعلان آزمایشی به {n} مرورگر فرستاده شد"})
+        return Response({"detail": "not found"}, status=404)
 
 
 # ------------------------------------------------------------------ group managers (staff JWT)

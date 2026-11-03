@@ -12,7 +12,7 @@ Fields marked *enc* are Fernet-encrypted (`FIELD_ENCRYPTION_KEY`).
 
 Related: [architecture.md](architecture.md) · [flows.md](flows.md).
 
-Last schema change: v1.38 (manual invoices). v1.38.1 (receipt picker, group-manager UI) changed no table.
+Last schema change: v1.38.2 (`push_subscription.reseller`). v1.38.1 changed no table.
 
 ## 1. Users, auth and RBAC (`accounts`, `common`)
 
@@ -879,7 +879,8 @@ erDiagram
         string p256dh
         string auth
         bigint user_id FK "customer, or"
-        bigint staff_id FK "staff"
+        bigint staff_id FK "staff, or"
+        string reseller "v1.38.2 agency reseller username"
         datetime last_ok_at
         int failures
     }
@@ -898,7 +899,7 @@ erDiagram
 |---|---|
 | `notification` | A message to one user (event) or everyone (broadcast), with the channels to use and an optional `link` the bell opens (ticket replies → the chat). |
 | `notification_delivery` | One delivery attempt per recipient and channel; a failing channel never blocks the others. |
-| `push_subscription` | v1.33 Web Push: one browser of a customer or a staff member (`PushManager.subscribe`). Sent to by `notifications/webpush.py` (Celery); a 404 / 410 from the push service deletes the row. |
+| `push_subscription` | v1.33 Web Push: one browser of a customer, a staff member or (v1.38.2, `reseller`) an /agency/ reseller (`PushManager.subscribe`). Sent to by `notifications/webpush.py` (Celery); a 404 / 410 from the push service deletes the row. |
 
 ## 8. Settings, CMS, Telegram and ops (`settings_app`, `telegram`, `ops`)
 

@@ -726,13 +726,13 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     autonumber
-    actor G as Group manager (/panel/my-groups/invoices)
-    participant V as ManagerPayAllView
+    actor G as Group manager (/panel/my-groups/invoices) or direct admin (/agency/invoices, v1.38.2)
+    participant V as ManagerPayAllView / PortalPayAllView
     participant B as billing
     participant P as checkout (SMS / Blu)
 
-    G->>V: GET manager/debt/ → «کل بدهی گروه» + «ریز بدهی»
-    G->>V: POST manager/payments/all/ {expected_total}
+    G->>V: GET manager/debt/ (portal/debt/) → «کل بدهی» + «ریز بدهی»
+    G->>V: POST manager/payments/all/ (portal/payments/all/) {expected_total}
     V->>B: pay_all: lock admins, debt_breakdown
     alt total changed
         B-->>G: 409 total_changed + new total → page shows it, asks again

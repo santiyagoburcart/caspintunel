@@ -87,6 +87,8 @@ class PushSubscription(models.Model):
                              related_name="push_subscriptions")
     staff = models.ForeignKey("accounts.Staff", null=True, blank=True, on_delete=models.CASCADE,
                               related_name="push_subscriptions")
+    # v1.38.2: an agency reseller (/agency/ portal; not a User / Staff row) — their PasarGuard username
+    reseller = models.CharField(max_length=255, blank=True, default="", db_default="", db_index=True)
     user_agent = models.CharField(max_length=255, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     last_ok_at = models.DateTimeField(null=True, blank=True)
@@ -96,4 +98,4 @@ class PushSubscription(models.Model):
         db_table = "push_subscription"
 
     def __str__(self) -> str:
-        return f"push#{self.pk} {'staff' if self.staff_id else 'user'}"
+        return f"push#{self.pk} {'staff' if self.staff_id else 'reseller' if self.reseller else 'user'}"

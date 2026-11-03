@@ -86,6 +86,19 @@ A reseller sees PAMP's portal: their own numbers, block / 80 % warning states an
 sees the group's accounts (PAMP's account groups). Off until `agency_portal_enabled` (Settings → Reseller
 portal) — until the cut-over its numbers are those of the last import.
 
+**v1.38.2 layout.** The portal has sections with a menu (desktop sidebar, phone ☰ drawer): «داشبورد» (usage tiles with
+(i) explanations), «درخواست شارژ», «درخواست‌های من», «فاکتورها و پرداخت», «صورت‌حساب», «اعلان‌ها», «تنظیمات» (language,
+theme, notification sound, browser push), and a red «خروج» with a confirm at the bottom of the menu. A read-only sub-admin
+sees only the dashboard, notifications and settings. Notices are in the header bell + notifications page
+(`components/AgencyBell.jsx`, the same file as the group-manager bell; `portal/notices/` pages 20 at a time and marks one or
+all read). «فاکتورها و پرداخت» = «کل بدهی» (open invoice remainders + old balance, `portal/debt/`) with «پرداخت کل بدهی»
+(`portal/payments/all/` → `billing.pay_all(None, …, admin=…)`, one payment and one unique amount, 409 `total_changed`), a
+collapsed «پرداخت انتخابی» (several invoices / the old balance via `portal/invoices/settlement/`), the invoice list with its
+own «پرداخت», and the payment history. Each invoice shows its source (`invoice_source`: «درخواست ادمین» / «مدیر گروه» /
+«شارژ دستی» / «تسویه مانده قبلی»). Browser push for resellers: `portal/push/…`, rows with `push_subscription.reseller`,
+sent by `billing.notice(admin=…)`. An open portal tab checks every 5 minutes (and on focus) whether index.html points to a
+new bundle and offers «بارگذاری دوباره».
+
 ## Accounting ledger (phase 4, permission `agency.accounting`)
 
 Additive tables (`agency_admin_price`, `agency_ledger_entry`) — PAMP's numbers are only read.

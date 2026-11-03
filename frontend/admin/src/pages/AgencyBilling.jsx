@@ -26,7 +26,8 @@ const T = {
     sv_balance: 'تسویه با مانده حساب', sv_mixed: 'پرداخت‌شده', st_partial: 'پرداخت جزئی', paid_rem: 'پرداخت‌شده {p} · مانده {r}',
     mismatch: 'ناهماهنگی با دفتر حساب: جمع فاکتورهای پرداخت‌نشده ({o}) از بدهی ({b}) بیشتر است — یک پرداخت یا اصلاحیه را به فاکتورها وصل کنید.',
     st_unpaid: 'پرداخت‌نشده', st_pending: 'در حال بررسی', st_paid: 'پرداخت‌شده', st_voided: 'باطل‌شده', all: 'همه',
-    k_quota_charge: 'شارژ حجم', k_manual_charge: 'بدهکاری', k_request: 'درخواست / مدیر گروه', k_settlement: 'تسویه مانده قبلی',
+    k_quota_charge: 'شارژ حجم', k_manual_charge: 'بدهکاری', k_request: 'درخواست شارژ', k_settlement: 'تسویه مانده قبلی',
+    src_admin_request: 'درخواست ادمین', src_manager: 'مدیر گروه', src_manual: 'شارژ دستی', src_settlement: 'تسویه مانده قبلی',
     f_review: 'در انتظار بررسی', f_open: 'باز', p_approved: 'تأییدشده', p_rejected: 'ردشده', p_pending_payment: 'در انتظار واریز',
     p_pending_review: 'در انتظار بررسی', p_expired: 'منقضی', p_cancelled: 'لغو شده',
     payer: 'پرداخت‌کننده', payer_admin: 'ادمین', payer_manager: 'مدیر گروه', unique: 'مبلغ یکتا', invoices: 'فاکتورها',
@@ -54,7 +55,8 @@ const T = {
     sv_balance: 'Settled by the balance', sv_mixed: 'Paid', st_partial: 'Partly paid', paid_rem: 'paid {p} · {r} left',
     mismatch: 'Out of sync with the ledger: unpaid invoices ({o}) exceed the debt ({b}) — link a payment or adjustment to the invoices.',
     st_unpaid: 'Unpaid', st_pending: 'Under review', st_paid: 'Paid', st_voided: 'Voided', all: 'All',
-    k_quota_charge: 'Volume', k_manual_charge: 'Charge', k_request: 'Request / group manager', k_settlement: 'Previous balance',
+    k_quota_charge: 'Volume', k_manual_charge: 'Charge', k_request: 'Volume request', k_settlement: 'Previous balance',
+    src_admin_request: 'Admin request', src_manager: 'Group manager', src_manual: 'Manual charge', src_settlement: 'Previous balance',
     f_review: 'Waiting for review', f_open: 'Open', p_approved: 'Approved', p_rejected: 'Rejected', p_pending_payment: 'Waiting for transfer',
     p_pending_review: 'Waiting for review', p_expired: 'Expired', p_cancelled: 'Cancelled',
     payer: 'Payer', payer_admin: 'admin', payer_manager: 'group manager', unique: 'Unique amount', invoices: 'Invoices',
@@ -88,7 +90,7 @@ function InvoiceRows({ rows, s, lang, onVoid, onOutside, showAdmin = true }) {
         <tr key={r.id} data-st={r.status}>
           <td data-label="#"><N>{r.number}</N></td>
           {showAdmin && <td data-label={s.admin}><Link to={`/agency/admins/${encodeURIComponent(r.admin)}/accounting`}>{r.admin}</Link>{r.group && <small className="ab-sub">{r.group}</small>}</td>}
-          <td data-label={s.kind}>{s['k_' + r.kind]}{r.gb ? <small className="ab-sub"><N>{gbt(r.gb)} GB × {toman(r.price_per_gb, lang)}</N></small> : null}</td>
+          <td data-label={s.kind}>{s['src_' + r.source] || s['k_' + r.kind]}{r.gb ? <small className="ab-sub"><N>{gbt(r.gb)} GB × {toman(r.price_per_gb, lang)}</N></small> : null}</td>
           <td data-label={s.amount}><N>{toman(r.amount, lang)}</N>{r.partial && <small className="ab-sub"><N>{s.paid_rem.replace('{p}', toman(r.paid_amount, lang)).replace('{r}', toman(r.remaining, lang))}</N></small>}</td>
           <td data-label={s.status}><span className="ab-pill" data-st={r.partial ? 'partial' : r.status} data-via={r.settled_via || undefined}>{invStatus(r, s)}</span>
             {r.void_reason && <small className="ab-sub">{r.void_reason}</small>}

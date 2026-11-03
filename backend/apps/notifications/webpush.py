@@ -34,7 +34,7 @@ def endpoint_hash(endpoint: str) -> str:
     return hashlib.sha256(endpoint.encode()).hexdigest()
 
 
-def save_subscription(data: dict, *, user=None, staff=None, user_agent: str = ""):
+def save_subscription(data: dict, *, user=None, staff=None, reseller: str = "", user_agent: str = ""):
     """{endpoint, keys: {p256dh, auth}} from PushManager.subscribe(). Re-subscribing the same
     browser moves the row to the current owner."""
     from .models import PushSubscription
@@ -46,15 +46,18 @@ def save_subscription(data: dict, *, user=None, staff=None, user_agent: str = ""
     sub, _ = PushSubscription.objects.update_or_create(
         endpoint_hash=endpoint_hash(endpoint),
         defaults={"endpoint": endpoint, "p256dh": str(keys["p256dh"])[:255], "auth": str(keys["auth"])[:255],
-                  "user": user, "staff": staff, "user_agent": (user_agent or "")[:255], "failures": 0})
+                  "user": user, "staff": staff, "reseller": (reseller or "")[:255], "user_agent": (user_agent or "")[:255], "failures": 0})
     return sub
 
 
-def delete_subscription(endpoint: str, *, user=None, staff=None) -> int:
+def delete_subscription(endpoint: str, *, user=None, staff=None, reseller: str = "") -> int:
     from .models import PushSubscription
 
     qs = PushSubscription.objects.filter(endpoint_hash=endpoint_hash(str(endpoint or "")))
-    qs = qs.filter(user=user) if user is not None else qs.filter(staff=staff)
+    if reseller:
+        qs = qs.filter(reseller=reseller)
+    else:
+        qs = qs.filter(user=user) if user is not None else qs.filter(staff=staff)
     return qs.delete()[0]
 
 
@@ -81,6 +84,16 @@ def push_to_user(user, title: str, body: str, url: str = "", tag: str = "") -> i
     if user is None or not enabled():
         return 0
     ids = list(PushSubscription.objects.filter(user=user).values_list("id", flat=True))
+    return _queue(ids, _payload(title, body, url, tag))
+
+
+def push_to_reseller(username: str, title: str, body: str = "", url: str = "", tag: str = "") -> int:
+    """v1.38.2 an agency reseller's browsers (subscribed from the /agency/ portal)."""
+    from .models import PushSubscription
+
+    if not username or not enabled():
+        return 0
+    ids = list(PushSubscription.objects.filter(reseller=username).values_list("id", flat=True))
     return _queue(ids, _payload(title, body, url, tag))
 
 
