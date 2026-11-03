@@ -333,6 +333,16 @@ Invoices are settled by **allocation rows** (`agency_invoice_allocation`, `apps/
 - A new «تسویه مانده قبلی» invoice is allowed whenever an un-invoiced balance remains and none is open (debt added after a paid one).
 - Staff: Agency → Groups → each group shows the same «کل بدهی گروه» (`GET /admin/agency/groups/<id>/debt/`, agency.accounting).
 
+## Profile title / support link are header-safe (v1.35.3)
+
+PasarGuard puts an admin's `support_url` into every subscription response **raw** (`support-url:` header; `profile-title` is
+base64). An invisible character pasted from Telegram (U+2060 WORD JOINER after the link, incident 2026-11-03, Mostafa-ho)
+made the header invalid and Happ showed "400 Bad Request" until the field was re-saved in PasarGuard. Every save from our
+panel (staff Settings tab, group manager «تنظیمات», create) now goes through `admin_crud.clean_field`: titles NFC, one line,
+no control / zero-width / direction marks (ZWNJ kept for Persian); links plain ASCII http(s) (IDN host → punycode,
+`@name` / `t.me/name` → `https://t.me/name`, user:password@ refused). `manage.py check_admin_profiles [--apply]` lists
+(and re-saves) admins with unsafe values on PasarGuard; values that are merely not a link are only reported.
+
 ## Access rules (v1.35)
 
 - **Who pays an admin's invoices — one place only** (`billing.payer_for`): the group manager when the admin's group has

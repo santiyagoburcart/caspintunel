@@ -17,8 +17,9 @@ from __future__ import annotations
 
 import re
 import secrets
+import unicodedata
 from decimal import Decimal, InvalidOperation
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit, urlunsplit
 
 from django.db import transaction
 
@@ -36,6 +37,74 @@ LIMIT_KEYS = ["max_users", "data_limit_min", "data_limit_max", "expire_min", "ex
 TEXT_KEYS = {"discord_webhook": 512, "sub_template": 255, "sub_domain": 255, "profile_title": 255, "support_url": 512,
              "note": 1000}
 STATUSES = ("active", "disabled")
+
+
+# v1.35.3: text that ends up in subscription HTTP headers. PasarGuard sends `support-url` RAW in the header
+# (`profile-title` is base64) — an invisible character pasted from Telegram (U+2060 WORD JOINER, zero-width
+# space, LRM/RLM, BOM, a newline) made every subscription answer invalid and Happ showed "400 Bad Request".
+ZWNJ = "\u200c"          # Persian half-space: legitimate inside a title (base64 in the header)
+URL_KEYS = ("support_url", "discord_webhook")
+
+
+def clean_text(v, *, keep_zwnj: bool = True, multiline: bool = False) -> str:
+    """NFC, no control / format / invisible characters (ZWNJ kept for Persian), one line, trimmed."""
+    out = []
+    for ch in unicodedata.normalize("NFC", str(v or "")):
+        cat = unicodedata.category(ch)
+        if ch in "\r\n\t":
+            out.append("\n" if multiline and ch == "\n" else " ")
+        elif cat in ("Cc", "Cf", "Co", "Cs", "Cn", "Zl", "Zp"):
+            if keep_zwnj and ch == ZWNJ:
+                out.append(ch)
+        elif cat == "Zs":
+            out.append(" ")
+        else:
+            out.append(ch)
+    text = "".join(out)
+    lines = [re.sub(r" {2,}", " ", ln).strip() for ln in text.split("\n")]
+    return "\n".join(lines).strip() if multiline else lines[0] if lines else ""
+
+
+def clean_compact(v) -> str:
+    """Domains / URLs: no spaces or invisible characters at all."""
+    return "".join(ch for ch in unicodedata.normalize("NFKC", str(v or ""))
+                   if not unicodedata.category(ch).startswith(("C", "Z")))
+
+
+def clean_url(v, field: str) -> str:
+    """A plain-ASCII http(s) URL (international host → IDNA, other non-ASCII → %-encoded).
+    support_url also accepts a Telegram handle: "@name" / "t.me/name" → https://t.me/name."""
+    v = clean_compact(v)
+    if not v:
+        return ""
+    if field == "support_url":
+        if re.fullmatch(r"@[A-Za-z0-9_]{3,64}", v):
+            v = "https://t.me/" + v[1:]
+        elif re.match(r"^(t\.me|telegram\.me)/", v, re.I):
+            v = "https://" + v
+    bad = AdminCrudError(f"{field} must be a http(s) link, e.g. https://t.me/your_support", "invalid", field)
+    try:
+        p = urlsplit(v)
+        host = p.hostname or ""
+        if p.scheme.lower() not in ("http", "https") or not host or p.username or p.password:
+            raise bad
+        host = host.encode("idna").decode("ascii")
+        netloc = host + (f":{p.port}" if p.port else "")
+    except (ValueError, UnicodeError):
+        raise bad
+    url = urlunsplit((p.scheme.lower(), netloc, quote(p.path, safe="/%:@!$&'()*+,;=-._~"),
+                      quote(p.query, safe="=&%:/?@!$'()*+,;-._~"), quote(p.fragment, safe="%:/?@!$&'()*+,;=-._~")))
+    if not url.isascii():
+        raise bad
+    return url
+
+
+def clean_field(k: str, v) -> str:
+    if k in URL_KEYS:
+        return clean_url(v, k)
+    if k == "sub_domain":
+        return clean_compact(v)
+    return clean_text(v, multiline=(k == "note"), keep_zwnj=True)
 
 
 class AdminCrudError(ValueError):
@@ -244,11 +313,9 @@ def build_payload(data: dict, *, creating: bool, username: str = "") -> dict:
         p["status"] = data["status"]
     for k, maxlen in TEXT_KEYS.items():
         if k in data:
-            v = str(data.get(k) or "").strip()
+            v = clean_field(k, data.get(k))          # v1.35.3: header-safe (see clean_text / clean_url)
             if len(v) > maxlen:
                 raise AdminCrudError(f"{k}: at most {maxlen} characters", "invalid", k)
-            if k in ("discord_webhook", "support_url") and v and not v.startswith(("https://", "http://")):
-                raise AdminCrudError(f"{k} must be a http(s) URL", "invalid", k)
             p[k] = v or None
     if "custom_variables" in data:
         cv = []

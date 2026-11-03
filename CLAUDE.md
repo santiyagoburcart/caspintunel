@@ -215,6 +215,8 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
 - v1.35.1: invoices are settled ONLY through `allocation.py` rows (never set `AgencyInvoice.status` to paid by hand):
   ledger payment / «کاهش بدهی» → `apply_entry`, checkout → `allocate_agency_payment`, «تسویه خارج از سیستم» → `settle_outside`.
   Invariant (`enforce`, after every entry / void / invoice): open invoices ≤ max(0, ledger balance).
+- v1.35.3: admin text fields that become subscription headers (profile_title, support_url, …) are saved ONLY through
+  `admin_crud.build_payload` → `clean_field` (invisible / control characters broke Happ, 2026-11-03). Never PUT raw input.
 - v1.35.2 group debt = `billing.debt_breakdown` only (manager page + staff group card); «پرداخت کل بدهی» = `billing.pay_all`
   (re-checks the total under lock, 409 `total_changed`) — never charge a total the payer did not see.
 - SMS / Blu: customer orders are matched first, agency payments after (`billing.match_deposit`, `near`, rounded

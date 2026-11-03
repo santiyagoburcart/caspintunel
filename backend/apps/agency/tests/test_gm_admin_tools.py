@@ -154,3 +154,44 @@ def test_staff_edit_reads_and_saves_support_link_and_profile_title(pg):
     assert adm["support_url"] == "https://t.me/s" and adm["profile_title"] == "PT"
     r = boss.patch("/api/v1/admin/agency/panel-admins/g1-a/", {"support_url": "https://t.me/x", "profile_title": "X"}, format="json")
     assert r.status_code == 200 and ("g1-a", {"support_url": "https://t.me/x", "profile_title": "X"}) in pg["fake"].puts
+
+
+# ------------------------------------------------------------------ v1.35.3 header-safe profile fields
+@pytest.mark.parametrize("raw,clean", [
+    ("https://t.me/John199994⁠", "https://t.me/John199994"),          # Mostafa-ho's paste (WORD JOINER)
+    ("​https://t.me/a‎\n", "https://t.me/a"),                     # zero-width space, LRM, newline
+    ("@John199994", "https://t.me/John199994"),
+    ("t.me/pardas1", "https://t.me/pardas1"),
+    ("https://مثال.ایران/پشتیبانی", "https://xn--mgbh0fb.xn--mgba3a4f16a/%D9%BE%D8%B4%D8%AA%DB%8C%D8%A8%D8%A7%D9%86%DB%8C"),
+])
+def test_support_url_is_cleaned_to_a_plain_ascii_link(raw, clean):
+    out = admin_crud.clean_url(raw, "support_url")
+    assert out == clean and out.isascii()
+
+
+@pytest.mark.parametrize("raw,clean", [
+    ("John VPN", "John VPN"),
+    ("  John⁠ VPN\r\n", "John VPN"),
+    ("وی‌پی‌ان جان", "وی‌پی‌ان جان"),                                          # Persian with ZWNJ kept
+    ("﻿سرور  ویژه‏💙", "سرور ویژه💙"),                              # BOM, double space, RLM removed
+])
+def test_profile_title_keeps_persian_and_drops_invisible_characters(raw, clean):
+    assert admin_crud.clean_text(raw) == clean
+
+
+def test_manager_save_sends_header_safe_values(pg):
+    boss = staff_client(superadmin=True)
+    make_manager(boss, pg)
+    mc = manager_client()
+    r = mc.post(M + "admins/g1-a/profile/", {"support_url": "https://t.me/John199994⁠",
+                                              "profile_title": "‏جان وی‌پی‌ان\n"}, format="json")
+    assert r.status_code == 200, r.content
+    user, body = pg["fake"].puts[-1]
+    assert user == "g1-a" and body == {"support_url": "https://t.me/John199994", "profile_title": "جان وی‌پی‌ان"}
+    assert r.json()["support_url"] == "https://t.me/John199994"
+    for bad in ("hh", "javascript:alert(1)", "https://user:pw@x.com"):
+        assert mc.post(M + "admins/g1-a/profile/", {"support_url": bad}, format="json").status_code == 400
+    # staff Settings tab goes through the same cleaning
+    r = boss.patch("/api/v1/admin/agency/panel-admins/g1-a/", {"support_url": "@vox_support", "profile_title": "Vox⁠ VPN"},
+                   format="json")
+    assert r.status_code == 200 and pg["fake"].puts[-1] == ("g1-a", {"support_url": "https://t.me/vox_support", "profile_title": "Vox VPN"})

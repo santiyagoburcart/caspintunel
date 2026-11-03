@@ -50,7 +50,7 @@ const T = {
     u_title: 'کاربران {u}', u_search: 'جستجوی نام کاربر…', u_all: 'همه', u_none: 'کاربری پیدا نشد.', u_exp: 'انقضا', u_never: 'هرگز', u_online: 'آنلاین', u_last: 'آخرین اتصال',
     u_noexp: 'بدون انقضا', prev: 'قبلی', next: 'بعدی', page: 'صفحهٔ {p} از {n}', u_total: '{n} کاربر',
     us_active: 'فعال', us_disabled: 'غیرفعال', us_limited: 'حجم تمام', us_expired: 'منقضی', us_on_hold: 'در انتظار اتصال',
-    a_settings: 'تنظیمات', support_url: 'لینک پشتیبانی', profile_title: 'عنوان پروفایل', profile_hint: 'در صفحهٔ اشتراک کاربران این ادمین نمایش داده می‌شود.',
+    a_settings: 'تنظیمات', support_url: 'لینک پشتیبانی', profile_title: 'عنوان پروفایل', profile_hint: 'در صفحهٔ اشتراک کاربران این ادمین نمایش داده می‌شود. لینک پشتیبانی: لینک کامل یا نام‌کاربری تلگرام با @ — فاصله و نویسه‌های نامرئی (مثلاً هنگام کپی از تلگرام) خودکار حذف می‌شوند.',
     prof_done: 'تنظیمات ادمین ذخیره شد', group: 'گروه', search_admins: 'جستجوی نام ادمین…', no_match: 'ادمینی با این نام نیست.',
     set_profile: 'حساب من', set_role: 'نقش', set_groups: 'گروه‌های سپرده‌شده', set_cap: 'سقف حجم تأییدنشده', set_display: 'نام نمایشی',
     set_pw: 'تغییر رمز عبور من', set_pw_cur: 'رمز فعلی', set_pw_new: 'رمز جدید (حداقل ۸ نویسه)', set_pw_rep: 'تکرار رمز جدید', set_pw_mismatch: 'رمز جدید و تکرار آن یکی نیستند.',
@@ -80,7 +80,7 @@ const T = {
     u_title: 'Users of {u}', u_search: 'Search user…', u_all: 'All', u_none: 'No users found.', u_exp: 'Expires', u_never: 'never', u_online: 'Online', u_last: 'Last seen',
     u_noexp: 'no expiry', prev: 'Previous', next: 'Next', page: 'Page {p} of {n}', u_total: '{n} users',
     us_active: 'Active', us_disabled: 'Disabled', us_limited: 'Limited', us_expired: 'Expired', us_on_hold: 'On hold',
-    a_settings: 'Settings', support_url: 'Support link', profile_title: 'Profile title', profile_hint: "Shown on the subscription page of this admin's users.",
+    a_settings: 'Settings', support_url: 'Support link', profile_title: 'Profile title', profile_hint: "Shown on the subscription page of this admin's users. Support link: https://… or a Telegram @username — spaces and invisible characters (e.g. copied from Telegram) are removed automatically.",
     prof_done: 'Admin settings saved', group: 'Group', search_admins: 'Search admin name…', no_match: 'No admin with this name.',
     set_profile: 'My account', set_role: 'Role', set_groups: 'Assigned groups', set_cap: 'Max unapproved volume', set_display: 'Display name',
     set_pw: 'Change my password', set_pw_cur: 'Current password', set_pw_new: 'New password (8+ characters)', set_pw_rep: 'Repeat the new password', set_pw_mismatch: 'The new password and its repeat differ.',
@@ -316,7 +316,7 @@ function NewAdminForm({ groups, g0, s, cap, onClose, reload }) {
       {g && <><span className="am-l">{s.role_l}</span>
         <RolePick roles={g.roles} value={v.role_id} onChange={(id) => setV({ ...v, role_id: id })} s={s} /></>}
       <label>{s.n_gb}<input className="ap-input" dir="ltr" inputMode="decimal" required value={v.gb} onChange={(e) => setV({ ...v, gb: e.target.value.replace(/[^\d.۰-۹]/g, '') })} /></label>
-      <label>{s.support_url}<input className="ap-input" dir="ltr" type="url" placeholder="https://t.me/…" value={v.support_url} onChange={(e) => setV({ ...v, support_url: e.target.value })} /></label>
+      <label>{s.support_url}<input className="ap-input" dir="ltr" type="text" inputMode="url" autoComplete="off" spellCheck={false} placeholder="https://t.me/… / @support" value={v.support_url} onChange={(e) => setV({ ...v, support_url: e.target.value })} /></label>
       <label>{s.profile_title}<input className="ap-input" maxLength={255} value={v.profile_title} onChange={(e) => setV({ ...v, profile_title: e.target.value })} /></label>
       <p className="am-hint">{s.profile_hint}</p>
       <p className="am-hint">{s.add_note}</p>
@@ -358,7 +358,7 @@ function AdminSettings({ a, s, onClose }) {
     <Modal title={`${s.a_settings} — ${a.username}`} onClose={onClose}>
       {loadErr ? <div className="ap-alert">{loadErr}</div> : !v ? <div className="ap-spin" /> : (
         <form className="am-form" onSubmit={(e) => { e.preventDefault(); run(() => http.post(`/admins/${encodeURIComponent(a.username)}/profile/`, { support_url: v.support_url.trim(), profile_title: v.profile_title.trim() }), s.prof_done) }}>
-          <label>{s.support_url}<input className="ap-input" dir="ltr" type="url" placeholder="https://t.me/…" value={v.support_url} onChange={(e) => setV({ ...v, support_url: e.target.value })} autoFocus /></label>
+          <label>{s.support_url}<input className="ap-input" dir="ltr" type="text" inputMode="url" autoComplete="off" spellCheck={false} placeholder="https://t.me/… / @support" value={v.support_url} onChange={(e) => setV({ ...v, support_url: e.target.value })} autoFocus /></label>
           <label>{s.profile_title}<input className="ap-input" maxLength={255} value={v.profile_title} onChange={(e) => setV({ ...v, profile_title: e.target.value })} /></label>
           <p className="am-hint">{s.profile_hint}</p>
           {err && <div className="ap-alert" role="alert">{err}</div>}

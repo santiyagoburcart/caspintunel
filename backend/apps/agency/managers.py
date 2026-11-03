@@ -767,6 +767,7 @@ def update_admin_profile(m: GroupManager, username: str, data: dict) -> dict:
         raise ManagerError("nothing to change", "empty")
     a, live = _writable_admin(m, username)
     try:
+        body = {k: admin_crud.clean_field(k, v) for k, v in body.items()}    # v1.35.3: what is really saved
         admin_crud.modify(_panel(), username, body)
     except admin_crud.AdminCrudError as exc:
         raise _from_crud(exc) from exc

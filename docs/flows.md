@@ -744,6 +744,22 @@ sequenceDiagram
     end
 ```
 
+## 5c9. Admin profile title / support link (v1.35.3)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor G as Group manager / staff
+    participant A as admin_crud.build_payload
+    participant P as PasarGuard
+    actor C as Happ (subscription update)
+
+    G->>A: support_url "https://t.me/x⁠" (U+2060 from Telegram), profile_title
+    A->>A: clean_field → "https://t.me/x" (ASCII), title without invisible marks
+    A->>P: PUT /api/admin/{username} {support_url, profile_title}
+    C->>P: GET subscription → headers support-url (raw), profile-title (base64) → valid
+```
+
 ## 9. Staff Telegram linking
 
 ```mermaid

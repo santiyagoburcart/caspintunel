@@ -145,7 +145,7 @@ function AdminFields({ f, set, opts, s, errs }) {
       <Sec icon="bell" title={s.sec_contact}>
         <Fld label={s.telegram_id} err={errs.telegram_id}><input className="input" dir="ltr" inputMode="numeric" value={f.telegram_id ?? ''} onChange={(e) => set('telegram_id', e.target.value.replace(/[^\d-]/g, ''))} /></Fld>
         <Fld label={s.discord} err={errs.discord_webhook}><input className="input" dir="ltr" type="url" placeholder="https://discord.com/api/webhooks/…" value={f.discord_webhook || ''} onChange={(e) => set('discord_webhook', e.target.value)} /></Fld>
-        <Fld label={s.support_url} err={errs.support_url}><input className="input" dir="ltr" type="url" placeholder="https://t.me/…" value={f.support_url || ''} onChange={(e) => set('support_url', e.target.value)} /></Fld>
+        <Fld label={s.support_url} err={errs.support_url}><input className="input" dir="ltr" type="text" inputMode="url" autoComplete="off" spellCheck={false} placeholder="https://t.me/… / @support" value={f.support_url || ''} onChange={(e) => set('support_url', e.target.value)} /></Fld>
         <div className="af-wide">
           <span className="label">{s.notify}</span>
           <div className="af-toggles">
