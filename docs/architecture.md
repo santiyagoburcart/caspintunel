@@ -685,6 +685,22 @@ information only — it is configured on the Iran server).
 - **Monitoring** shows a «کالکتور بلو» card (`/admin/monitoring/` → `blu`, same data as the Blu tab).
 
 
+## Receipt picker and group-manager UI (v1.38.1)
+
+- **One receipt picker** — `components/ReceiptDrop.jsx` (identical in both SPAs, like ConfirmDialog): tap / click or drag,
+  checks type (JPG / PNG / WEBP / GIF) and size (≤ 10 MB, under Django's 12 MB / nginx 15 MB) with fa/en errors, preview
+  with name, size, «تغییر» / «حذف», and an upload bar from axios `onUploadProgress`. Used by the customer checkout (pick →
+  «ارسال رسید»), the agency portal and group-manager payment dialog (`AgencyBilling.jsx` Checkout) and the staff manual
+  invoice form. The server still validates the image (DRF `ImageField` / Pillow); no API changed.
+- **Group-manager admins page** — compact cards (name · status · role, usage bar, cap / used / remaining row, debt, user
+  chips) with «افزودن حجم» · «کاربران» · «جزئیات» + a «⋯» menu (password, role, settings, enable / disable). The full
+  numbers (sold, sell limit left, hidden, deleted users' usage, last activity, online now, with the (i) tips) are only in
+  «جزئیات». The card grid sizes columns by its own width (container query) and a short last row spans the free width;
+  every GM list uses the same compact centred pager (‹ 1 … 4 5 6 … 12 ›).
+- **Group-manager account** — the header avatar links to Settings; «خروج» is red at the bottom of the sidebar
+  (desktop) / Settings tab (phones), behind a ConfirmDialog (`components/LogoutButton.jsx`).
+- `/agency/` portal sign-in = a compact card (≤ 400 px, 42 px controls; 44 px + 16 px text on phones).
+
 ## Manual customer invoices (v1.38)
 
 - `apps/orders/manual.py` (`ManualInvoice`, permission `payments.manual_invoice`, Super Admin has it), from Users → user

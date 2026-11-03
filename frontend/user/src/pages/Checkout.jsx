@@ -7,6 +7,7 @@ import { Alert, Copyable, Field, Spinner, StatusBadge } from '../components/ui'
 import { AuthImage } from '../components/AuthImage'
 import { RenewWaiting } from '../components/RenewWaiting'
 import { useToast } from '../components/Toast'
+import ReceiptDrop, { uploadPct } from '../components/ReceiptDrop'
 
 // The pending order the customer is paying for survives reloads and tab
 // switches (e.g. leaving for the bank app): its id sits in the URL
@@ -217,22 +218,25 @@ export default function Checkout() {
   }
 
   const [receiptRef, setReceiptRef] = useState('')   // optional bank document / tracking number
+  const [receipt, setReceipt] = useState(null)        // v1.38.1: picked → preview → «ارسال رسید»
+  const [pct, setPct] = useState(null)
   const uploadReceipt = async (file) => {
-    setBusy(true); setErr('')
-    toast.loading(t('action_in_progress'))
+    if (!file) return
+    setBusy(true); setErr(''); setPct(0)
     try {
       const fd = new FormData()
       fd.append('order', order.id)
       fd.append('receipt_image', file)
       if (selectedCard) fd.append('bank_card', selectedCard)
       if (receiptRef.trim()) fd.append('receipt_ref', receiptRef.trim())
-      await api.post('/payments/receipt/', fd)
+      await api.post('/payments/receipt/', fd, { onUploadProgress: (ev) => setPct(uploadPct(ev) ?? 0) })
+      setReceipt(null)
       await refreshOrder()   // payment_status -> "pending"
       toast.success(t('receipt_saved'))
     } catch (e2) {
       const msg = apiError(e2); setErr(msg); toast.error(msg)
       refreshOrder()         // e.g. SMS already approved it — show the real state
-    } finally { setBusy(false) }
+    } finally { setBusy(false); setPct(null) }
   }
 
   const checkStatus = async () => {
@@ -599,16 +603,15 @@ export default function Checkout() {
                   data-testid="receipt-ref" placeholder={t('receipt_ref_ph')}
                   onChange={(e) => setReceiptRef(e.target.value)} />
               </Field>
-              <label className={`ckt-upload block rounded-2xl border-2 border-dashed p-6 text-center transition ${busy || needsCardChoice ? 'pointer-events-none opacity-60' : 'cursor-pointer'}`}
-                style={{ borderColor: 'var(--c-border)' }}>
-                <div className="mb-1 text-3xl">📸</div>
-                <div className="font-medium" style={{ color: 'var(--c-ink)' }}>
-                  {busy ? t('uploading') : needsCardChoice ? t('choose_card_first') : (payStatus === 'rejected' ? t('pay_reupload') : t('uploadReceipt'))}
-                </div>
-                <div className="mt-1 text-xs text-muted">{t('receipt_drop_hint')}</div>
-                <input type="file" accept="image/*" hidden disabled={busy || needsCardChoice}
-                  onChange={(e) => e.target.files[0] && uploadReceipt(e.target.files[0])} />
-              </label>
+              {needsCardChoice && <Alert kind="warning">{t('choose_card_first')}</Alert>}
+              <ReceiptDrop file={receipt} onChange={setReceipt} lang={lang} disabled={busy || needsCardChoice}
+                progress={busy && receipt ? pct ?? 0 : null} hint={t('receipt_drop_hint')} testId="receipt-drop" />
+              {receipt && (
+                <button type="button" className="btn-primary w-full" disabled={busy || needsCardChoice} onClick={() => uploadReceipt(receipt)}
+                  data-testid="receipt-send">
+                  {busy ? t('uploading') : payStatus === 'rejected' ? t('pay_reupload') : t('uploadReceipt')}
+                </button>
+              )}
               </>
             )
           })()}
@@ -763,8 +766,6 @@ const CHECKOUT_CSS = `
   .ckt-amount { display: grid; grid-template-columns: auto 1fr; align-items: baseline; column-gap: 10px; padding: 10px 12px !important; text-align: start !important; }
   .ckt-amount-v { font-size: 20px !important; text-align: end; }
   .ckt-amount-h { grid-column: 1 / -1; }
-  .ckt-upload { padding: 14px 12px !important; }
-  .ckt-upload img { width: 36px; height: 36px; margin-bottom: 4px; }
   .ckt-state { gap: 8px; padding: 0; }
   .ckt-state img { width: 48px; height: 48px; }
   .ckt-state h2 { font-size: 16px; }

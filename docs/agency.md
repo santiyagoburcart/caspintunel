@@ -206,7 +206,7 @@ always satisfies it; a weak one gets `code: weak_password` with the rule in Pers
 **Panel menu for a manager** (`components/adminNav.js` → `GM_GROUPS`, page `pages/GroupManager.jsx`):
 *Group admins* (`/my-groups`), *New admin* (`/my-groups/new`), *Accounting* (`/my-groups/accounting`,
 incl. the group statement — the staff Agency `GroupStatement` component) and *Activity*
-(`/my-groups/activity`). Every other route redirects to `/my-groups`. Since v1.25.5 a manager has its own **Settings** tab (`/my-groups/settings`, last bottom tab on phones, avatar in the header, avatar menu on desktop): profile (username, role, assigned groups with allowed inbounds, cap), **change own password** (`POST agency/manager/password/` — needs the current password, ends other sessions, returns fresh tokens for this one, keeps `GroupManager.password` in step), language, light/dark and logout. The sidebar/drawer account block of other staff is not shown to managers.
+(`/my-groups/activity`). Every other route redirects to `/my-groups`. Since v1.25.5 a manager has its own **Settings** tab (`/my-groups/settings`, last bottom tab on phones, avatar in the header → Settings): profile (username, role, assigned groups with allowed inbounds, cap), **change own password** (`POST agency/manager/password/` — needs the current password, ends other sessions, returns fresh tokens for this one, keeps `GroupManager.password` in step), language, light/dark and logout. The sidebar/drawer account block of other staff is not shown to managers.
 
 **Statement notes in Persian (v1.25.5).** Notes the server writes (no price, approved request #N, pending approval, limit-history notes, …) are stored in English and returned with `note_fa` (`apps/agency/notes.py`); the panel shows it in Persian and the fa CSV/Excel exports use it. Notes typed by people are shown as typed. On phones the group statement shows each row as a card. Disabling a manager or resetting
 its password ends its panel sessions (`Staff.token_version`).
@@ -344,7 +344,7 @@ Invoices are settled by **allocation rows** (`agency_invoice_allocation`, `apps/
 - **«حسابداری»**: one compact filter bar (period chips, from / to, admin search, CSV / Excel), debt / pending tiles, admin list
   20 / 50 / 100 per page.
 - **Settings**: profile, password, language / theme, and «اعلان‌ها» (sound + volume — `manager/prefs/`, same `Staff.notify_prefs`;
-  browser push — `manager/push/`, `subscribe|unsubscribe|test`). «خروج» lives in the header account menu (desktop and phones).
+  browser push — `manager/push/`, `subscribe|unsubscribe|test`). Since v1.38.1 the header avatar only opens Settings (no dropdown); «خروج» is a red button at the bottom of the sidebar (desktop) and at the bottom of the Settings tab (phones), always behind a confirm (`components/LogoutButton.jsx`).
 - **«فعالیت‌ها»**: `GET manager/activity/?type=&admin=&page=` — types create / volume / status / password / role / profile /
   payment / request / sign-in (colour + icon each); includes the manager's own payments and volume requests.
 

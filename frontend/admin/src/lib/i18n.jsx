@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 const dict = {
   fa: {
     menu_open: 'باز کردن منو', menu_close: 'بستن منو', discounts: 'کدهای تخفیف',
-    login: 'ورود', logout: 'خروج', username: 'نام کاربری', password: 'رمز عبور',
+    login: 'ورود', logout: 'خروج', logout_q: 'از حساب خارج می‌شوید؟', logout_msg: 'برای ادامه باید دوباره با نام کاربری و رمز وارد شوید.', username: 'نام کاربری', password: 'رمز عبور',
     full_menu: 'منوی کامل',
     dashboard: 'داشبورد', users: 'کاربران', services: 'سرویس‌ها', plans: 'پلن‌ها', payments: 'پرداخت‌ها',
     accounting: 'حسابداری', cards: 'کارت‌ها', monitoring: 'مانیتورینگ', branding: 'برندینگ',
@@ -156,7 +156,7 @@ const dict = {
   },
   en: {
     menu_open: 'Open menu', menu_close: 'Close menu', discounts: 'Discount codes',
-    login: 'Login', logout: 'Logout', username: 'Username', password: 'Password',
+    login: 'Login', logout: 'Logout', logout_q: 'Log out of your account?', logout_msg: 'You will need to sign in again with your username and password.', username: 'Username', password: 'Password',
     full_menu: 'More',
     dashboard: 'Dashboard', users: 'Users', services: 'Services', plans: 'Plans', payments: 'Payments',
     accounting: 'Accounting', cards: 'Cards', monitoring: 'Monitoring', branding: 'Branding',

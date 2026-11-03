@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Navigate, useParams } from 'react-router-dom'
 import { api, tokens } from '../lib/api'
 import { useAuth } from '../lib/auth'
@@ -19,6 +20,7 @@ import { playChime, unlockSound } from '../lib/notifySound'
 import { currentSubscription, needsHomeScreen, pushSupported, subscribePush, unsubscribePush } from '../lib/webPush'
 import { StatGrid, ST_CSS, useST } from '../components/AgencyStats'
 import { GmNotificationsPage } from '../components/GmBell'
+import LogoutButton, { LOGOUT_CSS } from '../components/LogoutButton'
 
 // Group-manager pages inside the main panel (v1.25). A group manager signs in at
 // /panel/ like any staff (role "Group manager") and sees only this menu
@@ -43,7 +45,7 @@ const T = {
     t_admins: 'ادمین‌ها', t_acc: 'حسابداری', t_act: 'فعالیت', no_groups: 'هنوز گروهی به شما سپرده نشده است.',
     limit: 'سقف', used: 'مصرف', remaining: 'باقی‌مانده', users: 'کاربران', active_u: 'فعال', unl: 'نامحدود', role_l: 'نقش ادمین (Role)', balance: 'بدهی', pend: 'در انتظار تأیید',
     st_active: 'فعال', st_panel_disabled: 'غیرفعال', st_pamp_limited: 'محدود‌شده', owner: 'مالک گروه', sudo: 'فقط پشتیبانی',
-    add: 'افزودن حجم', pw: 'تغییر رمز', inb: 'تغییر نقش', new_admin: 'ادمین جدید', group_debt: 'بدهی کل گروه',
+    add: 'افزودن حجم', pw: 'تغییر رمز', inb: 'تغییر نقش', pw_l: 'تغییر رمز', inb_l: 'تغییر نقش', more: 'کارهای بیشتر', new_admin: 'ادمین جدید', group_debt: 'بدهی کل گروه',
     cap: 'حجم تأییدنشدهٔ شما', cap_of: 'از سقف', cap_reached: 'به سقف حجم تأییدنشده رسیده‌اید — تا تأیید پشتیبانی، حجم تازه نمی‌توانید بدهید.', no_cap: 'بدون سقف',
     gb_in: 'حجم (گیگابایت)', add_note: 'فقط افزایش. بلافاصله روی پنل اعمال می‌شود و تا تأیید پشتیبانی «در انتظار» می‌ماند.', confirm_add: 'تأیید و اعمال', new_limit: 'سقف جدید',
     cur: 'فعلی', pw_new: 'رمز جدید', gen: 'رمز تصادفی', save: 'ذخیره', cancel: 'انصراف', pick_inb: 'نقش ادمین (Role) را انتخاب کنید', no_roles: 'نقشی برای این گروه در دسترس نیست — با پشتیبانی تماس بگیرید.',
@@ -64,7 +66,7 @@ const T = {
     set_profile: 'حساب من', set_role: 'نقش', set_groups: 'گروه‌های سپرده‌شده', set_cap: 'سقف حجم تأییدنشده', set_display: 'نام نمایشی',
     set_pw: 'تغییر رمز عبور من', set_pw_cur: 'رمز فعلی', set_pw_new: 'رمز جدید (حداقل ۸ نویسه)', set_pw_rep: 'تکرار رمز جدید', set_pw_mismatch: 'رمز جدید و تکرار آن یکی نیستند.',
     set_pw_done: 'رمز شما تغییر کرد — نشست‌های دیگر بسته شدند.', set_pw_note: 'بعد از تغییر، همهٔ نشست‌های دیگر شما (دستگاه‌های دیگر) بسته می‌شوند.',
-    set_prefs: 'نمایش', set_lang: 'زبان', set_theme: 'پوسته', light: 'روشن', dark: 'تاریک', set_logout: 'خروج از حساب', set_logout_hint: 'برای خروج از حساب، روی تصویر حساب در بالای صفحه بزنید و «خروج» را انتخاب کنید.', set_notify: 'اعلان‌ها', set_sound: 'صدای اعلان', set_sound_d: 'با رسیدن اعلان تازه (فاکتور، پرداخت، تأیید درخواست) یک صدای کوتاه پخش می‌شود.', set_volume: 'بلندی صدا', set_test: 'پخش آزمایشی', set_push: 'اعلان مرورگر', set_push_d: 'حتی وقتی پنل بسته است، اعلان روی این دستگاه نشان داده می‌شود.', set_push_test: 'ارسال اعلان آزمایشی', push_off: 'اعلان مرورگر روی سرور فعال نیست.', push_ios: 'در آیفون اول پنل را به صفحهٔ اصلی (Add to Home Screen) اضافه کنید.', push_unsupported: 'این مرورگر اعلان مرورگر را پشتیبانی نمی‌کند.', push_denied: 'اجازهٔ اعلان در مرورگر داده نشد.', note: 'توضیح',
+    set_prefs: 'نمایش', set_lang: 'زبان', set_theme: 'پوسته', light: 'روشن', dark: 'تاریک', set_logout: 'خروج از حساب', set_notify: 'اعلان‌ها', set_sound: 'صدای اعلان', set_sound_d: 'با رسیدن اعلان تازه (فاکتور، پرداخت، تأیید درخواست) یک صدای کوتاه پخش می‌شود.', set_volume: 'بلندی صدا', set_test: 'پخش آزمایشی', set_push: 'اعلان مرورگر', set_push_d: 'حتی وقتی پنل بسته است، اعلان روی این دستگاه نشان داده می‌شود.', set_push_test: 'ارسال اعلان آزمایشی', push_off: 'اعلان مرورگر روی سرور فعال نیست.', push_ios: 'در آیفون اول پنل را به صفحهٔ اصلی (Add to Home Screen) اضافه کنید.', push_unsupported: 'این مرورگر اعلان مرورگر را پشتیبانی نمی‌کند.', push_denied: 'اجازهٔ اعلان در مرورگر داده نشد.', note: 'توضیح',
     acts: { admin_created: 'ساخت ادمین', volume_added: 'افزودن حجم', password_changed: 'تغییر رمز ادمین', role_changed: 'تغییر نقش ادمین', login: 'ورود', approved: 'تأیید پشتیبانی', rejected: 'رد پشتیبانی', admin_enabled: 'فعال‌کردن ادمین', admin_disabled: 'غیرفعال‌کردن ادمین', profile_changed: 'تغییر تنظیمات ادمین', pay_created: 'شروع پرداخت', pay_pay_all: 'پرداخت کل بدهی', pay_receipt: 'ارسال رسید پرداخت', pay_approved: 'پرداخت تأیید شد', pay_rejected: 'پرداخت رد شد', pay_amount_mismatch: 'واریز با مبلغ متفاوت', request_created: 'درخواست شارژ' },
     act_types: { create: 'ساخت', volume: 'حجم', status: 'فعال / غیرفعال', password: 'رمز', role: 'نقش', profile: 'تنظیمات', payment: 'پرداخت', request: 'درخواست', login: 'ورود' },
   },
@@ -75,7 +77,7 @@ const T = {
     t_admins: 'Admins', t_acc: 'Accounting', t_act: 'Activity', no_groups: 'No group is assigned to you yet.',
     limit: 'Limit', used: 'Used', remaining: 'Remaining', users: 'Users', active_u: 'active', unl: 'Unlimited', role_l: 'Admin role', balance: 'Owes', pend: 'Pending approval',
     st_active: 'Active', st_panel_disabled: 'Disabled', st_pamp_limited: 'Limited', owner: 'Group owner', sudo: 'support only',
-    add: 'Add volume', pw: 'Password', inb: 'Role', new_admin: 'New admin', group_debt: 'Group total debt',
+    add: 'Add volume', pw: 'Password', inb: 'Role', pw_l: 'Change password', inb_l: 'Change role', more: 'More actions', new_admin: 'New admin', group_debt: 'Group total debt',
     cap: 'Your unapproved volume', cap_of: 'of', cap_reached: 'You reached your unapproved-volume cap — new volume is blocked until support approves.', no_cap: 'no cap',
     gb_in: 'Volume (GB)', add_note: 'Increase only. Applied on the panel at once; pending until support approves.', confirm_add: 'Confirm and apply', new_limit: 'New limit',
     cur: 'Current', pw_new: 'New password', gen: 'Random', save: 'Save', cancel: 'Cancel', pick_inb: 'Pick the admin role', no_roles: 'No admin role is available for this group — contact support.',
@@ -96,7 +98,7 @@ const T = {
     set_profile: 'My account', set_role: 'Role', set_groups: 'Assigned groups', set_cap: 'Max unapproved volume', set_display: 'Display name',
     set_pw: 'Change my password', set_pw_cur: 'Current password', set_pw_new: 'New password (8+ characters)', set_pw_rep: 'Repeat the new password', set_pw_mismatch: 'The new password and its repeat differ.',
     set_pw_done: 'Your password changed — other sessions were signed out.', set_pw_note: 'After the change, all your other sessions (other devices) are signed out.',
-    set_prefs: 'Display', set_lang: 'Language', set_theme: 'Theme', light: 'Light', dark: 'Dark', set_logout: 'Log out', set_logout_hint: 'To log out, tap your account picture at the top and choose “Log out”.', set_notify: 'Notifications', set_sound: 'Notification sound', set_sound_d: 'A short sound plays when a new notification arrives (invoice, payment, request decision).', set_volume: 'Volume', set_test: 'Play a test', set_push: 'Browser notifications', set_push_d: 'Shown on this device even while the panel is closed.', set_push_test: 'Send a test notification', push_off: 'Browser notifications are not configured on the server.', push_ios: 'On iPhone, add the panel to the Home Screen first.', push_unsupported: 'This browser does not support browser notifications.', push_denied: 'Notification permission was not given.', note: 'Note',
+    set_prefs: 'Display', set_lang: 'Language', set_theme: 'Theme', light: 'Light', dark: 'Dark', set_logout: 'Log out', set_notify: 'Notifications', set_sound: 'Notification sound', set_sound_d: 'A short sound plays when a new notification arrives (invoice, payment, request decision).', set_volume: 'Volume', set_test: 'Play a test', set_push: 'Browser notifications', set_push_d: 'Shown on this device even while the panel is closed.', set_push_test: 'Send a test notification', push_off: 'Browser notifications are not configured on the server.', push_ios: 'On iPhone, add the panel to the Home Screen first.', push_unsupported: 'This browser does not support browser notifications.', push_denied: 'Notification permission was not given.', note: 'Note',
     acts: { admin_created: 'Admin created', volume_added: 'Volume added', password_changed: 'Admin password changed', role_changed: 'Admin role changed', login: 'Signed in', approved: 'Approved by support', rejected: 'Rejected by support', admin_enabled: 'Admin enabled', admin_disabled: 'Admin disabled', profile_changed: 'Admin settings changed', pay_created: 'Payment started', pay_pay_all: 'Paid the whole debt', pay_receipt: 'Payment receipt sent', pay_approved: 'Payment approved', pay_rejected: 'Payment rejected', pay_amount_mismatch: 'Deposit with another amount', request_created: 'Volume requested' },
     act_types: { create: 'Create', volume: 'Volume', status: 'Enable / disable', password: 'Password', role: 'Role', profile: 'Settings', payment: 'Payment', request: 'Request', login: 'Sign-in' },
   },
@@ -148,7 +150,7 @@ export default function GroupManager() {
   }
   return (
     <div className="ap am-in" dir={lang === 'fa' ? 'rtl' : 'ltr'}>
-      <style>{ACCENT_CSS + PORTAL_CSS + CSS + ST_CSS}</style>
+      <style>{ACCENT_CSS + PORTAL_CSS + CSS + ST_CSS + LOGOUT_CSS}</style>
       <h1 className="am-h1">{s.title}{me && <small className="am-who"> · <bdi>{me.manager.display_name || me.manager.username}</bdi></small>}</h1>
       {err && <div className="ap-alert" role="alert">{err}</div>}
       {!me && !err && <div className="ap-spin" aria-busy="true" />}
@@ -411,11 +413,10 @@ function AdminUsers({ a, s, lang, onClose }) {
           ))}</ul>
         )}
         {d && (
-          <div className="am-pager">
-            <button type="button" className="ap-link" disabled={page === 0} onClick={() => setPage(page - 1)}>{s.prev}</button>
-            <span>{s.page.replace('{p}', page + 1).replace('{n}', pages)} · {s.u_total.replace('{n}', d.total)}</span>
-            <button type="button" className="ap-link" disabled={page + 1 >= pages} onClick={() => setPage(page + 1)}>{s.next}</button>
-          </div>
+          <>
+            <p className="am-count am-count--c"><N>{s.u_total.replace('{n}', d.total)}</N></p>
+            <Pager page={page + 1} pages={pages} onPage={(n) => setPage(n - 1)} s={s} />
+          </>
         )}
       </div>
     </Modal>
@@ -533,17 +534,11 @@ function Admins({ me, s, lang, reload, can }) {
       {d === null ? <div className="ap-spin" /> : d.results.length === 0 ? <p className="ap-foot">{term ? s.no_match : s.no_admins}</p> : (
         <>
           <p className="am-count">{s.count_admins.replace('{n}', d.count)}</p>
-          <div className="am-grid">
+          <div className="am-gridw"><div className="am-grid">
             {d.results.map((a) => <AdminCard key={a.username} a={a} s={s} lang={lang} can={can} full={full} live={live[a.username]} showGroup={me.groups.length > 1}
               writable={me.writes_enabled} capReached={cap.reached} onAct={(k) => setDlg({ k, a, g: groupOf(a) })} />)}
-          </div>
-          {d.pages > 1 && (
-            <nav className="am-pager" aria-label={s.pages}>
-              <button type="button" className="ap-link" disabled={d.page <= 1} onClick={() => setPage(d.page - 1)} data-testid="gm-prev">{s.prev}</button>
-              <span><N>{s.page.replace('{p}', d.page).replace('{n}', d.pages)}</N></span>
-              <button type="button" className="ap-link" disabled={d.page >= d.pages} onClick={() => setPage(d.page + 1)} data-testid="gm-next">{s.next}</button>
-            </nav>
-          )}
+          </div></div>
+          <Pager page={d.page} pages={d.pages} onPage={setPage} s={s} />
         </>
       )}
       {dlg?.k === 'add' && <AddVolume a={dlg.a} s={s} cap={cap} onClose={close} reload={refresh} />}
@@ -561,44 +556,142 @@ function Admins({ me, s, lang, reload, can }) {
   )
 }
 
+// v1.38.1 compact card: name · status · role, usage bar, cap / used / remaining in one row, debt, user chips,
+// actions = one row of primary buttons + «⋯». Sold / hidden / deleted / last activity / online → «جزئیات».
+function CardUsers({ a, live, s, st }) {
+  const ok = live && live.ok
+  const c = ok ? live : { total: a.user_count, active: a.active_user_count, ...(a.user_counts || {}) }
+  const chips = [['active', c.active], ...(ok ? [['online', c.online]] : []), ['expired', c.expired], ['limited', c.limited]]
+    .filter(([k, v]) => v != null && (k === 'active' || Number(v) > 0))
+  return (
+    <div className="am-uc" aria-label={s.users}>
+      <span className="am-uc-t"><Ic n="users" size={13} /><b><N>{c.total ?? 0}</N></b> {s.users}</span>
+      {chips.map(([k, v]) => <span key={k} className="st-chip" data-k={k}><N>{v}</N> {st[k]}</span>)}
+    </div>
+  )
+}
+
+function MoreMenu({ label, items }) {
+  const [pos, setPos] = useState(null)
+  const btn = useRef(null)
+  const pop = useRef(null)
+  const close = () => setPos(null)
+  useEffect(() => {
+    if (!pos) return undefined
+    const off = (e) => { if (!pop.current?.contains(e.target) && !btn.current?.contains(e.target)) close() }
+    const key = (e) => {
+      if (e.key === 'Escape') { close(); btn.current?.focus() }
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        const els = [...(pop.current?.querySelectorAll('button:not(:disabled)') || [])]
+        const k = els.indexOf(document.activeElement)
+        els[(k + (e.key === 'ArrowDown' ? 1 : -1) + els.length) % els.length]?.focus()
+      }
+    }
+    document.addEventListener('pointerdown', off); document.addEventListener('keydown', key); window.addEventListener('scroll', close, true); window.addEventListener('resize', close)
+    pop.current?.querySelector('button:not(:disabled)')?.focus()
+    return () => { document.removeEventListener('pointerdown', off); document.removeEventListener('keydown', key); window.removeEventListener('scroll', close, true); window.removeEventListener('resize', close) }
+  }, [pos])
+  if (!items.length) return null
+  const toggle = () => {
+    if (pos) { close(); return }
+    const r = btn.current.getBoundingClientRect()
+    const w = Math.min(230, window.innerWidth - 24)
+    const rtl = document.documentElement.dir === 'rtl' || btn.current.closest('[dir="rtl"]')
+    const left = Math.max(12, Math.min(rtl ? r.left : r.right - w, window.innerWidth - w - 12))
+    const h = 52 * items.length + 12
+    const top = r.bottom + 6 + h > window.innerHeight && r.top - h - 6 > 0 ? r.top - h - 6 : r.bottom + 6
+    setPos({ top, left, width: w })
+  }
+  return (
+    <>
+      <button ref={btn} type="button" className="ap-link am-more" aria-haspopup="menu" aria-expanded={!!pos} aria-label={label} title={label} onClick={toggle} data-testid="gm-more"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.9" /><circle cx="12" cy="12" r="1.9" /><circle cx="19" cy="12" r="1.9" /></svg></button>
+      {pos && createPortal(
+        <div ref={pop} className="am-menu" role="menu" style={{ top: pos.top, left: pos.left, width: pos.width }} dir={btn.current?.closest('[dir]')?.getAttribute('dir') || undefined} data-testid="gm-more-menu">
+          {items.map((it) => (
+            <button key={it.k} type="button" role="menuitem" className="am-menu-i" data-tone={it.tone} disabled={it.disabled} title={it.title}
+              onClick={() => { close(); it.onClick() }}><Ic n={it.icon} />{it.label}{it.note && <small>{it.note}</small>}</button>
+          ))}
+        </div>, document.body)}
+    </>
+  )
+}
+
 function AdminCard({ a, s, lang, can, full, live, showGroup, writable, capReached, onAct }) {
+  const st = useST(lang)
   const unl = !(Number(a.admin_limit_bytes) > 0)
   const pct = Math.min(Number(a.usage_percent) || 0, 100)
   const tone = a.usage_percent >= 100 ? 'danger' : a.usage_percent >= 80 ? 'warning' : 'primary'
   const locked = a.is_sudo
+  const more = []
+  if (!locked) {
+    if (can('agency.gm.admin_password')) more.push({ k: 'pw', icon: 'key', label: s.pw_l, disabled: !writable, onClick: () => onAct('pw') })
+    if (can('agency.gm.admin_role')) more.push({ k: 'inb', icon: 'sliders', label: s.inb_l, disabled: !writable, onClick: () => onAct('inb') })
+    if (can('agency.gm.create_admin')) more.push({ k: 'settings', icon: 'edit', label: s.a_settings, disabled: !writable, onClick: () => onAct('settings') })
+    if (can('agency.gm.toggle_admin')) {
+      more.push(a.status_code === 'active' ? { k: 'disable', icon: 'power', label: s.disable, tone: 'danger', disabled: !writable, onClick: () => onAct('disable') }
+        : a.status_code === 'pamp_limited' ? { k: 'blocked', icon: 'power', label: s.enable, disabled: true, note: s.blocked, onClick: () => {} }
+          : { k: 'enable', icon: 'check', label: s.enable, disabled: !writable, onClick: () => onAct('enable') })
+    }
+  }
   return (
-    <article className="ap-card am-card">
-      <div className="ap-acc-h">
-        <h3><bdi>{a.username}</bdi>{a.member_role === 'owner' && <small className="am-tag">{s.owner}</small>}{showGroup && a.group && <small className="am-tag am-tag--g"><bdi>{a.group}</bdi></small>}</h3>
+    <article className="ap-card am-card" data-testid="gm-card">
+      <header className="am-ch">
+        <div className="am-ch-n">
+          <h3><bdi>{a.username}</bdi></h3>
+          <div className="am-ch-tags">
+            {a.member_role === 'owner' && <small className="am-tag">{s.owner}</small>}
+            {showGroup && a.group && <small className="am-tag am-tag--g"><bdi>{a.group}</bdi></small>}
+            <small className="am-tag am-tag--r" title={s.role_l}><Ic n="sliders" size={11} />{roleLabel(a.role)}</small>
+          </div>
+        </div>
         <span className="ap-pill" data-st={a.status_code}>{s['st_' + a.status_code] || a.status_code}</span>
-      </div>
-      {!unl && <div className="ap-usage"><div className="ap-usage-l"><span>{s.used}</span><N>{a.usage_percent}%</N></div><span className="ap-bar" data-tone={tone}><i style={{ width: `${pct}%` }} /></span></div>}
-      <dl className="am-nums">
+      </header>
+      {unl ? <p className="am-unl"><Ic n="infinity" size={14} />{s.unl}<small> · {s.unl_no}</small></p> : (
+        <div className="am-use"><span className="ap-bar" data-tone={tone}><i style={{ width: `${pct}%` }} /></span><N>{a.usage_percent}%</N></div>
+      )}
+      <dl className="am-row3">
         <div><dt>{s.limit}</dt><dd><N>{unl ? s.unl : bText(a.admin_limit_bytes)}</N></dd></div>
         <div><dt>{s.used}</dt><dd><N>{a.used_fmt}</N></dd></div>
-        <div><dt>{s.remaining}</dt><dd><N>{unl ? s.unl : (a.remaining_fmt === 'Unlimited' ? s.unl : a.remaining_fmt)}</N></dd></div>
-        {!full && <div><dt>{s.users}</dt><dd><N>{a.user_count}</N> <small>/ <N>{a.active_user_count}</N> {s.active_u}</small></dd></div>}
-        {a.balance != null && <div><dt>{s.balance}</dt><dd><span className="am-bal" data-sign={Number(a.balance) > 0 ? 'owes' : 'zero'}><N>{money(a.balance, lang)}</N></span></dd></div>}
-        <div><dt>{s.role_l}</dt><dd className="am-role">{roleLabel(a.role)}</dd></div>
+        <div><dt>{s.remaining}</dt><dd><N>{unl || a.remaining_fmt === 'Unlimited' ? s.unl : a.remaining_fmt}</N></dd></div>
       </dl>
-      {full && <StatGrid a={a} live={live} lang={lang} />}
-      {Number(a.pending?.gb) > 0 && <p className="am-pend"><Ic n="clock" size={13} />{s.pend}: <N>{gbText(a.pending.gb)}</N></p>}
-      {locked ? <p className="am-hint">{s.sudo}</p> : (
-        <div className="am-acts">
-          {can('agency.gm.add_volume') && <button type="button" className="ap-link" disabled={!writable || unl || capReached} title={unl ? s.unl_no : undefined} onClick={() => onAct('add')}><Ic n="plus" />{s.add}</button>}
-          {can('agency.gm.admin_password') && <button type="button" className="ap-link" disabled={!writable} onClick={() => onAct('pw')}><Ic n="edit" />{s.pw}</button>}
-          {can('agency.gm.admin_role') && <button type="button" className="ap-link" disabled={!writable} onClick={() => onAct('inb')}><Ic n="sliders" />{s.inb}</button>}
-          {can('agency.gm.view_users') && <button type="button" className="ap-link" onClick={() => onAct('users')}><Ic n="users" />{s.users}</button>}
-          {full && <button type="button" className="ap-link" onClick={() => onAct('stats')} data-testid="gm-details"><Ic n="gauge" />{useST(lang).details}</button>}
-          {can('agency.gm.create_admin') && <button type="button" className="ap-link" disabled={!writable} onClick={() => onAct('settings')}><Ic n="edit" />{s.a_settings}</button>}
-          {can('agency.gm.toggle_admin') && (a.status_code === 'active'
-            ? <button type="button" className="ap-link am-danger" disabled={!writable} onClick={() => onAct('disable')}><Ic n="x" />{s.disable}</button>
-            : a.status_code === 'pamp_limited' ? <span className="am-hint">{s.blocked}</span>
-              : <button type="button" className="ap-link" disabled={!writable} onClick={() => onAct('enable')}><Ic n="check" />{s.enable}</button>)}
+      {(a.balance != null || Number(a.pending?.gb) > 0) && (
+        <div className="am-debt">
+          {a.balance != null && <span>{s.balance}: <b className="am-bal" data-sign={Number(a.balance) > 0 ? 'owes' : 'zero'}><N>{money(a.balance, lang)}</N></b></span>}
+          {Number(a.pending?.gb) > 0 && <span className="am-pend"><Ic n="clock" size={13} />{s.pend}: <N>{gbText(a.pending.gb)}</N></span>}
         </div>
       )}
-      {unl && !locked && <p className="am-hint">{s.unl_no}</p>}
+      <CardUsers a={a} live={full ? live : null} s={s} st={st} />
+      {locked ? <p className="am-hint am-foot">{s.sudo}</p> : (
+        <div className="am-acts">
+          {can('agency.gm.add_volume') && <button type="button" className="ap-link am-pa" disabled={!writable || unl || capReached} title={unl ? s.unl_no : undefined} onClick={() => onAct('add')}><Ic n="plus" />{s.add}</button>}
+          {can('agency.gm.view_users') && <button type="button" className="ap-link am-pa" onClick={() => onAct('users')}><Ic n="users" />{s.users}</button>}
+          {full && <button type="button" className="ap-link am-pa" onClick={() => onAct('stats')} data-testid="gm-details"><Ic n="gauge" />{st.details}</button>}
+          <MoreMenu label={s.more} items={more} />
+        </div>
+      )}
     </article>
+  )
+}
+
+/** v1.38.1 compact centred pager: ‹ 1 … 4 5 6 … 12 › */
+function Pager({ page, pages, onPage, s }) {
+  if (pages <= 1) return null
+  const nums = []
+  const add = (n) => { if (!nums.includes(n)) nums.push(n) }
+  add(1)
+  for (let n = Math.max(2, page - 1); n <= Math.min(pages - 1, page + 1); n += 1) add(n)
+  add(pages)
+  const out = []
+  nums.forEach((n, k) => { if (k && n - nums[k - 1] > 1) out.push('gap' + n); out.push(n) })
+  return (
+    <nav className="am-pg" aria-label={s.pages}>
+      <button type="button" className="am-pg-b" disabled={page <= 1} onClick={() => onPage(page - 1)} aria-label={s.prev} title={s.prev} data-testid="gm-prev"><span aria-hidden="true">‹</span></button>
+      {out.map((n) => (typeof n === 'string' ? <span key={n} className="am-pg-gap" aria-hidden="true">…</span> : (
+        <button key={n} type="button" className="am-pg-b" aria-current={n === page ? 'page' : undefined} onClick={() => n !== page && onPage(n)}><N>{n}</N></button>
+      )))}
+      <button type="button" className="am-pg-b" disabled={page >= pages} onClick={() => onPage(page + 1)} aria-label={s.next} title={s.next} data-testid="gm-next"><span aria-hidden="true">›</span></button>
+    </nav>
   )
 }
 
@@ -683,11 +776,7 @@ function Accounting({ me, s, lang }) {
               <label className="am-psize"><span>{s.per_page}</span>
                 <select className="ap-input am-in-sm" value={size} onChange={(e) => setSize(Number(e.target.value))} data-testid="gm-psize">
                   {[20, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}</select></label>
-              {pages > 1 && <>
-                <button type="button" className="ap-link am-btn-sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>{s.prev}</button>
-                <span><N>{s.page.replace('{p}', page).replace('{n}', pages)}</N></span>
-                <button type="button" className="ap-link am-btn-sm" disabled={page >= pages} onClick={() => setPage(page + 1)}>{s.next}</button>
-              </>}
+              <Pager page={page} pages={pages} onPage={setPage} s={s} />
             </div>
           </>
         )}
@@ -849,7 +938,7 @@ function SettingsTab({ me, s }) {
         {!locked && <div className="am-set-pref"><span>{s.set_theme}</span><Seg label={s.set_theme} value={mode} onPick={() => toggle()} opts={[['light', s.light], ['dark', s.dark]]} /></div>}
       </section>
       <NotifyCard s={s} />
-      <p className="am-hint am-set-foot">{s.set_logout_hint}</p>
+      <div className="am-set-out"><LogoutButton testId="gm-settings-logout" /></div>
     </div>
   )
 }
@@ -912,13 +1001,7 @@ function Activity({ s, lang }) {
           })}
         </ul>
       )}
-      {d && d.pages > 1 && (
-        <nav className="am-pager">
-          <button type="button" className="ap-link am-btn-sm" disabled={d.page <= 1} onClick={() => setPage(d.page - 1)}>{s.prev}</button>
-          <span><N>{s.page.replace('{p}', d.page).replace('{n}', d.pages)}</N></span>
-          <button type="button" className="ap-link am-btn-sm" disabled={d.page >= d.pages} onClick={() => setPage(d.page + 1)}>{s.next}</button>
-        </nav>
-      )}
+      {d && <Pager page={d.page} pages={d.pages} onPage={setPage} s={s} />}
     </section>
   )
 }
@@ -987,8 +1070,69 @@ const CSS = `
 .am-debt { font-size: 13px; font-weight: 700; color: var(--c-muted-fg); }
 .am-btn { margin-top: 0; min-height: 44px; padding: 0 16px; display: inline-flex; align-items: center; gap: 6px; }
 .am-new { margin-inline-start: auto; }
-.am-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
-.am-card { display: flex; flex-direction: column; gap: 4px; }
+/* v1.38.1 cards: 1 / 2 / 3 columns by the list's own width; a short last row spans the free width (no empty slot) */
+.am-gridw { container-type: inline-size; }
+.am-grid { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); align-items: stretch; }
+@container (min-width: 600px) {
+  .am-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .am-grid > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+@container (min-width: 1080px) {
+  .am-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .am-grid > * { grid-column: span 2; }
+  .am-grid > :last-child:nth-child(odd) { grid-column: span 2; }
+  .am-grid > :last-child:nth-child(3n+1) { grid-column: 1 / -1; }
+  .am-grid > :nth-last-child(2):nth-child(3n+1), .am-grid > :nth-last-child(2):nth-child(3n+1) + * { grid-column: span 3; }
+}
+.am-card { display: flex; flex-direction: column; gap: 10px; padding: 14px; min-width: 0; }
+.am-ch { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.am-ch-n { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.am-ch-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.am-card h3 { font-size: 15.5px; font-weight: 800; line-height: 1.3; }
+.am-tag { display: inline-flex; align-items: center; gap: 4px; }
+.am-tag--r { color: var(--c-text); background: color-mix(in srgb, var(--c-text-muted) 12%, transparent); font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.am-use { display: flex; align-items: center; gap: 10px; font-size: 12.5px; font-weight: 800; }
+.am-use .ap-bar { flex: 1 1 auto; height: 8px; }
+.am-unl { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12.5px; font-weight: 700; color: var(--c-primary-fg, var(--c-primary)); }
+.am-unl small { font-weight: 600; color: var(--c-muted-fg); }
+.am-row3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--c-border); border-radius: 12px; }
+.am-row3 > div { padding: 7px 10px; min-width: 0; }
+.am-row3 > div + div { border-inline-start: 1px solid var(--c-border); }
+.am-row3 dt { font-size: 11px; font-weight: 600; color: var(--c-muted-fg); }
+.am-row3 dd { font-size: 13px; font-weight: 800; margin-top: 1px; overflow-wrap: anywhere; }
+.am-debt { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; font-size: 12.5px; font-weight: 600; color: var(--c-muted-fg); }
+.am-debt b { font-size: 13.5px; font-weight: 800; }
+.am-uc { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.am-uc-t { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--c-muted-fg); margin-inline-end: 2px; }
+.am-uc-t b { color: var(--c-text); font-size: 13px; }
+.am-card .am-acts { margin-top: auto; padding-top: 10px; border-top: 1px solid var(--c-border); flex-wrap: nowrap; }
+.am-card { container-type: inline-size; }
+.am-card .am-acts { gap: 5px; }
+.am-card .am-acts .am-pa { flex: 1 1 auto; min-width: 0; padding: 0 8px; gap: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* narrow cards (phones, 3 columns): labels only, so «افزودن حجم» never gets cut */
+@container (max-width: 400px) { .am-card .am-acts .am-pa svg { display: none; } .am-card .am-acts .am-pa { padding: 0 6px; font-size: 12.5px; } }
+.am-card .am-acts .am-pa svg { flex-shrink: 0; }
+.am-more { flex: 0 0 auto !important; width: 40px; padding: 0 !important; }
+.am-foot { margin-top: auto; }
+.am-menu { position: fixed; z-index: 95; padding: 6px; border-radius: 14px; background: var(--c-bg); border: 1px solid var(--c-border);
+  box-shadow: 0 12px 40px rgb(0 0 0 / .22); display: flex; flex-direction: column; }
+.am-menu-i { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; min-height: 44px; padding: 6px 10px; border-radius: 10px; border: 0; background: transparent;
+  color: var(--c-text); font: inherit; font-size: 13.5px; font-weight: 700; text-align: start; cursor: pointer; }
+.am-menu-i:hover:not(:disabled), .am-menu-i:focus-visible { background: color-mix(in srgb, var(--c-primary) 9%, transparent); outline: none; }
+.am-menu-i[data-tone="danger"] { color: var(--c-danger-fg); }
+.am-menu-i[data-tone="danger"]:hover:not(:disabled) { background: color-mix(in srgb, var(--c-danger) 10%, transparent); }
+.am-menu-i:disabled { opacity: .55; cursor: not-allowed; }
+.am-menu-i small { flex-basis: 100%; font-size: 11.5px; font-weight: 600; color: var(--c-muted-fg); padding-inline-start: 25px; }
+.am-pg { display: flex; align-items: center; justify-content: center; gap: 4px; margin: 14px auto 0; flex-wrap: wrap; }
+.am-pg-b { min-width: 36px; height: 36px; padding: 0 8px; border-radius: 10px; border: 1px solid var(--c-border); background: transparent; color: var(--c-text);
+  font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-grid; place-items: center; }
+.am-pg-b span { font-size: 18px; line-height: 1; }
+.am-pg-b:hover:not(:disabled) { background: color-mix(in srgb, var(--c-primary) 8%, transparent); }
+.am-pg-b[aria-current="page"] { background: var(--c-primary); border-color: var(--c-primary); color: #fff; }
+.am-pg-b:disabled { opacity: .4; cursor: not-allowed; }
+.am-pg-gap { min-width: 16px; text-align: center; color: var(--c-muted-fg); }
+.am-count--c { text-align: center; margin-top: 10px; }
+@media (max-width: 767px) { .am-pg-b { min-width: 44px; height: 44px; } .am-pg { gap: 3px; } .am-more { width: 44px; } .am-card .am-acts .ap-link { min-height: 44px; } }
 .am-card h3 { font-size: 16px; font-weight: 800; overflow-wrap: anywhere; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .am-tag { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--c-primary) 12%, transparent); color: var(--c-primary-fg, var(--c-primary)); }
 .am-nums { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 6px; }
@@ -1080,6 +1224,10 @@ const CSS = `
 .am-pager--acc { justify-content: space-between; }
 .am-psize { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--c-muted-fg); font-weight: 700; }
 .am-psize select { width: 84px; }
+/* «خروج» at the bottom of Settings on phones only (desktop: bottom of the sidebar) */
+.am-set-out { margin-top: 4px; }
+@media (min-width: 768px) { .am-set-out { display: none; } }
+.am-pager--acc .am-pg { margin: 0; }
 .am-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); gap: 10px; }
 /* v1.37 compact accounting */
 .am-accw { display: flex; flex-direction: column; gap: 12px; }

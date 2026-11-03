@@ -4,6 +4,7 @@ import { copyToClipboard } from '../lib/clipboard'
 import { useToast } from './Toast'
 import { useConfirm } from './ConfirmDialog'
 import { Ic } from './AgencyIcons'
+import ReceiptDrop, { uploadPct } from './ReceiptDrop'
 
 // v1.34 /agency/ portal: invoices + «پرداخت», «درخواست شارژ», my requests, notices and the
 // checkout (card, unique amount, timer, receipt). Backend: apps/agency/billing_views.py.
@@ -180,6 +181,7 @@ export function Checkout({ http, lang, p: initial, onClose }) {
   const [file, setFile] = useState(null)
   const [ref, setRef] = useState('')
   const [busy, setBusy] = useState(false)
+  const [pct, setPct] = useState(null)
   const timer = useRef(null)
   useEffect(() => {
     const tick = () => setLeft(Math.max(0, Math.floor((new Date(p.unique_expire_at) - Date.now()) / 1000)))
@@ -196,8 +198,8 @@ export function Checkout({ http, lang, p: initial, onClose }) {
     e.preventDefault(); if (!file) return
     setBusy(true)
     const fd = new FormData(); fd.append('receipt_image', file); if (ref) fd.append('receipt_ref', ref)
-    try { const r = await http.post(`/payments/${p.id}/receipt/`, fd, { quiet: true }); setP(r.data); toast.success(lang === 'fa' ? r.data.message_fa : r.data.message) }
-    catch (e2) { toast.error(errL(e2, lang, '!')) } finally { setBusy(false) }
+    try { const r = await http.post(`/payments/${p.id}/receipt/`, fd, { quiet: true, onUploadProgress: (ev) => setPct(uploadPct(ev) ?? 0) }); setP(r.data); setFile(null); toast.success(lang === 'fa' ? r.data.message_fa : r.data.message) }
+    catch (e2) { toast.error(errL(e2, lang, '!')) } finally { setBusy(false); setPct(null) }
   }
   const cancel = async () => { try { await http.post(`/payments/${p.id}/cancel/`, {}, { quiet: true }) } catch { /* gone */ } onClose() }
   const mm = String(Math.floor(left / 60)).padStart(2, '0'), ss = String(left % 60).padStart(2, '0')
@@ -231,7 +233,7 @@ export function Checkout({ http, lang, p: initial, onClose }) {
           <ul>{p.invoices.map((i) => <li key={i.id}><B>{i.number}</B> · <bdi>{i.admin}</bdi> · <B>{toman(i.amount, lang)}</B></li>)}</ul></details>
         {(open && left > 0 || p.status === 'pending_review') && (
           <form className="ab-form" onSubmit={upload}>
-            <label><span>{s.co_receipt}</span><input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] || null)} /></label>
+            <ReceiptDrop file={file} onChange={setFile} lang={lang} label={s.co_receipt} progress={busy && file ? pct ?? 0 : null} disabled={busy} testId="ab-receipt" />
             <label><span>{s.co_ref}</span><input className="ap-input" dir="ltr" inputMode="numeric" value={ref} onChange={(e) => setRef(e.target.value)} /></label>
             <button className="ap-btn" disabled={busy || !file}>{s.co_upload}</button>
           </form>
@@ -266,7 +268,6 @@ export const AB_CSS = `
 .ab-note[data-unread] { border-color: color-mix(in srgb, var(--c-primary) 45%, var(--c-border)); background: color-mix(in srgb, var(--c-primary) 6%, transparent); }
 .ab-form { display: flex; flex-direction: column; gap: 8px; }
 .ab-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; font-weight: 700; min-width: 0; }
-.ab-form input[type=file] { font-size: 14px; max-width: 100%; }
 .ab-preview { font-size: 13px; font-weight: 700; padding: 8px 10px; border-radius: 10px; color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 8%, transparent); overflow-wrap: anywhere; }
 .ab-reason { font-size: 13px; font-weight: 700; padding: 8px 10px; border-radius: 10px; color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 10%, transparent); overflow-wrap: anywhere; }
 .ab-ok { font-size: 15px; font-weight: 800; padding: 10px; border-radius: 10px; color: var(--c-success-fg); background: color-mix(in srgb, var(--c-success) 12%, transparent); }

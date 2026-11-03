@@ -9,6 +9,7 @@ import { todayCell, toISO } from '../lib/jalaliCalendar'
 import { useConfirm } from './ConfirmDialog'
 import { useToast } from './Toast'
 import { DateRangeModal, DRP_CSS } from './DateRangePicker'
+import ReceiptDrop, { uploadPct } from './ReceiptDrop'
 
 // v1.38 «فاکتور دستی» (backend apps/orders/manual.py, adminpanel/views/manual_invoices.py).
 // A: «قبلاً پرداخت شده» → approved payment + completed order on the entered date (tag «دستی»).
@@ -78,8 +79,9 @@ function Form({ box, opts, s, lang }) {
   const [v, setV] = useState({ mode: 'paid', kind: 'plan', plan: '', title: '', gb: '', days: '', amount: '',
     date: toISO(today.jy, today.jm, today.jd), time: new Date().toTimeString().slice(0, 5), method: 'card', card: '', ref: '', file: null,
     note: '', due: '', svc: false, action: 'renew', service: '', account: '' })
+  const [pct, setPct] = useState(null)
   const put = (nv) => { setV(nv); Object.assign(box, nv) }
-  useEffect(() => { Object.assign(box, v) }, [])
+  useEffect(() => { Object.assign(box, v); box.onPct = setPct }, [])
   const plans = opts?.plans || []
   const plan = plans.find((p) => String(p.id) === String(v.plan))
   const pickPlan = (id) => {
@@ -129,7 +131,7 @@ function Form({ box, opts, s, lang }) {
                 </select></label>
             )}
             <label className="mi-l"><span>{s.ref}</span><input className="input" dir="ltr" inputMode="numeric" value={v.ref} onChange={(e) => put({ ...v, ref: e.target.value })} /></label>
-            <label className="mi-l"><span>{s.receipt}</span><input className="input mi-file" type="file" accept="image/*" onChange={(e) => put({ ...v, file: e.target.files?.[0] || null })} /></label>
+            <div className="mi-l mi-wide"><ReceiptDrop file={v.file} onChange={(file) => put({ ...v, file })} lang={lang} label={s.receipt} progress={pct} testId="mi-receipt" /></div>
           </>
         ) : (
           <DateField label={s.due} value={v.due} onChange={(d) => put({ ...v, due: d })} s={s} lang={lang} testid="mi-due" />
@@ -191,7 +193,11 @@ export function ManualInvoiceButton({ userId, onDone, className = '' }) {
           f.append('service_action', box.action)
           if (box.action === 'new') f.append('account_name', box.account || ''); else f.append('service', box.service || '')
         }
-        const r = await api.post(`/admin/users/${userId}/manual-invoices/`, f)
+        let r
+        try {
+          r = await api.post(`/admin/users/${userId}/manual-invoices/`, f,
+            box.file ? { onUploadProgress: (ev) => box.onPct?.(uploadPct(ev) ?? 0) } : undefined)
+        } finally { box.onPct?.(null) }
         ;(r.data.warnings || []).forEach((w) => toast.error(`${r.data.tx_number}: ${w.kind === 'duplicate_image' ? s.warn_image : s.warn_ref}`))
         onDone?.(r.data)
       },
@@ -249,7 +255,6 @@ const CSS = `
 .mi-l .input { width: 100%; min-width: 0; }
 .mi-wide { grid-column: 1 / -1; }
 .mi-date { text-align: start; }
-.mi-file { padding-top: 8px; font-size: 12px; }
 .mi-check { display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: 13px; font-weight: 700; }
 .mi-check input { width: 20px; height: 20px; }
 .mi-svc { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 12px; border: 1px dashed color-mix(in srgb, #7C3AED 45%, var(--c-border)); }

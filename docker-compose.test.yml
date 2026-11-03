@@ -50,4 +50,5 @@ services:
       - ./docs:/app/docs:ro                           # admin "Documentation" page
       - ./mobile_sms/release:/app/app_releases:ro
       - ./frontend/admin/src:/app/frontend_admin_src:ro   # panel menu ↔ routes ↔ permissions (test_mobile_nav)
+      - ./frontend/user/src:/app/frontend_user_src:ro     # v1.38.1 shared ReceiptDrop (test_gm_ui_v1381)
     command: ["python", "-m", "pytest", "-p", "no:warnings"]

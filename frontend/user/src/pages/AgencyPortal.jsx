@@ -248,10 +248,21 @@ const CSS = `
 .ap-lang:hover { background: color-mix(in srgb, var(--c-text-muted) 20%, transparent); }
 .ap-main { max-width: 640px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
 .ap-card { background: linear-gradient(var(--c-surface), var(--c-surface)), var(--c-bg); border: 1px solid var(--c-border); border-radius: 16px; padding: 16px; }
-.ap-login { display: flex; flex-direction: column; gap: 8px; margin-top: 8vh; }
-.ap-login h1 { font-size: 20px; font-weight: 800; }
-.ap-login p { font-size: 13px; color: var(--c-muted-fg); margin-bottom: 6px; }
-.ap-login label { font-size: 12.5px; font-weight: 700; margin-top: 4px; }
+/* v1.38.1 compact sign-in card: ≤400px, centred, normal control heights (44px on phones) */
+.ap-login { display: flex; flex-direction: column; gap: 6px; width: 100%; max-width: 400px; margin: 6vh auto 0; padding: 22px 22px 16px; border-radius: 18px;
+  box-shadow: 0 10px 40px rgb(0 0 0 / .08); }
+.ap-login h1 { font-size: 18px; font-weight: 800; line-height: 1.4; }
+.ap-login p { font-size: 12.5px; line-height: 1.7; color: var(--c-muted-fg); margin-bottom: 8px; }
+.ap-login label { font-size: 12.5px; font-weight: 700; margin-top: 6px; }
+.ap-login .ap-input { height: 42px; border-radius: 10px; font-size: 15px; }
+.ap-login > .ap-btn { margin-top: 14px; min-height: 42px; border-radius: 10px; font-size: 14.5px; }
+.ap-login .ap-mgr-link { margin-top: 4px; font-size: 12.5px; }
+@media (max-width: 767px) {
+  .ap-login { margin-top: 3vh; padding: 18px 16px 12px; box-shadow: none; }
+  .ap-login .ap-input { height: 44px; font-size: 16px; }
+  .ap-login > .ap-btn { min-height: 44px; }
+  .ap-login .ap-mgr-link { min-height: 44px; }
+}
 .ap-input { height: 46px; border-radius: 12px; border: 1px solid var(--c-border); background: var(--c-surface); color: var(--c-text); padding: 0 12px; font-size: 16px; }
 .ap-input:focus { outline: 2px solid color-mix(in srgb, var(--c-primary) 45%, transparent); }
 .ap-btn { margin-top: 10px; min-height: 48px; border-radius: 12px; background: color-mix(in srgb, var(--c-primary) 82%, #000); color: #fff; font-weight: 800; font-size: 15px; border: 0; }

@@ -28,8 +28,8 @@ sequenceDiagram
     API-->>UI: invoice: exact amount, bank card, expires in 30 min
     C->>C: card-to-card transfer of the EXACT amount
     alt customer uploads a receipt
-        C->>UI: upload receipt image
-        UI->>API: POST receipt (throttled 20/h)
+        C->>UI: pick the receipt picture (ReceiptDrop: JPG/PNG/WEBP/GIF ≤ 10 MB, preview) → «ارسال رسید»
+        UI->>API: POST receipt with upload progress (throttled 20/h)
         API->>DB: Payment(card_manual, pending)
         API-->>Q: live event → queue badge
         A->>API: approve (or reject with reason)

@@ -121,10 +121,11 @@ export function StatGrid({ a, live, lang, full = false }) {
 }
 
 export const ST_CSS = `
-.st-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
-.st-grid[data-full] { grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); }
-.st-c { padding: 8px 10px; border-radius: 12px; border: 1px solid var(--c-border); min-width: 0; background: color-mix(in srgb, var(--c-text-muted) 4%, transparent); }
-.st-c[data-wide] { grid-column: 1 / -1; }
+/* v1.38.1: tiles wrap and GROW, so a short last row fills the width (no empty cell next to a lone tile) */
+.st-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.st-c { flex: 1 1 calc(50% - 8px); padding: 8px 10px; border-radius: 12px; border: 1px solid var(--c-border); min-width: 0; background: color-mix(in srgb, var(--c-text-muted) 4%, transparent); }
+.st-grid[data-full] .st-c { flex-basis: 150px; }
+.st-c[data-wide], .st-grid[data-full] .st-c[data-wide] { flex-basis: 100%; }
 .st-c[data-tone="danger"] dd { color: var(--c-danger-fg); }
 .st-c[data-tone="success"] dd { color: var(--c-success-fg); }
 .st-c dt { display: flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 700; color: var(--c-muted-fg); }

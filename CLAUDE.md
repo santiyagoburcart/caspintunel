@@ -106,6 +106,8 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   display — no inline "saved" bars. Pass `{ quiet: true }` only for non-actions (login, live previews).
 - **One popup for everything**: `components/ConfirmDialog.jsx` (identical in both SPAs) + `useConfirm()`.
   Never use `window.confirm/alert/prompt`. **One copy helper**: `lib/clipboard.js::copyToClipboard`.
+  **One receipt picker**: `components/ReceiptDrop.jsx` (identical in both SPAs; type/size checks, preview, upload bar) —
+  never a bare `<input type="file">` for a receipt.
 - Fonts are bundled (`@fontsource`, no CDN): fa = Vazirmatn, en = Inter, `<code>` = JetBrains Mono.
 - Mobile (≤767px, Caspian admin): **no ☰ / drawer** — bottom nav + Settings tab = index of EVERY page + account
   (profile, language, theme, logout); avatar opens it. Sidebar and index both come from `components/adminNav.js` — add a

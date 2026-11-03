@@ -12,6 +12,8 @@ Fields marked *enc* are Fernet-encrypted (`FIELD_ENCRYPTION_KEY`).
 
 Related: [architecture.md](architecture.md) · [flows.md](flows.md).
 
+Last schema change: v1.38 (manual invoices). v1.38.1 (receipt picker, group-manager UI) changed no table.
+
 ## 1. Users, auth and RBAC (`accounts`, `common`)
 
 ```mermaid
