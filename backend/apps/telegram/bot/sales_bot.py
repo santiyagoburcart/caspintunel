@@ -577,6 +577,22 @@ def _route(bot, chat_id, msg, user, tg, data: str) -> None:
         if len(parts) > 2 or order.status != "pending_payment":
             return render(bot, chat_id, sc.order_status(user, order), msg)
         return render(bot, chat_id, sc.invoice(user, order), msg)
+    if head == "mi":                                   # v1.38 «فاکتور دستی» issued by staff
+        from apps.orders import manual as MIs
+        from apps.orders.models import ManualInvoice
+
+        inv = ManualInvoice.objects.filter(pk=int(parts[1]), user=user, mode=ManualInvoice.MODE_ISSUED).first()
+        if inv is None:
+            return render(bot, chat_id, sc.main_menu(user), msg)
+        if len(parts) > 2 and parts[2] == "pay":
+            try:
+                order = MIs.pay(inv.id, user, source="bot")
+            except MIs.ManualInvoiceError as exc:
+                return render(bot, chat_id, sc.Screen(html.escape(exc.fa if not sc.is_en_user(user) else str(exc)),
+                                                      sc._kb([sc._nav(user)])), msg)
+            order = Order.objects.select_related("plan", "manual_invoice").get(pk=order.pk)
+            return render(bot, chat_id, sc.invoice(user, order, reused=getattr(order, "reused", False)), msg)
+        return render(bot, chat_id, sc.manual_invoice(user, inv), msg)
     if head == "nn":                                   # paid order, name taken on the panel → ask for another
         order = Order.objects.filter(pk=int(parts[1]), user=user, needs_new_name=True).first()
         if not order:

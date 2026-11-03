@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useI18n, label } from '../lib/i18n'
 import { jalali, toman, tomanParts } from '../lib/format'
@@ -46,7 +46,8 @@ function HI({ d, w = 15 }) {
 // numbers are always shown with Latin digits (both languages)
 // eslint-disable-next-line no-unused-vars
 const fnum = (n, lang) => String(n)
-const methodLabel = (t, m) => (m === 'card_manual' ? t('m_card') : m === 'sms_auto' ? t('m_sms') : m === 'gateway' ? t('m_gateway') : '—')
+const methodLabel = (t, m, lang) => (m === 'card_manual' ? t('m_card') : m === 'sms_auto' ? t('m_sms') : m === 'gateway' ? t('m_gateway')
+  : m === 'blu_auto' ? t('m_card') : m === 'cash' ? (lang === 'en' ? 'Cash' : 'نقدی') : m === 'other' ? (lang === 'en' ? 'Other' : 'سایر') : '—')
 
 const FILTERS = [
   ['all', 'f_all', () => true],
@@ -62,7 +63,11 @@ function CaspianHistory() {
   const [q, setQ] = useState('')
   const [receipt, setReceipt] = useState(null)
 
-  useEffect(() => { api.get('/orders/').then((r) => setRows(r.data.results)).catch(() => setRows([])) }, [])
+  const [inv, setInv] = useState(null)
+  useEffect(() => {
+    api.get('/orders/').then((r) => setRows(r.data.results)).catch(() => setRows([]))
+    api.get('/orders/manual-invoices/', { params: { lang } }).then((r) => setInv(r.data.results)).catch(() => setInv([]))
+  }, [])
 
   const shown = useMemo(() => {
     const list = (rows || []).filter(FILTERS.find(([k]) => k === filter)[2])
@@ -86,6 +91,8 @@ function CaspianHistory() {
         </div>
         <Link to="/store" className="csp-hist-buy"><HI d={H.cart} w={16} />{t('buy_new')}</Link>
       </header>
+
+      <ManualInvoices rows={inv} t={t} lang={lang} />
 
       <div className="csp-card csp-hist-body">
         <div className="csp-hist-bar-row">
@@ -132,10 +139,51 @@ function CaspianHistory() {
   )
 }
 
+/** v1.38 «فاکتور دستی»: invoices staff issued for this customer — «پرداخت» opens the normal checkout. */
+function ManualInvoices({ rows, t, lang }) {
+  const go = useNavigate()
+  const [busy, setBusy] = useState(null)
+  const [err, setErr] = useState('')
+  const open = (rows || []).filter((r) => r.status === 'open')
+  if (!open.length) return null
+  const pay = async (r) => {
+    setBusy(r.id); setErr('')
+    try {
+      const { data } = await api.post(`/orders/manual-invoices/${r.id}/pay/`, { source: window.Telegram?.WebApp?.initData ? 'miniapp' : 'site' })
+      go(`/checkout?order=${data.order.id}`)
+    } catch (e) { setErr(e?.response?.data?.[lang === 'en' ? 'detail' : 'detail_fa'] || e?.response?.data?.detail || '!') } finally { setBusy(null) }
+  }
+  return (
+    <section className="csp-card csp-mi" data-testid="mi-open">
+      <h2 className="csp-mi-h"><HI d={H.receipt} w={18} />{lang === 'en' ? 'Invoices to pay' : 'فاکتورهای پرداخت‌نشده'}</h2>
+      {err && <div className="csp-hist-reason">{err}</div>}
+      <ul className="csp-mi-list">
+        {open.map((r) => {
+          const { num, unit } = tomanParts(r.amount, lang)
+          return (
+            <li key={r.id}>
+              <div className="csp-mi-info">
+                <b>{r.title}</b>
+                <span className="mono-num">{r.number}{r.volume_gb ? ` · ${r.volume_gb} GB` : ''}{r.days ? ` · ${r.days} ${lang === 'en' ? 'days' : 'روز'}` : ''}</span>
+                {r.due_at && <span className={r.overdue ? 'csp-mi-due is-late' : 'csp-mi-due'}>{lang === 'en' ? 'Due' : 'مهلت'}: <span className="mono-num">{jalali(r.due_at, false, lang)}</span></span>}
+              </div>
+              <div className="csp-mi-pay">
+                <span><b className="mono-num">{num}</b> {unit}</span>
+                <button type="button" className="csp-hist-btn csp-hist-btn--primary" disabled={busy === r.id} onClick={() => pay(r)} data-testid="mi-pay">
+                  <HI d={H.receipt} w={15} />{r.open_order ? (lang === 'en' ? 'Continue payment' : 'ادامهٔ پرداخت') : t('pay')}</button>
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+    </section>
+  )
+}
+
 function Row({ o, t, lang, onReceipt }) {
   const rejected = o.status === 'rejected'
   const pendingPay = o.status === 'pending_payment'
-  const plan = (lang === 'fa' ? o.plan_name : (o.plan_name_en || o.plan_name)) || o.plan_name || '—'
+  const plan = (lang === 'fa' ? o.plan_name : (o.plan_name_en || o.plan_name)) || o.plan_name || o.manual?.title || o.manual?.number || '—'
   const icon = rejected ? H.timerOff : pendingPay ? H.clock : H.shield
   // expired = neutral gray (not a success, not an error); failed / rejected = red
   const tone = rejected || o.status === 'failed' ? 'danger' : pendingPay ? 'warning'
@@ -149,7 +197,8 @@ function Row({ o, t, lang, onReceipt }) {
         <span className="csp-hist-row-ico" data-tone={tone}><HI d={icon} w={22} /></span>
         <div className="csp-hist-row-info">
           <div className="csp-hist-row-title">
-            <b>{plan} · {label(t, 'o_', o.type)}</b>
+            <b>{plan}{!(o.manual && o.type === 'manual') && <> · {label(t, 'o_', o.type)}</>}</b>
+            {o.manual && <span className="csp-hist-manual">{lang === 'en' ? 'Manual' : 'دستی'}</span>}
             <span className="csp-hist-pill" data-tone={tone}>
               <i />{t('st_' + o.status) === ('st_' + o.status) ? o.status : t('st_' + o.status)}
             </span>
@@ -167,7 +216,7 @@ function Row({ o, t, lang, onReceipt }) {
       <div className="csp-hist-row-r">
         <div className="csp-hist-amt">
           <span><b className="mono-num">{num}</b> {unit}</span>
-          <small>{methodLabel(t, o.payment_method)}</small>
+          <small>{methodLabel(t, o.payment_method, lang)}</small>
         </div>
         <div className="csp-hist-row-actions">
           {o.receipt_url && (
@@ -175,7 +224,7 @@ function Row({ o, t, lang, onReceipt }) {
               <HI d={H.receipt} w={15} /><span className="csp-hist-btn-txt">{t('view_receipt')}</span>
             </button>
           )}
-          {(pendingPay || rejected) && (
+          {(pendingPay || (rejected && !o.manual)) && (
             // a rejected order is closed: "pay again" starts a NEW order (new unique amount)
             <Link to={rejected ? buyAgain(o) : `/checkout?resume=${o.id}`} className={'csp-hist-btn' + (rejected ? ' csp-hist-btn--danger' : ' csp-hist-btn--primary')}>
               <HI d={rejected ? H.replay : H.receipt} w={15} />{rejected ? t('pay_again') : t('pay')}
@@ -209,6 +258,18 @@ function ReceiptModal({ o, t, onClose }) {
 }
 
 const CSS = `
+.csp-hist-manual { font-size: 10.5px; font-weight: 800; padding: 1px 8px; border-radius: 999px; color: #fff; background: #7C3AED; }
+.csp-mi { padding: 16px; margin-bottom: 14px; border: 1px solid color-mix(in srgb, #7C3AED 35%, var(--c-border)); }
+.csp-mi-h { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 800; margin-bottom: 10px; }
+.csp-mi-list { display: flex; flex-direction: column; }
+.csp-mi-list li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-top: 1px solid var(--c-border); }
+.csp-mi-list li:first-child { border-top: 0; }
+.csp-mi-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 13px; }
+.csp-mi-info span { font-size: 12px; color: var(--c-text-muted); }
+.csp-mi-due.is-late { color: var(--c-danger); font-weight: 700; }
+.csp-mi-pay { display: flex; align-items: center; gap: 10px; }
+.csp-mi-pay .csp-hist-btn { min-height: 44px; }
+
 .csp-hist { display: flex; flex-direction: column; gap: 18px; }
 .csp-hist-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
 .csp-hist-title { display: flex; align-items: center; gap: 9px; }

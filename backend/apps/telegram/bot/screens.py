@@ -120,11 +120,45 @@ def plan_button_label(user, plan) -> str:
 
 
 # --- main menu -------------------------------------------------------------
+def open_manual_invoices(user) -> list:
+    """v1.38 «فاکتور دستی» issued by staff and not paid yet."""
+    from apps.orders.models import ManualInvoice
+
+    return list(ManualInvoice.objects.filter(user=user, mode=ManualInvoice.MODE_ISSUED, status=ManualInvoice.OPEN)
+                .select_related("plan").order_by("-created_at")[:5])
+
+
+def manual_invoice(user, inv) -> Screen:
+    lang = "en" if is_en(user) else "fa"
+    lines = [pick(user, f"🧾 <b>فاکتور {inv.number}</b>", f"🧾 <b>Invoice {inv.number}</b>"),
+             f"📦 {html.escape(inv.label(lang))}"]
+    extra = []
+    if inv.volume_gb:
+        extra.append(pick(user, f"{inv.volume_gb} گیگ", f"{inv.volume_gb} GB"))
+    if inv.days:
+        extra.append(pick(user, f"{inv.days} روز", f"{inv.days} days"))
+    if extra:
+        lines.append(" · ".join(extra))
+    lines.append(pick(user, "مبلغ: ", "Amount: ") + money(user, inv.amount))
+    if inv.due_at:
+        lines.append(pick(user, "مهلت پرداخت: ", "Due: ") + to_jalali_str(inv.due_at, "%Y/%m/%d %H:%M"))
+    rows = []
+    if inv.status == "open":
+        rows.append([_b(pick(user, "💳 پرداخت", "💳 Pay"), f"mi:{inv.id}:pay")])
+    else:
+        lines.append(pick(user, "✅ پرداخت شده", "✅ Paid") if inv.status == "paid" else pick(user, "لغو شده", "Cancelled"))
+    rows.append(_nav(user))
+    return Screen("\n".join(lines), _kb(rows))
+
+
 def main_menu(user) -> Screen:
     rows = []
     o = open_order(user)
     if o:
         rows.append([_b(tr(user, "btn_open_order", id=o.id), f"o:{o.id}")])
+    for inv in open_manual_invoices(user):
+        if not (o and o.manual_invoice_id == inv.id):
+            rows.append([_b(pick(user, f"🧾 فاکتور {inv.number} · پرداخت", f"🧾 Invoice {inv.number} · Pay"), f"mi:{inv.id}")])
     rows += [
         [_b(tr(user, "btn_buy"), "m:buy"), _b(tr(user, "btn_svcs"), "m:svcs")],
         [_b(tr(user, "btn_history"), "m:history"), _b(tr(user, "btn_acc"), "m:acc")],
@@ -196,8 +230,9 @@ def terms(user) -> Screen:
 
 
 def invoice(user, order, *, reused: bool = False) -> Screen:
-    lines = [tr(user, "invoice", id=order.id, plan=html.escape(plan_name(user, order.plan)),
-                amount=money(user, order.amount_unique))]
+    label = (order.manual_invoice.label("en" if is_en(user) else "fa") if order.manual_invoice_id
+             else plan_name(user, order.plan))                               # v1.38 manual invoice: its title
+    lines = [tr(user, "invoice", id=order.id, plan=html.escape(label), amount=money(user, order.amount_unique))]
     if order.discount_amount:
         lines.append(tr(user, "inv_discount", orig=money(user, order.original_amount), off=money(user, order.discount_amount),
                         code=html.escape(order.discount_code_text or "")))
@@ -422,8 +457,10 @@ def history_item(user, o) -> str:
     account = o.requested_account_name or (o.service.panel_username if o.service_id and o.service else "")
     if account:
         lines.append(tr(user, "hist_account", a=html.escape(account)))
-    manual = o.type in MANUAL_TYPES or not o.amount_unique
+    manual = (o.type in MANUAL_TYPES and not o.manual_invoice_id) or not o.amount_unique
     lines.append(tr(user, "hist_manual") if manual else tr(user, "hist_paid", m=money(user, o.amount_unique)))
+    if o.manual_invoice_id:                                                  # v1.38 the «دستی» tag
+        lines.append(pick(user, f"🧾 دستی · MI-{o.manual_invoice_id:06d}", f"🧾 Manual · MI-{o.manual_invoice_id:06d}"))
     lines.append(tr(user, "hist_date", d=to_jalali_str(o.created_at, "%Y/%m/%d %H:%M")))
     pay = getattr(o, "payment", None)
     if pay is not None:

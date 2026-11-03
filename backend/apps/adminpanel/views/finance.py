@@ -41,7 +41,8 @@ class TransactionViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, views
 
     def get_queryset(self):
         qs = Payment.objects.select_related(
-            "order", "order__user", "order__plan", "bank_card", "confirmed_by_staff", "voided_by"
+            "order", "order__user", "order__plan", "bank_card", "confirmed_by_staff", "voided_by",
+            "order__manual_invoice", "order__manual_invoice__created_by",
         )
         q = self.request.query_params
         if self.action == "list" or self.action is None:
@@ -55,6 +56,8 @@ class TransactionViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, views
         src = q.get("source")
         if src:
             qs = qs.filter(order__source=src)
+        if q.get("manual") in ("1", "true"):          # v1.38 «فاکتور دستی» only
+            qs = qs.filter(order__manual_invoice__isnull=False)
         frm = _parse_any_date(q.get("from"))
         to = _parse_any_date(q.get("to"), end_of_day=True)
         if frm:
@@ -485,7 +488,14 @@ class AccountingView(AdminAPIView):
             "discounts": _discounts(start, end),
             # v1.32: rounded-amount auto-approvals — revenue above already counts what was PAID
             "rounded": _rounded(approved),
+            # v1.38 «فاکتور دستی»: counted above on their payment date; shown separately too
+            "manual": _manual(approved),
         })
+
+
+def _manual(approved) -> dict:
+    agg = approved.filter(order__manual_invoice__isnull=False).aggregate(count=Count("id"), revenue=Sum("amount"))
+    return {"count": agg["count"] or 0, "revenue": str(agg["revenue"] or 0)}
 
 
 def _rounded(approved) -> dict:
@@ -589,9 +599,9 @@ def _tx_search(term: str):
 
 CSV_HEAD = {
     "fa": ["شماره تراکنش", "تاریخ", "مبلغ (تومان)", "وضعیت", "روش", "کاربر", "نام", "پلن", "نوع سفارش", "منبع",
-           "کارت", "تأییدکننده", "تاریخ تأیید", "شماره سفارش", "دلیل رد", "حذف‌شده", "دلیل حذف"],
+           "کارت", "تأییدکننده", "تاریخ تأیید", "شماره سفارش", "دلیل رد", "حذف‌شده", "دلیل حذف", "دستی"],
     "en": ["Transaction", "Date", "Amount (Toman)", "Status", "Method", "User", "Name", "Plan", "Order type", "Source",
-           "Card", "Confirmed by", "Confirmed at", "Order", "Reject reason", "Deleted", "Delete reason"],
+           "Card", "Confirmed by", "Confirmed at", "Order", "Reject reason", "Deleted", "Delete reason", "Manual"],
 }
 
 
@@ -615,6 +625,7 @@ def _transactions_csv(qs, lang: str):
             o.type, o.source, p.bank_card.card_number if p.bank_card_id else "", confirmer,
             to_jalali_str(p.confirmed_at, "%Y/%m/%d %H:%M") if p.confirmed_at else "", o.id, p.reject_reason or "",
             to_jalali_str(p.voided_at, "%Y/%m/%d %H:%M") if p.voided_at else "", p.void_reason or "",
+            (("دستی " if lang == "fa" else "manual ") + f"MI-{o.manual_invoice_id:06d}") if o.manual_invoice_id else "",
         ])
     resp = HttpResponse(buf.getvalue().encode("utf-8"), content_type="text/csv; charset=utf-8")
     resp["Content-Disposition"] = f'attachment; filename="transactions-{timezone.localdate().isoformat()}.csv"'

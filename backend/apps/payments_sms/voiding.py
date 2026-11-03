@@ -225,6 +225,9 @@ def void_payment(payment_id: int, *, staff, reason: str, service_action: str | N
                     "tx": p.tx_number, "amount": str(p.amount), "status": p.status, "reason": p.void_reason,
                     "order": order.id, "service_action": service_action, "order_cancelled": bool(prev),
                     "order_prev_status": prev, "dropped_scheduled_renewal": dropped_renewal, **panel})
+                from apps.orders.manual import on_payment_void
+
+                on_payment_void(order)               # v1.38: a manual invoice re-opens / is cancelled
                 push_payments_event("payment_voided", order_id=order.id, payment_id=p.id,
                                     by=getattr(staff, "username", None))
         except VoidError as exc:
@@ -280,6 +283,9 @@ def restore_payment(payment_id: int, *, staff) -> Payment:
         if p.auto_rule == "rounded":
             _relink_rounded(p)
         write_audit(action="payment.restored", staff=staff, target=p, detail=detail)
+        from apps.orders.manual import on_payment_void
+
+        on_payment_void(order, restored=True)
         push_payments_event("payment_restored", order_id=order.id, payment_id=p.id,
                             by=getattr(staff, "username", None))
     return p

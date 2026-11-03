@@ -6,6 +6,7 @@ import { useI18n } from '../lib/i18n'
 import { jalali, toman, gb, relTime } from '../lib/format'
 import { Spinner, Toggle } from '../components/ui'
 import { useConfirm } from '../components/ConfirmDialog'
+import { ManualInvoiceButton, ManualInvoicesCard } from '../components/ManualInvoice'
 
 // CRM (backend: apps/crm). Follow-up queue · case · customer 360 · leads · reports · settings.
 const T = {
@@ -418,6 +419,7 @@ export function Customer360() {
   const [staff] = useGet('/admin/crm/staff/')
   const [tags] = useGet('/admin/crm/tags/')
   const [note, setNote] = useState('')
+  const [miKey, setMiKey] = useState(0)
   const manage = can('crm.manage')
   const patch = async (b) => { await api.patch(`/admin/crm/customers/${id}/`, b); load(); loadTl() }
   if (d === null) return <div className="cr"><CrmHeader /><div className="grid place-items-center py-12"><Spinner /></div></div>
@@ -435,8 +437,10 @@ export function Customer360() {
             {p.stage_override && <span className="text-xs text-muted">({s.override}; {s.auto}: {s.stg[p.stage]})</span>}
             {p.tags.map((t) => <span key={t.id} className="cr-tag" style={{ '--tag': t.color }}>{t.name}</span>)}</div>
         </div>
+        <ManualInvoiceButton userId={u.id} onDone={() => { setMiKey((k) => k + 1); load(); loadTl() }} />
         {manage && <button type="button" className="btn-ghost text-sm" onClick={() => api.post(`/admin/crm/customers/${id}/cases/`, { kind: d.money.orders ? 'manual' : 'lead' }).then((r) => go(`/crm/cases/${r.data.id}`))}>+ {s.new_case}</button>}
       </div>
+      <ManualInvoicesCard userId={u.id} reloadKey={miKey} />
       <div className="cr-grid3">
         <section className="card space-y-2">
           <h4>{s.profile}</h4>

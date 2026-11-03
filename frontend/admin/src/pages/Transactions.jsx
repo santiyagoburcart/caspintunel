@@ -10,6 +10,7 @@ import { Alert, Spinner } from '../components/ui'
 import { ReceiptThumb } from '../components/ReceiptThumb'
 import { DateRangeModal, DRP_CSS } from '../components/DateRangePicker'
 import { BankFilterSheet, BFS_CSS } from '../components/BankFilterSheet'
+import { ManualTag } from '../components/ManualInvoice'
 
 const TXS = {
   fa: { month: 'واریزی‌های این ماه', today: 'واریزی‌های امروز', queue: 'در صف بررسی', rejected: 'رد شده',
@@ -269,6 +270,7 @@ function TxTable({ s, t, lang }) {
   const f = TF[lang] || TF.fa
   const [rows, setRows] = useState(null)
   const [status, setStatus] = useState('')
+  const [manual, setManual] = useState(false)
   const [range, setRange] = useState({ from: '', to: '' })
   const [dateOpen, setDateOpen] = useState(false)
   const [bankOpen, setBankOpen] = useState(false)
@@ -283,11 +285,12 @@ function TxTable({ s, t, lang }) {
     if (range.to) p.set('to', range.to)
     if (search) p.set('search', search)
     if (superadmin && showDeleted) p.set('deleted', '1')
+    if (manual) p.set('manual', '1')
     api.get(`/admin/transactions/?${p}`)
       .then((r) => setRows(r.data.results ?? r.data))
       .catch(() => { setRows([]); setErr(lang === 'fa' ? 'خطا در دریافت' : 'Failed to load') })
   }
-  useEffect(() => { load() }, [status, range.from, range.to, search, showDeleted, version])
+  useEffect(() => { load() }, [status, range.from, range.to, search, showDeleted, version, manual])
 
   const exportCsv = async () => {
     const p = new URLSearchParams({ export: 'csv', lang })
@@ -296,6 +299,7 @@ function TxTable({ s, t, lang }) {
     if (range.to) p.set('to', range.to)
     if (search) p.set('search', search)
     if (superadmin && showDeleted) p.set('deleted', '1')
+    if (manual) p.set('manual', '1')
     try {
       const r = await api.get(`/admin/transactions/?${p}`, { responseType: 'blob' })
       const name = (r.headers['content-disposition'] || '').match(/filename="([^"]+)"/)?.[1] || 'transactions.csv'
@@ -340,6 +344,7 @@ function TxTable({ s, t, lang }) {
           <button type="button" className="tx-tool-btn" onClick={() => setBankOpen(true)}>
             {f.filter_banks}{bankActive > 0 && <span className="bfs-count-badge">{digits(bankActive, lang)}</span>}
           </button>
+          <button type="button" className={'tx-tool-btn' + (manual ? ' tx-filter-on' : '')} aria-pressed={manual} onClick={() => setManual(!manual)} data-testid="tx-manual">{lang === 'fa' ? 'دستی' : 'Manual'}</button>
           <button type="button" className="tx-tool-btn" onClick={exportCsv}>{s.csv}</button>
         </div>
       </div>
@@ -393,11 +398,11 @@ function TxTable({ s, t, lang }) {
                     <tr className={'tx-row' + (note ? ' tx-row--note' : '') + (r.voided ? ' tx-row--void' : '')}>
                       {superadmin && <td className="tx-c"><input type="checkbox" checked={sel.has(r.id)} aria-label={r.tx_number}
                         onChange={(e) => setSel((old) => { const n = new Set(old); e.target.checked ? n.add(r.id) : n.delete(r.id); return n })} /></td>}
-                      <td className="tx-mono tx-num" data-label={s.tx_col}>{r.tx_number}{r.voided && <Pill tone="danger">{s.deleted}</Pill>}</td>
+                      <td className="tx-mono tx-num" data-label={s.tx_col}>{r.tx_number}<ManualTag m={r.manual} lang={lang} />{r.voided && <Pill tone="danger">{s.deleted}</Pill>}</td>
                       <td className="tx-amt" data-label={s.amount}>{toman(r.amount, lang)}</td>
                       <td data-label={s.user}>
                         <span className="tx-user">{r.user}</span>
-                        {r.plan_name && <span className="tx-sub">{r.plan_name}</span>}
+                        {(r.plan_name || r.manual?.title) && <span className="tx-sub">{r.plan_name || r.manual.title}</span>}
                       </td>
                       <td data-label={s.type_col}>{s['type_' + r.order_type] || r.order_type || '—'}</td>
                       <td data-label={s.src_col}>{r.order_source === 'bot' ? s.src_bot : s.src_site}</td>

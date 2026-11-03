@@ -419,7 +419,7 @@ export default function Checkout() {
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
           <h1 className="text-lg font-bold">{order.status === 'completed' || confirmed ? t('checkout') : t('pay')}</h1>
-          <div className="text-xs text-muted">{t('order_ref', { id: order.id })}{order.tx_number ? ` · ${order.tx_number}` : ''}{order.plan_name ? ` · ${(lang === 'en' && order.plan_name_en) || order.plan_name}` : ''}</div>
+          <div className="text-xs text-muted">{t('order_ref', { id: order.id })}{order.tx_number ? ` · ${order.tx_number}` : ''}{order.plan_name ? ` · ${(lang === 'en' && order.plan_name_en) || order.plan_name}` : order.manual ? ` · ${order.manual.title || order.manual.number}` : ''}</div>
         </div>
         <StatusBadge status={expired ? 'expired' : order.status} />
       </div>

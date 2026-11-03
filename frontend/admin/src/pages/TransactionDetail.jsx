@@ -8,6 +8,7 @@ import { useConfirm } from '../components/ConfirmDialog'
 import { useAuth } from '../lib/auth'
 import { T as TX_T, useTxDelete } from './Transactions'
 import RoundedReason from '../components/RoundedReason'
+import { ManualTag } from '../components/ManualInvoice'
 
 /* ------------------------------------------------------------------ *
  *  Transaction Detail — direct port of the Stitch screens
@@ -190,7 +191,7 @@ export default function TransactionDetail() {
   }
 
   const l4 = last4(r.card)
-  const plan = (lang === 'fa' ? r.plan_name : (r.plan_name_en || r.plan_name)) || '—'
+  const plan = (lang === 'fa' ? r.plan_name : (r.plan_name_en || r.plan_name)) || r.manual?.title || '—'
   const showUnique = r.amount_unique && String(r.amount_unique) !== String(r.amount)
   const confirmer = !r.confirmer ? null
     : r.confirmer === 'admin' ? t('src_admin')
@@ -210,8 +211,14 @@ export default function TransactionDetail() {
       </span>
     )],
     [t('txd_method'), (
-      <span className="txd-chip"><Ico name="card" w={14} />{enumLabel(t, 'm_', r.method)}</span>
+      <span className="txd-chip"><Ico name="card" w={14} />{enumLabel(t, 'm_', r.method)}<ManualTag m={r.manual} lang={lang} /></span>
     )],
+    // v1.38 «فاکتور دستی»: which invoice, who created it, when it was paid
+    ...(r.manual ? [[lang === 'fa' ? 'فاکتور دستی' : 'Manual invoice', (
+      <span data-testid="txd-manual"><b className="txd-mono">{r.manual.number}</b>
+        <span className="txd-kv-sub">{r.manual.mode === 'paid' ? (lang === 'fa' ? 'قبلاً پرداخت شده' : 'Already paid') : (lang === 'fa' ? 'صادرشده برای پرداخت' : 'Issued for payment')}
+          {r.manual.created_by ? ` · ${lang === 'fa' ? 'ثبت توسط' : 'by'} ${r.manual.created_by}` : ''}</span></span>
+    )]] : []),
     [t('txd_dest_card'), <span className="txd-mono" dir="ltr">{groupCard(r.card)}</span>,
       false, r.card_bank || r.card_holder ? [r.card_bank, r.card_holder].filter(Boolean).join(' · ') : null],
     ...(r.gateway_ref ? [[t('txd_rrn'), <span className="txd-mono" dir="ltr">{r.gateway_ref}</span>]] : []),

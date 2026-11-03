@@ -6,6 +6,7 @@ import { jalali, toman, digits } from '../lib/format'
 import { Alert, Spinner } from '../components/ui'
 import { useAuth } from '../lib/auth'
 import { useUserActions } from '../lib/userActions'
+import { ManualInvoiceButton, ManualInvoicesCard, ManualTag } from '../components/ManualInvoice'
 
 const T = {
   fa: {
@@ -110,11 +111,13 @@ export default function UserOrders() {
   const { can } = useAuth()
   const userActions = useUserActions()
 
+  const [miKey, setMiKey] = useState(0)
   const loadUser = () => api.get(`/admin/users/${id}/`).then((r) => setUser(r.data)).catch((e) => setErr(apiError(e, s.load_error)))
+  const loadOrders = () => api.get(`/admin/users/${id}/orders/`).then((r) => setRows(r.data)).catch((e) => { setRows([]); setErr(apiError(e, s.load_error)) })
   useEffect(() => {
     setUser(null); setRows(null); setErr('')
     loadUser()
-    api.get(`/admin/users/${id}/orders/`).then((r) => setRows(r.data)).catch((e) => { setRows([]); setErr(apiError(e, s.load_error)) })
+    loadOrders()
   }, [id])
 
   const removeUser = async () => {
@@ -148,6 +151,7 @@ export default function UserOrders() {
         </div>
         <div className="uo-head-r">
           <h1 className="uo-title"><Ico d={I.bag} w={18} /> {s.title}</h1>
+          {user && !user.deleted_at && <ManualInvoiceButton userId={id} onDone={() => { setMiKey((k) => k + 1); loadOrders() }} />}
           {user && !user.deleted_at && can('users.delete') && (
             <button type="button" className="uo-del-btn" onClick={removeUser}><Ico d={I.trash} w={14} /> {s.delete_user}</button>
           )}
@@ -163,6 +167,8 @@ export default function UserOrders() {
       )}
 
       <Alert>{err}</Alert>
+
+      <ManualInvoicesCard userId={id} reloadKey={miKey} />
 
       <div className="card p-0 uo-wrap">
         <div className="uo-tabs">
@@ -191,10 +197,11 @@ export default function UserOrders() {
                 <tr key={o.id} className="uo-row">
                   <td data-label={s.col_order}>
                     <span className="uo-mono">#{digits(o.id, lang)}</span>
-                    <span className="uo-type-tag">{s[TYPE_TAG[o.type]] || o.type}</span>
+                    {!(o.manual && o.type === 'manual') && <span className="uo-type-tag">{s[TYPE_TAG[o.type]] || o.type}</span>}
+                    <ManualTag m={o.manual} lang={lang} />
                   </td>
                   <td data-label={s.col_date} className="uo-mono uo-date">{jalali(o.created_at, true, lang)}</td>
-                  <td data-label={s.col_plan}>{(lang === 'en' ? o.plan_name_en : o.plan_name) || o.plan_name || '—'}</td>
+                  <td data-label={s.col_plan}>{(lang === 'en' ? o.plan_name_en : o.plan_name) || o.plan_name || o.manual?.title || o.manual?.number || '—'}</td>
                   <td data-label={s.col_amount} className="uo-mono">{toman(o.amount_unique, lang)}</td>
                   <td data-label={s.col_method}>{o.payment_method ? enumLabel(t, 'm_', o.payment_method) : '—'}</td>
                   <td data-label={s.col_status}><StatusPill status={o.status} t={t} /></td>

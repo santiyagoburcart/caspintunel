@@ -91,3 +91,39 @@ def _checkout_payload(order: Order) -> dict:
             "cards": BankCardSerializer(cards, many=True).data,
         },
     }
+
+
+# ------------------------------------------------------------------ v1.38 manual invoices (customer)
+from rest_framework.views import APIView  # noqa: E402
+
+
+class ManualInvoicesView(APIView):
+    """GET — my invoices issued by staff: open ones (pay) first, then the recent paid / cancelled."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from . import manual
+        from .models import ManualInvoice
+
+        lang = "en" if request.query_params.get("lang") == "en" or getattr(request.user, "language", "") == "en" else "fa"
+        qs = (ManualInvoice.objects.filter(user=request.user, mode=ManualInvoice.MODE_ISSUED)
+              .select_related("plan", "service").order_by("status", "-created_at")[:50])
+        rows = [manual.row(i, lang) for i in qs]
+        rows.sort(key=lambda r: (r["status"] != "open", -(r["id"])))
+        return Response({"results": rows, "open": sum(1 for r in rows if r["status"] == "open")})
+
+
+class ManualInvoicePayView(APIView):
+    """POST — «پرداخت»: a normal checkout (unique amount, card, timer, receipt) for the invoice."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        from . import manual
+
+        try:
+            order = manual.pay(pk, request.user, source=(request.data or {}).get("source") or "site")
+        except manual.ManualInvoiceError as exc:
+            return Response({"detail": str(exc), "detail_fa": exc.fa}, status=400)
+        body = _checkout_payload(Order.objects.select_related("plan", "service", "payment").get(pk=order.pk))
+        body["reused"] = bool(getattr(order, "reused", False))
+        return Response(body, status=200 if body["reused"] else 201)

@@ -88,12 +88,14 @@ def _staff_or_none(actor):
 
 
 @transaction.atomic
-def approve_payment(payment_id: int, *, actor=None, bank_card=None) -> Payment:
+def approve_payment(payment_id: int, *, actor=None, bank_card=None, confirmed_at=None, notify: bool = True) -> Payment:
     """Approve a payment and deliver the service — the ONLY way into
     `approved`, whatever the previous status (pending, or a rejected payment
     the admin changed their mind about). Idempotent: an approved payment is
     returned as is, and an order that is already paid/completed is never
-    provisioned again."""
+    provisioned again.
+    v1.38: `confirmed_at` = when the money really arrived (a staff «فاکتور دستی — قبلاً پرداخت شده»: revenue
+    counts on that date); `notify=False` skips the "order confirmed" message (staff entered it)."""
     payment = Payment.objects.select_for_update().select_related("order").get(pk=payment_id)
     if payment.voided_at is not None:
         raise PaymentError("this transaction was deleted — restore it first")
@@ -107,11 +109,11 @@ def approve_payment(payment_id: int, *, actor=None, bank_card=None) -> Payment:
     payment.status = PaymentStatus.APPROVED
     payment.confirmed_by = ConfirmedBy.ADMIN
     payment.confirmed_by_staff = _staff_or_none(actor)
-    payment.confirmed_at = timezone.now()
+    payment.confirmed_at = confirmed_at or timezone.now()
     payment.reject_reason = ""
     if bank_card is not None:
         payment.bank_card = bank_card
-    elif payment.bank_card_id is None:
+    elif payment.bank_card_id is None and payment.method not in (PaymentMethod.CASH, PaymentMethod.OTHER):
         payment.bank_card = default_bank_card()
     payment.save(update_fields=["status", "confirmed_by", "confirmed_by_staff", "confirmed_at",
                                 "reject_reason", "bank_card", "updated_at"])
@@ -129,6 +131,16 @@ def approve_payment(payment_id: int, *, actor=None, bank_card=None) -> Payment:
     else:
         # already paid (fulfilment queued) or completed: never provision twice
         log.info("approve_payment(%s): order %s is %s — not fulfilling again", payment.id, order.id, order.status)
+    if notify:
+        _notify_confirmed(payment)
+    write_audit(action="payment.approved", target=payment, staff=actor,
+                detail={"order": payment.order_id, "from": previous})
+    push_payments_event("payment_approved", order_id=payment.order_id, payment_id=payment.id,
+                        by=getattr(actor, "username", None))
+    return payment
+
+
+def _notify_confirmed(payment: Payment) -> None:
     notify_user(
         payment.order.user,
         title="سفارش شما تأیید شد",
@@ -138,11 +150,6 @@ def approve_payment(payment_id: int, *, actor=None, bank_card=None) -> Payment:
         ntype=NotificationType.ORDER_CONFIRMED,
         via_site=True, via_bot=True, via_email=True,
     )
-    write_audit(action="payment.approved", target=payment, staff=actor,
-                detail={"order": payment.order_id, "from": previous})
-    push_payments_event("payment_approved", order_id=payment.order_id, payment_id=payment.id,
-                        by=getattr(actor, "username", None))
-    return payment
 
 
 @transaction.atomic

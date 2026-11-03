@@ -262,6 +262,16 @@ export default function Accounting() {
             </div>
           )}
 
+          {d.manual?.count > 0 && (
+            <div className="card acc-dc" data-testid="acc-manual">
+              <div className="acc-recent-head"><span className="font-bold text-sm">{lang === 'fa' ? 'فاکتورهای دستی (در درآمد بالا، به تاریخ پرداخت)' : 'Manual invoices (in revenue above, on their payment date)'}</span></div>
+              <dl className="acc-dc-kpis">
+                <div><dt>{s.rd_count}</dt><dd dir="ltr">{digits(d.manual.count, lang)}</dd></div>
+                <div><dt>{lang === 'fa' ? 'مبلغ' : 'Amount'}</dt><dd>{toman(d.manual.revenue, lang)}</dd></div>
+              </dl>
+            </div>
+          )}
+
           <div className="card acc-recent">
             <div className="acc-recent-head">
               <span className="font-bold text-sm">{s.recent}</span>

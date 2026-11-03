@@ -128,6 +128,9 @@ class PaymentMethod(models.TextChoices):
     BLU_AUTO = "blu_auto", "Blu auto-match"
     BLU_MISMATCH = "blu_mismatch", "Blu — amount mismatch (manual review)"
     GATEWAY = "gateway", "Gateway"
+    # v1.38 «فاکتور دستی — قبلاً پرداخت شده» entered by staff (card-to-card uses CARD_MANUAL)
+    CASH = "cash", "Cash (manual invoice)"
+    OTHER = "other", "Other (manual invoice)"
 
 
 class PaymentStatus(models.TextChoices):

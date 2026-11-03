@@ -6,6 +6,15 @@ from .models import Order, OrderType
 from .services import DiscountCodeRefused, OrderError, RenewalWaiting, create_order
 
 
+def manual_info(order) -> dict | None:
+    """v1.38 the «دستی» tag: the staff invoice behind an order (None = a normal order)."""
+    inv = getattr(order, "manual_invoice", None) if getattr(order, "manual_invoice_id", None) else None
+    if inv is None:
+        return None
+    return {"id": inv.id, "number": inv.number, "mode": inv.mode, "title": inv.title, "service_action": inv.service_action,
+            "paid_at": inv.paid_at, "created_by": inv.created_by.username if inv.created_by_id else None}
+
+
 class OrderSerializer(serializers.ModelSerializer):
     plan_name = serializers.CharField(source="plan.name_fa", read_only=True)
     plan_name_en = serializers.CharField(source="plan.name_en", read_only=True, default="")
@@ -14,6 +23,7 @@ class OrderSerializer(serializers.ModelSerializer):
     receipt_url = serializers.SerializerMethodField()
     reject_reason = serializers.SerializerMethodField()
     tx_number = serializers.SerializerMethodField()
+    manual = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
@@ -22,9 +32,13 @@ class OrderSerializer(serializers.ModelSerializer):
             "requested_account_name", "custom_volume_gb",
             "amount", "discount_amount", "original_amount", "discount_code_text", "amount_unique", "unique_expire_at",
             "payment_status", "payment_method", "receipt_url",
-            "reject_reason", "source", "created_at", "needs_new_name", "tx_number",
+            "reject_reason", "source", "created_at", "needs_new_name", "tx_number", "manual",
         )
         read_only_fields = fields
+
+    def get_manual(self, obj) -> dict | None:
+        m = manual_info(obj)
+        return {k: m[k] for k in ("number", "title", "paid_at")} if m else None
 
     def get_payment_status(self, obj) -> str | None:
         pay = getattr(obj, "payment", None)

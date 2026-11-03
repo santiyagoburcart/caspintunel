@@ -438,6 +438,12 @@ class TransactionSerializer(serializers.ModelSerializer):
     voided_by = serializers.CharField(source="voided_by.username", read_only=True, default=None)
     restorable_until = serializers.SerializerMethodField()
     service_id = serializers.IntegerField(source="order.service_id", read_only=True, default=None)
+    manual = serializers.SerializerMethodField()
+
+    def get_manual(self, obj):
+        from apps.orders.serializers import manual_info
+
+        return manual_info(obj.order)
 
     class Meta:
         model = Payment
@@ -448,7 +454,7 @@ class TransactionSerializer(serializers.ModelSerializer):
             "confirmed_by", "confirmer", "confirmed_at", "reject_reason",
             "receipt_url", "order_source", "order_type", "order_status",
             "created_at", "updated_at",
-            "voided", "voided_at", "voided_by", "void_reason", "void_service_action", "restorable_until",
+            "voided", "voided_at", "voided_by", "void_reason", "void_service_action", "restorable_until", "manual",
             "auto_rule", "auto_reason", "shortfall",
         )
 
@@ -480,6 +486,7 @@ class AdminUserOrderSerializer(serializers.ModelSerializer):
     payment_method = serializers.CharField(source="payment.method", read_only=True, default=None)
     payment_status = serializers.CharField(source="payment.status", read_only=True, default=None)
     confirmer = serializers.SerializerMethodField()
+    manual = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
@@ -487,8 +494,13 @@ class AdminUserOrderSerializer(serializers.ModelSerializer):
             "id", "type", "status", "requested_account_name",
             "amount_unique", "plan_name", "plan_name_en",
             "payment_id", "payment_method", "payment_status", "confirmer",
-            "created_at",
+            "created_at", "manual",
         )
+
+    def get_manual(self, obj):
+        from apps.orders.serializers import manual_info
+
+        return manual_info(obj)
 
     def get_confirmer(self, obj) -> str | None:
         payment = getattr(obj, "payment", None)

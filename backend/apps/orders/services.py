@@ -345,6 +345,23 @@ def mark_paid_and_fulfill(order: Order) -> None:
     """Called after a payment is approved."""
     from .tasks import fulfill_order
 
+    if order.manual_invoice_id:
+        # v1.38 «فاکتور دستی»: the invoice is paid; no unique-amount lock; without a service action
+        # (type manual) there is nothing to deliver — the order is completed here
+        from .manual import on_order_paid
+
+        on_order_paid(order)
+        if order.type == OrderType.MANUAL:
+            order.status = OrderStatus.COMPLETED
+            order.amount_unique_lock = None
+            order.save(update_fields=["status", "amount_unique_lock", "updated_at"])
+            write_audit(action="order.completed", target=order, detail={"manual_invoice": order.manual_invoice_id})
+            return
+        order.status = OrderStatus.PAID
+        order.amount_unique_lock = None
+        order.save(update_fields=["status", "amount_unique_lock", "updated_at"])
+        transaction.on_commit(lambda: fulfill_order.delay(order.id))
+        return
     order.status = OrderStatus.PAID
     order.sync_unique_lock()  # PAID still holds the lock until provisioning completes
     try:

@@ -72,6 +72,9 @@ class Order(TimeStampedModel):
     # paid, but the chosen account name turned out to exist on the panel (someone
     # else's account): never attached — the customer picks another name (site / bot)
     needs_new_name = models.BooleanField(default=False)
+    # v1.38 «فاکتور دستی»: the staff invoice this order belongs to (tag «دستی» everywhere)
+    manual_invoice = models.ForeignKey("orders.ManualInvoice", null=True, blank=True, on_delete=models.SET_NULL,
+                                       related_name="orders")
 
     class Meta:
         db_table = "order"
@@ -111,3 +114,50 @@ class ScheduledRenewal(TimeStampedModel):
 
     def __str__(self) -> str:
         return f"scheduled_renewal#{self.pk} for service#{self.service_id}"
+
+
+class ManualInvoice(TimeStampedModel):
+    """v1.38 «فاکتور دستی» created by staff from a customer's profile (apps/orders/manual.py).
+    mode "paid"   = «قبلاً پرداخت شده»: an approved payment + completed order, on the entered payment date.
+    mode "issued" = «صدور فاکتور برای پرداخت»: the customer pays it in their panel (normal checkout)."""
+
+    MODE_PAID, MODE_ISSUED = "paid", "issued"
+    MODES = [(MODE_PAID, "Already paid"), (MODE_ISSUED, "Issued for payment")]
+    OPEN, PAID, CANCELLED = "open", "paid", "cancelled"
+    STATUSES = [(OPEN, "Open"), (PAID, "Paid"), (CANCELLED, "Cancelled")]
+    ACT_NONE, ACT_NEW, ACT_RENEW, ACT_ADDON = "none", "new", "renew", "addon"
+    ACTIONS = [(ACT_NONE, "No service change"), (ACT_NEW, "New service"), (ACT_RENEW, "Renew a service"),
+               (ACT_ADDON, "Add volume to a service")]
+
+    user = models.ForeignKey("accounts.User", on_delete=models.CASCADE, related_name="manual_invoices")
+    mode = models.CharField(max_length=8, choices=MODES)
+    status = models.CharField(max_length=10, choices=STATUSES, default=OPEN, db_index=True)
+    plan = models.ForeignKey("plans.Plan", null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    title = models.CharField(max_length=120, blank=True, default="")
+    volume_gb = models.PositiveIntegerField(null=True, blank=True)
+    days = models.PositiveIntegerField(null=True, blank=True)
+    amount = models.DecimalField(max_digits=12, decimal_places=0, help_text="tomans")
+    service_action = models.CharField(max_length=6, choices=ACTIONS, default=ACT_NONE)
+    service = models.ForeignKey("panel.Service", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    account_name = models.CharField(max_length=64, blank=True, default="")
+    due_at = models.DateTimeField(null=True, blank=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+    note = models.TextField(blank=True, default="")
+    order = models.ForeignKey(Order, null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
+                              help_text="the order that paid it")
+    created_by = models.ForeignKey("accounts.Staff", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+
+    class Meta:
+        db_table = "manual_invoice"
+        ordering = ("-created_at",)
+
+    @property
+    def number(self) -> str:
+        return f"MI-{int(self.pk):06d}" if self.pk else ""
+
+    def label(self, lang: str = "fa") -> str:
+        if self.title:
+            return self.title
+        if self.plan_id:
+            return (self.plan.name_en if lang == "en" else self.plan.name_fa) or self.plan.name_fa
+        return self.number

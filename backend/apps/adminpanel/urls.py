@@ -49,6 +49,7 @@ from .views.integrations import (
 )
 from .views.monitoring import BackupViewSet, HealthView, MonitoringView, ResourcesView
 from .views.push import StaffPrefsView, StaffPushView
+from .views.manual_invoices import ManualInvoiceCancelView, UserManualInvoiceOptionsView, UserManualInvoicesView
 from .views.agency_billing import (AgencyInvoicesView, AgencyInvoiceVoidView, AgencyInvoiceOutsideView, AgencyGroupDebtView, AgencyPaymentActionView,
                                    AgencyPaymentReceiptView, AgencyPaymentsBadgeView, AgencyPaymentsView, AgencyPortalAccessView,
                                    AgencySettlementView)
@@ -128,6 +129,9 @@ urlpatterns = [
     path("agency/managers/options/", AgencyManagerOptionsView.as_view(), name="admin-agency-manager-options"),
     path("agency/managers/<int:manager_id>/", AgencyManagersView.as_view(), name="admin-agency-manager"),
     path("agency/managers/<int:manager_id>/password/", AgencyManagerPasswordView.as_view(), name="admin-agency-manager-password"),
+    path("users/<int:user_id>/manual-invoices/", UserManualInvoicesView.as_view(), name="admin-user-manual-invoices"),
+    path("users/<int:user_id>/manual-invoices/options/", UserManualInvoiceOptionsView.as_view(), name="admin-user-manual-invoice-options"),
+    path("manual-invoices/<int:pk>/cancel/", ManualInvoiceCancelView.as_view(), name="admin-manual-invoice-cancel"),
     path("agency/invoices/", AgencyInvoicesView.as_view(), name="admin-agency-invoices"),
     path("agency/portal-access/<str:username>/", AgencyPortalAccessView.as_view(), name="admin-agency-portal-access"),
     path("agency/invoices/settlement/", AgencySettlementView.as_view(), name="admin-agency-settlement"),
