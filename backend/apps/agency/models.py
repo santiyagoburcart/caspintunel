@@ -520,6 +520,9 @@ class AgencyInvoice(models.Model):
     paid_at = models.DateTimeField(null=True, blank=True)
     voided_at = models.DateTimeField(null=True, blank=True)
     void_reason = models.CharField(max_length=255, blank=True, default="")
+    # v1.35.1: what settled it (sum of active AgencyInvoiceAllocation rows) — partial = unpaid with paid_amount > 0
+    paid_amount = models.DecimalField(max_digits=14, decimal_places=0, default=0)
+    settled_via = models.CharField(max_length=12, blank=True, default="")   # payment|manual|adjustment|outside|balance|mixed
 
     class Meta:
         db_table = "agency_invoice"
@@ -594,6 +597,34 @@ class AgencyPaymentItem(models.Model):
     class Meta:
         db_table = "agency_payment_item"
         unique_together = ("payment", "invoice")
+
+
+class AgencyInvoiceAllocation(models.Model):
+    """v1.35.1: which money settles which invoice (apps/agency/allocation.py). kind:
+    payment = an agency checkout (AgencyPayment), manual = a staff «ثبت پرداخت» ledger entry,
+    adjustment = a «کاهش بدهی» adjustment, outside = «تسویه خارج از سیستم» (no ledger entry, the charge stays),
+    balance = the admin's ledger balance already covered it (credit with no single source).
+    Rows are never deleted: voiding the source releases them (`released`)."""
+    PAYMENT, MANUAL, ADJUSTMENT, OUTSIDE, BALANCE = "payment", "manual", "adjustment", "outside", "balance"
+    KINDS = [(PAYMENT, "Agency payment"), (MANUAL, "Manual payment"), (ADJUSTMENT, "Adjustment"),
+             (OUTSIDE, "Paid outside the system"), (BALANCE, "Covered by the balance")]
+
+    invoice = models.ForeignKey(AgencyInvoice, on_delete=models.CASCADE, related_name="allocations")
+    kind = models.CharField(max_length=12, choices=KINDS)
+    amount = models.DecimalField(max_digits=14, decimal_places=0)
+    ledger_entry = models.ForeignKey(LedgerEntry, null=True, blank=True, on_delete=models.SET_NULL, related_name="allocations")
+    agency_payment = models.ForeignKey(AgencyPayment, null=True, blank=True, on_delete=models.SET_NULL, related_name="allocations")
+    auto = models.BooleanField(default=False, help_text="allocated oldest-first / by the invariant, not chosen by staff")
+    note = models.CharField(max_length=255, blank=True, default="")
+    created_by = models.CharField(max_length=150, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    released = models.BooleanField(default=False)
+    released_at = models.DateTimeField(null=True, blank=True)
+    release_reason = models.CharField(max_length=255, blank=True, default="")
+
+    class Meta:
+        db_table = "agency_invoice_allocation"
+        ordering = ("id",)
 
 
 class AgencyNotice(models.Model):

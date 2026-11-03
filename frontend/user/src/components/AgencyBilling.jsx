@@ -11,6 +11,8 @@ export const BT = {
   fa: {
     inv_h: 'فاکتورها', unpaid_total: 'جمع پرداخت‌نشده', pay: 'پرداخت', none_inv: 'فاکتوری ندارید.',
     st_unpaid: 'پرداخت‌نشده', st_pending: 'در حال بررسی', st_paid: 'پرداخت‌شده', st_voided: 'باطل‌شده',
+    sv_payment: 'پرداخت‌شده', sv_manual: 'پرداخت‌شده (دستی)', sv_adjustment: 'تسویه با اصلاحیه', sv_outside: 'تسویه خارج از سیستم',
+    sv_balance: 'تسویه با مانده حساب', sv_mixed: 'پرداخت‌شده', st_partial: 'پرداخت جزئی', paid_rem: 'پرداخت‌شده {p} · مانده {r}',
     k_quota_charge: 'شارژ حجم', k_manual_charge: 'بدهکاری', k_request: 'درخواست / مدیر گروه', k_settlement: 'تسویه مانده قبلی',
     req_h: 'درخواست شارژ', req_for: 'درخواست شارژ برای: {u}', gb: 'حجم (گیگ)', note: 'یادداشت (اختیاری)', send: 'ارسال درخواست', preview: 'مبلغ: {gb} گیگ × {p} = {a}',
     no_price: 'قیمت هر گیگ برای این ادمین تعریف نشده', my_req: 'درخواست‌های من', none_req: 'درخواستی ثبت نکرده‌اید.',
@@ -25,6 +27,8 @@ export const BT = {
   en: {
     inv_h: 'Invoices', unpaid_total: 'Total unpaid', pay: 'Pay', none_inv: 'No invoices.',
     st_unpaid: 'Unpaid', st_pending: 'Pending review', st_paid: 'Paid', st_voided: 'Voided',
+    sv_payment: 'Paid', sv_manual: 'Paid (manual)', sv_adjustment: 'Settled by adjustment', sv_outside: 'Settled outside the system',
+    sv_balance: 'Settled by the balance', sv_mixed: 'Paid', st_partial: 'Partly paid', paid_rem: 'paid {p} · {r} left',
     k_quota_charge: 'Volume', k_manual_charge: 'Charge', k_request: 'Request / group manager', k_settlement: 'Previous balance',
     req_h: 'Request volume', req_for: 'Volume request for: {u}', gb: 'Volume (GB)', note: 'Note (optional)', send: 'Send request', preview: 'Amount: {gb} GB × {p} = {a}',
     no_price: 'No price per GB is set for this admin', my_req: 'My requests', none_req: 'No requests yet.',
@@ -45,6 +49,12 @@ const errL = (e, lang, f) => {
 }
 const B = ({ children }) => <bdi dir="ltr" className="ab-num">{children}</bdi>
 const gbt = (v) => Number(v || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })
+// v1.35.1: how an invoice was settled / partly paid (the rest is what a payment asks for)
+const invSt = (r, s) => (r.status === 'paid' && r.settled_via && s['sv_' + r.settled_via]) || (r.partial ? s.st_partial : s['st_' + r.status])
+function InvAmount({ r, s, lang }) {
+  return <span className="ab-amt"><b><B>{toman(r.partial ? r.remaining : r.amount, lang)}</B></b>
+    {r.partial && <small className="ab-muted"><B>{s.paid_rem.replace('{p}', toman(r.paid_amount, lang)).replace('{r}', toman(r.remaining, lang))}</B></small>}</span>
+}
 
 export function PortalBilling({ http, lang, onChange, me }) {
   const s = BT[lang] || BT.fa
@@ -74,10 +84,10 @@ export function PortalBilling({ http, lang, onChange, me }) {
           <ul className="ab-list">
             {inv.results.map((r) => (
               <li key={r.id} className="ab-inv" data-st={r.status}>
-                <div className="ab-inv-top"><b><B>{r.number}</B></b><span className="ab-pill" data-st={r.status}>{s['st_' + r.status]}</span></div>
+                <div className="ab-inv-top"><b><B>{r.number}</B></b><span className="ab-pill" data-st={r.partial ? 'partial' : r.status}>{invSt(r, s)}</span></div>
                 <div className="ab-inv-mid">
                   <span>{s['k_' + r.kind]}{r.gb ? <> · <B>{gbt(r.gb)} GB</B></> : null}{r.admin ? <> · <bdi>{r.admin}</bdi></> : null}</span>
-                  <b><B>{toman(r.amount, lang)}</B></b>
+                  <InvAmount r={r} s={s} lang={lang} />
                 </div>
                 <div className="ab-inv-bot"><span className="ab-muted">{jalali(r.created_at, false, lang)}</span>
                   {r.status === 'unpaid' && <button type="button" className="ab-btn" onClick={() => startPay(r.id)} data-testid="ab-pay">{s.pay}</button>}
@@ -241,6 +251,9 @@ export const AB_CSS = `
 .ab-inv { border: 1px solid var(--c-border); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .ab-inv-top, .ab-inv-mid, .ab-inv-bot { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 13.5px; }
 .ab-pill { font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; color: var(--c-warning-fg); background: color-mix(in srgb, var(--c-warning) 14%, transparent); }
+.ab-amt { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: end; }
+.ab-amt small { font-size: 11px; }
+.ab-pill[data-st="partial"] { color: var(--c-primary-fg, var(--c-text)); background: color-mix(in srgb, var(--c-primary, #1464BA) 13%, transparent); }
 .ab-pill[data-st="paid"], .ab-pill[data-st="approved"] { color: var(--c-success-fg); background: color-mix(in srgb, var(--c-success) 14%, transparent); }
 .ab-pill[data-st="voided"], .ab-pill[data-st="rejected"] { color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 12%, transparent); }
 .ab-pill[data-st="pending"] { color: var(--c-primary-fg, var(--c-primary)); background: color-mix(in srgb, var(--c-primary) 12%, transparent); }

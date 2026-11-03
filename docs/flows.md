@@ -702,6 +702,25 @@ sequenceDiagram
     G->>B: pay invoices / old balance — refused for admins whose invoices the admin pays (one place only)
 ```
 
+## 5c7. Invoices and the ledger (v1.35.1)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor S as Staff (admin page → Accounting)
+    participant L as ledger.add_entry
+    participant A as allocation
+    participant I as agency_invoice
+
+    S->>L: «ثبت پرداخت» / «کاهش بدهی» (settle: auto | selected + invoice ids | none)
+    L->>A: apply_entry → allocate (chosen order or oldest first, last one partial)
+    A->>I: allocation rows → paid_amount, status paid («دستی» / «اصلاحیه») or partial
+    L->>A: enforce: open invoices ≤ max(0, balance)? else settle the excess oldest first
+    S->>A: «تسویه خارج از سیستم» → invoice settled, charge + balance unchanged
+    S->>L: void a payment / adjustment → its allocations released → invoices open again
+    Note over A,I: a new invoice also runs enforce (credit paid before the charge settles it)
+```
+
 ## 9. Staff Telegram linking
 
 ```mermaid

@@ -197,6 +197,10 @@ def issue_for_entry(entry: LedgerEntry | None, *, volume_request: VolumeRequest 
         gb=entry.gb, price_per_gb=entry.price_per_gb, amount=entry.amount, ledger_entry=entry,
         volume_request=volume_request, note=(entry.note or "")[:255], created_by=(by or entry.created_by or "")[:150])
     transaction.on_commit(lambda: _issued(inv))
+    from . import allocation
+
+    allocation.enforce(entry.admin_username, by=by or "system")     # credit paid before this charge covers it
+    inv.refresh_from_db()
     return inv
 
 
@@ -212,11 +216,10 @@ def _issued(inv: AgencyInvoice) -> None:
 
 
 def open_total(username: str) -> Decimal:
-    from django.db.models import Sum
+    """What is still owed on open invoices (partial payments taken off)."""
+    from . import allocation
 
-    return (AgencyInvoice.objects.filter(admin_username=username,
-                                         status__in=(AgencyInvoice.UNPAID, AgencyInvoice.PENDING))
-            .aggregate(s=Sum("amount"))["s"] or D0)
+    return allocation.open_remaining(username)
 
 
 def settlement_quote(username: str) -> dict:
@@ -225,7 +228,10 @@ def settlement_quote(username: str) -> dict:
     bal = ledger.balances().get(username, D0)
     existing = AgencyInvoice.objects.filter(admin_username=username, kind=AgencyInvoice.KIND_SETTLEMENT) \
         .exclude(status=AgencyInvoice.VOIDED).first()
-    amount = bal - open_total(username)
+    from . import allocation
+
+    # v1.35.1: an invoice settled outside the system keeps its charge in the balance — not "old balance"
+    amount = bal - open_total(username) - allocation.outside_total(username)
     return {"balance": bal, "open_invoices": open_total(username), "amount": max(D0, amount),
             "existing": existing.number if existing else None, "allowed": existing is None and amount > 0}
 
@@ -255,6 +261,8 @@ def issue_settlement(username: str, *, by: str = "") -> AgencyInvoice:
 def void_invoice(invoice_id: int, *, reason: str, by: str = "") -> AgencyInvoice:
     from . import ledger
 
+    from . import allocation
+
     inv = AgencyInvoice.objects.select_for_update().filter(pk=invoice_id).first()
     if inv is None:
         raise BillingError("invoice not found", "not_found")
@@ -266,20 +274,27 @@ def void_invoice(invoice_id: int, *, reason: str, by: str = "") -> AgencyInvoice
     _cancel_open_payments([inv.id])
     inv.status, inv.voided_at, inv.void_reason = AgencyInvoice.VOIDED, timezone.now(), reason.strip()[:255]
     inv.save(update_fields=["status", "voided_at", "void_reason"])
+    allocation.on_invoice_void(inv)                 # a partial payment on it is free again
     if inv.ledger_entry_id and not inv.ledger_entry.voided:
         ledger.void(inv.ledger_entry_id, f"invoice {inv.number} voided: {reason}", by=by, _from_invoice=True)
+    allocation.enforce(inv.admin_username, by=by or "system")
     return inv
 
 
 def on_ledger_void(entry: LedgerEntry) -> None:
     """A voided charge takes its unpaid invoice with it."""
+    from . import allocation
+
     for inv in AgencyInvoice.objects.select_for_update().filter(ledger_entry=entry, status=AgencyInvoice.UNPAID):
         _cancel_open_payments([inv.id])
         inv.status, inv.voided_at, inv.void_reason = AgencyInvoice.VOIDED, timezone.now(), "charge voided"
         inv.save(update_fields=["status", "voided_at", "void_reason"])
+        allocation.on_invoice_void(inv)
 
 
 def invoice_row(inv: AgencyInvoice) -> dict:
+    from . import allocation
+
     open_p = (AgencyPayment.objects.filter(items__invoice=inv, status__in=AgencyPayment.ACTIVE)
               .order_by("-id").values_list("id", "status").first())
     return {"id": inv.id, "number": inv.number, "admin": inv.admin_username, "group": inv.group_name,
@@ -287,18 +302,22 @@ def invoice_row(inv: AgencyInvoice) -> dict:
             "amount": inv.amount, "status": inv.status, "note": inv.note, "created_at": inv.created_at,
             "paid_at": inv.paid_at, "voided_at": inv.voided_at, "void_reason": inv.void_reason,
             "request": inv.volume_request_id,
-            "open_payment": {"id": open_p[0], "status": open_p[1]} if open_p else None}
+            "open_payment": {"id": open_p[0], "status": open_p[1]} if open_p else None,
+            # v1.35.1: partial payments / how it was settled
+            "paid_amount": inv.paid_amount, "remaining": allocation.remaining(inv), "settled_via": inv.settled_via,
+            "partial": inv.status in allocation.OPEN and inv.paid_amount > 0,
+            "allocations": [allocation.row(a) for a in inv.allocations.filter(released=False).select_related("agency_payment")]}
 
 
 def invoices_payload(usernames: list[str], status: str | None = None) -> dict:
     qs = AgencyInvoice.objects.filter(admin_username__in=usernames)
     if status and status != "all":
         qs = qs.filter(status=status)
+    from . import allocation
+
     rows = [invoice_row(i) for i in qs[:500]]
     unpaid = AgencyInvoice.objects.filter(admin_username__in=usernames, status=AgencyInvoice.UNPAID)
-    from django.db.models import Sum
-
-    return {"results": rows, "unpaid_total": unpaid.aggregate(s=Sum("amount"))["s"] or D0,
+    return {"results": rows, "unpaid_total": sum((allocation.remaining(i) for i in unpaid), D0),
             "unpaid_count": unpaid.count(),
             "pending_count": AgencyInvoice.objects.filter(admin_username__in=usernames,
                                                           status=AgencyInvoice.PENDING).count()}
@@ -505,7 +524,12 @@ def create_payment(invoice_ids: list[int], *, payer_kind: str, payer_username: s
         raise BillingError(f"already paid, voided or under review: {', '.join(bad)}", "conflict",
                            fa=f"این فاکتورها پرداخت‌شده، باطل یا در حال بررسی‌اند: {', '.join(bad)}")
     _cancel_open_payments(ids)                     # a new checkout replaces an unfinished one
-    total = sum((i.amount for i in invs), D0)
+    from . import allocation
+
+    owed = {i.id: allocation.remaining(i) for i in invs}   # v1.35.1: a partly paid invoice → only the rest
+    total = sum(owed.values(), D0)
+    if total <= 0:
+        raise BillingError("nothing left to pay on these invoices", "conflict", fa="مبلغی برای پرداخت باقی نمانده")
     p = AgencyPayment(payer_kind=payer_kind, payer_username=payer_username, manager=manager, amount=total,
                       unique_expire_at=_reservation_deadline(), bank_card=default_bank_card())
     for extra in _surcharges():
@@ -522,7 +546,7 @@ def create_payment(invoice_ids: list[int], *, payer_kind: str, payer_username: s
     else:
         raise BillingError("could not reserve a unique amount right now — try again", "busy",
                            fa="الان مبلغ یکتا رزرو نشد — دوباره تلاش کنید")
-    AgencyPaymentItem.objects.bulk_create([AgencyPaymentItem(payment=p, invoice=i, amount=i.amount) for i in invs])
+    AgencyPaymentItem.objects.bulk_create([AgencyPaymentItem(payment=p, invoice=i, amount=owed[i.id]) for i in invs])
     write_audit(action="agency.payment.created", staff=f"agency:{payer_username}", target=p,
                 detail={"invoices": [i.number for i in invs], "amount": str(total), "unique": str(p.amount_unique),
                         "payer": payer_kind})
@@ -610,7 +634,7 @@ def cancel_payment(payment_id: int, *, payer_check) -> AgencyPayment:
     return p
 
 
-def _ledger_payments(p: AgencyPayment, paid: Decimal, by: str) -> None:
+def _ledger_payments(p: AgencyPayment, paid: Decimal, by: str) -> dict[str, LedgerEntry]:
     """One payment entry per admin (balance down). A rounded shortfall stays owed."""
     per: dict[str, Decimal] = {}
     for it in p.items.select_related("invoice"):
@@ -621,11 +645,13 @@ def _ledger_payments(p: AgencyPayment, paid: Decimal, by: str) -> None:
         cut = min(short, per[n])
         per[n] -= cut
         short -= cut
+    out = {}
     for n in names:
         if per[n] > 0:
-            LedgerEntry.objects.create(admin_username=n, kind=LedgerEntry.KIND_PAYMENT, amount=per[n],
-                                       date=timezone.localdate(), method="card",
-                                       note=f"agency payment {p.number}"[:255], created_by=by[:150])
+            out[n] = LedgerEntry.objects.create(admin_username=n, kind=LedgerEntry.KIND_PAYMENT, amount=per[n],
+                                                date=timezone.localdate(), method="card",
+                                                note=f"agency payment {p.number}"[:255], created_by=by[:150])
+    return out
 
 
 @transaction.atomic
@@ -666,10 +692,10 @@ def approve_payment(payment_id: int, *, staff=None, source: str = "manual", depo
         p.auto_rule, p.auto_reason = "rounded", rounded
     p.shortfall = (p.amount - covered) if covered < p.amount else None
     p.save()
-    _ledger_payments(p, covered, by)
-    now = timezone.now()
-    AgencyInvoice.objects.filter(payment_items__payment=p).exclude(status=AgencyInvoice.VOIDED) \
-        .update(status=AgencyInvoice.PAID, paid_at=now)
+    entries = _ledger_payments(p, covered, by)
+    from . import allocation
+
+    allocation.allocate_agency_payment(p, entries, by)     # invoices paid through allocation rows
     write_audit(action="agency.payment.approved", staff=staff if staff is not None else "system", target=p,
                 detail={"payment": p.number, "source": source, "paid": str(paid), "amount": str(p.amount),
                         "shortfall": str(p.shortfall) if p.shortfall else None,
@@ -952,7 +978,9 @@ def admin_balances(usernames: list[str]) -> list[dict]:
     out = []
     for n in usernames:
         q = settlement_quote(n)
+        from . import allocation
+
         out.append({"admin": n, "balance": bal.get(n, D0), "open_invoices": q["open_invoices"],
                     "old_balance": q["amount"], "settlement": q["existing"], "can_settle": q["allowed"],
-                    "payer": payer_for(n)})
+                    "payer": payer_for(n), "mismatch": allocation.mismatch(n)})
     return out

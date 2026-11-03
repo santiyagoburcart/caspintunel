@@ -702,6 +702,11 @@ information only — it is configured on the Iran server).
   rounded rule (receipt or a payer card that paid this payer before), duplicates. Staff review in Agency →
   Accounting → «واریزهای نمایندگان» (`agency.payments`). Never counted in customer revenue, Transactions,
   Analytics or the customer queue; its own badge (`/admin/agency/payments/badge/`, live `agency_review`).
+- v1.35.1 `apps/agency/allocation.py`: invoices are settled by `AgencyInvoiceAllocation` rows (payment = agency checkout,
+  manual = staff «ثبت پرداخت», adjustment = «کاهش بدهی», outside = «تسویه خارج از سیستم» without a ledger entry, balance =
+  covered by credit); `paid_amount` / `settled_via` on the invoice, partial = unpaid with a remainder. `ledger.add_entry(settle=
+  auto|selected|none, invoice_ids)`; `enforce` keeps open invoices ≤ ledger debt after every entry, void and new invoice;
+  voiding a source releases its rows. `manage.py reconcile_agency_invoices [--apply]` (preview by default).
 - Alerts (Telegram + panel + sound / push): new admin request, receipt uploaded, auto-approved, mismatch, waiting
   > `pending_payment_alert_minutes` (`pending_alert._agency`). Unfinished checkouts expire with the order
   reservations (`expire_stale_reservations_task`).

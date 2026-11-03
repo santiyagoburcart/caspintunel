@@ -318,9 +318,11 @@ class AgencyLedgerView(AdminAPIView):
             elif what == "entries":
                 e = ledger.add_entry(username, d.get("kind"), d.get("amount"), _date(d.get("date")) or ledger.today(),
                                      method=d.get("method", ""), note=d.get("note", ""), by=by, gb=d.get("gb"),
-                                     direction=d.get("direction"))
+                                     direction=d.get("direction"), settle=d.get("settle") or None,
+                                     invoice_ids=d.get("invoice_ids") or None)
                 write_audit(action=f"agency.ledger_{e.kind}", staff=request.user, target=e,
-                            detail={"admin": username, "amount": str(e.amount)})
+                            detail={"admin": username, "amount": str(e.amount), "settle": d.get("settle") or "auto",
+                                    "settles": [f"INV-{a.invoice_id:06d}:{a.amount}" for a in e.allocations.all()]})
             else:
                 raise Http404
         except _Bad as exc:

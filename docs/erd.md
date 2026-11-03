@@ -483,6 +483,19 @@ erDiagram
         string status "unpaid | pending | paid | voided"
         bigint ledger_entry_id FK "the charge (none for settlement)"
         bigint volume_request_id FK
+        decimal paid_amount "v1.35.1 active allocations"
+        string settled_via "payment | manual | adjustment | outside | balance | mixed"
+    }
+
+    agency_invoice_allocation {
+        bigint id PK
+        bigint invoice_id FK
+        string kind "payment | manual | adjustment | outside | balance"
+        decimal amount
+        bigint ledger_entry_id FK "the payment / adjustment (none for outside)"
+        bigint agency_payment_id FK
+        bool auto "oldest first / invariant"
+        bool released "source voided"
     }
 
     agency_payment {
@@ -529,6 +542,9 @@ erDiagram
     agency_ledger_entry ||--o{ agency_invoice : "charge"
     agency_payment ||--|{ agency_payment_item : "covers"
     agency_invoice ||--o{ agency_payment_item : "paid by"
+    agency_invoice ||--o{ agency_invoice_allocation : "settled by"
+    agency_ledger_entry ||--o{ agency_invoice_allocation : "money"
+    agency_payment ||--o{ agency_invoice_allocation : "checkout"
 ```
 
 | Table | Description |
@@ -547,6 +563,7 @@ erDiagram
 | `agency_invoice` | v1.34: one per agency charge (staff limit raise, manual charge, approved group-manager volume / admin request) = GB × price; or one «تسویه مانده قبلی» per admin for balances from before invoices (no ledger entry). Voiding an unpaid invoice voids its charge. |
 | `agency_payment` | v1.34: an agency admin (portal, one invoice) or a group manager (several of its groups' invoices) paying the full total. Unique amount from the same pool as customer orders; matched by SMS / Blu like orders; approval = invoices paid + payment entries in the ledger. Never in customer revenue / Transactions. |
 | `agency_payment_item` | Which invoices a payment covers (and their amounts). |
+| `agency_invoice_allocation` | v1.35.1: which money settles which invoice (agency checkout, manual ledger payment, «کاهش بدهی», «تسویه خارج از سیستم», covered by the balance); partial allowed; released when the source is voided. Keeps open invoices ≤ the ledger debt. |
 | `agency_admin_setting` | v1.35 per-admin options: `/agency/` sign-in by the rule / allowed / blocked. |
 | `agency_notice` | Notifications in the /agency/ portal (admin) or the group-manager panel (request approved / rejected, invoice issued, payment approved / rejected). |
 | `agency_ledger_entry` | The reseller's account: automatic quota charges on limit increases, manual charges, signed adjustments, payments; voidable, never deleted. Balance = charges − payments. |

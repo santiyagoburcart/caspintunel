@@ -19,7 +19,12 @@ const T = {
   fa: {
     inv_h: 'فاکتورهای نمایندگان', pay_h: 'واریزهای نمایندگان', none: 'موردی نیست.', admin: 'ادمین', group: 'گروه', amount: 'مبلغ',
     status: 'وضعیت', date: 'تاریخ', kind: 'نوع', void: 'باطل کردن', void_t: 'باطل کردن فاکتور', void_reason: 'دلیل',
-    void_msg: 'فاکتور و شارژ آن (در صورت وجود) باطل می‌شوند و از بدهی ادمین کم می‌شوند.',
+    void_msg: 'باطل کردن یعنی این فاکتور اشتباه بوده: فاکتور و شارژ آن هر دو حذف می‌شوند و مبلغ از بدهی ادمین کم می‌شود. اگر پول را بیرون از سیستم گرفته‌اید، به‌جای این «تسویه خارج از سیستم» را بزنید.',
+    out: 'تسویه خارج از سیستم', out_t: 'تسویه خارج از سیستم', out_note: 'یادداشت (مثلاً پرداخت ماه قبل)',
+    out_msg: 'فاکتور تسویه‌شده علامت می‌خورد؛ شارژ آن باطل نمی‌شود و بدهی دفتر حساب تغییر نمی‌کند. برای پولی که بیرون از سیستم (مثلاً ماه‌های قبل) گرفته شده.',
+    sv_payment: 'پرداخت‌شده', sv_manual: 'پرداخت‌شده (دستی)', sv_adjustment: 'تسویه با اصلاحیه', sv_outside: 'تسویه خارج از سیستم',
+    sv_balance: 'تسویه با مانده حساب', sv_mixed: 'پرداخت‌شده', st_partial: 'پرداخت جزئی', paid_rem: 'پرداخت‌شده {p} · مانده {r}',
+    mismatch: 'ناهماهنگی با دفتر حساب: جمع فاکتورهای پرداخت‌نشده ({o}) از بدهی ({b}) بیشتر است — یک پرداخت یا اصلاحیه را به فاکتورها وصل کنید.',
     st_unpaid: 'پرداخت‌نشده', st_pending: 'در حال بررسی', st_paid: 'پرداخت‌شده', st_voided: 'باطل‌شده', all: 'همه',
     k_quota_charge: 'شارژ حجم', k_manual_charge: 'بدهکاری', k_request: 'درخواست / مدیر گروه', k_settlement: 'تسویه مانده قبلی',
     f_review: 'در انتظار بررسی', f_open: 'باز', p_approved: 'تأییدشده', p_rejected: 'ردشده', p_pending_payment: 'در انتظار واریز',
@@ -42,7 +47,12 @@ const T = {
   en: {
     inv_h: 'Agency invoices', pay_h: 'Agency payments', none: 'Nothing here.', admin: 'Admin', group: 'Group', amount: 'Amount',
     status: 'Status', date: 'Date', kind: 'Kind', void: 'Void', void_t: 'Void invoice', void_reason: 'Reason',
-    void_msg: 'The invoice and its charge (if any) are voided and leave the admin’s balance.',
+    void_msg: 'Voiding means this invoice was a mistake: the invoice AND its charge are removed and the amount leaves the admin’s debt. If the money was received outside the system, use “Settle outside the system” instead.',
+    out: 'Settle outside the system', out_t: 'Settle outside the system', out_note: 'Note (e.g. paid last month)',
+    out_msg: 'The invoice is marked settled; its charge is NOT voided and the ledger balance does not change. For money received outside the system (e.g. earlier months).',
+    sv_payment: 'Paid', sv_manual: 'Paid (manual)', sv_adjustment: 'Settled by adjustment', sv_outside: 'Settled outside the system',
+    sv_balance: 'Settled by the balance', sv_mixed: 'Paid', st_partial: 'Partly paid', paid_rem: 'paid {p} · {r} left',
+    mismatch: 'Out of sync with the ledger: unpaid invoices ({o}) exceed the debt ({b}) — link a payment or adjustment to the invoices.',
     st_unpaid: 'Unpaid', st_pending: 'Under review', st_paid: 'Paid', st_voided: 'Voided', all: 'All',
     k_quota_charge: 'Volume', k_manual_charge: 'Charge', k_request: 'Request / group manager', k_settlement: 'Previous balance',
     f_review: 'Waiting for review', f_open: 'Open', p_approved: 'Approved', p_rejected: 'Rejected', p_pending_payment: 'Waiting for transfer',
@@ -67,7 +77,10 @@ const useT = () => { const { lang } = useI18n(); return [T[lang] || T.fa, lang] 
 const N = ({ children }) => <bdi dir="ltr" className="mono-num">{children}</bdi>
 const gbt = (v) => Number(v || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })
 
-function InvoiceRows({ rows, s, lang, onVoid, showAdmin = true }) {
+// v1.35.1: how an invoice was settled / partly paid
+export const invStatus = (r, s) => (r.status === 'paid' && r.settled_via && s['sv_' + r.settled_via]) || (r.partial ? s.st_partial : s['st_' + r.status])
+
+function InvoiceRows({ rows, s, lang, onVoid, onOutside, showAdmin = true }) {
   return (
     <div className="ab-tbl-wrap"><table className="ab-tbl">
       <thead><tr><th>#</th>{showAdmin && <th>{s.admin}</th>}<th>{s.kind}</th><th>{s.amount}</th><th>{s.status}</th><th>{s.date}</th><th /></tr></thead>
@@ -76,10 +89,14 @@ function InvoiceRows({ rows, s, lang, onVoid, showAdmin = true }) {
           <td data-label="#"><N>{r.number}</N></td>
           {showAdmin && <td data-label={s.admin}><Link to={`/agency/admins/${encodeURIComponent(r.admin)}/accounting`}>{r.admin}</Link>{r.group && <small className="ab-sub">{r.group}</small>}</td>}
           <td data-label={s.kind}>{s['k_' + r.kind]}{r.gb ? <small className="ab-sub"><N>{gbt(r.gb)} GB × {toman(r.price_per_gb, lang)}</N></small> : null}</td>
-          <td data-label={s.amount}><N>{toman(r.amount, lang)}</N></td>
-          <td data-label={s.status}><span className="ab-pill" data-st={r.status}>{s['st_' + r.status]}</span>{r.void_reason && <small className="ab-sub">{r.void_reason}</small>}</td>
+          <td data-label={s.amount}><N>{toman(r.amount, lang)}</N>{r.partial && <small className="ab-sub"><N>{s.paid_rem.replace('{p}', toman(r.paid_amount, lang)).replace('{r}', toman(r.remaining, lang))}</N></small>}</td>
+          <td data-label={s.status}><span className="ab-pill" data-st={r.partial ? 'partial' : r.status} data-via={r.settled_via || undefined}>{invStatus(r, s)}</span>
+            {r.void_reason && <small className="ab-sub">{r.void_reason}</small>}
+            {r.settled_via === 'outside' && r.allocations?.[0]?.note && <small className="ab-sub">{r.allocations[0].note}</small>}</td>
           <td data-label={s.date}><N>{jalali(r.created_at, false, lang)}</N></td>
-          <td>{r.status === 'unpaid' && onVoid && <button type="button" className="ab-mini" onClick={() => onVoid(r)}>{s.void}</button>}</td>
+          <td>{r.status === 'unpaid' && (onVoid || onOutside) && <div className="ab-acts">
+            {onOutside && <button type="button" className="ab-mini ab-mini--ok" onClick={() => onOutside(r)} data-testid="inv-outside">{s.out}</button>}
+            {onVoid && <button type="button" className="ab-mini" onClick={() => onVoid(r)}>{s.void}</button>}</div>}</td>
         </tr>))}</tbody>
     </table></div>
   )
@@ -90,7 +107,22 @@ function useVoid(s, done) {
   return (r) => confirm({
     tone: 'danger', title: s.void_t, targetLabel: '#', targetId: r.number, message: s.void_msg, confirmLabel: s.void,
     reason: { label: s.void_reason, required: true },
-    action: async (reason) => { await api.post(`/admin/agency/invoices/${r.id}/void/`, { reason }); done() },
+    action: async (reason) => {
+      await api.post(`/admin/agency/invoices/${r.id}/void/`, { reason }); done()
+      window.dispatchEvent(new CustomEvent('ct:agency-ledger', { detail: { admin: r.admin, from: 'invoices' } }))
+    },
+  })
+}
+
+function useOutside(s, done) {
+  const confirm = useConfirm()
+  return (r) => confirm({
+    tone: 'success', title: s.out_t, targetLabel: '#', targetId: r.number, message: s.out_msg, confirmLabel: s.out,
+    reason: { label: s.out_note, required: false },
+    action: async (note) => {
+      await api.post(`/admin/agency/invoices/${r.id}/settle-outside/`, { note: note || '' }); done()
+      window.dispatchEvent(new CustomEvent('ct:agency-ledger', { detail: { admin: r.admin, from: 'invoices' } }))
+    },
   })
 }
 
@@ -102,6 +134,7 @@ export function AgencyInvoicesView({ Header }) {
   const load = () => api.get('/admin/agency/invoices/', { params: { status: f } }).then((r) => { setD(r.data); setErr('') }).catch((e) => { setErr(apiError(e)); setD({ results: [] }) })
   useEffect(() => { setD(null); load() }, [f])
   const onVoid = useVoid(s, load)
+  const onOutside = useOutside(s, load)
   return (
     <div className="ag space-y-4">
       {Header}
@@ -114,7 +147,7 @@ export function AgencyInvoicesView({ Header }) {
         <div className="ab-seg">{['unpaid', 'pending', 'paid', 'voided', 'all'].map((k) => (
           <button key={k} type="button" className={'ab-segb' + (f === k ? ' on' : '')} onClick={() => setF(k)}>{k === 'all' ? s.all : s['st_' + k]}</button>))}</div>
         {d === null ? <div className="grid place-items-center py-10"><Spinner /></div>
-          : d.results.length === 0 ? <p className="text-sm text-muted">{s.none}</p> : <InvoiceRows rows={d.results} s={s} lang={lang} onVoid={onVoid} />}
+          : d.results.length === 0 ? <p className="text-sm text-muted">{s.none}</p> : <InvoiceRows rows={d.results} s={s} lang={lang} onVoid={onVoid} onOutside={onOutside} />}
       </div>
     </div>
   )
@@ -248,7 +281,13 @@ export function AdminInvoicesCard({ username }) {
   const [d, setD] = useState(null)
   const load = () => api.get('/admin/agency/invoices/', { params: { admin: username, status: 'all' } }).then((r) => setD(r.data)).catch(() => setD(false))
   useEffect(() => { load() }, [username])
+  useEffect(() => {          // a payment / adjustment on the ledger card may settle invoices
+    const on = (e) => { if (e.detail?.admin === username && e.detail?.from !== 'invoices') load() }
+    window.addEventListener('ct:agency-ledger', on)
+    return () => window.removeEventListener('ct:agency-ledger', on)
+  }, [username])
   const onVoid = useVoid(s, load)
+  const onOutside = useOutside(s, load)
   if (!d) return null
   const st = d.settlement
   const settle = () => confirm({ tone: 'primary', title: s.settle_t, targetLabel: s.admin, targetId: username,
@@ -259,10 +298,12 @@ export function AdminInvoicesCard({ username }) {
       <style>{CSS}</style>
       <div className="ab-h"><h3 className="ag-sh" data-ac="blue"><Ic n="doc" size={15} />{s.inv_h}</h3>
         <span className="ab-total">{s.unpaid_total}: <N>{toman(d.unpaid_total, lang)}</N></span></div>
+      {d.mismatch && <p className="ab-warn" data-testid="inv-mismatch">⚠ {s.mismatch.replace('{o}', toman(d.mismatch.open, lang)).replace('{b}', toman(d.mismatch.balance, lang))}</p>}
       {can('agency.accounting') && st && (st.allowed
         ? <button type="button" className="ag-act" data-tone="primary" onClick={settle} data-testid="settle-btn"><Ic n="money" />{s.settle} · <N>{toman(st.amount, lang)}</N></button>
         : st.existing ? <p className="ab-sub">{s.settle} — {s.settle_done.replace('{n}', st.existing)}</p> : null)}
-      {d.results.length === 0 ? <p className="text-sm text-muted mt-2">{s.none}</p> : <InvoiceRows rows={d.results} s={s} lang={lang} onVoid={can('agency.accounting') ? onVoid : null} showAdmin={false} />}
+      {d.results.length === 0 ? <p className="text-sm text-muted mt-2">{s.none}</p> : <InvoiceRows rows={d.results} s={s} lang={lang} onVoid={can('agency.accounting') ? onVoid : null}
+        onOutside={can('agency.accounting') ? onOutside : null} showAdmin={false} />}
     </div>
   )
 }
@@ -285,6 +326,10 @@ const CSS = `
 .ab-pill[data-st="paid"], .ab-pill[data-st="approved"] { color: var(--c-success-fg); background: color-mix(in srgb, var(--c-success) 14%, transparent); }
 .ab-pill[data-st="voided"], .ab-pill[data-st="rejected"], .ab-pill[data-st="cancelled"], .ab-pill[data-st="expired"] { color: var(--c-muted-fg); background: color-mix(in srgb, var(--c-text-muted) 14%, transparent); }
 .ab-pill[data-st="pending"], .ab-pill[data-st="pending_review"] { color: #fff; background: #0891B2; }
+.ab-pill[data-st="partial"] { color: var(--c-primary-fg); background: color-mix(in srgb, var(--c-primary) 13%, transparent); }
+.ab-pill[data-via="outside"], .ab-pill[data-via="adjustment"], .ab-pill[data-via="balance"] { color: var(--c-text); background: color-mix(in srgb, #11AB53 10%, transparent); border: 1px dashed color-mix(in srgb, #11AB53 55%, transparent); }
+.ab-acts { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.ab-mini--ok { border-color: #11AB53 !important; color: var(--c-success-fg) !important; }
 .ab-mini { min-height: 36px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--c-danger); color: var(--c-danger-fg); background: transparent; font-size: 12px; font-weight: 700; }
 .ab-cards { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
 .ab-pcard { border: 1px solid var(--c-border); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }

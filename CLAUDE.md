@@ -212,6 +212,9 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   Analytics and the customer queue. Their unique amounts share the order pool (`agency_locked_amounts` ↔ `customer_locked`).
 - One payer per admin (`billing.payer_for`): the group manager if the admin's group has one, else the admin. Portal access
   = `billing.portal_access` (owner of managed group blocked, sub-admins read-only, `AgencyAdminSetting` override).
+- v1.35.1: invoices are settled ONLY through `allocation.py` rows (never set `AgencyInvoice.status` to paid by hand):
+  ledger payment / «کاهش بدهی» → `apply_entry`, checkout → `allocate_agency_payment`, «تسویه خارج از سیستم» → `settle_outside`.
+  Invariant (`enforce`, after every entry / void / invoice): open invoices ≤ max(0, ledger balance).
 - SMS / Blu: customer orders are matched first, agency payments after (`billing.match_deposit`, `near`, rounded
   candidates); a deposit equal to both is held for review (`hold_ambiguous`).
 

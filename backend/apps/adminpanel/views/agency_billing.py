@@ -4,6 +4,7 @@ GET  agency/invoices/?admin=&status=&group=          agency.accounting
 GET  agency/invoices/settlement/?admin=              quote of «تسویه مانده قبلی»   (agency.accounting)
 POST agency/invoices/settlement/ {admin}             issue it (once per admin)
 POST agency/invoices/<id>/void/ {reason}             unpaid only, voids its charge too
+POST agency/invoices/<id>/settle-outside/ {note}     v1.35.1 «تسویه خارج از سیستم»: settled, charge + ledger unchanged
 GET  agency/payments/?status=review|all|<status>     «واریزهای نمایندگان»            (agency.payments)
 GET  agency/payments/badge/                          waiting for review (agency.view)
 POST agency/payments/<id>/approve/ · reject/ {reason}
@@ -52,7 +53,11 @@ class AgencyInvoicesView(_B):
         if q.get("group"):
             data["results"] = [r for r in data["results"] if str(r["group_id"]) == str(q["group"])]
         if q.get("admin"):
+            from apps.agency import allocation
+
             data["settlement"] = B.settlement_quote(q["admin"])
+            data["mismatch"] = allocation.mismatch(q["admin"])
+            data["balance"] = allocation.balance_of(q["admin"])
         return Response(data)
 
 
@@ -82,6 +87,21 @@ class AgencyInvoiceVoidView(_B):
         write_audit(action="agency.invoice.voided", staff=request.user, target=inv,
                     detail={"invoice": inv.number, "reason": inv.void_reason})
         return Response(B.invoice_row(inv))
+
+
+class AgencyInvoiceOutsideView(_B):
+    perms_map = {"POST": ACCOUNTING}
+
+    def post(self, request, pk):
+        from apps.agency import allocation
+        from apps.common.models import write_audit
+
+        note = str((request.data or {}).get("note") or "").strip()
+        inv = allocation.settle_outside(pk, note=note, by=request.user.username)
+        write_audit(action="agency.invoice.settled_outside", staff=request.user, target=inv,
+                    detail={"invoice": inv.number, "admin": inv.admin_username, "amount": str(inv.amount), "note": note})
+        return Response({**B.invoice_row(inv), "message": f"Invoice {inv.number} marked as settled outside the system",
+                         "message_fa": f"فاکتور {inv.number} «تسویه خارج از سیستم» شد"})
 
 
 class AgencyPaymentsView(_B):

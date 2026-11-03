@@ -89,11 +89,14 @@ def record_quota_charge(username: str, old_limit_bytes: int, new_limit_bytes: in
     return e
 
 
+@transaction.atomic
 def add_entry(username: str, kind: str, amount, day: date_cls, *, method: str = "", note: str = "", by: str = "",
-              gb=None, direction: str | None = None) -> LedgerEntry:
+              gb=None, direction: str | None = None, settle: str | None = None, invoice_ids=None) -> LedgerEntry:
     """`direction` (v1.33, adjustments): "increase" = owes more, "decrease" = owes less; the
     amount is then a positive number and the sign comes from the direction. Without it the
-    old signed amount is still accepted (API compatibility)."""
+    old signed amount is still accepted (API compatibility).
+    v1.35.1: a payment / decrease settles invoices — `settle` "auto" (oldest first, default),
+    "selected" (`invoice_ids`, in that order) or "none"; then the invariant (allocation.enforce)."""
     if kind not in (LedgerEntry.KIND_CHARGE, LedgerEntry.KIND_ADJUST, LedgerEntry.KIND_PAYMENT):
         raise ValueError("kind must be manual_charge, adjustment or payment")
     amount = _round(Decimal(str(amount)))
@@ -127,6 +130,10 @@ def add_entry(username: str, kind: str, amount, day: date_cls, *, method: str = 
         from .billing import issue_for_entry
 
         issue_for_entry(e, by=by)
+    else:
+        from . import allocation
+
+        allocation.apply_entry(e, settle=settle or "auto", invoice_ids=invoice_ids, by=by)
     return e
 
 
@@ -142,9 +149,11 @@ def void(entry_id: int, reason: str, by: str = "", _from_invoice: bool = False) 
     e.voided, e.void_reason = True, f"{reason.strip()[:200]} ({by})" if by else reason.strip()[:255]
     e.save(update_fields=["voided", "void_reason"])
     if not _from_invoice:
+        from . import allocation
         from .billing import on_ledger_void
 
         on_ledger_void(e)        # its unpaid invoice is voided too
+        allocation.on_entry_void(e)   # v1.35.1: what this payment / adjustment settled is open again
     return e
 
 
@@ -165,7 +174,13 @@ def _fmt(b):
 
 
 def statement(username: str) -> dict:
+    from .models import AgencyInvoiceAllocation
+
     entries = LedgerEntry.objects.filter(admin_username=username).order_by("date", "id")
+    settles: dict[int, list] = {}
+    for a in (AgencyInvoiceAllocation.objects.filter(ledger_entry__admin_username=username, released=False)
+              .values("ledger_entry_id", "invoice_id", "amount")):
+        settles.setdefault(a["ledger_entry_id"], []).append({"invoice": f"INV-{a['invoice_id']:06d}", "amount": a["amount"]})
     running, rows = Decimal(0), []
     charges = payments = Decimal(0)
     for e in entries:
@@ -180,9 +195,12 @@ def statement(username: str) -> dict:
                      "new_limit_bytes": e.new_limit_bytes, "method": e.method, "note": e.note, "note_fa": to_fa(e.note),
                      "old_limit_fmt": _fmt(e.old_limit_bytes), "new_limit_fmt": _fmt(e.new_limit_bytes),
                      "created_by": e.created_by, "voided": e.voided, "void_reason": e.void_reason,
-                     "balance": running})
+                     "balance": running, "settles": settles.get(e.id, [])})
     cur = price_at(username)
+    from . import allocation
+
     return {
+        "invoices_mismatch": allocation.mismatch(username),
         "username": username, "charges": charges, "payments": payments, "balance": charges - payments,
         "entries": rows,
         "price": {"price_per_gb": cur.price_per_gb, "valid_from": cur.valid_from} if cur else None,

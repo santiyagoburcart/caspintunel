@@ -33,6 +33,11 @@ export const LT = {
     charge_hint: 'با واردکردن حجم، مبلغ = حجم × قیمت هر گیگ همان روز (بدون قیمت، شارژ ثبت نمی‌شود). هر شارژ یک فاکتور صادر می‌کند.',
     quota_note: 'با افزایش سقف یک نماینده از همین پنل (پس از انتقال نهایی)، شارژ حجم خودکار ثبت می‌شود: افزایش گیگ × قیمت همان روز.',
     off_panel: 'روی پنل نیست', limit_change: '{a} → {b}',
+    inv_h: 'فاکتورهایی که تسویه می‌شوند', inv_auto: 'خودکار (قدیمی‌ترین اول)', inv_sel: 'انتخاب فاکتورها', inv_none: 'بدون فاکتور',
+    inv_none_hint: 'فاکتورها دست نمی‌خورند؛ فقط اگر جمع فاکتورهای پرداخت‌نشده از بدهی بیشتر شود، قدیمی‌ترین‌ها خودکار تسویه می‌شوند.',
+    inv_empty: 'فاکتور پرداخت‌نشده‌ای ندارد.', inv_pick: 'دست‌کم یک فاکتور انتخاب کنید', inv_full: 'کامل', inv_part: 'جزئی — مانده {r}',
+    inv_will: 'تسویه می‌شود:', inv_left: 'باقی مبلغ ({a}) از بدهی قبلی کم می‌شود.', inv_rem: 'مانده {r}',
+    inc_no_inv: '«افزایش بدهی» به فاکتورها دست نمی‌زند.', settles: 'تسویه', mismatch: 'ناهماهنگی: جمع فاکتورهای پرداخت‌نشده ({o}) از بدهی دفتر ({b}) بیشتر است.',
   },
   en: {
     tab: 'Accounting', title: 'Reseller account', overview: 'Reseller balances', total: 'Total owed', balance: 'Balance',
@@ -51,6 +56,11 @@ export const LT = {
     charge_hint: 'With a volume, the amount = GB × that day\'s price per GB (no price → no charge). Every charge issues an invoice.',
     quota_note: 'Raising a reseller limit from this panel (after the cut-over) records a quota charge automatically: GB increase × that day\'s price.',
     off_panel: 'not on the panel', limit_change: 'limit {a} → {b}',
+    inv_h: 'Invoices this settles', inv_auto: 'Automatic (oldest first)', inv_sel: 'Choose invoices', inv_none: 'No invoices',
+    inv_none_hint: 'Invoices are left alone; only if unpaid invoices would exceed the debt are the oldest settled automatically.',
+    inv_empty: 'No unpaid invoices.', inv_pick: 'Choose at least one invoice', inv_full: 'in full', inv_part: 'partly — {r} left',
+    inv_will: 'Settles:', inv_left: 'The rest ({a}) lowers the older balance.', inv_rem: '{r} left',
+    inc_no_inv: '“Increase debt” never touches invoices.', settles: 'settles', mismatch: 'Out of sync: unpaid invoices ({o}) exceed the ledger debt ({b}).',
   },
 }
 const useLT = () => { const { lang } = useI18n(); return [LT[lang] || LT.fa, lang] }
@@ -69,9 +79,60 @@ export function BalanceText({ value, lang }) {
   return <bdi dir="ltr" className="lg-bal" data-sign={n > 0 ? 'owes' : n < 0 ? 'credit' : 'zero'}>{signed(n, lang)}</bdi>
 }
 
+/** v1.35.1: which unpaid invoices a payment / debt decrease settles — oldest first (default), chosen, or
+ * none (adjustments). The preview mirrors the server (apps/agency/allocation.py): the last one may be partial. */
+function InvoicePick({ s, lang, admin, kind, v, put, amount }) {
+  const [list, setList] = useState(null)
+  useEffect(() => {
+    if (!admin) { setList(null); return }
+    api.get('/admin/agency/invoices/', { params: { admin, status: 'unpaid' } })
+      .then((r) => setList([...r.data.results].reverse())).catch(() => setList([]))
+  }, [admin])
+  if (!admin || list === null) return null
+  const modes = kind === 'payment' ? ['auto', 'selected'] : ['auto', 'selected', 'none']
+  const ids = v.invoice_ids || []
+  const order = v.settle === 'selected' ? list.filter((r) => ids.includes(r.id)) : v.settle === 'none' ? [] : list
+  let left = amount > 0 ? amount : 0
+  const plan = []
+  for (const r of order) {
+    if (left <= 0) break
+    const take = Math.min(left, Number(r.remaining))
+    plan.push({ r, take, rest: Number(r.remaining) - take }); left -= take
+  }
+  const toggle = (id) => put({ ...v, invoice_ids: ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id] })
+  return (
+    <div className="lg-wide lg-inv" data-testid="inv-pick">
+      <span className="lg-inv-h">{s.inv_h}</span>
+      {list.length === 0 ? <p className="lg-hint">{s.inv_empty}</p> : (
+        <>
+          <div className="lg-seg" role="radiogroup" aria-label={s.inv_h}>
+            {modes.map((m) => (
+              <button key={m} type="button" role="radio" aria-checked={v.settle === m} data-on={v.settle === m || undefined}
+                onClick={() => put({ ...v, settle: m })} data-testid={'inv-mode-' + m}>{s['inv_' + (m === 'selected' ? 'sel' : m)]}</button>))}
+          </div>
+          {v.settle === 'selected' && (
+            <ul className="lg-inv-list">{list.map((r) => (
+              <li key={r.id}><label>
+                <input type="checkbox" checked={ids.includes(r.id)} onChange={() => toggle(r.id)} aria-label={r.number} />
+                <bdi dir="ltr">{r.number}</bdi>
+                <span className="lg-inv-amt"><bdi dir="ltr">{toman(r.remaining, lang)}</bdi>{r.partial && <small> / {toman(r.amount, lang)}</small>}</span>
+                <small className="lg-inv-d">{jalali(r.created_at, false, lang)}</small>
+              </label></li>))}</ul>
+          )}
+          {v.settle === 'none' ? <p className="lg-hint">{s.inv_none_hint}</p> : plan.length > 0 && (
+            <p className="lg-inv-plan" data-testid="inv-plan">{s.inv_will}{' '}
+              {plan.map((x, i) => <span key={x.r.id}>{i > 0 && '، '}<bdi dir="ltr">{x.r.number}</bdi> ({x.rest > 0 ? s.inv_part.replace('{r}', toman(x.rest, lang)) : s.inv_full})</span>)}
+              {left > 0 && <> · {s.inv_left.replace('{a}', toman(left, lang))}</>}</p>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 function EntryForm({ s, kind, box, username, admins, lang }) {
   const [v, setV] = useState({ date: todayJ(), amount: '', gb: '', note: '', method: 'card', price: '', direction: '',
-    admin: username || (admins && admins.length === 1 ? admins[0] : '') })
+    admin: username || (admins && admins.length === 1 ? admins[0] : ''), settle: 'auto', invoice_ids: [] })
   const put = (nv) => { setV(nv); Object.assign(box, nv) }
   // v1.33: an adjustment amount is a positive number; the direction buttons give the sign
   const set = (k) => (e) => put({ ...v, [k]: kind === 'adjustment' && k === 'amount' ? e.target.value.replace(/[-−]/g, '') : e.target.value })
@@ -116,11 +177,21 @@ function EntryForm({ s, kind, box, username, admins, lang }) {
         ? <p className="lg-wide lg-result" data-dir={v.direction} data-testid="adj-result">
           {(v.direction === 'increase' ? s.adj_more : s.adj_less).replace('{u}', who).replace('{a}', toman(amt, lang))}</p>
         : <p className="lg-hint lg-wide">{s.adjust_hint}</p>)}
+      {(kind === 'payment' || (kind === 'adjustment' && v.direction === 'decrease')) &&
+        <InvoicePick s={s} lang={lang} admin={v.admin || username} kind={kind} v={v} put={put} amount={amt} />}
+      {kind === 'adjustment' && v.direction === 'increase' && <p className="lg-hint lg-wide">{s.inc_no_inv}</p>}
       {kind === 'price' && <p className="lg-hint lg-wide">{s.price_hint}</p>}
       {kind === 'manual_charge' && <p className="lg-hint lg-wide">{s.charge_hint}</p>}
     </div>
   )
 }
+
+// v1.35.1: the invoice choice of a payment / decrease, and a page event so the invoices card reloads
+const settleBody = (box, s) => {
+  if (box.settle === 'selected' && !(box.invoice_ids || []).length) throw new Error(s.inv_pick)
+  return box.direction === 'increase' ? {} : { settle: box.settle || 'auto', invoice_ids: box.settle === 'selected' ? box.invoice_ids : undefined }
+}
+export const ledgerChanged = (who) => window.dispatchEvent(new CustomEvent('ct:agency-ledger', { detail: { admin: who } }))
 
 /** v1.33 «اصلاحیه»: two buttons (increase / decrease debt), a positive amount and the result in
  * words. `username` for one admin, or `admins` (group statement) to pick one. Existing entries
@@ -139,8 +210,9 @@ export async function addAdjustment({ confirm, s, lang, username, admins, onDone
       let date
       try { date = isoFromJ(box.date) } catch { throw new Error(s.date_hint) }
       const r = await api.post(`/admin/agency/ledger/${encodeURIComponent(who)}/entries/`,
-        { kind: 'adjustment', direction: box.direction, amount, date, note: box.note })
+        { kind: 'adjustment', direction: box.direction, amount, date, note: box.note, ...settleBody(box, s) })
       onDone?.(r.data, who)
+      ledgerChanged(who)
     },
   })
 }
@@ -154,6 +226,11 @@ export function LedgerCard({ username }) {
   const base = `/admin/agency/ledger/${encodeURIComponent(username)}/`
   const load = () => api.get(base).then((r) => { setSt(r.data); setErr('') }).catch((e) => setErr(apiError(e)))
   useEffect(() => { load() }, [username])
+  useEffect(() => {          // an invoice voided / settled on the invoices card
+    const on = (e) => { if (e.detail?.admin === username && e.detail?.from === 'invoices') load() }
+    window.addEventListener('ct:agency-ledger', on)
+    return () => window.removeEventListener('ct:agency-ledger', on)
+  }, [username])
 
   const add = async (kind, title, tone = 'primary') => {
     if (kind === 'adjustment') { await addAdjustment({ confirm, s, lang, username, onDone: setSt }); return }
@@ -165,8 +242,10 @@ export function LedgerCard({ username }) {
         try { date = isoFromJ(box.date) } catch { throw new Error(s.date_hint) }
         const r = kind === 'price'
           ? await api.post(base + 'prices/', { price_per_gb: latin(box.price), valid_from: date, note: box.note })
-          : await api.post(base + 'entries/', { kind, amount: latin(box.amount), date, method: box.method, note: box.note, gb: latin(box.gb) || undefined })
+          : await api.post(base + 'entries/', { kind, amount: latin(box.amount), date, method: box.method, note: box.note, gb: latin(box.gb) || undefined,
+            ...(kind === 'payment' ? settleBody(box, s) : {}) })
         setSt(r.data)
+        if (kind !== 'price') ledgerChanged(username)
       },
     })
   }
@@ -174,7 +253,7 @@ export function LedgerCard({ username }) {
     await confirm({
       tone: 'danger', title: s.void, targetLabel: `${s['k_' + e.kind]} · ${signed(e.amount, lang)}`, confirmLabel: s.void,
       reason: { label: s.void_reason, required: true },
-      action: async (reason) => { const r = await api.post(`/admin/agency/ledger/entries/${e.id}/void/`, { reason }); setSt(r.data) },
+      action: async (reason) => { const r = await api.post(`/admin/agency/ledger/entries/${e.id}/void/`, { reason }); setSt(r.data); ledgerChanged(username) },
     })
   }
   const exportCsv = async () => {
@@ -194,6 +273,7 @@ export function LedgerCard({ username }) {
       <Alert>{err}</Alert>
       {!st ? <div className="grid place-items-center py-8"><Spinner /></div> : (
         <>
+          {st.invoices_mismatch && <p className="lg-mismatch" data-testid="lg-mismatch">⚠ {s.mismatch.replace('{o}', toman(st.invoices_mismatch.open, lang)).replace('{b}', toman(st.invoices_mismatch.balance, lang))}</p>}
           <dl className="ag-nums lg-sum">
             <div><dt>{s.price}</dt><dd>{st.price ? <><bdi dir="ltr">{toman(st.price.price_per_gb, lang)}</bdi><small> · {s.from} {jalali(st.price.valid_from, false, lang)}</small></> : <span className="text-muted">{s.price_none}</span>}</dd></div>
             <div><dt>{s.charges}</dt><dd><bdi dir="ltr">{toman(st.charges, lang)}</bdi></dd></div>
@@ -222,6 +302,7 @@ export function LedgerCard({ username }) {
                     {e.gb && <> · <bdi dir="ltr">{e.gb} GB</bdi></>}{e.price_per_gb && <> × <bdi dir="ltr">{toman(e.price_per_gb, lang)}</bdi></>}
                     {e.method && <> · {s['m_' + e.method]}</>}{e.note && <> · {(lang === 'fa' && e.note_fa) || e.note}</>}{e.created_by && <> · {e.created_by}</>}
                     {e.voided && <> · <b>{s.voided}</b>: {e.void_reason}</>}
+                    {!e.voided && e.settles?.length > 0 && <> · {s.settles}: {e.settles.map((x, i) => <span key={i}>{i > 0 && '، '}<bdi dir="ltr">{x.invoice}</bdi></span>)}</>}
                   </span>
                   {!e.voided && <button type="button" className="lg-void" onClick={() => voidEntry(e)}><Ic n="x" size={13} />{s.void}</button>}
                 </li>
@@ -316,6 +397,19 @@ export const LG_CSS = `
 .lg-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 700; min-width: 0; }
 .lg-form .input { width: 100%; min-width: 0; }
 .lg-form .lg-wide { grid-column: 1 / -1; }
+.lg-inv { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.lg-inv-h { font-size: 12px; font-weight: 700; }
+.lg-seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.lg-seg button { min-height: 44px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--c-border); background: transparent; color: var(--c-text); font-size: 13px; font-weight: 700; }
+.lg-seg button[data-on] { background: var(--c-primary); border-color: var(--c-primary); color: #fff; }
+.lg-inv-list { display: flex; flex-direction: column; border: 1px solid var(--c-border); border-radius: 12px; max-height: 220px; overflow-y: auto; }
+.lg-inv-list li + li { border-top: 1px solid var(--c-border); }
+.lg-inv-list label { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; gap: 8px; align-items: center; min-height: 44px; padding: 4px 10px; font-size: 13px; font-weight: 600; flex-direction: row; }
+.lg-inv-list input { width: 20px; height: 20px; }
+.lg-inv-amt { font-weight: 800; text-align: end; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.lg-inv-amt small, .lg-inv-d { color: var(--c-muted-fg); font-weight: 600; font-size: 11px; }
+.lg-inv-plan { font-size: 12.5px; font-weight: 700; color: var(--c-success-fg); background: color-mix(in srgb, #11AB53 10%, transparent); border-radius: 10px; padding: 8px 10px; overflow-wrap: anywhere; }
+.lg-mismatch { font-size: 12.5px; font-weight: 700; color: var(--c-warning-fg); background: color-mix(in srgb, var(--c-warning) 13%, transparent); border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; }
 .lg-total { display: flex; align-items: center; justify-content: space-between; font-weight: 800; }
 @media (max-width: 767px) {
   .lg-list li { grid-template-columns: auto 1fr; }

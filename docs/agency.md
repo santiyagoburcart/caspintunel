@@ -299,6 +299,25 @@ only). The list API adds `panel_role`, `permissions[{code,en,fa,on}]` and `assig
 - Agency payments never appear in customer Transactions, Accounting revenue, Analytics or the customer queue; Blu
   deposits that paid one are labelled «واریز نماینده» on the Blu tab.
 
+## Invoices and the ledger (v1.35.1)
+
+Invoices are settled by **allocation rows** (`agency_invoice_allocation`, `apps/agency/allocation.py`), not by a status flip:
+- **«ثبت پرداخت»** (admin page → Accounting): staff choose which unpaid invoices it settles, or leave «خودکار (قدیمی‌ترین اول)».
+  Partial is allowed — the invoice shows paid / remaining and stays «پرداخت جزئی»; fully covered → «پرداخت‌شده (دستی)».
+  Money beyond the chosen / open invoices lowers the older (not invoiced) balance.
+- **«اصلاحیه · کاهش بدهی»**: settle selected invoices, oldest first (default) or none → «تسویه با اصلاحیه».
+  **«افزایش بدهی» never touches invoices.**
+- **«تسویه خارج از سیستم»** (invoice action, `agency.accounting`): for money received outside (e.g. older months). The invoice
+  is settled, its charge is NOT voided, the ledger balance does not change, and it is no longer offered as «مانده قبلی».
+  **«باطل کردن»** is different: it removes the invoice AND its charge (the confirm dialog says so).
+- An agency checkout (portal / group manager) settles its invoices the same way («پرداخت‌شده»); a partly paid invoice
+  asks only for the rest.
+- **Invariant**: an admin's open invoice remainder never exceeds its ledger debt (max(0, balance)). After every ledger
+  entry, void and new invoice, `allocation.enforce` settles the excess oldest first, attributed to payments / decreases
+  since the first invoice that still have unallocated credit (e.g. a payment recorded just before the charge), else
+  «تسویه با مانده حساب». Voiding a payment / adjustment re-opens what it settled. The admin page warns when the two
+  differ («ناهماهنگی …»).
+- Old data: `manage.py reconcile_agency_invoices` previews per admin (read-only); `--apply` writes the same plan (audited).
 
 ## Access rules (v1.35)
 
