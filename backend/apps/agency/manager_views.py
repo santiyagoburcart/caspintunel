@@ -105,8 +105,15 @@ class ManagerLoginGoneView(APIView):
     get = post
 
 
-def _admin_row(a: PanelAdmin, cat) -> dict:
+FULL_KEYS = ("total_sold_fmt", "sold_limit_fmt", "sold_limit_value", "hidden_fmt", "user_counts")
+FULL_BYTES = ("total_sold", "sold_limit", "hidden", "hidden_clamped", "deleted")
+
+
+def _admin_row(a: PanelAdmin, cat, full: bool = False) -> dict:
+    """v1.36: `full` (agency.gm.full_stats) = the staff Agency page numbers, same PAMP formulas
+    (api.admin_row / admin_detail); without it those keys never leave the server."""
     from . import api
+    from .enrich import _enrich
 
     row = api.admin_row(a)
     row.pop("groups", None)
@@ -114,7 +121,87 @@ def _admin_row(a: PanelAdmin, cat) -> dict:
     row["role"] = M.mgr_role(role.get("id"), cat)            # v1.27.1: name only
     row["admin_limit_bytes"] = a.admin_limit_bytes if a.has_data_limit else 0
     row["is_sudo"] = a.is_sudo
+    if full:
+        e = _enrich(a)
+        row.update({"deleted_used_fmt": e["deleted_used_fmt"], "hidden_clamped_fmt": a.hidden_traffic_fmt,
+                    "deleted_traffic_reset_at": a.deleted_traffic_reset_at})
+    else:
+        for k in FULL_KEYS:
+            row.pop(k, None)
+        for k in FULL_BYTES:
+            (row.get("bytes") or {}).pop(k, None)
     return row
+
+
+LIVE_TTL = 60
+
+
+def live_stats(usernames: list[str]) -> dict:
+    """v1.36 per admin, live from PasarGuard (read-only, cached 60 s): user counts by status, online now,
+    last time one of its users was online. One failing admin never breaks the others."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    from django.core.cache import cache
+
+    from apps.panel.client import PasarGuardClient
+
+    from .panel_api import agency_panel
+
+    out, todo = {}, []
+    for u in usernames:
+        hit = cache.get(f"agency:gm:live:{u}")
+        if hit is not None:
+            out[u] = hit
+        else:
+            todo.append(u)
+    if not todo:
+        return out
+    c = PasarGuardClient(agency_panel())
+    c._token()                                   # one login in this thread; the workers reuse it
+
+    def one(u):
+        try:
+            s = c._request("GET", "/api/system/users", params={"admin_username": u})
+            last = c._request("GET", "/api/users", params={"admin": u, "sort": "-online_at", "limit": 1})
+            users = (last or {}).get("users") or []
+            row = {"total": s.get("total_user", 0), "online": s.get("online_users", 0), "active": s.get("active_users", 0),
+                   "on_hold": s.get("on_hold_users", 0), "disabled": s.get("disabled_users", 0),
+                   "expired": s.get("expired_users", 0), "limited": s.get("limited_users", 0),
+                   "last_online": users[0].get("online_at") if users else None, "ok": True}
+        except Exception:  # noqa: BLE001 — shown as "—" for this admin
+            return u, {"ok": False}
+        cache.set(f"agency:gm:live:{u}", row, LIVE_TTL)
+        return u, row
+
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        for u, row in ex.map(one, todo):
+            out[u] = row
+    return out
+
+
+class ManagerAdminsLiveView(_Mgr):
+    """v1.36 GET manager/admins/live/?u=a&u=b — live user counts, online, last activity (own groups only)."""
+
+    def get(self, request):
+        self.need("agency.gm.full_stats")
+        mine = set(M.visible_usernames(self.m))
+        names = [u for u in request.query_params.getlist("u") if u in mine][:60]
+        return Response({"results": live_stats(names)})
+
+
+class ManagerAdminStatsView(_Mgr):
+    """v1.36 GET manager/admins/<username>/stats/ — the full numbers of one admin + live counts."""
+
+    def get(self, request, username):
+        self.need("agency.gm.full_stats")
+        if username not in M.visible_usernames(self.m):
+            return Response({"detail": "not an admin of your groups", "detail_fa": "این ادمین در گروه‌های شما نیست"}, status=403)
+        a = PanelAdmin.objects.filter(username=username).first()
+        if a is None:
+            return Response({"detail": "not found"}, status=404)
+        row = _admin_row(a, M._safe_catalog(), full=True)
+        row["live"] = live_stats([username]).get(username, {"ok": False})
+        return Response(row)
 
 
 class ManagerMeView(_Mgr):
@@ -136,7 +223,7 @@ class ManagerMeView(_Mgr):
             rows = []
             for u in (g.get_all_usernames() if see_admins else []):
                 if u in admins:
-                    r = _admin_row(admins[u], cat)
+                    r = _admin_row(admins[u], cat, full=self.request.user.has_perm("agency.gm.full_stats"))
                     r.update({"balance": bal.get(u, 0), "pending": pend.get(u, {"gb": 0, "count": 0}),
                               "member_role": "owner" if u == g.owner_username else "member"})
                     rows.append(r)

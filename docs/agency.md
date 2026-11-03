@@ -333,6 +333,17 @@ Invoices are settled by **allocation rows** (`agency_invoice_allocation`, `apps/
 - A new «تسویه مانده قبلی» invoice is allowed whenever an un-invoiced balance remains and none is open (debt added after a paid one).
 - Staff: Agency → Groups → each group shows the same «کل بدهی گروه» (`GET /admin/agency/groups/<id>/debt/`, agency.accounting).
 
+## Full reseller stats for group managers (v1.36)
+
+Permission **«مدیر گروه: مشاهده آمار کامل نمایندگان»** (`agency.gm.full_stats`, granted to every group-manager role by
+migration `agency.0013`, narrowed on the Roles page). With it, «ادمین‌های گروه» cards and the «جزئیات» dialog show what the
+staff Agency page shows — sold (Σ user caps), used, remaining, sell limit left (remaining − sold + used), hidden traffic
+(sold − used − remaining), deleted users' traffic, usage % — from the SAME code (`api.admin_row` / `enrich._enrich`, no new
+formulas), each with a Persian (i) explanation. Live from PasarGuard (read-only, cached 60 s, `manager_views.live_stats`):
+users by status (`/api/system/users?admin_username=`), online now, last activity (newest `online_at`). Endpoints:
+`GET /agency/manager/admins/live/?u=…` (≤ 60 per call), `GET /agency/manager/admins/<username>/stats/`. Own groups only;
+without the permission these keys are removed server-side.
+
 ## Profile title / support link are header-safe (v1.35.3)
 
 PasarGuard puts an admin's `support_url` into every subscription response **raw** (`support-url:` header; `profile-title` is

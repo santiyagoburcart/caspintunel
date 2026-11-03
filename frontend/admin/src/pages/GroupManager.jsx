@@ -12,6 +12,7 @@ import { ACCENT_CSS, Ic } from '../components/AgencyIcons'
 import { useToast } from '../components/Toast'
 import { GroupStatement as StaffGroupStatement } from './AgencyManagers'
 import { ManagerInvoices } from '../components/AgencyBilling'
+import { StatGrid, ST_CSS, useST } from '../components/AgencyStats'
 
 // Group-manager pages inside the main panel (v1.25). A group manager signs in at
 // /panel/ like any staff (role "Group manager") and sees only this menu
@@ -134,7 +135,7 @@ export default function GroupManager() {
   }
   return (
     <div className="ap am-in" dir={lang === 'fa' ? 'rtl' : 'ltr'}>
-      <style>{ACCENT_CSS + PORTAL_CSS + CSS}</style>
+      <style>{ACCENT_CSS + PORTAL_CSS + CSS + ST_CSS}</style>
       <h1 className="am-h1">{s.title}{me && <small className="am-who"> · <bdi>{me.manager.display_name || me.manager.username}</bdi></small>}</h1>
       {err && <div className="ap-alert" role="alert">{err}</div>}
       {!me && !err && <div className="ap-spin" aria-busy="true" />}
@@ -437,9 +438,43 @@ function Cred({ s, username, password, onClose }) {
 }
 
 // ------------------------------------------------------------------ admins tab
+// v1.36: live user counts / online / last activity for the shown admins (agency.gm.full_stats), 60 per call
+function useLive(names, on) {
+  const [live, setLive] = useState({})
+  const key = names.join('|')
+  useEffect(() => {
+    if (!on || !names.length) return undefined
+    let stop = false
+    const chunks = []
+    for (let i = 0; i < names.length; i += 60) chunks.push(names.slice(i, i + 60))
+    chunks.forEach((c) => {
+      const qs = c.map((u) => `u=${encodeURIComponent(u)}`).join('&')
+      http.get(`/admins/live/?${qs}`).then((r) => { if (!stop) setLive((cur) => ({ ...cur, ...r.data.results })) }).catch(() => {})
+    })
+    return () => { stop = true }
+  }, [key, on])
+  return live
+}
+
+function AdminStats({ a, lang, s, onClose }) {
+  const st = useST(lang)
+  const [d, setD] = useState(null)
+  const [err, setErr] = useState('')
+  useEffect(() => { http.get(`/admins/${encodeURIComponent(a.username)}/stats/`).then((r) => setD(r.data)).catch((e) => setErr(errText(e, s))) }, [])
+  return (
+    <Modal title={`${st.stats_h} — ${a.username}`} onClose={onClose}>
+      {err ? <div className="ap-alert">{err}</div> : !d ? <div className="ap-spin" /> : (
+        <div data-testid="gm-stats"><StatGrid a={d} live={d.live} lang={lang} full /></div>
+      )}
+    </Modal>
+  )
+}
+
 function Admins({ me, s, lang, reload, can }) {
   const [dlg, setDlg] = useState(null)
   const [q, setQ] = useState('')
+  const full = can('agency.gm.full_stats')
+  const live = useLive(me.groups.flatMap((g) => g.admins.map((a) => a.username)), full)
   const toast = useToast()
   const cap = me.cap
   const close = () => setDlg(null)
@@ -469,7 +504,7 @@ function Admins({ me, s, lang, reload, can }) {
             {can('agency.gm.create_admin') && <button type="button" className="ap-btn am-btn am-new" disabled={!me.writes_enabled || cap.reached || !g.roles.length} onClick={() => setDlg({ k: 'new', g })}><Ic n="plus" />{s.new_admin}</button>}
           </div>
           <div className="am-grid">
-            {g.admins.filter(match).map((a) => <AdminCard key={a.username} a={a} s={s} lang={lang} can={can} writable={me.writes_enabled} capReached={cap.reached} onAct={(k) => setDlg({ k, a, g })} />)}
+            {g.admins.filter(match).map((a) => <AdminCard key={a.username} a={a} s={s} lang={lang} can={can} full={full} live={live[a.username]} writable={me.writes_enabled} capReached={cap.reached} onAct={(k) => setDlg({ k, a, g })} />)}
           </div>
         </section>
       ))}
@@ -479,6 +514,7 @@ function Admins({ me, s, lang, reload, can }) {
       {dlg?.k === 'new' && <NewAdmin g={dlg.g} s={s} cap={cap} onClose={close} reload={reload} />}
       {dlg?.k === 'users' && <AdminUsers a={dlg.a} s={s} lang={lang} onClose={close} />}
       {dlg?.k === 'settings' && <AdminSettings a={dlg.a} s={s} onClose={close} />}
+      {dlg?.k === 'stats' && <AdminStats a={dlg.a} s={s} lang={lang} onClose={close} />}
       {(dlg?.k === 'disable' || dlg?.k === 'enable') && (
         <Confirm s={s} title={`${dlg.k === 'disable' ? s.disable : s.enable} — ${dlg.a.username}`} tone={dlg.k === 'disable' ? 'danger' : undefined}
           text={(dlg.k === 'disable' ? s.dis_q : s.en_q).replace('{u}', dlg.a.username)} onClose={close} onYes={() => setStatus(dlg.a, dlg.k === 'enable')} />
@@ -487,7 +523,7 @@ function Admins({ me, s, lang, reload, can }) {
   )
 }
 
-function AdminCard({ a, s, lang, can, writable, capReached, onAct }) {
+function AdminCard({ a, s, lang, can, full, live, writable, capReached, onAct }) {
   const unl = !(Number(a.admin_limit_bytes) > 0)
   const pct = Math.min(Number(a.usage_percent) || 0, 100)
   const tone = a.usage_percent >= 100 ? 'danger' : a.usage_percent >= 80 ? 'warning' : 'primary'
@@ -503,10 +539,11 @@ function AdminCard({ a, s, lang, can, writable, capReached, onAct }) {
         <div><dt>{s.limit}</dt><dd><N>{unl ? s.unl : bText(a.admin_limit_bytes)}</N></dd></div>
         <div><dt>{s.used}</dt><dd><N>{a.used_fmt}</N></dd></div>
         <div><dt>{s.remaining}</dt><dd><N>{unl ? s.unl : (a.remaining_fmt === 'Unlimited' ? s.unl : a.remaining_fmt)}</N></dd></div>
-        <div><dt>{s.users}</dt><dd><N>{a.user_count}</N> <small>/ <N>{a.active_user_count}</N> {s.active_u}</small></dd></div>
+        {!full && <div><dt>{s.users}</dt><dd><N>{a.user_count}</N> <small>/ <N>{a.active_user_count}</N> {s.active_u}</small></dd></div>}
         <div><dt>{s.balance}</dt><dd><span className="am-bal" data-sign={Number(a.balance) > 0 ? 'owes' : 'zero'}><N>{money(a.balance, lang)}</N></span></dd></div>
         <div><dt>{s.role_l}</dt><dd className="am-role">{roleLabel(a.role)}</dd></div>
       </dl>
+      {full && <StatGrid a={a} live={live} lang={lang} />}
       {Number(a.pending?.gb) > 0 && <p className="am-pend"><Ic n="clock" size={13} />{s.pend}: <N>{gbText(a.pending.gb)}</N></p>}
       {locked ? <p className="am-hint">{s.sudo}</p> : (
         <div className="am-acts">
@@ -514,6 +551,7 @@ function AdminCard({ a, s, lang, can, writable, capReached, onAct }) {
           {can('agency.gm.admin_password') && <button type="button" className="ap-link" disabled={!writable} onClick={() => onAct('pw')}><Ic n="edit" />{s.pw}</button>}
           {can('agency.gm.admin_role') && <button type="button" className="ap-link" disabled={!writable} onClick={() => onAct('inb')}><Ic n="sliders" />{s.inb}</button>}
           {can('agency.gm.view_users') && <button type="button" className="ap-link" onClick={() => onAct('users')}><Ic n="users" />{s.users}</button>}
+          {full && <button type="button" className="ap-link" onClick={() => onAct('stats')} data-testid="gm-details"><Ic n="gauge" />{useST(lang).details}</button>}
           {can('agency.gm.create_admin') && <button type="button" className="ap-link" disabled={!writable} onClick={() => onAct('settings')}><Ic n="edit" />{s.a_settings}</button>}
           {can('agency.gm.toggle_admin') && (a.status_code === 'active'
             ? <button type="button" className="ap-link am-danger" disabled={!writable} onClick={() => onAct('disable')}><Ic n="x" />{s.disable}</button>

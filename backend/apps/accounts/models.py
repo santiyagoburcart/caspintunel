@@ -28,6 +28,8 @@ GM_PERMS = {
     "agency.gm.invoices": ("Group manager: view and pay the group's invoices", "مدیر گروه: دیدن و پرداخت فاکتورهای گروه"),
     # v1.35: ask staff for volume for an admin of the group (approval → limit + invoice)
     "agency.gm.request_volume": ("Group manager: request volume for group admins", "مدیر گروه: درخواست شارژ برای ادمین‌های گروه"),
+    # v1.36: the full PAMP numbers (sold, sold limit, hidden, deleted-users traffic, user counts, online, last activity)
+    "agency.gm.full_stats": ("Group manager: view full reseller stats", "مدیر گروه: مشاهده آمار کامل نمایندگان"),
 }
 
 

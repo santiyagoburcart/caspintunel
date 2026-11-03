@@ -760,6 +760,27 @@ sequenceDiagram
     C->>P: GET subscription → headers support-url (raw), profile-title (base64) → valid
 ```
 
+## 5c10. Group manager sees full reseller stats (v1.36)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor G as Group manager («ادمین‌های گروه»)
+    participant V as manager API
+    participant R as Redis (60 s)
+    participant P as PasarGuard
+
+    G->>V: GET manager/me/ → cards (+ full PAMP numbers if agency.gm.full_stats)
+    G->>V: GET manager/admins/live/?u=… (own groups only)
+    V->>R: cached?
+    alt miss
+        V->>P: GET /api/system/users?admin_username=X · GET /api/users?admin=X&sort=-online_at&limit=1
+        V->>R: store 60 s
+    end
+    V-->>G: users by status, online, last activity
+    G->>V: «جزئیات» → GET manager/admins/X/stats/
+```
+
 ## 9. Staff Telegram linking
 
 ```mermaid
