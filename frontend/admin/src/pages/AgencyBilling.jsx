@@ -33,6 +33,11 @@ const T = {
     settle_msg: 'بدهی فعلی که در فاکتورهای باز نیست، یک بار برای این ادمین فاکتور می‌شود: {a}', settle_done: 'قبلاً صادر شده: {n}',
     unpaid_total: 'جمع پرداخت‌نشده', search: 'جستجوی ادمین / پرداخت‌کننده', ambiguous: 'هم‌مبلغ با سفارش مشتری — بررسی دستی',
     open_admin: 'صفحهٔ ادمین',
+    pa_h: 'ورود به پرتال نمایندگان (/agency/)', pa_auto: 'طبق قاعده', pa_on: 'اجازه ورود', pa_off: 'بسته',
+    pa_full: 'الان: ورود کامل — درخواست شارژ، فاکتور و پرداخت', pa_readonly: 'الان: فقط مصرف (حساب با مدیر گروه {m})',
+    pa_blocked_use_panel: 'الان: بسته — مالک گروه با مدیر گروه {m}؛ از پنل مدیریت گروه وارد می‌شود',
+    pa_blocked_disabled: 'الان: بسته (دستی)', pa_payer_manager: 'فاکتورها را مدیر گروه پرداخت می‌کند', pa_payer_admin: 'فاکتورها را خود ادمین پرداخت می‌کند',
+    pa_note: 'قاعده: مالک گروهی که مدیر گروه دارد از /panel/ وارد می‌شود، زیرمجموعه‌ها فقط مصرف را می‌بینند، ادمین‌های مستقیم همه‌چیز را.',
   },
   en: {
     inv_h: 'Agency invoices', pay_h: 'Agency payments', none: 'Nothing here.', admin: 'Admin', group: 'Group', amount: 'Amount',
@@ -51,6 +56,11 @@ const T = {
     settle_msg: 'The current balance not covered by open invoices becomes one invoice for this admin, once: {a}', settle_done: 'already issued: {n}',
     unpaid_total: 'Total unpaid', search: 'Search admin / payer', ambiguous: 'Same amount as a customer order — review by hand',
     open_admin: 'Admin page',
+    pa_h: 'Agency portal sign-in (/agency/)', pa_auto: 'By the rule', pa_on: 'Allowed', pa_off: 'Blocked',
+    pa_full: 'Now: full — volume requests, invoices and payments', pa_readonly: 'Now: usage only (account with group manager {m})',
+    pa_blocked_use_panel: 'Now: blocked — owner of a group with manager {m}; signs in at the group-manager panel',
+    pa_blocked_disabled: 'Now: blocked (by hand)', pa_payer_manager: 'Invoices are paid by the group manager', pa_payer_admin: 'Invoices are paid by the admin',
+    pa_note: 'Rule: the owner of a group with a manager signs in at /panel/, sub-admins only see usage, direct admins get everything.',
   },
 }
 const useT = () => { const { lang } = useI18n(); return [T[lang] || T.fa, lang] }
@@ -201,6 +211,31 @@ export function AgencyPaymentsView({ Header }) {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+/** v1.35: the admin's /agency/ sign-in (rule / allowed / blocked) and who pays its invoices. */
+export function PortalAccessCard({ username }) {
+  const [s] = useT()
+  const { can } = useAuth()
+  const [d, setD] = useState(null)
+  const load = () => api.get(`/admin/agency/portal-access/${encodeURIComponent(username)}/`).then((r) => setD(r.data)).catch(() => setD(false))
+  useEffect(() => { load() }, [username])
+  if (!d) return null
+  const save = async (mode) => { try { setD((await api.put(`/admin/agency/portal-access/${encodeURIComponent(username)}/`, { mode })).data) } catch { load() } }
+  const now = d.mode === 'full' ? s.pa_full : d.mode === 'readonly' ? s.pa_readonly.replace('{m}', d.manager) : (s['pa_blocked_' + d.reason] || '').replace('{m}', d.manager)
+  return (
+    <div className="card ag-card" data-testid="portal-access">
+      <style>{CSS}</style>
+      <div className="ab-h"><h3 className="ag-sh" data-ac="purple"><Ic n="login" size={15} />{s.pa_h}</h3></div>
+      <div className="ab-seg" role="radiogroup" aria-label={s.pa_h}>
+        {['auto', 'on', 'off'].map((k) => (
+          <button key={k} type="button" role="radio" aria-checked={d.override === k} disabled={!can('agency.manage')}
+            className={'ab-segb' + (d.override === k ? ' on' : '')} onClick={() => save(k)}>{s['pa_' + k]}</button>))}
+      </div>
+      <p className="text-sm font-semibold">{now}</p>
+      <p className="ab-sub">{d.payer === 'manager' ? s.pa_payer_manager : s.pa_payer_admin} · {s.pa_note}</p>
     </div>
   )
 }

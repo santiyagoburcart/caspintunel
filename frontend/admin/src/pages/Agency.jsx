@@ -11,7 +11,7 @@ import { useToast } from '../components/Toast'
 import AgencyLimitHistory from './AgencyLimitHistory'
 import { ACCENT_CSS, Ic } from '../components/AgencyIcons'
 import { AgencyLedgerOverview, BalanceText, LedgerCard, LT } from './AgencyLedger'
-import { AdminInvoicesCard, AgencyInvoicesView, AgencyPaymentsView } from './AgencyBilling'
+import { AdminInvoicesCard, AgencyInvoicesView, AgencyPaymentsView, PortalAccessCard } from './AgencyBilling'
 import { AdminSettingsTab, AgencyAdminCreate } from './AgencyAdminForms'
 import { AgencyApprovalsView, AgencyGroupStatementView, AgencyLedgerGroupsView, AgencyManagersView, GroupActivity, LedgerSubNav } from './AgencyManagers'
 import { useLiveApprovals } from '../lib/liveApprovals'
@@ -449,7 +449,7 @@ export function AgencyAdminDetail() {
 
       {tab === 'settings' && <AdminSettingsTab username={d.username} writable={writable} onDeleted={() => go('/agency/admins')} />}
       {tab === 'history' && <AgencyLimitHistory username={d.username} />}
-      {tab === 'accounting' && <><LedgerCard username={d.username} /><AdminInvoicesCard username={d.username} /></>}
+      {tab === 'accounting' && <><LedgerCard username={d.username} /><AdminInvoicesCard username={d.username} /><PortalAccessCard username={d.username} /></>}
       {tab === 'send' && <>
         <PortalLinkCard s={s} username={d.username} />
         <p className="ag-note card ag-card text-sm text-muted">{s.send_pw_note}</p>

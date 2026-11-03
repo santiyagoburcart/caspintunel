@@ -611,3 +611,17 @@ class AgencyNotice(models.Model):
     class Meta:
         db_table = "agency_notice"
         ordering = ("-created_at", "-id")
+
+
+class AgencyAdminSetting(models.Model):
+    """v1.35 per-admin options (caspintunel). portal_login: "auto" = the policy (an admin whose group has a
+    group manager signs in at /panel/ through the manager, sub-admins are read-only), "on" = may sign in to
+    /agency/ anyway (read-only if the group has a manager), "off" = no /agency/ sign-in."""
+    AUTO, ON, OFF = "auto", "on", "off"
+    username = models.CharField(max_length=255, unique=True)
+    portal_login = models.CharField(max_length=4, choices=[(AUTO, "Policy"), (ON, "Allowed"), (OFF, "Blocked")], default=AUTO)
+    updated_by = models.CharField(max_length=150, blank=True, default="")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "agency_admin_setting"

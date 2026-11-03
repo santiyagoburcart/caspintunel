@@ -55,6 +55,39 @@ def verify_panel_credentials(username: str, password: str) -> bool:
     return client.login()
 
 
+USE_PANEL_FA = "لطفاً از پنل مدیریت گروه وارد شوید"
+DISABLED_FA = "ورود به پرتال نمایندگان برای این حساب بسته است — با پشتیبانی تماس بگیرید"
+
+
+class PortalBlocked(exceptions.PermissionDenied):
+    """v1.35: this admin may not use /agency/ (billing.portal_access → blocked)."""
+
+    def __init__(self, reason: str):
+        self.reason = reason
+        fa = USE_PANEL_FA if reason == "use_panel" else DISABLED_FA
+        en = ("Please sign in at the group-manager panel (/panel/)" if reason == "use_panel"
+              else "Portal sign-in is disabled for this account — contact support")
+        super().__init__(detail={"detail": en, "detail_fa": fa, "code": reason, "panel_url": _panel_url()})
+
+
+def _panel_url() -> str:
+    try:
+        from apps.settings_app.paths import state
+
+        return state()["admin"].rstrip("/") + "/"
+    except Exception:  # noqa: BLE001
+        return "/panel/"
+
+
+def check_access(username: str) -> dict:
+    from .billing import portal_access
+
+    acc = portal_access(username)
+    if acc["mode"] == "blocked":
+        raise PortalBlocked(acc["reason"])
+    return acc
+
+
 def login(username: str, password: str, ip: str = "") -> str | None:
     username = (username or "").strip()
     if locked_out(username):
@@ -64,6 +97,7 @@ def login(username: str, password: str, ip: str = "") -> str | None:
         cache.set(key, (cache.get(key) or 0) + 1, FAIL_WINDOW)
         return None
     cache.delete(_fail_key(username))
+    check_access(username)            # v1.35: owners of a managed group sign in at /panel/
     token = secrets.token_urlsafe(32)
     ResellerSession.objects.create(username=username, key_hash=_hash(token),
                                    expires_at=timezone.now() + SESSION_AGE, ip=ip[:64])
@@ -101,6 +135,7 @@ class ResellerTokenAuthentication(authentication.BaseAuthentication):
         now = timezone.now()
         if not s.last_used_at or now - s.last_used_at > timedelta(minutes=5):
             ResellerSession.objects.filter(pk=s.pk).update(last_used_at=now)
+        check_access(s.username)          # an open session follows the policy too (manager added later)
         return Reseller(s.username, s), s
 
     def authenticate_header(self, request):
@@ -110,6 +145,14 @@ class ResellerTokenAuthentication(authentication.BaseAuthentication):
 class IsReseller(permissions.BasePermission):
     def has_permission(self, request, view):
         return isinstance(request.user, Reseller)
+
+
+def billing_usernames(username: str) -> list[str]:
+    """v1.35: whose invoices this admin sees / pays in the portal — only accounts paid directly by
+    the admin (never those of a group with a manager)."""
+    from .billing import payer_for
+
+    return [n for n in visible_usernames(username)[1] if payer_for(n) == "admin"]
 
 
 def visible_usernames(username: str) -> tuple[str, list[str]]:
@@ -125,7 +168,13 @@ def portal_payload(username: str) -> dict:
     from . import api, ledger
     from .enrich import _enrich, portal_state
 
+    from .billing import portal_access
+
     mode, names = visible_usernames(username)
+    access = portal_access(username)
+    if access["mode"] == "readonly":
+        names = [username]               # a sub-admin of a managed group sees only its own usage
+        mode = "single" if mode == "group" else mode
     accounts = []
     for n in names:
         a = PanelAdmin.objects.filter(username=n).first()
@@ -140,4 +189,5 @@ def portal_payload(username: str) -> dict:
         mode = "not_found"
     bal = ledger.balances()
     return {"username": username, "mode": mode, "accounts": accounts,
-            "balances": {n: bal.get(n, 0) for n in names}}
+            "balances": {n: bal.get(n, 0) for n in names} if access["mode"] == "full" else {},
+            "access": access}

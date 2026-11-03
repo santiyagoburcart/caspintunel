@@ -298,3 +298,19 @@ only). The list API adds `panel_role`, `permissions[{code,en,fa,on}]` and `assig
   payment entry per admin in the ledger (a rounded shortfall stays owed), the payer notified in the portal / panel.
 - Agency payments never appear in customer Transactions, Accounting revenue, Analytics or the customer queue; Blu
   deposits that paid one are labelled «واریز نماینده» on the Blu tab.
+
+
+## Access rules (v1.35)
+
+- **Who pays an admin's invoices — one place only** (`billing.payer_for`): the group manager when the admin's group has
+  an active group manager, otherwise the admin itself in `/agency/`. `create_payment` refuses the other side (403).
+- **`/agency/` sign-in** (`billing.portal_access`, checked at login AND on every request):
+  owner of a group with a manager → blocked, «لطفاً از پنل مدیریت گروه وارد شوید» + a link to `/panel/`;
+  sub-admin of such a group → read-only (own usage only; one line says the account is with the manager);
+  no manager → unchanged (request «درخواست شارژ برای: <admin>», invoices, pay).
+  Per-admin override on the staff admin page (Accounting tab → «ورود به پرتال نمایندگان»): rule / allowed (read-only if
+  managed) / blocked — `AgencyAdminSetting`, `PUT /admin/agency/portal-access/<username>/` (agency.manage).
+- **Group managers** (`/panel/my-groups/invoices`, «فاکتورها و پرداخت»): group total unpaid, every admin's balance and its
+  old (not invoiced) balance with «پرداخت مانده قبلی» (issues the settlement invoice, then pays it), invoices (empty state),
+  multi-invoice payment, and — with `agency.gm.request_volume` — «درخواست شارژ» for any admin of their groups: same
+  Approvals queue / Telegram buttons as admin requests; approval raises that admin's limit and issues its invoice.

@@ -53,9 +53,12 @@ def approval_requested(req) -> int:
         q = ledger.quote_quota_charge(req.admin_username, req.old_limit_bytes, req.new_limit_bytes)
         amount = f" · {q['amount']:,} تومان" if q and q.get("price_per_gb") is not None else ""
         note = f"\nیادداشت: {req.note}" if req.note else ""
-        text = (f"🟢 درخواست ادمین #{req.id} (پرتال نمایندگان)\n"
-                f"ادمین {req.admin_username} · گروه {req.group_name or '—'} · +{_gb(req.gb)} GB{amount}{note}\n"
-                f"Admin request #{req.id}: {req.admin_username} (group {req.group_name or '—'}) asks for "
+        who_fa = f"مدیر گروه {req.manager_username} برای" if req.manager_id else "ادمین"
+        src_fa = "پنل مدیر گروه" if req.manager_id else "پرتال نمایندگان"
+        who_en = f"group manager {req.manager_username} for" if req.manager_id else "admin"
+        text = (f"🟢 درخواست شارژ #{req.id} ({src_fa})\n"
+                f"{who_fa} {req.admin_username} · گروه {req.group_name or '—'} · +{_gb(req.gb)} GB{amount}{note}\n"
+                f"Volume request #{req.id} by {who_en} {req.admin_username} (group {req.group_name or '—'}): "
                 f"+{_gb(req.gb)} GB — approving raises the limit on PasarGuard and issues the invoice.\n"
                 f"{admin_link('/agency/approvals')}")
         return alert_staff(text, perm=PERM, buttons=approval_buttons(req.id), dedupe_key=f"agency:req:{req.id}",

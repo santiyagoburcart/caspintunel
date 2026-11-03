@@ -29,6 +29,7 @@ def _calls(pg):
                                  ("get", f"groups/{gid}/statement/", None)],
         "agency.gm.activity": [("get", "activity/", None)],
         "agency.gm.invoices": [("get", "invoices/", None), ("get", "payments/", None)],
+        "agency.gm.request_volume": [("get", "requests/", None)],
     }
 
 
@@ -108,6 +109,7 @@ def test_migration_grants_existing_group_manager_roles_once():
     mig = importlib.import_module("apps.agency.migrations.0009_gm_permissions")
     mig.grant(live_apps, None)
     importlib.import_module("apps.agency.migrations.0010_invoices_payments").grant(live_apps, None)   # v1.34
+    importlib.import_module("apps.agency.migrations.0011_portal_access_requests").grant(live_apps, None)   # v1.35
     assert set(GM_PERMS) <= set(role.permissions.values_list("code", flat=True))
     assert not other.permissions.exists()
 

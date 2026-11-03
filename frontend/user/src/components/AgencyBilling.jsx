@@ -12,7 +12,7 @@ export const BT = {
     inv_h: 'فاکتورها', unpaid_total: 'جمع پرداخت‌نشده', pay: 'پرداخت', none_inv: 'فاکتوری ندارید.',
     st_unpaid: 'پرداخت‌نشده', st_pending: 'در حال بررسی', st_paid: 'پرداخت‌شده', st_voided: 'باطل‌شده',
     k_quota_charge: 'شارژ حجم', k_manual_charge: 'بدهکاری', k_request: 'درخواست / مدیر گروه', k_settlement: 'تسویه مانده قبلی',
-    req_h: 'درخواست شارژ', gb: 'حجم (گیگ)', note: 'یادداشت (اختیاری)', send: 'ارسال درخواست', preview: 'مبلغ: {gb} گیگ × {p} = {a}',
+    req_h: 'درخواست شارژ', req_for: 'درخواست شارژ برای: {u}', gb: 'حجم (گیگ)', note: 'یادداشت (اختیاری)', send: 'ارسال درخواست', preview: 'مبلغ: {gb} گیگ × {p} = {a}',
     no_price: 'قیمت هر گیگ برای این ادمین تعریف نشده', my_req: 'درخواست‌های من', none_req: 'درخواستی ثبت نکرده‌اید.',
     r_pending: 'در انتظار تأیید', r_approved: 'تأیید شد', r_rejected: 'رد شد', reason: 'دلیل', invoice: 'فاکتور',
     notices: 'اعلان‌ها', mark_read: 'خواندم', none_n: 'اعلانی نیست.',
@@ -26,7 +26,7 @@ export const BT = {
     inv_h: 'Invoices', unpaid_total: 'Total unpaid', pay: 'Pay', none_inv: 'No invoices.',
     st_unpaid: 'Unpaid', st_pending: 'Pending review', st_paid: 'Paid', st_voided: 'Voided',
     k_quota_charge: 'Volume', k_manual_charge: 'Charge', k_request: 'Request / group manager', k_settlement: 'Previous balance',
-    req_h: 'Request volume', gb: 'Volume (GB)', note: 'Note (optional)', send: 'Send request', preview: 'Amount: {gb} GB × {p} = {a}',
+    req_h: 'Request volume', req_for: 'Volume request for: {u}', gb: 'Volume (GB)', note: 'Note (optional)', send: 'Send request', preview: 'Amount: {gb} GB × {p} = {a}',
     no_price: 'No price per GB is set for this admin', my_req: 'My requests', none_req: 'No requests yet.',
     r_pending: 'Waiting for approval', r_approved: 'Approved', r_rejected: 'Rejected', reason: 'Reason', invoice: 'Invoice',
     notices: 'Notifications', mark_read: 'Mark read', none_n: 'No notifications.',
@@ -46,7 +46,7 @@ const errL = (e, lang, f) => {
 const B = ({ children }) => <bdi dir="ltr" className="ab-num">{children}</bdi>
 const gbt = (v) => Number(v || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })
 
-export function PortalBilling({ http, lang, onChange }) {
+export function PortalBilling({ http, lang, onChange, me }) {
   const s = BT[lang] || BT.fa
   const toast = useToast()
   const [inv, setInv] = useState(null)
@@ -87,7 +87,7 @@ export function PortalBilling({ http, lang, onChange }) {
           </ul>
         )}
       </section>
-      <RequestForm http={http} s={s} lang={lang} onSent={load} />
+      <RequestForm http={http} s={s} lang={lang} onSent={load} me={me} />
       <section className="ap-card" data-testid="ab-requests">
         <div className="ab-h"><h2><Ic n="clock" size={16} />{s.my_req}</h2></div>
         {!reqs ? <div className="ap-spin" /> : reqs.length === 0 ? <p className="ab-muted">{s.none_req}</p> : (
@@ -127,7 +127,7 @@ function Notices({ s, lang, data, onRead }) {
   )
 }
 
-function RequestForm({ http, s, lang, onSent }) {
+function RequestForm({ http, s, lang, onSent, me }) {
   const toast = useToast()
   const [gb, setGb] = useState('')
   const [note, setNote] = useState('')
@@ -149,7 +149,7 @@ function RequestForm({ http, s, lang, onSent }) {
   }
   return (
     <form className="ap-card ab-form" onSubmit={send} data-testid="ab-request">
-      <div className="ab-h"><h2><Ic n="plus" size={16} />{s.req_h}</h2></div>
+      <div className="ab-h"><h2 data-testid="ab-req-for"><Ic n="plus" size={16} />{me ? <>{s.req_for.split('{u}')[0]}<bdi>{me}</bdi></> : s.req_h}</h2></div>
       <label><span>{s.gb}</span><input className="ap-input" dir="ltr" inputMode="decimal" value={gb} onChange={(e) => setGb(e.target.value)} required /></label>
       <label><span>{s.note}</span><input className="ap-input" value={note} maxLength={255} onChange={(e) => setNote(e.target.value)} /></label>
       {q && (q.missing_price

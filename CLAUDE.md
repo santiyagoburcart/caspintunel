@@ -210,6 +210,8 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   = no charge (`billing.ensure_price` BEFORE touching PasarGuard). Never record a 0-amount charge again.
 - Agency payments are `AgencyPayment`, never `payments_sms.Payment`: keep them out of customer revenue, Transactions,
   Analytics and the customer queue. Their unique amounts share the order pool (`agency_locked_amounts` ↔ `customer_locked`).
+- One payer per admin (`billing.payer_for`): the group manager if the admin's group has one, else the admin. Portal access
+  = `billing.portal_access` (owner of managed group blocked, sub-admins read-only, `AgencyAdminSetting` override).
 - SMS / Blu: customer orders are matched first, agency payments after (`billing.match_deposit`, `near`, rounded
   candidates); a deposit equal to both is held for review (`hold_ambiguous`).
 

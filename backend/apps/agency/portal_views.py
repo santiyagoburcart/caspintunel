@@ -32,7 +32,10 @@ class PortalLoginView(APIView):
         if not portal.portal_enabled():
             return Response({"detail": "The reseller portal is not open yet.", "code": "portal_closed"},
                             status=status.HTTP_403_FORBIDDEN)
-        token = portal.login(request.data.get("username", ""), request.data.get("password", ""), _ip(request))
+        try:
+            token = portal.login(request.data.get("username", ""), request.data.get("password", ""), _ip(request))
+        except portal.PortalBlocked as exc:
+            return Response(exc.detail, status=status.HTTP_403_FORBIDDEN)
         if not token:
             return Response({"detail": "Wrong username or password."}, status=status.HTTP_400_BAD_REQUEST)
         return Response({"token": token, "expires_at": timezone.now() + portal.SESSION_AGE})
@@ -60,6 +63,8 @@ class PortalStatementView(_Portal):
                             status=status.HTTP_403_FORBIDDEN)
         name = request.query_params.get("admin") or request.user.username
         _, allowed = portal.visible_usernames(request.user.username)
+        if portal.check_access(request.user.username)["mode"] != "full":
+            allowed = []                  # v1.35: the account is with the group manager (usage only)
         if name not in allowed:
             return Response({"detail": "Not your account."}, status=status.HTTP_403_FORBIDDEN)
         st = ledger.statement(name)

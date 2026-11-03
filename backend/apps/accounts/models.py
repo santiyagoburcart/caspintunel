@@ -26,6 +26,8 @@ GM_PERMS = {
     "agency.gm.activity": ("Group manager: view activity", "مدیر گروه: دیدن فعالیت"),
     # v1.34: the group's invoices — list them and pay several at once
     "agency.gm.invoices": ("Group manager: view and pay the group's invoices", "مدیر گروه: دیدن و پرداخت فاکتورهای گروه"),
+    # v1.35: ask staff for volume for an admin of the group (approval → limit + invoice)
+    "agency.gm.request_volume": ("Group manager: request volume for group admins", "مدیر گروه: درخواست شارژ برای ادمین‌های گروه"),
 }
 
 

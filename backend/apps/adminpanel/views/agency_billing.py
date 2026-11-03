@@ -155,3 +155,29 @@ class AgencyPaymentReceiptView(_B):
         if p is None:
             raise Http404
         return serve_receipt(p)
+
+
+class AgencyPortalAccessView(_B):
+    """v1.35 GET / PUT {mode: auto|on|off} — the admin's /agency/ sign-in (agency.manage)."""
+    perms_map = {"GET": VIEW, "PUT": ["agency.manage"], "PATCH": ["agency.manage"]}
+
+    def get(self, request, username):
+        acc = B.portal_access(username)
+        return Response({**acc, "payer": B.payer_for(username)})
+
+    def put(self, request, username):
+        from apps.agency.models import AgencyAdminSetting, PanelAdmin
+        from apps.common.models import write_audit
+
+        mode = str((request.data or {}).get("mode") or "")
+        if mode not in (AgencyAdminSetting.AUTO, AgencyAdminSetting.ON, AgencyAdminSetting.OFF):
+            return Response({"detail": "mode must be auto, on or off", "field": "mode"}, status=400)
+        if not PanelAdmin.objects.filter(username=username).exists():
+            raise Http404
+        AgencyAdminSetting.objects.update_or_create(username=username,
+                                                    defaults={"portal_login": mode, "updated_by": request.user.username})
+        write_audit(action="agency.portal_access", staff=request.user, target=None, detail={"admin": username, "mode": mode})
+        acc = B.portal_access(username)
+        return Response({**acc, "payer": B.payer_for(username), "message": "Saved", "message_fa": "ذخیره شد"})
+
+    patch = put

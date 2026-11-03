@@ -50,7 +50,7 @@ from .views.integrations import (
 from .views.monitoring import BackupViewSet, HealthView, MonitoringView, ResourcesView
 from .views.push import StaffPrefsView, StaffPushView
 from .views.agency_billing import (AgencyInvoicesView, AgencyInvoiceVoidView, AgencyPaymentActionView,
-                                   AgencyPaymentReceiptView, AgencyPaymentsBadgeView, AgencyPaymentsView,
+                                   AgencyPaymentReceiptView, AgencyPaymentsBadgeView, AgencyPaymentsView, AgencyPortalAccessView,
                                    AgencySettlementView)
 from .views.notifications import NotificationViewSet
 from .views.ops import DashboardView, ServiceListViewSet, TelegramStatsView
@@ -128,6 +128,7 @@ urlpatterns = [
     path("agency/managers/<int:manager_id>/", AgencyManagersView.as_view(), name="admin-agency-manager"),
     path("agency/managers/<int:manager_id>/password/", AgencyManagerPasswordView.as_view(), name="admin-agency-manager-password"),
     path("agency/invoices/", AgencyInvoicesView.as_view(), name="admin-agency-invoices"),
+    path("agency/portal-access/<str:username>/", AgencyPortalAccessView.as_view(), name="admin-agency-portal-access"),
     path("agency/invoices/settlement/", AgencySettlementView.as_view(), name="admin-agency-settlement"),
     path("agency/invoices/<int:pk>/void/", AgencyInvoiceVoidView.as_view(), name="admin-agency-invoice-void"),
     path("agency/payments/", AgencyPaymentsView.as_view(), name="admin-agency-payments"),

@@ -41,7 +41,9 @@ const T = {
     blocked_disabled: 'دسترسی شما روی پنل غیرفعال است.', blocked_limited: 'سقف حجم شما تمام شده و حساب محدود شده است.',
     support: 'پشتیبانی', balance: 'بدهی شما', statement: 'صورت‌حساب', none: 'هنوز گردشی ثبت نشده است.', show: 'نمایش صورت‌حساب', hide: 'بستن',
     k_quota_charge: 'شارژ حجم', k_manual_charge: 'بدهکاری', k_adjustment: 'اصلاحیه', k_payment: 'پرداخت', running: 'مانده', voided: 'باطل‌شده',
-    mgr_link: 'مدیر گروه هستید؟ ورود مدیران گروه', group: 'حساب‌های گروه شما', last_sync: 'آخرین به‌روزرسانی', welcome: 'خوش آمدید', bye: 'از پرتال خارج شدید', net: 'ارتباط با سرور برقرار نشد — اینترنت را بررسی کنید.', expired: 'نشست شما تمام شده — دوباره وارد شوید.', locked: 'به‌دلیل تلاش‌های ناموفق، ورود موقتاً بسته شده است — چند دقیقه بعد تلاش کنید.',
+    mgr_link: 'مدیر گروه هستید؟ ورود مدیران گروه',
+    use_panel: 'لطفاً از پنل مدیریت گروه وارد شوید', open_panel: 'ورود به پنل مدیریت گروه',
+    readonly: 'حساب شما با مدیر گروه {m} است — درخواست شارژ و پرداخت از طریق ایشان انجام می‌شود؛ اینجا فقط مصرف خود را می‌بینید.', group: 'حساب‌های گروه شما', last_sync: 'آخرین به‌روزرسانی', welcome: 'خوش آمدید', bye: 'از پرتال خارج شدید', net: 'ارتباط با سرور برقرار نشد — اینترنت را بررسی کنید.', expired: 'نشست شما تمام شده — دوباره وارد شوید.', locked: 'به‌دلیل تلاش‌های ناموفق، ورود موقتاً بسته شده است — چند دقیقه بعد تلاش کنید.',
   },
   en: {
     title: 'Reseller portal', sub: 'Sign in with your PasarGuard panel username and password',
@@ -54,7 +56,9 @@ const T = {
     blocked_disabled: 'Your access is disabled on the panel.', blocked_limited: 'Your volume limit is used up and the account is limited.',
     support: 'Support', balance: 'You owe', statement: 'Statement', none: 'No entries yet.', show: 'Show statement', hide: 'Hide',
     k_quota_charge: 'Quota charge', k_manual_charge: 'Charge', k_adjustment: 'Adjustment', k_payment: 'Payment', running: 'Balance', voided: 'voided',
-    mgr_link: 'Group manager? Sign in here', group: 'Your group\'s accounts', last_sync: 'Last update', welcome: 'Welcome', bye: 'You signed out of the portal', net: 'Could not reach the server — check your connection.', expired: 'Your session ended — please sign in again.', locked: 'Too many failed attempts — sign-in is paused for a few minutes.',
+    mgr_link: 'Group manager? Sign in here',
+    use_panel: 'Please sign in at the group-manager panel', open_panel: 'Open the group-manager panel',
+    readonly: 'Your account is with your group manager {m} — volume requests and payments go through them; here you only see your usage.', group: 'Your group\'s accounts', last_sync: 'Last update', welcome: 'Welcome', bye: 'You signed out of the portal', net: 'Could not reach the server — check your connection.', expired: 'Your session ended — please sign in again.', locked: 'Too many failed attempts — sign-in is paused for a few minutes.',
   },
 }
 const fmt = (v, s) => (v === 'Unlimited' ? s.unl : v)
@@ -108,8 +112,9 @@ export default function AgencyPortal() {
             {!data && !err && <div className="ap-spin" aria-busy="true" />}
             {data?.mode === 'not_found' && <div className="ap-card ap-empty">{s.not_found}</div>}
             {data && data.mode === 'group' && <h2 className="ap-group">{s.group}</h2>}
-            {data?.accounts.map((a) => <Account key={a.username} a={a} s={s} lang={lang} balance={data.balances[a.username]} />)}
-            {data && data.mode !== 'not_found' && <PortalBilling http={http} lang={lang} onChange={load} />}
+            {data?.access?.mode === 'readonly' && <div className="ap-card ap-ro" role="note" data-testid="ap-readonly">{s.readonly.replace('{m}', data.access.manager || '')}</div>}
+            {data?.accounts.map((a) => <Account key={a.username} a={a} s={s} lang={lang} balance={data.balances[a.username]} readonly={data.access?.mode === 'readonly'} />)}
+            {data && data.mode !== 'not_found' && data.access?.mode !== 'readonly' && <PortalBilling http={http} lang={lang} onChange={load} me={data.username} />}
           </>
         )}
       </main>
@@ -122,6 +127,7 @@ function LoginForm({ s, onDone }) {
   const [p, setP] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  const [blocked, setBlocked] = useState(null)       // v1.35: owner of a managed group → /panel/
   const toast = useToast()
   const submit = async (e) => {
     e.preventDefault(); setBusy(true); setErr('')
@@ -131,7 +137,13 @@ function LoginForm({ s, onDone }) {
       onDone(r.data.token)
     } catch (e2) {
       const st = e2?.response?.status
-      const m = e2?.response?.data?.code === 'portal_closed' ? s.closed : st === 400 ? s.wrong : st === 429 ? s.locked
+      const code = e2?.response?.data?.code
+      if (code === 'use_panel' || code === 'disabled') {
+        const d = e2.response.data
+        setBlocked({ msg: code === 'use_panel' ? s.use_panel : (d.detail_fa || d.detail), url: code === 'use_panel' ? d.panel_url : null })
+        return
+      }
+      const m = code === 'portal_closed' ? s.closed : st === 400 ? s.wrong : st === 429 ? s.locked
         : !e2?.response ? s.net : errText(e2, s.error)
       setErr(m); toast.error(m)
     } finally { setBusy(false) }
@@ -141,6 +153,12 @@ function LoginForm({ s, onDone }) {
       <h1>{s.title}</h1>
       <p>{s.sub}</p>
       {err && <div className="ap-alert" role="alert">{err}</div>}
+      {blocked && (
+        <div className="ap-warn ap-blocked" role="alert" data-testid="ap-use-panel">
+          <b>{blocked.msg}</b>
+          {blocked.url && <a className="ap-btn ap-panel-btn" href={blocked.url}>{s.open_panel}</a>}
+        </div>
+      )}
       <label htmlFor="ap-u">{s.username}</label>
       <input id="ap-u" className="ap-input" dir="ltr" autoComplete="username" required value={u} onChange={(e) => setU(e.target.value)} />
       <label htmlFor="ap-p">{s.password}</label>
@@ -151,7 +169,7 @@ function LoginForm({ s, onDone }) {
   )
 }
 
-function Account({ a, s, lang, balance }) {
+function Account({ a, s, lang, balance, readonly }) {
   const p = a.portal
   const [open, setOpen] = useState(false)
   const w = Math.min(Number(a.usage_percent) || 0, 100)      // bar width only
@@ -184,12 +202,12 @@ function Account({ a, s, lang, balance }) {
       <dl className="ap-nums">
         {nums.map(([k, v, ac, ic, b, signed]) => <div key={k} data-ac={ac}><dt><Ic n={ic} size={13} />{k}</dt><dd>{typeof v === 'string' ? <><B>{v}</B><GB b={b} signed={signed} /></> : v}</dd></div>)}
       </dl>
-      <div className="ap-bal">
+      {!readonly && <div className="ap-bal">
         <span>{s.balance}</span>
         <bdi dir="ltr" className="ap-num" data-sign={Number(balance) > 0 ? 'owes' : Number(balance) < 0 ? 'credit' : 'zero'}>{money(balance, lang)}</bdi>
         <button type="button" className="ap-link" onClick={() => setOpen((v) => !v)} aria-expanded={open}><Ic n="doc" />{open ? s.hide : s.show}</button>
-      </div>
-      {open && <Statement username={a.username} s={s} lang={lang} />}
+      </div>}
+      {open && !readonly && <Statement username={a.username} s={s} lang={lang} />}
       {a.last_synced_at && <p className="ap-foot">{s.last_sync}: {jalali(a.last_synced_at, true, lang)}</p>}
     </section>
   )
@@ -275,6 +293,9 @@ const CSS = `
 .ap-st-a[data-sign="owes"] { color: var(--c-danger-fg); } .ap-st-a[data-sign="credit"] { color: var(--c-success-fg); } .ap-st-a[data-sign="zero"] { color: var(--c-muted-fg); }
 .ap-st-r, .ap-st-n { grid-column: 1 / -1; font-size: 12px; color: var(--c-muted-fg); }
 .ap-mgr-link { display: inline-flex; align-items: center; justify-content: center; gap: 6px; margin-top: 10px; font-size: 13px; font-weight: 700; color: var(--c-primary); min-height: 40px; }
+.ap-ro { font-size: 13.5px; line-height: 1.9; font-weight: 600; border-color: color-mix(in srgb, var(--c-primary) 35%, var(--c-border)); }
+.ap-blocked { display: flex; flex-direction: column; gap: 10px; }
+.ap-panel-btn { text-decoration: none; margin-top: 0; }
 .ap-foot { font-size: 12px; color: var(--c-muted-fg); margin-top: 10px; }
 .ap-spin { width: 28px; height: 28px; margin: 24px auto; border-radius: 50%; border: 3px solid var(--c-border); border-top-color: var(--c-primary); animation: ap-r 0.8s linear infinite; }
 @keyframes ap-r { to { transform: rotate(360deg); } }

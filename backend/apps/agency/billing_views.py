@@ -56,15 +56,22 @@ class _PortalB(_Portal):
         super().initial(request, *args, **kwargs)
         if not portal.portal_enabled():
             raise B.BillingError("The reseller portal is not open yet.", "forbidden", fa="پرتال نمایندگان هنوز فعال نشده است.")
+        if not isinstance(self, PortalNoticesView):
+            self.initial2()
 
     def handle_exception(self, exc):
         if isinstance(exc, B.BillingError):
             return _berr(exc)
         return super().handle_exception(exc)
 
+    def initial2(self):
+        if portal.check_access(self.request.user.username)["mode"] != "full":
+            raise B.BillingError("your account is with your group manager — invoices and requests are there", "forbidden",
+                                 fa="حساب شما با مدیر گروه است — فاکتورها و درخواست شارژ از طریق مدیر گروه انجام می‌شود")
+
     @property
     def allowed(self) -> list[str]:
-        return portal.visible_usernames(self.request.user.username)[1]
+        return portal.billing_usernames(self.request.user.username)
 
     def mine(self, p: AgencyPayment) -> bool:
         return p.payer_kind == "admin" and p.payer_username == self.request.user.username
@@ -154,7 +161,57 @@ class _MgrB(_Mgr):
 
 class ManagerInvoicesView(_MgrB):
     def get(self, request):
-        return Response(B.invoices_payload(M.visible_usernames(self.m), request.query_params.get("status")))
+        names = M.visible_usernames(self.m)
+        data = B.invoices_payload(names, request.query_params.get("status"))
+        # v1.35: every admin's balance + the old balance not invoiced yet (payable from here)
+        data["admins"] = B.admin_balances(names)
+        data["groups"] = [{"id": a.group_id, "name": M.group_title(a.group)} for a in M.assignments(self.m)]
+        return Response(data)
+
+
+class ManagerSettlementView(_MgrB):
+    """v1.35: pay an admin's old balance — issues its «تسویه مانده قبلی» invoice (once), then the manager pays it."""
+
+    def post(self, request):
+        admin = str((request.data or {}).get("admin") or "")
+        if admin not in M.visible_usernames(self.m):
+            raise B.BillingError("not an admin of your groups", "forbidden", fa="این ادمین در گروه‌های شما نیست")
+        inv = B.issue_settlement(admin, by=f"manager:{self.m.username}")
+        return Response({**B.invoice_row(inv), "message": f"Invoice {inv.number} issued",
+                         "message_fa": f"فاکتور {inv.number} صادر شد"}, status=status.HTTP_201_CREATED)
+
+
+class ManagerRequestsView(_Mgr):
+    """v1.35: ask staff for volume for an admin of the group (same approval as admin requests)."""
+
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+        self.need("agency.gm.request_volume")
+
+    def handle_exception(self, exc):
+        if isinstance(exc, B.BillingError):
+            return _berr(exc)
+        return super().handle_exception(exc)
+
+    def get(self, request):
+        q = request.query_params
+        if q.get("quote"):
+            admin = q.get("admin") or ""
+            if admin not in M.visible_usernames(self.m):
+                raise B.BillingError("not an admin of your groups", "forbidden", fa="این ادمین در گروه‌های شما نیست")
+            return Response(B.quote(admin, q.get("gb")))
+        qs = VolumeRequest.objects.filter(kind="request", manager=self.m).prefetch_related("invoices")
+        return Response({"results": [{**request_row(r), "admin": r.admin_username} for r in qs[:100]]})
+
+    def post(self, request):
+        d = request.data or {}
+        admin = str(d.get("admin") or "")
+        if admin not in M.visible_usernames(self.m):
+            raise B.BillingError("not an admin of your groups", "forbidden", fa="این ادمین در گروه‌های شما نیست")
+        r = B.create_request(admin, d.get("gb"), d.get("note", ""), manager=self.m)
+        return Response({**request_row(r), "admin": admin, "message": "Request sent — staff will review it",
+                         "message_fa": "درخواست ثبت شد — پس از تأیید، فاکتور برای این ادمین صادر می‌شود"},
+                        status=status.HTTP_201_CREATED)
 
 
 class ManagerPaymentsView(_MgrB):

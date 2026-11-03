@@ -705,3 +705,8 @@ information only — it is configured on the Iran server).
 - Alerts (Telegram + panel + sound / push): new admin request, receipt uploaded, auto-approved, mismatch, waiting
   > `pending_payment_alert_minutes` (`pending_alert._agency`). Unfinished checkouts expire with the order
   reservations (`expire_stale_reservations_task`).
+
+- v1.35 access rules: invoices are paid from one place (`billing.payer_for`: group manager if the group has one, else the
+  admin); `/agency/` sign-in blocked for owners of managed groups, read-only for their sub-admins, per-admin override
+  (`AgencyAdminSetting`); group managers request volume for their admins (`manager/requests/`, `agency.gm.request_volume`)
+  and pay old balances (`manager/invoices/settlement/`).

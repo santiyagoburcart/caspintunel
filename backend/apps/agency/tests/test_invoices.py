@@ -136,7 +136,7 @@ def test_admin_request_approve_raises_the_limit_and_invoices(pg, quiet):  # noqa
     boss = staff_client(superadmin=True)
     row = boss.get("/api/v1/admin/agency/approvals/").json()["results"][0]
     assert row["kind"] == "request" and row["requested_by"] == "g1-a" and row["note"] == "for the weekend"
-    assert any("درخواست ادمین" in t and kw.get("buttons") for t, kw in quiet["alerts"])
+    assert any("درخواست شارژ" in t and kw.get("buttons") for t, kw in quiet["alerts"])
     # a group manager can never approve it
     make_manager(boss, pg)
     assert manager_client().post(f"/api/v1/admin/agency/approvals/{req.id}/approve/", {}, format="json").status_code == 403
@@ -145,8 +145,9 @@ def test_admin_request_approve_raises_the_limit_and_invoices(pg, quiet):  # noqa
     assert PanelAdmin.objects.get(username="g1-a").last_limit_bytes == 125 * GB
     inv = AgencyInvoice.objects.get()
     assert inv.kind == "request" and inv.amount == Decimal("50000") and inv.volume_request_id == req.id
-    mine = c.get("/api/v1/agency/portal/requests/").json()["results"][0]
-    assert mine["status"] == "approved" and mine["invoice"] == inv.number
+    # (the group now has a manager, so g1-a's portal is read-only — v1.35; check the row itself)
+    req.refresh_from_db()
+    assert req.status == "approved" and req.invoices.get() == inv
     assert AgencyNotice.objects.filter(admin_username="g1-a", kind="request_approved").exists()
 
 

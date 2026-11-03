@@ -12,7 +12,7 @@ export const BT = {
     inv_h: 'فاکتورها', unpaid_total: 'جمع پرداخت‌نشده', pay: 'پرداخت', none_inv: 'فاکتوری ندارید.',
     st_unpaid: 'پرداخت‌نشده', st_pending: 'در حال بررسی', st_paid: 'پرداخت‌شده', st_voided: 'باطل‌شده',
     k_quota_charge: 'شارژ حجم', k_manual_charge: 'بدهکاری', k_request: 'درخواست / مدیر گروه', k_settlement: 'تسویه مانده قبلی',
-    req_h: 'درخواست شارژ', gb: 'حجم (گیگ)', note: 'یادداشت (اختیاری)', send: 'ارسال درخواست', preview: 'مبلغ: {gb} گیگ × {p} = {a}',
+    req_h: 'درخواست شارژ', req_for: 'درخواست شارژ برای: {u}', gb: 'حجم (گیگ)', note: 'یادداشت (اختیاری)', send: 'ارسال درخواست', preview: 'مبلغ: {gb} گیگ × {p} = {a}',
     no_price: 'قیمت هر گیگ برای این ادمین تعریف نشده', my_req: 'درخواست‌های من', none_req: 'درخواستی ثبت نکرده‌اید.',
     r_pending: 'در انتظار تأیید', r_approved: 'تأیید شد', r_rejected: 'رد شد', reason: 'دلیل', invoice: 'فاکتور',
     notices: 'اعلان‌ها', mark_read: 'خواندم', none_n: 'اعلانی نیست.',
@@ -26,7 +26,7 @@ export const BT = {
     inv_h: 'Invoices', unpaid_total: 'Total unpaid', pay: 'Pay', none_inv: 'No invoices.',
     st_unpaid: 'Unpaid', st_pending: 'Pending review', st_paid: 'Paid', st_voided: 'Voided',
     k_quota_charge: 'Volume', k_manual_charge: 'Charge', k_request: 'Request / group manager', k_settlement: 'Previous balance',
-    req_h: 'Request volume', gb: 'Volume (GB)', note: 'Note (optional)', send: 'Send request', preview: 'Amount: {gb} GB × {p} = {a}',
+    req_h: 'Request volume', req_for: 'Volume request for: {u}', gb: 'Volume (GB)', note: 'Note (optional)', send: 'Send request', preview: 'Amount: {gb} GB × {p} = {a}',
     no_price: 'No price per GB is set for this admin', my_req: 'My requests', none_req: 'No requests yet.',
     r_pending: 'Waiting for approval', r_approved: 'Approved', r_rejected: 'Rejected', reason: 'Reason', invoice: 'Invoice',
     notices: 'Notifications', mark_read: 'Mark read', none_n: 'No notifications.',
@@ -268,6 +268,8 @@ export const AB_CSS = `
 .ab-items summary { cursor: pointer; font-size: 13px; font-weight: 700; min-height: 32px; }
 .ab-items li { font-size: 12.5px; padding: 3px 0; overflow-wrap: anywhere; }
 .ab-cancel { align-self: center; }
+.ab-sum { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; font-weight: 700; }
+.ab-sum b { font-size: 18px; color: var(--c-danger-fg); }
 .ab-seg { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .ab-segb { min-height: 40px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--c-border); background: transparent; color: var(--c-text); font-size: 13px; font-weight: 700; }
 .ab-segb.on { background: var(--c-primary); border-color: var(--c-primary); color: #fff; }
@@ -284,17 +286,25 @@ export const AB_CSS = `
 
 // ---- group manager (/panel/my-groups/invoices): select several unpaid invoices → one payment
 const MT = {
-  fa: { h: 'فاکتورهای گروه', sel: '{n} فاکتور انتخاب شد · {a}', pay_sel: 'پرداخت انتخاب‌شده‌ها', all: 'همه',
+  fa: { bal_h: 'مانده هر ادمین', bal_admin: 'ادمین', bal_balance: 'بدهی', bal_open: 'در فاکتورهای باز', bal_old: 'مانده قبلی (بی‌فاکتور)',
+    bal_pay: 'پرداخت مانده قبلی', bal_none: 'ادمینی در گروه‌های شما نیست.', bal_issued: 'فاکتور تسویه: {n}',
+    rq_h: 'درخواست شارژ برای ادمین', rq_admin: 'ادمین', rq_pick: 'انتخاب ادمین', rq_send: 'ارسال درخواست برای تأیید',
+    rq_list: 'درخواست‌های من', rq_none: 'درخواستی ثبت نکرده‌اید.', group_total: 'جمع پرداخت‌نشدهٔ گروه',
+    h: 'فاکتورهای گروه', sel: '{n} فاکتور انتخاب شد · {a}', pay_sel: 'پرداخت انتخاب‌شده‌ها', all: 'همه',
     f_unpaid: 'پرداخت‌نشده', f_pending: 'در حال بررسی', f_paid: 'پرداخت‌شده', f_all: 'همه', admin: 'ادمین', my_pay: 'پرداخت‌های من',
     p_pending_payment: 'در انتظار واریز', p_pending_review: 'در حال بررسی', p_approved: 'تأیید شد', p_rejected: 'رد شد',
     p_expired: 'منقضی', p_cancelled: 'لغو شد', open: 'ادامهٔ پرداخت' },
-  en: { h: 'Group invoices', sel: '{n} selected · {a}', pay_sel: 'Pay selected', all: 'All',
+  en: { bal_h: 'Balance per admin', bal_admin: 'Admin', bal_balance: 'Owes', bal_open: 'In open invoices', bal_old: 'Old balance (no invoice)',
+    bal_pay: 'Pay old balance', bal_none: 'No admins in your groups.', bal_issued: 'Settlement invoice: {n}',
+    rq_h: 'Request volume for an admin', rq_admin: 'Admin', rq_pick: 'Choose an admin', rq_send: 'Send for approval',
+    rq_list: 'My requests', rq_none: 'No requests yet.', group_total: 'Group total unpaid',
+    h: 'Group invoices', sel: '{n} selected · {a}', pay_sel: 'Pay selected', all: 'All',
     f_unpaid: 'Unpaid', f_pending: 'Under review', f_paid: 'Paid', f_all: 'All', admin: 'Admin', my_pay: 'My payments',
     p_pending_payment: 'Waiting for transfer', p_pending_review: 'Under review', p_approved: 'Approved', p_rejected: 'Rejected',
     p_expired: 'Expired', p_cancelled: 'Cancelled', open: 'Continue' },
 }
 
-export function ManagerInvoices({ http, lang }) {
+export function ManagerInvoices({ http, lang, canRequest = false }) {
   const s = BT[lang] || BT.fa
   const m = MT[lang] || MT.fa
   const toast = useToast()
@@ -314,6 +324,12 @@ export function ManagerInvoices({ http, lang }) {
   const chosen = rows.filter((r) => sel.has(r.id))
   const total = chosen.reduce((a, r) => a + Number(r.amount), 0)
   const toggle = (id) => setSel((cur) => { const n = new Set(cur); n.has(id) ? n.delete(id) : n.add(id); return n })
+  const payOld = async (admin) => {
+    try {
+      const inv = (await http.post('/invoices/settlement/', { admin }, { quiet: true })).data
+      setPay((await http.post('/payments/', { invoice_ids: [inv.id] }, { quiet: true })).data)
+    } catch (e) { toast.error(errL(e, lang, '!')); load() }
+  }
   const paySel = async () => {
     try { setPay((await http.post('/payments/', { invoice_ids: chosen.map((r) => r.id) }, { quiet: true })).data) } catch (e) { toast.error(errL(e, lang, '!')) }
   }
@@ -322,6 +338,26 @@ export function ManagerInvoices({ http, lang }) {
       <style>{AB_CSS}</style>
       {pay && <Checkout http={http} lang={lang} p={pay} onClose={() => { setPay(null); setSel(new Set()); load() }} />}
       <Notices s={s} lang={lang} data={notes} onRead={async () => { await http.post('/notices/', { read: true }, { quiet: true }); load() }} />
+      <section className="ap-card ab-sum" data-testid="gm-total">
+        <span>{m.group_total}{inv?.groups?.length ? <> · {inv.groups.map((g) => g.name).join('، ')}</> : null}</span>
+        <b><B>{inv ? toman(inv.unpaid_total, lang) : '…'}</B></b>
+      </section>
+      <section className="ap-card" data-testid="gm-balances">
+        <div className="ab-h"><h2><Ic n="wallet" size={16} />{m.bal_h}</h2></div>
+        {!inv ? <div className="ap-spin" /> : !(inv.admins || []).length ? <p className="ab-muted">{m.bal_none}</p> : (
+          <ul className="ab-list">
+            {inv.admins.map((a) => (
+              <li key={a.admin} className="ab-inv">
+                <div className="ab-inv-top"><b><bdi>{a.admin}</bdi></b><span>{m.bal_balance}: <B>{toman(a.balance, lang)}</B></span></div>
+                <div className="ab-inv-mid"><span className="ab-muted">{m.bal_open}: <B>{toman(a.open_invoices, lang)}</B></span>
+                  <span>{m.bal_old}: <b><B>{toman(a.old_balance, lang)}</B></b></span></div>
+                {a.can_settle && <button type="button" className="ab-btn" onClick={() => payOld(a.admin)} data-testid="gm-pay-old">{m.bal_pay}</button>}
+                {a.settlement && <span className="ab-muted">{m.bal_issued.replace('{n}', a.settlement)}</span>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
       <section className="ap-card" data-testid="gm-invoices">
         <div className="ab-h"><h2><Ic n="doc" size={16} />{m.h}</h2>
           {inv && <span className="ab-total">{s.unpaid_total}: <B>{toman(inv.unpaid_total, lang)}</B></span>}</div>
@@ -349,6 +385,7 @@ export function ManagerInvoices({ http, lang }) {
           </div>
         )}
       </section>
+      {canRequest && <ManagerRequest http={http} lang={lang} admins={(inv?.admins || []).map((a) => a.admin)} />}
       {pays.length > 0 && (
         <section className="ap-card">
           <div className="ab-h"><h2><Ic n="money" size={16} />{m.my_pay}</h2></div>
@@ -362,5 +399,61 @@ export function ManagerInvoices({ http, lang }) {
         </section>
       )}
     </div>
+  )
+}
+
+
+function ManagerRequest({ http, lang, admins }) {
+  const s = BT[lang] || BT.fa
+  const m = MT[lang] || MT.fa
+  const toast = useToast()
+  const [admin, setAdmin] = useState('')
+  const [gb, setGb] = useState('')
+  const [note, setNote] = useState('')
+  const [q, setQ] = useState(null)
+  const [list, setList] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const loadList = () => http.get('/requests/').then((r) => setList(r.data.results)).catch(() => setList([]))
+  useEffect(() => { loadList() }, [])
+  useEffect(() => {
+    const v = Number(String(gb).replace(/[^\d.]/g, ''))
+    if (!admin || !(v > 0)) { setQ(null); return undefined }
+    const t = setTimeout(() => http.get('/requests/', { params: { quote: 1, admin, gb: v } }).then((r) => setQ(r.data)).catch(() => setQ(null)), 300)
+    return () => clearTimeout(t)
+  }, [admin, gb])
+  const send = async (e) => {
+    e.preventDefault(); setBusy(true)
+    try {
+      await http.post('/requests/', { admin, gb: String(gb).replace(/[^\d.]/g, ''), note })
+      setGb(''); setNote(''); setQ(null); loadList()
+    } catch (e2) { toast.error(errL(e2, lang, '!')) } finally { setBusy(false) }
+  }
+  return (
+    <>
+      <form className="ap-card ab-form" onSubmit={send} data-testid="gm-request">
+        <div className="ab-h"><h2><Ic n="plus" size={16} />{admin ? <>{s.req_for.split('{u}')[0]}<bdi>{admin}</bdi></> : m.rq_h}</h2></div>
+        <label><span>{m.rq_admin}</span>
+          <select className="ap-input" value={admin} onChange={(e) => setAdmin(e.target.value)} required>
+            <option value="">{m.rq_pick}</option>{admins.map((a) => <option key={a} value={a}>{a}</option>)}
+          </select></label>
+        <label><span>{s.gb}</span><input className="ap-input" dir="ltr" inputMode="decimal" value={gb} onChange={(e) => setGb(e.target.value)} required /></label>
+        <label><span>{s.note}</span><input className="ap-input" value={note} maxLength={255} onChange={(e) => setNote(e.target.value)} /></label>
+        {q && (q.missing_price ? <p className="ab-reason">{s.no_price}</p>
+          : <p className="ab-preview" data-testid="gm-quote">{s.preview.replace('{gb}', gbt(q.gb)).replace('{p}', toman(q.price_per_gb, lang)).replace('{a}', toman(q.amount, lang))}</p>)}
+        <button className="ap-btn" disabled={busy || !q || q.missing_price}>{m.rq_send}</button>
+      </form>
+      <section className="ap-card">
+        <div className="ab-h"><h2><Ic n="clock" size={16} />{m.rq_list}</h2></div>
+        {!list ? <div className="ap-spin" /> : list.length === 0 ? <p className="ab-muted">{m.rq_none}</p> : (
+          <ul className="ab-list">{list.map((r) => (
+            <li key={r.id} className="ab-inv">
+              <div className="ab-inv-top"><b><bdi>{r.admin}</bdi> · <B>+{gbt(r.gb)} GB</B></b><span className="ab-pill" data-st={r.status}>{s['r_' + r.status]}</span></div>
+              <div className="ab-inv-mid"><span className="ab-muted">{jalali(r.created_at, true, lang)}</span>{r.amount != null && <b><B>{toman(r.amount, lang)}</B></b>}</div>
+              {r.reason && <p className="ab-reason">{s.reason}: {r.reason}</p>}
+              {r.invoice && <p className="ab-muted">{s.invoice}: <B>{r.invoice}</B></p>}
+            </li>))}</ul>
+        )}
+      </section>
+    </>
   )
 }

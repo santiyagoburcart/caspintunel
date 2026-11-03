@@ -512,6 +512,12 @@ erDiagram
         decimal amount
     }
 
+    agency_admin_setting {
+        bigint id PK
+        string username UK
+        string portal_login "auto | on | off (v1.35)"
+    }
+
     agency_notice {
         bigint id PK
         string admin_username "portal"
@@ -541,6 +547,7 @@ erDiagram
 | `agency_invoice` | v1.34: one per agency charge (staff limit raise, manual charge, approved group-manager volume / admin request) = GB × price; or one «تسویه مانده قبلی» per admin for balances from before invoices (no ledger entry). Voiding an unpaid invoice voids its charge. |
 | `agency_payment` | v1.34: an agency admin (portal, one invoice) or a group manager (several of its groups' invoices) paying the full total. Unique amount from the same pool as customer orders; matched by SMS / Blu like orders; approval = invoices paid + payment entries in the ledger. Never in customer revenue / Transactions. |
 | `agency_payment_item` | Which invoices a payment covers (and their amounts). |
+| `agency_admin_setting` | v1.35 per-admin options: `/agency/` sign-in by the rule / allowed / blocked. |
 | `agency_notice` | Notifications in the /agency/ portal (admin) or the group-manager panel (request approved / rejected, invoice issued, payment approved / rejected). |
 | `agency_ledger_entry` | The reseller's account: automatic quota charges on limit increases, manual charges, signed adjustments, payments; voidable, never deleted. Balance = charges − payments. |
 

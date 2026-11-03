@@ -679,6 +679,29 @@ Group managers do the same from `/panel/my-groups/invoices` for their groups' ad
 invoices for one payment. Staff charges (limit raise, manual charge with GB) and approved group-manager volume
 issue invoices the same way.
 
+## 5c6. Agency access rules (v1.35)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor A as Admin (/agency/)
+    participant P as portal
+    participant B as billing.portal_access
+    actor G as Group manager (/panel/)
+
+    A->>P: sign in (PasarGuard credentials)
+    P->>B: group of A has a manager?
+    alt A owns that group (override not "on") or override "off"
+        P-->>A: 403 «لطفاً از پنل مدیریت گروه وارد شوید» + /panel/ link
+    else A is a sub-admin of a managed group
+        P-->>A: usage only (no requests / invoices / payments)
+    else no manager
+        P-->>A: usage + «درخواست شارژ برای: A» + invoices + pay
+    end
+    G->>B: request volume for an admin of the group → Approvals + Telegram → approve → limit + invoice
+    G->>B: pay invoices / old balance — refused for admins whose invoices the admin pays (one place only)
+```
+
 ## 9. Staff Telegram linking
 
 ```mermaid

@@ -146,7 +146,7 @@ export default function GroupManager() {
           {tab === 'acc' && me.groups.length > 0 && <Accounting me={me} s={s} lang={lang} />}
           {tab === 'act' && <Activity s={s} lang={lang} />}
           {tab === 'set' && <SettingsTab me={me} s={s} />}
-          {tab === 'inv' && <ManagerInvoices http={http} lang={lang} />}
+          {tab === 'inv' && <ManagerInvoices http={http} lang={lang} canRequest={can('agency.gm.request_volume')} />}
         </>
       )}
     </div>

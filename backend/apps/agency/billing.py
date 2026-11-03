@@ -124,6 +124,41 @@ def _group_name(g) -> str:
     return group_title(g)
 
 
+# ------------------------------------------------------------------ who pays / portal access (v1.35)
+def manager_of_group(g: AdminGroup | None) -> GroupManager | None:
+    if g is None:
+        return None
+    return GroupManager.objects.filter(is_active=True, assignments__group=g).order_by("id").first()
+
+
+def payer_for(username: str) -> str:
+    """Where this admin's invoices are paid — ONE place only: "manager" when its group has an active
+    group manager (the account is with the manager), else "admin" (direct with us)."""
+    return "manager" if manager_of_group(group_of(username)) is not None else "admin"
+
+
+def portal_access(username: str) -> dict:
+    """/agency/ portal for this admin:
+      full     — no group manager: own usage + «درخواست شارژ» + invoices + pay;
+      readonly — sub-admin (or override "on") of a group with a manager: own usage only;
+      blocked  — owner of a group with a manager (signs in at /panel/ through the manager account),
+                 or the per-admin override "off".
+    """
+    from .models import AgencyAdminSetting
+
+    st = AgencyAdminSetting.objects.filter(username=username).values_list("portal_login", flat=True).first() or "auto"
+    g = group_of(username)
+    m = manager_of_group(g)
+    manager = (m.display_name or m.username) if m else ""
+    if st == "off":
+        return {"mode": "blocked", "reason": "disabled", "manager": manager, "override": st}
+    if m is None:
+        return {"mode": "full", "reason": "", "manager": "", "override": st}
+    if st != "on" and g is not None and g.owner_username == username:
+        return {"mode": "blocked", "reason": "use_panel", "manager": manager, "override": st}
+    return {"mode": "readonly", "reason": "with_manager", "manager": manager, "override": st}
+
+
 # ------------------------------------------------------------------ notices
 def notice(*, admin: str = "", manager: GroupManager | None = None, kind: str, title: str, title_en: str,
            body: str = "", body_en: str = "") -> None:
@@ -295,7 +330,8 @@ def _positive(gb) -> Decimal:
     return v
 
 
-def create_request(username: str, gb, note: str = "") -> VolumeRequest:
+def create_request(username: str, gb, note: str = "", *, manager: GroupManager | None = None) -> VolumeRequest:
+    """An admin asks for itself (portal), or a group manager asks for an admin of its group (v1.35)."""
     from .actions import base_limit
 
     gb = _positive(gb)
@@ -303,16 +339,21 @@ def create_request(username: str, gb, note: str = "") -> VolumeRequest:
     if a is None:
         raise BillingError("no agency account for this username", "not_found")
     ensure_price(username, gb, context="portal request")
-    if VolumeRequest.objects.filter(kind="request", requested_by=username, status="pending").count() >= MAX_PENDING_REQUESTS:
+    if manager is None and portal_access(username)["mode"] != "full":
+        raise BillingError("your account is with your group manager — ask them for volume", "forbidden",
+                           fa="حساب شما با مدیر گروه است — شارژ را از مدیر گروه درخواست کنید")
+    requested_by = manager.username if manager else username
+    if VolumeRequest.objects.filter(kind="request", admin_username=username, status="pending").count() >= MAX_PENDING_REQUESTS:
         raise BillingError("you already have several requests waiting — wait for staff to answer", "conflict",
                            fa="چند درخواست در انتظار دارید — منتظر پاسخ بمانید")
     base = base_limit(a)
     g = group_of(username)
-    r = VolumeRequest.objects.create(group=g, group_name=_group_name(g), manager=None, manager_username="",
+    r = VolumeRequest.objects.create(group=g, group_name=_group_name(g), manager=manager,
+                                     manager_username=manager.username if manager else "",
                                      admin_username=username, kind="request", gb=gb, old_limit_bytes=base,
-                                     new_limit_bytes=base + int(gb * GB), requested_by=username, note=(note or "")[:255])
-    write_audit(action="agency.request.created", staff=f"agency:{username}", target=r,
-                detail={"admin": username, "gb": str(gb), "group": r.group_name})
+                                     new_limit_bytes=base + int(gb * GB), requested_by=requested_by, note=(note or "")[:255])
+    write_audit(action="agency.request.created", staff=f"agency:{requested_by}", target=r,
+                detail={"admin": username, "gb": str(gb), "group": r.group_name, "by_manager": bool(manager)})
     cache.delete("agency:approvals:badge")
 
     def send():
@@ -365,6 +406,13 @@ def approve_request(r: VolumeRequest, by, staff_label: str):
                              note=f"admin request #{r.id}: {gb_label(base)} → {gb_label(new)}", ledger_entry=e)
     r.old_limit_bytes, r.new_limit_bytes, r.limit_change = base, new, h
     inv = issue_for_entry(e, volume_request=r, by=staff_label)
+    if r.manager_id:
+        transaction.on_commit(lambda: notice(
+            manager=r.manager, kind="request_approved",
+            title=f"درخواست شارژ {_gb_text(r.gb)} گیگ برای {r.admin_username} تأیید شد",
+            title_en=f"Your {_gb_text(r.gb)} GB request for {r.admin_username} was approved",
+            body=f"فاکتور {inv.number}: {inv.amount:,} تومان" if inv else "",
+            body_en=f"Invoice {inv.number}: {inv.amount:,} T" if inv else ""))
     transaction.on_commit(lambda: notice(
         admin=r.admin_username, kind="request_approved",
         title=f"درخواست شارژ {_gb_text(r.gb)} گیگ تأیید شد", title_en=f"Your {_gb_text(r.gb)} GB request was approved",
@@ -375,6 +423,12 @@ def approve_request(r: VolumeRequest, by, staff_label: str):
 
 def reject_request(r: VolumeRequest, reason: str) -> None:
     reason = (reason or "").strip()[:255]
+    if r.manager_id:
+        transaction.on_commit(lambda: notice(
+            manager=r.manager, kind="request_rejected",
+            title=f"درخواست شارژ {_gb_text(r.gb)} گیگ برای {r.admin_username} رد شد",
+            title_en=f"Your {_gb_text(r.gb)} GB request for {r.admin_username} was rejected",
+            body=f"دلیل: {reason}" if reason else "", body_en=f"Reason: {reason}" if reason else ""))
     transaction.on_commit(lambda: notice(
         admin=r.admin_username, kind="request_rejected",
         title=f"درخواست شارژ {_gb_text(r.gb)} گیگ رد شد", title_en=f"Your {_gb_text(r.gb)} GB request was rejected",
@@ -440,6 +494,12 @@ def create_payment(invoice_ids: list[int], *, payer_kind: str, payer_username: s
     invs = list(AgencyInvoice.objects.select_for_update().filter(pk__in=ids))
     if len(invs) != len(ids) or any(i.admin_username not in allowed_admins for i in invs):
         raise BillingError("not your invoice", "forbidden", fa="این فاکتور متعلق به شما نیست")
+    # v1.35: an invoice is paid from ONE place — the group manager if the admin's group has one, else the admin
+    wrong = [i.number for i in invs if payer_for(i.admin_username) != payer_kind]
+    if wrong:
+        who_fa = "مدیر گروه" if payer_kind == "admin" else "خود ادمین"
+        raise BillingError(f"these invoices are paid by the {'group manager' if payer_kind == 'admin' else 'admin'}: "
+                           f"{', '.join(wrong)}", "forbidden", fa=f"این فاکتورها را {who_fa} پرداخت می‌کند: {', '.join(wrong)}")
     bad = [i.number for i in invs if i.status != AgencyInvoice.UNPAID]
     if bad:
         raise BillingError(f"already paid, voided or under review: {', '.join(bad)}", "conflict",
@@ -881,3 +941,18 @@ def _mark_tx(tx, p: AgencyPayment, *, rounded: bool = False) -> None:
 
     note = f"agency payment {p.number} ({p.payer_username}) — " + ("rounded amount, auto-approved" if rounded else "auto-approved")
     BluTransaction.objects.filter(pk=tx.pk).update(status=BluStatus.MATCHED, match_note=note[:255])
+
+
+def admin_balances(usernames: list[str]) -> list[dict]:
+    """Per admin: ledger balance, what open invoices cover, and the old balance not invoiced yet
+    (payable through a «تسویه مانده قبلی» invoice, once)."""
+    from . import ledger
+
+    bal = ledger.balances()
+    out = []
+    for n in usernames:
+        q = settlement_quote(n)
+        out.append({"admin": n, "balance": bal.get(n, D0), "open_invoices": q["open_invoices"],
+                    "old_balance": q["amount"], "settlement": q["existing"], "can_settle": q["allowed"],
+                    "payer": payer_for(n)})
+    return out
