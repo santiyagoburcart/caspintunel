@@ -164,6 +164,18 @@ def notice(*, admin: str = "", manager: GroupManager | None = None, kind: str, t
            body: str = "", body_en: str = "") -> None:
     AgencyNotice.objects.create(admin_username=admin or "", manager=manager, kind=kind, title=title[:200],
                                 title_en=title_en[:200], body=body, body_en=body_en)
+    if manager is not None and manager.staff_id:          # v1.37: the manager's browsers get it too (Web Push)
+        sid = manager.staff_id
+
+        def push():
+            try:
+                from apps.notifications import webpush
+
+                webpush.push_to_staff(None, f"{title} · {title_en}"[:120], body or body_en, url="/my-groups/notifications",
+                                      tag=f"gm-notice:{kind}", staff_ids=[sid])
+            except Exception as exc:  # noqa: BLE001
+                log.warning("manager push failed: %s", exc)
+        transaction.on_commit(push)
 
 
 def managers_of(username: str) -> list[GroupManager]:

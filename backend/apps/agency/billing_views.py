@@ -272,9 +272,28 @@ class ManagerPaymentView(_MgrB):
 
 
 class ManagerNoticesView(_Mgr):
+    """GET latest (bell) or ?page= (notifications page, 20 each) · POST {read: true} all, or {id} one."""
+
     def get(self, request):
-        return Response(notice_rows(AgencyNotice.objects.filter(manager=self.m)))
+        qs = AgencyNotice.objects.filter(manager=self.m)
+        if not request.query_params.get("page"):
+            return Response(notice_rows(qs))
+        size = 20
+        count = qs.count()
+        pages = max(1, -(-count // size))
+        try:
+            page = min(max(1, int(request.query_params.get("page"))), pages)
+        except ValueError:
+            page = 1
+        rows = [{"id": n.id, "kind": n.kind, "title": n.title, "title_en": n.title_en, "body": n.body, "body_en": n.body_en,
+                 "created_at": n.created_at, "read": n.read_at is not None} for n in qs[(page - 1) * size: page * size]]
+        return Response({"results": rows, "unread": qs.filter(read_at__isnull=True).count(), "count": count,
+                         "page": page, "pages": pages})
 
     def post(self, request):
-        AgencyNotice.objects.filter(manager=self.m, read_at__isnull=True).update(read_at=timezone.now())
-        return Response({"ok": True})
+        qs = AgencyNotice.objects.filter(manager=self.m, read_at__isnull=True)
+        nid = (request.data or {}).get("id")
+        if nid:
+            qs = qs.filter(pk=nid)
+        qs.update(read_at=timezone.now())
+        return Response({"ok": True, "unread": AgencyNotice.objects.filter(manager=self.m, read_at__isnull=True).count()})

@@ -333,6 +333,21 @@ Invoices are settled by **allocation rows** (`agency_invoice_allocation`, `apps/
 - A new «تسویه مانده قبلی» invoice is allowed whenever an un-invoiced balance remains and none is open (debt added after a paid one).
 - Staff: Agency → Groups → each group shows the same «کل بدهی گروه» (`GET /admin/agency/groups/<id>/debt/`, agency.accounting).
 
+## Group-manager panel layout (v1.37)
+
+- **«ادمین‌های گروه»**: `GET /agency/manager/admins/?q=&sort=name|usage|debt&group=&page=&page_size=` — searched over ALL of
+  the manager's admins on the server, 20 per page; group chips filter; «+ ادمین جدید» opens a compact dialog (the separate
+  «ادمین جدید» page / nav entry is gone, `/my-groups/new` redirects). `GET manager/me/?lite=1` skips the admin rows.
+- **Notifications**: header bell with the unread count + dropdown (phones: bottom sheet) and `/my-groups/notifications`
+  (`GET manager/notices/?page=` 20 each, `POST {id}` one read / `{read: true}` all); no notices block inside pages. Each new
+  notice also goes to the manager's browsers (Web Push, `billing.notice`).
+- **«حسابداری»**: one compact filter bar (period chips, from / to, admin search, CSV / Excel), debt / pending tiles, admin list
+  20 / 50 / 100 per page.
+- **Settings**: profile, password, language / theme, and «اعلان‌ها» (sound + volume — `manager/prefs/`, same `Staff.notify_prefs`;
+  browser push — `manager/push/`, `subscribe|unsubscribe|test`). «خروج» lives in the header account menu (desktop and phones).
+- **«فعالیت‌ها»**: `GET manager/activity/?type=&admin=&page=` — types create / volume / status / password / role / profile /
+  payment / request / sign-in (colour + icon each); includes the manager's own payments and volume requests.
+
 ## Full reseller stats for group managers (v1.36)
 
 Permission **«مدیر گروه: مشاهده آمار کامل نمایندگان»** (`agency.gm.full_stats`, granted to every group-manager role by

@@ -422,13 +422,11 @@ export function ManagerInvoices({ http, lang, canRequest = false }) {
   const [d, setD] = useState(null)
   const [pay, setPay] = useState(null)
   const [pays, setPays] = useState(null)
-  const [notes, setNotes] = useState(null)
   const [sel, setSel] = useState(new Set())
   const [busy, setBusy] = useState(false)
   const load = () => {
     http.get('/debt/').then((r) => setD(r.data)).catch((e) => { setD({ admins: [], total: 0, payable: 0 }); toast.error(errL(e, lang, '!')) })
     http.get('/payments/').then((r) => setPays(r.data.results)).catch(() => setPays([]))
-    http.get('/notices/').then((r) => setNotes(r.data)).catch(() => {})
   }
   useEffect(() => { load() }, [])
   const payAll = async (expected) => {
@@ -471,7 +469,7 @@ export function ManagerInvoices({ http, lang, canRequest = false }) {
     <div className="ab">
       <style>{AB_CSS}</style>
       {pay && <Checkout http={http} lang={lang} p={pay} onClose={() => { setPay(null); setSel(new Set()); load() }} />}
-      <Notices s={s} lang={lang} data={notes} onRead={async () => { await http.post('/notices/', { read: true }, { quiet: true }); load() }} />
+      {/* v1.37: notices live in the header bell / «اعلان‌ها» page, not in the middle of this page */}
       <div className="ab-seg ab-tabs" role="tablist">
         {['debt', 'hist'].map((k) => (
           <button key={k} type="button" role="tab" aria-selected={tab === k} className={'ab-segb' + (tab === k ? ' on' : '')} onClick={() => setTab(k)} data-testid={'gm-tab-' + k}>

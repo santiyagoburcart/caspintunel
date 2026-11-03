@@ -50,7 +50,6 @@ export const CASPIAN_GROUPS = [
 export const GM_GROUPS = [
   ['nav_group_gm', [
     ['/my-groups', 'gm_admins', 'agency.gm.view_admins', 'agency'],
-    ['/my-groups/new', 'gm_new_admin', 'agency.gm.create_admin', 'users'],
     ['/my-groups/accounting', 'gm_accounting', 'agency.gm.accounting', 'accounting'],
     ['/my-groups/invoices', 'gm_invoices', 'agency.gm.invoices', 'payments'],
     ['/my-groups/activity', 'gm_activity', 'agency.gm.activity', 'monitoring'],
@@ -59,9 +58,9 @@ export const GM_GROUPS = [
 ]
 export const GM_BOTNAV = [
   ['/my-groups', 'gm_admins', 'agency.gm.view_admins', 'agency'],
-  ['/my-groups/new', 'gm_new_admin', 'agency.gm.create_admin', 'users', true],
   ['/my-groups/accounting', 'gm_accounting', 'agency.gm.accounting', 'accounting'],
-  ['/my-groups/invoices', 'gm_invoices', 'agency.gm.invoices', 'payments'],
+  // v1.37: «ادمین جدید» is a dialog on «ادمین‌های گروه» now; invoices took the raised centre slot
+  ['/my-groups/invoices', 'gm_invoices', 'agency.gm.invoices', 'payments', true],
   ['/my-groups/activity', 'gm_activity', 'agency.gm.activity', 'monitoring'],
   // v1.25.5: profile, own password, language, theme and logout — like staff's Settings tab
   ['/my-groups/settings', 'settings', null, 'settings'],

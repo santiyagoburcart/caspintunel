@@ -215,6 +215,8 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
 - v1.35.1: invoices are settled ONLY through `allocation.py` rows (never set `AgencyInvoice.status` to paid by hand):
   ledger payment / «کاهش بدهی» → `apply_entry`, checkout → `allocate_agency_payment`, «تسویه خارج از سیستم» → `settle_outside`.
   Invariant (`enforce`, after every entry / void / invoice): open invoices ≤ max(0, ledger balance).
+- v1.37 group-manager panel: lists page on the SERVER (admins 20, activity 30, notices 20) — never filter / search only the
+  loaded page. Manager notices = `billing.notice(manager=…)` (DB + push); the UI shows them only in the header bell / page.
 - v1.36: group managers' reseller numbers = `manager_views._admin_row(full=…)` over `api.admin_row` (never re-derive a formula
   in the manager code); live counts only through `live_stats` (read-only GETs, cached).
 - v1.35.3: admin text fields that become subscription headers (profile_title, support_url, …) are saved ONLY through

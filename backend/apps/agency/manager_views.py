@@ -216,7 +216,8 @@ class ManagerMeView(_Mgr):
             x = pend.setdefault(p["admin"], {"gb": 0, "count": 0})
             x["gb"] += p["gb"]; x["count"] += 1
         groups = []
-        see_admins = self.request.user.has_perm("agency.gm.view_admins")
+        # v1.37: ?lite=1 → groups without their admin rows (the admins page pages them: GET manager/admins/)
+        see_admins = self.request.user.has_perm("agency.gm.view_admins") and not request.query_params.get("lite")
         for asg in M.assignments(m):
             g = asg.group
             admins = {a.username: a for a in PanelAdmin.objects.filter(username__in=g.get_all_usernames())}
@@ -247,7 +248,64 @@ def _writes() -> bool:
     return writes_enabled()
 
 
+PAGE_SIZES = (10, 20, 50, 100)
+
+
 class ManagerAdminCreateView(_Mgr):
+    def get(self, request):
+        """v1.37 «ادمین‌های گروه»: own groups' admins, searched over ALL of them, sorted, 20 per page.
+        ?q= &sort=name|usage|debt &group= &page= &page_size="""
+        from . import ledger
+
+        self.need("agency.gm.view_admins")
+        q = request.query_params
+        full = request.user.has_perm("agency.gm.full_stats")
+        see_debt = request.user.has_perm("agency.gm.accounting")
+        cat = M._safe_catalog()
+        bal = ledger.balances()
+        pend = {}
+        for p in M._pending_rows(M.visible_usernames(self.m)):
+            x = pend.setdefault(p["admin"], {"gb": 0, "count": 0})
+            x["gb"] += p["gb"]; x["count"] += 1
+        term = (q.get("q") or "").strip().lower()
+        rows, seen = [], set()
+        for asg in M.assignments(self.m):
+            g = asg.group
+            if q.get("group") and str(g.id) != str(q.get("group")):
+                continue
+            names = [u for u in g.get_all_usernames() if u not in seen and (not term or term in u.lower())]
+            admins = {a.username: a for a in PanelAdmin.objects.filter(username__in=names)}
+            for u in names:
+                if u not in admins:
+                    continue
+                seen.add(u)
+                r = _admin_row(admins[u], cat, full=full)
+                r.update({"balance": bal.get(u, 0) if see_debt else None, "pending": pend.get(u, {"gb": 0, "count": 0}),
+                          "member_role": "owner" if u == g.owner_username else "member",
+                          "group_id": g.id, "group": M.group_title(g)})
+                rows.append(r)
+        sort = q.get("sort") or "name"
+        if sort == "usage":
+            rows.sort(key=lambda r: (r["is_unlimited"], -(r["usage_percent"] or 0), r["username"].lower()))
+        elif sort == "debt" and see_debt:
+            rows.sort(key=lambda r: (-(r["balance"] or 0), r["username"].lower()))
+        else:
+            sort = "name"
+            rows.sort(key=lambda r: (r["member_role"] != "owner", r["username"].lower()))
+        try:
+            size = int(q.get("page_size") or 20)
+        except ValueError:
+            size = 20
+        size = size if size in PAGE_SIZES else 20
+        count = len(rows)
+        pages = max(1, -(-count // size))
+        try:
+            page = min(max(1, int(q.get("page") or 1)), pages)
+        except ValueError:
+            page = 1
+        return Response({"results": rows[(page - 1) * size: page * size], "count": count, "page": page, "pages": pages,
+                         "page_size": size, "sort": sort})
+
     def post(self, request):
         self.need("agency.gm.create_admin")
         out = M.create_admin(self.m, request.data or {})
@@ -340,12 +398,53 @@ class ManagerActivityView(_Mgr):
         self.need("agency.gm.activity")
         gid = request.query_params.get("group")
         ids = [M.assignment_for_group(self.m, gid).group_id] if gid else [a.group_id for a in M.assignments(self.m)]
-        # v1.27.1: the manager API never talks about inbounds (old rows carried them)
-        rows = M.activity(ids)
-        for r in rows:
-            r["action"] = r["action"].replace("inbounds_changed", "role_changed")
-            r["detail"] = {k: v for k, v in (r.get("detail") or {}).items() if k != "inbounds"}
-        return Response({"results": rows})
+        # v1.37: type / admin filters + pages; the manager API never talks about inbounds (old rows carried them)
+        q = request.query_params
+        admin = q.get("admin") or ""
+        if admin and admin not in M.visible_usernames(self.m):
+            admin = "__none__"
+        return Response(M.manager_activity(self.m, ids, kind=q.get("type") or "", admin=admin,
+                                           page=q.get("page") or 1, size=q.get("page_size") or 30))
+
+
+class ManagerPrefsView(_Mgr):
+    """v1.37 the manager's own sound preference (same storage as staff: Staff.notify_prefs)."""
+
+    def get(self, request):
+        from apps.adminpanel.views.push import staff_prefs
+
+        return Response(staff_prefs(request.user))
+
+    def patch(self, request):
+        from apps.adminpanel.views.push import StaffPrefsView
+
+        return StaffPrefsView.patch(self, request)
+
+    put = patch
+
+
+class ManagerPushView(_Mgr):
+    """v1.37 Web Push for the manager's own browsers (notices arrive while the panel is closed)."""
+
+    def get(self, request):
+        from apps.notifications import webpush
+
+        return Response({"enabled": webpush.enabled(), "public_key": webpush.public_key(),
+                         "subscriptions": request.user.push_subscriptions.count()})
+
+    def post(self, request, action=None):
+        from apps.adminpanel.views.push import StaffPushView
+
+        if action == "test":
+            from apps.notifications import webpush
+
+            if not webpush.enabled():
+                return Response({"detail": "browser push is not configured", "code": "disabled"}, status=503)
+            n = webpush.push_to_staff(None, "🔔 تست اعلان · Test notification", "caspintunel", url="/my-groups/notifications",
+                                      tag="test", staff_ids=[request.user.id])
+            return Response({"ok": bool(n), "sent": n, "message": f"Test sent to {n} browser(s)",
+                             "message_fa": f"اعلان آزمایشی به {n} مرورگر فرستاده شد"})
+        return StaffPushView.post(self, request, action)
 
 
 class ManagerForbiddenView(_Mgr):

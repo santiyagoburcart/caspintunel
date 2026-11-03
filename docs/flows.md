@@ -781,6 +781,23 @@ sequenceDiagram
     G->>V: «جزئیات» → GET manager/admins/X/stats/
 ```
 
+## 5c11. Group-manager notifications (v1.37)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant B as billing.notice(manager=…)
+    participant DB as agency_notice
+    participant W as Web Push (manager's browsers)
+    actor G as Group manager (header bell)
+
+    B->>DB: create notice (invoice issued / payment / request decision)
+    B->>W: on commit: push_to_staff(staff_ids=[manager.staff])
+    G->>DB: bell polls GET manager/notices/ every 45 s → count (+ chime if sound on)
+    G->>DB: open item → POST {id} · «همه خوانده شد» → POST {read: true}
+    G->>DB: «همهٔ اعلان‌ها» → /my-groups/notifications (GET ?page=)
+```
+
 ## 9. Staff Telegram linking
 
 ```mermaid

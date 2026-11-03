@@ -707,6 +707,9 @@ information only — it is configured on the Iran server).
   covered by credit); `paid_amount` / `settled_via` on the invoice, partial = unpaid with a remainder. `ledger.add_entry(settle=
   auto|selected|none, invoice_ids)`; `enforce` keeps open invoices ≤ ledger debt after every entry, void and new invoice;
   voiding a source releases its rows. `manage.py reconcile_agency_invoices [--apply]` (preview by default).
+- v1.37 group-manager panel: paged admins list (`ManagerAdminCreateView.get`), `managers.manager_activity` (typed, filtered,
+  paged; incl. own `agency.payment.*` / `agency.request.created`), notices paged + bell (`components/GmBell.jsx`), manager
+  sound prefs / Web Push endpoints (`ManagerPrefsView`, `ManagerPushView`), push on every manager notice.
 - v1.36 group managers' full reseller stats: `manager_views._admin_row(full=)` (same `api.admin_row` numbers, stripped without
   `agency.gm.full_stats`), `live_stats` (PasarGuard `/api/system/users` + newest `online_at`, 8 threads, Redis 60 s).
 - v1.35.3 `admin_crud.clean_field` / `clean_url` / `clean_text`: profile title and support link are cleaned before they reach

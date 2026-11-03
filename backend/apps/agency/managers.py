@@ -1140,6 +1140,73 @@ def admin_statement(username: str, frm: date | None = None, to: date | None = No
 
 
 # ------------------------------------------------------------------ activity
+# v1.37 activity types (colour + icon in the manager UI) → the audit actions behind them
+ACT_TYPES = {
+    "create": ("admin_created",), "volume": ("volume_added", "approved", "rejected"),
+    "status": ("admin_enabled", "admin_disabled"), "password": ("password_changed",),
+    "role": ("role_changed", "inbounds_changed"), "profile": ("profile_changed",), "login": ("login",),
+    "payment": ("created", "pay_all", "receipt", "approved_payment", "rejected_payment"), "request": ("request_created",),
+}
+
+
+def act_type(action: str) -> str:
+    if action.startswith("agency.payment."):
+        return "payment"
+    if action == "agency.request.created":
+        return "request"
+    k = action.split(".")[-1]
+    for t, keys in ACT_TYPES.items():
+        if t not in ("payment", "request") and k in keys:
+            return t
+    return "other"
+
+
+def manager_activity(m: GroupManager, group_ids: list[int], *, kind: str = "", admin: str = "", page=1, size=30) -> dict:
+    """v1.37: the manager's group events + its own payments / volume requests; filter by type / admin, paged."""
+    from django.db.models import Q
+
+    if not group_ids:
+        return {"results": [], "count": 0, "page": 1, "pages": 1, "admins": []}
+    q = Q()
+    for gid in group_ids:
+        q |= Q(detail__group_id=gid)
+    group_q = q & (Q(action__startswith="agency.manager.") | Q(action__startswith="agency.approval."))
+    mine = Q(staff_label=f"agency:{m.username}") & (Q(action__startswith="agency.payment.") | Q(action="agency.request.created"))
+    pay_ids = list(m.payments.values_list("id", flat=True)) if hasattr(m, "payments") else []
+    staff_on_mine = Q(action__in=("agency.payment.approved", "agency.payment.rejected"), target_type="AgencyPayment",
+                      target_id__in=pay_ids)
+    qs = AuditLog.objects.filter(group_q | mine | staff_on_mine).order_by("-created_at", "-id")
+    if admin:
+        qs = qs.filter(Q(detail__admin=admin) | Q(detail__admins__contains=[admin]))
+    if kind:
+        if kind == "payment":
+            qs = qs.filter(action__startswith="agency.payment.")
+        elif kind == "request":
+            qs = qs.filter(action="agency.request.created")
+        elif kind in ACT_TYPES:
+            qs = qs.filter(action__in=[f"agency.manager.{k}" for k in ACT_TYPES[kind]]
+                           + [f"agency.approval.{k}" for k in ACT_TYPES[kind]])
+    try:
+        size = max(10, min(100, int(size)))
+        page = max(1, int(page))
+    except (TypeError, ValueError):
+        size, page = 30, 1
+    count = qs.count()
+    pages = max(1, -(-count // size))
+    page = min(page, pages)
+    titles = {g.id: group_title(g) for g in AdminGroup.objects.filter(pk__in=group_ids)}
+    rows = []
+    for l in qs[(page - 1) * size: page * size]:
+        d = {k: v for k, v in (l.detail or {}).items() if k not in ("ip", "inbounds")}
+        action = l.action.replace("inbounds_changed", "role_changed")
+        rows.append({"id": l.id, "at": l.created_at, "action": action, "type": act_type(action),
+                     "by": l.staff_label.replace("agency:", "").replace("manager:", ""),
+                     "admin": d.get("admin") or ", ".join(d.get("admins") or []) or None,
+                     "group": titles.get(d.get("group_id")) or d.get("group"), "detail": d})
+    names = sorted({u for g in AdminGroup.objects.filter(pk__in=group_ids) for u in g.get_all_usernames()}, key=str.lower)
+    return {"results": rows, "count": count, "page": page, "pages": pages, "admins": names}
+
+
 def activity(group_ids: list[int], limit: int = 100) -> list[dict]:
     from django.db.models import Q
 

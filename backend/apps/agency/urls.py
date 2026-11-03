@@ -39,5 +39,8 @@ urlpatterns = [
     path("manager/payments/<int:pk>/", bv.ManagerPaymentView.as_view(), name="agency-manager-payment"),
     path("manager/payments/<int:pk>/<str:action>/", bv.ManagerPaymentView.as_view(), name="agency-manager-payment-action"),
     path("manager/notices/", bv.ManagerNoticesView.as_view(), name="agency-manager-notices"),
+    path("manager/prefs/", mv.ManagerPrefsView.as_view(), name="agency-manager-prefs"),
+    path("manager/push/", mv.ManagerPushView.as_view(), name="agency-manager-push"),
+    path("manager/push/<str:action>/", mv.ManagerPushView.as_view(), name="agency-manager-push-action"),
     re_path(r"^manager/.*$", mv.ManagerForbiddenView.as_view(), name="agency-manager-forbidden"),
 ]

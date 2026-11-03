@@ -9,6 +9,7 @@ import { useLiveApprovals } from '../lib/liveApprovals'
 import { useI18n } from '../lib/i18n'
 import { useTheme } from '../theme/ThemeProvider'
 import { CASPIAN_BOTNAV, CASPIAN_GROUPS, GM_BOTNAV, GM_GROUPS, NAV_ICONS, isGroupManager } from './adminNav'
+import { GmBell } from './GmBell'
 
 // Aurora / Royal Frost — the original flat nav (kept exactly as-is).
 const nav = [
@@ -161,7 +162,7 @@ function SideAccount({ className = '' }) {
 }
 
 // desktop avatar menu (group managers, v1.25.5): who · Settings · language · theme · logout
-function AvatarMenu({ settingsTo }) {
+function AvatarMenu({ settingsTo, compact = false }) {
   const { staff, logout } = useAuth()
   const { t, lang, setLang } = useI18n()
   const { mode, toggle, locked } = useTheme()
@@ -180,7 +181,7 @@ function AvatarMenu({ settingsTo }) {
     <div className="avm" ref={ref}>
       <button type="button" className="avm-btn" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((v) => !v)} data-testid="avatar-menu">
         <span className="side-acc-av">{(staff?.username || '?').charAt(0).toUpperCase()}</span>
-        <span className="avm-name" dir="ltr">{staff?.username}</span>
+        {!compact && <span className="avm-name" dir="ltr">{staff?.username}</span>}
       </button>
       {open && (
         <div className="avm-pop" role="menu">
@@ -202,9 +203,14 @@ const SIDE_ACC_CSS = `
 .avm-btn { display: flex; align-items: center; gap: 8px; padding: 3px 10px 3px 3px; border-radius: 999px; border: 1px solid var(--c-border); background: transparent; color: var(--c-text); cursor: pointer; }
 [dir="rtl"] .avm-btn { padding: 3px 3px 3px 10px; }
 .avm-btn .side-acc-av { width: 28px; height: 28px; font-size: 12px; }
+.csp-mtop .avm-btn { padding: 2px !important; }
+/* phones: the menu spans the top bar (an avatar near the edge would push a 220px menu off screen) */
+.csp-mtop .avm, .csp-mtop .csp-mtop-end { position: static; }
+.csp-mtop .avm-pop { inset-inline: 12px; min-width: 0; top: calc(100% + 4px); background: var(--c-bg) !important; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.csp-mtop .avm-btn .side-acc-av { width: 32px; height: 32px; font-size: 13px; }
 .avm-name { font-size: 13px; font-weight: 600; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .avm-pop { position: absolute; inset-inline-end: 0; top: calc(100% + 6px); z-index: 70; min-width: 220px; padding: 6px; border-radius: 14px;
-  background: var(--c-surface); border: 1px solid var(--c-border); box-shadow: 0 12px 40px rgb(0 0 0 / .25); display: flex; flex-direction: column; }
+  background: linear-gradient(var(--c-surface), var(--c-surface)), var(--c-bg); border: 1px solid var(--c-border); box-shadow: 0 12px 40px rgb(0 0 0 / .25); display: flex; flex-direction: column; }
 .dark .avm-pop { background: #11151f; }
 .avm-who { display: flex; flex-direction: column; padding: 8px 10px 10px; border-bottom: 1px solid var(--c-border); margin-bottom: 4px; }
 .avm-who b { font-size: 13px; text-align: start; } .avm-who small { font-size: 11.5px; color: var(--c-text-muted); }
@@ -345,9 +351,10 @@ const MOBILE_TITLES = [
   ['/cards', 'cards'], ['/discounts', 'discounts'], ['/monitoring', 'monitoring'], ['/panel-link', 'panel_link'], ['/bots', 'bots'],
   ['/branding', 'branding'], ['/apps', 'apps'], ['/settings', 'settings'], ['/notifications', 'notifications'],
   ['/pages', 'pages'], ['/themes', 'themes'], ['/roles', 'roles'], ['/docs', 'docs'],
+  ['/my-groups/notifications', 'gm_notifications'],
 ]
 const TAB_ROOTS = new Set(['/', '/users', '/payments', '/services', '/settings',
-  '/my-groups', '/my-groups/new', '/my-groups/accounting', '/my-groups/activity', '/my-groups/settings'])   // group-manager tabs
+  '/my-groups', '/my-groups/accounting', '/my-groups/invoices', '/my-groups/activity', '/my-groups/settings'])   // group-manager tabs
 
 /** which bottom tab a path belongs to — pages reached from the Settings index light up Settings */
 function activeTab(path) {
@@ -416,9 +423,12 @@ function CaspianLayout() {
             <button type="button" className="csp-mtop-lang" onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')}>
               {lang === 'fa' ? 'EN' : 'فا'}
             </button>
-            <Link to={gm ? '/my-groups/settings' : '/settings'} className="csp-mtop-avatar" aria-label={t('settings')} data-testid="avatar">
-              {(staff?.username || '?').charAt(0).toUpperCase()}
-            </Link>
+            {gm && <GmBell />}
+            {gm ? <AvatarMenu settingsTo="/my-groups/settings" compact /> : (
+              <Link to="/settings" className="csp-mtop-avatar" aria-label={t('settings')} data-testid="avatar">
+                {(staff?.username || '?').charAt(0).toUpperCase()}
+              </Link>
+            )}
           </div>
           {inner ? (
             <div className="csp-mtop-brand csp-mtop-inner">
@@ -452,6 +462,7 @@ function CaspianLayout() {
             {lang === 'fa' ? 'EN' : 'فا'}
           </button>
           {!gm && <SoundButton className="csp-tb-btn csp-tb-ico" />}
+          {gm && <GmBell />}
           {gm ? <AvatarMenu settingsTo="/my-groups/settings" /> : (
             <>
               <span className="csp-tb-user">
