@@ -66,6 +66,8 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   **The ONE exception = `payments_sms/rounded.py` (v1.32, SMS + Blu):** a deposit slightly BELOW exactly one open invoice
   (≤ max(`rounded_max_toman`, `rounded_max_percent`)), inside its window, with a receipt or a known payer card. Never above,
   never with 2+ candidates, never twice for one deposit; paid amount + `shortfall` recorded; undo = void. Don't widen it elsewhere.
+- **Manual invoices (v1.38, `orders/manual.py`)**: approved only through `approve_payment(confirmed_at=…)` (revenue on the
+  entered date) or the normal checkout; never set a manual order / payment status by hand. Tag = `Order.manual_invoice`.
 - **One renewal per service at a time** (`orders.services.waiting_renewal`): no new renewal order while one is queued,
   paid or under receipt review, and `schedule_renewal` never replaces an unapplied `ScheduledRenewal` (→ order `failed`
   + staff alert). Incident 2026-10-29: one transfer paid two renewals. Queue warnings live in `payments_sms/checks.py`.

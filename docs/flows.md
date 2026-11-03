@@ -798,6 +798,29 @@ sequenceDiagram
     G->>DB: «همهٔ اعلان‌ها» → /my-groups/notifications (GET ?page=)
 ```
 
+## 5d. Manual customer invoice (v1.38)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor S as Staff (payments.manual_invoice)
+    participant M as orders.manual
+    participant A as approve_payment
+    participant F as mark_paid_and_fulfill
+    actor C as Customer (site / Mini App / bot)
+
+    alt «قبلاً پرداخت شده»
+        S->>M: create_paid(item, amount, paid_at, method, card, ref, receipt, action)
+        M->>A: Order + Payment → approve(confirmed_at = paid_at, notify = False)
+        A->>F: invoice paid; action none → completed, else fulfil (new / renew / add volume)
+    else «صدور فاکتور برای پرداخت»
+        S->>M: issue(item, amount, due_at, action) → notify customer (site + bot)
+        C->>M: «پرداخت» → pay() → normal order (unique amount, card, timer)
+        C->>A: receipt / SMS / Blu deposit → approved (real payment date)
+        A->>F: invoice paid + service action
+    end
+```
+
 ## 9. Staff Telegram linking
 
 ```mermaid

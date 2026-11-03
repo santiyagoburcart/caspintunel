@@ -685,6 +685,21 @@ information only — it is configured on the Iran server).
 - **Monitoring** shows a «کالکتور بلو» card (`/admin/monitoring/` → `blu`, same data as the Blu tab).
 
 
+## Manual customer invoices (v1.38)
+
+- `apps/orders/manual.py` (`ManualInvoice`, permission `payments.manual_invoice`, Super Admin has it), from Users → user
+  (purchase history) and CRM 360: «+ فاکتور دستی».
+- Mode «قبلاً پرداخت شده» (`create_paid`): Order + Payment, approved through `approve_payment(confirmed_at=<entered date>,
+  notify=False)` → revenue / Accounting / Analytics count it on that date; confirmed_by = the staff member; method card
+  (`card_manual`, optional bank card) / `cash` / `other`; receipt image + tracking number → the usual duplicate warnings.
+- Mode «صدور فاکتور برای پرداخت» (`issue` → `pay`): notification (site + bot); the customer presses «پرداخت» on the site,
+  Mini App (`/history`) or bot (`mi:<id>`) → a normal order with the invoice amount (unique amount, card, timer, receipt,
+  SMS / Blu auto-confirm). `mark_paid_and_fulfill` marks the invoice paid, never holds a unique-amount lock for it, and
+  completes a no-action (type `manual`) order without provisioning.
+- Service action (default off): new service / renew / add volume — the same fulfilment as a paid order.
+- Tag «دستی» (`Order.manual_invoice`): customer history, admin purchase history, Transactions (+ `?manual=1`), payment
+  detail, CSV, Accounting (`manual` tile), bot history. Void / restore (Super Admin) re-opens / re-pays the invoice.
+
 ## Agency invoices and payments (v1.34, docs/agency.md#invoices-and-payments-v134)
 
 - `apps/agency/billing.py`: every agency charge issues an `AgencyInvoice` (GB × the admin's price per GB of

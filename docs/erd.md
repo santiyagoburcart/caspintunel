@@ -199,7 +199,27 @@ erDiagram
         datetime unique_expire_at "reservation, 30 min"
         string status "pending_payment | paid | completed | rejected | failed | expired | cancelled"
         string source "site | bot | admin"
+        bigint manual_invoice_id FK "v1.38 «دستی»"
     }
+    manual_invoice {
+        bigint id PK "MI-000123"
+        bigint user_id FK
+        string mode "paid | issued"
+        string status "open | paid | cancelled"
+        bigint plan_id FK "or a custom title"
+        string title
+        int volume_gb
+        int days
+        decimal amount
+        string service_action "none | new | renew | addon"
+        bigint service_id FK
+        datetime due_at
+        datetime paid_at
+        bigint order_id FK "the order that paid it"
+        bigint created_by_id FK "staff"
+    }
+    user ||--o{ manual_invoice : "staff invoices"
+    manual_invoice ||--o{ order : "checkout / record"
     payment {
         bigint id PK
         bigint order_id FK "one per order"
@@ -310,6 +330,7 @@ erDiagram
 
 | Table | Description |
 |---|---|
+| `manual_invoice` | v1.38 «فاکتور دستی» created by staff: mode `paid` = an approved payment + order on the entered payment date (method `card_manual` / `cash` / `other`), mode `issued` = the customer pays it in their panel (normal checkout). Optional service action. Every order linked to it carries the «دستی» tag. |
 | `order` | Purchase intent. `amount_unique` = price + a random surcharge, reserved via the unique `amount_unique_lock` while pending/paid (never a value the same user had in the last 24 h). Expires after `unique_amount_reservation_minutes`. |
 | `payment` | One per order: receipt (card-to-card), SMS / Blu auto-confirm, or an SMS / Blu near-miss under review. Approved / rejected only through `approve_payment` / `reject_payment`. `number` = human transaction number `TX-000123` (v1.25). A Super Admin "delete" voids it (`voided_*`, `payments_sms/voiding.py`): out of every list and total, restorable for 30 days; never a hard delete. Since v1.32 `auto_rule = rounded` marks a rounded-amount auto-approval (`amount` = what was paid, `shortfall` = the rest; Accounting counts `amount`); `auto_reason` keeps which conditions matched (or, on a payment left for review, why the rule did not apply). |
 | `bank_card` | Receiving cards shown at checkout; per-card deposit report in Accounting. |
