@@ -58,7 +58,7 @@ Telegram and UI settings. Refuses while `agency_sync_enabled` is on.
 
 ## Cut-over — done 2026-10-16
 
-Finland PAMP: celery + celery-beat stopped (web/db/nginx up, nothing deleted). This server syncs every 10 min with enforcement; the portal is open at `https://aicaspin.ir/agency/`.
+Finland PAMP: celery + celery-beat stopped (web/db/nginx up, nothing deleted). This server syncs every `agency_sync_interval_minutes` (production: 2 min since 2026-11) with enforcement; the portal is open at `https://aicaspin.ir/agency/`.
 
 **Rollback to Finland:** (1) here: Agency → Settings → turn off enforcement, sync and the portal — or `docker compose exec -T web python manage.py shell -c "from apps.settings_app.utils import set_setting; from apps.settings_app.models import ValueType; [set_setting(k, False, ValueType.BOOL) for k in ('agency_enforcement_enabled', 'agency_sync_enabled', 'agency_portal_enabled')]"`; (2) on Finland: `cd /opt/pamp && docker compose start celery celery-beat`. Never both on at once.
 
@@ -360,6 +360,24 @@ Invoices are settled by **allocation rows** (`agency_invoice_allocation`, `apps/
   browser push — `manager/push/`, `subscribe|unsubscribe|test`). Since v1.38.1 the header avatar only opens Settings (no dropdown); «خروج» is a red button at the bottom of the sidebar (desktop) and at the bottom of the Settings tab (phones), always behind a confirm (`components/LogoutButton.jsx`).
 - **«فعالیت‌ها»**: `GET manager/activity/?type=&admin=&page=` — types create / volume / status / password / role / profile /
   payment / request / sign-in (colour + icon each); includes the manager's own payments and volume requests.
+
+## Approvals on Telegram and bulk approve (v1.33)
+
+A new approval (group-manager volume or an admin's «درخواست شارژ») is sent by `agency/notify.py::approval_requested` to staff
+with `agency.manage` (DM after Telegram linking, backup chat as fallback) with **Approve / Reject** buttons
+(`ag:*` callbacks, `handle_callback`). The same checks as the panel apply (`managers.approve` / `managers.reject`, the staff
+member's permissions; a price that has to be set first asks for confirmation). A cap reached or an admin changed by a
+group manager is also posted. In the panel, **Approvals** can approve several rows at once
+(`POST /admin/agency/approvals/bulk-approve/ {ids}`, ≤ 200, `agency.manage` + `agency.accounting`); each row is approved on
+its own (one failure does not stop the rest; the answer lists `approved` and `failed`).
+
+## Group-manager admin cards (v1.38.1)
+
+Compact card per admin: name · status · role, usage bar with %, cap / used / remaining in one row, debt, user chips (total /
+active / online / expired / limited). Actions: «افزودن حجم» · «کاربران» · «جزئیات» + «⋯» (change password, change role,
+settings, disable / enable — a pamp-blocked admin shows why it cannot be enabled). The full numbers live only in
+«جزئیات» (with the (i) explanations). The grid sizes columns by the list's own width; a short last row spans the free width.
+Every group-manager list uses the same compact centred pager.
 
 ## Full reseller stats for group managers (v1.36)
 

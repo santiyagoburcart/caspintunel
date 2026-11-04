@@ -38,6 +38,10 @@ redirect, including on the PROXY-protocol listeners.
 **Back to the previous mode** = the same switch to the last mode. "Skip the path check" exists
 only for an Iran IP that can't be reached from abroad — then nothing proves the path works.
 
+Beat `access mode: host nginx result + Cloudflare ranges` (`settings_app.tasks.access_tick_task`, every 5 min) folds the
+host's nginx result of a running switch into the panel and refreshes Cloudflare's published IP ranges once a day (used to
+trust `CF-Connecting-IP` only from Cloudflare). A switch itself runs as `access_switch_task`.
+
 ## nginx (same in every mode; `scripts/domain.sh access`)
 
 * `nginx/domain/realip.conf` — `set_real_ip_from <Cloudflare ranges>; real_ip_header CF-Connecting-IP;`

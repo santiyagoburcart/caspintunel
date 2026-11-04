@@ -1,6 +1,8 @@
 # Roadmap
 
-Planned phases after v1.15.x. Nothing on this page is built yet. Each phase
+Phases since v1.15.x — the first table lists what was planned and built; "Since v1.22" lists the
+work that followed from requests (each a release on GitHub; details in `PROGRESS.md` and the linked docs);
+"Next" is what is planned and **not built yet**. Each phase
 ships as its own releases (tests on the isolated stack, fa/en, light/dark,
 desktop + 390 px) and **must update [architecture.md](architecture.md),
 [erd.md](erd.md) and [flows.md](flows.md)** in the same release.
@@ -15,6 +17,29 @@ desktop + 390 px) and **must update [architecture.md](architecture.md),
 | 4 | Retention — warnings, win-back queue — **done (v1.20.0)** | 3 |
 | 5 | CRM accounting — LTV, renewal / churn reports — **done (v1.21.0)** | 3, 4 |
 | B | Domain & Cloudflare — encrypted token, safe domain-change wizard, rollback — **done (v1.22.0)** | — |
+
+## Since v1.22 (built)
+
+| Release | Theme | Docs |
+|---|---|---|
+| v1.22.3–v1.22.4 | never attach a customer to someone else's panel account; iPhone Shortcut offline SMS queue | [sms-batch.md](sms-batch.md) |
+| v1.23 | access mode (Direct / Cloudflare proxy / Iran tunnel); admin limit history; unlimited admins keep their last finite limit | [access-mode.md](access-mode.md), [agency.md](agency.md) |
+| v1.24–v1.25 | group managers, approvals, group statements; managers inside the main panel; transaction numbers + Super Admin delete / restore; disk protection; Persian role names | [agency.md](agency.md) |
+| v1.26 | discount codes | [architecture.md](architecture.md#discount-codes-v126) |
+| v1.27–v1.28 | per-ability group-manager permissions (`agency.gm.*`), service sync fix, one customer design | [agency.md](agency.md) |
+| v1.29–v1.30 | Telegram ↔ site account linking keeps the site login; renewal always on the same account; one renewal at a time; login never blocked by stale tokens; `www` → bare domain; phone panel navigation | [flows.md](flows.md) |
+| v1.31–v1.32 | Blu Bank deposits (signed collector webhook, SSH health); permanent delete + auto-purge of deleted users; rounded-amount auto-approve; Super Admin runtime settings | [blu-webhook.md](blu-webhook.md) |
+| v1.33 | agency alerts on Telegram, notification sound, Web Push, unconfirmed-payment alert; Blu liveness = successful polls | [architecture.md](architecture.md#notifications-telegram-sound-browser-push-v133) |
+| v1.34–v1.35 | agency invoices, admin volume requests, agency payments; access rules; invoices follow the ledger (allocations); one group-debt number; header-safe profile title | [agency.md](agency.md) |
+| v1.36–v1.38.1 | group managers see full reseller stats; group-manager UI cleanup (paged lists, bell, settings, compact cards); manual customer invoices; one receipt picker | [agency.md](agency.md), [architecture.md](architecture.md#manual-customer-invoices-v138) |
+| v1.38.2 | /agency/ portal sections, bell, «پرداخت کل بدهی», reseller push, invoice source | [agency.md](agency.md) |
+| v1.38.3 | Transactions cards = the list; Tehran days everywhere | [architecture.md](architecture.md#days-months-and-the-transactions-cards-v1383) |
+
+## Next (planned, not built)
+
+| Phase | Theme | Notes |
+|---|---|---|
+| C | Multi-tenant reseller storefronts | Agreed scope pending. Today's server is small (2 vCPU, 3.7 GiB RAM + 2 GiB swap, ~1 GiB swap already in use, disk 64 %; it also hosts three PasarGuard nodes) — see the capacity note in [architecture.md](architecture.md#production-server) before sizing it. |
 
 ## Phases 1–2 — Ticketing
 
@@ -137,7 +162,7 @@ one-click rollback, recovery CLI `./scripts/domain.sh`. v1.22.1: mail moves with
 
 **Done in v1.21.0** (see [architecture.md](architecture.md#analytics-crm-accounting)): business overview, customer finance
 (LTV, AOV, ARPU, new vs returning, by plan / channel / card, discount cost, export), retention analytics (churn, renewal,
-cohorts, lifetime, top LTV) and support performance per staff / topic. All planned phases are now built. Original plan:
+cohorts, lifetime, top LTV) and support performance per staff / topic. All phases planned in v1.15 are built. Original plan:
 
 - **LTV** per customer and per acquisition source (total paid, number of
   orders, months active).

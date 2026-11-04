@@ -5,10 +5,10 @@
 | [install.md](install.md) | one-command menu installer (install / update / uninstall) |
 | [offline.md](offline.md) | air-gapped install — pre-built images, manual TLS |
 | [deploy.md](deploy.md) | server layout, TLS (auto + manual), DNS/mail, the update button |
-| [architecture.md](architecture.md) | how the system is put together: containers, request flow, Celery schedule, bots, PasarGuard, agency sync, host jobs, backups, deploy, production server |
+| [architecture.md](architecture.md) | how the system is put together: production server + capacity, containers, request flow, apps, **permissions**, Celery schedule, bots, PasarGuard, agency, tickets, CRM / retention / analytics / discounts, notifications + push, transactions, manual invoices, host jobs, backups, deploy |
 | [erd.md](erd.md) | data model — Mermaid ER diagrams per app + every table explained |
-| [flows.md](flows.md) | sequence diagrams: purchase + card-to-card + SMS auto-confirm, renewal, provisioning, agency sync + ledger, bot / Mini App login, domain change, deploy |
-| [roadmap.md](roadmap.md) | planned phases: ticketing, agency, CRM, retention, CRM accounting |
+| [flows.md](flows.md) | sequence diagrams: 2.x payments (card-to-card, SMS, Blu, rounded, alerts, manual invoices, void, discounts, cards), renewal, provisioning, 5.x agency (sync, CRUD, group managers, approvals, invoices, payments, access), sign-in + account linking + purge, tickets, CRM, retention, analytics, domain / access mode, deploy, disk |
+| [roadmap.md](roadmap.md) | phases built since v1.15, releases since v1.22, and what is planned next (multi-tenant reseller storefronts) |
 | [api.md](api.md) | API surface overview (full spec at `/api/schema/`, UI at `/api/docs/`) |
 | [operations.md](operations.md) | day-2: backups, monitoring, alerts, user delete/restore, SMS devices & apps, common tasks |
 | [migration.md](migration.md) · [فارسی](migration-fa.md) | moving to a new server: export / import scripts, pre-DNS test, runbook, rollback, server specs |
@@ -16,7 +16,8 @@
 | [domain.md](domain.md) | Settings → Domain & Cloudflare: encrypted token, domain-change wizard, transition, rollback, recovery CLI |
 | [access-mode.md](access-mode.md) | Domain & Cloudflare → Access mode: Direct / Cloudflare proxy / Iran tunnel, switch + verify + auto-revert, real IP, DNS-01, Iran-side diagnosis |
 | [sms-batch.md](sms-batch.md) | iPhone Shortcut offline SMS queue: save first, upload the queue to `inbound-batch` (idempotent, matched at received_at) |
-| [agency.md](agency.md) | agency panel (reseller admins, PAMP port): switches, data import, golden test |
+| [agency.md](agency.md) | agency panel (reseller admins, PAMP port): switches, import, golden test, portal, ledger, limit history, groups, group managers, approvals, invoices / payments, access rules |
+| [blu-webhook.md](blu-webhook.md) | Blu Bank deposits: signed collector webhook, matching (customer orders, then agency payments), SSH health check, liveness |
 | [bots.md](bots.md) | the Telegram sales bot: menus, support message, purchase history, QR photos |
 | [telegram-miniapp.md](telegram-miniapp.md) | Telegram Mini App auto-login |
 | [email-relay.md](email-relay.md) | outbound mail through a relay |

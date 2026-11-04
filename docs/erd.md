@@ -318,6 +318,8 @@ erDiagram
         int ssh_failures "in a row"
         string ssh_error
         string svc_alert "'' | inactive | ssh | errors"
+        datetime last_poll_ok_at "v1.33.1 liveness: last poll ok journal line"
+        int poll_error_count "failed polls in the window"
     }
     scheduled_renewal {
         bigint id PK
@@ -499,6 +501,7 @@ erDiagram
         bigint id PK "INV-000123"
         string admin_username
         bigint group_id FK
+        string group_name "kept when the group is gone"
         string kind "quota_charge | manual_charge | request | settlement"
         decimal gb
         decimal price_per_gb
@@ -519,6 +522,8 @@ erDiagram
         bigint agency_payment_id FK
         bool auto "oldest first / invariant"
         bool released "source voided"
+        datetime released_at
+        string release_reason
     }
 
     agency_payment {
@@ -539,6 +544,9 @@ erDiagram
         string auto_rule "rounded"
         decimal paid_amount
         decimal shortfall
+        decimal mismatch_amount "the deposit that did not match"
+        datetime receipt_uploaded_at
+        datetime confirmed_at
     }
 
     agency_payment_item {
@@ -552,6 +560,7 @@ erDiagram
         bigint id PK
         string username UK
         string portal_login "auto | on | off (v1.35)"
+        string updated_by
     }
 
     agency_notice {
@@ -881,6 +890,7 @@ erDiagram
         bigint user_id FK "customer, or"
         bigint staff_id FK "staff, or"
         string reseller "v1.38.2 agency reseller username"
+        string user_agent
         datetime last_ok_at
         int failures
     }
@@ -1012,6 +1022,7 @@ erDiagram
     }
     cleanup_run {
         bigint id PK
+        datetime ran_at
         bigint freed_bytes
         json deleted
         json warnings

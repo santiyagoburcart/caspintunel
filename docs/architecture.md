@@ -20,7 +20,8 @@ Related: [erd.md](erd.md) (data model) · [flows.md](flows.md) (sequence diagram
 | Public IP | `46.62.192.189` — `aicaspin.ir`, `www.aicaspin.ir`, `mail.aicaspin.ir` (Cloudflare DNS, DNS-only, TTL Auto) |
 | Since | 2026-10-21, migrated from the previous server with the migration toolkit ([migration.md](migration.md)) |
 | Compose | `docker-compose.yml` + `docker-compose.prod.yml` (selected by `COMPOSE_FILE` in `.env`) |
-| Also on the host | two PasarGuard **node** containers (`hel-tun1`, `hel-cdn1`) and `x-ui` — VPN data plane, **not** part of this project; never restarted by `update.sh` |
+| Hardware | 2 vCPU (AMD EPYC-Rome), 3.7 GiB RAM + 2 GiB swap file, 38 GB disk (2026-11-04: ~2.8 GiB RAM and ~1 GiB swap in use, disk 64 %) |
+| Also on the host | three PasarGuard **node** containers (`str-hel`, `hel-tun1`, `hel-cdn1`), `x-ui` + xray, the `backhaul-kharej38100` and `caspin` (tunnel manager) systemd services — VPN data plane, **not** part of this project; never restarted by `update.sh` (they use roughly 0.6 GiB of the RAM) |
 | Docker daemon | `live-restore: true`, json-file logs capped at 10 MB × 3 per container; journald capped at 200 MB |
 
 Secrets live only in `.env` (git-ignored) and in encrypted DB fields — none
@@ -45,7 +46,7 @@ flowchart LR
         redis[(redis 7<br/>broker, cache,<br/>channel layer)]
         mail[mailserver<br/>SMTP only]
         certbot[certbot]
-        pma[phpmyadmin<br/>127.0.0.1 only]
+        pma[phpmyadmin<br/>profile tools, off]
     end
     nginx --> web & daphne & fu & fa
     web & daphne & worker & beat & sales & backup --> db
@@ -63,15 +64,15 @@ flowchart LR
 | `daphne` | `caspintunel-backend` | ASGI for `/ws/` (Channels; Redis channel layer) |
 | `frontend_user` | `caspintunel-frontend-user` | built user SPA (also the Mini App and the reseller portal at `/agency/`; `/agency/manager` only forwards to the panel login since v1.25) |
 | `frontend_admin` | `caspintunel-frontend-admin` | built admin SPA, served under the admin path (default `/panel/`) |
-| `celery_worker` | `caspintunel-backend` | all async work (provisioning, sync, backups, notifications, agency sync) |
+| `celery_worker` | `caspintunel-backend` | all async work (provisioning, sync, backups, notifications, Web Push, agency sync, Blu matching, access / domain switches); holds the read-only SSH key for the Blu service check |
 | `celery_beat` | `caspintunel-backend` | periodic tasks, stored in the DB (`django_celery_beat`) |
 | `bot_sales` | `caspintunel-backend` | `manage.py run_sales_bot` (pyTelegramBotAPI, long polling) |
 | `bot_backup` | `caspintunel-backend` | `manage.py run_backup_bot` (backup chat commands, long polling) |
 | `db` | `mysql:8.0` | the only database |
 | `redis` | `redis:7-alpine` | Celery broker, Django cache (public-config cache, bot state, rate limits), Channels layer |
 | `mailserver` | docker-mailserver 14 | `SMTP_ONLY=1`, outbound relay ([email-relay.md](email-relay.md)) |
-| `certbot` | `certbot/certbot` | certificate renewal (webroot) |
-| `phpmyadmin` | phpmyadmin | bound to `127.0.0.1` only (SSH tunnel) |
+| `certbot` | `certbot/dns-cloudflare` | certificate renewal by DNS-01 through Cloudflare (works in every access mode — [access-mode.md](access-mode.md)) |
+| `phpmyadmin` | phpmyadmin 5 | compose profile `tools` — not running; start it on demand (`docker compose --profile tools up -d phpmyadmin`), bound to `127.0.0.1:8080` (SSH tunnel), stop it afterwards |
 
 ## Request flow
 
@@ -119,16 +120,74 @@ SHA-256 stored).
 | `accounts` | customer `User` (`AUTH_USER_MODEL`), independent RBAC — `Permission` / `Role` / `Staff`; JWT auth (password-hash claim revokes sessions), registration, phone normalization / Iran-only rule, email verification, 3-path password reset, legacy import, bot↔site account merge, Mini App initData validation, **soft delete + `DeletedUserArchive`**; **permanent delete** (`purge.py`, Super Admin + `users.purge`: removes the person, keeps orders / payments on an anonymous placeholder row) |
 | `panel` | multi-panel `Panel` + `PasarGuardClient` (token cache, typed errors), `Service`, payload mappers, idempotent provision / renew / sync, scheduled renewals (reset / carry-over) always on the same account + link, admin full edit, staff set / change a service's plan (`set_service_plan`, filter «بدون پلن»), manual create, link an existing panel account |
 | `plans` | `Plan` (fixed / custom-volume), `group_ids` per plan with panel-default fallback, renewal mode + carry-over |
-| `orders` | `Order` (new / renew / add-on / manual / imported), atomic unique-amount reservation (`amount_unique_lock`), checkout resume, `ScheduledRenewal` (one renewal at a time: `waiting_renewal` / `RenewalWaiting`; never replaced — `RenewalConflict` → order `failed` + staff alert via `common/staff_alert.py`), `fulfill_order` + `retry_unfulfilled_orders` |
-| `payments_sms` | `BankCard`, `Payment`, card-to-card receipts, `SmsSource` / `SmsAppDevice` / `SmsMessage`, unit-aware parser, **exact-match auto-confirm + near-miss review** (`matching.py`), `approve_payment` / `reject_payment`; **approval-queue warnings** (`checks.py`: receipt amount, recent SMS payment, duplicate image hash / bank document number, waiting renewal); **transaction numbers** `TX-000123` (`Payment.number`) and the Super Admin **void / restore** (`voiding.py`, 30 days) — voided payments are left out of every total (`Payment.objects.live()`); **Blu Bank deposits** (`blu.py`: HMAC-signed webhook `/payments/blu/webhook/`, `BluTransaction` + `BluCollector` health; `matching.match_blu_transaction`: same exact-amount rule inside the order's time window, duplicate after SMS, near-miss → `blu_mismatch` review; staff attach) — [blu-webhook.md](blu-webhook.md); **rounded-amount auto-approve** (`rounded.py`, v1.32: a deposit slightly BELOW exactly one open invoice, inside its window, with a receipt or a known payer card → approved with `auto_rule = rounded`, paid amount + `shortfall`; Super Admin «لغو تأیید» = void; re-checked when a receipt is uploaded) |
-| `notifications` | `Notification` / `NotificationDelivery`, `dispatch.notify_user` (site / bot / email, each channel isolated), WebSockets: customer notifications + staff live payments queue |
+| `orders` | `Order` (new / renew / add-on / manual / imported), **`ManualInvoice`** (v1.38 «فاکتور دستی»: `manual.py`, mode paid → `approve_payment(confirmed_at=…)`, mode issued → the customer's checkout; tag = `Order.manual_invoice`), discount code on `create_order` (`crm.retention.check_code`), atomic unique-amount reservation (`amount_unique_lock`), checkout resume, `ScheduledRenewal` (one renewal at a time: `waiting_renewal` / `RenewalWaiting`; never replaced — `RenewalConflict` → order `failed` + staff alert via `common/staff_alert.py`), `fulfill_order` + `retry_unfulfilled_orders` |
+| `payments_sms` | `BankCard`, `Payment`, card-to-card receipts, `SmsSource` / `SmsAppDevice` / `SmsMessage`, unit-aware parser, **exact-match auto-confirm + near-miss review** (`matching.py`), `approve_payment` / `reject_payment`; **approval-queue warnings** (`checks.py`: receipt amount, recent SMS payment, duplicate image hash / bank document number, waiting renewal); **transaction numbers** `TX-000123` (`Payment.number`) and the Super Admin **void / restore** (`voiding.py`, 30 days) — voided payments are left out of every total (`Payment.objects.live()`); **unconfirmed-payment alert** (`pending_alert.py`, v1.33); agency deposits are matched after customer orders (`agency.billing.match_deposit`, ambiguous → held); **Blu Bank deposits** (`blu.py`: HMAC-signed webhook `/payments/blu/webhook/`, `BluTransaction` + `BluCollector` health; `matching.match_blu_transaction`: same exact-amount rule inside the order's time window, duplicate after SMS, near-miss → `blu_mismatch` review; staff attach) — [blu-webhook.md](blu-webhook.md); **rounded-amount auto-approve** (`rounded.py`, v1.32: a deposit slightly BELOW exactly one open invoice, inside its window, with a receipt or a known payer card → approved with `auto_rule = rounded`, paid amount + `shortfall`; Super Admin «لغو تأیید» = void; re-checked when a receipt is uploaded) |
+| `notifications` | `Notification` / `NotificationDelivery`, `dispatch.notify_user` (site / bot / email, each channel isolated), WebSockets: customer notifications + staff live payments queue; **Web Push** (v1.33: `PushSubscription` of a customer, a staff member or — v1.38.2 — an /agency/ reseller; `webpush.py` → `send_push_task`; worker `push-sw.js` is notification-only) |
 | `telegram` | `TelegramClient`, `ensure_bot_user`, forced-channel + phone gate, sales bot (pure `bot/screens.py` + fa/en `bot/texts.py`), backup bot + `run_database_backup`, channel member stats ([bots.md](bots.md)) |
-| `settings_app` | `Setting` (typed KV), `SiteConfig` (branding singleton), `Theme`, `Page` (CMS), `AppRelease` (operator apps), `EmailSettings`, iPhone Shortcut builder, `paths` (admin / portal paths), `domain` (Cloudflare token + domain wizard: `DomainConfig`, `DomainChange`), `seed` |
+| `settings_app` | `Setting` (typed KV; `SUPER_ONLY` keys are Super Admin only), `SiteConfig` (branding singleton), `Theme`, `Page` (CMS), `AppRelease` (operator apps), `EmailSettings`, iPhone Shortcut builder, `paths` (admin / portal paths), `domain` (Cloudflare token + domain wizard: `DomainConfig`, `DomainChange`), **access mode** (`access.py`: Direct / Cloudflare proxy / Iran tunnel, `access_switch_task` + `access_tick_task` — [access-mode.md](access-mode.md)), `seed` (permissions, roles, beat rows; idempotent) |
 | `ops` | `HealthCheck` / `ResourceStat` / `BackupLog` / `CleanupRun`, health probes, `psutil` sampling, service alerts, **backup retention** (`retention.py`), beat-interval reconcile, Cloudflare `configure_dns` |
-| `agency` | **Agency panel** — 1:1 port of PAMP v1.5.3: `PanelAdmin` (reseller admins), `AdminLimit`, `UserTrafficSnapshot`, `SyncLog`, `AdminGroup`; sync + deleted-user tracking + enforcement; reseller portal (`ResellerSession`); accounting (`AdminPrice`, `LedgerEntry`, reports); group managers (`GroupManager` → linked `Staff` with role *Group manager* since v1.25, `GroupManagerAssignment`, `VolumeRequest`, approvals; `ManagerSession` is legacy, unused) ([agency.md](agency.md)) |
+| `agency` | **Agency panel** — 1:1 port of PAMP v1.5.3: `PanelAdmin` (reseller admins), `AdminLimit`, `UserTrafficSnapshot`, `SyncLog`, `AdminGroup`; sync + deleted-user tracking + enforcement; reseller portal (`ResellerSession`; v1.38.2 sections, bell, «پرداخت کل بدهی», reseller push); accounting (`AdminPrice`, `LedgerEntry`, reports); limit history (`AdminLimitChange`); PasarGuard admin CRUD (`admin_crud.py`, header-safe text fields); group managers (`GroupManager` → linked `Staff` with role *Group manager* since v1.25, `GroupManagerAssignment`, `VolumeRequest`, approvals in the panel and on Telegram — `notify.py`, buttons `ag:*`; `agency.gm.*` permissions; full reseller stats `live_stats`; `ManagerSession` is legacy, unused); **invoices and payments** (v1.34+: `AgencyInvoice`, `AgencyPayment` + items, `AgencyInvoiceAllocation` — `allocation.py`, `AgencyNotice`, `AgencyAdminSetting` portal override; `billing.py`: `pay_all`, `debt_breakdown`, deposit matching after customer orders) ([agency.md](agency.md)) |
 | `tickets` | **support tickets** — `TicketTopic` (+ staff topic scopes), `Ticket`, `TicketMessage`, `TicketAttachment`, `TicketEvent`; rules in `services.py` (active-service gate, open limit, reopen window, auto-close), notifications in `notify.py`, staff Telegram linking (`staff_link.py`), user API `/api/v1/tickets/`, staff API `/api/v1/admin/tickets/`, WebSocket `/ws/admin/tickets/` |
-| `crm` | **CRM** — `CustomerProfile` (lifecycle stage + manual override, owner, tags), notes, `FollowUpCase` (inactivity / lead / manual, reason, outcome, linked ticket), `CaseReason`, `MessageTemplate`, `CrmEvent` (timeline); stage rules + detection in `services.py`, hourly beat, links connection-problem tickets to open cases (`signals.py`); staff API `/api/v1/admin/crm/` |
+| `crm` | **CRM** — `CustomerProfile` (lifecycle stage + manual override, owner, tags), notes, `FollowUpCase` (inactivity / lead / manual, reason, outcome, linked ticket), `CaseReason`, `MessageTemplate`, `CrmEvent` (timeline); stage rules + detection in `services.py`, hourly beat, links connection-problem tickets to open cases (`signals.py`); **retention** (`retention.py`: `WarningRule`, pre-expiry warnings with quiet hours, win-back; settings are `Setting` rows `retention_*`), **discount codes** (`DiscountCode`, `discounts.py`), **analytics** (`analytics.py`, read-only); staff API `/api/v1/admin/crm/` + `/api/v1/admin/discounts/` |
 | `adminpanel` | operator API under `/api/v1/admin/` — staff JWT + `StaffPermission` (`perms_map` / `action_perms`; a staff linked to a group manager is default-denied everywhere unless a view sets `group_manager_ok`), every management endpoint, SMS log, system/update, read-only `docs/*.md` for the Documentation page |
+
+## Permissions (RBAC)
+
+Staff (`accounts.Staff`) get permissions through a `Role`; a Super Admin has all of them. Each admin view names the codes it needs
+(`perms_map` per method, `action_perms` per viewset action). Codes are created by `manage.py seed` (idempotent, never overwrites
+names edited in the panel) or by a data migration; a group manager's role holds only `agency.gm.*` codes and every other admin
+API answers 403 for a staff member linked to a group manager. Settings keys in `SUPER_ONLY` are Super Admin only regardless of
+role. 47 codes (2026-11-04):
+
+| Code | Name | نام فارسی |
+|---|---|---|
+| `accounting.view` | View accounting reports | مشاهدهٔ گزارش‌های حسابداری |
+| `agency.accounting` | Agency panel: prices, charges, payments, statements | پنل نمایندگی: قیمت‌ها، شارژها، پرداخت‌ها، صورت‌حساب‌ها |
+| `agency.gm.accounting` | Group manager: view accounting / group statement | مدیر گروه: دیدن حسابداری و صورت‌حساب گروه |
+| `agency.gm.activity` | Group manager: view activity | مدیر گروه: دیدن فعالیت |
+| `agency.gm.add_volume` | Group manager: add volume | مدیر گروه: افزودن حجم |
+| `agency.gm.admin_password` | Group manager: change admin password | مدیر گروه: تغییر رمز ادمین |
+| `agency.gm.admin_role` | Group manager: change admin role | مدیر گروه: تغییر نقش ادمین |
+| `agency.gm.create_admin` | Group manager: create admin (incl. profile title, support link) | مدیر گروه: ساخت ادمین (با عنوان پروفایل و لینک پشتیبانی) |
+| `agency.gm.full_stats` | Group manager: view full reseller stats | مدیر گروه: مشاهده آمار کامل نمایندگان |
+| `agency.gm.invoices` | Group manager: view and pay the group's invoices | مدیر گروه: دیدن و پرداخت فاکتورهای گروه |
+| `agency.gm.request_volume` | Group manager: request volume for group admins | مدیر گروه: درخواست شارژ برای ادمین‌های گروه |
+| `agency.gm.toggle_admin` | Group manager: enable / disable admin | مدیر گروه: فعال / غیرفعال‌کردن ادمین |
+| `agency.gm.view_admins` | Group manager: view group admins | مدیر گروه: دیدن ادمین‌های گروه |
+| `agency.gm.view_users` | Group manager: view admins' users | مدیر گروه: دیدن کاربران ادمین‌ها |
+| `agency.group_manager` | Group manager: own groups only (agency admins, volume, accounting) | مدیر گروه: فقط گروه‌های خودش (ادمین‌های نماینده، حجم، حسابداری) |
+| `agency.manage` | Agency panel: limits, enable/disable, sync | پنل نمایندگی: سقف حجم، فعال/غیرفعال، همگام‌سازی |
+| `agency.payments` | Agency panel: review / approve agency payments | نمایندگی: بررسی و تأیید واریزهای نمایندگان |
+| `agency.view` | Agency panel: view reseller admins | پنل نمایندگی: مشاهدهٔ ادمین‌های نماینده |
+| `audit.view` | View audit log | مشاهدهٔ لاگ رویدادها |
+| `bots.manage` | Manage bots & channels | مدیریت ربات‌ها و کانال‌ها |
+| `broadcast.send` | Send broadcasts | ارسال پیام همگانی |
+| `crm.manage` | CRM: cases, messages, notes, owners, stages, settings | CRM: پرونده‌ها، پیام‌ها، یادداشت‌ها، مسئول‌ها، مراحل، تنظیمات |
+| `crm.view` | CRM: customer 360, follow-up queue, leads, reports | CRM: نمای کامل مشتری، صف پیگیری، سرنخ‌ها، گزارش‌ها |
+| `discounts.manage` | Discount codes: create, edit, disable | کدهای تخفیف: ساخت، ویرایش، غیرفعال‌کردن |
+| `discounts.view` | Discount codes: see codes and their reports | کدهای تخفیف: دیدن کدها و گزارش آن‌ها |
+| `monitoring.view` | View monitoring & resources | مشاهدهٔ مانیتورینگ و منابع سرور |
+| `pages.manage` | Manage content pages | مدیریت صفحه‌های محتوا |
+| `payment.approve` | Approve / reject payments | تأیید / رد پرداخت‌ها |
+| `payment.view` | View payments | مشاهدهٔ پرداخت‌ها |
+| `payments.manual_invoice` | Create manual customer invoices (already paid / issued for payment) | ثبت فاکتور دستی برای مشتری (پرداخت‌شده / صدور برای پرداخت) |
+| `plans.manage` | Manage plans | مدیریت پلن‌ها |
+| `roles.manage` | Manage roles & permissions | مدیریت نقش‌ها و دسترسی‌ها |
+| `services.delete` | Delete sold services | حذف سرویس‌های فروخته‌شده |
+| `services.manage` | Manage sold services (status, reset, revoke, create) | مدیریت سرویس‌های فروخته‌شده (وضعیت، ریست، لغو، ساخت) |
+| `settings.email` | Manage outgoing email (SMTP relay) | مدیریت ایمیل خروجی (SMTP) |
+| `settings.manage` | Manage settings & branding | مدیریت تنظیمات و برندینگ |
+| `sms.manage` | Manage SMS numbers & devices | مدیریت شماره‌ها و دستگاه‌های پیامک |
+| `themes.manage` | Manage themes | مدیریت پوسته‌ها |
+| `tickets.assign` | Tickets: assign to staff | تیکت‌ها: ارجاع به کارمند |
+| `tickets.close` | Tickets: close / reopen | تیکت‌ها: بستن / بازکردن دوباره |
+| `tickets.manage_topics` | Tickets: topics, settings, staff topic scopes | تیکت‌ها: موضوعات، تنظیمات، محدودهٔ موضوع کارکنان |
+| `tickets.reply` | Tickets: reply, internal notes, status, priority | تیکت‌ها: پاسخ، یادداشت داخلی، وضعیت، اولویت |
+| `tickets.view` | Tickets: see the inbox (within the topic scope) | تیکت‌ها: مشاهدهٔ صندوق (در محدودهٔ موضوعات) |
+| `users.delete` | Delete / restore users | حذف / بازگردانی کاربران |
+| `users.manage` | Create / edit / disable users | ایجاد / ویرایش / غیرفعال‌کردن کاربران |
+| `users.purge` | Permanently delete users (Super Admin only) | حذف دائمی کاربران (فقط سوپرادمین) |
+| `users.view` | View users | مشاهدهٔ کاربران |
 
 ## Async — Celery beat schedule
 
@@ -139,11 +198,11 @@ setting is saved (`apps/ops/schedule.py`).
 | Periodic task | Task | Every |
 |---|---|---|
 | panel: sync all services | `panel.tasks.sync_all_services` → every linked service, every status, in one run (lock) — see flows.md §4 | `service_sync_interval_minutes` |
-| orders: expire stale reservations | `orders.tasks.expire_stale_reservations_task` | 5 min |
+| orders: expire stale reservations | `orders.tasks.expire_stale_reservations_task` (customer orders + unfinished agency checkouts — `agency.billing.expire_stale`) | 5 min |
 | panel: apply due scheduled renewals | `panel.tasks.apply_due_scheduled_renewals` | 5 min |
 | orders: retry unfulfilled | `orders.tasks.retry_unfulfilled_orders` (paid > 2 min, not provisioned) | 10 min |
 | ops: database backup | `telegram.tasks.run_backup_task` | `backup_interval_minutes` (default 1440) |
-| agency: sync panel admins | `agency.tasks.sync_panel_admins` (no-op while `agency_sync_enabled` is off; enforcement inside, gated by `agency_enforcement_enabled`) | `agency_sync_interval_minutes` (seed default 15; production 10) |
+| agency: sync panel admins | `agency.tasks.sync_panel_admins` (no-op while `agency_sync_enabled` is off; enforcement inside, gated by `agency_enforcement_enabled`) | `agency_sync_interval_minutes` (seed default 15; production 2 since 2026-11) |
 | telegram: required-channel member counts | `telegram.tasks.sync_required_channels_task` | 60 min |
 | ops: health checks | `ops.tasks.health_check_task` | 2 min |
 | ops: resource sample | `ops.tasks.resource_sample_task` | 5 min |
@@ -154,15 +213,18 @@ setting is saved (`apps/ops/schedule.py`).
 | tickets: auto-close stale | `tickets.tasks.auto_close_tickets_task` (awaiting the customer for `tickets_auto_close_days`) | 60 min |
 | domain: host results + retire old domain | `settings_app.tasks.domain_tick_task` (folds in the host's result; asks the host to remove the old domain when the transition is over) | 5 min |
 | payments: Blu collector service check (SSH) | `payments_sms.tasks.blu_service_check_task` → `blu_service.check_service`: one read-only SSH command to `BLU_SSH_HOST` (`systemctl is-active` + last 10 min of `journalctl` for the collector unit). v1.33.1 liveness = last "poll ok" line (`last_poll_ok_at`); alert once per incident when the service is inactive, a session / login / OTP error shows, no successful poll for `blu_poll_stale_minutes` (default 10; without "poll ok" lines: ≥ 80 % of the window's polls failed) or SSH fails 3× in a row; one silent "healthy again". "No deposit for a while" never alerts (the old offline check is retired) | `blu_ssh_check_minutes` (Blu tab, Super Admin; default 5, min 1 — `ops.schedule.reconcile_blu_service_schedule` on save and in `seed`) |
+| ops: daily disk report | `ops.tasks.disk_report_task` → `disk.daily_report` (reads the host's `backups/.disk-report.json`) | 1440 min |
+| access mode: host nginx result + Cloudflare ranges | `settings_app.tasks.access_tick_task` (folds in the host's nginx result of a switch; refreshes Cloudflare's IP ranges once a day) | 5 min |
+| celery.backend_cleanup | Celery's own result cleanup | daily 04:00 UTC |
 | accounts: auto-purge deleted users (daily) | `accounts.tasks.auto_purge_deleted_users_task` → `accounts.autopurge.run`: no-op while `deleted_purge_enabled` is off (default); else `purge_user(delete_on_panel=True)` for users deleted more than `deleted_purge_days` (default 30) ago, max 200 per run; a PasarGuard problem keeps that user (retried next day, one staff alert per day); audit `user.purged` per user + `users.auto_purged` per run | 1440 min |
 
 On-demand tasks: `fulfill_order`, `provision_service_task`, `renew_service_task`,
-`sync_service_task`, `apply_scheduled_renewal_task`,
+`sync_service_task`, `sync_services_task` (Sync now for a list of services), `apply_scheduled_renewal_task`, `access_switch_task` (one access-mode switch),
 `deliver_notification_task`, `reconcile_backup_schedule_task`,
 `notify_ticket_task` (ticket notifications, queued on commit),
 `match_blu_transaction_task` (one new Blu deposit, queued on commit by the webhook),
 `rounded_retry_task` (a receipt was uploaded: re-check a slightly-lower deposit linked to that order),
-`send_push_task` (Web Push to a list of subscriptions). Panel tasks
+`send_push_task` (Web Push to a list of subscriptions). `payments_sms.tasks.blu_stale_check_task` is still registered but no longer scheduled (the "no deposit for a while" check was retired in v1.33.1). Panel tasks
 retry on `PanelUnavailable`; a permanent `PanelError` is audited and flagged.
 
 ## Bots
@@ -685,64 +747,6 @@ information only — it is configured on the Iran server).
 - **Monitoring** shows a «کالکتور بلو» card (`/admin/monitoring/` → `blu`, same data as the Blu tab).
 
 
-## Days, months and the Transactions cards (v1.38.3)
-
-- A "day" in filters and reports is a **Tehran calendar day** (`apps/common/jalali.py`: `tehran_day_start/end`,
-  `today_bounds`, `jalali_month_bounds`, `parse_day`); the server itself runs in UTC. `finance._parse_any_date` (Transactions,
-  Accounting, deleted users) returns Tehran day boundaries; Accounting's daily breakdown truncates in Tehran time;
-  `to_jalali_str` formats in Tehran time (it used UTC); the panel's `lib/format.js` pins `timeZone: 'Asia/Tehran'`.
-- Transactions: the list filters and shows ONE date, `pay_date = Coalesce(confirmed_at, created_at)` (a manual invoice counts
-  on its entered payment date). The cards «واریزی‌های امروز / این ماه» come from `GET admin/transactions/summary/` — the list's
-  own queryset and filters (search, manual, source, method…), approved and not deleted, for today in Tehran and the current
-  Jalali month; a click applies that range to the list. (Before: Accounting's rolling last 24 h / last 30 days by
-  confirmation time.) Agency payments are `AgencyPayment` and never in either.
-
-## Reseller portal layout (v1.38.2)
-
-- `/agency/` (user SPA, `pages/AgencyPortal.jsx`) = a shell with sections at `<portal>/<section>` (dashboard, request,
-  requests, invoices, statement, notifications, settings); desktop sidebar, phone ☰ drawer; «خروج» (red, ConfirmDialog) at
-  the bottom of the menu. Read-only sub-admins: dashboard / notifications / settings only (billing routes redirect).
-- Shared with the group-manager panel, identical files in both SPAs: `components/AgencyBell.jsx` (bell + notifications
-  page; `GmBell.jsx` wraps it), `components/AgencyStats.jsx` (tile labels + (i) tooltips), `components/ReceiptDrop.jsx`.
-- Portal billing (`billing_views.py`): `portal/debt/`, `portal/payments/all/` (`billing.pay_all` with `admin=`), several
-  `invoice_ids` per payment, `portal/invoices/settlement/`, paged `portal/notices/`, `portal/push/…`. Invoices carry
-  `source` (`billing.invoice_source`).
-- Web Push for resellers: `push_subscription.reseller` (additive column), `webpush.push_to_reseller`, called from
-  `billing.notice(admin=…)` on commit; the click opens `<portal>/notifications` (`portal.PORTAL_NOTICES_URL`).
-- Stale tabs: index.html is never cached and assets are content-hashed; additionally the portal compares its bundle with a
-  fresh index.html (every 5 min / on focus) and shows «نسخهٔ تازه … بارگذاری دوباره».
-
-## Receipt picker and group-manager UI (v1.38.1)
-
-- **One receipt picker** — `components/ReceiptDrop.jsx` (identical in both SPAs, like ConfirmDialog): tap / click or drag,
-  checks type (JPG / PNG / WEBP / GIF) and size (≤ 10 MB, under Django's 12 MB / nginx 15 MB) with fa/en errors, preview
-  with name, size, «تغییر» / «حذف», and an upload bar from axios `onUploadProgress`. Used by the customer checkout (pick →
-  «ارسال رسید»), the agency portal and group-manager payment dialog (`AgencyBilling.jsx` Checkout) and the staff manual
-  invoice form. The server still validates the image (DRF `ImageField` / Pillow); no API changed.
-- **Group-manager admins page** — compact cards (name · status · role, usage bar, cap / used / remaining row, debt, user
-  chips) with «افزودن حجم» · «کاربران» · «جزئیات» + a «⋯» menu (password, role, settings, enable / disable). The full
-  numbers (sold, sell limit left, hidden, deleted users' usage, last activity, online now, with the (i) tips) are only in
-  «جزئیات». The card grid sizes columns by its own width (container query) and a short last row spans the free width;
-  every GM list uses the same compact centred pager (‹ 1 … 4 5 6 … 12 ›).
-- **Group-manager account** — the header avatar links to Settings; «خروج» is red at the bottom of the sidebar
-  (desktop) / Settings tab (phones), behind a ConfirmDialog (`components/LogoutButton.jsx`).
-- `/agency/` portal sign-in = a compact card (≤ 400 px, 42 px controls; 44 px + 16 px text on phones).
-
-## Manual customer invoices (v1.38)
-
-- `apps/orders/manual.py` (`ManualInvoice`, permission `payments.manual_invoice`, Super Admin has it), from Users → user
-  (purchase history) and CRM 360: «+ فاکتور دستی».
-- Mode «قبلاً پرداخت شده» (`create_paid`): Order + Payment, approved through `approve_payment(confirmed_at=<entered date>,
-  notify=False)` → revenue / Accounting / Analytics count it on that date; confirmed_by = the staff member; method card
-  (`card_manual`, optional bank card) / `cash` / `other`; receipt image + tracking number → the usual duplicate warnings.
-- Mode «صدور فاکتور برای پرداخت» (`issue` → `pay`): notification (site + bot); the customer presses «پرداخت» on the site,
-  Mini App (`/history`) or bot (`mi:<id>`) → a normal order with the invoice amount (unique amount, card, timer, receipt,
-  SMS / Blu auto-confirm). `mark_paid_and_fulfill` marks the invoice paid, never holds a unique-amount lock for it, and
-  completes a no-action (type `manual`) order without provisioning.
-- Service action (default off): new service / renew / add volume — the same fulfilment as a paid order.
-- Tag «دستی» (`Order.manual_invoice`): customer history, admin purchase history, Transactions (+ `?manual=1`), payment
-  detail, CSV, Accounting (`manual` tile), bot history. Void / restore (Super Admin) re-opens / re-pays the invoice.
-
 ## Agency invoices and payments (v1.34, docs/agency.md#invoices-and-payments-v134)
 
 - `apps/agency/billing.py`: every agency charge issues an `AgencyInvoice` (GB × the admin's price per GB of
@@ -783,3 +787,61 @@ information only — it is configured on the Iran server).
   admin); `/agency/` sign-in blocked for owners of managed groups, read-only for their sub-admins, per-admin override
   (`AgencyAdminSetting`); group managers request volume for their admins (`manager/requests/`, `agency.gm.request_volume`)
   and pay old balances (`manager/invoices/settlement/`).
+
+## Manual customer invoices (v1.38)
+
+- `apps/orders/manual.py` (`ManualInvoice`, permission `payments.manual_invoice`, Super Admin has it), from Users → user
+  (purchase history) and CRM 360: «+ فاکتور دستی».
+- Mode «قبلاً پرداخت شده» (`create_paid`): Order + Payment, approved through `approve_payment(confirmed_at=<entered date>,
+  notify=False)` → revenue / Accounting / Analytics count it on that date; confirmed_by = the staff member; method card
+  (`card_manual`, optional bank card) / `cash` / `other`; receipt image + tracking number → the usual duplicate warnings.
+- Mode «صدور فاکتور برای پرداخت» (`issue` → `pay`): notification (site + bot); the customer presses «پرداخت» on the site,
+  Mini App (`/history`) or bot (`mi:<id>`) → a normal order with the invoice amount (unique amount, card, timer, receipt,
+  SMS / Blu auto-confirm). `mark_paid_and_fulfill` marks the invoice paid, never holds a unique-amount lock for it, and
+  completes a no-action (type `manual`) order without provisioning.
+- Service action (default off): new service / renew / add volume — the same fulfilment as a paid order.
+- Tag «دستی» (`Order.manual_invoice`): customer history, admin purchase history, Transactions (+ `?manual=1`), payment
+  detail, CSV, Accounting (`manual` tile), bot history. Void / restore (Super Admin) re-opens / re-pays the invoice.
+
+## Receipt picker and group-manager UI (v1.38.1)
+
+- **One receipt picker** — `components/ReceiptDrop.jsx` (identical in both SPAs, like ConfirmDialog): tap / click or drag,
+  checks type (JPG / PNG / WEBP / GIF) and size (≤ 10 MB, under Django's 12 MB / nginx 15 MB) with fa/en errors, preview
+  with name, size, «تغییر» / «حذف», and an upload bar from axios `onUploadProgress`. Used by the customer checkout (pick →
+  «ارسال رسید»), the agency portal and group-manager payment dialog (`AgencyBilling.jsx` Checkout) and the staff manual
+  invoice form. The server still validates the image (DRF `ImageField` / Pillow); no API changed.
+- **Group-manager admins page** — compact cards (name · status · role, usage bar, cap / used / remaining row, debt, user
+  chips) with «افزودن حجم» · «کاربران» · «جزئیات» + a «⋯» menu (password, role, settings, enable / disable). The full
+  numbers (sold, sell limit left, hidden, deleted users' usage, last activity, online now, with the (i) tips) are only in
+  «جزئیات». The card grid sizes columns by its own width (container query) and a short last row spans the free width;
+  every GM list uses the same compact centred pager (‹ 1 … 4 5 6 … 12 ›).
+- **Group-manager account** — the header avatar links to Settings; «خروج» is red at the bottom of the sidebar
+  (desktop) / Settings tab (phones), behind a ConfirmDialog (`components/LogoutButton.jsx`).
+- `/agency/` portal sign-in = a compact card (≤ 400 px, 42 px controls; 44 px + 16 px text on phones).
+
+## Reseller portal layout (v1.38.2)
+
+- `/agency/` (user SPA, `pages/AgencyPortal.jsx`) = a shell with sections at `<portal>/<section>` (dashboard, request,
+  requests, invoices, statement, notifications, settings); desktop sidebar, phone ☰ drawer; «خروج» (red, ConfirmDialog) at
+  the bottom of the menu. Read-only sub-admins: dashboard / notifications / settings only (billing routes redirect).
+- Shared with the group-manager panel, identical files in both SPAs: `components/AgencyBell.jsx` (bell + notifications
+  page; `GmBell.jsx` wraps it), `components/AgencyStats.jsx` (tile labels + (i) tooltips), `components/ReceiptDrop.jsx`.
+- Portal billing (`billing_views.py`): `portal/debt/`, `portal/payments/all/` (`billing.pay_all` with `admin=`), several
+  `invoice_ids` per payment, `portal/invoices/settlement/`, paged `portal/notices/`, `portal/push/…`. Invoices carry
+  `source` (`billing.invoice_source`).
+- Web Push for resellers: `push_subscription.reseller` (additive column), `webpush.push_to_reseller`, called from
+  `billing.notice(admin=…)` on commit; the click opens `<portal>/notifications` (`portal.PORTAL_NOTICES_URL`).
+- Stale tabs: index.html is never cached and assets are content-hashed; additionally the portal compares its bundle with a
+  fresh index.html (every 5 min / on focus) and shows «نسخهٔ تازه … بارگذاری دوباره».
+
+## Days, months and the Transactions cards (v1.38.3)
+
+- A "day" in filters and reports is a **Tehran calendar day** (`apps/common/jalali.py`: `tehran_day_start/end`,
+  `today_bounds`, `jalali_month_bounds`, `parse_day`); the server itself runs in UTC. `finance._parse_any_date` (Transactions,
+  Accounting, deleted users) returns Tehran day boundaries; Accounting's daily breakdown truncates in Tehran time;
+  `to_jalali_str` formats in Tehran time (it used UTC); the panel's `lib/format.js` pins `timeZone: 'Asia/Tehran'`.
+- Transactions: the list filters and shows ONE date, `pay_date = Coalesce(confirmed_at, created_at)` (a manual invoice counts
+  on its entered payment date). The cards «واریزی‌های امروز / این ماه» come from `GET admin/transactions/summary/` — the list's
+  own queryset and filters (search, manual, source, method…), approved and not deleted, for today in Tehran and the current
+  Jalali month; a click applies that range to the list. (Before: Accounting's rolling last 24 h / last 30 days by
+  confirmation time.) Agency payments are `AgencyPayment` and never in either.

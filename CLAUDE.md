@@ -122,6 +122,8 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   JPEGs (`qr_backgrounds/generate.py`) or the Branding upload. Bot support IDs/text live in `SiteConfig`.
 - Admin "Documentation" serves only `docs/*.md` (secret-looking `NAME=value` lines masked). Keep docs free
   of real values; new docs show up automatically.
+  `docs/` is bind-mounted read-only into prod `web`, so a docs change is live on /panel/docs as soon as it is in the
+  working tree (no deploy). Permissions table: architecture.md#permissions-rbac (regenerate from the DB when codes change).
 - **Docs rule — every phase / release that changes models, services, Celery tasks, containers, host jobs or a
   user-visible flow updates `docs/architecture.md`, `docs/erd.md` (Mermaid ER + table list) and `docs/flows.md`
   (Mermaid sequence diagrams) in the same commit**, plus `docs/roadmap.md` when a planned phase starts or ships.
@@ -134,6 +136,8 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
 - **Two migrations with the same name** from different sessions: Django trusts the name, not the schema.
   After merging someone else's migrations, compare real columns with the models (`accounts.0008` exists
   because an unmerged `0006` draft had been applied to this DB).
+- Mermaid sequence diagrams: a `;` inside a message ends the statement and the whole diagram fails to parse (the panel then
+  shows its source) — write `·` instead. 10 flows were broken this way until v1.38.4.
 - MySQL DDL cannot run inside a transaction: data/schema-repair migrations using raw DDL need `atomic = False`.
 - A `position: fixed` child of a `backdrop-filter` element is positioned relative to that element — render
   overlays/sheets through a portal to `<body>`.
@@ -158,7 +162,7 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
 ## Agency panel (apps/agency, docs/agency.md)
 - 1:1 port of PAMP v1.5.3 (reseller admins). Formulas, sync order and enforcement are VERBATIM (PORTING.md);
   `tests/test_golden.py` compares them with the ORIGINAL PAMP code — never "improve" them here.
-- Cut-over done 2026-10-16: sync (10 min) + enforcement + portal are ON here; the Finland PAMP has its workers
+- Cut-over done 2026-10-16: sync (`agency_sync_interval_minutes`, production 2 min) + enforcement + portal are ON here; the Finland PAMP has its workers
   stopped. Never run two syncs on one panel (rollback steps in docs/agency.md). Resellers are NOT `accounts.User` rows.
 - Real PAMP data (dumps, recorded panel responses) lives only in `backups/pamp/` and `backend/.golden_local/`.
 - PasarGuard admin create / edit / delete = `apps/agency/admin_crud.py` on `PasarGuardClient` (never edit the PAMP files

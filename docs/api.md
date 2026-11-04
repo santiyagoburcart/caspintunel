@@ -2,12 +2,15 @@
 
 Base: `/api/v1/`. Full machine spec: `/api/schema/` — interactive: `/api/docs/`.
 
-Three token audiences:
+Token audiences:
 - **customer JWT** — `Authorization: Bearer <token>`, from `/api/v1/auth/login|register|telegram/miniapp`, refreshed at `auth/token/refresh`, ended at `auth/logout` `{refresh}` (works with an expired access token)
 - **staff JWT** — `Authorization: Bearer <token>`, from `/api/v1/admin/auth/login|refresh` (HS256, claim `type=staff_access`), revoked at `admin/auth/logout` `{refresh}`
 
 Sign-in endpoints (login, register, refresh, logout, password reset, email confirm, Mini App, staff login/refresh/logout) ignore any `Authorization` header and cookies, answer `Cache-Control: no-store` and expire the old `sessionid` / `csrftoken` root cookies. The API authenticates by JWT only — no session / CSRF.
 - **SMS device** — `X-Device-Token: <api_token>` (Android SMS Bridge app / iPhone shortcut)
+- **reseller** — `Authorization: Agency <token>` from `/api/v1/agency/portal/login/` (PasarGuard admin credentials; only a
+  SHA-256 stored); opens nothing but `/api/v1/agency/portal/`
+- **Blu collector** — HMAC-SHA256 signature over the raw body (`POST /payments/blu/webhook/`, [blu-webhook.md](blu-webhook.md))
 
 WebSockets: `/ws/notifications/?token=<customer JWT>` (live site notifications) ·
 `/ws/admin/payments/?token=<staff JWT>` (live payments queue + pending count).
@@ -25,10 +28,12 @@ WebSockets: `/ws/notifications/?token=<customer JWT>` (live site notifications) 
 ## Customer app
 - `GET /services/` · `GET /services/{id}/` · `GET /services/{id}/qr/` (PNG) ·
   `POST /services/{id}/refresh/` · `POST /services/{id}/revoke/` · `GET /services/{id}/renew-info/` (`plan` own plan or null, `plans` renewal plans, `needs_plan`) · `POST /services/{id}/renew/` (`plan` optional: change / upgrade; required when the service has none). While a renewal is paid / under review: renew-info `can_renew: false` + `pending_renewal {state, plan_*, applies_by}`, renew / `orders/` / `orders/quote/` answer `code: renewal_waiting` (409; 400 on `orders/`); every service row carries `pending_renewal`
-- `POST /orders/` (new / renew / add-on; returns the reserved unique amount) · `GET /orders/` · `GET /orders/{id}/` ·
+- `POST /orders/` (new / renew / add-on; optional `discount_code`; returns the reserved unique amount) · `POST /orders/quote/` (price + discount preview) · `GET /orders/` · `GET /orders/{id}/` · `POST /orders/{id}/account-name/` (a new name when the requested one is taken) ·
   `GET /orders/{id}/checkout/` (resume an open invoice — survives leaving the browser for the bank app)
 - `GET /payments/cards/` · `POST /payments/receipt/` (multipart; optional `receipt_ref`) · `GET /payments/{id}/receipt/` (owner or staff only)
-- `GET /notifications/` · `POST /notifications/{id}/read/` · `POST /notifications/read-all/` · `GET /notifications/unread-count/`
+- Manual invoices (v1.38): `GET /orders/manual-invoices/` (my invoices + open count) · `POST /orders/manual-invoices/{id}/pay/` → normal checkout
+- `GET /notifications/` · `POST /notifications/{id}/read/` · `POST /notifications/read-all/` · `GET /notifications/unread-count/` ·
+  Web Push: `GET /notifications/push/` · `POST /notifications/push/subscribe|unsubscribe|test/`
 - Tickets: `GET /tickets/topics/` (topics I may use + `has_active_service`) · `GET /tickets/?status=open|closed` ·
   `POST /tickets/` (multipart: `topic`, `subject`, `body`, `attachments[]` ≤ 3 × 5 MB JPEG/PNG/GIF/WebP/PDF, `service?`, `order?`;
   throttle `ticket` 60/h) · `GET /tickets/{id}/` (marks support replies read) · `POST /tickets/{id}/reply/` · `/close/` · `/reopen/` ·
@@ -62,3 +67,26 @@ WebSockets: `/ws/notifications/?token=<customer JWT>` (live site notifications) 
 | docs | `docs/` (list) · `docs/{slug}/` (markdown, secrets masked) — perm `settings.manage` |
 | SMS log | `sms-log/?matched=0` or `1` (masked text + reason) — perm `payment.view` |
 | **tickets** | `tickets/?status=active|<s,s>&topic=&priority=&assigned=me|none|<id>&q=&source=&offset=` (inbox, `status_counts`, `badge`) · `tickets/badge/` · `tickets/{id}/` (messages incl. internal notes + events) · `{id}/reply/` (multipart, `internal`) · `{id}/assign/` · `{id}/assignable/` · `{id}/status/` · `{id}/priority/` — perms `tickets.view|reply|assign|close`, always within the staff topic scope · `tickets/topics/` (+ `{id}/`) · `tickets/settings/` · `tickets/staff-scopes/` (+ `{id}/`) — `tickets.manage_topics` · `tickets/telegram-link/` (GET / POST code / DELETE — any staff, for themselves). WebSocket `/ws/admin/tickets/?token=` (events + badge) |
+| finance (v1.25+) | `transactions/` (`?status&method&source&manual=1&search&from&to` — Tehran days on the payment date; `?deleted=1` Super Admin; `?export=csv`) · `transactions/summary/` (cards: today / Jalali month from the list's own query, v1.38.3) · `transactions/{id}/delete-preview|delete|restore/` · `transactions/bulk-delete|bulk-restore/` · `transactions/{id}/undo-rounded/` (Super Admin) · `payments/blu-transactions/` (+ `{id}/attach/`) · `accounting/` |
+| manual invoices (v1.38) | `users/{id}/manual-invoices/` (GET list `payment.view`; POST `mode=paid` multipart / `mode=issued` — `payments.manual_invoice`) · `users/{id}/manual-invoices/options/` · `manual-invoices/{id}/cancel/` |
+| deleted users (v1.31.2+) | `deleted-users/{id}/purge/` · `deleted-users/bulk-purge/` · `deleted-users/purge-preview/` · `deleted-users/auto-purge/` (settings) — Super Admin + `users.purge` |
+| CRM (v1.19+) | `crm/customers/{id}/` (360) · `/timeline/` · `/notes/` · `/cases/` · `/message/` · `/templates/{tpl}/preview/` · `crm/cases/` (+ `{id}/`, `close/`, `message/`, `ticket/`, `discount/`) · `crm/leads/` · `crm/reasons/` · `crm/tags/` · `crm/templates/` · `crm/staff/` · `crm/settings/` · `crm/reports/` · `crm/analytics/{overview|financial|retention|tickets}/` (read-only) · retention: `crm/warning-rules/` (+ `{id}/`) · `crm/retention/settings/` · `crm/retention/report/` |
+| discount codes (v1.26) | `discounts/` (+ `{id}/`, `{id}/report/`) · `discounts/summary/` · `discounts/options/` · `discounts/customers/` |
+| agency (staff) | `agency/` (overview) · `agency/admins/` (+ `{username}/`, `{username}/{action}/` — set-limit etc., `set-limit/preview/`, `limit-history/`) · `agency/panel-admins/` (+ `options/`, `{username}/` — PasarGuard admin CRUD) · `agency/groups/` (+ `{id}/`, `activity/`, `debt/`) · `agency/managers/` (+ `{id}/`, `password/`, `options/`) · `agency/approvals/` (+ `badge/`, `{id}/{approve|reject}/`, `bulk-approve/`) · `agency/ledger/…` (statements, entries void, group statements, monthly reports, CSV) · `agency/invoices/` (+ `settlement/`, `{id}/void/`, `{id}/settle-outside/`) · `agency/payments/` (+ `badge/`, `{id}/receipt/`, `{id}/{approve|reject}/`) · `agency/portal-access/{username}/` · `agency/portal-link/` (+ `qr.png`) · `agency/settings/` · `agency/sync-logs/` · `agency/sync-now/` — perms `agency.view|manage|accounting|payments` |
+| domain / paths / access | `domain/` · `domain/settings/` · `domain/token/` (+ `test/`) · `domain/start/` · `domain/{id}/{step}/` · `domain/rollback/` · `domain/access/` (+ `settings/`, `detect/`, `dns01/`, `back/`) · `paths/` — Super Admin / `settings.manage` ([domain.md](domain.md), [access-mode.md](access-mode.md), [paths.md](paths.md)) |
+| me / push | `auth/me/prefs/` (sound, volume) · `push/` · `push/subscribe|unsubscribe|test/` (Web Push for this staff member) · `staff/group-manager-options/` |
+
+## Group manager (`/api/v1/agency/manager/`, staff JWT of a staff linked to a group manager — `agency.gm.*`)
+
+`me/` (`?lite=1`) · `admins/` (`?q&sort&group&page&page_size`, POST = create) · `admins/live/` · `admins/{u}/stats/` · `admins/{u}/statement/` ·
+`admins/{u}/{add-volume|password|role|enable|disable|profile|users}/` · `accounting/` · `groups/{id}/statement/` · `activity/` · `requests/` ·
+`debt/` · `invoices/` (+ `settlement/`) · `payments/` (+ `all/` = «پرداخت کل بدهی», `{id}/`, `{id}/{receipt|cancel}/`) · `notices/` (`?page=`, POST `{id}` / `{read:true}`) ·
+`prefs/` · `push/` (+ `{action}/`) · `password/`. Anything else → explicit 403.
+
+## Reseller portal (`/api/v1/agency/portal/`, `Authorization: Agency <token>`)
+
+`login/` · `logout/` · `me/` · `statement/?admin=` · `requests/` (+ `quote/?gb=`) · `invoices/` (+ `settlement/`) · `debt/` · `payments/`
+(POST `{invoice_id}` or `{invoice_ids:[…]}`; `all/` = «پرداخت کل بدهی» `{expected_total}` → 409 `total_changed`; `{id}/`, `{id}/{receipt|cancel}/`) ·
+`notices/` (`?page=`, POST `{id}` / `{read:true}`) · `push/` (+ `subscribe|unsubscribe|test/`). Read-only sub-admins get 403 on billing routes; a
+blocked group owner cannot sign in ([agency.md](agency.md#access-rules-v135)).
+

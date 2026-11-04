@@ -122,12 +122,12 @@ sequenceDiagram
         B->>DB: BluCollector.last_batch_at (empty batch = heartbeat)
         API-->>C: 200 {ok, received, created}
         B-)W: on commit: one task per NEW deposit
-        W->>DB: lock row; amount_toman null → note, stay unmatched
+        W->>DB: lock row · amount_toman null → note, stay unmatched
         W->>DB: lock Order(pending_payment, amount_unique_lock == amount_toman)
         alt found, deposit inside created_at−2 min … unique_expire_at + BLU_LATE_GRACE
             W->>DB: Payment(blu_auto, approved, confirmed_by=system, receipt_ref)
             W->>W: mark_paid_and_fulfill → fulfill_order
-            W->>DB: audit payment.blu_auto_confirmed; tx matched
+            W->>DB: audit payment.blu_auto_confirmed · tx matched
             W-->>Q: blu_approved
         else found but outside the window (reused amount)
             W->>DB: note, stay unmatched
@@ -203,12 +203,132 @@ sequenceDiagram
         R-->>M: why_not no_evidence → queue (reason stored on the pending payment)
     else 1 order + (receipt uploaded OR card last4 paid this customer's order before)
         R->>DB: Payment approved, auto_rule rounded, amount = paid, shortfall
-        R->>DB: mark_paid_and_fulfill; audit payment.rounded_auto_confirmed
+        R->>DB: mark_paid_and_fulfill · audit payment.rounded_auto_confirmed
         R-->>Q: rounded_approved + Telegram (payment.approve)
     end
     Note over M,DB: a receipt uploaded later → rounded_retry_task re-checks the linked deposit
     SA->>DB: Transaction → «لغو تأیید» = void_payment (keep service by default)
-    DB->>DB: deposit back to unmatched / SMS near-miss; audit payment.rounded_undone
+    DB->>DB: deposit back to unmatched / SMS near-miss · audit payment.rounded_undone
+```
+
+## 2d. Unconfirmed payment alert (v1.33)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant B as celery beat (1 min)
+    participant A as pending_alert.run
+    participant DB as MySQL
+    actor S as Staff (payment.approve)
+
+    B->>A: tick
+    A->>DB: live payments pending > pending_payment_alert_minutes (≤ 24 h old), pending_alerted_at null
+    A->>DB: claim (pending_alerted_at = now) — never twice
+    A-)S: Telegram with the panel link + live payment_pending_alert (toast + sound) + browser push
+    Note over A,DB: later the payment is approved / rejected / deleted
+    A->>DB: pending_resolved_at = now
+    A-)S: silent "✅ resolved" message
+```
+
+## 2e. Manual customer invoice (v1.38)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor S as Staff (payments.manual_invoice)
+    participant M as orders.manual
+    participant A as approve_payment
+    participant F as mark_paid_and_fulfill
+    actor C as Customer (site / Mini App / bot)
+
+    alt «قبلاً پرداخت شده»
+        S->>M: create_paid(item, amount, paid_at, method, card, ref, receipt, action)
+        M->>A: Order + Payment → approve(confirmed_at = paid_at, notify = False)
+        A->>F: invoice paid · action none → completed, else fulfil (new / renew / add volume)
+    else «صدور فاکتور برای پرداخت»
+        S->>M: issue(item, amount, due_at, action) → notify customer (site + bot)
+        C->>M: «پرداخت» → pay() → normal order (unique amount, card, timer)
+        C->>A: receipt / SMS / Blu deposit → approved (real payment date)
+        A->>F: invoice paid + service action
+    end
+```
+
+## 2f. Super Admin deletes (voids) a transaction → restore
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor SA as Super Admin
+    participant TX as /panel/transactions
+    participant API as web admin/transactions/
+    participant PG as PasarGuard
+    participant DB as MySQL
+
+    SA->>TX: Delete (row or bulk)
+    TX->>API: GET {id}/delete-preview/
+    API-->>TX: TX number, amount, linked order + service, choices keep | disable | delete
+    SA->>TX: reason (required) + choice (default keep)
+    TX->>API: POST {id}/delete/ {reason, service_action}
+    API->>API: Super Admin? (else 403) · reason? · not already deleted?
+    API->>API: service_action required (missing / unknown → 400)
+    API->>DB: BEGIN · lock payment + order
+    opt disable / delete
+        API->>PG: PUT user status=disabled  /  DELETE user
+        API->>PG: GET user (disabled? / 404?) — verify
+        alt refused / error / not verified
+            API->>DB: ROLLBACK · AuditLog payment.void_failed (+ PasarGuard calls)
+            API-->>TX: 502 "PasarGuard: … — nothing was deleted"
+        end
+        API->>DB: service row disabled / deleted
+    end
+    API->>DB: order → cancelled (choice, or the payment was still pending) · drop unapplied renewal
+    API->>DB: payment.voided_at / voided_by / void_reason / void_service_action
+    API->>DB: AuditLog payment.voided (who, reason, amount, TX, order, choice)
+    API-->>TX: row hidden · cards, Accounting, Analytics, reports no longer count it
+    SA->>TX: Show deleted → Restore (≤ 30 days)
+    TX->>API: POST {id}/restore/
+    API->>DB: clear voided_* · order status back (lapsed pending → expired)
+    API->>DB: AuditLog payment.restored
+```
+
+## 2g. Discount code at checkout (v1.26)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor C as Customer (site / Mini App / bot)
+    participant API as orders API / bot
+    participant E as crm.discounts.evaluate
+    participant O as orders.create_order
+    participant M as SMS matcher / card review
+    C->>API: plan (+ volume / service) + code
+    API->>E: quote (POST /orders/quote/ or the bot's code step)
+    alt refused
+        E-->>C: reason in Persian / English (expired, not for this plan, not for you, used up, …)
+    else ok
+        E-->>C: original · discount · final
+        C->>API: confirm
+        API->>O: create_order(discount_code)
+        O->>E: evaluate again (limits are checked at this moment)
+        O->>O: amount = original − discount · amount_unique = amount + surcharge (unique)
+        O-->>C: invoice: pay amount_unique (shows original, code, discount)
+        C->>M: card-to-card / SMS for amount_unique
+        M->>O: matches amount_unique → paid (the code's use is now counted as used)
+    end
+```
+
+## 2h. Transactions cards = the list (v1.38.3)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor S as Staff (Transactions)
+    participant L as TransactionViewSet
+    S->>L: GET transactions/?from&to&status&search&manual (Tehran days, pay_date)
+    S->>L: GET transactions/summary/?search&manual
+    L->>L: same get_queryset + filters → approved, not voided
+    L-->>S: today (Tehran day) + month (Jalali month): revenue, count, from/to
+    S->>L: click a card → list with that from/to → the same rows
 ```
 
 ## 3. Renewal
@@ -258,7 +378,7 @@ sequenceDiagram
     W->>DB: fulfill_order → schedule_renewal:<br/>ScheduledRenewal(S, P, renewal_mode + carry_over copied from P)<br/>S.current_plan = P
     opt another unapplied renewal on S
         W->>DB: order → failed, audit renewal.conflict (waiting one kept)
-        W-->>C: "being reviewed" notice; staff alerted (Telegram)
+        W-->>C: "being reviewed" notice · staff alerted (Telegram)
     end
     W->>DB: order → completed (no "delivered" message yet)
     loop every 5 min
@@ -442,13 +562,13 @@ sequenceDiagram
     alt forbidden / cap reached
         API-->>MP: 403 / 409 cap_reached — nothing changed
     end
-    API->>PG: GET /api/admins?username= (live limit; unlimited → 403)
+    API->>PG: GET /api/admins?username= (live limit · unlimited → 403)
     API->>PG: PUT /api/admin/{u} data_limit = live + GB
     API->>DB: PanelAdmin limit · VolumeRequest(pending) · AdminLimitChange(add, source manager)
     API->>DB: AuditLog agency.manager.volume_added (manager, group)
     API-->>MP: live at once — "pending approval"
     AP->>API: GET approvals/badge/ (every 30 s → menu badge + toast)
-    S->>AP: Approve (price × GB shown; price asked if the admin has none)
+    S->>AP: Approve (price × GB shown · price asked if the admin has none)
     AP->>API: POST approvals/{id}/approve/
     API->>DB: LedgerEntry quota_charge (old → new, price of that day) · link to the limit-history row
     API->>DB: AuditLog agency.approval.approved
@@ -460,6 +580,204 @@ sequenceDiagram
 
 A new admin made by a manager (`POST admins/`) follows the same path: created on
 PasarGuard with an allowed role and the initial GB, added to the group, request `create`.
+
+## 5d. Agency approval from Telegram (v1.33)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor M as Group manager
+    participant API as agency/manager/
+    participant N as agency.notify
+    participant TG as Sales bot
+    actor S as Staff (Telegram linked)
+
+    M->>API: create admin / add volume (live on PasarGuard, VolumeRequest pending)
+    API-)N: on commit: approval_requested(req) (+ cap_reached when the cap is now full)
+    N->>TG: DM to every staff with agency.manage + Approve / Reject buttons (none linked → backup chat, no buttons)
+    N-)S: browser push (subscribed browsers)
+    S->>TG: ✅ Approve (ag:a:id)
+    TG->>N: handle_callback: linked active staff? agency.manage AND agency.accounting?
+    N->>API: managers.approve(id, staff) — quota charge, same as the panel (no price → "approve in the panel")
+    TG-->>S: message edited "Approved by …"
+    S->>TG: ❌ Reject (ag:r:id) → confirm (ag:rc:id)
+    N->>API: managers.reject(id, staff) — volume taken back on PasarGuard, no charge
+```
+
+## 5e. Agency invoices, admin requests and payments (v1.34)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor A as Agency admin (/agency/)
+    participant P as portal API
+    participant B as agency.billing
+    actor S as Staff (agency.manage + accounting / agency.payments)
+    participant PG as PasarGuard
+    participant D as SMS / Blu matching
+
+    A->>P: «درخواست شارژ» {gb, note} (quote = GB × price · no price → error + Telegram to staff)
+    P->>B: VolumeRequest(kind request) → Approvals queue + Telegram Approve / Reject
+    S->>B: approve (panel or Telegram)
+    B->>PG: limit = last finite limit + GB (read back)
+    B->>B: quota charge + AgencyInvoice (INV-…), portal notice
+    A->>P: «پرداخت» on the invoice
+    P->>B: AgencyPayment: unique amount (pool shared with customer orders), timer, card
+    A-->>D: card-to-card transfer (optional receipt upload → pending review + Telegram)
+    D->>B: exact deposit inside the window → approve_payment
+    B->>B: invoices paid · ledger payment entry per admin · notice · Telegram "auto-approved"
+    alt near miss (±20 %, ×10) or receipt only
+        D->>B: pending_review → «واریزهای نمایندگان» → staff approve / reject (reason to the payer)
+    end
+```
+
+Group managers do the same from `/panel/my-groups/invoices` for their groups' admins, selecting several unpaid
+invoices for one payment. Staff charges (limit raise, manual charge with GB) and approved group-manager volume
+issue invoices the same way.
+
+## 5f. Agency access rules (v1.35)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor A as Admin (/agency/)
+    participant P as portal
+    participant B as billing.portal_access
+    actor G as Group manager (/panel/)
+
+    A->>P: sign in (PasarGuard credentials)
+    P->>B: group of A has a manager?
+    alt A owns that group (override not "on") or override "off"
+        P-->>A: 403 «لطفاً از پنل مدیریت گروه وارد شوید» + /panel/ link
+    else A is a sub-admin of a managed group
+        P-->>A: usage only (no requests / invoices / payments)
+    else no manager
+        P-->>A: usage + «درخواست شارژ برای: A» + invoices + pay
+    end
+    G->>B: request volume for an admin of the group → Approvals + Telegram → approve → limit + invoice
+    G->>B: pay invoices / old balance — refused for admins whose invoices the admin pays (one place only)
+```
+
+## 5g. Invoices and the ledger (v1.35.1)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor S as Staff (admin page → Accounting)
+    participant L as ledger.add_entry
+    participant A as allocation
+    participant I as agency_invoice
+
+    S->>L: «ثبت پرداخت» / «کاهش بدهی» (settle: auto | selected + invoice ids | none)
+    L->>A: apply_entry → allocate (chosen order or oldest first, last one partial)
+    A->>I: allocation rows → paid_amount, status paid («دستی» / «اصلاحیه») or partial
+    L->>A: enforce: open invoices ≤ max(0, balance)? else settle the excess oldest first
+    S->>A: «تسویه خارج از سیستم» → invoice settled, charge + balance unchanged
+    S->>L: void a payment / adjustment → its allocations released → invoices open again
+    Note over A,I: a new invoice also runs enforce (credit paid before the charge settles it)
+```
+
+## 5h. Group manager pays the whole group debt (v1.35.2)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor G as Group manager (/panel/my-groups/invoices) or direct admin (/agency/invoices, v1.38.2)
+    participant V as ManagerPayAllView / PortalPayAllView
+    participant B as billing
+    participant P as checkout (SMS / Blu)
+
+    G->>V: GET manager/debt/ (portal/debt/) → «کل بدهی» + «ریز بدهی»
+    G->>V: POST manager/payments/all/ (portal/payments/all/) {expected_total}
+    V->>B: pay_all: lock admins, debt_breakdown
+    alt total changed
+        B-->>G: 409 total_changed + new total → page shows it, asks again
+    else same total
+        B->>B: issue_settlement for each old balance
+        B->>B: create_payment(all unpaid items) → one unique amount
+        B-->>G: checkout (card, timer, receipt)
+        P->>B: matching deposit → approve_payment → allocations → invoices paid, ledger down
+    end
+```
+
+## 5i. Admin profile title / support link (v1.35.3)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor G as Group manager / staff
+    participant A as admin_crud.build_payload
+    participant P as PasarGuard
+    actor C as Happ (subscription update)
+
+    G->>A: support_url "https://t.me/x⁠" (U+2060 from Telegram), profile_title
+    A->>A: clean_field → "https://t.me/x" (ASCII), title without invisible marks
+    A->>P: PUT /api/admin/{username} {support_url, profile_title}
+    C->>P: GET subscription → headers support-url (raw), profile-title (base64) → valid
+```
+
+## 5j. Group manager sees full reseller stats (v1.36)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor G as Group manager («ادمین‌های گروه»)
+    participant V as manager API
+    participant R as Redis (60 s)
+    participant P as PasarGuard
+
+    G->>V: GET manager/me/ → cards (+ full PAMP numbers if agency.gm.full_stats)
+    G->>V: GET manager/admins/live/?u=… (own groups only)
+    V->>R: cached?
+    alt miss
+        V->>P: GET /api/system/users?admin_username=X · GET /api/users?admin=X&sort=-online_at&limit=1
+        V->>R: store 60 s
+    end
+    V-->>G: users by status, online, last activity
+    G->>V: «جزئیات» → GET manager/admins/X/stats/
+```
+
+## 5k. Group-manager notifications (v1.37)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant B as billing.notice(manager=…)
+    participant DB as agency_notice
+    participant W as Web Push (manager's browsers)
+    actor G as Group manager (header bell)
+
+    B->>DB: create notice (invoice issued / payment / request decision)
+    B->>W: on commit: push_to_staff(staff_ids=[manager.staff])
+    G->>DB: bell polls GET manager/notices/ every 45 s → count (+ chime if sound on)
+    G->>DB: open item → POST {id} · «همه خوانده شد» → POST {read: true}
+    G->>DB: «همهٔ اعلان‌ها» → /my-groups/notifications (GET ?page=)
+```
+
+## 5l. Staff page → Group manager role (v1.25.2)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor S as Staff with roles.manage
+    participant P as Panel (Roles & staff)
+    participant API as admin/staff/
+    participant M as agency.managers
+    S->>P: edit staff, role = Group manager
+    P->>API: GET staff/group-manager-options/ (groups + PasarGuard roles, owner roles left out)
+    S->>P: tick groups, allowed roles per group, cap
+    P->>API: PATCH staff/<id>/ {role, group_manager: {assignments, max_unapproved_gb}}
+    API->>M: sync_from_staff (same transaction as the staff save)
+    alt role is Group manager
+        M->>M: link / create GroupManager (same username + password hash)
+        M->>M: _clean_assignments (owner role / unknown group → 400, nothing saved)
+        M-->>API: manager + warnings (no_group / no_role)
+    else role removed / superadmin
+        M->>M: unlink, disable manager, end its portal sessions, audit agency.manager.unlinked
+    end
+    API-->>P: staff row incl. group_manager {assignments, cap, warnings}
+    Note over P: Agency → Group managers edits the same record — both pages show the same groups
+```
 
 ## 6. Bot and Mini App login
 
@@ -499,7 +817,7 @@ sequenceDiagram
     U->>T: opens the Mini App
     T->>API: SPA loads, POST /auth/telegram/miniapp/ {initData}
     API->>API: HMAC check with the sales-bot token, auth_date ≤ max age
-    API->>DB: phone gate on and no account → 403 phone_required (nothing created);<br/>the SPA asks Telegram for the contact → bot handle_contact → retry
+    API->>DB: phone gate on and no account → 403 phone_required (nothing created) · <br/>the SPA asks Telegram for the contact → bot handle_contact → retry
     API->>DB: ensure_bot_user(telegram_id) — existing account
     API-->>T: JWT pair — the SPA never shows a login form inside Telegram
 ```
@@ -534,6 +852,44 @@ sequenceDiagram
     SPA->>SPA: clearAuthState
     SPA->>API: POST logout {refresh} → refresh token revoked
 ```
+
+## 6c. Permanent delete of a soft-deleted user (v1.31.2)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor SA as Super Admin
+    participant UI as Deleted users page
+    participant API as /admin/deleted-users/…
+    participant P as accounts.purge
+    participant PG as PasarGuard
+    participant DB as MySQL
+
+    SA->>UI: «حذف دائمی» (row) or select + bulk
+    UI->>API: GET purge-preview/?ids= (users.purge + is_superadmin, else 403)
+    API->>P: preview → counts + GET /api/user/<name> per service
+    API-->>UI: removes / kept / panel accounts (exists, unknown)
+    UI->>SA: ConfirmDialog — list + «also delete on PasarGuard» (ON if any exists)
+    SA->>API: POST <id>/purge/ or bulk-purge/ {delete_on_panel}
+    opt delete_on_panel
+        P->>PG: GET every account first (any error → stop, nothing deleted)
+        P->>PG: DELETE + GET (404 = gone) per account
+    end
+    P->>DB: atomic: delete tickets (+files on commit), CRM rows, notifications,<br/>services, tokens, deletion archives · anonymize the user row
+    P->>DB: audit user.purged (counts only, no personal data)
+    API-->>UI: ok / per-user failures with the reason
+```
+
+Orders and payments are never touched: Accounting, Analytics and Transactions show the
+same totals, with the customer as «کاربر حذف‌شده #id».
+
+**Automatic purge (v1.32).** Settings → «حذف دائمی خودکار» (Super Admin, off by default, N = 30
+days): the daily beat task `accounts: auto-purge deleted users` calls the same `purge_user`
+(`delete_on_panel=True`, staff "system") for every user deleted more than N days ago. A
+PasarGuard problem purges nothing for that user (same read-first rule); it stays in the trash,
+is retried the next day, and staff with `users.purge` get one alert per day. Each purge writes
+`user.purged`, each run `users.auto_purged` (ids + error codes only). The Deleted users page
+shows the next run and each row's purge date.
 
 ## 7. Ticket lifecycle and notifications
 
@@ -604,221 +960,6 @@ sequenceDiagram
     W-->>C: bot message with Reply / Open + site bell + email
     C->>Bot: Reply → text / photo → user_reply(channel=bot)
     C->>Bot: Close / Reopen
-```
-
-## 5c3. Agency approval from Telegram (v1.33)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor M as Group manager
-    participant API as agency/manager/
-    participant N as agency.notify
-    participant TG as Sales bot
-    actor S as Staff (Telegram linked)
-
-    M->>API: create admin / add volume (live on PasarGuard, VolumeRequest pending)
-    API-)N: on commit: approval_requested(req) (+ cap_reached when the cap is now full)
-    N->>TG: DM to every staff with agency.manage + Approve / Reject buttons (none linked → backup chat, no buttons)
-    N-)S: browser push (subscribed browsers)
-    S->>TG: ✅ Approve (ag:a:id)
-    TG->>N: handle_callback: linked active staff? agency.manage AND agency.accounting?
-    N->>API: managers.approve(id, staff) — quota charge, same as the panel (no price → "approve in the panel")
-    TG-->>S: message edited "Approved by …"
-    S->>TG: ❌ Reject (ag:r:id) → confirm (ag:rc:id)
-    N->>API: managers.reject(id, staff) — volume taken back on PasarGuard, no charge
-```
-
-## 5c4. Unconfirmed payment alert (v1.33)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant B as celery beat (1 min)
-    participant A as pending_alert.run
-    participant DB as MySQL
-    actor S as Staff (payment.approve)
-
-    B->>A: tick
-    A->>DB: live payments pending > pending_payment_alert_minutes (≤ 24 h old), pending_alerted_at null
-    A->>DB: claim (pending_alerted_at = now) — never twice
-    A-)S: Telegram with the panel link + live payment_pending_alert (toast + sound) + browser push
-    Note over A,DB: later the payment is approved / rejected / deleted
-    A->>DB: pending_resolved_at = now
-    A-)S: silent "✅ resolved" message
-```
-
-## 5c5. Agency invoices, admin requests and payments (v1.34)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor A as Agency admin (/agency/)
-    participant P as portal API
-    participant B as agency.billing
-    actor S as Staff (agency.manage + accounting / agency.payments)
-    participant PG as PasarGuard
-    participant D as SMS / Blu matching
-
-    A->>P: «درخواست شارژ» {gb, note} (quote = GB × price; no price → error + Telegram to staff)
-    P->>B: VolumeRequest(kind request) → Approvals queue + Telegram Approve / Reject
-    S->>B: approve (panel or Telegram)
-    B->>PG: limit = last finite limit + GB (read back)
-    B->>B: quota charge + AgencyInvoice (INV-…), portal notice
-    A->>P: «پرداخت» on the invoice
-    P->>B: AgencyPayment: unique amount (pool shared with customer orders), timer, card
-    A-->>D: card-to-card transfer (optional receipt upload → pending review + Telegram)
-    D->>B: exact deposit inside the window → approve_payment
-    B->>B: invoices paid · ledger payment entry per admin · notice · Telegram "auto-approved"
-    alt near miss (±20 %, ×10) or receipt only
-        D->>B: pending_review → «واریزهای نمایندگان» → staff approve / reject (reason to the payer)
-    end
-```
-
-Group managers do the same from `/panel/my-groups/invoices` for their groups' admins, selecting several unpaid
-invoices for one payment. Staff charges (limit raise, manual charge with GB) and approved group-manager volume
-issue invoices the same way.
-
-## 5c6. Agency access rules (v1.35)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor A as Admin (/agency/)
-    participant P as portal
-    participant B as billing.portal_access
-    actor G as Group manager (/panel/)
-
-    A->>P: sign in (PasarGuard credentials)
-    P->>B: group of A has a manager?
-    alt A owns that group (override not "on") or override "off"
-        P-->>A: 403 «لطفاً از پنل مدیریت گروه وارد شوید» + /panel/ link
-    else A is a sub-admin of a managed group
-        P-->>A: usage only (no requests / invoices / payments)
-    else no manager
-        P-->>A: usage + «درخواست شارژ برای: A» + invoices + pay
-    end
-    G->>B: request volume for an admin of the group → Approvals + Telegram → approve → limit + invoice
-    G->>B: pay invoices / old balance — refused for admins whose invoices the admin pays (one place only)
-```
-
-## 5c7. Invoices and the ledger (v1.35.1)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor S as Staff (admin page → Accounting)
-    participant L as ledger.add_entry
-    participant A as allocation
-    participant I as agency_invoice
-
-    S->>L: «ثبت پرداخت» / «کاهش بدهی» (settle: auto | selected + invoice ids | none)
-    L->>A: apply_entry → allocate (chosen order or oldest first, last one partial)
-    A->>I: allocation rows → paid_amount, status paid («دستی» / «اصلاحیه») or partial
-    L->>A: enforce: open invoices ≤ max(0, balance)? else settle the excess oldest first
-    S->>A: «تسویه خارج از سیستم» → invoice settled, charge + balance unchanged
-    S->>L: void a payment / adjustment → its allocations released → invoices open again
-    Note over A,I: a new invoice also runs enforce (credit paid before the charge settles it)
-```
-
-## 5c8. Group manager pays the whole group debt (v1.35.2)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor G as Group manager (/panel/my-groups/invoices) or direct admin (/agency/invoices, v1.38.2)
-    participant V as ManagerPayAllView / PortalPayAllView
-    participant B as billing
-    participant P as checkout (SMS / Blu)
-
-    G->>V: GET manager/debt/ (portal/debt/) → «کل بدهی» + «ریز بدهی»
-    G->>V: POST manager/payments/all/ (portal/payments/all/) {expected_total}
-    V->>B: pay_all: lock admins, debt_breakdown
-    alt total changed
-        B-->>G: 409 total_changed + new total → page shows it, asks again
-    else same total
-        B->>B: issue_settlement for each old balance
-        B->>B: create_payment(all unpaid items) → one unique amount
-        B-->>G: checkout (card, timer, receipt)
-        P->>B: matching deposit → approve_payment → allocations → invoices paid, ledger down
-    end
-```
-
-## 5c9. Admin profile title / support link (v1.35.3)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor G as Group manager / staff
-    participant A as admin_crud.build_payload
-    participant P as PasarGuard
-    actor C as Happ (subscription update)
-
-    G->>A: support_url "https://t.me/x⁠" (U+2060 from Telegram), profile_title
-    A->>A: clean_field → "https://t.me/x" (ASCII), title without invisible marks
-    A->>P: PUT /api/admin/{username} {support_url, profile_title}
-    C->>P: GET subscription → headers support-url (raw), profile-title (base64) → valid
-```
-
-## 5c10. Group manager sees full reseller stats (v1.36)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor G as Group manager («ادمین‌های گروه»)
-    participant V as manager API
-    participant R as Redis (60 s)
-    participant P as PasarGuard
-
-    G->>V: GET manager/me/ → cards (+ full PAMP numbers if agency.gm.full_stats)
-    G->>V: GET manager/admins/live/?u=… (own groups only)
-    V->>R: cached?
-    alt miss
-        V->>P: GET /api/system/users?admin_username=X · GET /api/users?admin=X&sort=-online_at&limit=1
-        V->>R: store 60 s
-    end
-    V-->>G: users by status, online, last activity
-    G->>V: «جزئیات» → GET manager/admins/X/stats/
-```
-
-## 5c11. Group-manager notifications (v1.37)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant B as billing.notice(manager=…)
-    participant DB as agency_notice
-    participant W as Web Push (manager's browsers)
-    actor G as Group manager (header bell)
-
-    B->>DB: create notice (invoice issued / payment / request decision)
-    B->>W: on commit: push_to_staff(staff_ids=[manager.staff])
-    G->>DB: bell polls GET manager/notices/ every 45 s → count (+ chime if sound on)
-    G->>DB: open item → POST {id} · «همه خوانده شد» → POST {read: true}
-    G->>DB: «همهٔ اعلان‌ها» → /my-groups/notifications (GET ?page=)
-```
-
-## 5d. Manual customer invoice (v1.38)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor S as Staff (payments.manual_invoice)
-    participant M as orders.manual
-    participant A as approve_payment
-    participant F as mark_paid_and_fulfill
-    actor C as Customer (site / Mini App / bot)
-
-    alt «قبلاً پرداخت شده»
-        S->>M: create_paid(item, amount, paid_at, method, card, ref, receipt, action)
-        M->>A: Order + Payment → approve(confirmed_at = paid_at, notify = False)
-        A->>F: invoice paid; action none → completed, else fulfil (new / renew / add volume)
-    else «صدور فاکتور برای پرداخت»
-        S->>M: issue(item, amount, due_at, action) → notify customer (site + bot)
-        C->>M: «پرداخت» → pay() → normal order (unique amount, card, timer)
-        C->>A: receipt / SMS / Blu deposit → approved (real payment date)
-        A->>F: invoice paid + service action
-    end
 ```
 
 ## 9. Staff Telegram linking
@@ -1052,108 +1193,6 @@ Release routine (development side): tests on the isolated stack
 (`./scripts/test.sh`), bump `VERSION`, PROGRESS entry, commit, tag `vX.Y.Z`,
 push, `./update.sh`, GitHub release ([development.md](development.md)).
 
-
-## 5c2. Permanent delete of a soft-deleted user (v1.31.2)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor SA as Super Admin
-    participant UI as Deleted users page
-    participant API as /admin/deleted-users/…
-    participant P as accounts.purge
-    participant PG as PasarGuard
-    participant DB as MySQL
-
-    SA->>UI: «حذف دائمی» (row) or select + bulk
-    UI->>API: GET purge-preview/?ids= (users.purge + is_superadmin, else 403)
-    API->>P: preview → counts + GET /api/user/<name> per service
-    API-->>UI: removes / kept / panel accounts (exists, unknown)
-    UI->>SA: ConfirmDialog — list + «also delete on PasarGuard» (ON if any exists)
-    SA->>API: POST <id>/purge/ or bulk-purge/ {delete_on_panel}
-    opt delete_on_panel
-        P->>PG: GET every account first (any error → stop, nothing deleted)
-        P->>PG: DELETE + GET (404 = gone) per account
-    end
-    P->>DB: atomic: delete tickets (+files on commit), CRM rows, notifications,<br/>services, tokens, deletion archives; anonymize the user row
-    P->>DB: audit user.purged (counts only, no personal data)
-    API-->>UI: ok / per-user failures with the reason
-```
-
-Orders and payments are never touched: Accounting, Analytics and Transactions show the
-same totals, with the customer as «کاربر حذف‌شده #id».
-
-**Automatic purge (v1.32).** Settings → «حذف دائمی خودکار» (Super Admin, off by default, N = 30
-days): the daily beat task `accounts: auto-purge deleted users` calls the same `purge_user`
-(`delete_on_panel=True`, staff "system") for every user deleted more than N days ago. A
-PasarGuard problem purges nothing for that user (same read-first rule); it stays in the trash,
-is retried the next day, and staff with `users.purge` get one alert per day. Each purge writes
-`user.purged`, each run `users.auto_purged` (ids + error codes only). The Deleted users page
-shows the next run and each row's purge date.
-
-## 5d. Super Admin deletes (voids) a transaction → restore
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor SA as Super Admin
-    participant TX as /panel/transactions
-    participant API as web admin/transactions/
-    participant PG as PasarGuard
-    participant DB as MySQL
-
-    SA->>TX: Delete (row or bulk)
-    TX->>API: GET {id}/delete-preview/
-    API-->>TX: TX number, amount, linked order + service, choices keep | disable | delete
-    SA->>TX: reason (required) + choice (default keep)
-    TX->>API: POST {id}/delete/ {reason, service_action}
-    API->>API: Super Admin? (else 403) · reason? · not already deleted?
-    API->>API: service_action required (missing / unknown → 400)
-    API->>DB: BEGIN · lock payment + order
-    opt disable / delete
-        API->>PG: PUT user status=disabled  /  DELETE user
-        API->>PG: GET user (disabled? / 404?) — verify
-        alt refused / error / not verified
-            API->>DB: ROLLBACK · AuditLog payment.void_failed (+ PasarGuard calls)
-            API-->>TX: 502 "PasarGuard: … — nothing was deleted"
-        end
-        API->>DB: service row disabled / deleted
-    end
-    API->>DB: order → cancelled (choice, or the payment was still pending) · drop unapplied renewal
-    API->>DB: payment.voided_at / voided_by / void_reason / void_service_action
-    API->>DB: AuditLog payment.voided (who, reason, amount, TX, order, choice)
-    API-->>TX: row hidden; cards, Accounting, Analytics, reports no longer count it
-    SA->>TX: Show deleted → Restore (≤ 30 days)
-    TX->>API: POST {id}/restore/
-    API->>DB: clear voided_*; order status back (lapsed pending → expired)
-    API->>DB: AuditLog payment.restored
-```
-
-## 5e. Staff page → Group manager role (v1.25.2)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor S as Staff with roles.manage
-    participant P as Panel (Roles & staff)
-    participant API as admin/staff/
-    participant M as agency.managers
-    S->>P: edit staff, role = Group manager
-    P->>API: GET staff/group-manager-options/ (groups + PasarGuard roles, owner roles left out)
-    S->>P: tick groups, allowed roles per group, cap
-    P->>API: PATCH staff/<id>/ {role, group_manager: {assignments, max_unapproved_gb}}
-    API->>M: sync_from_staff (same transaction as the staff save)
-    alt role is Group manager
-        M->>M: link / create GroupManager (same username + password hash)
-        M->>M: _clean_assignments (owner role / unknown group → 400, nothing saved)
-        M-->>API: manager + warnings (no_group / no_role)
-    else role removed / superadmin
-        M->>M: unlink, disable manager, end its portal sessions, audit agency.manager.unlinked
-    end
-    API-->>P: staff row incl. group_manager {assignments, cap, warnings}
-    Note over P: Agency → Group managers edits the same record — both pages show the same groups
-```
-
 ## 15. Disk full protection (v1.25.2)
 
 ```mermaid
@@ -1176,44 +1215,3 @@ sequenceDiagram
     B->>W: daily disk report
     W->>T: only if above warn, growth ≥ 1 GB/day, or report missing / stale
 ```
-
-## 16. Discount code at checkout (v1.26)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor C as Customer (site / Mini App / bot)
-    participant API as orders API / bot
-    participant E as crm.discounts.evaluate
-    participant O as orders.create_order
-    participant M as SMS matcher / card review
-    C->>API: plan (+ volume / service) + code
-    API->>E: quote (POST /orders/quote/ or the bot's code step)
-    alt refused
-        E-->>C: reason in Persian / English (expired, not for this plan, not for you, used up, …)
-    else ok
-        E-->>C: original · discount · final
-        C->>API: confirm
-        API->>O: create_order(discount_code)
-        O->>E: evaluate again (limits are checked at this moment)
-        O->>O: amount = original − discount; amount_unique = amount + surcharge (unique)
-        O-->>C: invoice: pay amount_unique (shows original, code, discount)
-        C->>M: card-to-card / SMS for amount_unique
-        M->>O: matches amount_unique → paid (the code's use is now counted as used)
-    end
-```
-
-## Transactions cards = the list (v1.38.3)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor S as Staff (Transactions)
-    participant L as TransactionViewSet
-    S->>L: GET transactions/?from&to&status&search&manual (Tehran days, pay_date)
-    S->>L: GET transactions/summary/?search&manual
-    L->>L: same get_queryset + filters → approved, not voided
-    L-->>S: today (Tehran day) + month (Jalali month): revenue, count, from/to
-    S->>L: click a card → list with that from/to → the same rows
-```
-

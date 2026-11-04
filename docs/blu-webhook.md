@@ -72,6 +72,12 @@ full card number masked. `items: []` is a heartbeat.
    their orders before → approved with `auto_rule = rounded` (amount = what was paid,
    `shortfall` recorded), Telegram + `rounded_approved` live event. Otherwise step 4 as before,
    with the evaluated conditions on the pending payment. See `payments_sms/rounded.py`.
+4b. (v1.34) **Agency payments** share the unique-amount pool with customer orders. Customer orders are checked
+   first; a deposit equal to an open customer order AND an open agency payment is never auto-approved — both go to
+   review (`agency.billing.hold_ambiguous`, payment `pending_review`, live `agency_mismatch`). No customer order took
+   it → an agency payment of exactly that amount inside its window is approved (`billing.match_deposit` →
+   `billing.approve_payment`, method `blu_auto`; already paid → `duplicate`). Rounded and near-miss rules apply to
+   agency payments the same way. Agency money never becomes a customer `Payment` (separate revenue).
 5. Otherwise `unmatched`. Staff can attach it to an order from Payments → «واریزهای بلو»
    (`POST /api/v1/admin/payments/blu-transactions/<id>/attach/`, `payment.approve`).
 
