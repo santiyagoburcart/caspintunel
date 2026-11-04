@@ -1215,3 +1215,23 @@ sequenceDiagram
     B->>W: daily disk report
     W->>T: only if above warn, growth ≥ 1 GB/day, or report missing / stale
 ```
+
+## 15b. Container memory watch (v1.39.0)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant H as Host cron (container-stats.sh, 5 min)
+    participant F as backups/.container-stats.json
+    participant B as resource_sample_task (5 min)
+    participant T as Telegram (backup chat + monitoring staff)
+    H->>H: docker stats + inspect (limit, OOMKilled, restarts), swap, memory pressure, load
+    H->>F: write JSON (read-only sampling, no Docker socket in the app)
+    B->>F: read (apps/ops/containers.py)
+    alt a container ≥ 85 % of its limit, OOM / restart, swap ≥ 1.5 GB for 30 min, pressure ≥ 10 %, load > CPUs, report stale
+        B->>T: one message for the new problems (each kind at most every 6 h)
+    else everything back to normal after an alert
+        B->>T: "back to normal" (once)
+    end
+```
+

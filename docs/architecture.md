@@ -60,7 +60,7 @@ flowchart LR
 | Service | Image | Role |
 |---|---|---|
 | `nginx` | own (`nginx/`) | TLS (Let's Encrypt or manual cert), routing below, security headers / two CSPs, `nginx/flags/maintenance` → 503, admin + portal paths from `nginx/paths/active.conf`, the domain set by the wizard from `nginx/domain/active.conf` |
-| `web` | `caspintunel-backend` | gunicorn, 3 workers, Django + DRF (`/api/`, `/admin/`), healthcheck `/api/v1/health/` |
+| `web` | `caspintunel-backend` | gunicorn, 3 workers recycled every ~1000 requests, Django + DRF (`/api/`, `/admin/`), healthcheck `/api/v1/health/` |
 | `daphne` | `caspintunel-backend` | ASGI for `/ws/` (Channels; Redis channel layer) |
 | `frontend_user` | `caspintunel-frontend-user` | built user SPA (also the Mini App and the reseller portal at `/agency/`; `/agency/manager` only forwards to the panel login since v1.25) |
 | `frontend_admin` | `caspintunel-frontend-admin` | built admin SPA, served under the admin path (default `/panel/`) |
@@ -188,6 +188,22 @@ role. 47 codes (2026-11-04):
 | `users.manage` | Create / edit / disable users | ایجاد / ویرایش / غیرفعال‌کردن کاربران |
 | `users.purge` | Permanently delete users (Super Admin only) | حذف دائمی کاربران (فقط سوپرادمین) |
 | `users.view` | View users | مشاهدهٔ کاربران |
+
+## Memory limits and tuning (v1.39.0, multi-tenant Phase 0)
+
+The server stays at 2 vCPU / 3.7 GiB (owner's decision, swap enlarged by the owner), so every container has a `mem_limit`
+(`docker-compose.prod.yml`; swap up to the same amount again): web 640 MB · daphne 192 · celery_worker 640 · celery_beat 192 ·
+db 640 · redis 160 · nginx 128 · bot_sales / bot_backup 192 each · frontend_user / frontend_admin 48 each · mailserver 256 ·
+certbot 96 (≈ 3.4 GB of caps; ≈ 0.8–1 GB in use). Tuning: gunicorn `--max-requests 1000 --max-requests-jitter 100`; Celery
+`--concurrency 2 --max-tasks-per-child 200 --max-memory-per-child 262144` (KB); MySQL `--performance-schema=OFF`; Redis
+`maxmemory 100mb` + `volatile-lru` (only keys with a TTL — cache, throttles, Celery results — can be evicted; queues and Channels
+groups never). The PasarGuard nodes on the host are not limited by us.
+
+**Watch** (`apps/ops/containers.py`, checked by `resource_sample_task` every 5 min, Telegram like the disk alerts; each kind at
+most every 6 h, one "back to normal" line): a container of this project ≥ 85 % of its limit, an OOM kill or a restart, swap
+≥ 1.5 GB for 30 min, memory pressure (some avg60) ≥ 10 %, load (15 min) above the CPU count, and the host report missing / stale
+(> 20 min). Upgrade triggers: [multi-tenant.md §19](multi-tenant.md#19-server-capacity). Building an SPA needs ~1 GB — never build
+while the test stack runs (the kernel OOM-killed a build that did, 2026-11-04).
 
 ## Async — Celery beat schedule
 
@@ -526,8 +542,9 @@ Inter, JetBrains Mono) and every asset bundled, no CDN.
 | every minute | `scripts/paths.sh apply-request` — applies an admin/portal path change requested from the panel (nginx -t, reload, verify, rollback) |
 | every minute | `scripts/domain.sh apply-request` — domain wizard: certificate, switch (nginx, .env, rolling restart, verify over TLS, rollback), retire, rollback ([domain.md](domain.md)) |
 | every 2 min | `scripts/watch-update.sh --prod` — runs `update.sh` when the panel's **Update** button left a sentinel |
+| every 5 min | `scripts/container-stats.sh` (v1.39.0) — read-only `docker stats` / `inspect`, swap, `/proc/pressure/memory`, load → `backups/.container-stats.json`; read by `apps/ops/containers.py` (Monitoring card «حافظهٔ کانتینرها» + alerts); installed by `update.sh` |
 | daily 03:17 | `scripts/disk-report.sh` — biggest folders, Docker volumes, MySQL binlogs → `backups/.disk-report.json` (+ `.prev`), trims build cache > 24 h; installed by `update.sh` |
-| acme.sh / certbot timers | TLS renewal |
+| certbot container | TLS renewal (DNS-01 through Cloudflare); the host `acme.sh` cron holds no certificates |
 
 ## Backups
 

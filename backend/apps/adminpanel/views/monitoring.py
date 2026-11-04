@@ -91,6 +91,8 @@ class MonitoringView(AdminAPIView):
             ).data,
             "storage": storage_snapshot(),
             "disk_watch": _disk_watch(),
+            # v1.39.0: memory per container, swap, pressure, load (host cron report, apps/ops/containers.py)
+            "containers": _containers(),
             # v1.33: the Blu deposit collector (same data as Payments → «واریزهای بلو»)
             "blu": _blu(),
         })
@@ -106,6 +108,15 @@ def _blu() -> dict | None:
         return None
     h.pop("settings", None)
     return h
+
+
+def _containers() -> dict | None:
+    from apps.ops.containers import snapshot
+
+    try:
+        return snapshot()
+    except Exception:  # noqa: BLE001 - never break the page over the report
+        return None
 
 
 def _disk_watch() -> dict | None:

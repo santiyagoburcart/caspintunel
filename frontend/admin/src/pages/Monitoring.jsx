@@ -284,6 +284,89 @@ const BLU_MON_CSS = `
 .blu-mon-wide { grid-column: 1 / -1; }
 `
 
+// v1.39.0 memory per container vs its limit + host swap / pressure / load (host cron report, apps/ops/containers.py)
+const CTR_T = {
+  fa: { title: 'حافظهٔ کانتینرها', swap: 'Swap', psi: 'فشار حافظه', load: 'بار (15 دقیقه)', limit: 'سقف', none: 'بدون سقف',
+    restarts: 'راه‌اندازی مجدد', oom: 'کمبود حافظه (OOM)', others: 'روی همین سرور (جزو این پروژه نیست)', stale: 'گزارش میزبان قدیمی است — cron اسکریپت container-stats را بررسی کنید.',
+    missing: 'گزارش میزبان هنوز ساخته نشده (scripts/container-stats.sh).', at: 'به‌روزرسانی' },
+  en: { title: 'Container memory', swap: 'Swap', psi: 'Memory pressure', load: 'Load (15 min)', limit: 'limit', none: 'no limit',
+    restarts: 'restart(s)', oom: 'out of memory (OOM)', others: 'Also on this server (not part of this project)', stale: 'The host report is stale — check the container-stats cron.',
+    missing: 'The host report does not exist yet (scripts/container-stats.sh).', at: 'Updated' },
+}
+const mb = (b) => `${Math.round(Number(b || 0) / 1048576).toLocaleString('en-US')} MB`
+function ContainersCard({ c, lang, caspian }) {
+  const t = CTR_T[lang] || CTR_T.fa
+  if (!c) return null
+  const Tag = caspian ? 'section' : 'div'
+  const h = c.host || {}
+  const ours = (c.containers || []).filter((r) => r.ours)
+  const others = (c.containers || []).filter((r) => !r.ours)
+  const th = c.thresholds || {}
+  const swapHot = Number(h.swap_used) >= Number(th.swap_bytes || Infinity)
+  const tone = (p) => (p == null ? 'none' : p >= (th.container_pct || 85) ? 'bad' : p >= 70 ? 'warn' : 'ok')
+  return (
+    <Tag className={(caspian ? 'cm-card' : 'card') + ' ctr-mon'} data-testid="mon-containers">
+      <style>{CTR_CSS}</style>
+      <div className="ctr-h"><b className={caspian ? 'cm-h2' : 'title'}>{t.title}</b>
+        {c.generated_at && <small className="ctr-muted mono-num">{t.at}: {jalali(c.generated_at, true, lang)}</small>}</div>
+      {!c.report ? <p className="ctr-note">{t.missing}</p> : (
+        <>
+          {c.stale && <p className="ctr-note" data-tone="bad">{t.stale}</p>}
+          <dl className="ctr-host">
+            <div data-tone={swapHot ? 'bad' : 'ok'}><dt>{t.swap}</dt><dd className="mono-num">{mb(h.swap_used)} / {mb(h.swap_total)}</dd></div>
+            <div data-tone={Number(h.psi_some_avg60) >= (th.psi || 10) ? 'bad' : 'ok'}><dt>{t.psi}</dt><dd className="mono-num">{Number(h.psi_some_avg60 || 0)}%</dd></div>
+            <div data-tone={Number(h.load15) > Number(h.cpus || 1) ? 'bad' : 'ok'}><dt>{t.load}</dt><dd className="mono-num">{h.load15} / {h.cpus} CPU</dd></div>
+          </dl>
+          <ul className="ctr-list">
+            {ours.map((r) => (
+              <li key={r.name} data-tone={r.oom_killed ? 'bad' : tone(r.percent)}>
+                <span className="ctr-n"><bdi dir="ltr">{r.service}</bdi>
+                  {r.oom_killed && <small className="ctr-flag">{t.oom}</small>}
+                  {r.restarts > 0 && <small className="ctr-muted"> · {r.restarts} {t.restarts}</small>}</span>
+                <span className="ctr-bar" aria-hidden="true"><i style={{ width: `${Math.min(r.percent || 0, 100)}%` }} /></span>
+                <span className="ctr-v mono-num">{mb(r.mem_used)} <small>/ {r.mem_limit ? mb(r.mem_limit) : t.none}{r.percent != null ? ` · ${r.percent}%` : ''}</small></span>
+              </li>))}
+          </ul>
+          {others.length > 0 && (
+            <details className="ctr-others"><summary>{t.others} · <span className="mono-num">{mb(others.reduce((s, r) => s + r.mem_used, 0))}</span></summary>
+              <ul className="ctr-list">{others.map((r) => (
+                <li key={r.name} data-tone="none"><span className="ctr-n"><bdi dir="ltr">{r.name}</bdi></span><span className="ctr-v mono-num">{mb(r.mem_used)}</span></li>))}</ul>
+            </details>
+          )}
+        </>
+      )}
+    </Tag>
+  )
+}
+const CTR_CSS = `
+.ctr-h { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 12px; }
+.ctr-muted { font-size: 11.5px; color: var(--c-text-muted); font-weight: 600; }
+.ctr-note { margin-top: 8px; font-size: 12.5px; font-weight: 700; color: var(--c-text-muted); }
+.ctr-note[data-tone="bad"] { color: var(--c-danger-fg); }
+.ctr-host { display: grid; gap: 8px; margin-top: 10px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); }
+.ctr-host > div { padding: 8px 10px; border-radius: 10px; border: 1px solid var(--c-border); min-width: 0; }
+.ctr-host > div[data-tone="bad"] { border-color: color-mix(in srgb, var(--c-danger) 45%, var(--c-border)); }
+.ctr-host dt { font-size: 11.5px; font-weight: 700; color: var(--c-text-muted); }
+.ctr-host dd { font-size: 13.5px; font-weight: 800; margin-top: 2px; }
+.ctr-host > div[data-tone="bad"] dd { color: var(--c-danger-fg); }
+.ctr-list { display: flex; flex-direction: column; margin-top: 10px; }
+.ctr-list li { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(60px, 1fr) 190px; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px solid var(--c-border); font-size: 13px; }
+.ctr-list li:first-child { border-top: 0; }
+.ctr-n { min-width: 0; overflow-wrap: anywhere; font-weight: 700; }
+.ctr-flag { margin-inline-start: 6px; font-size: 11px; font-weight: 800; padding: 1px 7px; border-radius: 999px; color: #fff; background: var(--c-danger); }
+.ctr-bar { display: block; height: 7px; border-radius: 999px; overflow: hidden; background: color-mix(in srgb, var(--c-text-muted) 16%, transparent); }
+.ctr-bar i { display: block; height: 100%; border-radius: inherit; background: var(--c-success); }
+.ctr-list li[data-tone="warn"] .ctr-bar i { background: var(--c-warning); }
+.ctr-list li[data-tone="bad"] .ctr-bar i { background: var(--c-danger); }
+.ctr-list li[data-tone="none"] .ctr-bar i { background: var(--c-text-muted); }
+.ctr-v { font-weight: 800; white-space: nowrap; text-align: end; }
+.ctr-v small { font-weight: 600; color: var(--c-text-muted); }
+.ctr-others { margin-top: 8px; font-size: 12.5px; }
+.ctr-others summary { cursor: pointer; min-height: 40px; display: flex; align-items: center; gap: 4px; color: var(--c-text-muted); font-weight: 700; }
+.ctr-others .ctr-list li { grid-template-columns: minmax(0, 1fr) auto; }
+@media (max-width: 767px) { .ctr-list li { grid-template-columns: minmax(0, 1fr) auto; } .ctr-v { min-width: 0; } .ctr-bar { grid-column: 1 / -1; grid-row: 2; } .ctr-others summary { min-height: 44px; } }
+`
+
 function fmtDur(sec, m, d) {
   if (sec == null) return '—'
   const dd = Math.floor(sec / 86400)
@@ -651,6 +734,7 @@ function LegacyMonitoring() {
 
       {/* ---- Blu collector (v1.33) ---- */}
       {data.blu && <div className="grid r1"><BluCard b={data.blu} lang={lang} /></div>}
+      {data.containers && <div className="grid r1"><ContainersCard c={data.containers} lang={lang} /></div>}
 
       {/* ---- recent backups ---- */}
       <div className="grid r1">
@@ -1385,6 +1469,7 @@ function CaspianMonitoring() {
 
         {/* ================= BLU COLLECTOR (v1.33) ================= */}
         {data.blu && <BluCard b={data.blu} lang={lang} caspian />}
+        {data.containers && <ContainersCard c={data.containers} lang={lang} caspian />}
 
         {/* ================= RECENT BACKUPS (last) ================= */}
         <section className="cm-card">

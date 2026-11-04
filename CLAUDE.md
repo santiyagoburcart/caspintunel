@@ -19,6 +19,9 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   still serves: keep them backward compatible (add now, drop next release). Prod uses `volumes: !override` / `!reset` so none of the dev
   bind mounts leak in. The dev compose alone (`docker compose -f docker-compose.yml`, `./update.sh --dev`)
   is for development machines only (runserver + Vite, `./backend` bind-mounted).
+- **Memory (v1.39.0)**: every prod container has a `mem_limit` (`docker-compose.prod.yml`, sized for 2 vCPU / 3.7 GiB —
+  architecture.md#memory-limits-and-tuning-v1390). A new container gets one too. Never run an SPA build (~1 GB) while the test
+  stack runs — the kernel OOM-kills it. Watch = Monitoring «حافظهٔ کانتینرها» (`apps/ops/containers.py`).
 - `./update.sh` first dumps the DB to `backups/pre-update-<ver>-<ts>.sql.gz` and tags the running app images
   `:rollback`, then pulls/builds/ups. **Rollback: `./update.sh --rollback`** (images only; restore the dump
   if a migration must be undone). Build images only through `update.sh`: with the containerd image store a

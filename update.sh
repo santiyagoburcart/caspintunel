@@ -147,5 +147,13 @@ if command -v crontab >/dev/null 2>&1; then
   fi
 fi
 "$ROOT/scripts/disk-report.sh" || true
+# v1.39.0 container memory watch: host cron every 5 min (read-only docker stats → backups/.container-stats.json)
+if command -v crontab >/dev/null 2>&1; then
+  CS_LINE="*/5 * * * * $ROOT/scripts/container-stats.sh >> /var/log/caspintunel-containers.log 2>&1"
+  if ! crontab -l 2>/dev/null | grep -qF "scripts/container-stats.sh"; then
+    ( crontab -l 2>/dev/null; echo "$CS_LINE" ) | crontab - && echo "   cron: container memory watch installed"
+  fi
+fi
+"$ROOT/scripts/container-stats.sh" || true
 
 echo "==> now on version: $(cat VERSION)"

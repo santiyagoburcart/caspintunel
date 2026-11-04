@@ -34,9 +34,21 @@ def pay(user, amount, *, created, confirmed=None, status=PaymentStatus.APPROVED,
     return p.pk
 
 
+class _FrozenTZ:
+    """django.utils.timezone with a fixed now() — only for apps.common.jalali (the day / month helpers). Patching
+    django.utils.timezone.now globally also froze JWT issuing, so tokens expired once the real clock passed NOW."""
+
+    def __getattr__(self, name):
+        return getattr(timezone, name)
+
+    @staticmethod
+    def now():
+        return NOW
+
+
 @pytest.fixture
 def frozen(monkeypatch):
-    monkeypatch.setattr(timezone, "now", lambda: NOW)
+    monkeypatch.setattr(jalali, "timezone", _FrozenTZ())
     return NOW
 
 

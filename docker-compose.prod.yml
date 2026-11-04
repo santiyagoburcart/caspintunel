@@ -16,7 +16,9 @@ services:
       # so web is ready in seconds and old + new can overlap (rolling deploy).
       RUN_MIGRATIONS: "0"
       COLLECT_STATIC: "0"
-    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 60 --graceful-timeout 30 --access-logfile -
+    # v1.39.0: workers recycled every ~1000 requests (memory creep); 3 workers fit the 2 vCPU / 3.7 GiB server
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --max-requests 1000 --max-requests-jitter 100 --timeout 60 --graceful-timeout 30 --access-logfile -
+    mem_limit: 640m
     # update.sh waits for "healthy" before retiring the old container
     healthcheck:
       test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "-H", "Host: ${DOMAIN:-aicaspin.ir}", "-H", "X-Forwarded-Proto: https", "http://127.0.0.1:8000/api/v1/health/"]
@@ -46,6 +48,7 @@ services:
       DJANGO_SETTINGS_MODULE: config.settings.prod
       RUN_MIGRATIONS: "0"
     command: daphne -b 0.0.0.0 -p 8001 config.asgi:application
+    mem_limit: 192m
     healthcheck:
       test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1', 8001), 2)"]
       interval: 5s
@@ -64,6 +67,9 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.prod
       RUN_MIGRATIONS: "0"
+    # v1.39.0: 2 processes (= vCPUs); a child is replaced after 200 tasks or ~256 MB (the DB dump runs here too)
+    command: celery -A config worker -l info --concurrency 2 --max-tasks-per-child 200 --max-memory-per-child 262144
+    mem_limit: 640m
     volumes: !override
       - ./VERSION:/app/VERSION:ro
       - media_data:/app/media
@@ -77,6 +83,7 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.prod
       RUN_MIGRATIONS: "0"
+    mem_limit: 192m
     volumes: !override
       - ./VERSION:/app/VERSION:ro
 
@@ -84,6 +91,7 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.prod
       RUN_MIGRATIONS: "0"
+    mem_limit: 192m
     volumes: !override
       - ./VERSION:/app/VERSION:ro
       - media_data:/app/media            # bot receipt uploads land in the shared media store
@@ -92,6 +100,7 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.prod
       RUN_MIGRATIONS: "0"
+    mem_limit: 192m
     volumes: !override
       - ./VERSION:/app/VERSION:ro
       - ./backups:/app/backups
@@ -100,6 +109,7 @@ services:
     image: caspintunel-frontend-user
     build: ./frontend/user
     restart: unless-stopped
+    mem_limit: 48m
     command: ["nginx", "-g", "daemon off;"]
     environment: !reset {}
     volumes: !reset []
@@ -115,6 +125,7 @@ services:
     image: caspintunel-frontend-admin
     build: ./frontend/admin
     restart: unless-stopped
+    mem_limit: 48m
     command: ["nginx", "-g", "daemon off;"]
     environment: !reset {}
     volumes: !reset []
@@ -127,6 +138,7 @@ services:
       start_period: 20s
 
   nginx:
+    mem_limit: 128m
     depends_on: !override
       - web
       - daphne
@@ -142,6 +154,24 @@ services:
       - ./nginx/letsencrypt:/etc/letsencrypt
       - ./nginx/certbot-webroot:/var/www/certbot
       - ./nginx/manual-certs:/etc/nginx/manual-certs:ro
+
+  # v1.39.0 memory limits (docs/multi-tenant.md §19 — the 2 vCPU / 3.7 GiB server): a runaway container is killed and
+  # restarted alone instead of pushing the whole host into swap. Swap up to the same amount again is allowed.
+  db:
+    # performance_schema off: ~100+ MB less on a 23 MB database; nothing in the app reads it
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --performance-schema=OFF
+    mem_limit: 640m
+
+  redis:
+    # cap + evict only keys WITH a TTL (cache, throttles, Celery results) — Celery queues / channels groups have none
+    command: ["redis-server", "--maxmemory", "100mb", "--maxmemory-policy", "volatile-lru"]
+    mem_limit: 160m
+
+  mailserver:
+    mem_limit: 256m
+
+  certbot:
+    mem_limit: 96m
 
   # phpMyAdmin stays in the "tools" profile (see base file) — never started in a
   # normal prod bring-up. If you must use it: `docker compose --profile tools up

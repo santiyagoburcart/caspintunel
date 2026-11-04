@@ -24,6 +24,13 @@ def resource_sample_task():
     except Exception:  # noqa: BLE001
         logging.getLogger("caspintunel").exception("disk alert check failed")
     stat = sample_resources()
+    # v1.39.0: per-container memory / swap / pressure / load (host report, apps/ops/containers.py)
+    try:
+        from .containers import check as check_containers
+
+        check_containers()
+    except Exception:  # noqa: BLE001
+        logging.getLogger("caspintunel").exception("container memory check failed")
     return {"cpu": stat.cpu_percent, "ram": stat.ram_percent, "disk": stat.disk_percent}
 
 

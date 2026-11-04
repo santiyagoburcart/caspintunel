@@ -27,6 +27,11 @@
 - Health probes run every 2 min (`health_check` rows); resources every 5 min. Disk alerts (v1.25.2, `apps/ops/disk.py`)
   are checked before any DB write; the host cron writes `backups/.disk-report.json` daily, read by `ops: daily disk report`.
 - Bots report a Redis heartbeat from a daemon thread — "alive" even while idling without a token.
+- **Container memory** (v1.39.0): Monitoring → «حافظهٔ کانتینرها» — each container of this project against its memory limit,
+  OOM kills, restarts, host swap, memory pressure and load (from the host cron `scripts/container-stats.sh`, every 5 min).
+  Telegram alerts: ≥ 85 % of a limit, OOM kill / restart, swap ≥ 1.5 GB for 30 min, pressure ≥ 10 %, load above the CPU count,
+  report stale. A killed container restarts by itself (`restart: unless-stopped`); raise its limit in `docker-compose.prod.yml`
+  only when it is killed again after a normal day. Run builds and the test stack one at a time on this server.
 - Payments → «واریزهای بلو»: Blu collector service state over SSH (read-only), last successful poll, last error
   ([blu-webhook.md](blu-webhook.md)).
 - **Unconfirmed-payment alert** (v1.33): a payment pending longer than `pending_payment_alert_minutes` (Settings → Alerts,
