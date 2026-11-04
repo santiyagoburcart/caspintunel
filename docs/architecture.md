@@ -685,6 +685,18 @@ information only — it is configured on the Iran server).
 - **Monitoring** shows a «کالکتور بلو» card (`/admin/monitoring/` → `blu`, same data as the Blu tab).
 
 
+## Days, months and the Transactions cards (v1.38.3)
+
+- A "day" in filters and reports is a **Tehran calendar day** (`apps/common/jalali.py`: `tehran_day_start/end`,
+  `today_bounds`, `jalali_month_bounds`, `parse_day`); the server itself runs in UTC. `finance._parse_any_date` (Transactions,
+  Accounting, deleted users) returns Tehran day boundaries; Accounting's daily breakdown truncates in Tehran time;
+  `to_jalali_str` formats in Tehran time (it used UTC); the panel's `lib/format.js` pins `timeZone: 'Asia/Tehran'`.
+- Transactions: the list filters and shows ONE date, `pay_date = Coalesce(confirmed_at, created_at)` (a manual invoice counts
+  on its entered payment date). The cards «واریزی‌های امروز / این ماه» come from `GET admin/transactions/summary/` — the list's
+  own queryset and filters (search, manual, source, method…), approved and not deleted, for today in Tehran and the current
+  Jalali month; a click applies that range to the list. (Before: Accounting's rolling last 24 h / last 30 days by
+  confirmation time.) Agency payments are `AgencyPayment` and never in either.
+
 ## Reseller portal layout (v1.38.2)
 
 - `/agency/` (user SPA, `pages/AgencyPortal.jsx`) = a shell with sections at `<portal>/<section>` (dashboard, request,

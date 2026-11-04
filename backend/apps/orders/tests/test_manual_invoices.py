@@ -65,10 +65,12 @@ def test_mode_a_paid_custom_item_on_the_entered_date(world, env):  # noqa: F811
     assert world["fulfil"] == []                                   # no service action → nothing on PasarGuard
     assert r.json()["tx_number"] == p.tx_number                    # same TX numbering
     # revenue on the ENTERED date, not today
-    day = paid_at.date().isoformat()
+    from apps.common.jalali import TZ, tehran_today
+
+    day = paid_at.astimezone(TZ).date().isoformat()                # days are Tehran days (v1.38.3)
     acc = boss.get(f"/api/v1/admin/accounting/?from={day}&to={day}").json()
     assert Decimal(str(acc["revenue"])) == Decimal("250000") and acc["manual"]["count"] == 1
-    today = timezone.now().date().isoformat()
+    today = tehran_today().isoformat()
     assert Decimal(str(boss.get(f"/api/v1/admin/accounting/?from={today}&to={today}").json()["revenue"])) == 0
     # the «دستی» tag everywhere
     tx = boss.get(f"/api/v1/admin/transactions/{p.id}/").json()

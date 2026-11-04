@@ -95,6 +95,9 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   `ct_admin_sid` / `ct_admin_csrf` on Path `/admin/`. A new public auth endpoint gets the mixin + the SPA regex.
 - Live updates: WebSocket `/ws/notifications/` (customer JWT) and `/ws/admin/payments/` (staff JWT +
   `payment.view`) via `apps/notifications/live.py::push_payments_event` (sent on commit).
+- **Days are Tehran days** (server TZ is UTC): date filters / reports / cards use `apps/common/jalali.py` (`tehran_day_start/end`,
+  `today_bounds`, `jalali_month_bounds`); never `make_aware(date)` or `TruncDate` without `tzinfo=TZ`. Transactions cards = `transactions/summary/`
+  (the list's own query, `pay_date`) — never a separate rolling-window aggregate.
 - Frontend: fa/en for every string (per-page `T = {fa, en}` or `lib/i18n.jsx`), Jalali via `lib/format.js`.
   **Digits are always Latin 0-9** in both languages (amounts, dates `1405/07/03`, badges, %, bot text);
   every `fa` Intl formatter needs `-u-nu-latn`. Persian/Arabic digits are only normalized on INPUT

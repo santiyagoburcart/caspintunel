@@ -1203,3 +1203,17 @@ sequenceDiagram
     end
 ```
 
+## Transactions cards = the list (v1.38.3)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor S as Staff (Transactions)
+    participant L as TransactionViewSet
+    S->>L: GET transactions/?from&to&status&search&manual (Tehran days, pay_date)
+    S->>L: GET transactions/summary/?search&manual
+    L->>L: same get_queryset + filters → approved, not voided
+    L-->>S: today (Tehran day) + month (Jalali month): revenue, count, from/to
+    S->>L: click a card → list with that from/to → the same rows
+```
+

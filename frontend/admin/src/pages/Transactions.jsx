@@ -24,32 +24,36 @@ const TF = {
   en: { filter_dates: 'Date range', filter_banks: 'Banks & methods' },
 }
 
-function TxStat({ label, value, sub, tone, lang }) {
+function TxStat({ label, value, sub, tone, lang, onClick, testId }) {
+  const Tag = onClick ? 'button' : 'div'
   return (
-    <div className="card tx-stat">
+    <Tag type={onClick ? 'button' : undefined} className={'card tx-stat' + (onClick ? ' tx-stat--btn' : '')} onClick={onClick} data-testid={testId}>
       <span className="tx-stat-label">{label}</span>
       <div className="tx-stat-val">{value == null ? '—' : value}</div>
       {sub ? <div className="tx-stat-sub" style={tone ? { color: tone } : undefined}>{sub}</div> : null}
       <span className="tx-stat-accent" style={{ background: tone || 'var(--c-primary)' }} />
-    </div>
+    </Tag>
   )
 }
 
-function TxStats({ lang, version }) {
+// v1.38.3: the cards come from GET transactions/summary/ — the list's own query and filters, the same date (payment
+// date) and Tehran days / the Jalali month. A click applies that range to the list, which then shows exactly those rows.
+function TxStats({ lang, version, params, onRange }) {
   const x = TXS[lang] || TXS.fa
   const [d, setD] = useState({})
   useEffect(() => {
-    const acc = (p) => api.get(`/admin/accounting/?period=${p}`).then((r) => r.data).catch(() => null)
+    const sum = api.get(`/admin/transactions/summary/?${params}`).then((r) => r.data).catch(() => null)
     const cnt = (st) => api.get(`/admin/transactions/?status=${st}&limit=1`).then((r) => r.data.count).catch(() => null)
-    Promise.all([acc('monthly'), acc('daily'), cnt('pending'), cnt('rejected')])
-      .then(([m, t, pend, rej]) => setD({ m, t, pend, rej }))
-  }, [version])
+    Promise.all([sum, cnt('pending'), cnt('rejected')])
+      .then(([sm, pend, rej]) => setD({ m: sm?.month, t: sm?.today, pend, rej }))
+  }, [version, params])
+  const pick = (r) => r && onRange?.({ from: r.from_iso, to: r.to_iso })
   return (
     <div className="tx-stats">
-      <TxStat label={x.month} value={d.m ? toman(d.m.revenue, lang) : null}
-        sub={d.m ? x.tx_n.replace('{n}', digits(d.m.transactions, lang)) : ''} tone="#1464BA" lang={lang} />
-      <TxStat label={x.today} value={d.t ? toman(d.t.revenue, lang) : null}
-        sub={d.t ? x.tx_n.replace('{n}', digits(d.t.transactions, lang)) : ''} tone="#11AB53" lang={lang} />
+      <TxStat label={x.month} value={d.m ? toman(d.m.revenue, lang) : null} onClick={d.m ? () => pick(d.m) : undefined} testId="tx-card-month"
+        sub={d.m ? x.tx_n.replace('{n}', digits(d.m.count, lang)) : ''} tone="#1464BA" lang={lang} />
+      <TxStat label={x.today} value={d.t ? toman(d.t.revenue, lang) : null} onClick={d.t ? () => pick(d.t) : undefined} testId="tx-card-today"
+        sub={d.t ? x.tx_n.replace('{n}', digits(d.t.count, lang)) : ''} tone="#11AB53" lang={lang} />
       <TxStat label={x.queue} value={d.pend == null ? null : digits(d.pend, lang)}
         sub={d.pend == null ? '' : x.pending_n.replace('{n}', digits(d.pend, lang))} tone="#D97706" lang={lang} />
       <TxStat label={x.rejected} value={d.rej == null ? null : digits(d.rej, lang)}
@@ -277,6 +281,7 @@ function TxTable({ s, t, lang }) {
   const [bankFilter, setBankFilter] = useState({ banks: [], methods: [] })
   const [err, setErr] = useState('')
 
+  const cardParams = new URLSearchParams({ ...(search ? { search } : {}), ...(manual ? { manual: '1' } : {}) }).toString()
   const load = () => {
     setRows(null); setErr('')
     const p = new URLSearchParams()
@@ -326,7 +331,7 @@ function TxTable({ s, t, lang }) {
 
   return (
     <>
-      <TxStats lang={lang} version={version} />
+      <TxStats lang={lang} version={version} params={cardParams} onRange={(r) => setRange(r)} />
       <Alert>{err}</Alert>
       <div className="tx-filter-row">
         <div className="flex flex-wrap gap-2">
@@ -410,7 +415,7 @@ function TxTable({ s, t, lang }) {
                         {r.auto_rule === 'rounded' && <span className="tx-rounded">{s.rounded}</span>}</td>
                       <td dir="ltr" className="tx-mono tx-card" data-label={s.card}>{groupCard(r.card)}</td>
                       <td data-label={s.confirmer}>{confirmer(r)}</td>
-                      <td className="tx-mono tx-date" data-label={s.date}>{jalali(r.created_at, true, lang)}</td>
+                      <td className="tx-mono tx-date" data-label={s.date}>{jalali(r.pay_date || r.created_at, true, lang)}</td>
                       <td data-label={s.status}><Pill tone={ST_TONE[r.status]}>{s[r.status] || r.status}</Pill></td>
                       <td className="tx-c" data-label={s.receipt}>{r.receipt_url ? <ReceiptThumb url={r.receipt_url} alt={s.receipt} /> : '—'}</td>
                       <td className="tx-c">
@@ -481,6 +486,8 @@ const CSS = `
 .tx-tool-btn:hover { color: var(--c-primary); border-color: var(--c-primary); }
 .acc-tool-badge { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--c-primary); }
 
+.tx-stat--btn { text-align: start; cursor: pointer; font: inherit; color: inherit; width: 100%; }
+.tx-stat--btn:hover { border-color: color-mix(in srgb, var(--c-primary) 45%, var(--c-border)); }
 .tx-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 4px; }
 @media (min-width: 900px) { .tx-stats { grid-template-columns: repeat(4, 1fr); } }
 .tx-stat { position: relative; overflow: hidden; padding: 14px 16px; }

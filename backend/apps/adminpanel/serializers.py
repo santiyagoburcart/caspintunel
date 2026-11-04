@@ -439,6 +439,11 @@ class TransactionSerializer(serializers.ModelSerializer):
     restorable_until = serializers.SerializerMethodField()
     service_id = serializers.IntegerField(source="order.service_id", read_only=True, default=None)
     manual = serializers.SerializerMethodField()
+    # v1.38.3 the date the list filters / shows and the cards count: payment date (confirmed_at), else created_at
+    pay_date = serializers.SerializerMethodField()
+
+    def get_pay_date(self, obj):
+        return getattr(obj, "pay_date", None) or obj.confirmed_at or obj.created_at
 
     def get_manual(self, obj):
         from apps.orders.serializers import manual_info
@@ -453,7 +458,7 @@ class TransactionSerializer(serializers.ModelSerializer):
             "card", "card_holder", "card_bank", "gateway_ref",
             "confirmed_by", "confirmer", "confirmed_at", "reject_reason",
             "receipt_url", "order_source", "order_type", "order_status",
-            "created_at", "updated_at",
+            "created_at", "updated_at", "pay_date",
             "voided", "voided_at", "voided_by", "void_reason", "void_service_action", "restorable_until", "manual",
             "auto_rule", "auto_reason", "shortfall",
         )

@@ -1,12 +1,15 @@
 // Jalali dates via Intl (no dependency). Store/receive UTC, display Persian calendar.
-const jf = new Intl.DateTimeFormat('fa-IR-u-ca-persian-nu-latn', {
+// v1.38.3: always Tehran time — the server's day filters / cards use Tehran days, so a browser in another time
+// zone must not show a payment on a different day than the filter puts it.
+const TZ = 'Asia/Tehran'
+const jf = new Intl.DateTimeFormat('fa-IR-u-ca-persian-nu-latn', { timeZone: TZ,
   year: 'numeric', month: '2-digit', day: '2-digit',
 })
-const jfTime = new Intl.DateTimeFormat('fa-IR-u-ca-persian-nu-latn', {
+const jfTime = new Intl.DateTimeFormat('fa-IR-u-ca-persian-nu-latn', { timeZone: TZ,
   year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
 })
-const gEn = new Intl.DateTimeFormat('en-GB', { year: 'numeric', month: '2-digit', day: '2-digit' })
-const gEnTime = new Intl.DateTimeFormat('en-GB', {
+const gEn = new Intl.DateTimeFormat('en-GB', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' })
+const gEnTime = new Intl.DateTimeFormat('en-GB', { timeZone: TZ,
   year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
 })
 

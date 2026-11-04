@@ -2,7 +2,7 @@ from datetime import timedelta
 
 import jdatetime
 from django.db.models import Count, Sum
-from django.db.models.functions import TruncDate
+from django.db.models.functions import Coalesce, TruncDate
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
@@ -10,7 +10,7 @@ from rest_framework import filters, mixins, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from apps.common.jalali import to_jalali_str
+from apps.common.jalali import TZ as TEHRAN, to_jalali_str
 from apps.common.models import write_audit
 from apps.notifications.live import push_payments_event
 from apps.payments_sms.models import BankCard, ConfirmedBy, Payment, PaymentStatus
@@ -58,16 +58,38 @@ class TransactionViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, views
             qs = qs.filter(order__source=src)
         if q.get("manual") in ("1", "true"):          # v1.38 «فاکتور دستی» only
             qs = qs.filter(order__manual_invoice__isnull=False)
-        frm = _parse_any_date(q.get("from"))
-        to = _parse_any_date(q.get("to"), end_of_day=True)
-        if frm:
-            qs = qs.filter(created_at__gte=frm)
-        if to:
-            qs = qs.filter(created_at__lte=to)
+        # v1.38.3: ONE date for the filter, the column and the cards — the payment date (confirmed_at; a manual
+        # invoice's entered date) and, until approved, when it was made; days are Tehran days
+        qs = qs.annotate(pay_date=Coalesce("confirmed_at", "created_at"))
+        if not getattr(self, "_no_dates", False):
+            frm = _parse_any_date(q.get("from"))
+            to = _parse_any_date(q.get("to"), end_of_day=True)
+            if frm:
+                qs = qs.filter(pay_date__gte=frm)
+            if to:
+                qs = qs.filter(pay_date__lte=to)
         term = (q.get("search") or "").strip()
         if term:
             qs = qs.filter(_tx_search(term))
         return qs.order_by("-created_at")
+
+    @extend_schema(responses=dict, summary="Cards: approved deposits today / this Jalali month, from the list's own query")
+    @action(detail=False, methods=["get"], url_path="summary")
+    def summary(self, request):
+        """v1.38.3 «واریزی‌های امروز / این ماه»: the SAME queryset and filters as the list (search, source, manual, method,
+        card…), the same date (pay_date) and Tehran days; approved, not deleted. `from`/`to` = the Jalali range a
+        click on the card applies to the list."""
+        from apps.common.jalali import jalali_day, jalali_month_bounds, today_bounds
+
+        self._no_dates = True
+        base = self.filter_queryset(self.get_queryset()).filter(status=PaymentStatus.APPROVED, voided_at__isnull=True)
+        out = {}
+        for key, (start, end) in (("today", today_bounds()), ("month", jalali_month_bounds())):
+            agg = base.filter(pay_date__gte=start, pay_date__lte=end).aggregate(revenue=Sum("amount"), count=Count("id"))
+            out[key] = {"revenue": agg["revenue"] or 0, "count": agg["count"] or 0,
+                        "from": jalali_day(start), "to": jalali_day(end),
+                        "from_iso": start.astimezone(TEHRAN).date().isoformat(), "to_iso": end.astimezone(TEHRAN).date().isoformat()}
+        return Response(out)
 
     def list(self, request, *args, **kwargs):
         if request.query_params.get("export") == "csv":
@@ -463,7 +485,7 @@ class AccountingView(AdminAPIView):
                 "revenue": row["revenue"],
                 "count": row["count"],
             }
-            for row in approved.annotate(day=TruncDate("confirmed_at"))
+            for row in approved.annotate(day=TruncDate("confirmed_at", tzinfo=TEHRAN))
             .values("day")
             .annotate(revenue=Sum("amount"), count=Count("id"))
             .order_by("day")
@@ -513,23 +535,14 @@ def _discounts(start, end) -> dict:
 
 
 def _parse_any_date(value, *, end_of_day=False):
-    """Accept an ISO (YYYY-MM-DD) or Jalali (YYYY/MM/DD) date string."""
-    if not value:
+    """An ISO (YYYY-MM-DD) or Jalali (YYYY/MM/DD) date → the start (or last microsecond) of that TEHRAN day.
+    v1.38.3: was midnight UTC, so 00:00–03:30 Tehran fell on the previous day."""
+    from apps.common.jalali import parse_day, tehran_day_end, tehran_day_start
+
+    d = parse_day(value)
+    if d is None:
         return None
-    value = value.strip()
-    try:
-        if "/" in value:  # Jalali YYYY/MM/DD
-            y, m, d = (int(x) for x in value.split("/"))
-            g = jdatetime.date(y, m, d).togregorian()
-            y, m, d = g.year, g.month, g.day
-        else:  # Gregorian YYYY-MM-DD
-            y, m, d = (int(x) for x in value.split("-"))
-        dt = timezone.datetime(y, m, d)
-        if end_of_day:
-            dt = dt.replace(hour=23, minute=59, second=59)
-        return timezone.make_aware(dt)
-    except (ValueError, TypeError):
-        return None
+    return tehran_day_end(d) if end_of_day else tehran_day_start(d)
 
 
 class SmsLogViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
@@ -620,7 +633,7 @@ def _transactions_csv(qs, lang: str):
         confirmer = (("Blu system" if p.method == "blu_auto" else "SMS system") if p.confirmed_by == "system" else
                      (p.confirmed_by_staff.username if p.confirmed_by_staff_id else (p.confirmed_by or "")))
         w.writerow([
-            p.tx_number, to_jalali_str(p.created_at, "%Y/%m/%d %H:%M"), int(p.amount), p.status, p.method,
+            p.tx_number, to_jalali_str(getattr(p, "pay_date", None) or p.created_at, "%Y/%m/%d %H:%M"), int(p.amount), p.status, p.method,
             o.user.username, o.user.name or "", (o.plan.name_en if lang == "en" else o.plan.name_fa) if o.plan_id else "",
             o.type, o.source, p.bank_card.card_number if p.bank_card_id else "", confirmer,
             to_jalali_str(p.confirmed_at, "%Y/%m/%d %H:%M") if p.confirmed_at else "", o.id, p.reject_reason or "",

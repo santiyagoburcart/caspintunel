@@ -12,7 +12,7 @@ Fields marked *enc* are Fernet-encrypted (`FIELD_ENCRYPTION_KEY`).
 
 Related: [architecture.md](architecture.md) · [flows.md](flows.md).
 
-Last schema change: v1.38.2 (`push_subscription.reseller`). v1.38.1 changed no table.
+Last schema change: v1.38.2 (`push_subscription.reseller`). v1.38.1 and v1.38.3 changed no table.
 
 ## 1. Users, auth and RBAC (`accounts`, `common`)
 
