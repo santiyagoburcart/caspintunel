@@ -131,6 +131,9 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   user-visible flow updates `docs/architecture.md`, `docs/erd.md` (Mermaid ER + table list) and `docs/flows.md`
   (Mermaid sequence diagrams) in the same commit**, plus `docs/roadmap.md` when a planned phase starts or ships.
   Write only what the code does (check enum values / schedules in the code, never from memory).
+- **Multi-tenant (v1.40+, docs/multi-tenant.md)**: every model is classified in `apps/tenancy/registry.py` (TENANT / NULLABLE /
+  PLATFORM — a test fails on an unclassified model). A new tenant table gets `tenant = tenant_fk()` (`apps/tenancy/fields.py`).
+  Release A: `tenant` is filled for existing rows only; nothing filters on it until Release B.
 - The rejected Liquid Glass refresh is archived at tag `archive/ui-refresh-liquid-glass` — don't copy from it.
 
 ## Gotchas (learned the hard way)

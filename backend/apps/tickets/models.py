@@ -10,9 +10,11 @@ from __future__ import annotations
 
 from django.db import models
 from django.utils import timezone
+from apps.tenancy.fields import tenant_fk
 
 
 class TicketTopic(models.Model):
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     name_fa = models.CharField(max_length=80)
     name_en = models.CharField(max_length=80)
     description_fa = models.CharField(max_length=255, blank=True, default="")
@@ -64,6 +66,7 @@ class ClosedBy(models.TextChoices):
 
 
 class Ticket(models.Model):
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     number = models.CharField(max_length=16, unique=True, null=True, blank=True)   # set right after insert
     user = models.ForeignKey("accounts.User", on_delete=models.CASCADE, related_name="tickets")
     topic = models.ForeignKey(TicketTopic, on_delete=models.PROTECT, related_name="tickets")
@@ -101,6 +104,7 @@ class Ticket(models.Model):
 
 
 class TicketMessage(models.Model):
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name="messages")
     author_user = models.ForeignKey("accounts.User", null=True, blank=True, on_delete=models.SET_NULL,
                                     related_name="ticket_messages")
@@ -123,6 +127,7 @@ class TicketMessage(models.Model):
 
 
 class TicketAttachment(models.Model):
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     message = models.ForeignKey(TicketMessage, on_delete=models.CASCADE, related_name="attachments")
     file = models.FileField(upload_to="tickets/%Y/%m/")
     original_name = models.CharField(max_length=150)
@@ -137,6 +142,7 @@ class TicketAttachment(models.Model):
 
 class CannedReply(models.Model):
     """Saved reply for the staff composer; `topic` null = offered for every topic."""
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     title = models.CharField(max_length=80)
     body = models.TextField()
     topic = models.ForeignKey(TicketTopic, null=True, blank=True, on_delete=models.CASCADE,
@@ -166,6 +172,7 @@ class EventKind(models.TextChoices):
 
 
 class TicketEvent(models.Model):
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name="events")
     kind = models.CharField(max_length=16, choices=EventKind.choices)
     actor_user = models.ForeignKey("accounts.User", null=True, blank=True, on_delete=models.SET_NULL,

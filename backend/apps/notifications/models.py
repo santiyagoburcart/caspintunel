@@ -1,4 +1,5 @@
 from django.db import models
+from apps.tenancy.fields import tenant_fk
 
 
 class NotificationType(models.TextChoices):
@@ -15,6 +16,7 @@ class NotificationType(models.TextChoices):
 class Notification(models.Model):
     """data-model · Module 6 · `notification`."""
 
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     type = models.CharField(max_length=20, choices=NotificationType.choices)
     # `title`/`body` are the Persian (default) content — kept unrenamed so every
     # existing notify_user(title=..., body=...) call site keeps working as-is.
@@ -59,6 +61,7 @@ class DeliveryStatus(models.TextChoices):
 class NotificationDelivery(models.Model):
     """data-model · Module 6 · `notification_delivery`."""
 
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     notification = models.ForeignKey(Notification, on_delete=models.CASCADE, related_name="deliveries")
     user = models.ForeignKey("accounts.User", on_delete=models.CASCADE, related_name="notification_deliveries")
     channel = models.CharField(max_length=6, choices=DeliveryChannel.choices)
@@ -79,6 +82,7 @@ class PushSubscription(models.Model):
     """v1.33 Web Push: one browser subscription of a customer (user) or a staff member.
     Deleted when the push service answers 404 / 410 (expired)."""
 
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     endpoint = models.TextField()
     endpoint_hash = models.CharField(max_length=64, unique=True)
     p256dh = models.CharField(max_length=255)

@@ -1,6 +1,7 @@
 from django.db import models
 
 from apps.common.models import TimeStampedModel
+from apps.tenancy.fields import tenant_fk
 
 
 class OrderType(models.TextChoices):
@@ -29,6 +30,7 @@ ACTIVE_UNIQUE_STATUSES = (OrderStatus.PENDING_PAYMENT, OrderStatus.PAID)
 class Order(TimeStampedModel):
     """Purchase intent (data-model · Module 4 · `order`)."""
 
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     user = models.ForeignKey("accounts.User", on_delete=models.CASCADE, related_name="orders")
     service = models.ForeignKey(
         "panel.Service", null=True, blank=True, on_delete=models.SET_NULL, related_name="orders"
@@ -95,6 +97,7 @@ class ScheduledRenewal(TimeStampedModel):
     see apps.panel.services.apply_scheduled_renewal and the periodic task in
     apps.panel.tasks.apply_due_scheduled_renewals."""
 
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     service = models.OneToOneField(
         "panel.Service", on_delete=models.CASCADE, related_name="scheduled_renewal"
     )
@@ -121,6 +124,7 @@ class ManualInvoice(TimeStampedModel):
     mode "paid"   = «قبلاً پرداخت شده»: an approved payment + completed order, on the entered payment date.
     mode "issued" = «صدور فاکتور برای پرداخت»: the customer pays it in their panel (normal checkout)."""
 
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     MODE_PAID, MODE_ISSUED = "paid", "issued"
     MODES = [(MODE_PAID, "Already paid"), (MODE_ISSUED, "Issued for payment")]
     OPEN, PAID, CANCELLED = "open", "paid", "cancelled"

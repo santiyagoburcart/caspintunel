@@ -1,7 +1,8 @@
 # Multi-tenant reseller storefronts — design
 
-> **Status: design approved 2026-11-04 (decisions D1–D7 below). Phase 0 (capacity on the current server) shipped in v1.39.0;
-> Phase 1 waits for the owner's go. Nothing tenant-related is built yet.** Written against v1.38.4, decisions recorded in v1.38.6.
+> **Status: design approved 2026-11-04 (decisions D1–D7 below). Phase 0 shipped in v1.39.0. Phase 1 Release A shipped in
+> v1.40.0** (tenant tables, nullable `tenant_id` everywhere, default tenant + backfill; nothing reads it yet). Next: Release B
+> (middleware, scoped managers, JWT `tid`, isolation tests). Written against v1.38.4, decisions recorded in v1.38.6.
 > When a phase is approved and built, the matching parts move into `architecture.md` / `erd.md` / `flows.md` and this page
 > keeps only what is still planned.
 
@@ -622,7 +623,7 @@ Size = my estimate of working days for build + tests + browser checks + docs (on
 | Phase | Content | Size | Releases |
 |---|---|---|---|
 | **0 — Prepare (current server)** ✅ v1.39.0 | Container memory limits, tuned gunicorn / Celery / MySQL / Redis, container memory + swap + pressure metrics with alerts (Monitoring card), docs. The owner enlarges swap. | 1–2 days | v1.39.0 |
-| **1 — Tenant core** | `tenancy/` (models, contextvar, middleware, managers, registry, allow-list), `tenant_id` on all tenant tables + default backfill (Release A→C), JWT `tid`, isolation test suite (inventory, API sweep, lint) | 6–8 days | 3 (A, B, C) |
+| **1 — Tenant core** (A ✅ v1.40.0) | `tenancy/` (models, contextvar, middleware, managers, registry, allow-list), `tenant_id` on all tenant tables + default backfill (Release A→C), JWT `tid`, isolation test suite (inventory, API sweep, lint) | 6–8 days | 3 (A, B, C) |
 | **2 — Store admin + branding** | Store mode of the admin SPA (D1), «فروشگاه» tab for us, `tenant_branding`, `TENANT_KEYS`, pages / themes per tenant, user SPA branding per host | 5–6 days | 2 |
 | **3 — Domains & TLS** | «فروشگاه» section (our staff): domains + mode + exact A record, TXT / A / proxied verification, HTTP-01 per host on 80 + 443, nginx per-tenant files via host watcher, health, read-only status for the reseller, renewal + alerts | 5–7 days | 2 |
 | **4 — Catalog & PasarGuard** | Plans per tenant, `set_owner` provisioning, quota guard + warnings, renew / add-on per tenant | 4–5 days | 1–2 |

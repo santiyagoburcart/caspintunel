@@ -4,12 +4,14 @@ from django.db import models
 from django.utils import timezone
 
 from apps.common.models import TimeStampedModel
+from apps.tenancy.fields import tenant_fk
 
 
 # ---------------------------------------------------------------------------
 # Bank cards (data-model · Module 4 · `bank_card`)
 # ---------------------------------------------------------------------------
 class BankCard(models.Model):
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     card_number = models.CharField(max_length=20)
     holder_name = models.CharField(max_length=120)
     bank_name = models.CharField(max_length=80, blank=True)
@@ -34,6 +36,7 @@ class AmountUnit(models.TextChoices):
 
 
 class SmsSource(models.Model):
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     phone_number = models.CharField(max_length=20)
     description = models.CharField(max_length=255, blank=True)
     is_active = models.BooleanField(default=True)
@@ -56,6 +59,7 @@ def generate_device_token() -> str:
 
 
 class SmsAppDevice(models.Model):
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     name = models.CharField(max_length=100)
     api_token = models.CharField(max_length=64, unique=True, default=generate_device_token)
     is_active = models.BooleanField(default=True)
@@ -71,6 +75,7 @@ class SmsAppDevice(models.Model):
 
 
 class SmsMessage(models.Model):
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     sms_source = models.ForeignKey(
         SmsSource, null=True, blank=True, on_delete=models.SET_NULL, related_name="messages"
     )
@@ -170,6 +175,7 @@ class PaymentQuerySet(models.QuerySet):
 
 
 class Payment(TimeStampedModel):
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     objects = PaymentQuerySet.as_manager()
 
     order = models.OneToOneField("orders.Order", on_delete=models.CASCADE, related_name="payment")

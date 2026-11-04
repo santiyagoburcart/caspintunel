@@ -1,6 +1,7 @@
 from django.db import models
 
 from apps.common.fields import EncryptedTextField
+from apps.tenancy.fields import tenant_fk
 
 
 class BotType(models.TextChoices):
@@ -28,6 +29,7 @@ class TelegramConfig(models.Model):
 class RequiredChannel(models.Model):
     """A forced-join channel for the sales bot (data-model · Module 7)."""
 
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     channel_id = models.CharField(max_length=100, help_text="@username or -100... id")
     title = models.CharField(max_length=150, blank=True)
     invite_link = models.URLField(
@@ -52,6 +54,7 @@ class RequiredChannel(models.Model):
 class TelegramStats(models.Model):
     """Periodic snapshot (data-model · Module 7 · `telegram_stats`)."""
 
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     bot_member_count = models.IntegerField(default=0)
     overlap_bot_channels = models.IntegerField(default=0)
     sampled_at = models.DateTimeField(auto_now_add=True, db_index=True)

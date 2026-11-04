@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from django.db import models
 from django.utils import timezone
+from apps.tenancy.fields import tenant_fk
 
 
 class Stage(models.TextChoices):
@@ -20,6 +21,7 @@ class Stage(models.TextChoices):
 
 
 class Tag(models.Model):
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     name = models.CharField(max_length=40, unique=True)
     color = models.CharField(max_length=16, default="#1464BA")
 
@@ -29,6 +31,7 @@ class Tag(models.Model):
 
 
 class CustomerProfile(models.Model):
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     user = models.OneToOneField("accounts.User", on_delete=models.CASCADE, related_name="crm")
     stage = models.CharField(max_length=10, choices=Stage.choices, default=Stage.LEAD)      # last computed
     stage_override = models.CharField(max_length=10, choices=Stage.choices, blank=True, default="")
@@ -46,6 +49,7 @@ class CustomerProfile(models.Model):
 
 
 class CustomerNote(models.Model):
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     user = models.ForeignKey("accounts.User", on_delete=models.CASCADE, related_name="crm_notes")
     staff = models.ForeignKey("accounts.Staff", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     staff_label = models.CharField(max_length=64, blank=True, default="")
@@ -64,6 +68,7 @@ class Category(models.TextChoices):
 
 class CaseReason(models.Model):
     """Configurable reason lists: why a customer is inactive / why they did not renew."""
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     category = models.CharField(max_length=12, choices=Category.choices, default=Category.INACTIVITY)
     name_fa = models.CharField(max_length=80)
     name_en = models.CharField(max_length=80)
@@ -96,6 +101,7 @@ class Outcome(models.TextChoices):
 
 
 class FollowUpCase(models.Model):
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     user = models.ForeignKey("accounts.User", on_delete=models.CASCADE, related_name="crm_cases")
     service = models.ForeignKey("panel.Service", null=True, blank=True, on_delete=models.SET_NULL, related_name="crm_cases")
     kind = models.CharField(max_length=16, choices=CaseKind.choices)
@@ -127,6 +133,7 @@ class FollowUpCase(models.Model):
 class MessageTemplate(models.Model):
     """Editable message for follow-ups (rendered with {name}, {username}, {service}, {site}, {guide},
     and for win-back also {renew}, {code}, {percent}, {code_expires})."""
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     category = models.CharField(max_length=12, choices=Category.choices, default=Category.INACTIVITY)
     title = models.CharField(max_length=80)
     body_fa = models.TextField()
@@ -153,6 +160,7 @@ class EventKind(models.TextChoices):
 
 
 class CrmEvent(models.Model):
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     user = models.ForeignKey("accounts.User", on_delete=models.CASCADE, related_name="crm_events")
     kind = models.CharField(max_length=16, choices=EventKind.choices)
     actor_label = models.CharField(max_length=80, blank=True, default="")    # staff:<name> | system
@@ -174,6 +182,7 @@ class WarningKind(models.TextChoices):
 class WarningRule(models.Model):
     """A pre-expiry warning threshold with its own message (fa / en). Variables:
     {name} {service} {remaining_gb} {remaining_days} {renew}."""
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     kind = models.CharField(max_length=4, choices=WarningKind.choices)
     threshold = models.PositiveIntegerField(help_text="percent used (data) or days left (time)")
     is_active = models.BooleanField(default=True)
@@ -193,6 +202,7 @@ class ServiceWarning(models.Model):
     — the unique constraint makes it impossible to send the same threshold twice. Each
     channel is recorded separately, so a retry only sends the channels still missing;
     bot / email wait for `due_at` during quiet hours."""
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     service = models.ForeignKey("panel.Service", on_delete=models.CASCADE, related_name="warnings")
     rule = models.ForeignKey(WarningRule, null=True, on_delete=models.SET_NULL, related_name="sent")
     kind = models.CharField(max_length=4, choices=WarningKind.choices)
@@ -217,6 +227,7 @@ class ServiceWarning(models.Model):
 class ServiceEndMark(models.Model):
     """When a service was first seen expired / used up (the panel does not say when
     data ran out). Removed once the service is live again."""
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     service = models.OneToOneField("panel.Service", on_delete=models.CASCADE, related_name="crm_end")
     status = models.CharField(max_length=10)
     ended_at = models.DateTimeField()
@@ -253,6 +264,7 @@ class DiscountCode(models.Model):
     kind=winback, `user` set (only that customer), percent, one use. Every code is
     applied at order creation, BEFORE the unique amount is added — so the SMS matcher
     and card review always see the final price (Order.amount_unique)."""
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     code = models.CharField(max_length=32, unique=True)
     kind = models.CharField(max_length=10, choices=DiscountKind.choices, default=DiscountKind.WINBACK)
     name = models.CharField(max_length=100, blank=True, default="")

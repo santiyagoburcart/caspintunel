@@ -5,6 +5,7 @@ from apps.common.fields import EncryptedTextField
 from apps.common.models import TimeStampedModel
 
 from .constants import default_group_ids
+from apps.tenancy.fields import tenant_fk
 
 
 class Panel(TimeStampedModel):
@@ -55,6 +56,7 @@ class ExpireStrategy(models.TextChoices):
 class Service(TimeStampedModel):
     """One VPN account = one username on a panel (data-model · Module 2 · `service`)."""
 
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     user = models.ForeignKey("accounts.User", on_delete=models.CASCADE, related_name="services")
     panel = models.ForeignKey(Panel, on_delete=models.PROTECT, related_name="services")
     # unique per panel (see Meta) — the same username may exist on another panel

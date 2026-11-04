@@ -1,6 +1,7 @@
 from django.db import models
 
 from apps.common.models import TimeStampedModel
+from apps.tenancy.fields import tenant_fk
 
 
 class PlanType(models.TextChoices):
@@ -22,6 +23,7 @@ class CarryOverData(models.TextChoices):
 class Plan(TimeStampedModel):
     """Sales plan — independent of panel user_templates (data-model · Module 3)."""
 
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     name_fa = models.CharField(max_length=120)
     name_en = models.CharField(max_length=120, blank=True)
     desc_fa = models.TextField(blank=True)

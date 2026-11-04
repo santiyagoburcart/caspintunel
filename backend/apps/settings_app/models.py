@@ -4,6 +4,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 
 from apps.common.fields import EncryptedTextField
+from apps.tenancy.fields import tenant_fk
 
 
 class ValueType(models.TextChoices):
@@ -87,6 +88,7 @@ class SiteConfig(models.Model):
 class Theme(models.Model):
     """data-model · Module 8 · `theme`."""
 
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     name = models.CharField(max_length=80, unique=True)
     palette = models.JSONField(default=dict)
     is_active = models.BooleanField(default=False)
@@ -107,6 +109,7 @@ class Theme(models.Model):
 class Page(models.Model):
     """CMS page — rules / tutorial / faq (data-model · Module 8 · `page`)."""
 
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     slug = models.SlugField(max_length=50, unique=True)
     title_fa = models.CharField(max_length=200)
     title_en = models.CharField(max_length=200, blank=True)

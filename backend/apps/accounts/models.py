@@ -7,6 +7,7 @@ from django.utils import timezone
 from apps.common.models import TimeStampedModel
 
 from .managers import UserManager, generate_referral_code
+from apps.tenancy.fields import tenant_fk
 
 # the only permission a group-manager staff holds (apps/agency/managers.py, v1.25)
 GROUP_MANAGER_PERM = "agency.group_manager"
@@ -46,6 +47,7 @@ class Language(models.TextChoices):
 class User(AbstractBaseUser, PermissionsMixin):
     """Customer account (data-model.md · Module 1 · `user`)."""
 
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     username = models.CharField(max_length=64, unique=True)
     email = models.EmailField(max_length=255, null=True, blank=True)
     email_verified = models.BooleanField(default=False)
@@ -143,6 +145,7 @@ class Permission(models.Model):
 
 
 class Role(models.Model):
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     name = models.CharField(max_length=100, unique=True)
     description = models.CharField(max_length=255, blank=True)
     # v1.25.2: Persian name / description (seeded for built-in roles, editable); blank = use `name`
@@ -163,6 +166,7 @@ class Role(models.Model):
 class Staff(TimeStampedModel):
     """Panel operator / admin (data-model · `staff`). Separate from `User`."""
 
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     username = models.CharField(max_length=64, unique=True)
     password_hash = models.CharField(max_length=255)
     role = models.ForeignKey(
@@ -265,6 +269,7 @@ class DeletedUserArchive(models.Model):
     The live row's unique fields are freed afterwards; the originals live here
     and are what a restore puts back."""
 
+    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
     user = models.ForeignKey(
         User, null=True, blank=True, on_delete=models.SET_NULL, related_name="deletion_archives"
     )

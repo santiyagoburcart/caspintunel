@@ -12,7 +12,43 @@ Fields marked *enc* are Fernet-encrypted (`FIELD_ENCRYPTION_KEY`).
 
 Related: [architecture.md](architecture.md) · [flows.md](flows.md).
 
-Last schema change: v1.38.2 (`push_subscription.reseller`). v1.38.1, v1.38.3 and v1.39.0 changed no table.
+Last schema change: **v1.40.0 — multi-tenant Phase 1 Release A**: tables `tenant` and `tenant_domain`, and a nullable
+`tenant_id` (FK `tenant`, PROTECT) on 39 tables — every customer-facing table (backfilled with the default tenant) plus
+`staff`, `role`, `audit_log`, `push_subscription`, `theme` where NULL means platform. The classification is
+`apps/tenancy/registry.py`; the plan for NOT NULL / per-tenant unique constraints is in [multi-tenant.md](multi-tenant.md) §4, §18.
+
+```mermaid
+erDiagram
+    tenant ||--o{ tenant_domain : has
+    tenant ||--o{ user : "tenant_id (and every tenant table)"
+    tenant {
+        bigint id PK
+        string slug UK "default = our store"
+        string name
+        string reseller_username "agency admin, empty for the default"
+        string status "draft | active | suspended | closed"
+        bool is_default "exactly one (checked in save)"
+        bool export_allowed
+        json limits
+    }
+    tenant_domain {
+        bigint id PK
+        bigint tenant_id FK
+        string host UK
+        string role "site | admin | both"
+        string mode "direct | tunnel | cloudflare"
+        string verify_token
+        string state "pending_dns | verified | cert_pending | active | failed | removed"
+        datetime cert_expires_at
+        datetime last_check_at
+        string last_error
+    }
+```
+
+| Table | Purpose |
+|---|---|
+| `tenant` | one store (v1.40). The default tenant is our own store; reseller stores come in later phases. |
+| `tenant_domain` | a host routed to a tenant; only `active` hosts will be served (Release B). |
 
 ## 1. Users, auth and RBAC (`accounts`, `common`)
 
