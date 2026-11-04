@@ -420,10 +420,10 @@ sequenceDiagram
 - **Real client IP**: unchanged rules — `CF-Connecting-IP` trusted only from Cloudflare's published ranges (refreshed daily by
   `access_tick_task`), the tunnel's PROXY-protocol / source addresses only from the configured tunnel sources; never a header a
   client can set. Throttles and audit use that IP.
-  **Prerequisite found 2026-11-04:** today the panel's access mode is *direct* with no tunnel sources, and clients arriving
-  through the Iran tunnel reach nginx as `10.10.10.1` (the tunnel's address) — all of them share one throttle bucket and one
-  audit IP. This must be fixed for caspintunel.com (access mode *tunnel* with its sources, or PROXY protocol on the tunnel) before
-  any store uses tunnel mode; it is listed as a Phase 0 follow-up.
+  **Fixed 2026-11-04:** caspintunel.com is in access mode *tunnel* with source `10.10.10.1` (backhaul), so tunnel visitors are
+  limited per client, not as one IP. Their **real IP is still unknown** (backhaul's port forwarder opens a new TCP connection,
+  no PROXY protocol). For per-IP limits / audit of tunnel-mode stores, the Iran side needs a PROXY-protocol sender (e.g. HAProxy
+  `send-proxy-v2` over the existing tun link) + our per-port PROXY switch — planned before Phase 3, with the owner's go.
 - **nginx**: one generated file per store host in `nginx/tenants/` (template + render, like `paths/active.conf`) with every route
   of the default site (site, admin path, `/api/`, `/ws/`, `/media/`) and the PROXY-protocol listener for tunnel mode. Changes
   only through a host watcher (`scripts/tenants.sh apply-request`, cron every minute): render → `nginx -t` → reload → verify over
@@ -646,7 +646,7 @@ in small groups (≤ 5 per wave, metrics reviewed between waves).
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| Tunnel clients all seen as one IP (`10.10.10.1`) | shared throttles across every store's customers, useless audit IPs | configure the tunnel sources / PROXY protocol (Phase 0 follow-up) before tunnel-mode stores |
+| Tunnel clients have no real IP (`10.10.10.1`) | per-client limits only (a bot can rotate client ids — the total cap bounds it), no IP in audits | sources configured (done); PROXY protocol on the Iran side before tunnel-mode stores |
 | A missed tenant filter leaks data between stores | severe | four-layer scoping, fail-closed context, inventory + API sweep tests as a release gate, unscoped allow-list |
 | Shared IP filtered / blocked | all stores down | move nodes off host, tunnel mode per store, suspension switch, monitoring |
 | Reseller quota runs out mid-checkout | paid order cannot be provisioned | guard before the invoice, re-check before provisioning, paid-but-blocked → staff + reseller alert, retry when quota arrives |
