@@ -58,7 +58,7 @@ Telegram and UI settings. Refuses while `agency_sync_enabled` is on.
 
 ## Cut-over — done 2026-10-16
 
-Finland PAMP: celery + celery-beat stopped (web/db/nginx up, nothing deleted). This server syncs every `agency_sync_interval_minutes` (production: 2 min since 2026-11) with enforcement; the portal is open at `https://aicaspin.ir/agency/`.
+Finland PAMP: celery + celery-beat stopped (web/db/nginx up, nothing deleted). This server syncs every `agency_sync_interval_minutes` (production: 2 min since 2026-11) with enforcement; the portal is open at `https://caspintunel.com/agency/`.
 
 **Rollback to Finland:** (1) here: Agency → Settings → turn off enforcement, sync and the portal — or `docker compose exec -T web python manage.py shell -c "from apps.settings_app.utils import set_setting; from apps.settings_app.models import ValueType; [set_setting(k, False, ValueType.BOOL) for k in ('agency_enforcement_enabled', 'agency_sync_enabled', 'agency_portal_enabled')]"`; (2) on Finland: `cd /opt/pamp && docker compose start celery celery-beat`. Never both on at once.
 

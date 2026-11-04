@@ -119,7 +119,7 @@ between the dump and the count); the final export must match exactly.
 ### 3. Test the new server before switching DNS
 
 ```bash
-./scripts/migrate-check.sh NEW_IP aicaspin.ir       # from anywhere; DNS is not touched
+./scripts/migrate-check.sh NEW_IP caspintunel.com       # from anywhere; DNS is not touched
 ```
 
 It checks TLS, the user site, the panel, the API, that the SMS device API and the
@@ -129,7 +129,7 @@ file (`/etc/hosts`, or `C:\Windows\System32\drivers\etc\hosts`), test in a priva
 window, and remove the line afterwards:
 
 ```
-NEW_IP  aicaspin.ir
+NEW_IP  caspintunel.com
 ```
 
 Checklist:
@@ -178,7 +178,7 @@ checksum line. If it does not, stop and roll back (below).
 Cloudflare → DNS → change the `A` records `@`, `www` (and `mail`) to the new IP,
 or on the new server: `docker compose exec web python manage.py configure_dns`
 (dry run; add `--apply`) — it uses this server's `SERVER_IP` and also rewrites the
-SPF record. Check: `dig +short aicaspin.ir` shows the new IP.
+SPF record. Check: `dig +short caspintunel.com` shows the new IP.
 
 ### 7. TLS, then start the workers (downtime ends)
 
@@ -192,7 +192,7 @@ here; to issue a fresh one now: `./scripts/init-letsencrypt.sh --prod`.
 
 ### 8. Verify
 
-- `./scripts/migrate-check.sh NEW_IP aicaspin.ir` again, then without the hosts line
+- `./scripts/migrate-check.sh NEW_IP caspintunel.com` again, then without the hosts line
 - send `/start` to the sales bot; open the Mini App
 - `docker compose logs --tail 20 bot_sales celery_worker` — no errors
 - Monitoring page: all health targets green; run a backup
@@ -237,7 +237,7 @@ new server had before each import is kept in `backups/migration/before-import-<t
 # NEW
 rsync -avP -e ssh root@OLD_IP:/root/caspintunel/backups/migration/caspintunel-migration-*-final.tar.enc* backups/migration/
 ./scripts/migrate-import.sh backups/migration/caspintunel-migration-*-final.tar.enc --passphrase-file /root/.migrate-pass
-./scripts/migrate-check.sh NEW_IP aicaspin.ir
+./scripts/migrate-check.sh NEW_IP caspintunel.com
 #   → change the A records in Cloudflare to NEW_IP
 ./scripts/migrate-import.sh --start-workers
 ```

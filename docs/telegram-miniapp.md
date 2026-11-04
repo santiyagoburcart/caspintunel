@@ -9,7 +9,7 @@ and logs the person in.
 ## How a session starts (the security-critical path)
 
 ```
-Telegram  ──(opens https://aicaspin.ir/ with a signed initData string)──►  SPA
+Telegram  ──(opens https://caspintunel.com/ with a signed initData string)──►  SPA
    SPA    ──POST /api/v1/auth/telegram/miniapp/ { init_data }────────────►  backend
  backend  ── validate initData HMAC against the SALES BOT TOKEN ──────────►  reject on any failure (401)
  backend  ── link/create the site User by telegram_id (source=bot) ──────►
@@ -90,7 +90,7 @@ Rate limit: the endpoint is on the `auth` throttle scope (10/min per IP).
 ## The Mini App URL
 
 ```
-https://aicaspin.ir/
+https://caspintunel.com/
 ```
 
 Just the user site root over HTTPS (Telegram requires HTTPS). Configurable with
@@ -108,7 +108,7 @@ Manual trigger / re-point:
 
 ```bash
 docker compose exec web python manage.py set_bot_menu
-docker compose exec web python manage.py set_bot_menu --url https://aicaspin.ir/ --text "کاسپین"
+docker compose exec web python manage.py set_bot_menu --url https://caspintunel.com/ --text "کاسپین"
 ```
 
 ### Inline button in `/start` and the main menu
@@ -119,14 +119,14 @@ docker compose exec web python manage.py set_bot_menu --url https://aicaspin.ir/
 ### Manual alternatives (no code)
 
 - **@BotFather** → `/mybots` → your bot → *Bot Settings* → *Menu Button* →
-  *Configure menu button* → send `https://aicaspin.ir/` and a label.
+  *Configure menu button* → send `https://caspintunel.com/` and a label.
 - **Direct link / named app**: @BotFather → `/newapp` → pick the bot → set the
-  Web App URL `https://aicaspin.ir/` → you get a `t.me/<bot>/<appname>` link and
+  Web App URL `https://caspintunel.com/` → you get a `t.me/<bot>/<appname>` link and
   can use `?startapp=store` deep links.
 - **Bot API**:
   ```bash
   curl -sX POST "https://api.telegram.org/bot<TOKEN>/setChatMenuButton" \
-    -d 'menu_button={"type":"web_app","text":"کاسپین","web_app":{"url":"https://aicaspin.ir/"}}'
+    -d 'menu_button={"type":"web_app","text":"کاسپین","web_app":{"url":"https://caspintunel.com/"}}'
   ```
 
 ## CSP note

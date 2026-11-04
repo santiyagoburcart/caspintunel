@@ -17,7 +17,7 @@ Related: [erd.md](erd.md) (data model) · [flows.md](flows.md) (sequence diagram
 | | |
 |---|---|
 | Location | Finland (Hetzner, Helsinki), host `ubuntu-4gb-hel1-2` |
-| Public IP | `46.62.192.189` — `aicaspin.ir`, `www.aicaspin.ir`, `mail.aicaspin.ir` (Cloudflare DNS, DNS-only, TTL Auto) |
+| Public IP | server `46.62.192.189`. **`caspintunel.com`** + `www` (redirects to the bare domain) → Iran tunnel IP `185.124.174.13` (Cloudflare DNS-only; 80/443 passthrough to this server), `mail.caspintunel.com` → `46.62.192.189`. `aicaspin.ir` is the old domain (no longer served). Note 2026-11-04: the panel's access mode still says *direct* with no tunnel sources, and tunnelled clients reach nginx as `10.10.10.1` (one IP for throttles / audit) — to be fixed in the access-mode settings |
 | Since | 2026-10-21, migrated from the previous server with the migration toolkit ([migration.md](migration.md)) |
 | Compose | `docker-compose.yml` + `docker-compose.prod.yml` (selected by `COMPOSE_FILE` in `.env`) |
 | Hardware | 2 vCPU (AMD EPYC-Rome), 3.7 GiB RAM + 2 GiB swap file, 38 GB disk (2026-11-04: ~2.8 GiB RAM and ~1 GiB swap in use, disk 64 %) |

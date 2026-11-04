@@ -9,7 +9,7 @@ app hands mail to it on port 25 inside the Docker network — but **outbound por
 (Vultr, DigitalOcean, Hetzner, AWS, …). So mail addressed to Gmail / Outlook /
 Yahoo / etc. just sits in the Postfix queue and never leaves.
 
-Verified on the aicaspin.ir server (2026-09-25): connections to Gmail/Outlook MX
+Verified on the earlier server, domain aicaspin.ir (2026-09-25): connections to Gmail/Outlook MX
 on port 25 time out (the message stays deferred in the queue), while outbound
 587 works — so a relay on 587 is required there.
 
@@ -49,7 +49,7 @@ transactional volume. Pick based on what you can sign up for from your region.
 
 ## Step 2 — verify your sending domain (do NOT skip)
 
-In the provider's dashboard, add and **verify your domain** (`aicaspin.ir` or
+In the provider's dashboard, add and **verify your domain** (`caspintunel.com` or
 whatever `DOMAIN` is). They give you 2–4 DNS records (a domain-key TXT, a CNAME
 or two, sometimes an MX for bounces). Add them at your DNS host (Cloudflare —
 **DNS-only / grey cloud** for any mail-related record).
@@ -86,11 +86,11 @@ On the server, edit `/opt/caspintunel/.env` (or wherever you deployed):
 ```ini
 SMTP_RELAY_HOST=smtp.mailgun.org
 SMTP_RELAY_PORT=587
-SMTP_RELAY_USER=postmaster@mg.aicaspin.ir
+SMTP_RELAY_USER=postmaster@mg.caspintunel.com
 SMTP_RELAY_PASSWORD=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 # make sure the From address is on the verified domain (or your Gmail address)
-DEFAULT_FROM_EMAIL=no-reply@aicaspin.ir
+DEFAULT_FROM_EMAIL=no-reply@caspintunel.com
 ```
 
 `.env` is git-ignored and `chmod 600`. Never commit these.
@@ -140,10 +140,10 @@ work, point Django straight at the provider and stop the `mailserver` container:
 ```ini
 EMAIL_HOST=smtp.mailgun.org
 EMAIL_PORT=587
-EMAIL_USER=postmaster@mg.aicaspin.ir
+EMAIL_USER=postmaster@mg.caspintunel.com
 EMAIL_PASSWORD=xxxxxxxxxxxx
 EMAIL_USE_TLS=true
-DEFAULT_FROM_EMAIL=no-reply@aicaspin.ir
+DEFAULT_FROM_EMAIL=no-reply@caspintunel.com
 ```
 
 ```bash

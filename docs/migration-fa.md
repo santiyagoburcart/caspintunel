@@ -113,7 +113,7 @@ rsync -avP -e ssh root@OLD_IP:/root/caspintunel/backups/migration/caspintunel-mi
 ### 3. تست سرور جدید قبل از تغییر DNS
 
 ```bash
-./scripts/migrate-check.sh NEW_IP aicaspin.ir       # از هر جا؛ به DNS دست نمی‌زند
+./scripts/migrate-check.sh NEW_IP caspintunel.com       # از هر جا؛ به DNS دست نمی‌زند
 ```
 
 TLS، سایت کاربر، پنل، API، پاسخ‌گویی API دستگاه پیامک و WebSocket و عمومی نبودن
@@ -122,7 +122,7 @@ TLS، سایت کاربر، پنل، API، پاسخ‌گویی API دستگاه 
 پنجرهٔ خصوصی تست کنید و بعد خط را بردارید:
 
 ```
-NEW_IP  aicaspin.ir
+NEW_IP  caspintunel.com
 ```
 
 چک‌لیست:
@@ -171,7 +171,7 @@ rsync -avP -e ssh root@OLD_IP:/root/caspintunel/backups/migration/caspintunel-mi
 Cloudflare ← DNS ← رکوردهای `A` برای `@`، `www` (و `mail`) را به IP جدید تغییر دهید؛
 یا روی سرور جدید: `docker compose exec web python manage.py configure_dns` (اجرای
 آزمایشی؛ برای اعمال `--apply`) که از `SERVER_IP` همین سرور استفاده می‌کند و رکورد
-SPF را هم به‌روز می‌کند. بررسی: `dig +short aicaspin.ir` باید IP جدید را بدهد.
+SPF را هم به‌روز می‌کند. بررسی: `dig +short caspintunel.com` باید IP جدید را بدهد.
 
 ### 7. TLS و سپس شروع ورکرها (پایان قطعی)
 
@@ -185,7 +185,7 @@ SPF را هم به‌روز می‌کند. بررسی: `dig +short aicaspin.ir` 
 
 ### 8. بررسی نهایی
 
-- دوباره `./scripts/migrate-check.sh NEW_IP aicaspin.ir` و سپس بدون خط hosts
+- دوباره `./scripts/migrate-check.sh NEW_IP caspintunel.com` و سپس بدون خط hosts
 - به ربات فروش `/start` بفرستید؛ مینی‌اپ را باز کنید
 - `docker compose logs --tail 20 bot_sales celery_worker` بدون خطا
 - صفحهٔ مانیتورینگ: همه سبز؛ یک بکاپ بگیرید
@@ -229,7 +229,7 @@ SPF را هم به‌روز می‌کند. بررسی: `dig +short aicaspin.ir` 
 # سرور جدید
 rsync -avP -e ssh root@OLD_IP:/root/caspintunel/backups/migration/caspintunel-migration-*-final.tar.enc* backups/migration/
 ./scripts/migrate-import.sh backups/migration/caspintunel-migration-*-final.tar.enc --passphrase-file /root/.migrate-pass
-./scripts/migrate-check.sh NEW_IP aicaspin.ir
+./scripts/migrate-check.sh NEW_IP caspintunel.com
 #   ← رکوردهای A در Cloudflare را به NEW_IP تغییر دهید
 ./scripts/migrate-import.sh --start-workers
 ```

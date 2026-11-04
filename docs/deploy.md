@@ -56,8 +56,8 @@ is also how you override a broken auto-renewal.
 
 ## Active domain
 
-`DOMAIN` in `.env` is the active domain (currently **`aicaspin.ir`** — the
-`caspin.skin` zone has a Cloudflare ToS hold). `install.sh` / `seed` also set
+`DOMAIN` in `.env` is the active domain (currently **`caspintunel.com`**; earlier `aicaspin.ir`, before that
+`caspin.skin`). `install.sh` / `seed` also set
 `site_config.site_domain` to it. Everything else derives at runtime:
 `ALLOWED_HOSTS` / `CORS` / `CSRF` / email links. `www.<domain>` only redirects to the bare domain (v1.30.3).
 

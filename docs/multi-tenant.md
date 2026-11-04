@@ -1,6 +1,7 @@
 # Multi-tenant reseller storefronts — design
 
-> **Status: proposal, waiting for approval. Nothing on this page is built.** Written 2026-11-04 against v1.38.4.
+> **Status: design approved 2026-11-04 (decisions D1–D7 below). Phase 0 (capacity on the current server) is in progress;
+> nothing tenant-related is built yet.** Written against v1.38.4, decisions recorded in v1.38.6.
 > When a phase is approved and built, the matching parts move into `architecture.md` / `erd.md` / `flows.md` and this page
 > keeps only what is still planned.
 
@@ -8,8 +9,10 @@ Every agency admin (reseller) can get a white-label store — site, Telegram Min
 domain, served by the same codebase and database. Our current store becomes the **default tenant** and keeps working
 unchanged. The reseller sells their own plans at their own prices, customers pay to the reseller's bank cards, services are
 created under the reseller's PasarGuard admin (so they use the reseller's quota, which we keep invoicing per GB), and the
-reseller runs the store — catalog, customers, orders, payment queue, tickets, CRM, discounts, branding, domain, bot, staff — from
-an extended `/agency/`.
+reseller runs the store — catalog, customers, orders, payment queue, tickets, CRM, discounts, branding, staff — from
+the store admin on their own domain (the existing panel pages in store mode). **Only we enable a store and set its domains and
+bot token** (Agency → admin → «فروشگاه»); the reseller manages branding, plans, cards, customers, orders, tickets, discounts,
+staff and SMS devices.
 
 Contents: [1 Decisions](#1-decisions-and-what-needs-your-answer) · [2 Architecture](#2-architecture) ·
 [3 Tenant scoping](#3-tenant-scoping-the-isolation-guarantee) · [4 Data model](#4-data-model-erd-changes) ·
@@ -23,25 +26,26 @@ Contents: [1 Decisions](#1-decisions-and-what-needs-your-answer) · [2 Architect
 
 ---
 
-## 1. Decisions, and what needs your answer
+## 1. Decisions
 
-Decided (from the brief): one codebase, one MySQL database, tenant chosen by the `Host` header; our store is the default tenant;
-full feature parity per tenant; reseller-set plans and prices; services under the reseller's PasarGuard admin with a quota guard;
-payments to the reseller's cards, reviewed by the reseller, auto-confirmed by our Android SMS app; tenant-owned customers (the
-same phone / Telegram may exist in several tenants); reseller sub-staff with a grant ceiling we control; domain + bot set up
-from either side; tenant bots by webhook; per-tenant export (switchable); importers last; a monthly-fee hook (off).
+Brief: one codebase, one MySQL database, tenant chosen by the `Host` header; full feature parity per tenant; reseller-set plans
+and prices; services under the reseller's PasarGuard admin with a quota guard; payments to the reseller's cards, reviewed by the
+reseller, auto-confirmed by our Android SMS app; reseller sub-staff with a grant ceiling we control; tenant bots by webhook;
+per-tenant export (switchable); importers last; a monthly-fee hook (off).
 
-**Please confirm or choose:**
+**Answered by the owner (2026-11-04):**
 
-| # | Question | My recommendation |
+| # | Question | Decision |
 |---|---|---|
-| D1 | Store admin UI: build store pages inside the `/agency/` portal SPA, or reuse the existing admin panel pages (`/panel/` code) in a tenant-scoped mode, entered from `/agency/`? | **Reuse the admin panel pages** in tenant mode (the reseller signs in at `/agency/`, gets a store-admin session and the panel UI with a store menu). Plans, users, payments queue, tickets, CRM, discounts, branding already exist there; rebuilding them in the portal doubles the UI work and the bugs. Group managers already prove the pattern (restricted menu on the same panel). |
-| D2 | Where does the reseller's store admin live? | On **their own domain** at the admin path (`https://store.example/panel/`), and also reachable from our `/agency/` → «فروشگاه من». |
-| D3 | Default tenant domain | The current active domain (today `aicaspin.ir`; `caspintunel.com` when you move to it). The default tenant is a row, not a hard-coded host. |
-| D4 | One customer account per (tenant, phone/Telegram) — confirmed? | Yes. A customer of two stores has two accounts. Nothing is shared across tenants except our infrastructure. |
-| D5 | Who can open a store? | Only resellers **you enable** (Agency → admin → «فروشگاه» → enable). Group-managed sub-admins: no store (their account is with the group manager). Group owners with a manager: through the manager, later. |
-| D6 | Reseller minimum quota to sell | Block a sale when the reseller's remaining PasarGuard quota < plan volume; warn at 20 % / 10 % remaining. Thresholds editable per tenant by us. |
-| D7 | Iran tunnel per tenant | Same three modes as our access mode, chosen per tenant domain (A to our IP, A to an Iran tunnel IP, or behind their Cloudflare). |
+| D1 | Store admin UI | **Reuse the existing panel pages in store mode** (the admin SPA with a store menu and tenant-scoped API) — not new pages inside `/agency/`. |
+| D2 | Where the store admin lives | **On the reseller's own domain**, at the admin path (`https://store.example/panel/`). `/agency/` keeps the reseller portal and links to it. |
+| D3 | Default tenant | **`caspintunel.com`** (the live domain today; `aicaspin.ir` is the old domain and is not a tenant). The default tenant is a row, not a hard-coded host. |
+| D4 | Customers | **Separate customer accounts per store** (same DB, tenant-scoped); the same phone / Telegram may exist in several stores. |
+| D5 | Who opens a store | **Only stores we enable, and only we set them up**: internal panel → Agency → create / edit admin → «فروشگاه»: enable store, domain(s), bot token. Resellers cannot add domains or bots; they see the status read-only and manage branding, plans, cards, customers, tickets, discounts, staff, SMS devices in their store admin. |
+| D6 | Quota | **The existing agency quota numbers** (synced remaining / limit, same as enforcement): block a sale when the remaining quota is short, warn at **20 % and 10 % remaining** (= 80 % and 90 % used; 80 % is the portal's existing warning level). |
+| D7 | DNS and access | The reseller keeps DNS on **their own Cloudflare account**. We tell them which A record to create: **our Finland IP (direct)** or **our Iran IP (Iran tunnel, same 80/443 passthrough as caspintunel.com)**. DNS-only and proxied (their Cloudflare) must both work; the real client IP comes from Cloudflare's ranges / the tunnel sources exactly as today. Per store we store the mode, show the exact A record to give them, verify DNS, issue TLS automatically (HTTP-01, through the tunnel and through their Cloudflare) and health-check. |
+| — | Capacity | **Stay on the current server (2 vCPU / 3.7 GiB); the owner increases swap.** §19 sizes the platform for that. |
+| — | Importers | Later — the owner sends the bot names and samples then. |
 
 ## 2. Architecture
 
@@ -50,7 +54,7 @@ flowchart LR
     subgraph clients[Customers and resellers]
         b1([store-a.example browser / Mini App])
         b2([store-b.example browser / Mini App])
-        b0([aicaspin.ir default store])
+        b0([caspintunel.com default store])
         tg([Telegram])
         sms([Reseller's Android SMS app])
     end
@@ -245,7 +249,7 @@ sequences (simple, never collide) but are shown per tenant.
 | `settings_app` | `tenant_branding` replaces `site_config` for tenants (the default tenant's row is migrated from `site_config`); `TENANT_KEYS` = settings a tenant may override (checkout timer, ticket limits, retention quiet hours, alerts…); platform-only keys stay global; themes / pages per tenant. |
 | `tickets` | Topics, tickets, canned replies, scopes per tenant; attachments under `tenants/<id>/tickets/`. |
 | `crm` | Everything per tenant (profiles, cases, templates, retention rules, discount codes, analytics). Analytics already read-only — they gain the tenant filter. |
-| `agency` | New «فروشگاه» tab on the staff admin page and in `/agency/`: enable, domain, bot, export permission, limits, status. Store sales feed the reseller's usage; our per-GB invoicing is unchanged. |
+| `agency` | New «فروشگاه» section on the staff create / edit admin page (**our staff only**): enable store, domains + mode, bot token, export permission, limits, status, health. `/agency/` shows the reseller the store status (read-only) and links to their store admin. Store sales feed the reseller's usage; our per-GB invoicing is unchanged. |
 | `adminpanel` | Every view runs under the tenant context; our staff get a **tenant filter** (default: all) and a tenant column; store staff are confined to theirs. `StaffPermission` checks the ceiling for store roles. |
 | `ops` | Health per tenant domain (cert days left, DNS still pointing to us, bot webhook state); alerts to us and to the reseller. Backups stay global. |
 | frontends | User SPA: no code per tenant — branding from the API, `manifest` / favicon per host. Admin SPA: store mode (menu filtered by the store role, tenant filter for us). Portal `/agency/`: «فروشگاه من» entry. |
@@ -275,28 +279,28 @@ sequenceDiagram
     end
 ```
 
-### 6.2 Domain onboarding (reseller or our staff)
+### 6.2 Domain onboarding (our staff only)
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor R as Reseller or our staff
-    participant P as Store admin («دامنه»)
+    actor R as Our staff
+    participant P as Agency → admin → «فروشگاه»
     participant W as Celery
     participant H as Host watcher (domain.sh-style)
     participant LE as Let's Encrypt
-    R->>P: add store-a.example (mode direct / tunnel)
-    P-->>R: DNS steps: A → our IP (or the tunnel IP) + TXT _caspin-verify.store-a.example = TOKEN
+    R->>P: add store-a.example, mode direct (Finland IP) or tunnel (Iran IP)
+    P-->>R: the exact records to send the reseller: A store-a.example → IP (DNS-only or proxied) + TXT _caspin-verify.store-a.example = TOKEN
     loop every 5 min until verified (or "check now")
         W->>W: resolve A and TXT through public resolvers
     end
     W->>H: request: issue a certificate for store-a.example
-    H->>LE: HTTP-01 via /.well-known/acme-challenge/ (webroot)
+    H->>LE: HTTP-01 via /.well-known/acme-challenge/ (webroot on 80 and 443, works through the tunnel and their Cloudflare)
     LE-->>H: certificate
     H->>H: render nginx/tenants/store-a.example.conf, nginx -t, reload (rollback on failure)
     H-->>W: result
     W->>W: health check over TLS (status 200, right tenant)
-    W-->>P: state = active (visible to the reseller and to us)
+    W-->>P: state = active (shown to us, read-only to the reseller)
     Note over W,H: renewal: certbot renew for every tenant cert, 30 days before expiry, alert at 14 days
 ```
 
@@ -395,22 +399,37 @@ sequenceDiagram
 
 ## 7. Domains, TLS and routing
 
-- **Ownership proof**: TXT `_caspin-verify.<host>` = random token, plus the A record pointing to our IP or a configured tunnel
-  IP. Re-checked daily; a domain that stops pointing to us is marked and alerted (after 3 days: store shows "moved").
-- **Certificates**: HTTP-01 per domain (webroot, the reseller's DNS is not ours, so DNS-01 through our Cloudflare is not
-  possible). One certificate per host (`store.example` + `www.store.example`), stored under `nginx/letsencrypt/` with its own
-  lineage. Renewal by the existing `certbot` container (`certbot renew` covers webroot lineages too). Let's Encrypt limits: 50
-  certificates per registered domain per week and 300 new orders per account per 3 hours — far above our need; we queue issuance
-  one at a time. **Behind the Iran tunnel**, HTTP-01 must reach our port 80 through the tunnel (the tunnel provider must forward
-  80); otherwise use the "manual certificate" path the reseller uploads.
-- **nginx**: one generated file per tenant host in `nginx/tenants/` (template + render, like `paths/active.conf`), all routes as
-  the default site (site, admin path, `/api/`, `/ws/`, `/media/`), plus the bot hook. Changes only through a host watcher
-  (`scripts/tenants.sh apply-request`, cron every minute): render → `nginx -t` → reload → verify over TLS → rollback. The
-  container never reloads the host by itself (same rule as `domain.sh`).
-- **Health**: every 5 min per active domain — TLS handshake, days to expiry, `GET /api/v1/health/` returns the right tenant;
-  shown in the store admin and in our Agency → «فروشگاه».
-- **Both sides**: the reseller adds / removes their domain; our staff can do the same on their behalf; every step is audited and
-  visible to both.
+- **Who**: only our staff add / remove a store domain (Agency → admin → «فروشگاه»); the reseller sees the state.
+- **What we give the reseller** (shown on the page, copyable): one A record `store.example → <IP>` where IP = our **Finland IP**
+  (mode *direct*) or our **Iran IP** (mode *tunnel*, the same 80/443 TCP passthrough that serves caspintunel.com), the optional
+  `www` record, and a TXT `_caspin-verify.store.example = <token>`. The reseller's Cloudflare may be **DNS-only or proxied**.
+- **Verification**: the TXT token proves control. The A check accepts our IP for its mode — or, when proxied, Cloudflare's
+  ranges (we cannot see the origin IP then, so we confirm with an HTTP probe: `GET http://store.example/.well-known/caspin/<token>`
+  must reach us). Re-checked daily; a domain that stops reaching us is marked and alerted (after 3 days the store page says
+  "moved").
+- **Certificates**: HTTP-01 per host (the DNS is the reseller's, so DNS-01 through our Cloudflare is not possible). nginx serves
+  `/.well-known/acme-challenge/` on **port 80 and on 443** for every pending host (443 with a temporary self-signed certificate
+  until the real one exists), so issuance works when:
+  - *direct, DNS-only*: Let's Encrypt → our port 80;
+  - *tunnel*: Let's Encrypt → Iran IP:80 → passthrough → our port 80 (as caspintunel.com today);
+  - *proxied by their Cloudflare*: Cloudflare → our 80 (SSL mode "Flexible") or 443 (SSL mode "Full"); the reseller must not use
+    "Full (strict)" until the certificate exists, and Cloudflare's "Always Use HTTPS" is fine (the challenge is served on 443 too).
+  One certificate per host (`store.example` + `www`), own lineage under `nginx/letsencrypt/`, renewed by the existing `certbot`
+  container (`certbot renew` covers webroot lineages); alert 14 days before expiry. Let's Encrypt limits (50 certificates per
+  registered domain per week, 300 new orders per account per 3 h) are far above our need; issuance is queued one at a time.
+- **Real client IP**: unchanged rules — `CF-Connecting-IP` trusted only from Cloudflare's published ranges (refreshed daily by
+  `access_tick_task`), the tunnel's PROXY-protocol / source addresses only from the configured tunnel sources; never a header a
+  client can set. Throttles and audit use that IP.
+  **Prerequisite found 2026-11-04:** today the panel's access mode is *direct* with no tunnel sources, and clients arriving
+  through the Iran tunnel reach nginx as `10.10.10.1` (the tunnel's address) — all of them share one throttle bucket and one
+  audit IP. This must be fixed for caspintunel.com (access mode *tunnel* with its sources, or PROXY protocol on the tunnel) before
+  any store uses tunnel mode; it is listed as a Phase 0 follow-up.
+- **nginx**: one generated file per store host in `nginx/tenants/` (template + render, like `paths/active.conf`) with every route
+  of the default site (site, admin path, `/api/`, `/ws/`, `/media/`) and the PROXY-protocol listener for tunnel mode. Changes
+  only through a host watcher (`scripts/tenants.sh apply-request`, cron every minute): render → `nginx -t` → reload → verify over
+  TLS → rollback. The container never reloads the host by itself (same rule as `domain.sh`).
+- **Health**: every 5 min per active host — TLS handshake, days to expiry, `GET /api/v1/health/` answers for the right tenant,
+  DNS still reaching us; shown in «فروشگاه» and (read-only) to the reseller; alerts to us.
 
 ## 8. Telegram bots and the Mini App
 
@@ -418,8 +437,9 @@ sequenceDiagram
   allowed_updates=[…])`. One endpoint, per-tenant secret (Telegram sends it in `X-Telegram-Bot-Api-Secret-Token`), no process per
   bot. The hook answers within a second and queues heavy work; `update_id` deduplicated. The webhook URL is on **our platform
   host** (not the tenant's domain), so a tenant domain problem does not stop the bot.
-- **Setting the token** (reseller or us): `getMe` check, store encrypted, set webhook, set the menu and the Mini App button to
-  `https://<tenant domain>/`. Clearing the token deletes the webhook.
+- **Setting the token** (**our staff only**, Agency → admin → «فروشگاه»): `getMe` check, store encrypted, set webhook, set the menu
+  and the Mini App button to `https://<tenant domain>/`. Clearing the token deletes the webhook. The reseller sees the bot's
+  username and state, and edits the bot **texts** (branding), not the token.
 - **Mini App**: initData is validated with **that tenant's** bot token (today: the sales-bot token). The phone gate and
   `handle_contact` run per tenant.
 - **Our two bots** (sales, backup) stay as they are (polling containers) for the default tenant and for us.
@@ -446,11 +466,13 @@ sequenceDiagram
 
 - Create the PasarGuard user with **our** admin token (no reseller password stored), then `set_owner` to the reseller's admin
   — PasarGuard then counts the user's traffic against the reseller (their `data_limit` / remaining). Read back and mirror as today.
-- **Quota guard** before order creation, renewal, add-on and manual invoice with a service action: remaining (from the agency
-  sync, at most 2 min old; live GET when within 10 % of the limit) − open reservations of that tenant ≥ requested volume.
-  Not enough → sale blocked with a friendly message, reseller alerted, we are alerted. Unlimited reseller admins are not blocked.
-- **Warnings** at `quota_warn_percent` (default 20 %) and 10 %: store admin banner + bot + push; the reseller can request volume
-  with the existing «درخواست شارژ» (our approvals + per-GB invoicing unchanged).
+- **Quota guard** (D6) before order creation, renewal, add-on and manual invoice with a service action, on the **existing agency
+  numbers** (the synced `admin_limit_bytes` / remaining that enforcement uses, at most one sync old — 2 min; a live GET when within
+  10 % of the limit): remaining − open reservations of that tenant ≥ requested volume. Not enough → sale blocked with a friendly
+  message, reseller alerted, we are alerted. Unlimited reseller admins are not blocked.
+- **Warnings** at **20 % and 10 % remaining** (80 % / 90 % used; 80 % is the portal's existing warning): store admin banner + bot +
+  push + the existing portal warning; the reseller can request volume with the existing «درخواست شارژ» (our approvals + per-GB
+  invoicing unchanged).
 - Account names stay unique across the whole panel (one PasarGuard namespace) — the existing `check_account_name` applies.
 
 ## 11. Reseller staff and permissions
@@ -460,8 +482,8 @@ sequenceDiagram
 - **Ceiling**: we set, per tenant, the permission codes a reseller may hold and grant (`tenant_permission_ceiling`; a default
   template for new stores). The reseller's own store-owner role = the ceiling. A store role can only contain codes ⊆ ceiling
   ⊆ the reseller's role; lowering the ceiling strips codes from that tenant's roles immediately.
-- Platform-only codes are never in a ceiling (settings.manage, paths, domain wizard of our host, users.purge of other tenants,
-  agency.*, accounting of the platform…). A test checks the list.
+- Platform-only codes are never in a ceiling (settings.manage, paths, domain wizard, **store domains and bot token** (D5),
+  users.purge of other tenants, agency.*, accounting of the platform…). A test checks the list.
 
 ## 12. Email per tenant
 
@@ -534,7 +556,7 @@ your rule for customer balances (import as a store credit, or ignore).
 
 Backward compatible, two releases per step (CLAUDE.md migration rule):
 
-1. **Release A**: create `tenant` (+ default row from `site_config`, our domain as a verified `tenant_domain`), add nullable
+1. **Release A**: create `tenant` (+ default row from `site_config`, `caspintunel.com` as its verified `tenant_domain`), add nullable
    `tenant_id` to every tenant table; a data migration fills `tenant_id = default` in batches (today's DB is 23 MB — seconds).
    Code still ignores it.
 2. **Release B**: `TenantMiddleware` + managers active; all hosts that are not the default domain → 404; composite unique
@@ -545,37 +567,53 @@ Rollback at every step = previous image (the columns are additive). Pre-update d
 
 ## 19. Server capacity
 
-**Today (2026-11-04):** 2 vCPU, 3.7 GiB RAM, about 2.8 GiB used and ~1 GiB of 2 GiB swap in use, short memory stalls; disk 38 GB
-at 64 %. Our containers use about 1.2 GiB; three PasarGuard nodes + x-ui + tunnel ~0.7 GiB; the rest is dockerd, page cache.
-**This is not enough for stores** — it is already swapping without them.
+**Decision: stay on the current server** (2 vCPU AMD EPYC, 3.7 GiB RAM, 38 GB disk; the owner enlarges swap). Measured
+2026-11-04: ~2.8 GiB RAM used, ~1 GiB of 2 GiB swap in use, short memory stalls; our containers ~1.2 GiB; the three PasarGuard
+nodes + x-ui + tunnel ~0.7 GiB; dockerd, page cache and admin sessions the rest. The platform is sized to fit, not to grow fast.
 
-**Upgrade to 4 vCPU / 8 GB before phase 1** (and grow the disk to 80 GB: per-tenant media, certificates, exports, logs).
+**How it fits (Phase 0, before any tenant work):**
 
-**Estimate with 20 active stores** (≈ 2,000 customers, ≈ 200 orders/day, ≈ 20 bots by webhook): web load is small (bots and
-customers are bursty but light); the biggest costs are gunicorn workers, Celery throughput (provisioning, notifications,
-retention per tenant) and MySQL buffer pool. 50+ stores or > 1,000 orders/day → move MySQL to its own 4 GB instance first.
+- **No process per store or bot**: tenant bots by webhook only, handled by the existing `web` workers; our own two polling bots
+  stay as they are.
+- **Memory limits per container** (`mem_limit` in `docker-compose.prod.yml`, swap allowed up to the same amount again):
 
-**Per-container memory limits** (compose `mem_limit`, set in `docker-compose.prod.yml`; numbers for 8 GB):
+  | Container | Limit | Today | Notes |
+  |---|---|---|---|
+  | web | 640 MB | ~210–270 MB | gunicorn 3 sync workers, recycled every ~1000 requests |
+  | daphne | 192 MB | ~25 MB | WebSockets |
+  | celery_worker | 640 MB | ~205 MB | concurrency 2, child recycled after 200 tasks or ~250 MB (runs the DB dump too) |
+  | celery_beat | 192 MB | ~25–95 MB | |
+  | db (MySQL 8) | 640 MB | ~210 MB | `performance_schema` off (~100+ MB saved), `max_connections` 60, buffer pool 128 MB (the DB is 23 MB) |
+  | redis | 160 MB | ~10 MB | `maxmemory 100mb`, `volatile-lru` — only keys with a TTL (cache, throttles) can be evicted, never Celery queues |
+  | nginx | 128 MB | ~7 MB | one server block + cert per store adds little |
+  | bot_sales / bot_backup | 192 MB each | ~27 MB | |
+  | frontend_user / frontend_admin | 48 MB each | ~3 MB | static files |
+  | mailserver | 256 MB | ~26 MB | SMTP only |
+  | certbot | 96 MB | ~2 MB | |
+  | **Sum of limits** | **≈ 3.4 GB** | **≈ 0.8–1 GB** | limits are caps, not reservations; a runaway container is killed and restarted alone instead of pushing the host into swap |
 
-| Container | Limit | Notes |
-|---|---|---|
-| web | 1.5 GB | gunicorn 5 workers (2 × vCPU + 1) |
-| daphne | 384 MB | WebSockets for every store |
-| celery_worker | 1.5 GB | concurrency 4, `--max-tasks-per-child=200` |
-| celery_beat | 256 MB | |
-| db | 2.5 GB | `innodb_buffer_pool_size=1536M` |
-| redis | 384 MB | `maxmemory 256mb`, `allkeys-lru` for cache DB only |
-| nginx | 256 MB | one server block + cert per store |
-| bot_sales / bot_backup | 256 MB each | our two polling bots |
-| frontend_user / frontend_admin | 64 MB each | static files |
-| mailserver | 384 MB | |
-| certbot | 128 MB | |
-| **Total limits** | ≈ 7.9 GB | real use expected ≈ 3.5–4.5 GB; leaves page cache |
+- **PasarGuard nodes on this host**: they stay (the owner's decision). They are not ours to limit; if memory stalls persist after
+  Phase 0, moving them is still the single biggest relief (≈ 0.7 GiB and the shared-IP filtering risk, §17).
 
-**Moving the PasarGuard nodes off this host: yes, worth it.** They use ~0.7 GiB and CPU in bursts (VPN traffic), but the main
-reason is the **shared IP**: a filtered or attacked node IP takes our stores and our panel with it, and node traffic spikes slow
-checkout. A small separate VPS for the nodes (or putting them on existing node servers) costs less than the memory headroom it
-frees, and separates "sales platform" from "VPN data plane". If they must stay, give them `mem_limit`s too and keep the 8 GB plan.
+**Realistic size on this server** (tenant features add rows and requests, not processes):
+
+| Load | Fits? |
+|---|---|
+| up to **10 stores**, ≈ 1,000 customers in total, ≈ 100 orders/day, ≈ 10 webhook bots, one SMS device per store | **yes, comfortably** |
+| 10–25 stores, ≈ 3,000 customers, ≈ 300 orders/day | **yes, watching the metrics below**; may need gunicorn 4 workers and less swap use |
+| more, or a store with heavy bot traffic (broadcasts to thousands) | **upgrade first** (4 vCPU / 8 GB) or move the PasarGuard nodes off the host |
+
+**Metrics to watch** (Monitoring page + Telegram alerts; Phase 0 adds the container card):
+
+- **memory per container** vs its limit (alert at 85 %), **OOM kills / restarts** (alert at once);
+- host **swap in use** (alert above 1.5 GB for 30 min) and **memory pressure** (`/proc/pressure/memory` `some avg60` > 10 %);
+- **load average** > 2.0 (= the 2 vCPUs) for 15 min, CPU steal;
+- **Celery queue length / age of the oldest task** (provisioning and notifications must stay under a minute);
+- **API latency** (p95 of `/api/` > 1 s) and gunicorn worker timeouts in the logs;
+- **MySQL** connections and slow queries; **disk** > 80 % (existing alert).
+
+**Upgrade triggers** (any of them for a week): swap > 1.5 GB most of the day, pressure alerts daily, p95 > 1 s at peak, an
+OOM kill per week, or more than 25 active stores.
 
 ## 20. Phased plan and size
 
@@ -583,13 +621,13 @@ Size = my estimate of working days for build + tests + browser checks + docs (on
 
 | Phase | Content | Size | Releases |
 |---|---|---|---|
-| **0 — Prepare** | Server 4 vCPU / 8 GB / 80 GB, container limits, move PasarGuard nodes, monitoring of memory per container | 1–2 days (ops) | v1.39.0 (limits) |
+| **0 — Prepare (current server)** | Container memory limits, tuned gunicorn / Celery / MySQL / Redis, container memory + swap + pressure metrics with alerts (Monitoring card), docs. The owner enlarges swap. | 1–2 days | v1.39.0 |
 | **1 — Tenant core** | `tenancy/` (models, contextvar, middleware, managers, registry, allow-list), `tenant_id` on all tenant tables + default backfill (Release A→C), JWT `tid`, isolation test suite (inventory, API sweep, lint) | 6–8 days | 3 (A, B, C) |
 | **2 — Store admin + branding** | Store mode of the admin SPA (D1), «فروشگاه» tab for us, `tenant_branding`, `TENANT_KEYS`, pages / themes per tenant, user SPA branding per host | 5–6 days | 2 |
-| **3 — Domains & TLS** | TXT + A verification, HTTP-01 per host, nginx per-tenant files via host watcher, health, both-sides UI, renewal + alerts | 5–7 days | 2 |
+| **3 — Domains & TLS** | «فروشگاه» section (our staff): domains + mode + exact A record, TXT / A / proxied verification, HTTP-01 per host on 80 + 443, nginx per-tenant files via host watcher, health, read-only status for the reseller, renewal + alerts | 5–7 days | 2 |
 | **4 — Catalog & PasarGuard** | Plans per tenant, `set_owner` provisioning, quota guard + warnings, renew / add-on per tenant | 4–5 days | 1–2 |
 | **5 — Payments & SMS** | Cards / sources / devices per tenant, unique-amount pools, matching per tenant, reseller payments queue, Android SMS app update (domain + token, QR) | 6–8 days | 2 (+ APK) |
-| **6 — Bots & Mini App** | Webhook endpoint, tenant bot setup (both sides), screens with tenant texts, Mini App per tenant | 5–6 days | 1–2 |
+| **6 — Bots & Mini App** | Webhook endpoint, tenant bot token set by our staff, screens with tenant texts (edited by the reseller), Mini App per tenant | 5–6 days | 1–2 |
 | **7 — Tickets, CRM, retention, discounts, analytics, notifications, push, email** | Scope everything, tenant email display name / optional relay, per-tenant rate limits | 6–8 days | 2 |
 | **8 — Reseller staff** | Store roles, ceiling, sign-in on the store admin path | 3–4 days | 1 |
 | **9 — Pilot** | One reseller, one domain, real sales for 2 weeks; daily isolation + health review; fixes | 2–3 days + 2 weeks | fixes |
@@ -600,19 +638,21 @@ Size = my estimate of working days for build + tests + browser checks + docs (on
 Total before the pilot (0–8): about **41–54 working days**. Every phase ends with the isolation suite green, browser checks
 (phone + desktop, fa / en, light / dark) and the docs moved into architecture / erd / flows.
 
-**Pilot rollout**: pick one reseller with steady sales and a domain they control → staging store on a test subdomain of our
-domain first → their domain → 2 weeks with sales capped (`tenant.limits`) → open to more resellers in small groups.
+**Pilot rollout**: pick one reseller with steady sales and a domain on their own Cloudflare → staging store on a test subdomain
+of caspintunel.com first → their domain (we set it up, D5) → 2 weeks with sales capped (`tenant.limits`) → open to more resellers
+in small groups (≤ 5 per wave, metrics reviewed between waves).
 
 ## 21. Risks
 
 | Risk | Impact | Mitigation |
 |---|---|---|
+| Tunnel clients all seen as one IP (`10.10.10.1`) | shared throttles across every store's customers, useless audit IPs | configure the tunnel sources / PROXY protocol (Phase 0 follow-up) before tunnel-mode stores |
 | A missed tenant filter leaks data between stores | severe | four-layer scoping, fail-closed context, inventory + API sweep tests as a release gate, unscoped allow-list |
 | Shared IP filtered / blocked | all stores down | move nodes off host, tunnel mode per store, suspension switch, monitoring |
 | Reseller quota runs out mid-checkout | paid order cannot be provisioned | guard before the invoice, re-check before provisioning, paid-but-blocked → staff + reseller alert, retry when quota arrives |
 | Let's Encrypt failures (DNS changed, tunnel without port 80) | store without TLS | state machine with clear errors, manual-certificate path, alerts 14 days before expiry |
 | Bot token leaked by a reseller | their bot hijacked | token encrypted, webhook secret rotated on every token change, one-click reset |
-| Load growth on a small server | slow checkout | upgrade before phase 1, container limits, DB split at 50+ stores |
+| Load growth on the small server (owner keeps 2 vCPU / 3.7 GiB) | slow checkout, OOM kills | Phase 0 limits + tuning, webhooks only, metrics + alerts, upgrade triggers (§19), cap stores per wave |
 | Unique amounts collide across stores | wrong approval | per-pool constraint, device→tenant matching, unique-amount test |
 | Importer maps balances / services wrongly | wrong customer state | preview + report first, idempotent runs, no PasarGuard writes during import |
 | Support load (our staff see everything) | slower operations | tenant filter everywhere, per-tenant alerts go to the reseller first |
