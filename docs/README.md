@@ -9,6 +9,7 @@
 | [erd.md](erd.md) | data model — Mermaid ER diagrams per app + every table explained |
 | [flows.md](flows.md) | sequence diagrams: 2.x payments (card-to-card, SMS, Blu, rounded, alerts, manual invoices, void, discounts, cards), renewal, provisioning, 5.x agency (sync, CRUD, group managers, approvals, invoices, payments, access), sign-in + account linking + purge, tickets, CRM, retention, analytics, domain / access mode, deploy, disk |
 | [roadmap.md](roadmap.md) | phases built since v1.15, releases since v1.22, and what is planned next (multi-tenant reseller storefronts) |
+| [multi-tenant.md](multi-tenant.md) | **proposal (not built)**: multi-tenant reseller storefronts — architecture, tenant scoping, ERD, flows, domains / TLS, bots, payments, capacity, phases, risks |
 | [api.md](api.md) | API surface overview (full spec at `/api/schema/`, UI at `/api/docs/`) |
 | [operations.md](operations.md) | day-2: backups, monitoring, alerts, user delete/restore, SMS devices & apps, common tasks |
 | [migration.md](migration.md) · [فارسی](migration-fa.md) | moving to a new server: export / import scripts, pre-DNS test, runbook, rollback, server specs |

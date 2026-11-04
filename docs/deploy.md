@@ -6,17 +6,28 @@
 (gunicorn, static SPA images, `nginx/prod.conf`, no exposed dev ports).
 
 ```
-nginx ──┬─ /            → frontend_user   (static SPA)
-        ├─ /panel/      → frontend_admin  (static SPA)
-        ├─ /api/ /admin/ /static/ /media/ → web (Django + gunicorn)
-web · celery_worker · celery_beat · bot_sales · bot_backup   (image: caspintunel-backend)
-db (MySQL 8) · redis · phpmyadmin · certbot · mailserver
+nginx ──┬─ /            → frontend_user   (static SPA: site, Mini App, /agency/ portal)
+        ├─ <admin path> → frontend_admin  (static SPA; default /panel/, nginx/paths/active.conf)
+        ├─ /ws/         → daphne (Channels WebSockets)
+        ├─ /api/ /admin/ /static/ /media/ → web (Django + gunicorn ×3)
+web · daphne · celery_worker · celery_beat · bot_sales · bot_backup   (image: caspintunel-backend)
+db (MySQL 8) · redis · certbot (dns-cloudflare) · mailserver · phpmyadmin (profile "tools", off)
 ```
+
+Server, containers and capacity: [architecture.md](architecture.md#production-server).
 
 `docker-compose.offline.yml` is a third overlay that sets `pull_policy: never`
 everywhere — for air-gapped installs from pre-loaded images (see `offline.md`).
 
-## TLS — two modes
+## TLS
+
+**Production (since v1.23):** certificates are issued and renewed by **DNS-01 through Cloudflare** (`certbot/dns-cloudflare`,
+`scripts/domain.sh dns01`), so renewal works in every access mode (Direct / Cloudflare proxy / Iran tunnel —
+[access-mode.md](access-mode.md)); the domain wizard requests the certificate for a new domain ([domain.md](domain.md)). The
+Cloudflare credentials file is `nginx/letsencrypt/cloudflare.ini` (0600, never in git or backups). The two modes below are the
+original install paths and still work.
+
+### Install-time modes
 
 nginx listens on 80 and 443. `/nginx-entrypoint.sh` enables the HTTPS vhost
 (`conf.d/10-ssl.conf`, from `ssl.conf.template`) as soon as a cert is present —
@@ -48,9 +59,13 @@ is also how you override a broken auto-renewal.
 `DOMAIN` in `.env` is the active domain (currently **`aicaspin.ir`** — the
 `caspin.skin` zone has a Cloudflare ToS hold). `install.sh` / `seed` also set
 `site_config.site_domain` to it. Everything else derives at runtime:
-`ALLOWED_HOSTS` / `CORS` / `CSRF` / email links.
+`ALLOWED_HOSTS` / `CORS` / `CSRF` / email links. `www.<domain>` only redirects to the bare domain (v1.30.3).
 
-### Changing it — no rebuild
+**Change it only through Settings → Domain & Cloudflare** (wizard: certificate check, `nginx -t`, `.env`, rolling restart,
+verify over TLS, automatic rollback; mail moves too) or `./scripts/domain.sh` — [domain.md](domain.md). Never edit
+`nginx/domain/active.conf` or the domain keys of `.env` by hand while a change is in progress.
+
+### Manual steps (reference — what the wizard does)
 1. `.env`: `DOMAIN=`, `ALLOWED_HOSTS=`, `CORS_ALLOWED_ORIGINS=`, `CSRF_TRUSTED_ORIGINS=`, `PUBLIC_BASE_URL=` → `docker compose up -d` (recreate, no build)
 2. panel → Branding, or `docker compose exec web python manage.py seed` → syncs `site_config.site_domain`
 3. `DynamicAllowedHostsMiddleware` also adds `site_config.site_domain` (+`www`) to
@@ -70,7 +85,7 @@ docker compose exec web python manage.py configure_dns --apply            # + ma
 
 | Type | Name | Value | Proxy |
 |---|---|---|---|
-| A | `<domain>`, `www` | server IP | proxied (orange) |
+| A | `<domain>`, `www` | server IP | DNS-only by default (`--proxied` = orange; the access mode decides in production) |
 
 Full run adds (when the mail server is up):
 
@@ -140,8 +155,12 @@ verification is off by default (`email_verification_required` setting).
 watcher runs the rollout:
 
 ```cron
-*/2 * * * * /opt/caspintunel/scripts/watch-update.sh --prod >> /var/log/caspintunel-update.log 2>&1
+*/2 * * * * /root/caspintunel/scripts/watch-update.sh --prod >> /var/log/caspintunel-update.log 2>&1
 ```
+
+Other host cron jobs on this server: `scripts/paths.sh apply-request` and `scripts/domain.sh apply-request` (every minute —
+the panel's Paths / Domain requests), `scripts/disk-report.sh` (daily 03:17, installed by `update.sh`). An `acme.sh` cron
+entry exists from an earlier setup; it holds no certificates and is not used.
 
 `watch-update.sh` → `update.sh --prod` (prod is also the default without a flag):
 1. DB dump to `backups/pre-update-*.sql.gz` + running images tagged `:rollback`;
@@ -155,7 +174,8 @@ watcher runs the rollout:
    the update aborts). nginx re-resolves the names every 2 s and retries a failed
    connect on the other container, so requests don't fail during the handover;
 5. plain `up -d` for everything else (celery, bots, mail — they must not run
-   twice), `nginx -s reload` for config edits.
+   twice), `nginx -s reload` for config edits;
+6. `scripts/docker-cleanup.sh` (untagged images, old build cache; keeps `:latest` + `:rollback`) and the disk report.
 
 Undo with `./update.sh --rollback` (images; restore the dump for schema changes). `GET /api/v1/admin/system/`
 reports the deployed `VERSION` vs the `VERSION` on the repo's `main` branch.

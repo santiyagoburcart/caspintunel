@@ -6,7 +6,7 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
 ## Stack & layout
 - Django 5.2 + DRF + Celery + Channels (Redis) + **MySQL 8 in prod** · React 18 + Vite + Tailwind SPAs:
   `frontend/user` at `/`, `frontend/admin` at `/panel/` (Vite `base:/panel/`).
-- Panel = **PasarGuard v5.4.1 over HTTP only** (public schema: `<panel>/openapi.json` — read field lists from it, never from memory) (`apps/panel/client.py`), never vendored.
+- Panel = **PasarGuard over HTTP only** (v5.6.0 live as of 2026-11-04; was 5.4.1) (public schema: `<panel>/openapi.json` — read field lists from it, never from memory) (`apps/panel/client.py`), never vendored.
   Verified live: `GET /api/users?search=&limit=` → `{"users":[…],"total":n}`; user objects carry
   `hwid_limit` (null = unlimited), `group_ids`, `note`, `on_hold_expire_duration`, `admin`.
 - **PRODUCTION = this Finland server** (host `ubuntu-4gb-hel1-2`, `46.62.192.189`), migrated

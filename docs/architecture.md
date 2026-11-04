@@ -258,7 +258,7 @@ retry on `PanelUnavailable`; a permanent `PanelError` is audited and flagged.
 
 ## PasarGuard integration
 
-- **HTTP API only** (`apps/panel/client.py`, PasarGuard **5.4.1** live — its schema is public at
+- **HTTP API only** (`apps/panel/client.py`, PasarGuard **5.6.0** live (2026-11-04; built against 5.3 → 5.4.1) — its schema is public at
   `<panel>/openapi.json`); none of its AGPL
   source is in this repo. Admin token cached encrypted on the `Panel` row,
   refreshed on 401.
