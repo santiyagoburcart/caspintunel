@@ -41,11 +41,14 @@ def backfill(apps=None) -> dict[str, int]:
     """Set the default tenant on every TENANT row (and NULLABLE rows matching BACKFILL_FILTER) that has none."""
     from django.apps import apps as live_apps
 
+    from .context import unscoped
+
     apps = apps or live_apps
     t = ensure_default(apps)
     done = {}
     for label in registry.TENANT + [m for m in registry.NULLABLE if m in registry.BACKFILL_FILTER]:
         model = apps.get_model(*label.split("."))
-        qs = model.objects.filter(tenant__isnull=True, **registry.BACKFILL_FILTER.get(label, {}))
-        done[label] = qs.update(tenant_id=t.pk)
+        with unscoped():                    # the live (scoped) models: see the rows that have no tenant yet
+            qs = model.objects.filter(tenant__isnull=True, **registry.BACKFILL_FILTER.get(label, {}))
+            done[label] = qs.update(tenant_id=t.pk)
     return done

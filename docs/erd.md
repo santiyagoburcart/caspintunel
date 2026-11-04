@@ -48,7 +48,9 @@ erDiagram
 | Table | Purpose |
 |---|---|
 | `tenant` | one store (v1.40). The default tenant is our own store; reseller stores come in later phases. |
-| `tenant_domain` | a host routed to a tenant; only `active` hosts will be served (Release B). |
+| `tenant_domain` | a host routed to a tenant; only `active` hosts are served (v1.41). |
+
+v1.41 (Release B) adds per-tenant unique constraints next to the old single-column ones: `user (tenant, username | telegram_id | referral_code)`, `crm_discount_code (tenant, code)`, `crm_tag (tenant, name)`, `crm_warning_rule (tenant, kind, threshold)`, `page (tenant, slug)`. Release C drops the old ones and makes `tenant_id` NOT NULL.
 
 ## 1. Users, auth and RBAC (`accounts`, `common`)
 

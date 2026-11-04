@@ -138,6 +138,12 @@ class EmailVerifyConfirmSerializer(serializers.Serializer):
 class LoginSerializer(TokenObtainPairSerializer):
     """JWT login that also returns the user profile."""
 
+    @classmethod
+    def get_token(cls, user):
+        from apps.tenancy.tokens import customer_refresh
+
+        return customer_refresh(user)          # carries the tenant (tid)
+
     def validate(self, attrs):
         try:
             data = super().validate(attrs)

@@ -45,3 +45,18 @@ def _fresh_cache():
     if settings.CACHES["default"]["BACKEND"].endswith("LocMemCache"):
         cache.clear()
     yield
+
+
+@pytest.fixture(autouse=True)
+def _default_tenant(db):
+    """Multi-tenant (apps/tenancy): every test runs in the default tenant unless it switches. Transactional tests empty
+    every table, so the default tenant is (re)created per test and its cached id forgotten."""
+    from apps.tenancy import context
+    from apps.tenancy.backfill import ensure_default
+
+    context.clear_cache()
+    t = ensure_default()
+    token = context.set_tenant(t.pk)
+    yield t
+    context.reset_tenant(token)
+    context.clear_cache()

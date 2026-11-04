@@ -121,6 +121,7 @@ class Page(models.Model):
     class Meta:
         db_table = "page"
         ordering = ("slug",)
+        constraints = [models.UniqueConstraint(fields=["tenant", "slug"], name="page_tenant_slug")]
 
     def __str__(self) -> str:
         return self.slug

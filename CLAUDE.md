@@ -133,7 +133,10 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   Write only what the code does (check enum values / schedules in the code, never from memory).
 - **Multi-tenant (v1.40+, docs/multi-tenant.md)**: every model is classified in `apps/tenancy/registry.py` (TENANT / NULLABLE /
   PLATFORM — a test fails on an unclassified model). A new tenant table gets `tenant = tenant_fk()` (`apps/tenancy/fields.py`).
-  Release A: `tenant` is filled for existing rows only; nothing filters on it until Release B.
+  Since v1.41 (Release B) every TENANT model is scoped: the host picks the tenant (`apps/tenancy/middleware.py`), queries
+  filter via the compile-time `tenant__tenant_scope` lookup, new rows get the current tenant. Background code runs in the
+  default tenant for now; use `tenancy.context.tenant_context(id)` for another store. `unscoped()` only in files listed in
+  `context.ALLOWED_UNSCOPED` (test-enforced). The isolation sweep (`apps/tenancy/tests/test_isolation.py`) is a release gate.
 - The rejected Liquid Glass refresh is archived at tag `archive/ui-refresh-liquid-glass` — don't copy from it.
 
 ## Gotchas (learned the hard way)

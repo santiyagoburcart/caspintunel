@@ -99,6 +99,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     class Meta:
         db_table = "user"
         ordering = ("-created_at",)
+        # multi-tenant (Release B): unique per store — the single-column uniques above go in Release C
+        constraints = [
+            models.UniqueConstraint(fields=["tenant", "username"], name="user_tenant_username"),
+            models.UniqueConstraint(fields=["tenant", "telegram_id"], name="user_tenant_telegram"),
+            models.UniqueConstraint(fields=["tenant", "referral_code"], name="user_tenant_referral"),
+        ]
 
     def __str__(self) -> str:
         return self.username

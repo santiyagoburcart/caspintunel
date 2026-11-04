@@ -28,6 +28,7 @@ class Tag(models.Model):
     class Meta:
         db_table = "crm_tag"
         ordering = ("name",)
+        constraints = [models.UniqueConstraint(fields=["tenant", "name"], name="crm_tag_tenant_name")]
 
 
 class CustomerProfile(models.Model):
@@ -194,7 +195,8 @@ class WarningRule(models.Model):
     class Meta:
         db_table = "crm_warning_rule"
         ordering = ("kind", "-threshold")
-        constraints = [models.UniqueConstraint(fields=["kind", "threshold"], name="crm_warning_rule_unique")]
+        constraints = [models.UniqueConstraint(fields=["kind", "threshold"], name="crm_warning_rule_unique"),
+                       models.UniqueConstraint(fields=["tenant", "kind", "threshold"], name="crm_warning_rule_tenant_unique")]
 
 
 class ServiceWarning(models.Model):
@@ -301,3 +303,4 @@ class DiscountCode(models.Model):
     class Meta:
         db_table = "crm_discount_code"
         ordering = ("-created_at",)
+        constraints = [models.UniqueConstraint(fields=["tenant", "code"], name="crm_discount_code_tenant_code")]

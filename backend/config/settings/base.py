@@ -25,6 +25,10 @@ if _env_file.exists():
 SECRET_KEY = env("SECRET_KEY", default="dev-insecure-change-me")
 DEBUG = env.bool("DEBUG", default=False)
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
+# multi-tenant: these hosts (and DOMAIN, the panel's site domain) serve the default tenant (apps/tenancy/middleware.py)
+TENANCY_BASE_HOSTS = list(ALLOWED_HOSTS)
+# Release B: a tenant-table query without a tenant falls back to the default (logged); Release C turns this on
+TENANCY_STRICT = env.bool("TENANCY_STRICT", default=False)
 
 PROJECT_NAME = env("PROJECT_NAME", default="caspintunel")
 DOMAIN = env("DOMAIN", default="aicaspin.ir")
@@ -89,6 +93,7 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 MIDDLEWARE = [
     "apps.common.middleware.DynamicAllowedHostsMiddleware",
+    "apps.tenancy.middleware.TenantMiddleware",            # multi-tenant: host → tenant (docs/multi-tenant.md §3)
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",

@@ -49,6 +49,13 @@ def test_default_tenant_and_backfill():
     staff = Staff.objects.create(username="op", password_hash="x")
     push_c = PushSubscription.objects.create(endpoint="https://p/1", endpoint_hash="h1", p256dh="k", auth="a", user=u)
     push_s = PushSubscription.objects.create(endpoint="https://p/2", endpoint_hash="h2", p256dh="k", auth="a", staff=staff)
+    assert u.tenant_id == t.pk and plan.tenant_id == t.pk                               # Release B: filled on create
+    # rows written by code from before Release B have no tenant — simulate them, then backfill
+    from apps.tenancy.context import unscoped
+
+    with unscoped():
+        for m, pk in ((User, u.pk), (Plan, plan.pk), (Page, page.pk), (PushSubscription, push_c.pk)):
+            m.objects.filter(pk=pk).update(tenant=None)
     done = backfill()
     assert done["accounts.User"] == 1 and done["plans.Plan"] == 1 and done["notifications.PushSubscription"] == 1
     for obj in (u, plan, page, push_c):
@@ -63,8 +70,8 @@ def test_default_tenant_and_backfill():
     u2 = User.objects.create_user("c2", "Str0ngPass!")
     User.objects.filter(pk=u2.pk).update(tenant=other)
     backfill()
-    u2.refresh_from_db()
-    assert u2.tenant_id == other.pk
+    with unscoped():
+        assert User.objects.get(pk=u2.pk).tenant_id == other.pk
 
 
 def seeded_ok() -> bool:

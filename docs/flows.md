@@ -1235,3 +1235,23 @@ sequenceDiagram
     end
 ```
 
+## 16. A request is scoped to its store (multi-tenant, v1.41)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Browser / app
+    participant M as TenantMiddleware
+    participant Q as Scoped manager (TENANT models)
+    participant DB as MySQL
+    C->>M: request, Host header
+    alt active TenantDomain or one of our own hosts
+        M->>M: context = that tenant (our hosts → the default tenant)
+    else any other host
+        M-->>C: 404 unknown site
+    end
+    Q->>Q: queryset filter tenant__tenant_scope (read when the SQL is compiled)
+    Q->>DB: ... WHERE tenant_id = current
+    Note over Q,DB: new rows get tenant = current · a customer JWT carries tid and is refused on another store
+```
+

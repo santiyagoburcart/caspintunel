@@ -12,6 +12,8 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
+from apps.tenancy.tokens import customer_refresh
+
 from apps.common.auth_reset import FreshAuthMixin
 from apps.common.models import write_audit
 
@@ -49,7 +51,7 @@ class RegisterView(FreshAuthMixin, GenericAPIView):
         email_status = services.dispatch_verification(user)
         write_audit(action="user.registered", target=user, detail={"email_status": email_status})
 
-        refresh = RefreshToken.for_user(user)
+        refresh = customer_refresh(user)
         messages = {
             "not_sent": "Account created. The verification email could not be sent right now; "
                         "you can continue and verify later.",
@@ -147,7 +149,7 @@ class TelegramMiniAppLoginView(FreshAuthMixin, GenericAPIView):
 
         user.last_login = timezone.now()
         user.save(update_fields=["last_login"])
-        refresh = RefreshToken.for_user(user)
+        refresh = customer_refresh(user)
         write_audit(action="user.miniapp_session", target=user,
                     detail={"telegram_id": int(tg["id"]), "created": created})
         return Response({
@@ -222,7 +224,7 @@ class ChangePasswordView(GenericAPIView):
         write_audit(action="password.changed", target=request.user)
         # a new password revokes every existing token (CHECK_REVOKE_TOKEN) —
         # hand this session fresh ones so only the *other* sessions end
-        refresh = RefreshToken.for_user(request.user)
+        refresh = customer_refresh(request.user)
         return Response({"detail": "password updated",
                          "access": str(refresh.access_token), "refresh": str(refresh)})
 

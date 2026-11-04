@@ -32,6 +32,13 @@ class JWTAuthentication(_Base):
             user_id = validated_token[api_settings.USER_ID_CLAIM]
         except KeyError as e:
             raise InvalidToken(_("Token contained no recognizable user identification")) from e
+        # multi-tenant: a token of another store is refused here (the user lookup below is tenant-scoped too)
+        from apps.tenancy import context as tenancy
+        from apps.tenancy.tokens import TID_CLAIM
+
+        tid = validated_token.get(TID_CLAIM)
+        if tid is not None and not tenancy.is_unscoped() and tid != tenancy.current_tenant_id():
+            raise AuthenticationFailed(_("This sign-in belongs to another store."), code="wrong_store")
         try:
             user = self.user_model.objects.get(**{api_settings.USER_ID_FIELD: user_id})
         except self.user_model.DoesNotExist as e:

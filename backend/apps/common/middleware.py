@@ -42,6 +42,13 @@ class DynamicAllowedHostsMiddleware:
             return
 
         extra_hosts = {domain, f"www.{domain}"}
+        try:                                    # multi-tenant: active store domains (apps/tenancy)
+            from apps.tenancy.models import TenantDomain
+
+            for h in TenantDomain.objects.filter(state=TenantDomain.ACTIVE).values_list("host", flat=True):
+                extra_hosts |= {h, f"www.{h}"}
+        except Exception:  # noqa: BLE001 - DB not ready / migrations
+            pass
         settings.ALLOWED_HOSTS = list({*self._base_hosts, *extra_hosts})
         settings.CSRF_TRUSTED_ORIGINS = list({
             *self._base_csrf,
