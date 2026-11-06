@@ -12,10 +12,10 @@ Fields marked *enc* are Fernet-encrypted (`FIELD_ENCRYPTION_KEY`).
 
 Related: [architecture.md](architecture.md) · [flows.md](flows.md).
 
-Last schema change: **v1.40.0 — multi-tenant Phase 1 Release A**: tables `tenant` and `tenant_domain`, and a nullable
-`tenant_id` (FK `tenant`, PROTECT) on 39 tables — every customer-facing table (backfilled with the default tenant) plus
-`staff`, `role`, `audit_log`, `push_subscription`, `theme` where NULL means platform. The classification is
-`apps/tenancy/registry.py`; the plan for NOT NULL / per-tenant unique constraints is in [multi-tenant.md](multi-tenant.md) §4, §18.
+Last schema change: **v1.42.0 — multi-tenant Phase 1 Release C**: `tenant_id` (FK `tenant`, PROTECT) is **NOT NULL** on the
+34 customer-facing tables and stays nullable on `staff`, `role`, `audit_log`, `push_subscription`, `theme` (NULL = platform);
+the old global unique rules are dropped (see below). Before: v1.40.0 added `tenant`, `tenant_domain` and the column on 39
+tables. The classification is `apps/tenancy/registry.py`; design in [multi-tenant.md](multi-tenant.md) §4, §18.
 
 ```mermaid
 erDiagram
@@ -50,7 +50,7 @@ erDiagram
 | `tenant` | one store (v1.40). The default tenant is our own store; reseller stores come in later phases. |
 | `tenant_domain` | a host routed to a tenant; only `active` hosts are served (v1.41). |
 
-v1.41 (Release B) adds per-tenant unique constraints next to the old single-column ones: `user (tenant, username | telegram_id | referral_code)`, `crm_discount_code (tenant, code)`, `crm_tag (tenant, name)`, `crm_warning_rule (tenant, kind, threshold)`, `page (tenant, slug)`. Release C drops the old ones and makes `tenant_id` NOT NULL.
+Unique per store (v1.41 added them, v1.42 dropped the old global ones): `user (tenant, username | telegram_id | referral_code)`, `crm_discount_code (tenant, code)`, `crm_tag (tenant, name)`, `crm_warning_rule (tenant, kind, threshold)`, `page (tenant, slug)`. Two stores may use the same username, code, tag or slug. `staff.username` / `staff.telegram_id` stay globally unique (platform).
 
 ## 1. Users, auth and RBAC (`accounts`, `common`)
 

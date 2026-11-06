@@ -31,7 +31,8 @@ def test_every_model_is_classified_exactly_once():
 def test_tenant_column_matches_the_classification():
     for label in registry.TENANT + registry.NULLABLE:
         f = apps.get_model(label)._meta.get_field("tenant")
-        assert f.related_model is Tenant and f.null, label
+        assert f.related_model is Tenant, label
+        assert f.null is (label in registry.NULLABLE), f"{label}: tenant must be NOT NULL unless NULLABLE (Release C)"
     for label in registry.PLATFORM:
         names = {f.name for f in apps.get_model(label)._meta.get_fields()}
         assert "tenant" not in names or label == "tenancy.TenantDomain", label
@@ -50,14 +51,13 @@ def test_default_tenant_and_backfill():
     push_c = PushSubscription.objects.create(endpoint="https://p/1", endpoint_hash="h1", p256dh="k", auth="a", user=u)
     push_s = PushSubscription.objects.create(endpoint="https://p/2", endpoint_hash="h2", p256dh="k", auth="a", staff=staff)
     assert u.tenant_id == t.pk and plan.tenant_id == t.pk                               # Release B: filled on create
-    # rows written by code from before Release B have no tenant — simulate them, then backfill
+    # a customer's browser saved without a tenant (NULLABLE model) — tenant tables can't hold NULL any more (Release C)
     from apps.tenancy.context import unscoped
 
     with unscoped():
-        for m, pk in ((User, u.pk), (Plan, plan.pk), (Page, page.pk), (PushSubscription, push_c.pk)):
-            m.objects.filter(pk=pk).update(tenant=None)
+        PushSubscription.objects.filter(pk=push_c.pk).update(tenant=None)
     done = backfill()
-    assert done["accounts.User"] == 1 and done["plans.Plan"] == 1 and done["notifications.PushSubscription"] == 1
+    assert done["notifications.PushSubscription"] == 1 and done["accounts.User"] == 0
     for obj in (u, plan, page, push_c):
         obj.refresh_from_db()
         assert obj.tenant_id == t.pk, obj

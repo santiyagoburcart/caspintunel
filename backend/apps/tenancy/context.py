@@ -7,8 +7,12 @@
 - `unscoped()`: platform code that must see every tenant (our staff's cross-store views, ops, backfills). Every use
   is listed in `ALLOWED_UNSCOPED` and checked by a test.
 
-Release B is lenient: a query on a tenant table with no tenant set falls back to the default tenant and, inside a web
-request process, logs a warning. Release C turns `TENANCY_STRICT` on (fail closed) once the logs show no warning.
+Strict mode (Release C, v1.42.0, `TENANCY_STRICT`, default on): inside the web process (gunicorn, `IN_WEB_PROCESS`)
+a tenant-table query with no tenant set raises `NoTenant` — every request gets its tenant from the middleware, so a
+query outside one (a thread, code after the response) is a bug and fails closed. Processes without a request (Celery
+worker / beat, bots, daphne, manage.py) run in the default tenant by design until later phases pass the tenant along.
+`TENANCY_STRICT=false` in .env is the emergency switch back to Release B's lenient mode (default tenant + a warning).
+Release B ran 44 h in production with zero "query without a tenant" warnings before strict mode was turned on.
 """
 from __future__ import annotations
 
@@ -23,7 +27,7 @@ log = logging.getLogger("caspintunel")
 _current: ContextVar[int | None] = ContextVar("tenant_id", default=None)
 _unscoped: ContextVar[bool] = ContextVar("tenant_unscoped", default=False)
 _default_id: int | None = None
-IN_WEB_PROCESS = False          # set by config/wsgi.py: a missing tenant there is a bug worth a warning
+IN_WEB_PROCESS = False          # set by config/wsgi.py: a missing tenant there is a bug (strict: NoTenant)
 
 
 class NoTenant(RuntimeError):
@@ -52,11 +56,11 @@ def current_tenant_id() -> int | None:
     tid = _current.get()
     if tid is not None:
         return tid
-    if getattr(settings, "TENANCY_STRICT", False):
-        raise NoTenant("no tenant set for this query (docs/multi-tenant.md §3)")
     if IN_WEB_PROCESS:
+        if getattr(settings, "TENANCY_STRICT", True):
+            raise NoTenant("no tenant set for this query in a web process (docs/multi-tenant.md §3)")
         log.warning("tenancy: query without a tenant in a web process — default tenant used")
-    return default_tenant_id()
+    return default_tenant_id()           # background processes: the default tenant
 
 
 def is_unscoped() -> bool:

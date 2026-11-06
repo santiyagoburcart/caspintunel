@@ -48,17 +48,17 @@ class User(AbstractBaseUser, PermissionsMixin):
     """Customer account (data-model.md · Module 1 · `user`)."""
 
     tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
-    username = models.CharField(max_length=64, unique=True)
+    username = models.CharField(max_length=64)          # unique per store: user_tenant_username
     email = models.EmailField(max_length=255, null=True, blank=True)
     email_verified = models.BooleanField(default=False)
     name = models.CharField(max_length=120, blank=True)
     phone = models.CharField(max_length=20, blank=True, help_text="= Telegram phone")
-    telegram_id = models.BigIntegerField(null=True, blank=True, unique=True)
+    telegram_id = models.BigIntegerField(null=True, blank=True)   # unique per store: user_tenant_telegram
     telegram_username = models.CharField(max_length=64, null=True, blank=True)
     bank_card_number = models.CharField(
         max_length=20, null=True, blank=True, help_text="user's own card, shown in bot"
     )
-    referral_code = models.CharField(max_length=6, unique=True, editable=False)
+    referral_code = models.CharField(max_length=6, editable=False)   # unique per store: user_tenant_referral
     referred_by = models.ForeignKey(
         "self", null=True, blank=True, on_delete=models.SET_NULL, related_name="referrals"
     )
@@ -99,7 +99,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     class Meta:
         db_table = "user"
         ordering = ("-created_at",)
-        # multi-tenant (Release B): unique per store — the single-column uniques above go in Release C
+        # multi-tenant: unique per store (the global single-column uniques were dropped in Release C, v1.42.0)
         constraints = [
             models.UniqueConstraint(fields=["tenant", "username"], name="user_tenant_username"),
             models.UniqueConstraint(fields=["tenant", "telegram_id"], name="user_tenant_telegram"),
@@ -151,7 +151,7 @@ class Permission(models.Model):
 
 
 class Role(models.Model):
-    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
+    tenant = tenant_fk(null=True)  # NULL = platform role (docs/multi-tenant.md)
     name = models.CharField(max_length=100, unique=True)
     description = models.CharField(max_length=255, blank=True)
     # v1.25.2: Persian name / description (seeded for built-in roles, editable); blank = use `name`
@@ -172,7 +172,7 @@ class Role(models.Model):
 class Staff(TimeStampedModel):
     """Panel operator / admin (data-model · `staff`). Separate from `User`."""
 
-    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
+    tenant = tenant_fk(null=True)  # NULL = our staff (docs/multi-tenant.md)
     username = models.CharField(max_length=64, unique=True)
     password_hash = models.CharField(max_length=255)
     role = models.ForeignKey(

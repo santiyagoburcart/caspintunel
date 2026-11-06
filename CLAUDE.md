@@ -132,10 +132,15 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   (Mermaid sequence diagrams) in the same commit**, plus `docs/roadmap.md` when a planned phase starts or ships.
   Write only what the code does (check enum values / schedules in the code, never from memory).
 - **Multi-tenant (v1.40+, docs/multi-tenant.md)**: every model is classified in `apps/tenancy/registry.py` (TENANT / NULLABLE /
-  PLATFORM — a test fails on an unclassified model). A new tenant table gets `tenant = tenant_fk()` (`apps/tenancy/fields.py`).
+  PLATFORM — a test fails on an unclassified model). A new tenant table gets `tenant = tenant_fk()` (`apps/tenancy/fields.py`;
+  NOT NULL since v1.42 — `null=True` only for NULLABLE). A unique field on a tenant table is unique per store
+  (`UniqueConstraint(fields=["tenant", …])`, never `unique=True`) and its serializer adds the "already exists" check
+  (`adminpanel/serializers.py::per_store_unique`). A new data migration that creates tenant rows must set `tenant`.
   Since v1.41 (Release B) every TENANT model is scoped: the host picks the tenant (`apps/tenancy/middleware.py`), queries
   filter via the compile-time `tenant__tenant_scope` lookup, new rows get the current tenant. Background code runs in the
-  default tenant for now; use `tenancy.context.tenant_context(id)` for another store. `unscoped()` only in files listed in
+  default tenant for now; use `tenancy.context.tenant_context(id)` for another store. **Strict (v1.42, `TENANCY_STRICT`)**: in
+  gunicorn a tenant-table query outside a request (thread, after the response) raises `NoTenant` — copy the context
+  (`contextvars.copy_context().run`) into threads that query. `unscoped()` only in files listed in
   `context.ALLOWED_UNSCOPED` (test-enforced). The isolation sweep (`apps/tenancy/tests/test_isolation.py`) is a release gate.
 - The rejected Liquid Glass refresh is archived at tag `archive/ui-refresh-liquid-glass` — don't copy from it.
 

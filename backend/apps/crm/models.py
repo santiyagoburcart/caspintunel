@@ -22,7 +22,7 @@ class Stage(models.TextChoices):
 
 class Tag(models.Model):
     tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
-    name = models.CharField(max_length=40, unique=True)
+    name = models.CharField(max_length=40)              # unique per store: crm_tag_tenant_name
     color = models.CharField(max_length=16, default="#1464BA")
 
     class Meta:
@@ -195,8 +195,7 @@ class WarningRule(models.Model):
     class Meta:
         db_table = "crm_warning_rule"
         ordering = ("kind", "-threshold")
-        constraints = [models.UniqueConstraint(fields=["kind", "threshold"], name="crm_warning_rule_unique"),
-                       models.UniqueConstraint(fields=["tenant", "kind", "threshold"], name="crm_warning_rule_tenant_unique")]
+        constraints = [models.UniqueConstraint(fields=["tenant", "kind", "threshold"], name="crm_warning_rule_tenant_unique")]
 
 
 class ServiceWarning(models.Model):
@@ -267,7 +266,7 @@ class DiscountCode(models.Model):
     applied at order creation, BEFORE the unique amount is added — so the SMS matcher
     and card review always see the final price (Order.amount_unique)."""
     tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
-    code = models.CharField(max_length=32, unique=True)
+    code = models.CharField(max_length=32)              # unique per store: crm_discount_code_tenant_code
     kind = models.CharField(max_length=10, choices=DiscountKind.choices, default=DiscountKind.WINBACK)
     name = models.CharField(max_length=100, blank=True, default="")
     is_active = models.BooleanField(default=True)

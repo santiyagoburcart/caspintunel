@@ -82,7 +82,7 @@ class PushSubscription(models.Model):
     """v1.33 Web Push: one browser subscription of a customer (user) or a staff member.
     Deleted when the push service answers 404 / 410 (expired)."""
 
-    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
+    tenant = tenant_fk(null=True)  # NULL = staff / reseller browser (docs/multi-tenant.md)
     endpoint = models.TextField()
     endpoint_hash = models.CharField(max_length=64, unique=True)
     p256dh = models.CharField(max_length=255)

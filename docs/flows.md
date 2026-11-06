@@ -1235,7 +1235,7 @@ sequenceDiagram
     end
 ```
 
-## 16. A request is scoped to its store (multi-tenant, v1.41)
+## 16. A request is scoped to its store (multi-tenant, v1.41 · strict v1.42)
 
 ```mermaid
 sequenceDiagram
@@ -1253,5 +1253,11 @@ sequenceDiagram
     Q->>Q: queryset filter tenant__tenant_scope (read when the SQL is compiled)
     Q->>DB: ... WHERE tenant_id = current
     Note over Q,DB: new rows get tenant = current · a customer JWT carries tid and is refused on another store
+    alt web process and no tenant set (code outside a request)
+        Q-->>C: NoTenant → 500 (strict · TENANCY_STRICT=false = warning + default tenant)
+    else Celery · bots · daphne · manage.py
+        Q->>DB: ... WHERE tenant_id = default tenant
+    end
+    Note over Q,DB: tenant_id is NOT NULL on tenant tables · usernames / codes / slugs are unique per store
 ```
 

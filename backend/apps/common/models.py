@@ -19,7 +19,7 @@ class AuditLog(models.Model):
     Full population happens as staff features land; the table exists from phase 1.
     """
 
-    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
+    tenant = tenant_fk(null=True)  # NULL = platform action (docs/multi-tenant.md)
     staff_id = models.BigIntegerField(null=True, blank=True, db_index=True)
     staff_label = models.CharField(max_length=150, blank=True)
     action = models.CharField(max_length=100, db_index=True)

@@ -27,8 +27,13 @@ DEBUG = env.bool("DEBUG", default=False)
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 # multi-tenant: these hosts (and DOMAIN, the panel's site domain) serve the default tenant (apps/tenancy/middleware.py)
 TENANCY_BASE_HOSTS = list(ALLOWED_HOSTS)
-# Release B: a tenant-table query without a tenant falls back to the default (logged); Release C turns this on
-TENANCY_STRICT = env.bool("TENANCY_STRICT", default=False)
+# Release C (v1.42.0): a tenant-table query without a tenant in the web process fails (NoTenant). false = emergency
+# switch back to Release B's lenient mode (default tenant + a "query without a tenant" warning). apps/tenancy/context.py
+TENANCY_STRICT = env.bool("TENANCY_STRICT", default=True)
+# customers' usernames are unique per store (accounts.User constraint user_tenant_username), not globally: the
+# backend below is Django's ModelBackend on the tenant-scoped User manager, so auth.W004 is expected
+AUTHENTICATION_BACKENDS = ["apps.tenancy.auth.TenantModelBackend"]
+SILENCED_SYSTEM_CHECKS = ["auth.W004"]
 
 PROJECT_NAME = env("PROJECT_NAME", default="caspintunel")
 DOMAIN = env("DOMAIN", default="aicaspin.ir")

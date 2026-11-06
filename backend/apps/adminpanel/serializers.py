@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from rest_framework import serializers
+from rest_framework.validators import UniqueValidator
 
 from apps.accounts.models import DeletedUserArchive, Permission, Role, Staff
 from apps.accounts.phone import PhoneError, clean_site_phone
@@ -15,6 +16,13 @@ from apps.settings_app.models import Page, SiteConfig, Theme
 from apps.telegram.models import RequiredChannel, TelegramConfig
 
 User = get_user_model()
+
+
+def per_store_unique(model, field: str) -> dict:
+    """"already exists" for a field that is unique per store (Release C dropped the global unique, so DRF no longer
+    adds this check itself). The manager is tenant-scoped, so the lookup only sees the current store's rows."""
+    return {"validators": [UniqueValidator(queryset=model._default_manager.all(),
+                                           message=f"{model._meta.verbose_name} with this {field} already exists.")]}
 
 
 # --- users ---------------------------------------------------------
@@ -33,6 +41,7 @@ class AdminUserSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("id", "referral_code", "referral_count", "service_count", "created_at",
                             "deleted_at", "delete_reason")
+        extra_kwargs = {"username": per_store_unique(User, "username"), "telegram_id": per_store_unique(User, "telegram_id")}
 
     def validate_phone(self, value):
         return _admin_phone(value, getattr(self.instance, "pk", None))
@@ -53,6 +62,7 @@ class AdminUserCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ("id", "username", "password", "email", "name", "phone", "language", "is_active")
+        extra_kwargs = {"username": per_store_unique(User, "username")}
 
     def validate_phone(self, value):
         return _admin_phone(value, None)
@@ -313,6 +323,7 @@ class PageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Page
         fields = ("id", "slug", "title_fa", "title_en", "body_fa", "body_en", "is_active", "updated_at")
+        extra_kwargs = {"slug": per_store_unique(Page, "slug")}
 
 
 class ThemeSerializer(serializers.ModelSerializer):

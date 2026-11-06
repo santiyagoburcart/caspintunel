@@ -1,9 +1,10 @@
 # Multi-tenant reseller storefronts — design
 
 > **Status: design approved 2026-11-04 (decisions D1–D7 below). Phase 0 shipped in v1.39.0. Phase 1 Release A shipped in
-> v1.40.0** (tenant tables, nullable `tenant_id`, default tenant + backfill) **and Release B in v1.41.0** (host → tenant
-> middleware, scoped managers, JWT `tid`, per-tenant unique constraints, isolation sweep). Next: Release C (NOT NULL, drop old
-> uniques, strict mode). Written against v1.38.4, decisions recorded in v1.38.6.
+> v1.40.0** (tenant tables, nullable `tenant_id`, default tenant + backfill), **Release B in v1.41.0** (host → tenant
+> middleware, scoped managers, JWT `tid`, per-tenant unique constraints, isolation sweep) **and Release C in v1.42.0**
+> (`tenant_id` NOT NULL on the 34 tenant tables, old global uniques dropped, strict mode in the web process) — **Phase 1 done.**
+> Next: Phase 2. Written against v1.38.4, decisions recorded in v1.38.6.
 > When a phase is approved and built, the matching parts move into `architecture.md` / `erd.md` / `flows.md` and this page
 > keeps only what is still planned.
 
@@ -563,7 +564,11 @@ Backward compatible, two releases per step (CLAUDE.md migration rule):
    Code still ignores it.
 2. **Release B**: `TenantMiddleware` + managers active; all hosts that are not the default domain → 404; composite unique
    constraints added *next to* the old ones.
-3. **Release C**: `tenant_id` NOT NULL; old single-column unique constraints dropped; isolation test suite is a required check.
+3. **Release C** ✅ v1.42.0: `tenant_id` NOT NULL (after the last backfill, `tenancy.0004`); old single-column unique constraints
+   dropped (per-store "already exists" checks in the admin serializers; customers sign in through `TenantModelBackend`);
+   strict mode (`TENANCY_STRICT`, default on): a tenant-table query without a tenant in the web process raises `NoTenant` —
+   processes without a request still use the default tenant. Turned on after 44 h of Release B with zero "query without a
+   tenant" warnings. The isolation test suite is a required check.
 
 Rollback at every step = previous image (the columns are additive). Pre-update dump as always.
 

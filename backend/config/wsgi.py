@@ -8,4 +8,4 @@ application = get_wsgi_application()
 
 from apps.tenancy import context as _tenancy  # noqa: E402
 
-_tenancy.IN_WEB_PROCESS = True        # a tenant-table query outside a request here is logged (Release B)
+_tenancy.IN_WEB_PROCESS = True        # a tenant-table query outside a request here fails (strict, Release C)

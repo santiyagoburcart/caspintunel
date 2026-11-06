@@ -39,7 +39,7 @@ desktop + 390 px) and **must update [architecture.md](architecture.md),
 
 | Phase | Theme | Notes |
 |---|---|---|
-| C | Multi-tenant reseller storefronts | Design: [multi-tenant.md](multi-tenant.md) (proposal, waiting for approval; phases 0–12, ≈ 41–54 working days to the pilot). Agreed scope pending. Today's server is small (2 vCPU, 3.7 GiB RAM + 2 GiB swap, ~1 GiB swap already in use, disk 64 %; it also hosts three PasarGuard nodes) — see the capacity note in [architecture.md](architecture.md#production-server) before sizing it. |
+| C | Multi-tenant reseller storefronts | Design: [multi-tenant.md](multi-tenant.md) — approved 2026-11-04 (decisions D1–D7). **Phase 0 done (v1.39.0, memory limits + watch); Phase 1 done (v1.40.0 tenant tables · v1.41.0 scoping · v1.42.0 NOT NULL, per-store uniques, strict mode).** Next: Phase 2. Runs on the current server (2 vCPU, 3.7 GiB RAM + 5 GiB swap; it also hosts the PasarGuard nodes) — capacity note in [architecture.md](architecture.md#production-server). |
 
 ## Phases 1–2 — Ticketing
 

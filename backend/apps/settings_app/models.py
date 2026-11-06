@@ -88,7 +88,7 @@ class SiteConfig(models.Model):
 class Theme(models.Model):
     """data-model · Module 8 · `theme`."""
 
-    tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
+    tenant = tenant_fk(null=True)  # NULL = built-in theme (docs/multi-tenant.md)
     name = models.CharField(max_length=80, unique=True)
     palette = models.JSONField(default=dict)
     is_active = models.BooleanField(default=False)
@@ -110,7 +110,7 @@ class Page(models.Model):
     """CMS page — rules / tutorial / faq (data-model · Module 8 · `page`)."""
 
     tenant = tenant_fk()  # multi-tenant, docs/multi-tenant.md (Phase 1)
-    slug = models.SlugField(max_length=50, unique=True)
+    slug = models.SlugField(max_length=50)              # unique per store: page_tenant_slug
     title_fa = models.CharField(max_length=200)
     title_en = models.CharField(max_length=200, blank=True)
     body_fa = models.TextField(blank=True)
