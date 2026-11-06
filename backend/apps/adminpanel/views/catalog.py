@@ -91,16 +91,59 @@ class PageViewSet(AdminViewSet):
     queryset = Page.objects.all().order_by("slug")
     serializer_class = PageSerializer
     perms_map = {"GET": ["pages.manage"], "*": ["pages.manage"]}
+    store_ok = True                      # v1.43: pages are per store (tenant-scoped)
 
 
 class ThemeViewSet(AdminViewSet):
+    """Themes. v1.43 on a store's domain: the built-in themes (read-only there) + the store's own; «فعال‌سازی» sets the
+    store's theme (TenantBranding.theme) — the global active flag is our own store's."""
+
     queryset = Theme.objects.all().order_by("name")
     serializer_class = ThemeSerializer
     perms_map = {"GET": ["themes.manage"], "*": ["themes.manage"]}
+    store_ok = True
+
+    def get_queryset(self):
+        from django.db.models import Q
+
+        from apps.settings_app.branding import current_tenant_id
+
+        # built-in themes + the current tenant's own (never another store's)
+        return super().get_queryset().filter(Q(tenant__isnull=True) | Q(tenant_id=current_tenant_id()))
+
+    def perform_create(self, serializer):
+        from apps.settings_app.branding import current_tenant_id, is_store
+
+        serializer.save(**({"tenant_id": current_tenant_id(), "is_active": False} if is_store() else {}))
+
+    def _own_only(self, theme):
+        from rest_framework.exceptions import PermissionDenied
+
+        from apps.settings_app.branding import is_store
+
+        if is_store() and theme.tenant_id is None:
+            raise PermissionDenied("a built-in theme can't be changed from a store — copy it as a new theme")
+
+    def perform_update(self, serializer):
+        self._own_only(serializer.instance)
+        from apps.settings_app.branding import is_store
+
+        serializer.save(**({"is_active": False} if is_store() else {}))
+
+    def perform_destroy(self, instance):
+        self._own_only(instance)
+        instance.delete()
 
     @action(detail=True, methods=["post"], url_path="activate")
     def activate(self, request, pk=None):
+        from apps.settings_app.branding import is_store, store_branding
+
         theme = self.get_object()
+        if is_store():
+            b = store_branding()
+            b.theme = theme
+            b.save(update_fields=["theme", "updated_at"])
+            return Response({**ThemeSerializer(theme).data, "is_active": True})
         theme.is_active = True
         theme.save()  # model.save() deactivates the others
         return Response(ThemeSerializer(theme).data)

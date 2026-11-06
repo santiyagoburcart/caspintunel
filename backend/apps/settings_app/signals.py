@@ -38,9 +38,9 @@ def _connect_public_cache():
 
     from apps.plans.models import Plan
 
-    from .models import Page, SiteConfig, Theme
+    from .models import Page, SiteConfig, TenantBranding, TenantSetting, Theme
 
-    for model in (Setting, SiteConfig, Theme, Page, Plan):
+    for model in (Setting, SiteConfig, Theme, Page, Plan, TenantBranding, TenantSetting):
         post_save.connect(_bump_public_cache, sender=model, dispatch_uid=f"pubcache-save-{model.__name__}")
         post_delete.connect(_bump_public_cache, sender=model, dispatch_uid=f"pubcache-del-{model.__name__}")
 

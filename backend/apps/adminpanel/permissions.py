@@ -58,6 +58,15 @@ class StaffPermission(permissions.BasePermission):
 
     def has_permission(self, request, view):
         user = request.user
+        # v1.43 store mode (multi-tenant Phase 2): on a reseller store's domain only views that opt in with
+        # `store_ok = True` answer — everything else is platform (agency, Blu, ops, domain, our bots…). Default-deny,
+        # before the Super Admin bypass: nobody reaches platform pages through a store's host.
+        if not getattr(view, "store_ok", False):
+            from apps.settings_app.branding import is_store
+
+            if is_store():
+                self.message = "not available in store mode"
+                return False
         if isinstance(user, Staff):
             if user.is_superadmin:
                 return True

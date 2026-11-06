@@ -99,9 +99,16 @@ class SettingsView(AdminAPIView):
     (backup interval, reservation window, alert thresholds, verification toggle …)."""
 
     perms_map = {"GET": ["settings.manage"], "PUT": ["settings.manage"], "PATCH": ["settings.manage"]}
+    store_ok = True                      # v1.43: on a store's domain only TENANT_KEYS, saved for that store
 
     @extend_schema(responses=dict, summary="Runtime settings")
     def get(self, request):
+        from apps.settings_app.branding import TENANT_KEYS, is_store
+
+        if is_store():
+            return Response({"store": True, "settings": [
+                {"key": k, "type": t, "value": get_setting(k, _default(d)), "min": lo, "max": hi, "super_only": False}
+                for (k, t, d, lo, hi) in EDITABLE_SETTINGS if k in TENANT_KEYS]})
         return Response({"settings": [
             {"key": k, "type": t, "value": get_setting(k, _default(d)), "min": lo, "max": hi,
              "super_only": k in SUPER_ONLY}
@@ -110,7 +117,15 @@ class SettingsView(AdminAPIView):
 
     @extend_schema(request=dict, responses=dict, summary="Update runtime settings")
     def put(self, request):
+        from apps.settings_app.branding import TENANT_KEYS, is_store
+
         data = request.data or {}
+        store = is_store()
+        if store:
+            other = sorted(k for k in data if k not in TENANT_KEYS)
+            if other:
+                return Response({"detail": f"not a store setting: {', '.join(other)}",
+                                 "detail_fa": "این تنظیمات مخصوص پلتفرم است و برای فروشگاه قابل تغییر نیست."}, status=403)
         locked = sorted(k for k in data if k in SUPER_ONLY)
         if locked and not getattr(request.user, "is_superadmin", False):
             return Response({"detail": f"only a Super Admin can change {', '.join(locked)}",
@@ -142,15 +157,22 @@ class SettingsView(AdminAPIView):
                             return Response({"detail": str(exc), "field": key}, status=400)
             except (TypeError, ValueError):
                 return Response({"detail": f"bad value for {key}"}, status=400)
-            set_setting(key, val, vtype)
+            if store:
+                from apps.settings_app.branding import set_store_setting
+
+                set_store_setting(key, val, vtype)
+            else:
+                set_setting(key, val, vtype)
             changed.append(key)
         if changed:
             detail = {"keys": changed}
             values = {k: {"from": before[k], "to": setting_value(k)} for k in changed if k in before}
             if values:
                 detail["values"] = values
+            if store:
+                detail["store"] = True
             write_audit(action="settings.updated", staff=request.user, detail=detail)
-            if "blu_ssh_check_minutes" in changed:
+            if "blu_ssh_check_minutes" in changed and not store:
                 from apps.ops.schedule import reconcile_blu_service_schedule
 
                 reconcile_blu_service_schedule()

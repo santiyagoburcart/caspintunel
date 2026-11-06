@@ -12,7 +12,7 @@ from apps.panel.models import Panel, Service
 from apps.payments_sms.models import BankCard, Payment, SmsAppDevice, SmsMessage, SmsSource
 from apps.plans.models import Plan
 from apps.plans.serializers import PlanPanelDefaultMixin
-from apps.settings_app.models import Page, SiteConfig, Theme
+from apps.settings_app.models import Page, SiteConfig, TenantBranding, Theme
 from apps.telegram.models import RequiredChannel, TelegramConfig
 
 User = get_user_model()
@@ -630,6 +630,92 @@ class SiteConfigSerializer(serializers.ModelSerializer):
     class Meta:
         model = SiteConfig
         fields = ("site_name_fa", "site_name_en", "site_domain", "logo", "favicon",
+                  "bot_description_fa", "bot_description_en", "support_telegram",
+                  "bot_support_telegram", "bot_support_text_fa", "bot_support_text_en",
+                  "qr_background", "qr_background_custom",
+                  "meta_description", "updated_at")
+        read_only_fields = ("updated_at",)
+
+    # logo / favicon: images only, small (the error text is shown in the panel as is)
+    _LOGO_TYPES = {".png": "PNG", ".jpg": "JPG", ".jpeg": "JPG", ".webp": "WEBP", ".svg": "SVG"}
+    _ICON_TYPES = {".png": "PNG", ".ico": "ICO", ".svg": "SVG"}
+
+    @staticmethod
+    def _check_file(f, types, max_kb, what):
+        import os
+
+        if not f:
+            return f
+        ext = os.path.splitext(getattr(f, "name", "") or "")[1].lower()
+        if ext not in types:
+            allowed = ", ".join(sorted(set(types.values())))
+            raise serializers.ValidationError(f"فرمت فایل {what} مجاز نیست — فقط {allowed} / Unsupported {what} file type — {allowed} only")
+        if getattr(f, "size", 0) > max_kb * 1024:
+            raise serializers.ValidationError(f"حجم فایل {what} بیش از {max_kb} کیلوبایت است / The {what} file is larger than {max_kb} KB")
+        return f
+
+    def validate_logo(self, f):
+        return self._check_file(f, self._LOGO_TYPES, 2048, "logo")
+
+    def validate_favicon(self, f):
+        return self._check_file(f, self._ICON_TYPES, 512, "favicon")
+
+    def validate_qr_background(self, value):
+        from apps.common import qrcard
+
+        if value not in qrcard.CHOICES:
+            raise serializers.ValidationError("unknown background")
+        return value
+
+    def validate_qr_background_custom(self, f):
+        from apps.common import qrcard
+
+        if f:
+            try:
+                qrcard.validate_upload(f)
+            except ValueError as exc:
+                raise serializers.ValidationError(str(exc)) from exc
+        return f
+
+    def validate(self, attrs):
+        from apps.common import qrcard
+
+        bg = attrs.get("qr_background", getattr(self.instance, "qr_background", None))
+        has_file = attrs.get("qr_background_custom") or getattr(self.instance, "qr_background_custom", None)
+        if bg == qrcard.CUSTOM and not has_file:
+            raise serializers.ValidationError({"qr_background_custom": "upload an image first"})
+        return attrs
+
+    def to_representation(self, obj):
+        from apps.common import qrcard
+        from apps.settings_app.serializers import rel_media
+
+        data = super().to_representation(obj)
+        # root-relative URLs — reachable from whatever origin the panel runs on
+        data["logo"] = rel_media(obj.logo)
+        data["favicon"] = rel_media(obj.favicon)
+        data["qr_background_custom"] = rel_media(obj.qr_background_custom)
+        data["qr_backgrounds"] = [{"key": qrcard.PLAIN, "fa": "بدون پس‌زمینه", "en": "Plain", "light": True}] + [
+            {"key": k, "fa": fa, "en": en, "light": light} for k, (fa, en, light) in qrcard.BUILT_IN.items()]
+        return data
+
+
+# --- service lists -------------------------------------------
+class HealthCheckSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = HealthCheck
+        fields = ("target", "is_up", "latency_ms", "detail", "checked_at")
+
+
+class TenantBrandingSerializer(serializers.ModelSerializer):
+    """v1.43: a reseller store's branding — the same fields, validation and output as SiteConfigSerializer; `site_domain`
+    is the store's active domain (read-only, set by our staff in Phase 3); `theme` = the store's active theme."""
+
+    site_domain = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = TenantBranding
+        fields = ("site_name_fa", "site_name_en", "site_domain", "logo", "favicon", "theme",
                   "bot_description_fa", "bot_description_en", "support_telegram",
                   "bot_support_telegram", "bot_support_text_fa", "bot_support_text_en",
                   "qr_background", "qr_background_custom",

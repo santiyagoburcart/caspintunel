@@ -258,7 +258,7 @@ Everything shipped since v1.6.0 (details in the session log):
 
 ## Current state & open items (keep this list current)
 - **Production server = Finland `46.62.192.189`** since 2026-10-21 (migrated from 66.245.203.63).
-- **Version** `VERSION` = 1.42.3 (2026-11-06; tagged releases `v<version>`; v1.4.0/v1.4.1 were tagged before the file was bumped); iPhone Shortcut has its own `mobile_shortcut/VERSION`.
+- **Version** `VERSION` = 1.43.0 (2026-11-06; tagged releases `v<version>`; v1.4.0/v1.4.1 were tagged before the file was bumped); iPhone Shortcut has its own `mobile_shortcut/VERSION`.
 - **Built since v1.15** (details: session log, `docs/roadmap.md`): ticketing, CRM, retention, analytics, discount codes, domain wizard + access modes, agency (portal, ledger, limit history, groups, group managers in the panel with `agency.gm.*` permissions, approvals incl. Telegram, invoices / payments / allocations, portal sections), Blu Bank deposits, rounded auto-approve, transaction numbers + void / restore, permanent delete + auto-purge, Telegram alerts + sound + Web Push (customers, staff, resellers), manual customer invoices, Tehran-day reporting.
 - **Server capacity (2026-11-04)**: 2 vCPU, 3.7 GiB RAM (~2.8 GiB used, ~1 GiB of the 2 GiB swap in use), disk 38 GB at 64 %; the host also runs three PasarGuard nodes + x-ui. Size the next phase (multi-tenant storefronts) with that in mind.
 - **Archived (not merged): the "Liquid Glass" UI refresh** — rejected 2026-10-10. Branch `ui-refresh` and tag
@@ -485,4 +485,11 @@ Everything shipped since v1.6.0 (details in the session log):
   reference, else one same-amount deposit in 24 h + payer name) + backfill `manage.py link_blu_deposits`. Match notes in Persian
   (`blu_notes.py`). saharsoheili's 175,000 deposit was already on order #125 (shortfall 1,195 T, v1.42.1). Tests:
   `payments_sms/tests/test_blu_link.py` (8).
+- 2026-11-06 — **v1.43.0: multi-tenant Phase 2 Release A — stores, branding, store mode (server).** Our staff open a store on an
+  agency admin's page («فروشگاه»: draft → active / suspended / closed, name, export permission; `tenancy/stores.py`); a store
+  starts with its own `TenantBranding` and a copy of our pages; only ACTIVE stores answer on their domains. `branding()` resolves
+  SiteConfig (ours) vs TenantBranding (store) for /config/, QR, bot texts, CRM; `TENANT_KEYS` + `TenantSetting` override
+  `get_setting` per store; themes per store. Store mode on a store's domain: admin views need `store_ok` (users, pages, themes,
+  branding, settings, dashboard), platform paths 404. Backfill skips tables a historical migration state lacks. Tests:
+  `tenancy/tests/test_store_admin.py` (8).
 - **Next:** new items to be agreed with the owner.

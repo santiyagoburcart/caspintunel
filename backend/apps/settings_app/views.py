@@ -7,7 +7,7 @@ from rest_framework.views import APIView
 
 from apps.common.public_cache import cached_public
 
-from .models import Page, SiteConfig, Theme
+from .models import Page, Theme
 from .serializers import PublicPageSerializer, PublicSiteConfigSerializer, PublicThemeSerializer
 
 
@@ -27,8 +27,11 @@ class PublicSiteConfigView(APIView):
 
     @extend_schema(responses=PublicSiteConfigSerializer, summary="Public branding / site config")
     def get(self, request):
+        from .branding import branding
+
+        # v1.43: the current store's branding (SiteConfig for our own store, TenantBranding for a reseller store)
         return cached_public(request, "config", lambda: Response(
-            PublicSiteConfigSerializer(SiteConfig.load(), context={"request": request}).data))
+            PublicSiteConfigSerializer(branding(), context={"request": request}).data))
 
 
 class PublicActiveThemeView(APIView):
@@ -40,6 +43,14 @@ class PublicActiveThemeView(APIView):
     @extend_schema(responses=PublicThemeSerializer, summary="The active theme's palette")
     def get(self, request):
         def build():
+            from .branding import is_store, store_branding
+
+            if is_store():                      # v1.43: the store's chosen theme (built-in or its own)
+                b = store_branding()
+                theme = b.theme or Theme.objects.filter(tenant__isnull=True).order_by("id").first()
+                if not theme:
+                    return Response({}, status=204)
+                return Response(PublicThemeSerializer(theme).data)
             theme = Theme.objects.filter(is_active=True).first() or Theme.objects.first()
             if not theme:
                 return Response({}, status=204)

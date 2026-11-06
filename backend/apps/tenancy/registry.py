@@ -15,7 +15,7 @@ TENANT = [
     "payments_sms.SmsMessage",
     "notifications.Notification", "notifications.NotificationDelivery",
     "telegram.RequiredChannel", "telegram.TelegramStats",
-    "settings_app.Page",
+    "settings_app.Page", "settings_app.TenantBranding", "settings_app.TenantSetting",
     "tickets.TicketTopic", "tickets.Ticket", "tickets.TicketMessage", "tickets.TicketAttachment", "tickets.TicketEvent",
     "tickets.CannedReply",
     "crm.Tag", "crm.CustomerProfile", "crm.CustomerNote", "crm.CaseReason", "crm.FollowUpCase", "crm.MessageTemplate",

@@ -125,9 +125,9 @@ def to_png(img: Image.Image) -> bytes:
 
 
 def active_background(size: int = SIZE) -> Image.Image | None:
-    from apps.settings_app.models import SiteConfig
+    from apps.settings_app.branding import branding
 
-    cfg = SiteConfig.load()
+    cfg = branding()                       # the store's QR background (v1.43), SiteConfig for our own store
     return background_image(cfg.qr_background or DEFAULT, cfg.qr_background_custom, size)
 
 

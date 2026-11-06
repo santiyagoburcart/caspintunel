@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import AgencyStoreCard from '../components/AgencyStoreCard'
 import { Link, NavLink, useNavigate, useParams } from 'react-router-dom'
 import { api, apiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
@@ -336,7 +337,7 @@ export function AgencyAdmins() {
 }
 
 // ------------------------------------------------------------------ admin detail
-const DETAIL_TABS = ['overview', 'limits', 'history', 'settings', 'accounting', 'send']
+const DETAIL_TABS = ['overview', 'limits', 'history', 'settings', 'accounting', 'send', 'store']   // v1.43 store: «فروشگاه»
 
 export function AgencyAdminNew() {
   const [s] = useT()
@@ -392,8 +393,9 @@ export function AgencyAdminDetail() {
   const tabs = DETAIL_TABS.filter((k) => (k === 'settings' ? can('agency.manage') : k === 'accounting' ? can('agency.accounting') : true))
   const tab = tabs.includes(rawTab) ? rawTab : 'overview'
   const base = `/agency/admins/${encodeURIComponent(username)}`
-  const label = { overview: s.t_overview, limits: s.t_limits, history: s.t_history, settings: s.t_settings, accounting: s.t_accounting, send: s.t_send }
-  const icon = { overview: 'list', limits: 'gauge', history: 'clock', settings: 'sliders', accounting: 'wallet', send: 'link' }
+  const label = { overview: s.t_overview, limits: s.t_limits, history: s.t_history, settings: s.t_settings, accounting: s.t_accounting, send: s.t_send,
+    store: lang === 'fa' ? 'فروشگاه' : 'Store' }
+  const icon = { overview: 'list', limits: 'gauge', history: 'clock', settings: 'sliders', accounting: 'wallet', send: 'link', store: 'globe' }
   return (
     <div className="ag space-y-4">
       <Header s={s} switches={d.switches} />
@@ -450,6 +452,7 @@ export function AgencyAdminDetail() {
 
       {tab === 'settings' && <AdminSettingsTab username={d.username} writable={writable} onDeleted={() => go('/agency/admins')} />}
       {tab === 'history' && <AgencyLimitHistory username={d.username} />}
+      {tab === 'store' && <AgencyStoreCard username={d.username} />}
       {tab === 'accounting' && <><LedgerCard username={d.username} /><AdminInvoicesCard username={d.username} /><PortalAccessCard username={d.username} /></>}
       {tab === 'send' && <>
         <PortalLinkCard s={s} username={d.username} />

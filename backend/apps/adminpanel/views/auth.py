@@ -127,7 +127,18 @@ def _staff_payload(staff: Staff) -> dict:
         # v1.25: the panel shows a group manager only its own menu (Agency pages scoped to its groups)
         "group_manager": ({"id": gm.id, "username": gm.username, "display_name": gm.display_name}
                           if gm is not None else None),
+        # v1.43: the panel runs in store mode on a reseller store's domain (store menu, store data only)
+        "store": _store(),
     }
+
+
+def _store():
+    from apps.settings_app.branding import current_tenant, is_store
+
+    if not is_store():
+        return None
+    t = current_tenant()
+    return {"id": t.id, "slug": t.slug, "name": t.name, "status": t.status, "reseller": t.reseller_username} if t else None
 
 
 def _prefs(staff) -> dict:

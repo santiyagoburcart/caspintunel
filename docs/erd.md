@@ -12,7 +12,7 @@ Fields marked *enc* are Fernet-encrypted (`FIELD_ENCRYPTION_KEY`).
 
 Related: [architecture.md](architecture.md) · [flows.md](flows.md).
 
-Last schema change: **v1.42.2** — `blu_transaction.status` gains `linked` («متصل به پرداخت موجود»: identifies an
+Last schema change: **v1.43.0** — `tenant_branding`, `tenant_setting` (multi-tenant Phase 2 Release A). Before: **v1.42.2** — `blu_transaction.status` gains `linked` («متصل به پرداخت موجود»: identifies an
 already approved payment, never a second approval). Before: **v1.42.1** — `order.provision_error` / `provision_failed_at` («ساخت ناموفق»),
 `scheduled_renewal.data_limit` (custom-volume renewal), `plan.renewable_when_inactive`. Before: **v1.42.0 — multi-tenant Phase 1 Release C**: `tenant_id` (FK `tenant`, PROTECT) is **NOT NULL** on the
 34 customer-facing tables and stays nullable on `staff`, `role`, `audit_log`, `push_subscription`, `theme` (NULL = platform);
@@ -22,6 +22,9 @@ tables. The classification is `apps/tenancy/registry.py`; design in [multi-tenan
 ```mermaid
 erDiagram
     tenant ||--o{ tenant_domain : has
+    tenant ||--o| tenant_branding : "v1.43 branding"
+    tenant ||--o{ tenant_setting : "v1.43 TENANT_KEYS"
+    theme |o--o{ tenant_branding : "store theme"
     tenant ||--o{ user : "tenant_id (and every tenant table)"
     tenant {
         bigint id PK
@@ -45,12 +48,32 @@ erDiagram
         datetime last_check_at
         string last_error
     }
+    tenant_branding {
+        bigint id PK
+        bigint tenant_id FK "UK, one per store"
+        string site_name_fa
+        string site_name_en
+        string logo "tenants/ID/branding/"
+        string favicon
+        string support_telegram
+        string qr_background
+        bigint theme_id FK "built-in or the store's own"
+    }
+    tenant_setting {
+        bigint id PK
+        bigint tenant_id FK
+        string key "only TENANT_KEYS, UK with tenant"
+        text value
+        string value_type
+    }
 ```
 
 | Table | Purpose |
 |---|---|
 | `tenant` | one store (v1.40). The default tenant is our own store; reseller stores come in later phases. |
-| `tenant_domain` | a host routed to a tenant; only `active` hosts are served (v1.41). |
+| `tenant_domain` | a host routed to a tenant; only `active` hosts of an `active` store are served (v1.41 / v1.43). |
+| `tenant_branding` | v1.43 a reseller store's branding (same fields as `site_config`, which stays our own store's); `theme_id` = its theme. |
+| `tenant_setting` | v1.43 a store's own value for a key in `settings_app.branding.TENANT_KEYS` (wins in `get_setting` for that store). |
 
 Unique per store (v1.41 added them, v1.42 dropped the old global ones): `user (tenant, username | telegram_id | referral_code)`, `crm_discount_code (tenant, code)`, `crm_tag (tenant, name)`, `crm_warning_rule (tenant, kind, threshold)`, `page (tenant, slug)`. Two stores may use the same username, code, tag or slug. `staff.username` / `staff.telegram_id` stay globally unique (platform).
 

@@ -26,7 +26,8 @@ from apps.common.jalali import to_jalali_str
 from apps.orders.models import Order, OrderStatus
 from apps.payments_sms.models import BankCard, PaymentStatus
 from apps.plans.models import PlanType
-from apps.settings_app.models import Page, SiteConfig
+from apps.settings_app.branding import branding
+from apps.settings_app.models import Page
 
 from ..shop import active_plans, product_display_mode, qr_png
 from .texts import HIST_STATUS, ORDER_STATUS, ORDER_TYPE, OS_APPS, SERVICE_STATUS, is_en, money, pick, tr
@@ -77,7 +78,7 @@ def miniapp_url() -> str:
 
 
 def site_url() -> str:
-    domain = (SiteConfig.load().site_domain or "").strip().strip("/")
+    domain = (branding().site_domain or "").strip().strip("/")
     return f"https://{domain}" if domain else getattr(settings, "PUBLIC_BASE_URL", "").rstrip("/")
 
 
@@ -516,7 +517,7 @@ def account(user) -> Screen:
     text = tr(user, "acc", u=html.escape(user.username), phone=user.phone or tr(user, "not_set"),
               code=user.referral_code, n=user.referral_count,
               links="\n".join(f"<code>{html.escape(u)}</code>" for u in links))
-    share = f"https://t.me/share/url?url={quote(links[0])}&text={quote(tr(user, 'share_text', site=SiteConfig.load().site_name_fa))}"
+    share = f"https://t.me/share/url?url={quote(links[0])}&text={quote(tr(user, 'share_text', site=branding().site_name_fa))}"
     return Screen(text, _kb([[_b(tr(user, "btn_share"), url=share)],
                              [_b(tr(user, "btn_pwd"), "m:pwd"), _b(tr(user, "btn_lang"), "m:lang")], _nav(user)]))
 
@@ -582,7 +583,7 @@ def support_contacts(cfg) -> list[tuple[str, str]]:
 
 
 def support(user) -> Screen:
-    cfg = SiteConfig.load()
+    cfg = branding()
     contacts = support_contacts(cfg)
     custom = (pick(user, cfg.bot_support_text_fa, cfg.bot_support_text_en) or cfg.bot_support_text_fa or "").strip()
     if not contacts and not custom:

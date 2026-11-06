@@ -14,7 +14,7 @@ from .views.agency import (AgencyLimitHistoryView, AgencyAdminActionView, Agency
                            AgencyGroupsView, AgencyLedgerExportView, AgencyLedgerOverviewView, AgencyLedgerView,
                            AgencyLedgerVoidView, AgencySettingsView, AgencySyncLogsView, AgencySyncNowView, PathsView,
                            AgencyPortalLinkView, AgencySetLimitPreviewView, AgencyLedgerReportView,
-                           AgencyPanelAdminCreateView, AgencyPanelAdminOptionsView, AgencyPanelAdminView)
+                           AgencyPanelAdminCreateView, AgencyPanelAdminOptionsView, AgencyPanelAdminView, AgencyStoreView)
 from .views.catalog import (
     BankCardViewSet,
     PageViewSet,
@@ -117,6 +117,7 @@ urlpatterns = [
     path("agency/admins/", AgencyAdminListView.as_view(), name="admin-agency-admins"),
     path("agency/panel-admins/options/", AgencyPanelAdminOptionsView.as_view(), name="admin-agency-panel-admin-options"),
     path("agency/panel-admins/", AgencyPanelAdminCreateView.as_view(), name="admin-agency-panel-admin-create"),
+    path("agency/panel-admins/<str:username>/store/", AgencyStoreView.as_view(), name="admin-agency-store"),
     path("agency/panel-admins/<str:username>/", AgencyPanelAdminView.as_view(), name="admin-agency-panel-admin"),
     path("agency/admins/<str:username>/limit-history/", AgencyLimitHistoryView.as_view(), name="admin-agency-limit-history"),
     path("agency/admins/<str:username>/set-limit/preview/", AgencySetLimitPreviewView.as_view(), name="admin-agency-limit-preview"),

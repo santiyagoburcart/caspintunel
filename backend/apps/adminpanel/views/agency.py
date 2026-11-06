@@ -598,3 +598,38 @@ class AgencyPanelAdminView(AdminAPIView):
         write_audit(action="agency.admin_deleted", staff=request.user, target=None,
                     detail={"username": username, "panel": panel.name})
         return Response({"ok": True, "message": f"Admin {username} deleted", "message_fa": f"ادمین {username} حذف شد"})
+
+
+class AgencyStoreView(AdminAPIView):
+    """v1.43 (multi-tenant Phase 2, D5) «فروشگاه» on an agency admin's page — our staff only (never on a store's domain):
+    GET the admin's store (or null), POST {name} opens it (draft), PATCH {name, status, export_allowed}. Domains (Phase 3)
+    and the bot (Phase 6) come later; without an active domain the store is not reachable."""
+
+    perms_map = {"GET": VIEW, "POST": MANAGE, "PATCH": MANAGE}
+
+    def get(self, request, username):
+        from apps.tenancy import stores
+
+        return Response({"store": stores.row(stores.store_of(username))})
+
+    def post(self, request, username):
+        from apps.tenancy import stores
+
+        try:
+            t = stores.enable(username, name=str(request.data.get("name") or ""), staff=request.user)
+        except stores.StoreError as exc:
+            return Response({"detail": exc.en, "detail_fa": exc.fa}, status=exc.status)
+        return Response({"store": stores.row(t), "message": f"Store {t.name} opened (draft)",
+                         "message_fa": f"فروشگاه {t.name} ساخته شد (پیش‌نویس)"}, status=201)
+
+    def patch(self, request, username):
+        from apps.tenancy import stores
+
+        t = stores.store_of(username)
+        if t is None:
+            return Response({"detail": "this admin has no store", "detail_fa": "این ادمین فروشگاه ندارد"}, status=404)
+        try:
+            t = stores.update(t, request.data or {}, staff=request.user)
+        except stores.StoreError as exc:
+            return Response({"detail": exc.en, "detail_fa": exc.fa}, status=exc.status)
+        return Response({"store": stores.row(t), "message": "Store saved", "message_fa": "فروشگاه ذخیره شد"})

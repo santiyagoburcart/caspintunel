@@ -47,7 +47,10 @@ def backfill(apps=None) -> dict[str, int]:
     t = ensure_default(apps)
     done = {}
     for label in registry.TENANT + [m for m in registry.NULLABLE if m in registry.BACKFILL_FILTER]:
-        model = apps.get_model(*label.split("."))
+        try:
+            model = apps.get_model(*label.split("."))
+        except LookupError:                 # a migration's historical state predates this table (added later)
+            continue
         with unscoped():                    # the live (scoped) models: see the rows that have no tenant yet
             qs = model.objects.filter(tenant__isnull=True, **registry.BACKFILL_FILTER.get(label, {}))
             done[label] = qs.update(tenant_id=t.pk)

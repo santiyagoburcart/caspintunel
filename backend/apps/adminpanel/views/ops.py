@@ -276,6 +276,7 @@ class ServiceListViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
 
 class DashboardView(AdminAPIView):
     perms_map = {"GET": ["monitoring.view"]}
+    store_ok = True                      # v1.43: a store sees its own services; server health stays ours
 
     @extend_schema(summary="Panel overview counters", responses=dict)
     def get(self, request):
@@ -292,6 +293,12 @@ class DashboardView(AdminAPIView):
         checks = list(HealthCheck.objects.filter(id__in=list(latest_ids)))
         res = ResourceStat.objects.order_by("-sampled_at").first()
 
+        from apps.settings_app.branding import is_store
+
+        if is_store():
+            return Response({"services": {"total": sum(by_status.values()), "by_status": by_status,
+                                          "online_now": Service.objects.filter(online_at__gte=since).count()},
+                             "health": None, "resources": None, "store": True})
         return Response({
             "services": {
                 "total": sum(by_status.values()),

@@ -147,6 +147,10 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   gunicorn a tenant-table query outside a request (thread, after the response) raises `NoTenant` — copy the context
   (`contextvars.copy_context().run`) into threads that query. `unscoped()` only in files listed in
   `context.ALLOWED_UNSCOPED` (test-enforced). The isolation sweep (`apps/tenancy/tests/test_isolation.py`) is a release gate.
+  **Store mode (v1.43)**: on a store's domain an admin view answers only with `store_ok = True` (default-deny, Super Admin too) —
+  add it only to views whose data is tenant-scoped and safe for a reseller; platform paths are 404 there
+  (`tenancy/middleware.STORE_BLOCKED_PREFIXES`). Customer-facing branding = `settings_app.branding.branding()` (never
+  `SiteConfig.load()` for what a customer sees); a store-settable key goes into `TENANT_KEYS`.
 - The rejected Liquid Glass refresh is archived at tag `archive/ui-refresh-liquid-glass` — don't copy from it.
 
 ## Gotchas (learned the hard way)

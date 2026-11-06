@@ -120,9 +120,9 @@ def quiet_until(now=None):
 
 
 def site_url() -> str:
-    from apps.settings_app.models import SiteConfig
+    from apps.settings_app.branding import branding
 
-    d = (SiteConfig.load().site_domain or "").strip().strip("/")
+    d = (branding().site_domain or "").strip().strip("/")
     return f"https://{d}" if d else ""
 
 

@@ -1307,3 +1307,29 @@ sequenceDiagram
     Note over Q,DB: tenant_id is NOT NULL on tenant tables · usernames / codes / slugs are unique per store
 ```
 
+
+## 16b. Our staff open a reseller store · store mode (multi-tenant Phase 2, v1.43)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor S as Our staff (agency.manage)
+    participant API as web admin/agency/panel-admins/<u>/store/
+    participant ST as tenancy.stores
+    participant DB as MySQL
+    actor R as Visitor on store.example
+    participant M as TenantMiddleware
+    S->>API: POST {name} (Agency → admin → «فروشگاه»)
+    API->>ST: enable(username)
+    ST->>DB: tenant (draft) · tenant_branding (name) · copy of our pages · audit store.enabled
+    S->>API: PATCH {status: active}
+    ST->>DB: status · audit store.updated · host cache cleared
+    R->>M: GET store.example/api/v1/config/
+    alt active store with an active domain
+        M->>M: context = that store
+        M-->>R: the store's branding / theme / pages
+    else draft / suspended / closed or no domain
+        M-->>R: 404 unknown site
+    end
+    Note over M: on a store's domain: platform paths 404 · admin views without store_ok → 403 (store mode)
+```

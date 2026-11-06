@@ -34,7 +34,7 @@ from apps.orders.services import (
 from apps.panel.exceptions import PanelError
 from apps.panel.services import revoke_subscription
 from apps.plans.models import Plan, PlanType
-from apps.settings_app.models import SiteConfig
+from apps.settings_app.branding import branding
 
 from ..accounts import change_password_via_bot, ensure_bot_user, handle_contact
 from ..config import get_bot_config
@@ -340,7 +340,7 @@ def _register(bot: telebot.TeleBot):
             return
         user, created, password = _user(msg.from_user)
         clear_state(msg.from_user.id)
-        text = tr(user, "welcome", site=html.escape(SiteConfig.load().site_name_fa))
+        text = tr(user, "welcome", site=html.escape(branding().site_name_fa))
         if user is None:
             # phone first: only the welcome + the share button; the account is made on contact share
             if payload.startswith("ref_"):

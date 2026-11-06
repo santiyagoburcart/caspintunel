@@ -44,7 +44,8 @@ def cached_public(request, name: str, build: Callable[[], Response]) -> Response
     """Return `build()`'s Response, cached per host + full path for 60s.
     Only 200 responses are cached."""
     try:
-        key = f"public:{_version()}:{name}:{request.get_host()}:{request.get_full_path()}"
+        tid = getattr(request, "tenant_id", "")           # v1.43: per store too (a host can move to another store)
+        key = f"public:{_version()}:{name}:{tid}:{request.get_host()}:{request.get_full_path()}"
         hit = cache.get(key)
     except Exception as exc:  # noqa: BLE001
         log.warning("public cache read failed: %s", exc)

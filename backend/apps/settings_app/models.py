@@ -106,6 +106,74 @@ class Theme(models.Model):
             Theme.objects.exclude(pk=self.pk).filter(is_active=True).update(is_active=False)
 
 
+def _tenant_upload(instance, filename):
+    import os
+    import secrets
+
+    ext = os.path.splitext(filename or "")[1].lower()[:8]
+    return f"tenants/{instance.tenant_id}/branding/{secrets.token_hex(8)}{ext}"
+
+
+class TenantBranding(models.Model):
+    """v1.43 (multi-tenant Phase 2): a reseller store's branding — the same customer-facing fields as `SiteConfig`.
+    The default tenant (caspintunel.com) keeps `SiteConfig`; `settings_app.branding.branding()` returns the right one
+    for the current tenant, so callers never choose."""
+
+    tenant = tenant_fk()
+    site_name_fa = models.CharField(max_length=120, default="")
+    site_name_en = models.CharField(max_length=120, default="")
+    logo = models.FileField(upload_to=_tenant_upload, null=True, blank=True)
+    favicon = models.FileField(upload_to=_tenant_upload, null=True, blank=True)
+    bot_description_fa = models.TextField(blank=True, default="")
+    bot_description_en = models.TextField(blank=True, default="")
+    support_telegram = models.CharField(max_length=64, blank=True, default="")
+    bot_support_telegram = models.CharField(max_length=255, blank=True, default="")
+    bot_support_text_fa = models.TextField(blank=True, default="")
+    bot_support_text_en = models.TextField(blank=True, default="")
+    qr_background = models.CharField(max_length=32, default="caspian-light")
+    qr_background_custom = models.FileField(upload_to=_tenant_upload, null=True, blank=True)
+    meta_description = models.TextField(blank=True, default="")
+    # the store's active theme: a built-in one (tenant NULL) or one of its own; NULL = the first built-in
+    theme = models.ForeignKey("settings_app.Theme", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "tenant_branding"
+        constraints = [models.UniqueConstraint(fields=["tenant"], name="tenant_branding_one")]
+
+    def __str__(self) -> str:
+        return f"branding of tenant {self.tenant_id}"
+
+    @property
+    def site_domain(self) -> str:
+        """The store's site host (an active TenantDomain), like SiteConfig.site_domain."""
+        from apps.tenancy.models import TenantDomain
+
+        return (TenantDomain.objects.filter(tenant_id=self.tenant_id, state=TenantDomain.ACTIVE)
+                .exclude(role=TenantDomain.ADMIN).values_list("host", flat=True).first() or "")
+
+
+class TenantSetting(models.Model):
+    """v1.43: a store's own value for one of `settings_app.branding.TENANT_KEYS` (wins over the platform `Setting` in
+    `get_setting` while that store is the current tenant)."""
+
+    tenant = tenant_fk()
+    key = models.CharField(max_length=100)
+    value = models.TextField(blank=True, default="")
+    value_type = models.CharField(max_length=10, default="str")
+
+    class Meta:
+        db_table = "tenant_setting"
+        constraints = [models.UniqueConstraint(fields=["tenant", "key"], name="tenant_setting_key")]
+
+    def __str__(self) -> str:
+        return f"{self.tenant_id}:{self.key}"
+
+    @property
+    def typed(self):
+        return Setting(key=self.key, value=self.value, value_type=self.value_type).typed
+
+
 class Page(models.Model):
     """CMS page — rules / tutorial / faq (data-model · Module 8 · `page`)."""
 

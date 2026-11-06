@@ -260,9 +260,9 @@ def close(case, staff, outcome, *, note="") -> FollowUpCase:
 
 
 def render(template, user, service=None) -> tuple[str, str]:
-    from apps.settings_app.models import SiteConfig
+    from apps.settings_app.branding import branding
 
-    cfg = SiteConfig.load()
+    cfg = branding()
     domain = (cfg.site_domain or "").strip().strip("/")
     site = f"https://{domain}" if domain else ""
     guide = setting("crm_guide_url") or (f"{site}/help" if site else "")

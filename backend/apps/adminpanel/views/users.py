@@ -33,6 +33,7 @@ class UserAdminViewSet(AdminViewSet):
     queryset = User.objects.none()
     perms_map = {"GET": ["users.view"], "*": ["users.manage"]}
     action_perms = {"delete_user": ["users.delete"]}
+    store_ok = True                      # v1.43: a store's own customers (tenant-scoped)
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["is_active", "source", "language", "is_legacy", "email_verified"]
     search_fields = ["username", "name", "email", "phone", "referral_code", "telegram_username"]

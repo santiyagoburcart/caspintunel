@@ -8,6 +8,14 @@ from .models import Setting
 
 def get_setting(key: str, default: Any = None) -> Any:
     try:
+        from .branding import store_setting
+
+        found, value = store_setting(key)              # v1.43: a reseller store's own value (TENANT_KEYS only)
+        if found:
+            return value
+    except Exception:  # noqa: BLE001
+        pass
+    try:
         return Setting.objects.get(key=key).typed
     except Setting.DoesNotExist:
         return default
