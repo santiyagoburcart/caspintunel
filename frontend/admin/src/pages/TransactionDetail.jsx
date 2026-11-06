@@ -9,6 +9,7 @@ import { useAuth } from '../lib/auth'
 import { T as TX_T, useTxDelete } from './Transactions'
 import RoundedReason from '../components/RoundedReason'
 import { ManualTag } from '../components/ManualInvoice'
+import AccountNameInput, { nameOk } from '../components/AccountNameInput'
 
 /* ------------------------------------------------------------------ *
  *  Transaction Detail — direct port of the Stitch screens
@@ -102,7 +103,7 @@ export default function TransactionDetail() {
   const [busy, setBusy] = useState(false)
   const [sel, setSel] = useState(null)          // status picked in the switcher
   const [lightbox, setLightbox] = useState(false)
-  const { staff } = useAuth()
+  const { staff, can } = useAuth()
   const superadmin = !!staff?.is_superadmin
 
   const load = useCallback(async () => {
@@ -246,6 +247,10 @@ export default function TransactionDetail() {
           <button type="button" className="txd-restore" onClick={() => restore(r)}>{xs.restore}</button>
         )}
       </div>
+
+      {r.order_status === 'paid' && r.provision_failed_at && (
+        <ProvisionFailed r={r} lang={lang} canRetry={can('payment.approve')} onDone={load} />
+      )}
 
       <div className="txd-split">
         {/* ---- receipt column ---- */}
@@ -644,4 +649,65 @@ const CSS = `
   margin-bottom: 18px; padding: 5px 12px; border-radius: 999px;
   background: rgba(0,0,0,.7); color: #cbd5e1; font-size: 11px;
 }
+`
+
+// v1.42.1 «ساخت ناموفق»: paid, but PasarGuard refused the account — its message, a corrected name, «تلاش دوباره»
+const PF = {
+  fa: { title: 'ساخت ناموفق', desc: 'پرداخت تأیید شده ولی PasarGuard ساخت اکانت را رد کرد. نام اکانت را اصلاح کنید و «تلاش دوباره» را بزنید. مشتری پیام «در حال آماده‌سازی» دیده است.',
+    error: 'پیام PasarGuard', name: 'نام اکانت', retry: 'تلاش دوباره', since: 'از' },
+  en: { title: 'Provisioning failed', desc: 'The payment is approved but PasarGuard refused to create the account. Fix the account name and press “Retry”. The customer was told the service is being prepared.',
+    error: 'PasarGuard said', name: 'Account name', retry: 'Retry', since: 'since' },
+}
+
+function ProvisionFailed({ r, lang, canRetry, onDone }) {
+  const s = PF[lang] || PF.fa
+  const isNew = r.order_type === 'new'
+  const [name, setName] = useState(r.account_name || '')
+  const [busy, setBusy] = useState(false)
+  const [nameErr, setNameErr] = useState('')
+  const retry = async () => {
+    setBusy(true); setNameErr('')
+    try {
+      const changed = isNew && name.trim() && name.trim() !== (r.account_name || '')
+      await api.post(`/admin/transactions/${r.id}/retry-provision/`, changed ? { account_name: name.trim() } : {})
+      onDone()
+    } catch (e) {
+      const d = e?.response?.data
+      if (d?.code === 'account_name' || d?.detail_fa) setNameErr(lang === 'fa' ? d.detail_fa || d.detail : d.detail)
+    } finally { setBusy(false) }
+  }
+  return (
+    <section className="txd-pf" role="alert" data-testid="provision-failed">
+      <style>{PF_CSS}</style>
+      <div className="txd-pf-head"><span className="txd-pf-pill">{s.title}</span>
+        <small>{s.since} {jalali(r.provision_failed_at, true, lang)}</small></div>
+      <p className="txd-pf-desc">{s.desc}</p>
+      <div className="txd-pf-err"><b>{s.error}:</b> <bdi dir="ltr">{r.provision_error}</bdi></div>
+      {canRetry && (
+        <div className="txd-pf-act">
+          {isNew && (
+            <AccountNameInput label={s.name} value={name} onChange={(v) => { setName(v); setNameErr('') }} lang={lang}
+              serverError={nameErr} testid="pf-account" />
+          )}
+          <button type="button" className="txd-btn txd-pf-btn" disabled={busy || (isNew && !nameOk(name))} onClick={retry}
+            data-testid="pf-retry">
+            {busy ? <Spinner /> : s.retry}
+          </button>
+        </div>
+      )}
+    </section>
+  )
+}
+
+const PF_CSS = `
+.txd-pf { margin: 0 0 16px; padding: 14px 16px; border-radius: 16px; display: flex; flex-direction: column; gap: 10px;
+  border: 1px solid color-mix(in srgb, var(--c-danger) 45%, transparent); background: color-mix(in srgb, var(--c-danger) 7%, var(--c-bg)); }
+.txd-pf-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.txd-pf-head small { color: var(--c-text-muted); font-size: 12px; }
+.txd-pf-pill { padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 800; color: #fff; background: var(--c-danger); }
+.txd-pf-desc { margin: 0; font-size: 13px; line-height: 1.8; color: var(--c-text); }
+.txd-pf-err { font-size: 12.5px; line-height: 1.7; color: var(--c-danger-fg); word-break: break-word; }
+.txd-pf-act { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: start; }
+.txd-pf-btn { min-height: 44px; padding: 0 18px; background: var(--c-primary); color: #fff; border-radius: 12px; font-weight: 700; }
+@media (max-width: 767px) { .txd-pf-act { grid-template-columns: minmax(0, 1fr); } }
 `

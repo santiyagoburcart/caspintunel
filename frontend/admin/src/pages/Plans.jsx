@@ -102,7 +102,7 @@ const blank = {
   category_fa: '', category_en: '',
   panel: '', price: 0, discount_percent: 0, data_limit_gb: '', duration_days: '',
   device_limit: '', min_gb: '', max_gb: '', price_per_gb: '', is_active: true,
-  group_ids: [], renewal_mode: 'reset', carry_over_data: null,
+  group_ids: [], renewal_mode: 'reset', carry_over_data: null, renewable_when_inactive: false,
 }
 
 function toForm(r) {
@@ -120,6 +120,7 @@ function toForm(r) {
     group_ids: Array.isArray(r.group_ids) ? r.group_ids : [],
     renewal_mode: r.renewal_mode || 'reset',
     carry_over_data: r.carry_over_data ?? null,
+    renewable_when_inactive: !!r.renewable_when_inactive,
   }
 }
 
@@ -181,6 +182,7 @@ export default function Plans() {
       duration_days: numOrNull(edit.duration_days),
       device_limit: numOrNull(edit.device_limit),
       is_active: edit.is_active,
+      renewable_when_inactive: !!edit.renewable_when_inactive,
       group_ids: edit.group_ids,
       data_limit: isVolume ? null : (edit.data_limit_gb === '' ? null : Math.round(Number(edit.data_limit_gb) * GB)),
       min_gb: isVolume ? numOrNull(edit.min_gb) : null,
@@ -368,6 +370,15 @@ export default function Plans() {
               label={lang === 'fa' ? 'فعال' : 'Active'} />
             {lang === 'fa' ? 'فعال' : 'Active'}
           </label>
+          {/* v1.42.1: a retired plan stays the one-tap renewal of services already on it only when ticked */}
+          {!edit.is_active && (
+            <label className="flex items-center gap-2 text-sm" data-testid="plan-renewable-inactive">
+              <Toggle checked={!!edit.renewable_when_inactive} onChange={(v) => setEdit({ ...edit, renewable_when_inactive: v })}
+                label={lang === 'fa' ? 'قابل تمدید با وجود غیرفعال بودن' : 'Renewable while inactive'} />
+              <span>{lang === 'fa' ? 'قابل تمدید با وجود غیرفعال بودن (فقط برای سرویس‌هایی که همین پلن را دارند)'
+                : 'Renewable while inactive (only for services already on this plan)'}</span>
+            </label>
+          )}
 
           <div className="sm:col-span-2 pl-renewal">
             <span className="label">{s.renewal_mode_label}</span>

@@ -67,14 +67,26 @@ class ServiceViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.
         """How this service can be renewed — always on the SAME PasarGuard account and
         subscription link. `plan` = its own plan when that can be bought again (one-tap
         renewal); `plans` = every plan it may switch / upgrade to. A service without a
-        usable plan (e.g. linked manually by staff) has `plan: null, needs_plan: true`."""
-        from apps.orders.services import RenewalWaiting, pending_renewal_info, renewable_plan, renewal_plans, waiting_renewal
+        usable plan (e.g. linked manually by staff) has `plan: null, needs_plan: true`. v1.42.1: custom-volume plans
+        renew too — `last_gb` pre-fills the volume (the last one bought for this service, else its current volume)."""
+        from apps.orders.services import (
+            RenewalWaiting,
+            last_renewal_gb,
+            pending_renewal_info,
+            renewable_plan,
+            renewal_plans,
+            waiting_renewal,
+        )
         from apps.plans.serializers import PlanSerializer
 
         service = self.get_object()
         plan = renewable_plan(service)
         plans = list(renewal_plans(service))
+        if plan is not None and all(p.pk != plan.pk for p in plans):
+            plans.insert(0, plan)                    # a retired plan staff marked renewable: listed for this service
         needs_plan = plan is None
+        custom = next((p for p in ([plan] if plan else []) + plans if p.type == "custom_volume"), None)
+        last_gb = last_renewal_gb(service, custom) if custom else None
         message = ""
         waiting = waiting_renewal(service)
         if waiting is not None:
@@ -96,6 +108,7 @@ class ServiceViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.
             "pending_renewal": None,
             "service": {"id": service.id, "panel_username": service.panel_username},
             "message": message,
+            "last_gb": last_gb,
         })
 
     @action(detail=True, methods=["post"], url_path="renew")
@@ -112,7 +125,8 @@ class ServiceViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.
         service = self.get_object()
         wanted = request.data.get("plan")
         if wanted:
-            plan = renewal_plans(service).filter(pk=wanted).first()
+            plan = renewal_plans(service).filter(pk=wanted).first() or (
+                renewable_plan(service) if str(getattr(renewable_plan(service), "pk", "")) == str(wanted) else None)
             if plan is None:
                 return Response({"detail": "این پلن برای تمدید این سرویس موجود نیست"}, status=400)
         else:
@@ -121,9 +135,10 @@ class ServiceViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.
                 return Response({"detail": "یک پلن برای تمدید انتخاب کنید", "code": "needs_plan"}, status=400)
 
         try:
+            gb = request.data.get("custom_volume_gb")
             order = create_order(
                 user=request.user, plan_id=plan.id, order_type=OrderType.RENEW,
-                service_id=service.id, source="site",
+                service_id=service.id, source="site", custom_volume_gb=int(gb) if str(gb or "").isdigit() else None,
             )
         except RenewalWaiting as exc:
             lang = "en" if getattr(request.user, "language", "fa") == "en" else "fa"

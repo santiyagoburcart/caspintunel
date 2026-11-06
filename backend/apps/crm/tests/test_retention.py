@@ -211,7 +211,7 @@ def test_discount_code_issue_and_checkout(panel, plan):
     code = r.json()["code"]
     assert c.post(f"/api/v1/admin/crm/cases/{case.id}/discount/", {}, format="json").status_code == 409     # one per customer
     with pytest.raises(OrderError):
-        create_order(user=customer("intruder"), plan_id=plan.id, order_type="new", requested_account_name="x1", discount_code=code)
+        create_order(user=customer("intruder"), plan_id=plan.id, order_type="new", requested_account_name="x1acc", discount_code=code)
     o = create_order(user=u, plan_id=plan.id, order_type="renew", service_id=s.id, discount_code=code.lower())
     assert o.amount == Decimal(plan.final_price) * Decimal("0.8") and o.discount_amount == Decimal(plan.final_price) * Decimal("0.2")
     assert DiscountCode.objects.get(code=code).order == o

@@ -72,6 +72,7 @@ export const T = {
     type_col: 'نوع', src_col: 'منبع',
     type_new: 'خرید جدید', type_renew: 'تمدید', type_addon_volume: 'افزودن حجم',
     not_delivered: 'پرداخت تأییدشده ولی سرویس تحویل نشده — به‌صورت خودکار تلاش مجدد می‌شود',
+    build_failed: 'ساخت ناموفق',
     details: 'جزئیات',
     tx_col: 'شماره تراکنش', search: 'جستجو: TX-000123، کاربر، اکانت…', show_deleted: 'نمایش حذف‌شده‌ها', csv: 'خروجی CSV',
     del: 'حذف', restore: 'بازگردانی', deleted: 'حذف‌شده', sel_n: '{n} انتخاب‌شده', del_sel: 'حذف انتخاب‌شده‌ها', restore_sel: 'بازگردانی انتخاب‌شده‌ها',
@@ -98,6 +99,7 @@ export const T = {
     type_col: 'Type', src_col: 'Source',
     type_new: 'New purchase', type_renew: 'Renewal', type_addon_volume: 'Add-on volume',
     not_delivered: 'Payment approved but service not delivered — auto-retrying',
+    build_failed: 'Provisioning failed',
     details: 'Details',
     tx_col: 'Transaction', search: 'Search: TX-000123, user, account…', show_deleted: 'Show deleted', csv: 'Export CSV',
     del: 'Delete', restore: 'Restore', deleted: 'Deleted', sel_n: '{n} selected', del_sel: 'Delete selected', restore_sel: 'Restore selected',
@@ -275,6 +277,7 @@ function TxTable({ s, t, lang }) {
   const [rows, setRows] = useState(null)
   const [status, setStatus] = useState('')
   const [manual, setManual] = useState(false)
+  const [failedOnly, setFailedOnly] = useState(() => new URLSearchParams(window.location.search).get('failed') === '1')
   const [range, setRange] = useState({ from: '', to: '' })
   const [dateOpen, setDateOpen] = useState(false)
   const [bankOpen, setBankOpen] = useState(false)
@@ -291,11 +294,12 @@ function TxTable({ s, t, lang }) {
     if (search) p.set('search', search)
     if (superadmin && showDeleted) p.set('deleted', '1')
     if (manual) p.set('manual', '1')
+    if (failedOnly) p.set('provision_failed', '1')
     api.get(`/admin/transactions/?${p}`)
       .then((r) => setRows(r.data.results ?? r.data))
       .catch(() => { setRows([]); setErr(lang === 'fa' ? 'خطا در دریافت' : 'Failed to load') })
   }
-  useEffect(() => { load() }, [status, range.from, range.to, search, showDeleted, version, manual])
+  useEffect(() => { load() }, [status, range.from, range.to, search, showDeleted, version, manual, failedOnly])
 
   const exportCsv = async () => {
     const p = new URLSearchParams({ export: 'csv', lang })
@@ -350,6 +354,7 @@ function TxTable({ s, t, lang }) {
             {f.filter_banks}{bankActive > 0 && <span className="bfs-count-badge">{digits(bankActive, lang)}</span>}
           </button>
           <button type="button" className={'tx-tool-btn' + (manual ? ' tx-filter-on' : '')} aria-pressed={manual} onClick={() => setManual(!manual)} data-testid="tx-manual">{lang === 'fa' ? 'دستی' : 'Manual'}</button>
+          <button type="button" className={'tx-tool-btn' + (failedOnly ? ' tx-filter-on' : '')} aria-pressed={failedOnly} onClick={() => setFailedOnly(!failedOnly)} data-testid="tx-failed">{s.build_failed}</button>
           <button type="button" className="tx-tool-btn" onClick={exportCsv}>{s.csv}</button>
         </div>
       </div>
@@ -397,13 +402,15 @@ function TxTable({ s, t, lang }) {
               {filtered.map((r) => {
                 const note = r.status === 'rejected' && r.reject_reason
                   ? `${s.reason}: ${r.reject_reason}`
-                  : (r.status === 'approved' && r.order_status === 'paid' ? `⚠ ${s.not_delivered}` : null)
+                  : (r.status === 'approved' && r.order_status === 'paid'
+                    ? (r.provision_failed_at ? `⛔ ${s.build_failed}: ${r.provision_error}` : `⚠ ${s.not_delivered}`) : null)
                 return (
                   <Fragment key={r.id}>
                     <tr className={'tx-row' + (note ? ' tx-row--note' : '') + (r.voided ? ' tx-row--void' : '')}>
                       {superadmin && <td className="tx-c"><input type="checkbox" checked={sel.has(r.id)} aria-label={r.tx_number}
                         onChange={(e) => setSel((old) => { const n = new Set(old); e.target.checked ? n.add(r.id) : n.delete(r.id); return n })} /></td>}
-                      <td className="tx-mono tx-num" data-label={s.tx_col}>{r.tx_number}<ManualTag m={r.manual} lang={lang} />{r.voided && <Pill tone="danger">{s.deleted}</Pill>}</td>
+                      <td className="tx-mono tx-num" data-label={s.tx_col}>{r.tx_number}<ManualTag m={r.manual} lang={lang} />{r.voided && <Pill tone="danger">{s.deleted}</Pill>}
+                        {r.order_status === 'paid' && r.provision_failed_at && <Pill tone="danger">{s.build_failed}</Pill>}</td>
                       <td className="tx-amt" data-label={s.amount}>{toman(r.amount, lang)}</td>
                       <td data-label={s.user}>
                         <span className="tx-user">{r.user}</span>

@@ -8,6 +8,8 @@ import { AuthImage } from '../components/AuthImage'
 import { RenewWaiting } from '../components/RenewWaiting'
 import { useToast } from '../components/Toast'
 import ReceiptDrop, { uploadPct } from '../components/ReceiptDrop'
+import AccountNameInput, { nameOk } from '../components/AccountNameInput'
+import { PlanCard, VolumeCard, STORE_CSS } from './Store'
 
 // The pending order the customer is paying for survives reloads and tab
 // switches (e.g. leaving for the bank app): its id sits in the URL
@@ -62,6 +64,8 @@ export default function Checkout() {
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   const [newName, setNewName] = useState('')
+  const [nameErr, setNameErr] = useState('')        // the server's reason for the account name (v1.42.1)
+  const gbTouched = useRef(!!preGb)
   const [restoring, setRestoring] = useState(false)
   const [changingPlan, setChangingPlan] = useState(sp.get('pick') === '1')
   // renewal: the plans this service may renew with (same account) + whether it has none of its own
@@ -155,7 +159,9 @@ export default function Checkout() {
     return () => { clearInterval(id); clearInterval(tick) }
   }, [live, order?.id])
 
-  const plan = useMemo(() => plans.find((p) => String(p.id) === String(chosenPlan)), [plans, chosenPlan])
+  // a renewal may use the service's own retired plan (staff marked it renewable): look in renew-info too
+  const plan = useMemo(() => [...(renewId ? [renewInfo?.plan, ...(renewInfo?.plans || [])] : []), ...plans]
+    .filter(Boolean).find((p) => String(p.id) === String(chosenPlan)), [plans, chosenPlan, renewInfo, renewId])
 
   // a single active card needs no choice; with several, the customer must pick one
   useEffect(() => {
@@ -165,8 +171,11 @@ export default function Checkout() {
 
   // default the custom-volume value to the plan's minimum once it's known
   useEffect(() => {
-    if (plan?.type === 'custom_volume' && !customGb) setCustomGb(String(plan.min_gb || 60))
-  }, [plan])
+    if (plan?.type !== 'custom_volume') return
+    // v1.42.1 renewal of a custom-volume service: the last volume bought for it is pre-filled
+    if (renewId && renewInfo?.last_gb && !gbTouched.current) setCustomGb(String(renewInfo.last_gb))
+    else if (!customGb) setCustomGb(String(plan.min_gb || 60))
+  }, [plan, renewInfo])
 
   // service delivery info (QR + subscription link) once the order completes
   useEffect(() => {
@@ -175,8 +184,9 @@ export default function Checkout() {
     }
   }, [order?.status])
 
+  const isCustom = plan?.type === 'custom_volume'
   const purchaseBody = () => (renewId
-    ? { plan: Number(chosenPlan), type: 'renew', service: Number(renewId) }
+    ? { plan: Number(chosenPlan), type: 'renew', service: Number(renewId), custom_volume_gb: isCustom && customGb ? Number(customGb) : undefined }
     : { plan: Number(chosenPlan), type: 'new', custom_volume_gb: customGb ? Number(customGb) : undefined })
   // a quote belongs to one purchase: changing the plan / volume asks again
   useEffect(() => { setQuote(null); setCodeErr('') }, [chosenPlan, customGb, renewId])
@@ -208,7 +218,9 @@ export default function Checkout() {
     } catch (e2) {
       const dmsg = e2?.response?.data?.discount_code?.[0]
       if (dmsg) { setCodeErr(dmsg); setQuote(null); setShowCode(true) }
-      const msg = dmsg || apiError(e2, t('order_failed')); setErr(dmsg ? '' : msg); toast.error(msg)
+      const nmsg = e2?.response?.data?.requested_account_name?.[0]
+      if (nmsg) setNameErr(nmsg)
+      const msg = dmsg || nmsg || apiError(e2, t('order_failed')); setErr(dmsg || nmsg ? '' : msg); toast.error(msg)
       // a renewal of this service was paid meanwhile (another tab / the bot): show it
       if (renewId && String(e2?.response?.data?.code || '').includes('renewal_waiting')) {
         api.get(`/services/${renewId}/renew-info/`).then((r) => setRenewInfo(r.data)).catch(() => {})
@@ -270,7 +282,7 @@ export default function Checkout() {
     const pickList = renewId ? (renewInfo?.plans || []) : plans
     const showPicker = !plan || changingPlan
     const accountLabel = renewInfo?.service?.panel_username || renewingService?.panel_username
-    const volumeText = plan?.type === 'custom_volume' ? t('selectable')
+    const volumeText = plan?.type === 'custom_volume' ? (renewId && customGb ? `${customGb} GB` : t('selectable'))
       : plan?.data_limit ? `${gb(plan.data_limit)} GB` : t('unlimited')
     const durationText = plan?.duration_days ? `${plan.duration_days} ${t('days')}` : t('no_expiry')
 
@@ -307,14 +319,25 @@ export default function Checkout() {
         )}
         {renewId && renewInfo && !renewInfo.can_renew && !renewInfo.pending_renewal && <Alert>{t('renew_unavailable')}</Alert>}
 
-        {showPicker ? (
-          <Field label={renewId ? t('renew_pick_plan') : t('store')}>
+        {showPicker && renewId ? (
+          /* v1.42.1: «تغییر پلن / ارتقا» = the purchase page's plan cards (custom volume included), not a select */
+          <div className="ckt-pick" data-testid="renew-plans">
+            <style>{STORE_CSS + PICK_CSS}</style>
+            <div className="ckt-pick-l">{t('renew_pick_plan')}</div>
+            <div className="csp-store-grid">
+              {pickList.map((p) => (
+                <PlanCard key={p.id} p={p} lang={lang} t={t} sel={String(p.id) === String(chosenPlan)}
+                  onSelect={() => { setChosenPlan(String(p.id)); setChangingPlan(false) }} />
+              ))}
+            </div>
+          </div>
+        ) : showPicker ? (
+          <Field label={t('store')}>
             <select className="input" value={chosenPlan} data-testid="plan-select"
               onChange={(e) => { setChosenPlan(e.target.value); setChangingPlan(false) }}>
               <option value="">—</option>
               {pickList.map((p) => <option key={p.id} value={p.id}>
-                {((lang === 'fa' ? p.name_fa : p.name_en) || p.name_fa)
-                  + (renewId ? ` · ${toman(p.final_price, lang)}` : '')}
+                {(lang === 'fa' ? p.name_fa : p.name_en) || p.name_fa}
               </option>)}
             </select>
           </Field>
@@ -348,14 +371,21 @@ export default function Checkout() {
         )}
 
         {!renewId && (
-          <Field label={t('account_name')}>
-            <input className="input" dir="ltr" value={accountName}
-              onChange={(e) => setAccountName(e.target.value)} />
-          </Field>
+          <AccountNameInput label={t('account_name')} value={accountName} lang={lang} serverError={nameErr}
+            onChange={(v) => { setAccountName(v); setNameErr('') }} />
         )}
 
         {!renewId && plan?.type === 'custom_volume' && (
           <CustomVolumePicker plan={plan} value={customGb} onChange={setCustomGb} t={t} lang={lang} />
+        )}
+        {renewId && !showPicker && plan?.type === 'custom_volume' && (
+          <div data-testid="renew-volume">
+            <style>{STORE_CSS}</style>
+            <VolumeCard sel={plan} gb={Number(customGb) || plan.min_gb || 1} t={t} lang={lang}
+              setGb={(v) => { gbTouched.current = true; setCustomGb(String(v)) }}
+              price={Math.round((Number(plan.price || 0) + Number(plan.price_per_gb || 0) * (Number(customGb) || plan.min_gb || 1))
+                * (1 - Number(plan.discount_percent || 0) / 100))} />
+          </div>
         )}
 
         <div className="ckt-code">
@@ -387,7 +417,7 @@ export default function Checkout() {
         </div>
 
         <button className="btn-primary w-full"
-          disabled={busy || !chosenPlan || (!renewId && !accountName.trim())
+          disabled={busy || !chosenPlan || showPicker || (!renewId && !nameOk(accountName))
             || (plan?.type === 'custom_volume' && !customGb)}>
           {busy ? <Spinner /> : t('submit')}
         </button>
@@ -462,15 +492,18 @@ export default function Checkout() {
           e.preventDefault(); setBusy(true); setErr('')
           try {
             const { data } = await api.post(`/orders/${order.id}/account-name/`, { requested_account_name: newName.trim() })
-            showOrder(data); setNewName('')
-          } catch (e2) { setErr(apiError(e2)) } finally { setBusy(false) }
+            showOrder(data); setNewName(''); setNameErr('')
+          } catch (e2) {
+            const nmsg = e2?.response?.data?.requested_account_name?.[0]
+            if (nmsg) setNameErr(nmsg); else setErr(apiError(e2))
+          } finally { setBusy(false) }
         }}>
           <div className="ckt-state-ico" style={{ background: 'var(--c-warning)' }}>✎</div>
           <h2>{t('new_name_title')}</h2>
           <p>{t('new_name_hint', { n: order.requested_account_name })}</p>
-          <input className="input w-full" dir="ltr" required minLength={2} maxLength={64} pattern="[A-Za-z0-9_.\-]{2,64}"
-            aria-label={t('new_name_title')} value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="ali2" />
-          <button className="btn-primary w-full" disabled={busy || newName.trim().length < 2}>{busy ? <Spinner /> : t('new_name_save')}</button>
+          <AccountNameInput value={newName} lang={lang} testid="new-name" serverError={nameErr}
+            onChange={(v) => { setNewName(v); setNameErr('') }} />
+          <button className="btn-primary w-full" disabled={busy || !nameOk(newName)}>{busy ? <Spinner /> : t('new_name_save')}</button>
         </form>
       )}
 
@@ -479,8 +512,9 @@ export default function Checkout() {
         <div className="ckt-state">
           <div className="ckt-state-ico" style={{ background: 'var(--c-success)' }}>✓</div>
           <h2 style={{ color: 'var(--c-success)' }}>{t('pay_confirmed_title')}</h2>
-          <p>{t('pay_confirmed_preparing')}</p>
-          <Spinner />
+          {/* v1.42.1: the panel refused it and staff are on it — say so, never a broken service */}
+          <p data-testid={order.preparing ? 'preparing-support' : undefined}>{order.preparing ? t('preparing_support') : t('pay_confirmed_preparing')}</p>
+          {!order.preparing && <Spinner />}
           <div className="ckt-actions">
             <Link to="/" className="btn-primary">{t('go_dashboard')}</Link>
           </div>
@@ -770,4 +804,10 @@ const CHECKOUT_CSS = `
   .ckt-state img { width: 48px; height: 48px; }
   .ckt-state h2 { font-size: 16px; }
 }
+`
+
+const PICK_CSS = `
+.ckt-pick { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.ckt-pick-l { font-size: 13px; font-weight: 700; color: var(--c-text); }
+.ckt-pick .csp-store-grid { margin: 0; }
 `

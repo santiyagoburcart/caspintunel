@@ -258,7 +258,7 @@ Everything shipped since v1.6.0 (details in the session log):
 
 ## Current state & open items (keep this list current)
 - **Production server = Finland `46.62.192.189`** since 2026-10-21 (migrated from 66.245.203.63).
-- **Version** `VERSION` = 1.42.0 (2026-11-06; tagged releases `v<version>`; v1.4.0/v1.4.1 were tagged before the file was bumped); iPhone Shortcut has its own `mobile_shortcut/VERSION`.
+- **Version** `VERSION` = 1.42.1 (2026-11-06; tagged releases `v<version>`; v1.4.0/v1.4.1 were tagged before the file was bumped); iPhone Shortcut has its own `mobile_shortcut/VERSION`.
 - **Built since v1.15** (details: session log, `docs/roadmap.md`): ticketing, CRM, retention, analytics, discount codes, domain wizard + access modes, agency (portal, ledger, limit history, groups, group managers in the panel with `agency.gm.*` permissions, approvals incl. Telegram, invoices / payments / allocations, portal sections), Blu Bank deposits, rounded auto-approve, transaction numbers + void / restore, permanent delete + auto-purge, Telegram alerts + sound + Web Push (customers, staff, resellers), manual customer invoices, Tehran-day reporting.
 - **Server capacity (2026-11-04)**: 2 vCPU, 3.7 GiB RAM (~2.8 GiB used, ~1 GiB of the 2 GiB swap in use), disk 38 GB at 64 %; the host also runs three PasarGuard nodes + x-ui. Size the next phase (multi-tenant storefronts) with that in mind.
 - **Archived (not merged): the "Liquid Glass" UI refresh** — rejected 2026-10-10. Branch `ui-refresh` and tag
@@ -464,4 +464,18 @@ Everything shipped since v1.6.0 (details in the session log):
   `apps.tenancy.auth.TenantModelBackend` (scoped manager; `auth.W004` silenced). Strict mode on (`TENANCY_STRICT`, default true):
   web process + no tenant → `NoTenant`; background processes → default tenant. Tests: `test_release_c.py` (8) — strict / lenient /
   background, NOT NULL, same username / slug / code / tag in two stores with per-store sign-in, duplicates in one store → 400.
+- 2026-11-06 — **v1.42.1: account names, «ساخت ناموفق», Tehran time, renewal.** Incident: the bot accepted «sahar 1364», PasarGuard
+  422 after payment, order #125 stayed paid without a service (and the sync marked it «disabled»); fixed by hand (renamed
+  `sahar_1364`, provisioned, notified) — no other paid order was stuck. (1) `panel/account_names.py` = PasarGuard v5.6's username
+  rule (3–64, `A-Za-z0-9_.@-`, no two symbols in a row) + suggestion; every form (site / Mini App checkout + rename, bot with an
+  «استفاده از …» button, staff new service, manual invoice, retry, agency admin ≤32) checks while typing (`AccountNameInput`,
+  identical in both SPAs) and `create_order` re-checks before payment. Paid but refused → `Order.provision_error/failed_at`: one
+  staff Telegram alert with PasarGuard's message, customer «در حال آماده‌سازی، پشتیبانی پیگیری می‌کند», no retry loop; Transactions
+  shows «ساخت ناموفق» (badge, filter, tab count) and the detail page edits the name + «تلاش دوباره». The sync keeps a never-created
+  service of a paid order «در حال ساخت». (2) Staff date / time input is Tehran time (manual invoice 12:22 today was read as UTC →
+  "future"), 5 min skew, Persian error; ledger / agency "today" = Tehran. (3) Renewal: custom-volume plans renew (CT-12 «پلن تمدید
+  ندارد» = its plan was custom volume, excluded) with the last volume pre-filled and the bought GB applied
+  (`ScheduledRenewal.data_limit`); «تغییر پلن / ارتقا» = plan cards (site / Mini App), bot GB step; retired plans renew only with
+  `Plan.renewable_when_inactive`; migration `panel.0007` sets a plan from the last paid order (0 services had none). Tests:
+  `orders/tests/test_v1421_fixes.py` (26).
 - **Next:** new items to be agreed with the owner.

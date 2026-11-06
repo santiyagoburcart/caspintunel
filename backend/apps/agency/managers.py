@@ -832,7 +832,9 @@ def admin_users(m: GroupManager, username: str, *, search: str = "", status: str
 
 # ------------------------------------------------------------------ staff: approvals
 def _day(r: VolumeRequest) -> date:
-    return timezone.localdate(r.created_at)
+    from apps.common.jalali import TZ
+
+    return timezone.localdate(r.created_at, TZ)          # the Tehran day of the request
 
 
 def request_row(r: VolumeRequest) -> dict:

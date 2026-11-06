@@ -685,7 +685,7 @@ def _ledger_payments(p: AgencyPayment, paid: Decimal, by: str) -> dict[str, Ledg
     for n in names:
         if per[n] > 0:
             out[n] = LedgerEntry.objects.create(admin_username=n, kind=LedgerEntry.KIND_PAYMENT, amount=per[n],
-                                                date=timezone.localdate(), method="card",
+                                                date=_ledger_today(), method="card",
                                                 note=f"agency payment {p.number}"[:255], created_by=by[:150])
     return out
 
@@ -1095,3 +1095,10 @@ def pay_all(manager: GroupManager | None, usernames: list[str], expected=None, *
     write_audit(action="agency.payment.pay_all", staff=f"agency:{payer}", target=p,
                 detail={"total": str(p.amount), "admins": [a["admin"] for a in d["admins"] if a["total"] > 0]})
     return p
+
+
+def _ledger_today():
+    """The ledger date of a payment entry = today in Tehran (ledger.today)."""
+    from . import ledger
+
+    return ledger.today()

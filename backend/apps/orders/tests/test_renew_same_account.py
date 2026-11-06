@@ -112,10 +112,10 @@ def test_renew_with_the_same_plan(user, panel, plans, django_capture_on_commit_c
 
 
 def test_renew_with_a_plan_change(user, panel, plans, django_capture_on_commit_callbacks):
-    a, b, _ = plans
+    a, b, custom = plans
     svc = _service(user, panel, a)
     info = _api(user).get(f"/api/v1/services/{svc.id}/renew-info/").json()
-    assert {p["id"] for p in info["plans"]} == {a.id, b.id}          # custom volume is not a renewal plan
+    assert {p["id"] for p in info["plans"]} == {a.id, b.id, custom.id}   # v1.42.1: «حجم دلخواه» is an option too
 
     r = _api(user).post(f"/api/v1/services/{svc.id}/renew/", {"plan": b.id}, format="json")
     assert r.status_code == 201, r.content
@@ -136,7 +136,7 @@ def test_renew_a_planless_manually_linked_service(user, panel, plans, django_cap
     svc = _service(user, panel, None)
     info = _api(user).get(f"/api/v1/services/{svc.id}/renew-info/").json()
     assert info["can_renew"] and info["plan"] is None and info["needs_plan"]
-    assert info["message"] and len(info["plans"]) == 2
+    assert info["message"] and len(info["plans"]) == 3
     # the one-tap endpoint needs a plan here, it never falls back to a new purchase
     r = _api(user).post(f"/api/v1/services/{svc.id}/renew/", {}, format="json")
     assert r.status_code == 400 and r.json()["code"] == "needs_plan"
@@ -164,12 +164,11 @@ def test_discount_code_still_applies_to_a_renewal(user, panel, plans):
     assert Decimal(str(q.json()["final"])) == Decimal("90000")
 
 
-def test_custom_volume_plan_and_other_panels_are_refused_for_renewal(user, panel, plans):
+def test_other_panels_are_refused_for_renewal_and_custom_volume_needs_a_volume(user, panel, plans):
     a, _, custom = plans
     svc = _service(user, panel, None)
-    with pytest.raises(OrderError):
-        create_order(user=user, plan_id=custom.id, order_type=OrderType.RENEW, service_id=svc.id,
-                     custom_volume_gb=50)
+    with pytest.raises(OrderError):                       # «حجم دلخواه» renews, but only with a volume in range
+        create_order(user=user, plan_id=custom.id, order_type=OrderType.RENEW, service_id=svc.id)
     other = Panel.objects.create(name="Q", base_url="https://q.test", admin_username="a", admin_password_enc="p")
     foreign = Plan.objects.create(panel=other, name_fa="x", price=Decimal("1"), data_limit=GB, duration_days=1)
     assert foreign not in renewal_plans(svc)
@@ -286,7 +285,7 @@ def test_bot_change_plan_lists_renewal_plans_on_the_same_account(bot, user, pane
     svc = _service(user, panel, a)
     datas = [d for _, d in _buttons(bot.click(f"s:{svc.id}:rnp"))]
     assert f"rn:{svc.id}:{a.id}" in datas and f"rn:{svc.id}:{b.id}" in datas
-    assert f"rn:{svc.id}:{custom.id}" not in datas
+    assert f"rn:{svc.id}:{custom.id}" in datas            # v1.42.1: custom volume renews too (asks the GB)
     bot.click(f"rn:{svc.id}:{b.id}")
     order = Order.objects.get(user=user)
     assert order.plan_id == b.id and order.service_id == svc.id and order.type == OrderType.RENEW

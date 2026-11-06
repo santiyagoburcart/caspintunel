@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 import jdatetime
+from django.db import transaction
 from django.db.models import Count, Sum
 from django.db.models.functions import Coalesce, TruncDate
 from django.utils import timezone
@@ -10,7 +11,7 @@ from rest_framework import filters, mixins, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from apps.common.jalali import TZ as TEHRAN, to_jalali_str
+from apps.common.jalali import TZ as TEHRAN, tehran_today, to_jalali_str
 from apps.common.models import write_audit
 from apps.notifications.live import push_payments_event
 from apps.payments_sms.models import BankCard, ConfirmedBy, Payment, PaymentStatus
@@ -56,6 +57,8 @@ class TransactionViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, views
         src = q.get("source")
         if src:
             qs = qs.filter(order__source=src)
+        if q.get("provision_failed") in ("1", "true"):   # v1.42.1 «ساخت ناموفق» only
+            qs = qs.filter(order__status="paid", order__provision_failed_at__isnull=False)
         if q.get("manual") in ("1", "true"):          # v1.38 «فاکتور دستی» only
             qs = qs.filter(order__manual_invoice__isnull=False)
         # v1.38.3: ONE date for the filter, the column and the cards — the payment date (confirmed_at; a manual
@@ -148,6 +151,40 @@ class TransactionViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, views
         data["message"] = f"Auto-approval undone ({p.tx_number}); the deposit is back for review"
         data["message_fa"] = f"تأیید خودکار لغو شد ({p.tx_number})؛ واریز برای بررسی دستی برگشت"
         return Response(data)
+
+    @extend_schema(request=dict, responses=TransactionSerializer, summary="Retry a failed provisioning («ساخت ناموفق»)")
+    @action(detail=True, methods=["post"], url_path="retry-provision")
+    def retry_provision(self, request, pk=None):
+        """v1.42.1 «تلاش دوباره»: {account_name?} — a new name (PasarGuard's rule, free in our DB and on the panel),
+        then fulfilment runs again (orders.services.retry_provision). The result arrives as a toast + live event."""
+        from apps.orders.services import AccountNameRefused, OrderError, retry_provision
+
+        p = self.get_object()
+        if p.status != "approved" or p.order_id is None:
+            return Response({"detail": "only an approved payment's order can be retried",
+                             "detail_fa": "فقط سفارشِ پرداختِ تأییدشده قابل تلاش دوباره است"}, status=400)
+        try:
+            with transaction.atomic():
+                retry_provision(p.order, request.user, request.data.get("account_name"))
+        except AccountNameRefused as exc:
+            return Response({"detail": exc.message("en", with_suggestion=True),
+                             "detail_fa": exc.message("fa", with_suggestion=True),
+                             "code": "account_name", "suggestion": exc.suggestion}, status=400)
+        except OrderError as exc:
+            msg = str(exc)
+            fa = "این نام اکانت گرفته شده است" if "taken" in msg else msg
+            return Response({"detail": msg, "detail_fa": fa}, status=400)
+        data = dict(TransactionSerializer(self.get_queryset().get(pk=p.pk)).data)
+        data["message"] = "Retrying — the result arrives in a moment"
+        data["message_fa"] = "دوباره تلاش می‌شود — نتیجه تا چند لحظهٔ دیگر می‌رسد"
+        return Response(data)
+
+    @action(detail=False, methods=["get"], url_path="provision-failed")
+    def provision_failed(self, request):
+        """v1.42.1: paid orders PasarGuard refused («ساخت ناموفق») — the count on the Transactions tab."""
+        ids = list(Payment.objects.live().filter(status="approved", order__status="paid",
+                                                 order__provision_failed_at__isnull=False).values_list("id", flat=True))
+        return Response({"count": len(ids), "ids": ids})
 
     @extend_schema(request=None, responses=TransactionSerializer, summary="Restore a deleted transaction (Super Admin)")
     @action(detail=True, methods=["post"], url_path="restore")
@@ -641,5 +678,5 @@ def _transactions_csv(qs, lang: str):
             (("دستی " if lang == "fa" else "manual ") + f"MI-{o.manual_invoice_id:06d}") if o.manual_invoice_id else "",
         ])
     resp = HttpResponse(buf.getvalue().encode("utf-8"), content_type="text/csv; charset=utf-8")
-    resp["Content-Disposition"] = f'attachment; filename="transactions-{timezone.localdate().isoformat()}.csv"'
+    resp["Content-Disposition"] = f'attachment; filename="transactions-{tehran_today().isoformat()}.csv"'
     return resp

@@ -12,7 +12,7 @@ import { useToast } from '../components/Toast'
  * admin approved/rejected…) to refetch. The server stays the source of truth:
  * events are only a "something changed" nudge.
  */
-const Ctx = createContext({ pendingCount: null, connected: false, subscribe: () => () => {}, refreshCount: () => {} })
+const Ctx = createContext({ pendingCount: null, failedCount: 0, connected: false, subscribe: () => () => {}, refreshCount: () => {} })
 
 function wsUrl() {
   const scheme = location.protocol === 'https:' ? 'wss' : 'ws'
@@ -23,6 +23,9 @@ export function LivePaymentsProvider({ children }) {
   const { staff, can } = useAuth()
   const enabled = !!staff && can('payment.view')
   const [pendingCount, setPendingCount] = useState(null)
+  // v1.42.1 «ساخت ناموفق»: paid orders PasarGuard refused — counted on the Transactions tab
+  const [failedCount, setFailedCount] = useState(0)
+  const failedAt = useRef(0)
   const [connected, setConnected] = useState(false)
   const listeners = useRef(new Set())
   const toast = useToast()
@@ -81,11 +84,18 @@ export function LivePaymentsProvider({ children }) {
       : `${src} amount mismatch (${what}) — order #${msg.order_id}: ${src} ${n(msg.sms_amount)} T, invoice ${n(msg.invoice_amount)} T. Review it in the payment queue.`)
   }
 
+  const refreshFailed = useCallback(() => {
+    if (Date.now() - failedAt.current < 5000) return
+    failedAt.current = Date.now()
+    api.get('/admin/transactions/provision-failed/').then((r) => setFailedCount(r.data.count || 0)).catch(() => {})
+  }, [])
+
   const refreshCount = useCallback(() => {
     api.get('/admin/payments/pending/')
       .then((r) => setPendingCount(r.data.count ?? (r.data.results || []).length))
       .catch(() => {})
-  }, [])
+    refreshFailed()
+  }, [refreshFailed])
 
   const subscribe = useCallback((fn) => {
     listeners.current.add(fn)
@@ -118,6 +128,7 @@ export function LivePaymentsProvider({ children }) {
         let msg
         try { msg = JSON.parse(ev.data) } catch { return }
         if (typeof msg.pending_count === 'number') setPendingCount(msg.pending_count)
+        refreshFailed()
         try { notify.current?.(msg) } catch { /* ignore */ }
         listeners.current.forEach((fn) => { try { fn(msg) } catch { /* ignore */ } })
       }
@@ -154,7 +165,7 @@ export function LivePaymentsProvider({ children }) {
   }, [enabled, staff?.id])
 
   return (
-    <Ctx.Provider value={{ pendingCount, connected, subscribe, refreshCount }}>
+    <Ctx.Provider value={{ pendingCount, failedCount, connected, subscribe, refreshCount }}>
       {children}
     </Ctx.Provider>
   )

@@ -8,6 +8,8 @@ import { Spinner, Toggle } from '../components/ui'
 import { useConfirm } from '../components/ConfirmDialog'
 import { useToast } from '../components/Toast'
 import { copyToClipboard } from '../lib/clipboard'
+import AccountNameInput, { nameOk } from '../components/AccountNameInput'
+import { checkName } from '../lib/accountName'
 import { Ic } from '../components/AgencyIcons'
 
 // Create / edit / delete PasarGuard admins (backend: apps/agency/admin_crud.py).
@@ -253,6 +255,7 @@ export function AgencyAdminCreate({ Header }) {
 
   const submit = async (e) => {
     e.preventDefault()
+    if (!nameOk(f.username, 32)) { setErrs({ username: checkName(f.username, lang, 32)?.message }); return }
     if (passwordProblem(f.password, f.username)) { setErrs({ password: PW_RULE[lang] || PW_RULE.fa }); return }
     setBusy(true); setErrs({})
     try {
@@ -303,9 +306,9 @@ export function AgencyAdminCreate({ Header }) {
       {!opts && !optErr ? <div className="grid place-items-center py-10"><Spinner /></div> : opts && (
         <>
           <Sec icon="user" title={s.sec_account}>
-            <Fld label={s.username} hint={s.username_hint} err={errs.username}>
-              <input className="input" dir="ltr" required autoFocus pattern="[A-Za-z0-9_.@\-]{3,32}" value={f.username} onChange={(e) => set('username', e.target.value.trim())} />
-            </Fld>
+            {/* v1.42.1: PasarGuard's username rule, checked while typing (admins: at most 32) */}
+            <AccountNameInput label={s.username} hint={s.username_hint} value={f.username} lang={lang} maxLen={32} autoFocus
+              serverError={errs.username} testid="ag-username" onChange={(v) => set('username', v)} />
             <Fld label={s.password} err={errs.password}><PasswordInput value={f.password} onChange={(v) => set('password', v)} s={s} /></Fld>
           </Sec>
           <AdminFields f={f} set={set} opts={opts} s={s} errs={errs} />

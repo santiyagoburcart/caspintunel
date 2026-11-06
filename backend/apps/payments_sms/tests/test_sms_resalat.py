@@ -64,7 +64,7 @@ def order(monkeypatch):
     monkeypatch.setattr(tasks.fulfill_order, "delay", lambda *_: None)
     user = User.objects.create_user("cust", "Str0ngPass!")
     plan = Plan.objects.create(name_fa="p", price=Decimal("250000"), data_limit=1024**3, duration_days=30)
-    o = create_order(user=user, plan_id=plan.id, requested_account_name="c1")
+    o = create_order(user=user, plan_id=plan.id, requested_account_name="c1acc")
     Order.objects.filter(pk=o.pk).update(amount_unique=Decimal("250430"), amount_unique_lock=Decimal("250430"))
     o.refresh_from_db()
     return o

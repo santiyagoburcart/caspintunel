@@ -120,8 +120,9 @@ def provision_service(service_id: int, plan=None) -> Service:
 
 
 @transaction.atomic
-def renew_service(service_id: int, plan) -> Service:
-    """Flowchart 1.5: PUT the same username, reset usage, keep subscription_url."""
+def renew_service(service_id: int, plan, data_limit: int | None = None) -> Service:
+    """Flowchart 1.5: PUT the same username, reset usage, keep subscription_url. `data_limit` (bytes) = the volume of
+    a custom-volume renewal; None = the plan's own volume."""
     service = Service.objects.select_for_update().select_related("panel").get(pk=service_id)
     if plan is not None and getattr(plan, "panel_id", service.panel_id) != service.panel_id:
         raise PanelError(
@@ -129,7 +130,7 @@ def renew_service(service_id: int, plan) -> Service:
         )
     client = client_for(service.panel)
 
-    api_user = client.update_user(service.panel_username, build_renew_payload(service, plan))
+    api_user = client.update_user(service.panel_username, build_renew_payload(service, plan, data_limit))
     try:
         client.reset_user_usage(service.panel_username)
     except PanelNotFound:
@@ -142,7 +143,8 @@ def renew_service(service_id: int, plan) -> Service:
     apply_user_to_service(service, api_user, service.panel)
     service.status = ServiceStatus.ACTIVE
     service.save()
-    write_audit(action="service.renewed", target=service, detail={"plan": plan.id})
+    write_audit(action="service.renewed", target=service,
+                detail={"plan": plan.id, **({"data_limit": data_limit} if data_limit else {})})
     return service
 
 
@@ -269,6 +271,14 @@ def sync_service_detail(service_id: int) -> SyncOutcome:
     try:
         api_user = client.get_user(service.panel_username)
     except PanelNotFound:
+        if not service.subscription_url and service.status in (ServiceStatus.PENDING, ServiceStatus.DISABLED) \
+                and service.orders.filter(status="paid").exists():
+            # never created on the panel yet (paid order still being built): leave it «در حال ساخت» — marking it
+            # disabled showed the customer a broken service (incident 2026-11-06, order #125)
+            if service.status != ServiceStatus.PENDING:
+                service.status = ServiceStatus.PENDING
+                service.save(update_fields=["status", "updated_at"])
+            return SyncOutcome(service, error="not_provisioned", missing=True)
         if service.status != ServiceStatus.DISABLED:
             service.status = ServiceStatus.DISABLED
             service.save(update_fields=["status", "updated_at"])
@@ -361,9 +371,9 @@ def apply_scheduled_renewal(scheduled_renewal_id: int) -> Service:
 
     service = renewal.service
     if renewal.renewal_mode == RenewalMode.CARRY_OVER:
-        _apply_carry_over_renewal(service, renewal.plan, renewal.carry_over_data)
+        _apply_carry_over_renewal(service, renewal.plan, renewal.carry_over_data, renewal.data_limit)
     else:
-        renew_service(service.id, renewal.plan)
+        renew_service(service.id, renewal.plan, renewal.data_limit)
 
     renewal.applied_at = timezone.now()
     renewal.save(update_fields=["applied_at", "updated_at"])
@@ -383,7 +393,7 @@ def apply_scheduled_renewal(scheduled_renewal_id: int) -> Service:
     return service
 
 
-def _apply_carry_over_renewal(service: Service, plan, carry_over_data: str) -> Service:
+def _apply_carry_over_renewal(service: Service, plan, carry_over_data: str, data_limit: int | None = None) -> Service:
     """Mode B: fold whatever time/volume the service had left into the new
     plan's amounts, instead of discarding it. Which dimension gets carried is
     whichever the customer actually still had when the cycle ended — a
@@ -397,7 +407,7 @@ def _apply_carry_over_renewal(service: Service, plan, carry_over_data: str) -> S
     if carry_over_data in ("both", "time_only") and service.expire_at and service.expire_at > now:
         extra_seconds = int((service.expire_at - now).total_seconds())
 
-    new_data_limit = int(plan.data_limit or 0)
+    new_data_limit = int(data_limit or plan.data_limit or 0)      # data_limit = custom-volume renewal
     if new_data_limit and extra_bytes:
         new_data_limit += extra_bytes
     # if the plan itself is unlimited (0), it stays unlimited regardless

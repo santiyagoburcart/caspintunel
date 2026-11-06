@@ -43,8 +43,8 @@ def test_same_purchase_reuses_pending_order(user, plan):
 
 
 def test_different_account_name_gets_new_order(user, plan):
-    o1 = create_order(user=user, plan_id=plan.id, requested_account_name="a1")
-    o2 = create_order(user=user, plan_id=plan.id, requested_account_name="a2")
+    o1 = create_order(user=user, plan_id=plan.id, requested_account_name="a1acc")
+    o2 = create_order(user=user, plan_id=plan.id, requested_account_name="a2acc")
     assert o1.id != o2.id
 
 
@@ -56,25 +56,25 @@ def test_other_user_never_gets_someone_elses_order(user, plan):
 
 
 def test_expired_reservation_is_not_reused(user, plan):
-    o1 = create_order(user=user, plan_id=plan.id, requested_account_name="x")
+    o1 = create_order(user=user, plan_id=plan.id, requested_account_name="xacc")
     Order.objects.filter(pk=o1.id).update(unique_expire_at=timezone.now() - timezone.timedelta(seconds=1))
-    o2 = create_order(user=user, plan_id=plan.id, requested_account_name="x")
+    o2 = create_order(user=user, plan_id=plan.id, requested_account_name="xacc")
     assert o2.id != o1.id
 
 
 def test_paid_order_is_not_reused(user, plan):
-    o1 = create_order(user=user, plan_id=plan.id, requested_account_name="x")
+    o1 = create_order(user=user, plan_id=plan.id, requested_account_name="xacc")
     Order.objects.filter(pk=o1.id).update(status=OrderStatus.PAID)
-    o2 = create_order(user=user, plan_id=plan.id, requested_account_name="x")
+    o2 = create_order(user=user, plan_id=plan.id, requested_account_name="xacc")
     assert o2.id != o1.id
 
 
 def test_custom_volume_must_match_to_reuse(user):
     cv = Plan.objects.create(name_fa="CV", type=PlanType.CUSTOM_VOLUME, price=Decimal("0"),
                              price_per_gb=Decimal("3000"), min_gb=5, max_gb=50)
-    o1 = create_order(user=user, plan_id=cv.id, requested_account_name="cv", custom_volume_gb=10)
-    o2 = create_order(user=user, plan_id=cv.id, requested_account_name="cv", custom_volume_gb=10)
-    o3 = create_order(user=user, plan_id=cv.id, requested_account_name="cv", custom_volume_gb=20)
+    o1 = create_order(user=user, plan_id=cv.id, requested_account_name="cvacc", custom_volume_gb=10)
+    o2 = create_order(user=user, plan_id=cv.id, requested_account_name="cvacc", custom_volume_gb=10)
+    o3 = create_order(user=user, plan_id=cv.id, requested_account_name="cvacc", custom_volume_gb=20)
     assert o1.id == o2.id and o3.id != o1.id
 
 

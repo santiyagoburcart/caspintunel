@@ -12,7 +12,8 @@ Fields marked *enc* are Fernet-encrypted (`FIELD_ENCRYPTION_KEY`).
 
 Related: [architecture.md](architecture.md) · [flows.md](flows.md).
 
-Last schema change: **v1.42.0 — multi-tenant Phase 1 Release C**: `tenant_id` (FK `tenant`, PROTECT) is **NOT NULL** on the
+Last schema change: **v1.42.1** — `order.provision_error` / `provision_failed_at` («ساخت ناموفق»),
+`scheduled_renewal.data_limit` (custom-volume renewal), `plan.renewable_when_inactive`. Before: **v1.42.0 — multi-tenant Phase 1 Release C**: `tenant_id` (FK `tenant`, PROTECT) is **NOT NULL** on the
 34 customer-facing tables and stays nullable on `staff`, `role`, `audit_log`, `push_subscription`, `theme` (NULL = platform);
 the old global unique rules are dropped (see below). Before: v1.40.0 added `tenant`, `tenant_domain` and the column on 39
 tables. The classification is `apps/tenancy/registry.py`; design in [multi-tenant.md](multi-tenant.md) §4, §18.
@@ -174,6 +175,7 @@ erDiagram
         decimal discount_percent
         string renewal_mode "reset | carry_over"
         string carry_over_data "both | volume_only | time_only"
+        bool renewable_when_inactive "v1.42.1 retired plan stays renewable"
         json group_ids
         int min_gb
         int max_gb
@@ -240,6 +242,8 @@ erDiagram
         string status "pending_payment | paid | completed | rejected | failed | expired | cancelled"
         string source "site | bot | admin"
         bigint manual_invoice_id FK "v1.38 «دستی»"
+        text provision_error "v1.42.1 PasarGuard's refusal («ساخت ناموفق»)"
+        datetime provision_failed_at "set = no auto retry, staff fix"
     }
     manual_invoice {
         bigint id PK "MI-000123"
@@ -366,6 +370,7 @@ erDiagram
         bigint order_id FK
         string renewal_mode
         string carry_over_data
+        bigint data_limit "v1.42.1 custom-volume renewal bytes"
         datetime applied_at
     }
 ```

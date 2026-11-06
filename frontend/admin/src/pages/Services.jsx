@@ -6,6 +6,7 @@ import { jalali, relTime, digits, gb } from '../lib/format'
 import { Alert, Spinner, Toggle } from '../components/ui'
 import { useServiceActions } from '../lib/serviceActions'
 import { useToast } from '../components/Toast'
+import AccountNameInput, { nameOk } from '../components/AccountNameInput'
 
 function Ico({ d, w = 16 }) {
   return (
@@ -501,7 +502,8 @@ function ManualCreateModal({ s, t, lang, onClose, onCreated }) {
     } finally { setBusy(false) }
   }
 
-  const canSubmit = mode === 'link' ? !!(user && panelId && picked && (!ownerOfPicked || confirmOther)) : !!(user && planId)
+  const canSubmit = mode === 'link' ? !!(user && panelId && picked && (!ownerOfPicked || confirmOther))
+    : !!(user && planId && (!accountName.trim() || nameOk(accountName)))
 
   return (
     <div className="svc-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -577,11 +579,11 @@ function ManualCreateModal({ s, t, lang, onClose, onCreated }) {
           )}
 
           {mode === 'create' && (
-            <label className="svc-fld">
-              <span className="label">{s.f_account_name}</span>
-              <input className="input" dir="ltr" value={accountName} onChange={(e) => setAccountName(e.target.value)} />
-              <span className="svc-hint">{s.f_account_name_hint}</span>
-            </label>
+            <div className="svc-fld">
+              {/* v1.42.1: PasarGuard's username rule, checked while typing (empty = generated) */}
+              <AccountNameInput label={s.f_account_name} value={accountName} onChange={setAccountName} lang={lang}
+                hint={s.f_account_name_hint} testid="svc-account-name" />
+            </div>
           )}
 
           {mode === 'link' && (

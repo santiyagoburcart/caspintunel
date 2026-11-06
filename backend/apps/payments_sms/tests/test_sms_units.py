@@ -44,7 +44,7 @@ def source():
 def make_order(amount, name="c1"):
     user = User.objects.create_user(f"u-{name}", "Str0ngPass!")
     plan = Plan.objects.create(name_fa="p", price=Decimal("100000"), data_limit=1024**3, duration_days=30)
-    o = create_order(user=user, plan_id=plan.id, requested_account_name=name)
+    o = create_order(user=user, plan_id=plan.id, requested_account_name=name if len(name) >= 3 else f"{name}acc")
     Order.objects.filter(pk=o.pk).update(amount_unique=Decimal(amount), amount_unique_lock=Decimal(amount))
     o.refresh_from_db()
     return o

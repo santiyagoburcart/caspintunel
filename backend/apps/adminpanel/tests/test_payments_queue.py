@@ -43,9 +43,9 @@ def boss(staff_client, superadmin):
 def test_pending_queue_lists_receipts_from_site_and_bot(boss, plan):
     site_u = User.objects.create_user("s", "x")
     bot_u = User.objects.create_user("b", "x", telegram_id=1)
-    o1 = create_order(user=site_u, plan_id=plan.id, requested_account_name="s1")
+    o1 = create_order(user=site_u, plan_id=plan.id, requested_account_name="s1acc")
     o2 = create_order(user=bot_u, plan_id=plan.id, order_type=OrderType.NEW,
-                      requested_account_name="b1", source="bot")
+                      requested_account_name="b1acc", source="bot")
     submit_receipt(order=o1, image=_png(), user=site_u)
     submit_receipt(order=o2, image=_png(), user=bot_u)
 
@@ -104,7 +104,7 @@ def test_transactions_list_and_status_filter(boss, pending_payment):
     # one pending (fixture) + one approved + one rejected
     Payment.objects.filter(id=pending_payment.id).update(status="approved", confirmed_by="admin")
     u2 = User.objects.create_user("c2", "x")
-    o2 = create_order(user=u2, plan_id=pending_payment.order.plan_id, requested_account_name="a2")
+    o2 = create_order(user=u2, plan_id=pending_payment.order.plan_id, requested_account_name="a2acc")
     p2 = submit_receipt(order=o2, image=_png(), user=u2)
     Payment.objects.filter(id=p2.id).update(status="rejected", reject_reason="bad")
 

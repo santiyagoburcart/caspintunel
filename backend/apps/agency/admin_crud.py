@@ -292,8 +292,10 @@ def build_payload(data: dict, *, creating: bool, username: str = "") -> dict:
     p: dict = {}
     if creating:
         username = str(data.get("username") or "").strip()
-        if not USERNAME_RE.match(username):
-            raise AdminCrudError("username: 3–32 letters, digits or _ . @ -", "username", "username")
+        if not USERNAME_RE.match(username) or re.search(r"[-_@.]{2,}", username):
+            # PasarGuard's username rule (apps/panel/account_names.py), at most 32 for admins
+            raise AdminCrudError("username: 3–32 English letters, digits or _ . @ - (no spaces, no two symbols in a row)",
+                                 "username", "username")
         p["username"] = username
     if "password" in data and data.get("password") not in (None, ""):
         p["password"] = check_password(data["password"], str(data.get("username") or username or ""))

@@ -55,9 +55,10 @@ def build_create_payload(service, plan, panel) -> dict:
     return payload
 
 
-def build_renew_payload(service, plan) -> dict:
-    """Flowchart 1.5: extend expiry + set new data_limit; usage reset separately."""
-    data_limit = int(plan.data_limit or 0) or int(service.data_limit or 0)
+def build_renew_payload(service, plan, data_limit: int | None = None) -> dict:
+    """Flowchart 1.5: extend expiry + set new data_limit; usage reset separately. `data_limit` = the bytes of a
+    custom-volume renewal (wins over the plan, which has no fixed volume)."""
+    data_limit = int(data_limit or 0) or int(plan.data_limit or 0) or int(service.data_limit or 0)
     payload: dict = {"data_limit": data_limit, "status": "active"}
     if plan.duration_days:
         now = timezone.now()

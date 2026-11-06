@@ -87,8 +87,15 @@ def clean_item(user, data: dict) -> dict:
         name = str(data.get("account_name") or "").strip()
         if not name:
             raise ManualInvoiceError("account name is required for a new service", "account_name", "نام اکانت را وارد کنید")
+        from apps.panel.account_names import AccountNameInvalid, validate
+
         from .services import OrderError, check_account_name
 
+        try:
+            name = validate(name)                       # PasarGuard's username rule, before anything is paid / issued
+        except AccountNameInvalid as exc:
+            raise ManualInvoiceError(exc.message("en", with_suggestion=True), "account_name",
+                                     exc.message("fa", with_suggestion=True))
         try:
             check_account_name(plan.panel, name)
         except OrderError as exc:
@@ -125,7 +132,9 @@ def _order_for(inv: MI, *, status=OrderStatus.PENDING_PAYMENT, source="admin") -
 
 
 def _parse_dt(v, field):
-    """ISO date-time (2026-11-03T14:30[+03:30]), Jalali "1405/08/12 14:30" (Persian digits ok) or a date."""
+    """ISO date-time (2026-11-03T14:30[+03:30]), Jalali "1405/08/12 14:30" (Persian digits ok) or a date.
+    A date / time without an offset is Tehran time (staff type Tehran times; the server runs in UTC — v1.42.1:
+    "12:22" today was read as 12:22 UTC = 15:52 Tehran and refused as "in the future")."""
     import re
     from datetime import datetime
 
@@ -154,8 +163,13 @@ def _parse_dt(v, field):
         except ValueError:
             raise bad
     if timezone.is_naive(dt):
-        dt = timezone.make_aware(dt, timezone.get_current_timezone())
+        from apps.common.jalali import TZ
+
+        dt = dt.replace(tzinfo=TZ)
     return dt
+
+
+CLOCK_SKEW = timedelta(minutes=5)       # a staff device clock a little ahead is fine
 
 
 @transaction.atomic
@@ -168,8 +182,8 @@ def create_paid(user, staff, data: dict, *, receipt_image=None):
     item = clean_item(user, data)
     _check_renewal(item)
     paid_at = _parse_dt(data.get("paid_at"), "paid_at") or timezone.now()
-    if paid_at > timezone.now() + timedelta(minutes=5):
-        raise ManualInvoiceError("the payment date is in the future", "paid_at", "تاریخ پرداخت در آینده است")
+    if paid_at > timezone.now() + CLOCK_SKEW:
+        raise ManualInvoiceError("the payment date can't be in the future", "paid_at", "تاریخ پرداخت نمی‌تواند در آینده باشد")
     method = METHODS.get(str(data.get("method") or "card"))
     if method is None:
         raise ManualInvoiceError("method must be card, cash or other", "method", "روش پرداخت نامعتبر است")

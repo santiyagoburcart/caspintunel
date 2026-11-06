@@ -23,7 +23,6 @@ from decimal import ROUND_HALF_UP, Decimal
 
 from django.db import transaction
 from django.db.models import Case, DecimalField, F, Sum, When
-from django.utils import timezone
 
 from .models import AdminPrice, LedgerEntry
 from .notes import to_fa
@@ -32,7 +31,10 @@ GB = Decimal(1024 ** 3)
 
 
 def today() -> date_cls:
-    return timezone.localdate()
+    """Today in Tehran (the server runs in UTC: 00:00–03:30 Tehran was still "yesterday" — v1.42.1)."""
+    from apps.common.jalali import tehran_today
+
+    return tehran_today()
 
 
 def price_at(username: str, day: date_cls | None = None) -> AdminPrice | None:

@@ -22,7 +22,15 @@ from telebot import types
 
 from apps.accounts.models import User
 from apps.orders.models import Order
-from apps.orders.services import DiscountCodeRefused, OrderError, RenewalWaiting, quote_order, rename_paid_order
+from apps.orders.services import (
+    AccountNameRefused,
+    DiscountCodeRefused,
+    OrderError,
+    RenewalWaiting,
+    plan_renews,
+    quote_order,
+    rename_paid_order,
+)
 from apps.panel.exceptions import PanelError
 from apps.panel.services import revoke_subscription
 from apps.plans.models import Plan, PlanType
@@ -237,11 +245,11 @@ def _place_order(bot, chat_id, user, tg_id, msg=None) -> None:
         if st.get("renew"):
             sid, pid = st["renew"]
             svc = user.services.filter(pk=sid).first()
-            plan = Plan.objects.filter(pk=pid, is_active=True).first()
-            if not svc or not plan:
+            plan = Plan.objects.filter(pk=pid).first()
+            if not svc or not plan_renews(svc, plan):
                 clear_state(tg_id)
                 return render(bot, chat_id, sc.services(user), msg)
-            order = renew(user, svc, plan, discount_code=st.get("dcode"))
+            order = renew(user, svc, plan, discount_code=st.get("dcode"), custom_gb=st.get("gb"))
         else:
             plan = Plan.objects.filter(pk=st.get("plan"), is_active=True).first()
             if not plan:
@@ -255,6 +263,9 @@ def _place_order(bot, chat_id, user, tg_id, msg=None) -> None:
         clear_state(tg_id)
         svc = user.services.filter(pk=st["renew"][0]).first()
         return render(bot, chat_id, sc.renew_offer(user, svc) if svc else sc.services(user), msg)
+    except AccountNameRefused as exc:                 # PasarGuard's username rule (checked again before payment)
+        set_state(tg_id, awaiting="name")
+        return _name_refused(bot, chat_id, user, exc)
     except OrderError as exc:
         if not st.get("renew"):
             # e.g. the account name is taken: ask for another one
@@ -265,6 +276,32 @@ def _place_order(bot, chat_id, user, tg_id, msg=None) -> None:
                                 reply_markup=sc.main_menu(user).markup)
     clear_state(tg_id)
     render(bot, chat_id, sc.invoice(user, order, reused=getattr(order, "reused", False)), msg)
+
+
+def _name_refused(bot, chat_id, user, exc, callback: str = "an"):
+    """v1.42.1: the account name breaks PasarGuard's rule — say why (fa/en) and offer the fixed name as one tap."""
+    lang = "en" if sc.is_en_user(user) else "fa"
+    text = tr(user, "name_rule_bad", err=html.escape(exc.message(lang)))
+    markup = None
+    if exc.suggestion:
+        text += "\n" + tr(user, "name_suggest", s=html.escape(exc.suggestion))
+        data = f"{callback}:{exc.suggestion}"
+        if len(data.encode()) <= 64:                  # Telegram's callback_data limit
+            markup = sc._kb([[sc._b(tr(user, "btn_use_name", s=exc.suggestion)[:60], data)]])
+    return bot.send_message(chat_id, text, parse_mode="HTML", reply_markup=markup)
+
+
+def _set_name(bot, chat_id, user, tg, name, msg=None):
+    """The account name of a new purchase: PasarGuard's rule first (with a suggestion), then the draft goes on."""
+    from apps.orders.services import clean_account_name
+
+    try:
+        name = clean_account_name(name)
+    except AccountNameRefused as exc:
+        set_state(tg, awaiting="name")
+        return _name_refused(bot, chat_id, user, exc)
+    set_state(tg, name=name, awaiting=None)
+    return _after_draft(bot, chat_id, user, tg, msg)
 
 
 def _after_draft(bot, chat_id, user, tg_id, msg=None) -> None:
@@ -284,7 +321,8 @@ def _draft_quote(user, st, code):
     """The price of the purchase in the draft with `code` (raises DiscountCodeRefused / OrderError)."""
     if st.get("renew"):
         sid, pid = st["renew"]
-        return quote_order(user=user, plan_id=pid, order_type="renew", service_id=sid, discount_code=code)
+        return quote_order(user=user, plan_id=pid, order_type="renew", service_id=sid, custom_volume_gb=st.get("gb"),
+                           discount_code=code)
     return quote_order(user=user, plan_id=st.get("plan"), order_type="new", custom_volume_gb=st.get("gb"),
                        discount_code=code)
 
@@ -606,8 +644,39 @@ def _route(bot, chat_id, msg, user, tg, data: str) -> None:
             waiting = sc.renewal_waiting_text(user, svc)
             if waiting:                                # old button in the chat: one renewal at a time
                 return render(bot, chat_id, sc.renew_waiting_screen(user, svc, waiting), msg)
+        plan = Plan.objects.filter(pk=int(parts[2])).first()
+        if svc is not None and plan is not None and plan.type == PlanType.CUSTOM_VOLUME and plan_renews(svc, plan):
+            # v1.42.1 «حجم دلخواه» renewal: ask the volume (the last one is a button)
+            from apps.orders.services import last_renewal_gb
+
+            set_state(tg, renew=[svc.id, plan.id], awaiting="rgb")
+            last = last_renewal_gb(svc, plan)
+            rows = [[sc._b(tr(user, "btn_same_gb", n=last), f"rg:{svc.id}:{plan.id}:{last}")]] if last else []
+            return render(bot, chat_id, sc.Screen(tr(user, "ask_gb_renew", lo=plan.min_gb or 1, hi=plan.max_gb or "∞"),
+                                                  sc._kb(rows + [sc._nav(user, f"s:{svc.id}:rn")])), msg)
         set_state(tg, renew=[int(parts[1]), int(parts[2])], awaiting=None)
         return _after_draft(bot, chat_id, user, tg, msg)
+    if head == "rg":                                   # renewal with a custom volume: rg:<service>:<plan>:<gb>
+        clear_state(tg)
+        svc = user.services.filter(pk=int(parts[1])).first()
+        plan = Plan.objects.filter(pk=int(parts[2])).first()
+        if svc is None or not plan_renews(svc, plan):
+            return render(bot, chat_id, sc.services(user), msg)
+        waiting = sc.renewal_waiting_text(user, svc)
+        if waiting:
+            return render(bot, chat_id, sc.renew_waiting_screen(user, svc, waiting), msg)
+        set_state(tg, renew=[svc.id, plan.id], gb=int(parts[3]), awaiting=None)
+        return _after_draft(bot, chat_id, user, tg, msg)
+    if head == "an":                                   # «استفاده از …»: the suggested account name
+        st = get_state(tg)
+        if not st.get("plan"):
+            return render(bot, chat_id, sc.store(user), msg)
+        return _set_name(bot, chat_id, user, tg, ":".join(parts[1:]), msg)
+    if head == "nr":                                   # suggested name for a paid order: nr:<order>:<name>
+        order = Order.objects.filter(pk=int(parts[1]), user=user, needs_new_name=True).select_related("plan__panel").first()
+        if not order:
+            return render(bot, chat_id, sc.history(user), msg)
+        return _rename(bot, chat_id, user, tg, order, ":".join(parts[2:]))
     if head == "ga":
         return render(bot, chat_id, sc.guide_os(user, parts[1]), msg)
     if head == "s":
@@ -637,6 +706,21 @@ def _route(bot, chat_id, msg, user, tg, data: str) -> None:
     render(bot, chat_id, sc.main_menu(user), msg)
 
 
+def _rename(bot, chat_id, user, tg, order, name):
+    """A new name for a paid order whose first name was taken on the panel."""
+    try:
+        rename_paid_order(order, name)
+    except AccountNameRefused as exc:               # PasarGuard's rule: why + the fixed name as a button
+        set_state(tg, rename=order.id, awaiting="newname")
+        return _name_refused(bot, chat_id, user, exc, callback=f"nr:{order.id}")
+    except OrderError as exc:                       # taken too: ask again
+        set_state(tg, rename=order.id, awaiting="newname")
+        return bot.send_message(chat_id, tr(user, "bad_name", err=html.escape(str(exc))))
+    clear_state(tg)
+    return bot.send_message(chat_id, tr(user, "name_changed", n=html.escape(order.requested_account_name)),
+                            reply_markup=sc.main_menu(user).markup)
+
+
 def _typed(bot, msg, user, awaiting: str) -> None:
     """Typed input for the step the user is on."""
     tg, chat_id, text = msg.from_user.id, msg.chat.id, (msg.text or "").strip()
@@ -658,7 +742,19 @@ def _typed(bot, msg, user, awaiting: str) -> None:
     if awaiting == "name":
         if not text:
             return bot.send_message(chat_id, tr(user, "ask_name"))
-        set_state(tg, name=text[:64], awaiting=None)
+        return _set_name(bot, chat_id, user, tg, text[:200])
+    if awaiting == "rgb":                            # custom-volume renewal: the GB typed
+        sid, pid = (st.get("renew") or [None, None])
+        svc = user.services.filter(pk=sid).first() if sid else None
+        plan = Plan.objects.filter(pk=pid).first() if pid else None
+        if svc is None or not plan_renews(svc, plan):
+            clear_state(tg)
+            return render(bot, chat_id, sc.services(user))
+        lo, hi = plan.min_gb or 1, plan.max_gb or 0
+        digits = text.translate(str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789"))
+        if not digits.isdigit() or int(digits) < lo or (hi and int(digits) > hi):
+            return bot.send_message(chat_id, tr(user, "bad_gb", lo=lo, hi=hi or "∞"))
+        set_state(tg, gb=int(digits), awaiting=None)
         return _after_draft(bot, chat_id, user, tg)
     if awaiting == "dcode":
         if not (st.get("renew") or (st.get("plan") and st.get("name"))):
@@ -680,13 +776,7 @@ def _typed(bot, msg, user, awaiting: str) -> None:
         if not order:
             clear_state(tg)
             return render(bot, chat_id, sc.history(user))
-        try:
-            rename_paid_order(order, text[:64])
-        except OrderError as exc:                       # taken too / bad format: ask again
-            return bot.send_message(chat_id, tr(user, "bad_name", err=html.escape(str(exc))))
-        clear_state(tg)
-        return bot.send_message(chat_id, tr(user, "name_changed", n=html.escape(order.requested_account_name)),
-                                reply_markup=sc.main_menu(user).markup)
+        return _rename(bot, chat_id, user, tg, order, text[:200])
     if awaiting == "pwd":
         try:
             change_password_via_bot(user, text)

@@ -44,8 +44,8 @@ def test_create_fixed_order_allocates_unique_amount(user, fixed_plan):
 
 
 def test_unique_amount_is_not_reused_while_active(user, fixed_plan):
-    o1 = create_order(user=user, plan_id=fixed_plan.id, requested_account_name="a")
-    o2 = create_order(user=user, plan_id=fixed_plan.id, requested_account_name="b")
+    o1 = create_order(user=user, plan_id=fixed_plan.id, requested_account_name="aacc")
+    o2 = create_order(user=user, plan_id=fixed_plan.id, requested_account_name="bacc")
     assert o1.amount_unique != o2.amount_unique
 
 
@@ -70,7 +70,7 @@ def test_custom_volume_out_of_range_rejected(user, panel):
 
 
 def test_expire_stale_reservations_releases_lock(user, fixed_plan):
-    order = create_order(user=user, plan_id=fixed_plan.id, requested_account_name="x")
+    order = create_order(user=user, plan_id=fixed_plan.id, requested_account_name="xacc")
     Order.objects.filter(pk=order.id).update(unique_expire_at=timezone.now() - timezone.timedelta(minutes=1))
 
     assert expire_stale_reservations() == 1
@@ -80,7 +80,7 @@ def test_expire_stale_reservations_releases_lock(user, fixed_plan):
 
 
 def test_reservation_not_expired_when_receipt_pending(user, fixed_plan):
-    order = create_order(user=user, plan_id=fixed_plan.id, requested_account_name="y")
+    order = create_order(user=user, plan_id=fixed_plan.id, requested_account_name="yacc")
     Payment.objects.create(order=order, method=PaymentMethod.CARD_MANUAL,
                            amount=order.amount_unique, status=PaymentStatus.PENDING)
     Order.objects.filter(pk=order.id).update(unique_expire_at=timezone.now() - timezone.timedelta(minutes=1))

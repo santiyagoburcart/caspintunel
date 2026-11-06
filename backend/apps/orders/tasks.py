@@ -43,7 +43,8 @@ def retry_unfulfilled_orders():
 
     cutoff = timezone.now() - timezone.timedelta(minutes=2)
     stuck = list(
-        Order.objects.filter(status=OrderStatus.PAID, updated_at__lt=cutoff, needs_new_name=False)
+        Order.objects.filter(status=OrderStatus.PAID, updated_at__lt=cutoff, needs_new_name=False,
+                             provision_failed_at__isnull=True)    # «ساخت ناموفق»: staff fix it, no retry loop
         .values_list("id", flat=True)
     )
     for oid in stuck:
@@ -89,20 +90,88 @@ def fulfill_order(self, order_id: int):
     except RenewalConflict as exc:
         return _renewal_conflict(order, exc)
     except PanelError as exc:
-        log.error("fulfill_order(%s) permanently failed: %s", order_id, exc)
-        write_audit(action="order.fulfillment_failed", target=order, detail={"error": str(exc)})
-        raise
+        return _provision_failed(order, exc)
 
     order.refresh_from_db()
+    order.provision_error, order.provision_failed_at = "", None
     order.status = OrderStatus.COMPLETED
     order.sync_unique_lock()  # releases the amount lock
-    order.save(update_fields=["status", "amount_unique_lock", "service", "updated_at"])
+    order.save(update_fields=["status", "amount_unique_lock", "service", "provision_error", "provision_failed_at",
+                              "updated_at"])
     write_audit(action="order.completed", target=order)
     # a renewal isn't "delivered" yet — apply_scheduled_renewal notifies the
     # user itself once it actually applies the new plan
     if order.type != OrderType.RENEW:
         _notify_delivered(order)
     return {"order": order_id, "status": "completed"}
+
+
+def panel_error_text(exc) -> str:
+    """PasarGuard's own message for a refused request (422 body `detail`), else the exception text."""
+    import json
+
+    body = getattr(exc, "body", None)
+    if body:
+        try:
+            detail = json.loads(body).get("detail")
+        except (ValueError, AttributeError):
+            detail = None
+        if isinstance(detail, list):
+            detail = "; ".join(str(d.get("msg", d)) if isinstance(d, dict) else str(d) for d in detail)
+        if detail:
+            return f"{exc} — {detail}"[:1000]
+    return str(exc)[:1000]
+
+
+def _provision_failed(order: Order, exc) -> dict:
+    """v1.42.1: paid, but PasarGuard refused the account (not a name clash, not an outage). The order stays `paid`
+    with «ساخت ناموفق» (provision_error / provision_failed_at): the retry job skips it, staff get ONE Telegram alert
+    with the panel's error and fix the name or retry in the panel, the customer is told ONCE that the service is
+    being prepared and support follows up — never a broken service."""
+    from django.utils import timezone
+
+    from apps.common.staff_alert import alert_staff
+
+    text = panel_error_text(exc)
+    first = order.provision_failed_at is None
+    order.provision_error = text
+    if first:
+        order.provision_failed_at = timezone.now()
+    order.save(update_fields=["provision_error", "provision_failed_at", "updated_at"])
+    log.error("fulfill_order(%s) failed on the panel: %s", order.id, text)
+    write_audit(action="order.fulfillment_failed", target=order, detail={"error": text})
+    if not first:
+        return {"order": order.id, "status": "provision_failed"}
+    payment = getattr(order, "payment", None)
+    name = order.requested_account_name or (order.service.panel_username if order.service_id else "-")
+    alert_staff(
+        "🚨 ساخت سرویس ناموفق / Provisioning failed\n"
+        f"Order #{order.id} · {order.user.username} · account «{name}» · "
+        f"TX {getattr(payment, 'tx_number', None) or getattr(payment, 'id', '-')} is PAID but PasarGuard refused it:\n"
+        f"{text}\n"
+        "Panel → Transactions → this payment → «ساخت ناموفق»: edit the account name or «تلاش دوباره».",
+        perm="payment.approve", dedupe_key=f"provfail:{order.id}", ttl=86400)
+    try:
+        from apps.notifications.dispatch import notify_user
+        from apps.notifications.models import NotificationType
+
+        notify_user(
+            order.user,
+            title="سرویس در حال آماده‌سازی است",
+            body=f"پرداخت سفارش #{order.id} تأیید شده. سرویس در حال آماده‌سازی است، پشتیبانی پیگیری می‌کند.",
+            title_en="Your service is being prepared",
+            body_en=f"Order #{order.id} is paid. Your service is being prepared — support is following it up.",
+            ntype=NotificationType.ORDER_CONFIRMED, via_site=True, via_bot=True, via_email=False,
+        )
+    except Exception as e:  # noqa: BLE001 - notification must not fail the task
+        log.warning("provisioning-failed notice for order %s not delivered: %s", order.id, e)
+    try:
+        from apps.notifications.live import push_payments_event
+
+        push_payments_event("provision_failed", order_id=order.id)
+    except Exception:  # noqa: BLE001
+        pass
+    return {"order": order.id, "status": "provision_failed"}
 
 
 def _renewal_conflict(order: Order, exc) -> dict:

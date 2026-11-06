@@ -280,6 +280,8 @@ def order_status(user, order) -> Screen:
         lines.append(tr(user, "send_receipt"))
     elif order.status == OrderStatus.REJECTED:
         lines.append(tr(user, "rejected_reason", r=html.escape((pay.reject_reason if pay else "") or "—")))
+    elif order.status == OrderStatus.PAID and order.provision_failed_at:
+        lines.append(tr(user, "preparing"))             # v1.42.1: the panel refused it — staff are on it
     rows = []
     if order.status == OrderStatus.PENDING_PAYMENT:
         rows.append([_b(tr(user, "btn_check"), f"o:{order.id}:st")])
@@ -415,6 +417,9 @@ def renew_plans(user, svc) -> Screen:
     if waiting:
         return renew_waiting_screen(user, svc, waiting)
     plans = list(renewal_plans(svc))
+    own = renewable_plan(svc)
+    if own is not None and all(p.pk != own.pk for p in plans):
+        plans.insert(0, own)                       # a retired plan staff marked renewable
     rows = [[_b(plan_button_label(user, p), f"rn:{svc.id}:{p.id}")] for p in plans]
     text = tr(user, "renew_title", name=html.escape(svc.panel_username))
     if renewable_plan(svc) is None:
@@ -426,7 +431,7 @@ def renew_plans(user, svc) -> Screen:
 def renew_offer(user, svc) -> Screen:
     """تمدید: the service's own plan in one tap (plan, volume, duration, price) + change plan / upgrade.
     Falls back to the plan list when the service has no renewable plan."""
-    from apps.orders.services import renewable_plan
+    from apps.orders.services import last_renewal_gb, renewable_plan
 
     waiting = renewal_waiting_text(user, svc)
     if waiting:
@@ -434,6 +439,16 @@ def renew_offer(user, svc) -> Screen:
     plan = renewable_plan(svc)
     if plan is None:
         return renew_plans(user, svc)
+    if plan.type == PlanType.CUSTOM_VOLUME:
+        # v1.42.1: «حجم دلخواه» renews too — the last volume pre-filled, one tap to pay
+        gb = last_renewal_gb(svc, plan) or plan.min_gb or 1
+        days = tr(user, "no_expiry") if not plan.duration_days else tr(user, "days", n=plan.duration_days)
+        text = tr(user, "renew_offer", name=html.escape(svc.panel_username), plan=html.escape(plan_name(user, plan)),
+                  vol=tr(user, "gb", n=gb), days=days, price=money(user, plan.price_for_volume(gb)))
+        rows = [[_b(tr(user, "btn_renew_same"), f"rg:{svc.id}:{plan.id}:{gb}")],
+                [_b(tr(user, "btn_change_gb"), f"rn:{svc.id}:{plan.id}")],
+                [_b(tr(user, "btn_renew_change"), f"s:{svc.id}:rnp")]]
+        return Screen(text, _kb(rows + [_nav(user, f"s:{svc.id}")]))
     vol = tr(user, "unlimited") if not plan.data_limit else tr(user, "gb", n=plan.data_limit // GB)
     days = tr(user, "no_expiry") if not plan.duration_days else tr(user, "days", n=plan.duration_days)
     text = tr(user, "renew_offer", name=html.escape(svc.panel_username), plan=html.escape(plan_name(user, plan)),

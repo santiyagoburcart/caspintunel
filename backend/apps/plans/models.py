@@ -51,6 +51,8 @@ class Plan(TimeStampedModel):
     discount_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0)
 
     is_active = models.BooleanField(default=True)
+    # v1.42.1: a retired (inactive) plan stays the one-tap renewal of services already on it only when staff tick this
+    renewable_when_inactive = models.BooleanField(default=False)
     sort_order = models.IntegerField(default=0)
 
     # what happens to a service's leftover time/volume when this plan renews it —

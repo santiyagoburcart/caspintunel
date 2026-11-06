@@ -81,7 +81,7 @@ function useRenewFlow() {
         return
       }
       setModal(data.can_renew
-        ? { checking: false, canRenew: true, plan: data.plan, serviceId, account: data.service?.panel_username }
+        ? { checking: false, canRenew: true, plan: data.plan, serviceId, account: data.service?.panel_username, lastGb: data.last_gb }
         : { checking: false, canRenew: false })
     } catch (e) {
       setModal(null)
@@ -90,7 +90,10 @@ function useRenewFlow() {
   }
   const close = () => setModal(null)
   const proceed = () => {
-    if (modal?.canRenew) navigate(`/checkout?plan=${modal.plan.id}&renew=${modal.serviceId}`)
+    if (!modal?.canRenew) return
+    // v1.42.1: a custom-volume plan renews with the last volume pre-filled (changeable in checkout)
+    const gbq = modal.plan.type === 'custom_volume' && modal.lastGb ? `&gb=${modal.lastGb}` : ''
+    navigate(`/checkout?plan=${modal.plan.id}&renew=${modal.serviceId}${gbq}`)
   }
   const changePlan = () => {
     if (modal?.canRenew) navigate(`/checkout?renew=${modal.serviceId}&pick=1`)
@@ -104,6 +107,12 @@ function RenewModal({ modal, t, lang, onClose, onProceed, onChangePlan }) {
   if (!modal) return null
   if (modal.checking || modal.canRenew) {
     const p = modal.plan
+    const custom = p?.type === 'custom_volume'
+    const gbv = custom ? (modal.lastGb || p.min_gb || 1) : null
+    const price = custom
+      ? Math.round((Number(p.price || 0) + Number(p.price_per_gb || 0) * gbv) * (1 - Number(p.discount_percent || 0) / 100))
+      : (p?.final_price ?? p?.price)
+    const vol = custom ? `${fnum(gbv, lang)} GB` : p?.data_limit ? `${fnum(Math.round(p.data_limit / 1024 ** 3), lang)} GB` : t('unlimited')
     return (
       <ConfirmDialog open tone="primary" icon="refresh" title={t('renew')}
         message={modal.checking ? t('checking') : null}
@@ -111,7 +120,8 @@ function RenewModal({ modal, t, lang, onClose, onProceed, onChangePlan }) {
           rows: [
             ...(modal.account ? [[t('account_name'), modal.account]] : []),
             [t('select_plan'), (lang === 'fa' ? p.name_fa : p.name_en) || p.name_fa],
-            [t('amount'), toman(p.final_price ?? p.price, lang)],
+            [t('volume'), vol],
+            [t('amount'), toman(price, lang)],
             [t('duration'), p.duration_days ? `${fnum(p.duration_days, lang)} ${t('days')}` : t('no_expiry')],
           ],
         } : null}
@@ -348,6 +358,7 @@ function SvcCard({ s, t, lang, onRevoke, onRenewClick }) {
           <i className={(st === 'pending' || st === 'on_hold') ? 'spin' : ''} />
           {waiting ? t('f_pending') : (t('st_' + s.status) === ('st_' + s.status) ? s.status : t('st_' + s.status))}
         </span>
+        {s.preparing && <span className="csp-svc-prep" data-testid="svc-preparing">{t('preparing_support')}</span>}
       </div>
 
       {waiting ? (
@@ -586,7 +597,8 @@ const CSS = `
   box-shadow: -6px -6px 14px rgba(255,255,255,.02), 6px 6px 18px rgba(0,0,0,.55);
 }
 .csp-svc { padding: 18px; display: flex; flex-direction: column; gap: 13px; }
-.csp-svc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.csp-svc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.csp-svc-prep { flex-basis: 100%; font-size: 12.5px; line-height: 1.7; color: var(--c-warning-fg, var(--c-text)); }
 .csp-svc-id { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .csp-svc-icon {
   width: 40px; height: 40px; flex-shrink: 0; display: grid; place-items: center; border-radius: 12px;

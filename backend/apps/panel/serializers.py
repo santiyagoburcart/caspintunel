@@ -12,6 +12,8 @@ class ServiceSerializer(serializers.ModelSerializer):
     validity_days = serializers.SerializerMethodField()
     plan_name = serializers.CharField(source="current_plan.name_fa", read_only=True, default=None)
     pending_renewal = serializers.SerializerMethodField()
+    # v1.42.1: being built but PasarGuard refused it — staff are on it («در حال آماده‌سازی، پشتیبانی پیگیری می‌کند»)
+    preparing = serializers.SerializerMethodField()
 
     class Meta:
         model = Service
@@ -21,9 +23,13 @@ class ServiceSerializer(serializers.ModelSerializer):
             "expire_at", "days_left", "on_hold_duration", "on_hold_timeout",
             "online_at", "device_limit", "current_plan", "plan_name",
             "waiting_for_connection", "validity_days", "last_synced_at", "created_at",
-            "pending_renewal",
+            "pending_renewal", "preparing",
         )
         read_only_fields = fields
+
+    def get_preparing(self, obj) -> bool:
+        return (obj.status == "pending" and not obj.subscription_url
+                and obj.orders.filter(status="paid", provision_failed_at__isnull=False).exists())
 
     def get_pending_renewal(self, obj) -> dict | None:
         """A renewal that is paid (or whose receipt is under review) and not applied yet —

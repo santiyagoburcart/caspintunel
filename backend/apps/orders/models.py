@@ -74,6 +74,11 @@ class Order(TimeStampedModel):
     # paid, but the chosen account name turned out to exist on the panel (someone
     # else's account): never attached — the customer picks another name (site / bot)
     needs_new_name = models.BooleanField(default=False)
+    # v1.42.1: paid, but PasarGuard refused to create / change the account (not a name clash, not an outage): the
+    # panel's error, when it first happened. Staff fix the name or retry (orders.services.retry_provision); the
+    # automatic retry job skips these. Panel label «ساخت ناموفق».
+    provision_error = models.TextField(blank=True, default="")
+    provision_failed_at = models.DateTimeField(null=True, blank=True)
     # v1.38 «فاکتور دستی»: the staff invoice this order belongs to (tag «دستی» everywhere)
     manual_invoice = models.ForeignKey("orders.ManualInvoice", null=True, blank=True, on_delete=models.SET_NULL,
                                        related_name="orders")
@@ -108,6 +113,8 @@ class ScheduledRenewal(TimeStampedModel):
     # how an already-paid renewal gets applied
     renewal_mode = models.CharField(max_length=10)
     carry_over_data = models.CharField(max_length=11, null=True, blank=True)
+    # v1.42.1 custom-volume renewal: the bytes the customer bought (null = the plan's own volume)
+    data_limit = models.BigIntegerField(null=True, blank=True)
 
     applied_at = models.DateTimeField(null=True, blank=True)
 

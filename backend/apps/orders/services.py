@@ -25,6 +25,28 @@ class OrderError(Exception):
     """Business-rule violation while creating an order."""
 
 
+class AccountNameRefused(OrderError):
+    """The account name breaks PasarGuard's username rule (apps/panel/account_names.py) — refused BEFORE payment.
+    Carries the reason in Persian and English and a fixed suggestion."""
+
+    def __init__(self, err):
+        self.err, self.code, self.suggestion = err, err.code, err.suggestion
+        super().__init__(err.message("en"))
+
+    def message(self, lang="fa", *, with_suggestion=False):
+        return self.err.message(lang, with_suggestion=with_suggestion)
+
+
+def clean_account_name(name) -> str:
+    """The name PasarGuard will accept (stripped) or AccountNameRefused."""
+    from apps.panel.account_names import AccountNameInvalid, validate
+
+    try:
+        return validate(name)
+    except AccountNameInvalid as exc:
+        raise AccountNameRefused(exc) from exc
+
+
 class RenewalWaiting(OrderError):
     """This service already has a renewal that is paid (or whose receipt is being
     reviewed) and not applied yet — a second one is refused (incident 2026-10-29,
@@ -108,16 +130,47 @@ def check_account_name(panel, name: str) -> None:
         raise OrderError(NAME_TAKEN)
 
 
+def retry_provision(order: Order, staff, account_name: str | None = None) -> Order:
+    """v1.42.1 «ساخت ناموفق» → «تلاش دوباره» (staff): optionally a new account name (PasarGuard's rule + free in our
+    DB and on the panel), then the failure is cleared and fulfilment runs again. Only for a PAID order that never
+    reached the panel; the service row is renamed only while it has no panel account (no subscription link)."""
+    order = Order.objects.select_for_update().select_related("plan__panel", "service").get(pk=order.pk)
+    if order.status != OrderStatus.PAID:
+        raise OrderError("only a paid order that was not delivered can be retried")
+    detail = {"previous_error": order.provision_error}
+    name = (account_name or "").strip()
+    if name and order.type == OrderType.NEW and name != (order.requested_account_name or ""):
+        name = clean_account_name(name)
+        svc = order.service
+        if svc is not None and svc.subscription_url:
+            raise OrderError("this service already exists on the panel — its name can't be changed here")
+        check_account_name(order.plan.panel, name)
+        detail.update({"from": order.requested_account_name, "to": name})
+        order.requested_account_name = name
+        if svc is not None:
+            from apps.panel.models import ServiceStatus
+
+            svc.panel_username, svc.status = name, ServiceStatus.PENDING
+            svc.save(update_fields=["panel_username", "status", "updated_at"])
+    order.provision_error, order.provision_failed_at, order.needs_new_name = "", None, False
+    order.save(update_fields=["requested_account_name", "provision_error", "provision_failed_at", "needs_new_name",
+                              "updated_at"])
+    write_audit(action="order.provision_retry", staff=staff, target=order, detail=detail)
+    from django.core.cache import cache
+
+    cache.delete(f"provfail:{order.id}")               # a new failure alerts again
+    from .tasks import fulfill_order
+
+    transaction.on_commit(lambda: fulfill_order.delay(order.id))
+    return order
+
+
 def rename_paid_order(order: Order, name: str) -> Order:
     """The customer's new account name for a paid order whose first name was
     taken on the panel; fulfilment runs again with it."""
-    import re
-
-    name = (name or "").strip()
     if not (order.status == OrderStatus.PAID and order.needs_new_name and order.type == OrderType.NEW):
         raise OrderError("this order does not need a new account name")
-    if not re.fullmatch(r"[A-Za-z0-9_.\-]{2,64}", name):
-        raise OrderError("use 2–64 English letters, digits, _ . -")
+    name = clean_account_name(name)
     check_account_name(order.plan.panel, name)
     order.requested_account_name, order.needs_new_name = name, False
     order.save(update_fields=["requested_account_name", "needs_new_name", "updated_at"])
@@ -126,6 +179,27 @@ def rename_paid_order(order: Order, name: str) -> Order:
 
     transaction.on_commit(lambda: fulfill_order.delay(order.id))
     return order
+
+
+def _order_plan(user, plan_id, order_type, service_id):
+    """(plan, service) for a new order / quote. A renewal may use any active plan of the service's panel (fixed or
+    custom volume) or the service's own plan when it is inactive but staff marked it renewable."""
+    plan = Plan.objects.filter(pk=plan_id).select_related("panel").first()
+    service = None
+    if order_type in (OrderType.RENEW, OrderType.ADDON_VOLUME):
+        from apps.panel.models import Service
+
+        service = Service.objects.filter(pk=service_id, user=user).first()
+        if not service:
+            raise OrderError("service not found")
+        if plan is not None and order_type == OrderType.RENEW and not plan_renews(service, plan):
+            raise OrderError("this plan cannot be used to renew this service")
+        # multi-panel: a renew / top-up plan must live on the same panel as the service
+        if plan is not None and service.panel_id != plan.panel_id:
+            raise OrderError("this plan is on a different panel than the service")
+    if plan is None or not (plan.is_active or (order_type == OrderType.RENEW and plan_renews(service, plan))):
+        raise OrderError("plan not found or inactive")
+    return plan, service
 
 
 @transaction.atomic
@@ -142,24 +216,10 @@ def create_order(
 ) -> Order:
     expire_stale_reservations()
 
-    plan = Plan.objects.filter(pk=plan_id, is_active=True).select_related("panel").first()
-    if not plan:
-        raise OrderError("plan not found or inactive")
-
-    service = None
+    plan, service = _order_plan(user, plan_id, order_type, service_id)
     if order_type in (OrderType.RENEW, OrderType.ADDON_VOLUME):
         from apps.panel.models import Service
 
-        service = Service.objects.filter(pk=service_id, user=user).first()
-        if not service:
-            raise OrderError("service not found")
-        # multi-panel: a renew / top-up plan must live on the same panel as the
-        # service (you can't move an account between panels).
-        if service.panel_id != plan.panel_id:
-            raise OrderError("this plan is on a different panel than the service")
-        if order_type == OrderType.RENEW and plan.type == PlanType.CUSTOM_VOLUME:
-            # a renewal applies the plan's fixed volume to the same account — custom volume has none
-            raise OrderError("a custom-volume plan cannot be used for a renewal")
         if order_type == OrderType.RENEW:
             # one renewal at a time: lock the service row so two quick taps can't both pass
             Service.objects.select_for_update().filter(pk=service.pk).first()
@@ -167,13 +227,9 @@ def create_order(
             if waiting is not None:
                 raise RenewalWaiting(waiting)
     elif order_type == OrderType.NEW:
-        from apps.panel.models import Service
-
-        name = (requested_account_name or "").strip()
-        if not name:
-            # every new service needs a customer-chosen username — fixed AND
-            # custom-volume. We never auto-generate it.
-            raise OrderError("requested_account_name is required for a new service")
+        # every new service needs a customer-chosen username — fixed AND custom-volume (never auto-generated) —
+        # in PasarGuard's format, checked before payment (a 422 after payment left a paid order without a service)
+        name = clean_account_name(requested_account_name)
         # username uniqueness is scoped to the plan's panel
         check_account_name(plan.panel, name)
         requested_account_name = name
@@ -267,17 +323,8 @@ def quote_order(*, user, plan_id, order_type=OrderType.NEW, custom_volume_gb=Non
                 discount_code=None) -> dict:
     """What the customer will pay (shown before the order is made): original, discount,
     final. The unique surcharge is added only when the order is created."""
-    plan = Plan.objects.filter(pk=plan_id, is_active=True).first()
-    if not plan:
-        raise OrderError("plan not found or inactive")
+    plan, service = _order_plan(user, plan_id, order_type, service_id)
     if order_type in (OrderType.RENEW, OrderType.ADDON_VOLUME):
-        from apps.panel.models import Service
-
-        service = Service.objects.filter(pk=service_id, user=user).first()
-        if service is None:
-            raise OrderError("service not found")
-        if order_type == OrderType.RENEW and plan.type == PlanType.CUSTOM_VOLUME:
-            raise OrderError("a custom-volume plan cannot be used for a renewal")
         if order_type == OrderType.RENEW:
             waiting = waiting_renewal(service)
             if waiting is not None:
@@ -376,10 +423,31 @@ def mark_paid_and_fulfill(order: Order) -> None:
 
 
 def renewal_plans(service):
-    """Plans a service can be renewed with: active, fixed-volume, on the service's panel.
-    A renewal always runs on the SAME PasarGuard account (username + subscription link)."""
-    return (Plan.objects.filter(is_active=True, panel_id=service.panel_id)
-            .exclude(type=PlanType.CUSTOM_VOLUME).order_by("sort_order", "price", "id"))
+    """Plans a service can switch / upgrade to on renewal: every active plan of the service's panel, fixed or custom
+    volume («حجم دلخواه»). A renewal always runs on the SAME PasarGuard account (username + subscription link)."""
+    return Plan.objects.filter(is_active=True, panel_id=service.panel_id).order_by("sort_order", "price", "id")
+
+
+def plan_renews(service, plan) -> bool:
+    """`plan` may renew `service`: an active plan of its panel, or the service's own plan when that was retired
+    (inactive) and staff ticked «قابل تمدید با وجود غیرفعال بودن» (Plan.renewable_when_inactive)."""
+    if service is None or plan is None or plan.panel_id != service.panel_id:
+        return False
+    if plan.is_active:
+        return True
+    return plan.pk == service.current_plan_id and bool(plan.renewable_when_inactive)
+
+
+def last_renewal_gb(service, plan=None) -> int | None:
+    """The volume (GB) to pre-fill for a custom-volume renewal: the last one bought for this service, else its current
+    volume; kept inside the plan's min / max."""
+    o = (Order.objects.filter(service_id=service.pk, custom_volume_gb__isnull=False,
+                              status__in=(OrderStatus.PAID, OrderStatus.COMPLETED)).order_by("-id").first())
+    gb = o.custom_volume_gb if o else (round(service.data_limit / 1024 ** 3) if service.data_limit else None)
+    if gb is None or plan is None:
+        return gb
+    lo, hi = plan.min_gb or 1, plan.max_gb or 0
+    return max(lo, min(gb, hi)) if hi else max(lo, gb)
 
 
 def waiting_renewal(service) -> dict | None:
@@ -425,12 +493,10 @@ def pending_renewal_info(service) -> dict | None:
 
 
 def renewable_plan(service):
-    """The service's own plan when it can be bought again for a renewal, else None
-    (no plan — e.g. a manually linked account — or the plan was retired)."""
+    """The service's own plan when it can be bought again for a renewal (one tap), else None: no plan, another
+    panel's plan, or a retired plan staff did not mark renewable — the customer then picks from the plan list."""
     plan = service.current_plan
-    if plan is None or not renewal_plans(service).filter(pk=plan.pk).exists():
-        return None
-    return plan
+    return plan if plan_renews(service, plan) else None
 
 
 def schedule_renewal(order: Order) -> ScheduledRenewal:
@@ -442,8 +508,11 @@ def schedule_renewal(order: Order) -> ScheduledRenewal:
     from .models import ScheduledRenewal
 
     plan = order.plan
+    # a custom-volume renewal carries the GB the customer bought (the plan itself has no fixed volume)
+    data_limit = (plan.data_limit_for_volume(order.custom_volume_gb)
+                  if plan.type == PlanType.CUSTOM_VOLUME and order.custom_volume_gb else None)
     fields = {"plan": plan, "order": order, "renewal_mode": plan.renewal_mode,
-              "carry_over_data": plan.carry_over_data, "applied_at": None}
+              "carry_over_data": plan.carry_over_data, "data_limit": data_limit, "applied_at": None}
     with transaction.atomic():
         renewal = ScheduledRenewal.objects.select_for_update().filter(service_id=order.service_id).first()
         if renewal is not None and renewal.applied_at is None and renewal.order_id != order.id:

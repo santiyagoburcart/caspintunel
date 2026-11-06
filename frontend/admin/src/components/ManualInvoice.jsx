@@ -10,6 +10,16 @@ import { useConfirm } from './ConfirmDialog'
 import { useToast } from './Toast'
 import { DateRangeModal, DRP_CSS } from './DateRangePicker'
 import ReceiptDrop, { uploadPct } from './ReceiptDrop'
+import AccountNameInput, { nameOk } from './AccountNameInput'
+
+// v1.42.1: staff type TEHRAN dates / times (the server runs in UTC) — default = now in Tehran, sent with +03:30
+const tehranNow = () => {
+  const f = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tehran', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false })
+  const p = Object.fromEntries(f.formatToParts(new Date()).map((x) => [x.type, x.value]))
+  return { date: `${p.year}-${p.month}-${p.day}`, time: `${p.hour === '24' ? '00' : p.hour}:${p.minute}` }
+}
+const TEHRAN = '+03:30'
 
 // v1.38 «فاکتور دستی» (backend apps/orders/manual.py, adminpanel/views/manual_invoices.py).
 // A: «قبلاً پرداخت شده» → approved payment + completed order on the entered date (tag «دستی»).
@@ -25,7 +35,7 @@ export const MT = {
     svc_need_plan: 'برای اعمال روی سرویس یک پلن انتخاب کنید.', save: 'ثبت فاکتور',
     hint_a: 'به‌عنوان پرداخت تأییدشده با برچسب «دستی» ثبت می‌شود و در درآمد همان تاریخ پرداخت حساب می‌شود.',
     hint_b: 'مشتری در سایت، مینی‌اپ و ربات فاکتور را می‌بیند و با «پرداخت» آن را مثل یک سفارش عادی می‌پردازد.',
-    err_amount: 'مبلغ را وارد کنید', err_item: 'پلن یا عنوان را وارد کنید', err_date: 'تاریخ پرداخت را انتخاب کنید',
+    err_amount: 'مبلغ را وارد کنید', err_item: 'پلن یا عنوان را وارد کنید', err_date: 'تاریخ پرداخت را انتخاب کنید', err_account: 'نام اکانت معتبر نیست؛ پیشنهاد زیر کادر را ببینید',
     list_h: 'فاکتورهای دستی', st_open: 'باز', st_paid: 'پرداخت‌شده', st_cancelled: 'لغو‌شده', overdue: 'سررسید گذشته',
     cancel: 'لغو فاکتور', cancel_t: 'لغو فاکتور دستی', cancel_msg: 'فاکتور از پنل مشتری برداشته می‌شود.', reason: 'دلیل',
     tag: 'دستی', by: 'ثبت توسط', warn_image: 'تصویر رسید تکراری است', warn_ref: 'شماره پیگیری تکراری است', tx: 'تراکنش',
@@ -41,7 +51,7 @@ export const MT = {
     svc_need_plan: 'Pick a plan to apply it to a service.', save: 'Save invoice',
     hint_a: 'Saved as an approved payment tagged “Manual”, counted in revenue on the payment date.',
     hint_b: 'The customer sees it on the site, Mini App and bot and pays it like a normal order.',
-    err_amount: 'Enter the amount', err_item: 'Pick a plan or enter a title', err_date: 'Pick the payment date',
+    err_amount: 'Enter the amount', err_item: 'Pick a plan or enter a title', err_date: 'Pick the payment date', err_account: 'The account name is not valid — see the suggestion under the field',
     list_h: 'Manual invoices', st_open: 'Open', st_paid: 'Paid', st_cancelled: 'Cancelled', overdue: 'overdue',
     cancel: 'Cancel invoice', cancel_t: 'Cancel manual invoice', cancel_msg: 'The invoice is removed from the customer’s panel.', reason: 'Reason',
     tag: 'Manual', by: 'by', warn_image: 'duplicate receipt image', warn_ref: 'duplicate tracking number', tx: 'Transaction',
@@ -77,7 +87,7 @@ function DateField({ label, value, onChange, s, lang, testid }) {
 function Form({ box, opts, s, lang }) {
   const today = todayCell()
   const [v, setV] = useState({ mode: 'paid', kind: 'plan', plan: '', title: '', gb: '', days: '', amount: '',
-    date: toISO(today.jy, today.jm, today.jd), time: new Date().toTimeString().slice(0, 5), method: 'card', card: '', ref: '', file: null,
+    date: tehranNow().date || toISO(today.jy, today.jm, today.jd), time: tehranNow().time, method: 'card', card: '', ref: '', file: null,
     note: '', due: '', svc: false, action: 'renew', service: '', account: '' })
   const [pct, setPct] = useState(null)
   const put = (nv) => { setV(nv); Object.assign(box, nv) }
@@ -146,7 +156,8 @@ function Form({ box, opts, s, lang }) {
             {['renew', 'addon', 'new'].map((k) => <button key={k} type="button" role="radio" aria-checked={v.action === k} data-on={v.action === k || undefined} onClick={() => put({ ...v, action: k })}>{s['a_' + k]}</button>)}
           </div>
           {v.action === 'new' ? (
-            <label className="mi-l"><span>{s.account}</span><input className="input" dir="ltr" value={v.account} onChange={(e) => put({ ...v, account: e.target.value.trim() })} /></label>
+            <div className="mi-l"><AccountNameInput label={s.account} value={v.account} lang={lang} testid="mi-account"
+              onChange={(x) => put({ ...v, account: x })} /></div>
           ) : (
             <label className="mi-l"><span>{s.service}</span>
               <select className="input" value={v.service} onChange={(e) => put({ ...v, service: e.target.value })} data-testid="mi-service">
@@ -183,15 +194,18 @@ export function ManualInvoiceButton({ userId, onDone, className = '' }) {
         if (box.note) f.append('note', box.note)
         if (box.mode === 'paid') {
           if (!box.date) throw new Error(s.err_date)
-          f.append('paid_at', `${box.date}T${box.time || '12:00'}:00`)
+          f.append('paid_at', `${box.date}T${box.time || '12:00'}:00${TEHRAN}`)
           f.append('method', box.method)
           if (box.method === 'card' && box.card) f.append('bank_card', box.card)
           if (box.ref) f.append('receipt_ref', latin(box.ref))
           if (box.file) f.append('receipt_image', box.file)
-        } else if (box.due) f.append('due_at', `${box.due}T23:59:00`)
+        } else if (box.due) f.append('due_at', `${box.due}T23:59:00${TEHRAN}`)
         if (box.svc && box.plan) {
           f.append('service_action', box.action)
-          if (box.action === 'new') f.append('account_name', box.account || ''); else f.append('service', box.service || '')
+          if (box.action === 'new') {
+            if (!nameOk(box.account)) throw new Error(s.err_account)
+            f.append('account_name', box.account.trim())
+          } else f.append('service', box.service || '')
         }
         let r
         try {

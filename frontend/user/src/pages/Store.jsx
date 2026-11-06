@@ -112,7 +112,7 @@ function CaspianStore() {
 
   return (
     <div className="csp-store">
-      <style>{CSS}</style>
+      <style>{STORE_CSS}</style>
 
       <header className="csp-store-hero">
         <div className="csp-store-eyebrow"><SI d={ICO.bag} w={16} />{t('store_eyebrow')}</div>
@@ -166,7 +166,7 @@ function Tab({ id, tab, set, children }) {
   )
 }
 
-function PlanCard({ p, lang, t, sel, onSelect }) {
+export function PlanCard({ p, lang, t, sel, onSelect }) {
   const name = (lang === 'fa' ? p.name_fa : p.name_en) || p.name_fa
   const desc = (lang === 'fa' ? p.desc_fa : p.desc_en) || p.desc_fa
   const custom = p.type === 'custom_volume'
@@ -206,7 +206,7 @@ function PlanCard({ p, lang, t, sel, onSelect }) {
   )
 }
 
-function VolumeCard({ sel, gb, setGb, price, t, lang }) {
+export function VolumeCard({ sel, gb, setGb, price, t, lang }) {
   const min = sel.min_gb || 1
   const max = sel.max_gb || 800
   const pct = Math.max(0, Math.min(100, ((gb - min) / ((max - min) || 1)) * 100))
@@ -250,7 +250,7 @@ function VolumeCard({ sel, gb, setGb, price, t, lang }) {
   )
 }
 
-const CSS = `
+export const STORE_CSS = `
 .csp-store { display: flex; flex-direction: column; gap: 20px; }
 .csp-store-hero { display: flex; flex-direction: column; gap: 6px; }
 .csp-store-eyebrow {

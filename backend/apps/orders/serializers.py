@@ -3,7 +3,7 @@ from rest_framework import serializers
 from apps.plans.models import Plan
 
 from .models import Order, OrderType
-from .services import DiscountCodeRefused, OrderError, RenewalWaiting, create_order
+from .services import AccountNameRefused, DiscountCodeRefused, OrderError, RenewalWaiting, create_order
 
 
 def manual_info(order) -> dict | None:
@@ -24,6 +24,8 @@ class OrderSerializer(serializers.ModelSerializer):
     reject_reason = serializers.SerializerMethodField()
     tx_number = serializers.SerializerMethodField()
     manual = serializers.SerializerMethodField()
+    # v1.42.1: paid but the panel refused the account — the customer only sees «در حال آماده‌سازی» (never the error)
+    preparing = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
@@ -33,8 +35,12 @@ class OrderSerializer(serializers.ModelSerializer):
             "amount", "discount_amount", "original_amount", "discount_code_text", "amount_unique", "unique_expire_at",
             "payment_status", "payment_method", "receipt_url",
             "reject_reason", "source", "created_at", "needs_new_name", "tx_number", "manual",
+            "preparing",
         )
         read_only_fields = fields
+
+    def get_preparing(self, obj) -> bool:
+        return obj.status == "paid" and obj.provision_failed_at is not None
 
     def get_manual(self, obj) -> dict | None:
         m = manual_info(obj)
@@ -63,9 +69,11 @@ class OrderSerializer(serializers.ModelSerializer):
 
 
 class OrderCreateSerializer(serializers.Serializer):
-    plan = serializers.PrimaryKeyRelatedField(queryset=Plan.objects.filter(is_active=True))
+    # active plans; a renewal may also use the service's own retired plan when staff marked it renewable
+    # (create_order / plan_renews decide)
+    plan = serializers.PrimaryKeyRelatedField(queryset=Plan.objects.all())
     type = serializers.ChoiceField(choices=OrderType.choices, default=OrderType.NEW)
-    requested_account_name = serializers.RegexField(r"^[A-Za-z0-9_.\-]{2,64}$", required=False, allow_blank=True)
+    requested_account_name = serializers.CharField(required=False, allow_blank=True, max_length=200)
     custom_volume_gb = serializers.IntegerField(required=False, min_value=1)
     service = serializers.IntegerField(required=False)
     discount_code = serializers.CharField(required=False, allow_blank=True, max_length=40)
@@ -74,12 +82,26 @@ class OrderCreateSerializer(serializers.Serializer):
     # clients that still send it don't break
     terms_accepted = serializers.BooleanField(write_only=True, required=False)
 
-    def validate_requested_account_name(self, value):
+    def validate(self, attrs):
+        """PasarGuard's username rule (apps/panel/account_names.py) for a new service — the reason in the customer's
+        language + a fixed suggestion; then "taken" in our DB (the panel itself is asked in create_order)."""
+        from apps.panel.account_names import AccountNameInvalid, validate
         from apps.panel.models import Service
 
-        if value and Service.objects.filter(panel_username__iexact=value).exists():
-            raise serializers.ValidationError("that account name is taken")
-        return value
+        if attrs.get("type", OrderType.NEW) == OrderType.NEW:
+            lang = attrs.get("lang", "fa")
+            try:
+                name = validate(attrs.get("requested_account_name"))
+            except AccountNameInvalid as exc:
+                raise serializers.ValidationError({"requested_account_name": [exc.message(lang)],
+                                                   "suggestion": exc.suggestion or ""})
+            if Service.objects.filter(panel_username__iexact=name).exists():
+                raise serializers.ValidationError({"requested_account_name": [
+                    "This account name is taken — pick another." if lang == "en" else "این نام اکانت گرفته شده است؛ نام دیگری انتخاب کنید."]})
+            attrs["requested_account_name"] = name
+        elif not attrs["plan"].is_active and attrs.get("type") != OrderType.RENEW:
+            raise serializers.ValidationError({"plan": ["plan not found or inactive"]})
+        return attrs
 
     def create(self, validated):
         request = self.context["request"]
@@ -101,5 +123,8 @@ class OrderCreateSerializer(serializers.Serializer):
         except RenewalWaiting as exc:
             # a paid renewal of this service still waits — one at a time
             raise serializers.ValidationError({"detail": exc.message(validated.get("lang", "fa")), "code": exc.code})
+        except AccountNameRefused as exc:
+            raise serializers.ValidationError({"requested_account_name": [exc.message(validated.get("lang", "fa"))],
+                                               "suggestion": exc.suggestion or ""})
         except OrderError as exc:
             raise serializers.ValidationError(str(exc))

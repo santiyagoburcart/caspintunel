@@ -71,6 +71,9 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   never with 2+ candidates, never twice for one deposit; paid amount + `shortfall` recorded; undo = void. Don't widen it elsewhere.
 - **Manual invoices (v1.38, `orders/manual.py`)**: approved only through `approve_payment(confirmed_at=…)` (revenue on the
   entered date) or the normal checkout; never set a manual order / payment status by hand. Tag = `Order.manual_invoice`.
+- **Renewal plans** (v1.42.1): `renewal_plans` = every active plan of the service's panel incl. custom volume; `plan_renews` decides
+  (a retired plan only when `Plan.renewable_when_inactive`, and only for services already on it). Custom-volume renewals carry the
+  bought bytes in `ScheduledRenewal.data_limit` → `renew_service(…, data_limit)`; `last_renewal_gb` pre-fills the GB.
 - **One renewal per service at a time** (`orders.services.waiting_renewal`): no new renewal order while one is queued,
   paid or under receipt review, and `schedule_renewal` never replaces an unapplied `ScheduledRenewal` (→ order `failed`
   + staff alert). Incident 2026-10-29: one transfer paid two renewals. Queue warnings live in `payments_sms/checks.py`.
@@ -100,7 +103,9 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   `payment.view`) via `apps/notifications/live.py::push_payments_event` (sent on commit).
 - **Days are Tehran days** (server TZ is UTC): date filters / reports / cards use `apps/common/jalali.py` (`tehran_day_start/end`,
   `today_bounds`, `jalali_month_bounds`); never `make_aware(date)` or `TruncDate` without `tzinfo=TZ`. Transactions cards = `transactions/summary/`
-  (the list's own query, `pay_date`) — never a separate rolling-window aggregate.
+  (the list's own query, `pay_date`) — never a separate rolling-window aggregate. **A date / time staff type without an offset
+  is Tehran time** (`manual._parse_dt`, v1.42.1 incident: 12:22 today refused as "future"); SPAs send `+03:30` and default to
+  Tehran "now"; "today" = `jalali.tehran_today()` (never `timezone.localdate()` / `date.today()`). Future check: 5 min skew.
 - Frontend: fa/en for every string (per-page `T = {fa, en}` or `lib/i18n.jsx`), Jalali via `lib/format.js`.
   **Digits are always Latin 0-9** in both languages (amounts, dates `1405/07/03`, badges, %, bot text);
   every `fa` Intl formatter needs `-u-nu-latn`. Persian/Arabic digits are only normalized on INPUT
@@ -260,6 +265,13 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   `caspintunel#<service id>`, not older than the service) — otherwise `PanelNameTaken` → the order waits for a new
   name (`needs_new_name`). Linking an existing account is an explicit staff action; another admin's account needs
   `confirm_other_admin`.
+- **Format = PasarGuard's username rule, ONE module** (v1.42.1): `apps/panel/account_names.py` (3–64 of `A-Za-z0-9_.@-`, no two
+  symbols in a row; `suggest()` = the fixed name) + `lib/accountName.js` / `components/AccountNameInput.jsx` (identical in both
+  SPAs). Every name form uses them and `create_order` re-checks before payment (`clean_account_name` → `AccountNameRefused`).
+  Never add another regex for account names. Incident 2026-11-06: bot accepted «sahar 1364», 422 after payment.
+- **«ساخت ناموفق»** (v1.42.1): a paid order PasarGuard refuses gets `provision_error` / `provision_failed_at` in
+  `orders/tasks._provision_failed` — staff alerted once, customer told «در حال آماده‌سازی», `retry_unfulfilled_orders` skips it;
+  only staff `retry_provision` (Transactions detail) clears it. A never-created service of a paid order is never synced to «disabled».
 
 ## Domain (docs/domain.md)
 - The site domain changes only through the wizard / `scripts/domain.sh` (certificate check, nginx -t, .env, rolling

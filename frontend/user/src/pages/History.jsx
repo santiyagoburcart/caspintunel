@@ -210,6 +210,7 @@ function Row({ o, t, lang, onReceipt }) {
             {svc && <span className="csp-hist-meta-svc"><HI d={H.dns} w={13} />{svc}</span>}
           </div>
           {rejected && o.reject_reason && <div className="csp-hist-reason">{o.reject_reason}</div>}
+          {o.preparing && <div className="csp-hist-reason" data-testid="hist-preparing">{t('preparing_support')}</div>}
         </div>
       </div>
 

@@ -402,7 +402,9 @@ class AgencyLedgerReportView(AdminAPIView):
         lang = "en" if request.query_params.get("lang") == "en" else "fa"
         fmt = request.query_params.get("export")          # not "format": DRF reserves it
         if what == "overview":
-            today = _dt.date.today()
+            from apps.common.jalali import tehran_today
+
+            today = tehran_today()
             frm = _jdate_param(request.query_params.get("from")) or today.replace(day=1)
             to = _jdate_param(request.query_params.get("to")) or today
             if frm > to:

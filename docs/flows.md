@@ -232,6 +232,9 @@ sequenceDiagram
 
 ## 2e. Manual customer invoice (v1.38)
 
+Dates / times staff enter are Tehran time (v1.42.1: sent with `+03:30`, naive input read as Tehran; "in the future" only beyond
+5 minutes — «تاریخ پرداخت نمی‌تواند در آینده باشد»). A new-service item's account name follows PasarGuard's rule (flow 4).
+
 ```mermaid
 sequenceDiagram
     autonumber
@@ -338,13 +341,17 @@ service, but it is **not applied immediately**: it waits for the end of the
 current cycle so the customer loses nothing. It always runs on the **same PasarGuard
 username and subscription link** — never an account-name step, never a new account.
 
-Which plan (`orders.services.renewal_plans` = active, fixed-volume, same panel;
-`renewable_plan` = the service's own plan if it is one of them):
+Which plan (`orders.services.renewal_plans` = every active plan of the service's panel, fixed **or custom volume**
+(v1.42.1); `renewable_plan` = the service's own plan when `plan_renews` — active, or retired but marked
+«قابل تمدید با وجود غیرفعال بودن» by staff):
 - own plan → one tap (site: summary dialog → checkout; bot `s:<id>:rn` → «✅ تمدید با همین پلن»);
 - «تغییر پلن / ارتقا» (site `checkout?renew=<id>&pick=1`, bot `s:<id>:rnp`) → any renewal plan;
 - no usable plan (e.g. linked manually by staff) → the plan list straight away with a short note.
-`GET /services/<id>/renew-info/` returns `plan`, `plans`, `needs_plan`. Custom-volume plans are
-refused for renewals (the renewal applies the plan's fixed volume). Discount codes apply as usual.
+`GET /services/<id>/renew-info/` returns `plan`, `plans`, `needs_plan`, `last_gb`. v1.42.1: «تغییر پلن / ارتقا» shows the
+purchase page's plan cards (site + Mini App), «حجم دلخواه» included; a custom-volume renewal asks the GB with live price
+(the last volume bought for the service — else its current volume — pre-filled; bot: «مثل دفعهٔ قبل» button `rg:<s>:<p>:<gb>`,
+or type the GB) and `ScheduledRenewal.data_limit` carries the bytes to PasarGuard. Discount codes apply as usual.
+Services without a plan got the plan of their last paid order (migration `panel.0007`).
 After payment `schedule_renewal` makes the paid plan the service's plan (audit
 `service.plan_changed`, via `renewal`). Staff can set / change / clear a service's plan on
 Admin → Services → edit (or when linking an account); filter «بدون پلن» lists services without one.
@@ -375,7 +382,7 @@ sequenceDiagram
     API->>DB: waiting_renewal(S)? → refuse (409 renewal_waiting)
     API->>DB: Order(type=renew, service=S, plan=P) — no account name
     Note over C,API: payment as in flows 1–2
-    W->>DB: fulfill_order → schedule_renewal:<br/>ScheduledRenewal(S, P, renewal_mode + carry_over copied from P)<br/>S.current_plan = P
+    W->>DB: fulfill_order → schedule_renewal:<br/>ScheduledRenewal(S, P, renewal_mode + carry_over copied from P,<br/>data_limit = bought GB for custom volume)<br/>S.current_plan = P
     opt another unapplied renewal on S
         W->>DB: order → failed, audit renewal.conflict (waiting one kept)
         W-->>C: "being reviewed" notice · staff alerted (Telegram)
@@ -434,12 +441,27 @@ sequenceDiagram
             end
         end
     end
+    alt PasarGuard refuses it (422 etc. — not a name clash, not an outage)
+        W->>DB: order stays paid · provision_error + provision_failed_at («ساخت ناموفق») · no auto retry
+        W-->>C: «سرویس در حال آماده‌سازی است، پشتیبانی پیگیری می‌کند» (site + bot, once)
+        W-->>W: staff alert once (Telegram, payment.approve) with PasarGuard's message · count on Transactions
+        Note over W,DB: staff: Transactions → payment → «ساخت ناموفق» → edit name → «تلاش دوباره»<br/>(retry-provision: rule + free check, service renamed, fulfil again)
+    end
     PG-->>W: user object
     W->>DB: apply_user_to_service (mirror) → status on_hold (timed) or active
     W->>DB: order → completed, lock released, audit
     W-->>C: notify site + email, bot gets the QR photo + link
-    Note over W,PG: PanelUnavailable → Celery retry,<br/>beat retries paid-but-unprovisioned orders every 10 min
+    Note over W,PG: PanelUnavailable → Celery retry,<br/>beat retries paid-but-unprovisioned orders every 10 min (not «ساخت ناموفق» ones)
 ```
+
+**Account names = PasarGuard's username rule** (v1.42.1, `apps/panel/account_names.py`, same rule in both SPAs'
+`lib/accountName.js`): 3–64 characters of `a-z A-Z 0-9 - _ @ .`, no two of `- _ @ .` in a row (PasarGuard v5.6 allows up to
+128; our columns hold 64). Checked while typing on every form (site / Mini App checkout and rename, staff new service,
+manual invoice, provisioning retry, agency create admin = 32) with a Persian / English reason and a one-tap fixed name
+(spaces → `_`, Persian digits → Latin, other characters dropped), and again in `create_order` before payment — the bot
+explains it and offers the fix as a button (`an:<name>`, paid-order rename `nr:<order>:<name>`). Incident 2026-11-06: the
+bot took «sahar 1364», PasarGuard answered 422 after payment and the service was never created (order #125, fixed by hand).
+The service sync no longer marks a never-created service of a paid order «disabled» (it stays «در حال ساخت»).
 
 Account names are checked **in our DB and on the panel** when the order is placed
 (`orders.services.check_account_name`, site + bot ask for another name; an unreachable
