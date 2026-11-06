@@ -150,7 +150,9 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   **Store mode (v1.43)**: on a store's domain an admin view answers only with `store_ok = True` (default-deny, Super Admin too) —
   add it only to views whose data is tenant-scoped and safe for a reseller; platform paths are 404 there
   (`tenancy/middleware.STORE_BLOCKED_PREFIXES`). Customer-facing branding = `settings_app.branding.branding()` (never
-  `SiteConfig.load()` for what a customer sees); a store-settable key goes into `TENANT_KEYS`.
+  `SiteConfig.load()` for what a customer sees); a store-settable key goes into `TENANT_KEYS`. The admin SPA's store menu is
+  `adminNav.STORE_GROUPS` (+ store routes in App.jsx) — a page joins it only together with `store_ok` on its API; the user SPA
+  never hard-codes our brand (names come from `/config/`).
 - The rejected Liquid Glass refresh is archived at tag `archive/ui-refresh-liquid-glass` — don't copy from it.
 
 ## Gotchas (learned the hard way)

@@ -111,6 +111,19 @@ class ThemeViewSet(AdminViewSet):
         # built-in themes + the current tenant's own (never another store's)
         return super().get_queryset().filter(Q(tenant__isnull=True) | Q(tenant_id=current_tenant_id()))
 
+    def list(self, request, *args, **kwargs):
+        """On a store's domain «فعال» = the store's theme (TenantBranding.theme, else the first built-in)."""
+        from apps.settings_app.branding import is_store, store_branding
+
+        resp = super().list(request, *args, **kwargs)
+        if is_store():
+            b = store_branding()
+            active = b.theme_id or Theme.objects.filter(tenant__isnull=True).order_by("id").values_list("id", flat=True).first()
+            rows = resp.data["results"] if isinstance(resp.data, dict) and "results" in resp.data else resp.data
+            for r in rows:
+                r["is_active"] = r["id"] == active
+        return resp
+
     def perform_create(self, serializer):
         from apps.settings_app.branding import current_tenant_id, is_store
 

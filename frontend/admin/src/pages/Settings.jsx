@@ -8,7 +8,7 @@ import { Alert, Field, Spinner, Toggle } from '../components/ui'
 import { useToast } from '../components/Toast'
 import { copyToClipboard } from '../lib/clipboard'
 import { useDeleteConfirm } from '../lib/confirmDelete'
-import { CASPIAN_GROUPS, NAV_ICONS } from '../components/adminNav'
+import { CASPIAN_GROUPS, NAV_ICONS, STORE_GROUPS } from '../components/adminNav'
 import { fmtCount, useActionCounts } from '../lib/actionCounts'
 import { SoundPanel, SpeakerIcon, prefsOf } from '../components/NotifySound'
 import { useTheme } from '../theme/ThemeProvider'
@@ -193,6 +193,12 @@ const HUB_GROUPS = [
   ]]),
   SETTINGS_SECTIONS,
 ]
+// v1.44 store mode: the store's own pages + only the settings a store may set (alerts, requirements, display)
+const STORE_SECTIONS = ['alerts', 'requirements', 'display']
+const STORE_HUB_GROUPS = [
+  ...STORE_GROUPS.map(([g, items]) => [g, items.filter(([to]) => to !== SELF).map(([to, key, p, icon]) => [to, HUB_TEXT[key] || key, p, icon])]),
+  [SETTINGS_SECTIONS[0], SETTINGS_SECTIONS[1].filter(([to]) => STORE_SECTIONS.includes(to.slice(10)))],
+]
 
 // sections of the settings <form> (saved with the sticky bar); the SMS
 // sections manage their own rows
@@ -214,7 +220,7 @@ function SettingsHub() {
   const [soundOpen, setSoundOpen] = useState(false)
   const go = useNavigate()
   const h = HUB[lang] || HUB.fa
-  const groups = HUB_GROUPS.map(([g, items]) => [g, items.filter(([, , p]) => !p || can(p))]).filter(([, items]) => items.length)
+  const groups = (staff?.store ? STORE_HUB_GROUPS : HUB_GROUPS).map(([g, items]) => [g, items.filter(([, , p]) => !p || can(p))]).filter(([, items]) => items.length)
 
   return (
     <div className="st-hub set-mobile-only">
@@ -883,7 +889,7 @@ export default function Settings() {
 
       <Alert>{err}</Alert>
 
-      {!hasAnchor && can('settings.email') && (
+      {!hasAnchor && !staff?.store && can('settings.email') && (
         <Link to="/settings/email" className="card st-card flex items-center gap-3" style={{ textDecoration: 'none', color: 'inherit' }}>
           <span className="st-hub-ico" style={{ background: 'color-mix(in srgb, #0891B2 14%, transparent)', color: '#0891B2' }}>
             <HubIco d={HUB_ICONS.email} />
@@ -1021,10 +1027,11 @@ export default function Settings() {
         </div>
       </div>
 
-      {staff?.is_superadmin && <><style>{SUPER_CSS}</style><RoundedCard /><AutoPurgeCard /></>}
+      {staff?.is_superadmin && !staff?.store && <><style>{SUPER_CSS}</style><RoundedCard /><AutoPurgeCard /></>}
 
+      {!staff?.store && <>{/* SMS sources / devices are per store in Phase 5 */}
       <SmsSourcesSection t={t} s={s} lang={lang} />
-      <SmsDevicesSection t={t} s={s} lang={lang} />
+      <SmsDevicesSection t={t} s={s} lang={lang} /></>}
       </div>
 
       {soloForm && (

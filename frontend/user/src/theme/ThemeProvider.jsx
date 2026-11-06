@@ -3,6 +3,14 @@ import { api } from '../lib/api'
 
 const Ctx = createContext(null)
 
+function letterIcon(name) {
+  const ch = String(name || '').trim().charAt(0).toUpperCase()
+  if (!ch) return null
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#1464BA"/>`
+    + `<text x="32" y="44" font-family="sans-serif" font-size="36" font-weight="700" fill="#fff" text-anchor="middle">${ch.replace(/[<&>"]/g, '')}</text></svg>`
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`
+}
+
 // Some browsers ignore a mutated <link rel=icon> href — remove + re-add a fresh
 // element (with the right MIME type) so the tab icon actually updates, in every theme.
 function setFavicon(url) {
@@ -65,7 +73,8 @@ export function ThemeProvider({ children }) {
     api.get('/config/').then((r) => {
       setConfig(r.data)
       if (r.data?.site_name_fa) document.title = r.data.site_name_fa
-      setFavicon(r.data?.favicon)
+      // v1.44: a store without its own favicon gets its initial, never our icon
+      setFavicon(r.data?.favicon || letterIcon(r.data?.site_name_en || r.data?.site_name_fa))
     }).catch(() => {})
   }, [])
 

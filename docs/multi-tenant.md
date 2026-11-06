@@ -5,7 +5,9 @@
 > middleware, scoped managers, JWT `tid`, per-tenant unique constraints, isolation sweep) **and Release C in v1.42.0**
 > (`tenant_id` NOT NULL on the 34 tenant tables, old global uniques dropped, strict mode in the web process) — **Phase 1 done.**
 > **Phase 2 Release A in v1.43.0** (our «فروشگاه» tab, `tenant_branding`, `tenant_setting` + `TENANT_KEYS`, themes / pages per
-> store, server-side store mode). Next: Phase 2 Release B (admin SPA store mode, store branding / settings pages, user SPA). Written against v1.38.4, decisions recorded in v1.38.6.
+> store, server-side store mode) **and Release B in v1.44.0** (admin panel store mode: store menu + badge, store dashboard /
+> branding / settings / pages / themes, no platform polling; user site without our brand fallbacks, letter favicon) —
+> **Phase 2 done.** Next: Phase 3 (domains & TLS). Written against v1.38.4, decisions recorded in v1.38.6.
 > When a phase is approved and built, the matching parts move into `architecture.md` / `erd.md` / `flows.md` and this page
 > keeps only what is still planned.
 
@@ -631,7 +633,7 @@ Size = my estimate of working days for build + tests + browser checks + docs (on
 |---|---|---|---|
 | **0 — Prepare (current server)** ✅ v1.39.0 | Container memory limits, tuned gunicorn / Celery / MySQL / Redis, container memory + swap + pressure metrics with alerts (Monitoring card), docs. The owner enlarges swap. | 1–2 days | v1.39.0 |
 | **1 — Tenant core** (A ✅ v1.40.0, B ✅ v1.41.0) | `tenancy/` (models, contextvar, middleware, managers, registry, allow-list), `tenant_id` on all tenant tables + default backfill (Release A→C), JWT `tid`, isolation test suite (inventory, API sweep, lint) | 6–8 days | 3 (A, B, C) |
-| **2 — Store admin + branding** (A ✅ v1.43.0) | Store mode of the admin SPA (D1), «فروشگاه» tab for us, `tenant_branding`, `TENANT_KEYS`, pages / themes per tenant, user SPA branding per host | 5–6 days | 2 |
+| **2 — Store admin + branding** ✅ (A v1.43.0, B v1.44.0) | Store mode of the admin SPA (D1), «فروشگاه» tab for us, `tenant_branding`, `TENANT_KEYS`, pages / themes per tenant, user SPA branding per host | 5–6 days | 2 |
 | **3 — Domains & TLS** | «فروشگاه» section (our staff): domains + mode + exact A record, TXT / A / proxied verification, HTTP-01 per host on 80 + 443, nginx per-tenant files via host watcher, health, read-only status for the reseller, renewal + alerts | 5–7 days | 2 |
 | **4 — Catalog & PasarGuard** | Plans per tenant, `set_owner` provisioning, quota guard + warnings, renew / add-on per tenant | 4–5 days | 1–2 |
 | **5 — Payments & SMS** | Cards / sources / devices per tenant, unique-amount pools, matching per tenant, reseller payments queue, Android SMS app update (domain + token, QR) | 6–8 days | 2 (+ APK) |

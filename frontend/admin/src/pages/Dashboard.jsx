@@ -5,6 +5,7 @@ import { useI18n, enumLabel } from '../lib/i18n'
 import { jalali, toman, digits } from '../lib/format'
 import { Alert, Spinner } from '../components/ui'
 import { DataTable } from '../components/DataTable'
+import { useAuth } from '../lib/auth'
 
 const ICONS = {
   services: 'M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L21.75 12l-4.179 2.25m0 0l4.179 2.25L12 21.75 2.25 16.5l4.179-2.25m11.142 0l-5.571 3-5.571-3',
@@ -50,6 +51,8 @@ const ST_TONE = { active: 'success', on_hold: 'warning', pending: 'warning', lim
 
 export default function Dashboard() {
   const { t, lang } = useI18n()
+  const { staff } = useAuth()
+  const store = !!staff?.store          // v1.44 store mode: its services only (revenue / transactions / health are platform)
   const [d, setD] = useState(null)
   const [rev, setRev] = useState(null)
   const [recent, setRecent] = useState(null)
@@ -57,6 +60,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     api.get('/admin/dashboard/').then((r) => setD(r.data)).catch(() => { setD({}); setErr(t('load_error')) })
+    if (store) { setRecent([]); return }
     api.get('/admin/accounting/?period=monthly').then((r) => setRev(r.data)).catch(() => {})
     api.get('/admin/transactions/?limit=5').then((r) => setRecent(r.data.results ?? r.data)).catch(() => setRecent([]))
   }, [])
@@ -83,12 +87,12 @@ export default function Dashboard() {
         <Kpi icon="services" tone="blue" label={t('services_total')} value={digits(d.services?.total ?? '—', lang)}
           sub={byStatus.length ? `${digits(d.services?.by_status?.active ?? 0, lang)} ${t('st_active')}` : ''} />
         <Kpi icon="online" tone="green" label={t('online_now')} value={digits(d.services?.online_now ?? 0, lang)} />
-        <Kpi icon="revenue" tone="blue" label={`${t('revenue')} · ${t('last_30d')}`}
+        {!store && <Kpi icon="revenue" tone="blue" label={`${t('revenue')} · ${t('last_30d')}`}
           value={rev ? toman(rev.revenue, lang) : '—'}
-          sub={rev ? `${digits(rev.transactions, lang)} ${t('transactions')}` : ''} />
-        <Kpi icon="health" tone={down.length ? 'amber' : 'green'} label={t('health')}
+          sub={rev ? `${digits(rev.transactions, lang)} ${t('transactions')}` : ''} />}
+        {!store && <Kpi icon="health" tone={down.length ? 'amber' : 'green'} label={t('health')}
           value={`${digits(d.health?.up ?? 0, lang)} ${t('up')}`}
-          sub={down.length ? down.join(' · ') : '—'} />
+          sub={down.length ? down.join(' · ') : '—'} />}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -110,7 +114,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="card flex flex-col">
+        {!store && <div className="card flex flex-col">
           <div className="mb-3 flex items-center justify-between gap-2">
             <span className="font-bold text-sm">{t('gateway_core_status')}</span>
             <span className={'dash-ring ' + (downCount ? 'warn' : 'ok')} />
@@ -124,7 +128,7 @@ export default function Dashboard() {
               {digits(upCount, lang)}{d.health?.total ? ` / ${digits(d.health.total, lang)}` : ''} {t('up')}
             </span>
           </div>
-        </div>
+        </div>}
       </div>
 
       {recent && recent.length > 0 && (

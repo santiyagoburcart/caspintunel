@@ -34,7 +34,7 @@ import { PanelConnection, Bots } from './pages/Integrations'
 import EmailSettings from './pages/EmailSettings'
 import { Pages, Roles, Themes } from './pages/Simple'
 import GroupManager from './pages/GroupManager'
-import { isGroupManager } from './components/adminNav'
+import { isGroupManager, isStoreMode } from './components/adminNav'
 
 function Private({ children }) {
   const { staff, loading } = useAuth()
@@ -55,6 +55,25 @@ export default function App() {
           <Route path="/my-groups/:tab" element={<GroupManager />} />
         </Route>
         <Route path="*" element={<Navigate to="/my-groups" replace />} />
+      </Routes>
+    )
+  }
+  // v1.44 store mode: on a reseller store's domain only the store's own pages (components/adminNav.js STORE_GROUPS)
+  if (isStoreMode(staff)) {
+    return (
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route element={<Private><Layout /></Private>}>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/users" element={<Users />} />
+          <Route path="/users/:id/orders" element={<UserOrders />} />
+          <Route path="/branding" element={<Branding />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/settings/:section" element={<Settings />} />
+          <Route path="/pages" element={<Pages />} />
+          <Route path="/themes" element={<Themes />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     )
   }

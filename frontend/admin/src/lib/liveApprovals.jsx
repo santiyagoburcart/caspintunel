@@ -15,7 +15,7 @@ const Ctx = createContext({ pending: 0, agencyReview: 0, refresh: () => {} })
 
 export function LiveApprovalsProvider({ children }) {
   const { staff, can } = useAuth()
-  const enabled = !!staff && can('agency.view')
+  const enabled = !!staff && !staff.store && can('agency.view')     // v1.44: never in store mode
   const [pending, setPending] = useState(0)
   // v1.34: agency payments waiting for review (their own count, never the customer queue)
   const [agencyReview, setAgencyReview] = useState(0)

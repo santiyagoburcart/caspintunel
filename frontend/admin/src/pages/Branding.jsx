@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, apiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
+import { useAuth } from '../lib/auth'
 import { Alert, Spinner } from '../components/ui'
 
 const T = {
@@ -14,6 +15,7 @@ const T = {
     logo_hint: 'فرمت PNG، SVG یا WebP با پس‌زمینهٔ شفاف',
     favicon_hint: 'آیکون 32×32 یا 64×64 پیکسل برای تب مرورگر (ico یا png)',
     domain_hint: 'آدرس بدون پروتکل http/https',
+    domain_store: 'دامنهٔ فروشگاه را تیم ما تنظیم می‌کند',
     meta_hint: 'حداکثر 160 کاراکتر برای نتایج گوگل',
     current: 'فعلی', choose: 'انتخاب فایل جدید',
     bot_h: 'پشتیبانی ربات تلگرام', bot_sub: 'پیامی که با دکمهٔ «💬 پشتیبانی» در ربات فروش نمایش داده می‌شود',
@@ -34,6 +36,7 @@ const T = {
     logo_hint: 'PNG, SVG or WebP with a transparent background',
     favicon_hint: '32×32 or 64×64 px icon for the browser tab (ico or png)',
     domain_hint: 'address without the http/https protocol',
+    domain_store: 'the store’s domain is set by our team',
     meta_hint: 'up to 160 characters for Google results',
     current: 'current', choose: 'choose a new file',
     bot_h: 'Telegram bot support', bot_sub: 'Shown by the “💬 Support” button in the sales bot',
@@ -97,6 +100,8 @@ function Upload({ label, hint, current, onFile, s, accept }) {
 
 export default function Branding() {
   const { t, lang } = useI18n()
+  const { staff } = useAuth()
+  const store = !!staff?.store          // v1.44: a store edits its own branding; its domain is ours to set (Phase 3)
   const s = T[lang] || T.fa
   const [f, setF] = useState(null)
   const [msg, setMsg] = useState('')
@@ -155,14 +160,14 @@ export default function Branding() {
             <label key={k} className={'br-fld' + (area ? ' br-fld--wide' : '')}>
               <span className="br-fld-top">
                 <span className="label">{t(label)}</span>
-                {k === 'site_domain' && <span className="br-hint">{s.domain_hint}</span>}
+                {k === 'site_domain' && <span className="br-hint">{store ? s.domain_store : s.domain_hint}</span>}
                 {k === 'meta_description' && <span className="br-hint">{s.meta_hint}</span>}
               </span>
               {area ? (
                 <textarea className="input" rows={3} dir={ltr ? 'ltr' : undefined}
                   value={f[k] || ''} onChange={(e) => setF({ ...f, [k]: e.target.value })} />
               ) : (
-                <input className="input" dir={ltr ? 'ltr' : undefined}
+                <input className="input" dir={ltr ? 'ltr' : undefined} readOnly={store && k === 'site_domain'}
                   value={f[k] || ''} onChange={(e) => setF({ ...f, [k]: e.target.value })} />
               )}
             </label>

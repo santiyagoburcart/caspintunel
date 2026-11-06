@@ -66,6 +66,28 @@ export const GM_BOTNAV = [
   ['/my-groups/settings', 'settings', null, 'settings'],
 ]
 export const isGroupManager = (staff) => !!staff?.group_manager
+
+// v1.44 store mode (multi-tenant Phase 2): on a reseller store's domain (`staff.store` from /admin/auth/me/) the panel shows
+// only the store's own pages — the server answers only views with `store_ok` there and 404s platform paths. Later phases
+// add pages here as their data becomes per store (plans, payments, tickets…).
+export const STORE_GROUPS = [
+  ['nav_group_core', [['/', 'dashboard', null, 'dashboard']]],
+  ['nav_group_users', [['/users', 'users', 'users.view', 'users']]],
+  ['nav_group_config', [
+    ['/branding', 'branding', 'settings.manage', 'branding'],
+    ['/settings', 'settings', 'settings.manage', 'settings'],
+    ['/pages', 'pages', 'pages.manage', 'pages'],
+    ['/themes', 'themes', 'themes.manage', 'themes'],
+  ]],
+]
+export const STORE_BOTNAV = [
+  ['/', 'dashboard', null, 'dashboard'],
+  ['/users', 'users', 'users.view', 'users'],
+  ['/branding', 'branding', 'settings.manage', 'branding', true],
+  ['/themes', 'themes', 'themes.manage', 'themes'],
+  ['/settings', 'settings', null, 'settings'],
+]
+export const isStoreMode = (staff) => !!staff?.store
 // v1.27: a manager's pages each need their own permission (agency.gm.*) — the first one it may open
 export const gmHome = (can) => (GM_BOTNAV.find(([, , p]) => !p || can(p)) || ['/my-groups/settings'])[0]
 

@@ -21,7 +21,7 @@ function wsUrl() {
 
 export function LivePaymentsProvider({ children }) {
   const { staff, can } = useAuth()
-  const enabled = !!staff && can('payment.view')
+  const enabled = !!staff && !staff.store && can('payment.view')    // v1.44: payments per store in Phase 5
   const [pendingCount, setPendingCount] = useState(null)
   // v1.42.1 «ساخت ناموفق»: paid orders PasarGuard refused — counted on the Transactions tab
   const [failedCount, setFailedCount] = useState(0)

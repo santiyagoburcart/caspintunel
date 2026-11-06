@@ -8,7 +8,7 @@ import { useLiveTickets } from '../lib/liveTickets'
 import { useLiveApprovals } from '../lib/liveApprovals'
 import { useI18n } from '../lib/i18n'
 import { useTheme } from '../theme/ThemeProvider'
-import { CASPIAN_BOTNAV, CASPIAN_GROUPS, GM_BOTNAV, GM_GROUPS, NAV_ICONS, isGroupManager } from './adminNav'
+import { CASPIAN_BOTNAV, CASPIAN_GROUPS, GM_BOTNAV, GM_GROUPS, NAV_ICONS, STORE_BOTNAV, STORE_GROUPS, isGroupManager, isStoreMode } from './adminNav'
 import { GmBell } from './GmBell'
 import LogoutButton, { LOGOUT_CSS } from './LogoutButton'
 
@@ -277,7 +277,7 @@ function LegacyLayout() {
 }
 
 // ---- Caspian sidebar (Stitch _9 dark "Caspian Tunnel" / _10 light "Azure Telemetry") ----
-function CaspianNav({ groups, t, brand, logo, onNavigate, account = true, gmLogout = false }) {
+function CaspianNav({ groups, t, brand, logo, onNavigate, account = true, gmLogout = false, store = false }) {
   return (
     <div className="csp-side">
       <div className="csp-brand">
@@ -286,7 +286,7 @@ function CaspianNav({ groups, t, brand, logo, onNavigate, account = true, gmLogo
         </span>
         <div className="csp-brand-txt">
           <span className="csp-brand-name"><b>{brand}</b></span>
-          <span className="csp-brand-sub">{t('brand_core')}</span>
+          <span className="csp-brand-sub">{t(store ? 'brand_store' : 'brand_core')}</span>
         </div>
       </div>
       <nav className="csp-nav">
@@ -348,8 +348,9 @@ function CaspianLayout() {
   useInert(railRef, !side.open)
 
   const gm = isGroupManager(staff)
-  const groups = (gm ? GM_GROUPS : CASPIAN_GROUPS).map(([g, items]) => [g, items.filter(([, , p]) => !p || can(p))])
-  const botnav = (gm ? GM_BOTNAV : CASPIAN_BOTNAV).filter(([, , p]) => !p || can(p))
+  const store = isStoreMode(staff)
+  const groups = (gm ? GM_GROUPS : store ? STORE_GROUPS : CASPIAN_GROUPS).map(([g, items]) => [g, items.filter(([, , p]) => !p || can(p))])
+  const botnav = (gm ? GM_BOTNAV : store ? STORE_BOTNAV : CASPIAN_BOTNAV).filter(([, , p]) => !p || can(p))
   const brand = (lang === 'fa' ? config?.site_name_fa : config?.site_name_en)
     || (lang === 'fa' ? 'کسپین تانل' : 'Caspian Tunnel')
   const tab = activeTab(pathname)
@@ -371,7 +372,7 @@ function CaspianLayout() {
 
       {/* desktop rail — start side (right for fa/RTL, left for en/LTR); collapsible with ☰ */}
       <aside className="csp-rail" id="admin-sidebar" ref={railRef} aria-label={t('menu_open')}>
-        <CaspianNav groups={groups} t={t} brand={brand} logo={config?.logo} onNavigate={side.wide ? undefined : side.closeDrawer} account={!gm} gmLogout={gm} />
+        <CaspianNav groups={groups} t={t} brand={brand} logo={config?.logo} onNavigate={side.wide ? undefined : side.closeDrawer} account={!gm} gmLogout={gm} store={store} />
       </aside>
       {side.overlay && <div className="csp-backdrop" onClick={side.closeDrawer} aria-hidden="true" />}
 
@@ -409,7 +410,7 @@ function CaspianLayout() {
             <Link to="/" className="csp-mtop-brand">
               <div className="csp-mtop-txt">
                 <b>{brand}</b>
-                <span>ADMIN CONTROL</span>
+                <span data-testid={store ? 'store-badge-m' : undefined}>{store ? (lang === 'fa' ? 'پنل فروشگاه' : 'STORE ADMIN') : 'ADMIN CONTROL'}</span>
               </div>
               <span className="csp-mtop-logo">
                 {config?.logo ? <img src={config.logo} alt="" /> : <b>C</b>}
@@ -431,6 +432,13 @@ function CaspianLayout() {
           </button>
           {!gm && <SoundButton className="csp-tb-btn csp-tb-ico" />}
           {gm && <GmBell />}
+          {store && (
+            <span data-testid="store-badge" title={staff.store.slug}
+              style={{ fontSize: 12, fontWeight: 800, padding: '4px 10px', borderRadius: 999, color: 'var(--c-primary)',
+                background: 'color-mix(in srgb, var(--c-primary) 12%, transparent)', whiteSpace: 'nowrap' }}>
+              {lang === 'fa' ? 'فروشگاه' : 'Store'} · {staff.store.name}
+            </span>
+          )}
           {gm ? <AvatarLink to="/my-groups/settings" /> : (
             <>
               <span className="csp-tb-user">

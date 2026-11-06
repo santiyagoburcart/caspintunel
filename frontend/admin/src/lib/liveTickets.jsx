@@ -17,7 +17,7 @@ function wsUrl() {
 
 export function LiveTicketsProvider({ children }) {
   const { staff, can } = useAuth()
-  const enabled = !!staff && can('tickets.view')
+  const enabled = !!staff && !staff.store && can('tickets.view')    // v1.44: tickets per store in Phase 7
   const [badge, setBadge] = useState(0)
   const listeners = useRef(new Set())
 

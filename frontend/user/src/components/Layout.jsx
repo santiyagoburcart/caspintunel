@@ -46,7 +46,7 @@ function CaspianLayout() {
   const nav = useNavigate()
   const [open, setOpen] = useState(false)
   const inTelegram = isTelegramMiniApp()
-  const brand = lang === 'fa' ? (config?.site_name_fa || 'کسپین تانل') : (config?.site_name_en || 'caspintunel')
+  const brand = lang === 'fa' ? (config?.site_name_fa || config?.site_name_en || '') : (config?.site_name_en || config?.site_name_fa || '')
 
   const NavItems = ({ onClick }) => links.map(([to, key]) => (
     <NavLink key={to} to={to} end={to !== '/tickets'} onClick={onClick}

@@ -1332,4 +1332,5 @@ sequenceDiagram
         M-->>R: 404 unknown site
     end
     Note over M: on a store's domain: platform paths 404 · admin views without store_ok → 403 (store mode)
+    Note over R: the panel on store.example/panel/ shows only the store menu (v1.44) · the site shows only the store's name
 ```

@@ -4,6 +4,7 @@ import { api } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 import { toman, tomanParts, gb as gbOf } from '../lib/format'
 import { Alert, Spinner } from '../components/ui'
+import { useTheme } from '../theme/ThemeProvider'
 
 /** price: Latin number in a mono span, currency word in a normal run */
 function Money({ n, lang, per }) {
@@ -53,6 +54,8 @@ const faNum = (n, lang) => String(n)
 
 function CaspianStore() {
   const { t, lang } = useI18n()
+  const { config } = useTheme()
+  const siteName = (lang === 'fa' ? config?.site_name_fa : config?.site_name_en) || config?.site_name_fa || ''
   const nav = useNavigate()
   const [plans, setPlans] = useState(null)
   const [selected, setSelected] = useState(null)
@@ -143,7 +146,7 @@ function CaspianStore() {
           <div className="csp-store-note">
             <span className="csp-store-note-ico"><SI d={ICO.shield} /></span>
             <div>
-              <div className="csp-store-note-t">{t('quality_note_t')}</div>
+              <div className="csp-store-note-t">{t('quality_note_t', { site: siteName })}</div>
               <div className="csp-store-note-d">{t('quality_note_d')}</div>
             </div>
           </div>

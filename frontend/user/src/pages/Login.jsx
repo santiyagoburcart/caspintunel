@@ -60,8 +60,9 @@ function CaspianLogin() {
   const { t, lang, setLang } = useI18n()
   const { config } = useTheme()
   const { f, setF, err, info, busy, submit } = useLoginForm()
-  const brandFa = config?.site_name_fa || 'کسپین تانل'
-  const brandEn = config?.site_name_en || 'caspintunel'
+  // v1.44: the store's own name (a reseller store must never flash ours) — empty until /config/ answers
+  const brandFa = config?.site_name_fa || config?.site_name_en || ''
+  const brandEn = config?.site_name_en || config?.site_name_fa || ''
   const brand = lang === 'fa' ? brandFa : brandEn
 
   const features = [
@@ -96,7 +97,7 @@ function CaspianLogin() {
           <section className="csp-auth-form">
             <div className="csp-auth-form-head">
               <div>
-                <h1 className="csp-headline csp-auth-h1">{t('login_welcome')}</h1>
+                <h1 className="csp-headline csp-auth-h1">{t('login_welcome', { site: brand })}</h1>
                 <p className="csp-auth-lead">{t('login_sub')}</p>
               </div>
               <span className="csp-auth-badge">
