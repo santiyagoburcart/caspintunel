@@ -335,7 +335,7 @@ function Deposit({ tx, s, lang, canAttach, canUnlink, onDone }) {
                     <span className="blu-cand-top"><bdi dir="ltr" className="mono-num">{c.ref}</bdi>
                       <b className="mono-num">{toman(c.amount, lang)}</b>
                       <span className={'blu-cand-st' + (c.paid ? ' paid' : '')}>{c.paid ? s.paid_tag : s.unpaid_tag}</span></span>
-                    <span className="blu-cand-sub">{c.who && <bdi>{c.who}</bdi>}{c.at_jalali && <span className="mono-num"> · {c.at_jalali}</span>}</span>
+                    <span className="blu-cand-sub">{c.who && <bdi>{c.who}</bdi>}{c.who && c.at_jalali && ' · '}{c.at_jalali && <bdi dir="ltr" className="mono-num">{c.at_jalali}</bdi>}</span>
                     {c.why.length > 0 && <span className="blu-cand-why">{c.why.filter((w) => w !== 'typed').map((w) => <i key={w}>{s['w_' + w] || w}</i>)}</span>}
                   </button>
                 </li>

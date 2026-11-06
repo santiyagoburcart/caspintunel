@@ -721,5 +721,5 @@ const PF_CSS = `
 @media (max-width: 767px) { .txd-pf-act { grid-template-columns: minmax(0, 1fr); } }
 `
 
-const BLU_TAG = { marginInlineStart: 8, fontSize: 11, fontWeight: 700, padding: '1px 8px', borderRadius: 999,
+const BLU_TAG = { display: 'table', margin: '4px 0', fontSize: 11, fontWeight: 700, padding: '1px 8px', borderRadius: 999,
   color: 'var(--c-primary)', background: 'color-mix(in srgb, var(--c-primary) 12%, transparent)' }

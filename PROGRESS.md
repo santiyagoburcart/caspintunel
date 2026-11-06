@@ -258,7 +258,7 @@ Everything shipped since v1.6.0 (details in the session log):
 
 ## Current state & open items (keep this list current)
 - **Production server = Finland `46.62.192.189`** since 2026-10-21 (migrated from 66.245.203.63).
-- **Version** `VERSION` = 1.42.2 (2026-11-06; tagged releases `v<version>`; v1.4.0/v1.4.1 were tagged before the file was bumped); iPhone Shortcut has its own `mobile_shortcut/VERSION`.
+- **Version** `VERSION` = 1.42.3 (2026-11-06; tagged releases `v<version>`; v1.4.0/v1.4.1 were tagged before the file was bumped); iPhone Shortcut has its own `mobile_shortcut/VERSION`.
 - **Built since v1.15** (details: session log, `docs/roadmap.md`): ticketing, CRM, retention, analytics, discount codes, domain wizard + access modes, agency (portal, ledger, limit history, groups, group managers in the panel with `agency.gm.*` permissions, approvals incl. Telegram, invoices / payments / allocations, portal sections), Blu Bank deposits, rounded auto-approve, transaction numbers + void / restore, permanent delete + auto-purge, Telegram alerts + sound + Web Push (customers, staff, resellers), manual customer invoices, Tehran-day reporting.
 - **Server capacity (2026-11-04)**: 2 vCPU, 3.7 GiB RAM (~2.8 GiB used, ~1 GiB of the 2 GiB swap in use), disk 38 GB at 64 %; the host also runs three PasarGuard nodes + x-ui. Size the next phase (multi-tenant storefronts) with that in mind.
 - **Archived (not merged): the "Liquid Glass" UI refresh** — rejected 2026-10-10. Branch `ui-refresh` and tag
