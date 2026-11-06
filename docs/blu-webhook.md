@@ -78,8 +78,19 @@ full card number masked. `items: []` is a heartbeat.
    it → an agency payment of exactly that amount inside its window is approved (`billing.match_deposit` →
    `billing.approve_payment`, method `blu_auto`; already paid → `duplicate`). Rounded and near-miss rules apply to
    agency payments the same way. Agency money never becomes a customer `Payment` (separate revenue).
-5. Otherwise `unmatched`. Staff can attach it to an order from Payments → «واریزهای بلو»
-   (`POST /api/v1/admin/payments/blu-transactions/<id>/attach/`, `payment.approve`).
+5. Otherwise `unmatched`. Staff link it from Payments → «واریزهای بلو» (v1.42.2, `payments_sms/blu_link.py`):
+   `POST …/blu-transactions/<id>/attach/ {ref, confirm}` (`payment.approve`) — `ref` = an order id, `TX-`, `MI-` (manual
+   invoice), `INV-` / `AP-` (agency); `GET …/<id>/candidates/?q=` suggests targets (amount ±20 %, ±3 days, payer name,
+   tracking / reference number). **Not paid yet** → approved with the deposit (a different amount needs `confirm`; a
+   shorter one records the shortfall). **Already approved** (manual invoice, staff receipt, SMS) → **link only**: status
+   `linked` («متصل به پرداخت موجود»), the payment shows the deposit (payer, card, tracking / reference) — no new approval,
+   nothing counted twice (Accounting / Transactions / Analytics count payments, never deposits). `POST …/<id>/unlink/`
+   (Super Admin, audit `blu.unlinked`) undoes a link-only connection; an approval is undone by voiding the payment.
+6. **Auto-link** (v1.42.2, `payments_sms/signals.py`): when a payment / agency payment is approved by any route (not Blu,
+   not cash), an `unmatched` deposit with the same tracking / reference number — else exactly ONE with the same amount
+   within 24 h and the same payer name when both are known — is linked (link only). `manage.py link_blu_deposits
+   [--dry-run]` runs the same rule over the last 60 days. Match notes are stored in English and shown in Persian
+   (`blu_notes.note_fa`).
 
 The deposit's reference / tracking numbers are on the payment too, so a receipt with the
 same document number on another order shows the "duplicate document" warning.

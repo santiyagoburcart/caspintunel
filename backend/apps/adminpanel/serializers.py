@@ -437,6 +437,8 @@ class TransactionSerializer(serializers.ModelSerializer):
     # v1.42.1 «ساخت ناموفق»: PasarGuard refused the paid order's account (its message) — staff only
     provision_error = serializers.CharField(source="order.provision_error", read_only=True, default="")
     provision_failed_at = serializers.DateTimeField(source="order.provision_failed_at", read_only=True, default=None)
+    # v1.42.2: the Blu deposit that paid or identifies this payment (payer, card, tracking / reference)
+    blu = serializers.SerializerMethodField()
     amount_unique = serializers.DecimalField(
         source="order.amount_unique", max_digits=12, decimal_places=0, read_only=True, default=None
     )
@@ -474,8 +476,18 @@ class TransactionSerializer(serializers.ModelSerializer):
             "receipt_url", "order_source", "order_type", "order_status",
             "created_at", "updated_at", "pay_date",
             "voided", "voided_at", "voided_by", "void_reason", "void_service_action", "restorable_until", "manual",
-            "auto_rule", "auto_reason", "shortfall", "provision_error", "provision_failed_at",
+            "auto_rule", "auto_reason", "shortfall", "provision_error", "provision_failed_at", "blu",
         )
+
+    def get_blu(self, obj) -> dict | None:
+        from apps.payments_sms.blu import mask_card
+        tx = obj.blu_transaction if obj.blu_transaction_id else None      # set by every approve / link path
+        if tx is None:
+            return None
+        card = mask_card(tx.payer_card) if tx.payer_card else (f"******{tx.payer_last4}" if tx.payer_last4 else "")
+        return {"id": tx.id, "amount_toman": tx.amount_toman, "occurred_at": tx.occurred_at, "payer_name": tx.payer_name,
+                "payer_card": card, "receipt": tx.receipt, "reference": tx.reference, "status": tx.status,
+                "linked": tx.status == "linked"}
 
     def get_receipt_url(self, obj) -> str | None:
         return f"/api/v1/payments/{obj.id}/receipt/" if obj.receipt_image else None

@@ -223,6 +223,15 @@ export default function TransactionDetail() {
     [t('txd_dest_card'), <span className="txd-mono" dir="ltr">{groupCard(r.card)}</span>,
       false, r.card_bank || r.card_holder ? [r.card_bank, r.card_holder].filter(Boolean).join(' · ') : null],
     ...(r.gateway_ref ? [[t('txd_rrn'), <span className="txd-mono" dir="ltr">{r.gateway_ref}</span>]] : []),
+    // v1.42.2: the Blu deposit that paid / identifies this payment (payer, card, tracking / reference)
+    ...(r.blu ? [[lang === 'fa' ? 'واریز بلو' : 'Blu deposit', (
+      <span data-testid="txd-blu"><b className="txd-mono">{toman(r.blu.amount_toman, lang)}</b>
+        {r.blu.linked && <span style={BLU_TAG}>{lang === 'fa' ? 'متصل به پرداخت موجود' : 'linked to this payment'}</span>}
+        <span className="txd-kv-sub">{[r.blu.payer_name, r.blu.payer_card && `💳 ${r.blu.payer_card}`,
+          r.blu.receipt && `${lang === 'fa' ? 'پیگیری' : 'tracking'} ${r.blu.receipt}`,
+          r.blu.reference && `${lang === 'fa' ? 'مرجع' : 'ref'} ${r.blu.reference}`,
+          jalali(r.blu.occurred_at, true, lang)].filter(Boolean).join(' · ')}</span></span>
+    )]] : []),
     [t('txd_reg_date'), <span className="txd-mono">{jalali(r.created_at, true, lang)}</span>],
     [t('txd_order_type'), r.order_type === 'renew' ? t('txd_ot_renew') : t('txd_ot_new')],
     ...(r.account_name ? [[t('txd_account_name'), <span className="txd-mono" dir="ltr">{r.account_name}</span>]] : []),
@@ -711,3 +720,6 @@ const PF_CSS = `
 .txd-pf-btn { min-height: 44px; padding: 0 18px; background: var(--c-primary); color: #fff; border-radius: 12px; font-weight: 700; }
 @media (max-width: 767px) { .txd-pf-act { grid-template-columns: minmax(0, 1fr); } }
 `
+
+const BLU_TAG = { marginInlineStart: 8, fontSize: 11, fontWeight: 700, padding: '1px 8px', borderRadius: 999,
+  color: 'var(--c-primary)', background: 'color-mix(in srgb, var(--c-primary) 12%, transparent)' }

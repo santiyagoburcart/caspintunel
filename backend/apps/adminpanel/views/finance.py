@@ -42,7 +42,7 @@ class TransactionViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, views
 
     def get_queryset(self):
         qs = Payment.objects.select_related(
-            "order", "order__user", "order__plan", "bank_card", "confirmed_by_staff", "voided_by",
+            "order", "order__user", "order__plan", "bank_card", "confirmed_by_staff", "voided_by", "blu_transaction",
             "order__manual_invoice", "order__manual_invoice__created_by",
         )
         q = self.request.query_params
@@ -308,6 +308,7 @@ class PendingPaymentsView(AdminAPIView):
 
 def _blu_row(tx) -> dict:
     from apps.payments_sms.blu import mask_card
+    from apps.payments_sms.blu_notes import note_fa
 
     return {
         "id": tx.id, "amount_toman": tx.amount_toman, "amount_irr": tx.amount_irr,
@@ -316,7 +317,9 @@ def _blu_row(tx) -> dict:
         "payer_card": mask_card(tx.payer_card) if tx.payer_card else (f"******{tx.payer_last4}" if tx.payer_last4 else ""),
         "receipt": tx.receipt, "reference": tx.reference, "status": tx.status,
         "matched_order": tx.matched_order_id, "matched_payment": tx.matched_payment_id,
-        "match_note": tx.match_note, "received_at": tx.received_at,
+        "match_note": tx.match_note, "match_note_fa": note_fa(tx.match_note), "received_at": tx.received_at,
+        # v1.42.2: the payment this deposit approved or identifies (TX / MI number for the tab)
+        "payment_tx": tx.matched_payment.tx_number if tx.matched_payment_id else None,
         # v1.32: approved by the rounded-amount rule (payments_sms/rounded.py)
         "rounded": bool(tx.matched_payment_id and tx.matched_payment.auto_rule == "rounded"),
         "shortfall": tx.matched_payment.shortfall if tx.matched_payment_id else None,
@@ -360,43 +363,68 @@ class BluTransactionListView(AdminAPIView):
 
 
 class BluAttachView(AdminAPIView):
-    """POST /admin/payments/blu-transactions/<id>/attach/ {order_id} — staff match an
-    unmatched deposit to an order: approves it (confirmed_by admin) and fulfils it."""
+    """POST /admin/payments/blu-transactions/<id>/attach/ {ref, confirm?} — v1.42.2 «اتصال»: `ref` = order id, TX-, MI-,
+    INV- or AP- (`order_id` still accepted). Not paid yet → approved with this deposit (a different amount needs
+    `confirm`; a short one records the shortfall). Already approved → linked only («متصل به پرداخت موجود»)."""
 
     perms_map = {"POST": ["payment.approve"]}
 
-    @extend_schema(request=dict, responses=dict, summary="Attach a Blu deposit to an order (approves it)")
+    @extend_schema(request=dict, responses=dict, summary="Attach / link a Blu deposit (order, TX, MI, INV, AP)")
     def post(self, request, pk):
-        from django.db import transaction
+        from apps.payments_sms import blu_link
+        from apps.payments_sms.models import BluTransaction
 
-        from apps.orders.models import Order, OrderStatus
-        from apps.payments_sms.matching import confirm_blu
-        from apps.payments_sms.models import BluStatus, BluTransaction
-        from apps.payments_sms.services import _FULFILLABLE
-
+        ref = request.data.get("ref") or request.data.get("order_id")
+        confirm = str(request.data.get("confirm") or "").lower() in ("1", "true", "yes")
         try:
-            order_id = int(str(request.data.get("order_id") or "").strip().lstrip("#"))
-        except ValueError:
-            return Response({"detail": "enter the order number", "field": "order_id"}, status=400)
-        with transaction.atomic():
-            tx = BluTransaction.objects.select_for_update().filter(pk=pk).first()
-            if tx is None:
-                return Response({"detail": "deposit not found"}, status=404)
-            if tx.status != BluStatus.UNMATCHED:
-                return Response({"detail": f"this deposit is already {tx.status}", "code": "not_unmatched"}, status=409)
-            order = Order.objects.select_for_update().filter(pk=order_id).first()
-            if order is None:
-                return Response({"detail": f"order #{order_id} not found", "field": "order_id"}, status=404)
-            paid = Payment.objects.live().filter(order=order, status=PaymentStatus.APPROVED).first()
-            if paid is not None or order.status in (OrderStatus.PAID, OrderStatus.COMPLETED):
-                return Response({"detail": f"order #{order.id} is already paid", "code": "already_paid"}, status=409)
-            if order.status not in _FULFILLABLE:
-                return Response({"detail": f"order #{order.id} is {order.status}", "code": "order_state"}, status=409)
-            payment = confirm_blu(order, tx, staff=request.user)
-        return Response({"ok": True, "order_id": order.id, "payment_id": payment.id,
-                         "message": f"Order #{order.id} approved with this Blu deposit",
-                         "message_fa": f"سفارش #{order.id} با این واریز بلو تأیید شد",
-                         "deposit": _blu_row(BluTransaction.objects.get(pk=pk))})
+            out = blu_link.link(pk, ref, request.user, confirm=confirm)
+        except blu_link.LinkError as exc:
+            return Response(exc.payload(), status=exc.status)
+        sh = out.get("shortfall")
+        if out["result"] == "linked":
+            msg, fa = (f"Linked to {out['target']} (already paid — no new approval)",
+                       f"به {out['target']} متصل شد (قبلاً پرداخت شده — تأیید دوباره‌ای انجام نشد)")
+        else:
+            msg = f"{out['target']} approved with this Blu deposit" + (f" — shortfall {sh} T recorded" if sh else "")
+            fa = f"{out['target']} با این واریز بلو تأیید شد" + (f" — کسری {sh} تومان ثبت شد" if sh else "")
+        return Response({"ok": True, **out, "message": msg, "message_fa": fa,
+                         "deposit": _blu_row(BluTransaction.objects.select_related("matched_payment").get(pk=pk))})
+
+
+class BluCandidatesView(AdminAPIView):
+    """GET /admin/payments/blu-transactions/<id>/candidates/?q= — what this deposit could belong to (±20 % amount,
+    deposit time, payer name, tracking / reference number), best first; `q` = a typed order / TX / MI / INV / AP."""
+
+    perms_map = {"GET": ["payment.view"]}
+
+    def get(self, request, pk):
+        from apps.payments_sms import blu_link
+        from apps.payments_sms.models import BluTransaction
+
+        tx = BluTransaction.objects.filter(pk=pk).first()
+        if tx is None:
+            return Response({"detail": "deposit not found"}, status=404)
+        rows = blu_link.candidates(tx, request.query_params.get("q") or "")
+        for r in rows:
+            r["at_jalali"] = to_jalali_str(r["at"]) if r["at"] else ""
+        return Response({"results": rows})
+
+
+class BluUnlinkView(AdminAPIView):
+    """POST /admin/payments/blu-transactions/<id>/unlink/ — Super Admin: undo a link-only connection (audit)."""
+
+    perms_map = {"POST": ["payment.approve"]}
+
+    def post(self, request, pk):
+        from apps.payments_sms import blu_link
+
+        if not getattr(request.user, "is_superadmin", False):
+            return Response({"detail": "Super Admin only", "detail_fa": "فقط مدیر ارشد"}, status=403)
+        try:
+            tx = blu_link.unlink(pk, request.user)
+        except blu_link.LinkError as exc:
+            return Response(exc.payload(), status=exc.status)
+        return Response({"ok": True, "deposit": _blu_row(tx), "message": "Deposit unlinked", "message_fa": "واریز جدا شد"})
 
 
 class PaymentReceiptInfoView(AdminAPIView):

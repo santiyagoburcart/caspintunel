@@ -21,8 +21,17 @@ const T = {
     no_poll_log: 'جمع‌کننده خواندن‌های موفق را در لاگ ثبت نمی‌کند؛ سلامت از روی فعال‌بودن سرویس و خطاهای لاگ تشخیص داده می‌شود.',
     quiet_h: '{n} ساعت بدون واریزی', quiet_m: '{n} دقیقه بدون واریزی', quiet_note: '(فقط اطلاع — حساب ساکت یعنی قطعی نیست)',
     last_dep: 'آخرین واریز',
-    f_all: 'همه', f_unmatched: 'تطبیق‌نشده', f_matched: 'تأییدشده', f_duplicate: 'تکراری', f_ignored: 'نادیده',
-    st_unmatched: 'تطبیق‌نشده', st_matched: 'تأییدشده', st_duplicate: 'تکراری', st_ignored: 'نادیده',
+    f_all: 'همه', f_unmatched: 'تطبیق‌نشده', f_matched: 'تأییدشده', f_linked: 'متصل', f_duplicate: 'تکراری', f_ignored: 'نادیده',
+    st_unmatched: 'تطبیق‌نشده', st_matched: 'تأییدشده', st_linked: 'متصل به پرداخت موجود', st_duplicate: 'تکراری', st_ignored: 'نادیده',
+    ref_ph: 'شماره سفارش، TX-، MI-، INV- یا AP-', suggest: 'پیشنهادها', no_cand: 'پیشنهادی پیدا نشد',
+    not_found: 'این مرجع پیدا نشد', paid_tag: 'پرداخت‌شده', unpaid_tag: 'در انتظار پرداخت', payment: 'پرداخت',
+    w_same_reference: 'مرجع یکسان', w_same_amount: 'مبلغ دقیق', w_payer_name: 'نام واریزکننده', w_time: 'زمان نزدیک', w_typed: 'واردشده',
+    l_title: 'اتصال به پرداخت موجود', l_btn: 'بله، فقط متصل کن',
+    l_msg: '{target} قبلاً پرداخت شده است. واریز {amount} فقط برای شناسایی به آن متصل می‌شود؛ تأیید دوباره‌ای انجام نمی‌شود و در حسابداری دوباره شمرده نمی‌شود.',
+    s_msg: 'مبلغ واریز ({amount}) با {target} ({invoice}) برابر نیست. با تأیید، پرداخت با همین واریز تأیید می‌شود',
+    s_short: ' و کسری {short} ثبت می‌شود.', s_btn: 'بله، با کسری تأیید کن', m_btn: 'بله، تأیید کن',
+    unlink: 'جدا کردن', u_title: 'جدا کردن واریز', u_btn: 'بله، جدا کن',
+    u_msg: 'اتصال این واریز به {target} برداشته می‌شود و واریز دوباره «تطبیق‌نشده» می‌شود. پرداخت تغییری نمی‌کند.',
     payer: 'واریزکننده', card: 'کارت', receipt: 'شماره پیگیری', reference: 'شماره مرجع', order: 'سفارش',
     open_tx: 'مشاهدهٔ تراکنش', none: 'واریزی ثبت نشده است', none_f: 'موردی در این دسته نیست',
     attach: 'اتصال به سفارش', order_ph: 'شماره سفارش', load_fail: 'دریافت واریزهای بلو ناموفق بود',
@@ -50,8 +59,17 @@ const T = {
     no_poll_log: 'The collector does not log successful polls; health comes from the service state and journal errors.',
     quiet_h: '{n} h without a deposit', quiet_m: '{n} min without a deposit', quiet_note: '(info only — a quiet account is not an outage)',
     last_dep: 'Last deposit',
-    f_all: 'All', f_unmatched: 'Unmatched', f_matched: 'Approved', f_duplicate: 'Duplicate', f_ignored: 'Ignored',
-    st_unmatched: 'Unmatched', st_matched: 'Approved', st_duplicate: 'Duplicate', st_ignored: 'Ignored',
+    f_all: 'All', f_unmatched: 'Unmatched', f_matched: 'Approved', f_linked: 'Linked', f_duplicate: 'Duplicate', f_ignored: 'Ignored',
+    st_unmatched: 'Unmatched', st_matched: 'Approved', st_linked: 'Linked to an existing payment', st_duplicate: 'Duplicate', st_ignored: 'Ignored',
+    ref_ph: 'Order no., TX-, MI-, INV- or AP-', suggest: 'Suggestions', no_cand: 'No suggestions found',
+    not_found: 'This reference was not found', paid_tag: 'paid', unpaid_tag: 'awaiting payment', payment: 'Payment',
+    w_same_reference: 'same reference', w_same_amount: 'exact amount', w_payer_name: 'payer name', w_time: 'close in time', w_typed: 'typed',
+    l_title: 'Link to an existing payment', l_btn: 'Yes, link only',
+    l_msg: '{target} is already paid. The {amount} deposit is linked to it for identification only — no second approval, nothing counted twice.',
+    s_msg: 'The deposit ({amount}) differs from {target} ({invoice}). Confirming approves it with this deposit',
+    s_short: ' and records a shortfall of {short}.', s_btn: 'Yes, approve with the shortfall', m_btn: 'Yes, approve',
+    unlink: 'Unlink', u_title: 'Unlink deposit', u_btn: 'Yes, unlink',
+    u_msg: 'The link to {target} is removed and the deposit goes back to “Unmatched”. The payment is not changed.',
     payer: 'Payer', card: 'Card', receipt: 'Tracking no.', reference: 'Reference no.', order: 'Order',
     open_tx: 'Open transaction', none: 'No deposits yet', none_f: 'Nothing in this filter',
     attach: 'Attach to order', order_ph: 'Order number', load_fail: 'Failed to load Blu deposits',
@@ -72,8 +90,8 @@ const T = {
   },
 }
 
-const FILTERS = ['all', 'unmatched', 'matched', 'duplicate', 'ignored']
-const TONE = { unmatched: 'warning', matched: 'success', duplicate: 'muted', ignored: 'muted' }
+const FILTERS = ['all', 'unmatched', 'matched', 'linked', 'duplicate', 'ignored']
+const TONE = { unmatched: 'warning', matched: 'success', linked: 'info', duplicate: 'muted', ignored: 'muted' }
 
 export default function BluDeposits() {
   const { lang } = useI18n()
@@ -122,7 +140,7 @@ export default function BluDeposits() {
       )}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {data.results.map((tx) => (
-          <Deposit key={tx.id} tx={tx} s={s} lang={lang} canAttach={can('payment.approve')} onDone={load} />
+          <Deposit key={tx.id} tx={tx} s={s} lang={lang} canAttach={can('payment.approve')} canUnlink={!!staff?.is_superadmin} onDone={load} />
         ))}
       </div>
     </div>
@@ -222,21 +240,51 @@ function Service({ v, s, lang }) {
   )
 }
 
-function Deposit({ tx, s, lang, canAttach, onDone }) {
+function Deposit({ tx, s, lang, canAttach, canUnlink, onDone }) {
   const confirm = useConfirm()
   const navigate = useNavigate()
-  const [orderId, setOrderId] = useState(tx.matched_order ? String(tx.matched_order) : '')
+  const toast = useToast()
+  const [ref, setRef] = useState('')
+  const [cands, setCands] = useState(null)        // null = not loaded, [] = none
+  const [busy, setBusy] = useState(false)
   const tone = TONE[tx.status] || 'muted'
+  const amount = toman(tx.amount_toman, lang)
+  const U = `/admin/payments/blu-transactions/${tx.id}/`
 
-  const attach = async () => {
-    const id = orderId.replace(/\D/g, '')
-    if (!id) return
+  const loadCands = async () => {
+    setBusy(true)
+    try { setCands((await api.get(`${U}candidates/`)).data.results) } catch { setCands([]) } finally { setBusy(false) }
+  }
+
+  // v1.42.2: look the target up first (read only), then one dialog that says exactly what happens
+  const attach = async (typed) => {
+    const q = (typed || ref).trim()
+    if (!q) return
+    setBusy(true)
+    let target = null
+    try { target = (await api.get(`${U}candidates/`, { params: { q } })).data.results.find((c) => c.why.includes('typed')) } catch { /* below */ }
+    setBusy(false)
+    if (!target) { toast.error(s.not_found); return }
+    const inv = Number(target.amount); const dep = Number(tx.amount_toman); const short = inv - dep
+    const fill = (t) => t.replace('{target}', target.label).replace('{amount}', amount).replace('{invoice}', toman(inv, lang))
+      .replace('{short}', toman(short, lang))
+    const opts = target.paid
+      ? { tone: 'primary', icon: 'link', title: s.l_title, message: fill(s.l_msg), confirmLabel: s.l_btn }
+      : inv !== dep
+        ? { tone: 'warning', icon: 'check', title: s.a_title, message: fill(s.s_msg) + (short > 0 ? fill(s.s_short) : '.'), confirmLabel: short > 0 ? s.s_btn : s.m_btn }
+        : { tone: 'success', icon: 'check', title: s.a_title, message: s.a_msg.replace('{amount}', amount).replace('{id}', target.label.replace(/^order #/, '')), confirmLabel: s.a_btn }
     const ok = await confirm({
-      tone: 'success', icon: 'check', badge: 'payment.approve',
-      title: s.a_title, targetLabel: s.order, targetId: `#${id}`,
-      message: s.a_msg.replace('{amount}', toman(tx.amount_toman, lang)).replace('{id}', id),
-      confirmLabel: s.a_btn, footnote: s.a_audit,
-      action: () => api.post(`/admin/payments/blu-transactions/${tx.id}/attach/`, { order_id: Number(id) }),
+      ...opts, badge: 'payment.approve', targetLabel: s.order, targetId: target.ref, footnote: s.a_audit,
+      action: () => api.post(`${U}attach/`, { ref: q, confirm: true }),
+    })
+    if (ok) onDone()
+  }
+
+  const unlink = async () => {
+    const ok = await confirm({
+      tone: 'danger', icon: 'link', title: s.u_title, badge: 'superadmin',
+      message: s.u_msg.replace('{target}', tx.payment_tx || `#${tx.matched_order}`), confirmLabel: s.u_btn, footnote: s.a_audit,
+      action: () => api.post(`${U}unlink/`),
     })
     if (ok) onDone()
   }
@@ -265,15 +313,39 @@ function Deposit({ tx, s, lang, canAttach, onDone }) {
         {tx.reference && <span>{s.reference}: <bdi dir="ltr" className="mono-num">{tx.reference}</bdi></span>}
         {tx.matched_order && <span>{s.order} #{tx.matched_order}</span>}
       </div>
-      {tx.match_note && <div className="blu-note" dir="ltr">{tx.match_note}</div>}
-      {tx.status === 'unmatched' && canAttach && !tx.agency_payment && (
-        <div className="blu-attach">
-          <input className="input" dir="ltr" inputMode="numeric" aria-label={s.order_ph} placeholder={s.order_ph}
-            value={orderId} onChange={(e) => setOrderId(e.target.value)} />
-          <button type="button" className="btn-primary text-sm" disabled={!orderId.replace(/\D/g, '')} onClick={attach}>
-            {s.attach}
-          </button>
+      {tx.payment_tx && <span className="text-sm">{s.payment}: <bdi dir="ltr" className="mono-num">{tx.payment_tx}</bdi></span>}
+      {tx.match_note && (lang === 'fa' && tx.match_note_fa
+        ? <div className="blu-note" data-testid="blu-note">{tx.match_note_fa}</div>
+        : <div className="blu-note" dir="ltr" data-testid="blu-note">{tx.match_note}</div>)}
+      {(tx.status === 'unmatched' || tx.status === 'duplicate') && canAttach && !tx.agency_payment && (
+        <div className="blu-link" data-testid="blu-link">
+          <div className="blu-attach">
+            <input className="input" dir="ltr" aria-label={s.ref_ph} placeholder={s.ref_ph} data-testid="blu-ref"
+              value={ref} onChange={(e) => setRef(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') attach() }} />
+            <button type="button" className="btn-primary text-sm" disabled={busy || !ref.trim()} onClick={() => attach()}>{s.attach}</button>
+          </div>
+          <button type="button" className="btn-ghost text-sm blu-sug-btn" disabled={busy} onClick={loadCands} data-testid="blu-suggest">
+            {busy && cands === null ? '…' : s.suggest}</button>
+          {cands && cands.length === 0 && <div className="text-xs text-muted">{s.no_cand}</div>}
+          {cands && cands.length > 0 && (
+            <ul className="blu-cands" data-testid="blu-cands">
+              {cands.map((c) => (
+                <li key={c.key}>
+                  <button type="button" className="blu-cand" onClick={() => { setRef(c.ref); attach(c.ref) }}>
+                    <span className="blu-cand-top"><bdi dir="ltr" className="mono-num">{c.ref}</bdi>
+                      <b className="mono-num">{toman(c.amount, lang)}</b>
+                      <span className={'blu-cand-st' + (c.paid ? ' paid' : '')}>{c.paid ? s.paid_tag : s.unpaid_tag}</span></span>
+                    <span className="blu-cand-sub">{c.who && <bdi>{c.who}</bdi>}{c.at_jalali && <span className="mono-num"> · {c.at_jalali}</span>}</span>
+                    {c.why.length > 0 && <span className="blu-cand-why">{c.why.filter((w) => w !== 'typed').map((w) => <i key={w}>{s['w_' + w] || w}</i>)}</span>}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
+      )}
+      {tx.status === 'linked' && canUnlink && (
+        <button type="button" className="btn-ghost text-sm blu-unlink" onClick={unlink} data-testid="blu-unlink">{s.unlink}</button>
       )}
       {tx.matched_payment && (
         <button type="button" className="btn-ghost text-sm blu-open" onClick={() => navigate(`/payments/${tx.matched_payment}`)}>
@@ -308,6 +380,22 @@ const CSS = `
 .blu-pill { font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
 .blu-pill--warning { color: var(--c-warning-fg); background: color-mix(in srgb, var(--c-warning) 16%, transparent); }
 .blu-pill--success { color: var(--c-success-fg); background: color-mix(in srgb, var(--c-success) 16%, transparent); }
+.blu-pill--info { color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 14%, transparent); }
+.blu-link { display: flex; flex-direction: column; gap: 6px; }
+.blu-sug-btn { align-self: flex-start; color: var(--c-primary); }
+.blu-cands { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.blu-cand { width: 100%; text-align: start; display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; border-radius: 10px;
+  border: 1px solid var(--c-border); background: var(--c-bg); cursor: pointer; min-height: 44px; }
+.blu-cand:hover { border-color: var(--c-primary); }
+.blu-cand-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; }
+.blu-cand-st { font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; color: var(--c-warning-fg);
+  background: color-mix(in srgb, var(--c-warning) 16%, transparent); }
+.blu-cand-st.paid { color: var(--c-success-fg); background: color-mix(in srgb, var(--c-success) 16%, transparent); }
+.blu-cand-sub { font-size: 12px; color: var(--c-muted-fg); overflow-wrap: anywhere; }
+.blu-cand-why { display: flex; flex-wrap: wrap; gap: 4px; }
+.blu-cand-why i { font-style: normal; font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 999px;
+  color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 10%, transparent); }
+.blu-unlink { align-self: flex-start; color: var(--c-danger-fg); }
 .blu-pill--muted { color: var(--c-muted-fg); background: color-mix(in srgb, var(--c-text-muted) 16%, transparent); }
 .blu-grid { display: flex; flex-direction: column; gap: 2px; overflow-wrap: anywhere; }
 .blu-note { font-size: 11.5px; color: var(--c-muted-fg); background: color-mix(in srgb, var(--c-text-muted) 8%, transparent);
@@ -328,7 +416,7 @@ const CSS = `
   border-radius: 8px; padding: 4px 10px; }
 @media (max-width: 767px) {
   .blu-attach .input { font-size: 16px; min-height: 44px; }
-  .blu-attach button, .blu-open, .blu-set-save { min-height: 44px; }
+  .blu-attach button, .blu-open, .blu-set-save, .blu-sug-btn, .blu-unlink { min-height: 44px; }
   .blu-set-f .input { font-size: 16px; min-height: 44px; }
   .blu-set-save { width: 100%; }
   .blu-open { width: 100%; }

@@ -234,6 +234,10 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   Super Admin `setting` rows (win over `.env`); `/admin/settings/` keys in `SUPER_ONLY` are 403 for everyone else.
   Liveness = last successful poll ("poll ok" journal line), session/login/OTP errors, service state — NEVER "no deposit
   for N minutes" (a quiet account is not an outage; that alert fired nightly and was removed in v1.33.1).
+  **Linking (v1.42.2, `payments_sms/blu_link.py`)**: a deposit for an ALREADY approved payment is only `linked` (identification,
+  never a second approval or count); unpaid targets are approved through `confirm_blu` / agency `approve_payment` only.
+  Auto-link = `signals.py` (same reference, else ONE same-amount deposit in 24 h + payer name); unlink = Super Admin, link-only
+  rows only. A new match note needs its Persian rule in `blu_notes.py`.
 
 ## Agency invoices / payments (v1.34, docs/agency.md#invoices-and-payments-v134)
 - Every agency charge goes through `ledger.record_quota_charge` / `add_entry` → `billing.issue_for_entry`; no price per GB

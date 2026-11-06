@@ -486,11 +486,12 @@ def match_blu_transaction(pk: int):
         return tx
 
 
-def confirm_blu(order: Order, tx, *, staff=None, rounded: dict | None = None) -> Payment:
+def confirm_blu(order: Order, tx, *, staff=None, rounded: dict | None = None, staff_short: bool = False) -> Payment:
     """Approve `order` with Blu deposit `tx` — like _auto_confirm (or a staff attach when
     `staff` is given). `rounded` = the conditions of a rounded-amount approval (rounded.py):
     the payment then records the PAID amount and the shortfall. The caller holds the row
-    locks inside a transaction."""
+    locks inside a transaction. `staff_short` (v1.42.2): staff confirmed a deposit SHORTER than the invoice — the
+    payment records what arrived and the shortfall (like a rounded approval, without the rule)."""
     from apps.notifications.live import push_payments_event
     from apps.orders.services import mark_paid_and_fulfill
 
@@ -502,12 +503,12 @@ def confirm_blu(order: Order, tx, *, staff=None, rounded: dict | None = None) ->
         order=order,
         defaults=dict(
             method=PaymentMethod.BLU_AUTO,
-            amount=Decimal(tx.amount_toman) if rounded else order.amount_unique,
+            amount=Decimal(tx.amount_toman) if (rounded or staff_short) else order.amount_unique,
             status=PaymentStatus.APPROVED,
             blu_transaction=tx,
             auto_rule="rounded" if rounded else "",
             auto_reason=rounded or {},
-            shortfall=(Decimal(order.amount_unique) - Decimal(tx.amount_toman)) if rounded else None,
+            shortfall=(Decimal(order.amount_unique) - Decimal(tx.amount_toman)) if (rounded or staff_short) else None,
             bank_card=(existing.bank_card if existing and existing.bank_card_id else default_bank_card()),
             confirmed_by=ConfirmedBy.ADMIN if staff else ConfirmedBy.SYSTEM,
             confirmed_by_staff=staff,
@@ -527,6 +528,8 @@ def confirm_blu(order: Order, tx, *, staff=None, rounded: dict | None = None) ->
                     staff=staff, target=payment, detail=detail)
         push_payments_event("blu_approved", order_id=order.id, payment_id=payment.id)
     how = f"attached by {staff.username}" if staff else "auto-confirmed"
+    if staff_short:
+        how += f", short {Decimal(order.amount_unique) - Decimal(tx.amount_toman):,} T"
     if rounded:
         from .rounded import note_text
 

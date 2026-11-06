@@ -12,7 +12,8 @@ Fields marked *enc* are Fernet-encrypted (`FIELD_ENCRYPTION_KEY`).
 
 Related: [architecture.md](architecture.md) · [flows.md](flows.md).
 
-Last schema change: **v1.42.1** — `order.provision_error` / `provision_failed_at` («ساخت ناموفق»),
+Last schema change: **v1.42.2** — `blu_transaction.status` gains `linked` («متصل به پرداخت موجود»: identifies an
+already approved payment, never a second approval). Before: **v1.42.1** — `order.provision_error` / `provision_failed_at` («ساخت ناموفق»),
 `scheduled_renewal.data_limit` (custom-volume renewal), `plan.renewable_when_inactive`. Before: **v1.42.0 — multi-tenant Phase 1 Release C**: `tenant_id` (FK `tenant`, PROTECT) is **NOT NULL** on the
 34 customer-facing tables and stays nullable on `staff`, `role`, `audit_log`, `push_subscription`, `theme` (NULL = platform);
 the old global unique rules are dropped (see below). Before: v1.40.0 added `tenant`, `tenant_domain` and the column on 39
@@ -341,7 +342,7 @@ erDiagram
         string account_iban
         bigint balance_after_irr
         json raw "item, card numbers masked"
-        string status "unmatched | matched | duplicate | ignored"
+        string status "unmatched | matched | linked | duplicate | ignored"
         bigint matched_order_id FK
         bigint matched_payment_id FK
         string match_note

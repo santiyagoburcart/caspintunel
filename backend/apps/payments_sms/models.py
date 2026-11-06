@@ -264,6 +264,8 @@ class BluStatus(models.TextChoices):
     UNMATCHED = "unmatched", "Unmatched"
     MATCHED = "matched", "Matched"
     DUPLICATE = "duplicate", "Duplicate (order already paid)"
+    # v1.42.2: identifies an ALREADY approved payment (manual invoice, staff receipt, SMS) — not a second approval
+    LINKED = "linked", "Linked to an existing payment"
     IGNORED = "ignored", "Ignored (not a deposit)"
 
 

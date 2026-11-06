@@ -316,13 +316,16 @@ def test_attach_requires_payment_approve_and_approves():
     assert staff_client(["payment.view"], "viewer").post(url, {"order_id": o.id}, format="json").status_code == 403
     approver = staff_client(["payment.view", "payment.approve"], "approver")
     r = approver.post(url, {"order_id": o.id}, format="json")
+    assert r.status_code == 409 and r.json()["code"] == "needs_confirm"      # v1.42.2: a short deposit is confirmed first
+    r = approver.post(url, {"order_id": o.id, "confirm": True}, format="json")
     assert r.status_code == 200, r.content
     p = Payment.objects.get(order=o)
     assert p.status == PaymentStatus.APPROVED and p.method == PaymentMethod.BLU_AUTO
     assert p.confirmed_by == ConfirmedBy.ADMIN and p.confirmed_by_staff.username == "approver"
     tx.refresh_from_db()
     assert tx.status == BluStatus.MATCHED and tx.matched_order_id == o.id
-    # a second attach (or to a paid order) is refused
+    assert p.amount == Decimal("99999") and p.shortfall == Decimal(INVOICE - 99999)   # what arrived + the shortfall
+    # a second attach of the same deposit is refused
     assert approver.post(url, {"order_id": o.id}, format="json").status_code == 409
 
 

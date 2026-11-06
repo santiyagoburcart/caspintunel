@@ -179,6 +179,30 @@ sequenceDiagram
     end
 ```
 
+**Linking a deposit (v1.42.2).** Payments → «واریزهای بلو» → «اتصال»: staff type an order id, `TX-`, `MI-`, `INV-` or `AP-`, or
+pick a suggestion; the dialog says what happens before anything is written. Approvals by other routes auto-link a deposit
+with the same tracking / reference number (or the one same-amount deposit in 24 h with the same payer name).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor S as Staff (payment.approve)
+    participant API as web blu-transactions/<id>/
+    participant L as blu_link
+    participant DB as MySQL
+    S->>API: GET candidates/?q=ref (amount ±20 % · time · payer name · reference)
+    API-->>S: targets, paid or not, best first
+    S->>API: POST attach/ {ref, confirm}
+    API->>L: resolve(ref) → order / manual invoice order / agency payment
+    alt target already approved
+        L->>DB: deposit status linked, payment.blu_transaction = deposit (no new approval, no new revenue)
+    else not paid yet
+        L->>DB: confirm_blu / agency approve_payment (different amount needs confirm · short → shortfall recorded)
+    end
+    Note over L,DB: audit blu.linked / payment.blu_attached · unlink = Super Admin, link-only rows (audit blu.unlinked)
+    Note over L,DB: any other approval (manual invoice, staff receipt, SMS, agency) → signals → auto-link (same rule)
+```
+
 ## 2c. Rounded-amount auto-approve (v1.32, Blu + SMS)
 
 ```mermaid
