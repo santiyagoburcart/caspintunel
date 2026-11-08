@@ -565,6 +565,7 @@ class AdminPendingPaymentSerializer(serializers.ModelSerializer):
     tx = serializers.CharField(source="tx_number", read_only=True)
     invoice_amount = serializers.DecimalField(source="order.amount_unique", max_digits=12, decimal_places=0, read_only=True)
     warnings = serializers.SerializerMethodField()
+    blu_prefill = serializers.SerializerMethodField()
 
     class Meta:
         model = Payment
@@ -572,7 +573,15 @@ class AdminPendingPaymentSerializer(serializers.ModelSerializer):
                   "order_source", "account_name", "method", "amount", "invoice_amount", "status",
                   "receipt_url", "reject_reason", "created_at",
                   "bank_card", "bank_card_number", "bank_card_holder", "bank_card_bank", "sms_mismatch",
-                  "receipt_ref", "receipt_amount", "warnings", "auto_reason")
+                  "receipt_ref", "receipt_amount", "warnings", "auto_reason", "blu_prefill")
+
+    def get_blu_prefill(self, obj) -> dict | None:
+        """v1.44.1: a matching Blu deposit → receipt amount + tracking number pre-filled in the queue."""
+        if obj.status != "pending":
+            return None
+        from apps.payments_sms.blu_link import prefill_for
+
+        return prefill_for(obj)
 
     def get_warnings(self, obj) -> list:
         """Duplicate / mismatch hints with the linked payments (payments_sms/checks.py)."""

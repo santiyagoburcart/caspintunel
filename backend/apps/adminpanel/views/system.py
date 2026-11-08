@@ -46,16 +46,15 @@ EDITABLE_SETTINGS = [
     # v1.33.1: no successful poll for this long → alert (replaced blu_stale_minutes = "no deposit")
     ("blu_poll_stale_minutes", "int", 10, 2, 1440),
     ("blu_late_grace_minutes", "int", lambda: int(getattr(settings, "BLU_LATE_GRACE_MINUTES", 30) or 0), 0, 1440),
-    # v1.32: rounded-amount auto-approve (apps/payments_sms/rounded.py)
+    # v1.32: rounded-amount auto-approve (apps/payments_sms/rounded.py); v1.44.1: ± this many tomans, no percent
     ("rounded_auto_enabled", "bool", True, None, None),
     ("rounded_max_toman", "int", 2000, 0, 1000000),
-    ("rounded_max_percent", "str", "1", None, None),
 ]
 _SPEC = {k: (t, d, lo, hi) for (k, t, d, lo, hi) in EDITABLE_SETTINGS}
 
 # only a Super Admin may change these (403 otherwise, even with settings.manage)
 SUPER_ONLY = {"deleted_purge_enabled", "deleted_purge_days", "blu_ssh_check_minutes", "blu_poll_stale_minutes",
-              "blu_late_grace_minutes", "rounded_auto_enabled", "rounded_max_toman", "rounded_max_percent"}
+              "blu_late_grace_minutes", "rounded_auto_enabled", "rounded_max_toman"}
 # changes to these are audited with old → new values (no personal data in them)
 _AUDIT_VALUES = SUPER_ONLY
 
@@ -70,21 +69,9 @@ def setting_value(key: str):
     return get_setting(key, _default(d))
 
 
-def _clean_percent(value: str) -> str:
-    from decimal import Decimal, InvalidOperation
-
-    try:
-        d = Decimal(str(value).strip())
-    except InvalidOperation as exc:
-        raise ValueError("rounded_max_percent must be a number (e.g. 1 or 0.5)") from exc
-    if not (Decimal("0") <= d <= Decimal("10")) or d.as_tuple().exponent < -2:
-        raise ValueError("rounded_max_percent must be between 0 and 10, at most 2 decimals")
-    return format(d.normalize(), "f")
-
 # str settings with a validator (returns the cleaned value or raises ValueError)
 _VALIDATORS = {
     "ios_shortcut_icloud_url": shortcut.clean_icloud_url,
-    "rounded_max_percent": _clean_percent,
 }
 
 # str settings restricted to a fixed choice set

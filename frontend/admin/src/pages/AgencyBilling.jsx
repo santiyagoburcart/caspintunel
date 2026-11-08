@@ -4,6 +4,7 @@ import { api, apiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 import { useAuth } from '../lib/auth'
 import { jalali, toman } from '../lib/format'
+import { roundedDiff } from '../lib/rounded'
 import { Alert, Spinner } from '../components/ui'
 import { useConfirm } from '../components/ConfirmDialog'
 import { useToast } from '../components/Toast'
@@ -223,7 +224,7 @@ export function AgencyPaymentsView({ Header }) {
                   <div><dt>{s.payer}</dt><dd><bdi>{p.payer}</bdi> <small>({p.payer_kind === 'manager' ? s.payer_manager : s.payer_admin})</small></dd></div>
                   <div><dt>{s.unique}</dt><dd><N>{toman(p.amount_unique, lang)}</N>{p.paid_amount != null && <small> · {s.deposit} <N>{toman(p.paid_amount, lang)}</N></small>}</dd></div>
                   <div><dt>{s.date}</dt><dd><N>{jalali(p.created_at, true, lang)}</N></dd></div>
-                  {p.method && <div><dt>{s.method}</dt><dd>{s['m_' + p.method] || p.method}{p.auto_rule === 'rounded' && <> · {s.rounded}</>}{p.shortfall && <> · {s.shortfall} <N>{toman(p.shortfall, lang)}</N></>}</dd></div>}
+                  {p.method && <div><dt>{s.method}</dt><dd>{s['m_' + p.method] || p.method}{p.auto_rule === 'rounded' && <> · {s.rounded}{p.rounded_diff != null && Number(p.rounded_diff) !== 0 && <> – <N>{roundedDiff(p.rounded_diff, lang)}</N></>}</>}{p.shortfall && <> · {s.shortfall} <N>{toman(p.shortfall, lang)}</N></>}</dd></div>}
                 </dl>
                 <ul className="ab-invs">{p.invoices.map((i) => <li key={i.id}><N>{i.number}</N> · <Link to={`/agency/admins/${encodeURIComponent(i.admin)}/accounting`}>{i.admin}</Link>{i.group && <> · {i.group}</>} · <N>{toman(i.amount, lang)}</N></li>)}</ul>
                 {(p.warnings || []).map((w, n) => (

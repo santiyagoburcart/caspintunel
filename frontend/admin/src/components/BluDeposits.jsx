@@ -4,6 +4,7 @@ import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useI18n } from '../lib/i18n'
 import { jalali, toman } from '../lib/format'
+import { roundedDiff } from '../lib/rounded'
 import { Alert, Spinner } from './ui'
 import { useConfirm } from './ConfirmDialog'
 import { useToast } from './Toast'
@@ -303,7 +304,7 @@ function Deposit({ tx, s, lang, canAttach, canUnlink, onDone }) {
       )}
       {tx.rounded && (
         <div className="blu-rounded" data-testid="blu-rounded">{s.rounded}
-          {tx.shortfall != null && <span> · {s.shortfall} {toman(tx.shortfall, lang)}</span>}</div>
+          {tx.shortfall != null && Number(tx.shortfall) !== 0 && <span> · {roundedDiff(tx.shortfall, lang)}</span>}</div>
       )}
       <div className="blu-grid text-sm">
         <span className="text-muted">{jalali(tx.occurred_at, true, lang)}</span>

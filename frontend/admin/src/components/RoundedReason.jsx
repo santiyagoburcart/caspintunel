@@ -6,7 +6,7 @@ import { digits, toman } from '../lib/format'
 const T = {
   fa: {
     approved: 'تأیید خودکار – مبلغ گرد شده', not_applied: 'تأیید خودکار مبلغ گرد شده اعمال نشد',
-    shortfall: 'کسری {s} (سقف {t})', window: 'در بازهٔ زمانی سفارش',
+    shortfall: 'کمتر {s} (سقف ±{t})', over: 'بیشتر {s} (سقف ±{t}) — مدرک لازم نیست', window: 'در بازهٔ زمانی سفارش',
     one: 'فقط یک سفارش جور بود', many: '{n} سفارش جور بودند — به صف رفت',
     receipt: 'رسید همین سفارش آپلود شده', no_receipt: 'رسیدی آپلود نشده',
     card: 'کارت آشنا ****{c} (قبلاً از آن پرداخت کرده)', new_card: 'کارت واریزکننده جدید است',
@@ -15,7 +15,7 @@ const T = {
   },
   en: {
     approved: 'Auto-approved — rounded amount', not_applied: 'Rounded-amount auto-approve not applied',
-    shortfall: 'short {s} (limit {t})', window: 'inside the order’s time window',
+    shortfall: 'less {s} (limit ±{t})', over: 'more {s} (limit ±{t}) — no evidence needed', window: 'inside the order’s time window',
     one: 'exactly one order fits', many: '{n} orders fit — sent to the queue',
     receipt: 'receipt uploaded for this order', no_receipt: 'no receipt uploaded',
     card: 'known card ****{c} (paid from it before)', new_card: 'the payer card is new',
@@ -30,11 +30,12 @@ export default function RoundedReason({ r, compact = false }) {
   if (!r || r.rule !== 'rounded') return null
   const items = []
   const ok = (good, text) => items.push([good, text])
-  if (r.shortfall != null) ok(true, s.shortfall.replace('{s}', toman(r.shortfall, lang)).replace('{t}', toman(r.tolerance, lang)))
+  const more = r.shortfall != null && Number(r.shortfall) < 0
+  if (r.shortfall != null) ok(true, (more ? s.over : s.shortfall).replace('{s}', toman(Math.abs(Number(r.shortfall)), lang)).replace('{t}', toman(r.tolerance, lang)))
   ok(true, s.window)
   ok(r.candidates === 1, r.candidates === 1 ? s.one : s.many.replace('{n}', digits(r.candidates, lang)))
   if (r.why_not === 'deposit_already_used') ok(false, s.used.replace('{o}', r.used_order))
-  if (r.candidates === 1 && r.why_not !== 'deposit_already_used') {
+  if (r.candidates === 1 && r.why_not !== 'deposit_already_used' && !more) {
     ok(!!r.receipt, r.receipt ? s.receipt : s.no_receipt)
     if (r.card_last4) ok(!!r.card_known, r.card_known ? s.card.replace('{c}', r.card_last4) : s.new_card)
     else ok(false, s.no_card)

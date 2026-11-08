@@ -36,7 +36,7 @@ const T = {
     w_renewal: 'این سرویس از قبل یک تمدید پرداخت‌شده در انتظار دارد (سفارش #{id}) — با تأیید، تمدید دوم صف نمی‌شود و سفارش «ناموفق» می‌شود',
     w_same_service: 'همین سرویس', w_voided: 'حذف‌شده', w_open: 'مشاهده',
     w_confirm: 'این پرداخت {n} هشدار دارد — پیش از تأیید، تراکنش‌های مرتبط را بررسی کنید.',
-    ri_title: 'اطلاعات فیش (برای بررسی تکراری)', ri_amount: 'مبلغ روی فیش', ri_ref: 'شماره سند / پیگیری',
+    ri_title: 'اطلاعات فیش (برای بررسی تکراری)', ri_blu: 'از واریز بلو #{id} پر شد ({t}) — بررسی و ذخیره کنید', ri_amount: 'مبلغ روی فیش', ri_ref: 'شماره سند / پیگیری',
     ri_rial: 'ریال', ri_toman: 'تومان', ri_save: 'ثبت',
     v_queue: 'صف تأیید', v_blu: 'واریزهای بلو', mm_blu: 'واریز بلو',
   },
@@ -63,7 +63,7 @@ const T = {
     w_renewal: 'This service already has a paid renewal waiting (order #{id}) — approving will NOT queue a second one; the order becomes "failed"',
     w_same_service: 'same service', w_voided: 'deleted', w_open: 'Open',
     w_confirm: 'This payment has {n} warning(s) — check the linked transactions before approving.',
-    ri_title: 'Receipt details (duplicate check)', ri_amount: 'Amount on receipt', ri_ref: 'Document / tracking no.',
+    ri_title: 'Receipt details (duplicate check)', ri_blu: 'Filled from Blu deposit #{id} ({t}) — check and save', ri_amount: 'Amount on receipt', ri_ref: 'Document / tracking no.',
     ri_rial: 'Rial', ri_toman: 'Toman', ri_save: 'Save',
     v_queue: 'Approval queue', v_blu: 'Blu deposits', mm_blu: 'Blu deposit',
   },
@@ -359,9 +359,14 @@ function PayWarnings({ ws, s, lang, onOpen }) {
 
 /* What the receipt says, typed by staff — feeds the amount / document-number checks. */
 function ReceiptInfo({ p, s, onSaved }) {
-  const [amount, setAmount] = useState(p.receipt_amount != null ? String(p.receipt_amount) : '')
-  const [unit, setUnit] = useState(p.receipt_amount != null ? 'toman' : 'rial')
-  const [ref, setRef] = useState(p.receipt_ref || '')
+  const { lang } = useI18n()
+  // v1.44.1: a matching Blu deposit fills what staff have not typed yet (amount in tomans + tracking number)
+  const blu = p.blu_prefill
+  const fillAmt = p.receipt_amount == null && blu?.amount != null
+  const fillRef = !p.receipt_ref && !!blu?.tracking
+  const [amount, setAmount] = useState(p.receipt_amount != null ? String(p.receipt_amount) : fillAmt ? String(Number(blu.amount)) : '')
+  const [unit, setUnit] = useState(p.receipt_amount != null || fillAmt ? 'toman' : 'rial')
+  const [ref, setRef] = useState(p.receipt_ref || (fillRef ? blu.tracking : ''))
   const [busy, setBusy] = useState(false)
   const save = async () => {
     setBusy(true)
@@ -383,6 +388,7 @@ function ReceiptInfo({ p, s, onSaved }) {
           value={ref} onChange={(e) => setRef(e.target.value)} />
         <button type="button" className="btn-ghost text-sm" disabled={busy} onClick={save}>{busy ? '…' : s.ri_save}</button>
       </div>
+      {(fillAmt || fillRef) && <p className="pq-ri-blu" data-testid="ri-blu">{s.ri_blu.replace('{id}', blu.id).replace('{t}', toman(blu.amount, lang))}</p>}
     </div>
   )
 }
@@ -395,6 +401,7 @@ const CSS = `
   .pq-views { display: flex; width: 100%; }
   .pq-view { flex: 1 1 0; min-height: 44px; }
 }
+.pq-ri-blu { margin-top: 6px; font-size: 12px; color: var(--c-primary); }
 .pq-warns { display: flex; flex-direction: column; gap: 6px; }
 .pq-warn { display: flex; flex-direction: column; gap: 4px; padding: 8px 12px; border-radius: 10px; font-size: 12.5px; line-height: 1.6;
   color: var(--c-warning-fg); background: color-mix(in srgb, var(--c-warning) 12%, transparent); border: 1px solid color-mix(in srgb, var(--c-warning) 34%, transparent); }

@@ -726,7 +726,7 @@ time, so they apply without a restart (`.env` values are only the fallback):
 | `blu_ssh_check_minutes` | 5 (min 1) | Payments → «واریزهای بلو» | beat interval of the SSH service check |
 | `blu_poll_stale_minutes` | 10 (min 2) | same | `blu_service.poll_stale_minutes` (no successful poll → alert; v1.33.1, replaced `blu_stale_minutes`) |
 | `blu_late_grace_minutes` | `.env` `BLU_LATE_GRACE_MINUTES` (30) | same | `matching._blu_grace` (exact + rounded matching) |
-| `rounded_auto_enabled` / `rounded_max_toman` / `rounded_max_percent` | on / 2000 / 1 | Settings → «مبلغ گرد شده» | `payments_sms/rounded.py` (tolerance = max of the two) |
+| `rounded_auto_enabled` / `rounded_max_toman` | on / 2000 | Settings → «مبلغ گرد شده» | `payments_sms/rounded.py` (± tolerance, below and above; v1.44.1 dropped the percent) |
 
 The Blu tab also shows the collector's own poll interval (`BLU_COLLECTOR_POLL_SECONDS`, 45 s;
 information only — it is configured on the Iran server).
@@ -779,7 +779,8 @@ information only — it is configured on the Iran server).
   customer pool (each picker skips the other's locks; a deposit equal to both is never auto-approved).
   `payments_sms.matching` / `rounded` match SMS / Blu deposits against agency payments after customer orders: exact
   → approved (`approve_payment`: invoices paid, ledger payment entries, portal notice), ±20 % / ×10 → review,
-  rounded rule (receipt or a payer card that paid this payer before), duplicates. Staff review in Agency →
+  rounded rule (± 2,000 T; below needs a receipt or a payer card that paid this payer before; above needs none — the
+  extra is not credited, like the unique surcharge), duplicates. Staff review in Agency →
   Accounting → «واریزهای نمایندگان» (`agency.payments`). Never counted in customer revenue, Transactions,
   Analytics or the customer queue; its own badge (`/admin/agency/payments/badge/`, live `agency_review`).
 - v1.35.1 `apps/agency/allocation.py`: invoices are settled by `AgencyInvoiceAllocation` rows (payment = agency checkout,

@@ -43,9 +43,10 @@ def test_seed_keeps_the_panel_interval():
     assert PeriodicTask.objects.get(name=BLU_SERVICE_TASK).interval.every == 7
 
 
-def test_rounded_percent_is_validated():
+def test_rounded_tolerance_is_tomans_only():
+    """v1.44.1: ± rounded_max_toman (the percent setting is gone)."""
     c = staff_client("super", "boss")
-    assert c.put("/api/v1/admin/settings/", {"rounded_max_percent": "abc"}, format="json").status_code == 400
-    assert c.put("/api/v1/admin/settings/", {"rounded_max_percent": "11"}, format="json").status_code == 400
-    r = c.put("/api/v1/admin/settings/", {"rounded_max_percent": "0.5"}, format="json")
-    assert {x["key"]: x["value"] for x in r.json()["settings"]}["rounded_max_percent"] == "0.5"
+    keys = {x["key"] for x in c.get("/api/v1/admin/settings/").json()["settings"]}
+    assert "rounded_max_toman" in keys and "rounded_max_percent" not in keys
+    r = c.put("/api/v1/admin/settings/", {"rounded_max_toman": 3000}, format="json")
+    assert {x["key"]: x["value"] for x in r.json()["settings"]}["rounded_max_toman"] == 3000

@@ -499,4 +499,11 @@ Everything shipped since v1.6.0 (details in the session log):
   store's active one. User SPA: no hard-coded brand (login welcome / store note use the site name, empty static title, letter
   favicon for a store without one). Browser checks: 18 (store admin + user site on a store, phone / desktop, fa / en, light /
   dark; our «فروشگاه» tab).
+- 2026-11-08 — **v1.44.1: rounded-amount rule widened.** v1.43.0 + v1.44.0 deployed and released. `payments_sms/rounded.py`: ±`rounded_max_toman`
+  (2,000 T) below AND above (percent setting dropped), exactly one candidate (orders incl. renewals / manual invoices + agency
+  payments) inside the window, deposit not already used by ANY approved payment (exact too — the SMS + Blu copy of one transfer
+  could otherwise pay a neighbour now that above needs no evidence). Below keeps the receipt / known-card evidence; above needs
+  none. Signed `shortfall` (negative = paid more); «کمتر X» / «بیشتر X» on Transactions, detail, Blu tab, agency payments,
+  Telegram + live toast; Accounting splits less / more. Queue rows get `blu_prefill` (linked deposit, else the one deposit within
+  ± tolerance in the window) → receipt amount + tracking number pre-filled. Tests: `test_rounded_v1441.py` (13) + agency over-payment.
 - **Next:** new items to be agreed with the owner.

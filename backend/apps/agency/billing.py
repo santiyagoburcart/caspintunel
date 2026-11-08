@@ -597,6 +597,8 @@ def payment_row(p: AgencyPayment, *, staff: bool = False) -> dict:
     row = {"id": p.id, "number": p.number, "status": p.status, "payer_kind": p.payer_kind, "payer": p.payer_username,
            "amount": p.amount, "amount_unique": p.amount_unique, "unique_expire_at": p.unique_expire_at,
            "paid_amount": p.paid_amount, "shortfall": p.shortfall, "auto_rule": p.auto_rule,
+           # v1.44.1: signed invoice − paid of a rounded approval («کمتر X» / «بیشتر X»)
+           "rounded_diff": (p.amount_unique - p.paid_amount) if p.auto_rule == "rounded" and p.paid_amount is not None else None,
            "method": p.method, "reject_reason": p.reject_reason, "created_at": p.created_at,
            "confirmed_at": p.confirmed_at, "has_receipt": bool(p.receipt_image),
            "invoices": [{"id": it.invoice_id, "number": it.invoice.number, "admin": it.invoice.admin_username,
@@ -743,7 +745,11 @@ def approve_payment(payment_id: int, *, staff=None, source: str = "manual", depo
         if staff is None:
             from apps.common.staff_alert import alert_staff
 
-            label = "مبلغ گرد شده" if rounded else ("بلو" if source == "blu_auto" else "پیامک")
+            label = "بلو" if source == "blu_auto" else "پیامک"
+            if rounded:
+                from apps.payments_sms.rounded import diff_label
+
+                label = f"مبلغ گرد شده – {diff_label(p.amount_unique - paid)}"
             alert_staff(f"✅ واریز نماینده {p.number} خودکار تأیید شد ({label}) — {p.payer_username} · {paid:,} تومان.\n"
                         f"Agency payment {p.number} auto-approved ({source}) — {p.payer_username}, {paid:,} T.",
                         perm="agency.payments", dedupe_key=f"agency:auto:{p.id}", ttl=86400,
@@ -925,18 +931,10 @@ def known_card(p: AgencyPayment, last4: str, exclude_tx: int | None = None) -> b
 
 
 def rounded_candidates(deposit: Decimal, at, cfg: dict, tolerance) -> list[AgencyPayment]:
-    import math
-
-    p_ = cfg["max_percent"] / 100
-    hi = deposit + cfg["max_toman"]
-    if p_ < 1:
-        hi = max(hi, deposit / (1 - p_))
-    out = []
-    for p in open_at(at).filter(amount_unique__gt=deposit, amount_unique__lte=math.ceil(hi) + 1).order_by("created_at")[:20]:
-        inv = Decimal(p.amount_unique)
-        if deposit < inv and inv - deposit <= tolerance(inv, cfg):
-            out.append(p)
-    return out
+    """v1.44.1: open agency payments within ± the rounded tolerance of the deposit (rounded.py decides)."""
+    t = cfg["max_toman"]
+    return list(open_at(at).filter(amount_unique__gte=deposit - t, amount_unique__lte=deposit + t)
+                .exclude(amount_unique=deposit).order_by("created_at")[:20])
 
 
 def match_deposit(amount, at, *, sms=None, tx=None) -> tuple[str, AgencyPayment | None]:

@@ -586,9 +586,14 @@ def _manual(approved) -> dict:
 
 
 def _rounded(approved) -> dict:
-    agg = approved.filter(auto_rule="rounded").aggregate(count=Count("id"), shortfall=Sum("shortfall"),
-                                                         paid=Sum("amount"))
-    return {"count": agg["count"] or 0, "shortfall": str(agg["shortfall"] or 0), "paid": str(agg["paid"] or 0)}
+    """v1.44.1: `shortfall` = paid LESS in total, `over` = paid MORE in total (signed Payment.shortfall split)."""
+    r = approved.filter(auto_rule="rounded")
+    agg = r.aggregate(count=Count("id"), paid=Sum("amount"))
+    less = r.filter(shortfall__gt=0).aggregate(n=Count("id"), s=Sum("shortfall"))
+    more = r.filter(shortfall__lt=0).aggregate(n=Count("id"), s=Sum("shortfall"))
+    return {"count": agg["count"] or 0, "paid": str(agg["paid"] or 0),
+            "shortfall": str(less["s"] or 0), "less_count": less["n"] or 0,
+            "over": str(-(more["s"] or 0)), "more_count": more["n"] or 0}
 
 
 def _discounts(start, end) -> dict:

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { api, apiError } from '../lib/api'
 import { useI18n, enumLabel } from '../lib/i18n'
 import { jalali, toman } from '../lib/format'
+import { roundedDiff } from '../lib/rounded'
 import { Alert, Spinner } from '../components/ui'
 import { useConfirm } from '../components/ConfirmDialog'
 import { useAuth } from '../lib/auth'
@@ -203,7 +204,7 @@ export default function TransactionDetail() {
 
   const rows = [
     [t('txd_amount'), <b className="txd-amt-v">{toman(r.amount, lang)}</b>, true,
-      r.auto_rule === 'rounded' && r.shortfall != null ? `${xs.rounded} · −${toman(r.shortfall, lang)}` : null],
+      r.auto_rule === 'rounded' && r.shortfall != null ? `${xs.rounded} · ${roundedDiff(r.shortfall, lang)}` : null],
     ...(showUnique ? [[t('txd_amount_unique'), <b>{toman(r.amount_unique, lang)}</b>]] : []),
     [t('txd_requester'), (
       <span>

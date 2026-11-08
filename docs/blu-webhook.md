@@ -66,11 +66,12 @@ full card number masked. `items: []` is a heartbeat.
 4. Within ±20 % (or equal after ×10 / ÷10) of an open invoice → pending `blu_mismatch`
    payment in the Payments queue, Telegram to staff with `payment.approve`; never approved
    automatically.
-4a. (v1.32, checked before 4) Slightly BELOW exactly one pending invoice — shortfall ≤
-   max(`rounded_max_toman` 2,000 T, `rounded_max_percent` 1 %), inside the same window — AND the
-   customer uploaded a receipt for that order or the payer card's last 4 digits paid one of
-   their orders before → approved with `auto_rule = rounded` (amount = what was paid,
-   `shortfall` recorded), Telegram + `rounded_approved` live event. Otherwise step 4 as before,
+4a. (v1.32, widened v1.44.1, checked before 4) Within ±`rounded_max_toman` (default 2,000 T) of exactly
+   one pending invoice (order or agency payment), inside the same window, and the deposit has not already
+   paid something (exact or rounded) → approved with `auto_rule = rounded` (amount = what was paid,
+   `shortfall` = invoice − paid, negative = paid more), Telegram «کمتر X» / «بیشتر X» + `rounded_approved`
+   live event. BELOW the invoice it also needs evidence: a receipt for that order or a payer card (last 4)
+   that paid one of their orders before. ABOVE needs none. Otherwise step 4 as before,
    with the evaluated conditions on the pending payment. See `payments_sms/rounded.py`.
 4b. (v1.34) **Agency payments** share the unique-amount pool with customer orders. Customer orders are checked
    first; a deposit equal to an open customer order AND an open agency payment is never auto-approved — both go to

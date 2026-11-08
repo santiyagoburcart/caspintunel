@@ -1,30 +1,32 @@
-"""Rounded-amount auto-approve (v1.32), for Blu deposits and bank SMS alike.
+"""Rounded-amount auto-approve (v1.32, widened in v1.44.1), for Blu deposits and bank SMS alike.
 
-Customers sometimes round the unique invoice amount DOWN (249,350 → 248,000). Such a deposit
+Customers sometimes round the unique invoice amount (249,350 → 248,000 or 250,000). Such a deposit
 is approved automatically only when ALL of these hold:
 
-  1. it is below the invoice (never above), by at most max(rounded_max_toman, rounded_max_percent
-     of the invoice), default max(2,000 T, 1 %);
+  1. it differs from the invoice by at most `rounded_max_toman` (default 2,000 T), below OR above;
   2. it lies inside the order's time window: the same guard as exact matching (SMS:
      `matching.open_orders_at`, Blu: pending order + `_blu_window_ok`);
-  3. exactly ONE open order fits (1 + 2), whoever's it is. Two or more → no approval;
-  4. and at least one piece of evidence: the customer uploaded a receipt for that order
-     (receipts are only accepted inside the reservation, `services.submit_receipt`), OR the payer
-     card's last 4 digits (Blu) match a card this customer paid from before (an earlier Blu
-     deposit matched to one of their orders).
+  3. exactly ONE open order or agency payment fits (1 + 2), whoever's it is. Two or more → queue;
+  4. the same deposit has not already paid something (an approved payment of exactly this amount
+     whose window contains it — the iPhone SMS and the Blu copy of one transfer);
+  5. BELOW the invoice only: at least one piece of evidence — the customer uploaded a receipt for
+     that order (receipts are only accepted inside the reservation), OR the payer card's last 4
+     digits (Blu) match a card this customer paid from before. An OVER-payment needs no evidence:
+     we received at least the invoice, and 2–4 already pin the deposit to one order.
 
 Then the payment is approved like an exact match, with auto_rule "rounded"
-(«تأیید خودکار – مبلغ گرد شده»), amount = what was paid, shortfall = the difference (Accounting
-counts the paid amount). Staff get a Telegram + panel alert. A Super Admin can undo it
-(«لغو تأیید»): `undo` voids it like a transaction delete (keep service by default) and puts the
-deposit back for manual review.
+(«تأیید خودکار – مبلغ گرد شده» + «کمتر X» / «بیشتر X»), amount = what was paid, `shortfall` =
+invoice − paid (negative = paid MORE; Accounting counts the paid amount). Staff get a Telegram +
+panel alert. A Super Admin can undo it («لغو تأیید»): `undo` voids it like a transaction delete
+(keep service by default) and puts the deposit back for manual review.
 
 Anything else goes to the queue as «مبلغ نامطابق», exactly as before (matching.near_order /
 flag_mismatch), with the evaluated conditions stored on the pending payment (`auto_reason`).
 An exact amount never reaches this module, and ×10 / ÷10 unit look-alikes are far outside the
-tolerance. Setting `rounded_auto_enabled` (default on) switches the rule off.
+tolerance. Setting `rounded_auto_enabled` (default on) switches the rule off. Purchases, renewals
+(also queued ones), manual invoices being paid and agency payments are all candidates.
 
-A receipt uploaded AFTER the deposit arrived triggers a re-check (`retry_for_order`, Celery):
+A receipt uploaded AFTER a short deposit arrived triggers a re-check (`retry_for_order`, Celery):
 that is the usual order (pay first, then upload the receipt).
 """
 from __future__ import annotations
@@ -53,21 +55,30 @@ def config() -> dict:
     from apps.settings_app.utils import get_setting
 
     try:
-        percent = Decimal(str(get_setting("rounded_max_percent", "1") or "0"))
-    except InvalidOperation:
-        percent = Decimal("1")
-    try:
-        min_toman = Decimal(int(get_setting("rounded_max_toman", 2000) or 0))
+        max_toman = Decimal(int(get_setting("rounded_max_toman", 2000) or 0))
     except (TypeError, ValueError):
-        min_toman = Decimal(2000)
-    return {"enabled": bool(get_setting("rounded_auto_enabled", True)), "max_toman": max(Decimal(0), min_toman),
-            "max_percent": min(max(Decimal(0), percent), Decimal(10))}
+        max_toman = Decimal(2000)
+    return {"enabled": bool(get_setting("rounded_auto_enabled", True)), "max_toman": max(Decimal(0), max_toman)}
 
 
 def tolerance(invoice, cfg: dict) -> Decimal:
-    """The largest shortfall allowed for this invoice: max(fixed tomans, percent of the invoice)."""
-    pct = (Decimal(invoice) * cfg["max_percent"] / 100).to_integral_value(rounding="ROUND_FLOOR")
-    return max(cfg["max_toman"], pct)
+    """The largest difference allowed (below or above the invoice): `rounded_max_toman`."""
+    return cfg["max_toman"]
+
+
+def direction(invoice, paid) -> str:
+    """"less" = paid below the invoice, "more" = above."""
+    return "less" if Decimal(paid) < Decimal(invoice) else "more"
+
+
+def diff_label(shortfall, lang: str = "fa") -> str:
+    """«کمتر 1,000» / «بیشتر 1,000» from a signed shortfall (invoice − paid)."""
+    if shortfall in (None, ""):
+        return ""
+    d = Decimal(shortfall)
+    if lang == "en":
+        return f"{'less' if d > 0 else 'more'} {abs(d):,}"
+    return f"{'کمتر' if d > 0 else 'بیشتر'} {abs(d):,}"
 
 
 @dataclass
@@ -80,20 +91,15 @@ class Decision:
 def _candidates(deposit: Decimal, at, source: str, cfg: dict) -> list[Order]:
     from .matching import _blu_window_ok, open_orders_at
 
-    p = cfg["max_percent"] / 100
-    hi = deposit + cfg["max_toman"]
-    if p < 1:
-        hi = max(hi, deposit / (1 - p))
+    t = cfg["max_toman"]
     if source == "sms":
         qs = open_orders_at(at)
     else:
         qs = Order.objects.filter(status=OrderStatus.PENDING_PAYMENT)
-    qs = qs.filter(amount_unique__gt=deposit, amount_unique__lte=math.ceil(hi) + 1).order_by("created_at")
+    qs = (qs.filter(amount_unique__gte=deposit - t, amount_unique__lte=deposit + t)
+          .exclude(amount_unique=deposit).order_by("created_at"))
     out = []
     for o in qs[:20]:
-        inv = Decimal(o.amount_unique)
-        if not (deposit < inv and inv - deposit <= tolerance(inv, cfg)):
-            continue
         if source != "sms" and not _blu_window_ok(o, at):
             continue
         out.append(o)
@@ -120,24 +126,31 @@ def _known_card(order: Order, last4: str, exclude_tx: int | None) -> bool:
     return qs.exists()
 
 
-def _already_used(deposit: Decimal, at, source: str) -> Order | None:
-    """The same deposit seen twice (iPhone SMS + Blu): an order already auto-approved with exactly
-    this paid amount whose window contains it. Such a deposit is never approved again."""
+def _already_used(deposit: Decimal, at, source: str):
+    """The same deposit seen twice (iPhone SMS + Blu): an order or agency payment already approved
+    with exactly this paid amount (exact OR rounded) whose window contains it. Such a deposit is never
+    used again — otherwise the second copy could pay a neighbour within the tolerance."""
     from .matching import BLU_CREATED_SKEW, _blu_grace
 
     grace = _blu_grace()
-    p = (Payment.objects.live().filter(status=PaymentStatus.APPROVED, auto_rule=AutoRule.ROUNDED, amount=deposit,
+    p = (Payment.objects.live().filter(status=PaymentStatus.APPROVED, amount=deposit,
                                        order__created_at__lte=at + BLU_CREATED_SKEW,
                                        order__unique_expire_at__gte=at - grace)
          .select_related("order").order_by("-confirmed_at").first())
-    return p.order if p else None
+    if p is not None:
+        return p.order
+    from apps.agency.models import AgencyPayment
+
+    return (AgencyPayment.objects.filter(status=AgencyPayment.APPROVED, paid_amount=deposit,
+                                         created_at__lte=at + BLU_CREATED_SKEW, unique_expire_at__gte=at - grace)
+            .order_by("-confirmed_at").first())
 
 
 def evaluate(deposit, at, *, source: str, payer_last4: str = "", tx_id: int | None = None) -> Decision | None:
-    """None when the rule does not concern this deposit (off, not whole, no open order just above
-    it, e.g. an over-payment). Otherwise a Decision with the conditions in `reason`."""
+    """None when the rule does not concern this deposit (off, not whole, no open order within the
+    tolerance). Otherwise a Decision with the conditions in `reason`."""
     cfg = config()
-    if not cfg["enabled"] or deposit is None:
+    if not cfg["enabled"] or deposit is None or cfg["max_toman"] <= 0:
         return None
     try:
         deposit = Decimal(deposit)
@@ -153,8 +166,8 @@ def evaluate(deposit, at, *, source: str, payer_last4: str = "", tx_id: int | No
     if not cands:
         return None
     reason = {"rule": AutoRule.ROUNDED, "source": source, "deposit": str(deposit),
-              "max_toman": str(cfg["max_toman"]), "max_percent": str(cfg["max_percent"]),
-              "candidates": len(cands), "candidate_orders": [o.id for o in cands[:5]], "window": True,
+              "max_toman": str(cfg["max_toman"]), "candidates": len(cands),
+              "candidate_orders": [o.id for o in cands[:5]], "window": True,
               "checked_at": timezone.now().isoformat()}
     if len(cands) > 1:
         reason.update(applied=False, why_not="multiple_orders")
@@ -162,12 +175,15 @@ def evaluate(deposit, at, *, source: str, payer_last4: str = "", tx_id: int | No
     order = cands[0]
     is_agency = hasattr(order, "payer_username")
     inv = Decimal(order.amount_unique)
-    reason.update(order=order.id, invoice=str(inv), shortfall=str(inv - deposit), tolerance=str(tolerance(inv, cfg)))
+    way = direction(inv, deposit)
+    reason.update(order=order.id, invoice=str(inv), shortfall=str(inv - deposit), direction=way,
+                  diff=str(abs(inv - deposit)), tolerance=str(tolerance(inv, cfg)), evidence_required=way == "less")
     if is_agency:
         reason.update(target="agency", agency_payment=order.number, order=None)
     used = _already_used(deposit, at, source)
     if used is not None:
-        reason.update(applied=False, why_not="deposit_already_used", used_order=used.id)
+        reason.update(applied=False, why_not="deposit_already_used",
+                      used_order=getattr(used, "number", None) if hasattr(used, "payer_username") else used.id)
         return Decision(False, order, reason)
     if is_agency:
         receipt, card = agency.has_receipt(order), agency.known_card(order, payer_last4, tx_id)
@@ -175,7 +191,7 @@ def evaluate(deposit, at, *, source: str, payer_last4: str = "", tx_id: int | No
         receipt = _has_receipt(order)
         card = _known_card(order, payer_last4, tx_id)
     reason.update(receipt=receipt, card_last4=payer_last4 or "", card_known=card)
-    if not (receipt or card):
+    if way == "less" and not (receipt or card):
         reason.update(applied=False, why_not="no_evidence")
         return Decision(False, order, reason)
     reason["applied"] = True
@@ -188,7 +204,9 @@ def note_text(reason: dict) -> str:
         return ""
     bits = [f"{reason.get('candidates', 0)} order(s) fit"]
     if "shortfall" in reason:
-        bits.append(f"short {Decimal(reason['shortfall']):,} T ≤ {Decimal(reason['tolerance']):,} T")
+        sh = Decimal(reason["shortfall"])
+        word = "short" if sh > 0 else "over"
+        bits.append(f"{word} {abs(sh):,} T ≤ {Decimal(reason['tolerance']):,} T")
     if reason.get("receipt"):
         bits.append("receipt uploaded")
     if reason.get("card_known"):
@@ -251,17 +269,18 @@ def _approved(payment: Payment, order: Order, reason: dict, *, source: str, ref:
         "shortfall": str(payment.shortfall), "reason": reason})
     push_payments_event("rounded_approved", order_id=order.id, payment_id=payment.id, source=source,
                         paid=str(payment.amount), invoice_amount=str(order.amount_unique),
-                        shortfall=str(payment.shortfall))
+                        shortfall=str(payment.shortfall), direction=direction(order.amount_unique, payment.amount))
     ev = []
     if reason.get("receipt"):
         ev.append("رسید آپلود شده / receipt")
     if reason.get("card_known"):
         ev.append(f"کارت آشنا / known card ****{reason.get('card_last4')}")
-    tx, sh = payment.tx_number, f"{payment.shortfall:,}"
-    text = (f"✅ {LABEL_FA}: سفارش #{order.id} — فاکتور {order.amount_unique:,}، واریز {payment.amount:,} تومان "
-            f"(کسری {sh} تومان). {' · '.join(ev)}\n"
-            f"{LABEL_EN}: order #{order.id}, invoice {order.amount_unique:,} T, paid {payment.amount:,} T "
-            f"(short {sh} T). Undo from transaction {tx} if this is wrong.")
+    tx = payment.tx_number
+    fa, en = diff_label(payment.shortfall, "fa"), diff_label(payment.shortfall, "en")
+    text = (f"✅ {LABEL_FA} ({fa}): سفارش #{order.id} — فاکتور {order.amount_unique:,}، واریز {payment.amount:,} تومان. "
+            f"{' · '.join(ev)}\n"
+            f"{LABEL_EN} ({en}): order #{order.id}, invoice {order.amount_unique:,} T, paid {payment.amount:,} T. "
+            f"Undo from transaction {tx} if this is wrong.")
     transaction.on_commit(lambda: alert_staff(text, perm="payment.approve", dedupe_key=f"rounded:{payment.id}"))
     log.info("rounded auto-approve: %s → order %s (paid %s, invoice %s)", ref, order.id, payment.amount,
              order.amount_unique)
@@ -366,7 +385,8 @@ def undo(payment_id: int, *, staff, reason: str = "", service_action: str = "kee
             released["blu_transaction"] = tx.id
         if p.sms_message_id:
             SmsMessage.objects.filter(pk=p.sms_message_id).update(
-                matched_order=None, mismatch_order=p.order_id, mismatch_kind="less",
+                matched_order=None, mismatch_order=p.order_id,
+                mismatch_kind=direction(p.order.amount_unique, p.amount),
                 note=f"rounded auto-approval undone by {who} — review by hand"[:255])
             released["sms_message"] = p.sms_message_id
         write_audit(action="payment.rounded_undone", staff=staff, target=p, detail={

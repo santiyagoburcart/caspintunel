@@ -1,5 +1,5 @@
 """Rounded-amount auto-approve (payments_sms/rounded.py): a deposit slightly BELOW exactly one
-open invoice is approved only with evidence (receipt / known payer card); everything else
+open invoice is approved only with evidence (receipt / known payer card; over-payments: test_rounded_v1441); everything else
 stays in the review queue as before. Also the «لغو تأیید» undo and the Accounting figures."""
 from datetime import timedelta
 from decimal import Decimal
@@ -26,7 +26,7 @@ from apps.settings_app.utils import set_setting
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
-ROUNDED = 174000            # INVOICE 175,662 − 1,662 (≤ max(2,000, 1 %))
+ROUNDED = 174000            # INVOICE 175,662 − 1,662 (≤ 2,000)
 
 
 def receipt(order):
@@ -62,7 +62,8 @@ def test_one_candidate_with_receipt_is_approved_and_flagged(env):  # noqa: F811
     # Accounting counts what was paid, and shows the shortfall
     acc = revenue(c)
     assert Decimal(acc["revenue"]) - before == ROUNDED
-    assert acc["rounded"] == {"count": 1, "shortfall": str(INVOICE - ROUNDED), "paid": str(ROUNDED)}
+    assert acc["rounded"] == {"count": 1, "shortfall": str(INVOICE - ROUNDED), "paid": str(ROUNDED),
+                              "less_count": 1, "over": "0", "more_count": 0}
     d = c.get(f"/api/v1/admin/transactions/{p.id}/").json()
     assert d["auto_rule"] == "rounded" and Decimal(d["shortfall"]) == INVOICE - ROUNDED
 
@@ -107,10 +108,10 @@ def test_a_card_the_customer_paid_from_before_is_evidence():
     assert p.auto_reason["receipt"] is False and p.auto_reason["card_last4"] == "7777"
 
 
-def test_over_payment_is_not_this_rule():
+def test_over_payment_beyond_the_tolerance_is_not_this_rule():
     o = make_order()
     receipt(o)
-    post([item(INVOICE + 1000, id="MORE")])
+    post([item(INVOICE + 2001, id="MORE")])
     p = Payment.objects.get(order=o)
     assert p.status == PaymentStatus.PENDING and p.auto_rule == "" and not p.auto_reason
     o.refresh_from_db()
@@ -120,7 +121,7 @@ def test_over_payment_is_not_this_rule():
 def test_shortfall_over_the_tolerance_is_not_approved():
     o = make_order()
     receipt(o)
-    post([item(INVOICE - 2001, id="FAR")])                 # 1 % of 175,662 = 1,756 < 2,000 < 2,001
+    post([item(INVOICE - 2001, id="FAR")])
     assert Payment.objects.get(order=o).status == PaymentStatus.PENDING
 
 
@@ -141,13 +142,12 @@ def test_setting_off_keeps_it_in_the_queue():
 
 
 def test_bigger_tolerance_settings_apply():
-    set_setting("rounded_max_toman", 0, "int")
-    set_setting("rounded_max_percent", "3", "str")          # 3 % of 175,662 = 5,269
+    set_setting("rounded_max_toman", 5000, "int")
     o = make_order()
     receipt(o)
     post([item(INVOICE - 5000, id="PCT")])
     p = Payment.objects.get(order=o)
-    assert p.status == PaymentStatus.APPROVED and Decimal(p.auto_reason["tolerance"]) == 5269
+    assert p.status == PaymentStatus.APPROVED and Decimal(p.auto_reason["tolerance"]) == 5000
 
 
 def _sms_client():

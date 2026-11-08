@@ -223,12 +223,12 @@ def test_rounded_amount_with_receipt_keeps_the_shortfall_owed(pg, quiet):  # noq
                 {"receipt_image": _png()}, format="multipart")
     assert up.status_code == 200, up.content
     assert AgencyInvoice.objects.get(pk=inv.id).status == "pending"
-    deposit = 248000
+    deposit = Decimal(str(p["amount_unique"])) - 2000                   # v1.44.1: at most 2,000 T below
     sms(deposit)
     ap = AgencyPayment.objects.get()
     assert ap.status == "approved" and ap.auto_rule == "rounded" and ap.auto_reason["receipt"] is True
-    assert balance("g1-a") == Decimal("1000")                           # 249,000 − 248,000 still owed
-    assert ap.shortfall == Decimal("1000")
+    owed = Decimal("249000") - deposit                                  # what the deposit did not cover stays owed
+    assert balance("g1-a") == owed and ap.shortfall == owed
 
 
 def test_receipt_then_manual_approve_or_reject(pg, quiet):  # noqa: F811
@@ -328,3 +328,19 @@ def _png():
     buf.seek(0)
     f = ContentFile(buf.read(), name="r.png")
     return f
+
+
+def test_v1441_agency_over_payment_is_rounded_without_evidence(pg, quiet):  # noqa: F811
+    """v1.44.1: an agency payment paid a little MORE (≤ 2,000 T) is approved without a receipt; the invoices get their
+    total (the extra is not credited, like the unique surcharge) and the row shows «بیشتر X»."""
+    inv = _invoice()
+    p = billing.create_payment([inv.id], payer_kind="admin", payer_username="g1-a", allowed_admins=["g1-a"])
+    before = balance("g1-a")
+    res = sms(p.amount_unique + 1000)
+    assert res["matched"] is True and res["agency_payment"] == p.number
+    p.refresh_from_db()
+    assert p.status == "approved" and p.auto_rule == "rounded" and p.paid_amount == p.amount_unique + 1000
+    assert p.auto_reason["direction"] == "more" and p.shortfall is None
+    assert AgencyInvoice.objects.get(pk=inv.id).status == "paid" and balance("g1-a") == before - Decimal("100000")
+    assert billing.payment_row(p)["rounded_diff"] == Decimal("-1000")
+    assert any("مبلغ گرد شده – بیشتر 1,000" in t for t, _ in quiet["alerts"])

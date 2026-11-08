@@ -407,3 +407,32 @@ def backfill(*, dry_run: bool = False) -> list[dict]:
         if dry_run:
             transaction.set_rollback(True)
     return done
+
+
+def prefill_for(payment) -> dict | None:
+    """v1.44.1: the Blu deposit that most likely belongs to a payment in the review queue, so staff get the
+    receipt amount and tracking number filled in: the deposit linked to it, else an unmatched deposit linked
+    to its order, else the ONE unmatched deposit within ± the rounded tolerance inside the order's window.
+    Read-only — staff still save (and approve) themselves."""
+    from .matching import _blu_window_ok
+    from .models import BluStatus, BluTransaction
+    from .rounded import config
+
+    order = payment.order
+    tx = payment.blu_transaction if payment.blu_transaction_id else None
+    if tx is None:
+        tx = (BluTransaction.objects.filter(matched_order=order, status=BluStatus.UNMATCHED)
+              .order_by("-occurred_at").first())
+    if tx is None and order.amount_unique:
+        t = config()["max_toman"]
+        near = [x for x in BluTransaction.objects.filter(
+                    status=BluStatus.UNMATCHED, matched_order__isnull=True, amount_toman__isnull=False,
+                    amount_toman__gte=order.amount_unique - t, amount_toman__lte=order.amount_unique + t,
+                    occurred_at__gte=order.created_at - timedelta(minutes=5)).order_by("occurred_at")[:5]
+                if _blu_window_ok(order, x.occurred_at)]
+        tx = near[0] if len(near) == 1 else None
+    if tx is None or tx.amount_toman is None:
+        return None
+    return {"id": tx.id, "amount": tx.amount_toman, "tracking": tx.receipt or tx.reference,
+            "receipt": tx.receipt, "reference": tx.reference, "occurred_at": tx.occurred_at,
+            "payer_name": tx.payer_name}

@@ -23,17 +23,17 @@ const T = {
     ap_c_msg: 'از این پس هر روز کاربرانی که بیش از {d} روز پیش حذف شده‌اند، همراه حساب پاسارگارد، برای همیشه حذف می‌شوند. این کار برگشت‌پذیر نیست.',
     ap_c_now: 'در اجرای بعدی: {n} کاربر', ap_c_btn: 'بله، روشن شود',
     r_h: 'تأیید خودکار مبلغ گرد شده',
-    r_sub: 'واریزی که کمی کمتر از مبلغ فاکتور است (بلو و پیامک)، فقط با همهٔ شرط‌های زیر خودکار تأیید می‌شود.',
+    r_sub: 'واریزی که کمی کمتر یا بیشتر از مبلغ فاکتور است (بلو و پیامک)، فقط با همهٔ شرط‌های زیر خودکار تأیید می‌شود.',
     r_on: 'تأیید خودکار مبلغ گرد شده', r_on_h: 'پیش‌فرض: روشن',
-    r_toman: 'حداکثر کسری (تومان)', r_toman_h: 'پیش‌فرض: 2000',
-    r_pct: 'یا حداکثر درصد از فاکتور', r_pct_h: 'پیش‌فرض: 1 — هر کدام بیشتر باشد',
+    r_toman: 'حداکثر اختلاف، کمتر یا بیشتر (تومان)', r_toman_h: 'پیش‌فرض: 2000',
     r_rules: [
-      'واریز کمتر از فاکتور است (هرگز بیشتر) و کسری از سقف بالا بیشتر نیست؛',
+      'اختلاف واریز با فاکتور (کمتر یا بیشتر) از سقف بالا بیشتر نیست؛',
       'در بازهٔ زمانی سفارش است (همان شرط تطبیق دقیق)؛',
       'فقط یک سفارش در انتظار با این شرایط جور است — اگر دو یا بیشتر، به صف می‌رود؛',
-      'مشتری رسید همین سفارش را آپلود کرده، یا ۴ رقم آخر کارت واریزکننده با کارتی که قبلاً از آن پرداخت کرده یکی است.',
+      'همین واریز قبلاً پرداخت دیگری را تأیید نکرده باشد؛',
+      'فقط وقتی کمتر است: مشتری رسید همین سفارش را آپلود کرده، یا 4 رقم آخر کارت واریزکننده با کارتی که قبلاً از آن پرداخت کرده یکی است. واریز بیشتر مدرک لازم ندارد.',
     ],
-    r_after: 'پرداخت با برچسب «تأیید خودکار – مبلغ گرد شده» و مبلغ واقعی واریز ثبت می‌شود (کسری در حسابداری دیده می‌شود)، هشدار تلگرام و پنل می‌رود و سوپرادمین می‌تواند از صفحهٔ تراکنش «لغو تأیید» بزند. بقیه مثل قبل با «مبلغ نامطابق» به صف می‌روند.',
+    r_after: 'پرداخت با برچسب «تأیید خودکار – مبلغ گرد شده» و مبلغ واقعی واریز ثبت می‌شود («کمتر X» یا «بیشتر X» — در حسابداری جدا دیده می‌شود)، هشدار تلگرام و پنل می‌رود و سوپرادمین می‌تواند از صفحهٔ تراکنش «لغو تأیید» بزند. بقیه مثل قبل با «مبلغ نامطابق» به صف می‌روند.',
   },
   en: {
     save: 'Save', saving: '…', super: 'Super Admin only', saved: 'Saved',
@@ -47,22 +47,22 @@ const T = {
     ap_c_msg: 'From now on, every day, users deleted more than {d} days ago are permanently deleted together with their PasarGuard accounts. This cannot be undone.',
     ap_c_now: 'On the next run: {n} user(s)', ap_c_btn: 'Yes, turn it on',
     r_h: 'Rounded-amount auto-approve',
-    r_sub: 'A deposit a little below the invoice (Blu and SMS) is approved automatically only when ALL of these hold.',
+    r_sub: 'A deposit a little below or above the invoice (Blu and SMS) is approved automatically only when ALL of these hold.',
     r_on: 'Rounded-amount auto-approve', r_on_h: 'default: on',
-    r_toman: 'Max shortfall (toman)', r_toman_h: 'default: 2000',
-    r_pct: 'or max % of the invoice', r_pct_h: 'default: 1 — whichever is larger',
+    r_toman: 'Max difference, below or above (toman)', r_toman_h: 'default: 2000',
     r_rules: [
-      'the deposit is below the invoice (never above) and the shortfall is within the limit above;',
+      'the deposit differs from the invoice (below or above) by at most the limit above;',
       'it is inside the order’s time window (same guard as exact matching);',
       'exactly one pending order fits — with two or more it goes to the queue;',
-      'the customer uploaded a receipt for that order, or the payer card’s last 4 digits match a card they paid from before.',
+      'the same deposit has not already approved another payment;',
+      'only when it is BELOW: the customer uploaded a receipt for that order, or the payer card’s last 4 digits match a card they paid from before. An over-payment needs no evidence.',
     ],
-    r_after: 'The payment is recorded as “Auto-approved — rounded amount” with the amount actually paid (the shortfall shows in Accounting), staff get a Telegram + panel alert, and a Super Admin can “Undo approval” on the transaction page. Anything else goes to the queue as “Amount mismatch”, as before.',
+    r_after: 'The payment is recorded as “Auto-approved — rounded amount” with the amount actually paid (“less X” or “more X” — shown separately in Accounting), staff get a Telegram + panel alert, and a Super Admin can “Undo approval” on the transaction page. Anything else goes to the queue as “Amount mismatch”, as before.',
   },
 }
 
 const AP_KEYS = ['deleted_purge_enabled', 'deleted_purge_days']
-const R_KEYS = ['rounded_auto_enabled', 'rounded_max_toman', 'rounded_max_percent']
+const R_KEYS = ['rounded_auto_enabled', 'rounded_max_toman']
 
 function useSettings(keys) {
   const [vals, setVals] = useState(null)
@@ -177,7 +177,7 @@ export function RoundedCard() {
     e.preventDefault(); setBusy(true)
     try {
       await api.put('/admin/settings/', { rounded_auto_enabled: !!form.rounded_auto_enabled,
-        rounded_max_toman: Number(form.rounded_max_toman), rounded_max_percent: String(form.rounded_max_percent) })
+        rounded_max_toman: Number(form.rounded_max_toman) })
       toast.success(s.saved); reload()
     } catch (e2) { toast.error(apiError(e2)) } finally { setBusy(false) }
   }
@@ -188,8 +188,6 @@ export function RoundedCard() {
       <div className="st-fields sup-fields">
         <Num label={s.r_toman} hint={s.r_toman_h} min={0} max={1000000} disabled={!canEdit}
           value={form.rounded_max_toman} onChange={(v) => setForm({ ...form, rounded_max_toman: v })} />
-        <Num label={s.r_pct} hint={s.r_pct_h} min={0} max={10} step="0.1" disabled={!canEdit}
-          value={form.rounded_max_percent} onChange={(v) => setForm({ ...form, rounded_max_percent: v })} />
       </div>
       <ol className="sup-rules">{s.r_rules.map((r, i) => <li key={i}>{r}</li>)}</ol>
       <p className="sup-info">{s.r_after}</p>

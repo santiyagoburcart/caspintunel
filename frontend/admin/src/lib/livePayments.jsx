@@ -68,9 +68,10 @@ export function LivePaymentsProvider({ children }) {
     // v1.32 rounded-amount auto-approve (backend payments_sms/rounded.py)
     if (msg.event === 'rounded_approved') {
       const n = (v) => Number(v || 0).toLocaleString('en-US')
+      const sh = Number(msg.shortfall || 0), d = n(Math.abs(sh))
       toast.success(fa
-        ? `تأیید خودکار – مبلغ گرد شده: سفارش #${msg.order_id} — واریز ${n(msg.paid)}، فاکتور ${n(msg.invoice_amount)} تومان (کسری ${n(msg.shortfall)}).`
-        : `Auto-approved — rounded amount: order #${msg.order_id} — paid ${n(msg.paid)} T, invoice ${n(msg.invoice_amount)} T (short ${n(msg.shortfall)}).`)
+        ? `تأیید خودکار – مبلغ گرد شده (${sh > 0 ? 'کمتر' : 'بیشتر'} ${d}): سفارش #${msg.order_id} — واریز ${n(msg.paid)}، فاکتور ${n(msg.invoice_amount)} تومان.`
+        : `Auto-approved — rounded amount (${sh > 0 ? 'less' : 'more'} ${d}): order #${msg.order_id} — paid ${n(msg.paid)} T, invoice ${n(msg.invoice_amount)} T.`)
       return
     }
     // a deposit (bank SMS or Blu) close to an open invoice but not equal: never approved, needs a person

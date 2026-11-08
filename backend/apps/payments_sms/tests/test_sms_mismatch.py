@@ -88,8 +88,9 @@ def test_exact_amount_is_approved(device, env, fmt):
 
 
 @FORMATS
-@pytest.mark.parametrize("delta,kind", [(-1, "less"), (1, "more")])
-def test_one_toman_off_is_never_approved_but_flagged(device, env, fmt, delta, kind):
+# v1.44.1: +1 … +2,000 T is now the rounded rule (approved, test_rounded_v1441); −1 without a receipt still is not
+@pytest.mark.parametrize("delta,kind", [(-1, "less"), (2001, "more")])
+def test_off_amount_outside_the_rounded_rule_is_never_approved_but_flagged(device, env, fmt, delta, kind):
     o = make_order()
     data = send(device, fmt(BLU.format(amount=rial(INVOICE + delta))))
     o.refresh_from_db()

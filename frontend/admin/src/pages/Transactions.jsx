@@ -6,6 +6,7 @@ import { useConfirm } from '../components/ConfirmDialog'
 import { useToast } from '../components/Toast'
 import { useI18n, enumLabel } from '../lib/i18n'
 import { jalali, toman, digits } from '../lib/format'
+import { roundedDiff } from '../lib/rounded'
 import { Alert, Spinner } from '../components/ui'
 import { ReceiptThumb } from '../components/ReceiptThumb'
 import { DateRangeModal, DRP_CSS } from '../components/DateRangePicker'
@@ -419,7 +420,7 @@ function TxTable({ s, t, lang }) {
                       <td data-label={s.type_col}>{s['type_' + r.order_type] || r.order_type || '—'}</td>
                       <td data-label={s.src_col}>{r.order_source === 'bot' ? s.src_bot : s.src_site}</td>
                       <td data-label={s.method}>{r.method ? enumLabel(t, 'm_', r.method) : '—'}
-                        {r.auto_rule === 'rounded' && <span className="tx-rounded">{s.rounded}</span>}</td>
+                        {r.auto_rule === 'rounded' && <span className="tx-rounded">{s.rounded}{r.shortfall != null && Number(r.shortfall) !== 0 ? ` · ${roundedDiff(r.shortfall, lang)}` : ''}</span>}</td>
                       <td dir="ltr" className="tx-mono tx-card" data-label={s.card}>{groupCard(r.card)}</td>
                       <td data-label={s.confirmer}>{confirmer(r)}</td>
                       <td className="tx-mono tx-date" data-label={s.date}>{jalali(r.pay_date || r.created_at, true, lang)}</td>

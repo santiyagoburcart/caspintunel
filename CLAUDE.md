@@ -66,9 +66,11 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   look-alikes are logged as "amount mismatch" (SMS log filter) and never approved. (Incident 2026-10-15, order #46.)
   A deposit within ±20 % of an open invoice (or equal only after ×10/÷10) is linked to it (`SmsMessage.mismatch_order` +
   `less`/`more`) and gets a PENDING `sms_mismatch` payment for manual review (Payments queue, live `sms_mismatch` event).
-  **The ONE exception = `payments_sms/rounded.py` (v1.32, SMS + Blu):** a deposit slightly BELOW exactly one open invoice
-  (≤ max(`rounded_max_toman`, `rounded_max_percent`)), inside its window, with a receipt or a known payer card. Never above,
-  never with 2+ candidates, never twice for one deposit; paid amount + `shortfall` recorded; undo = void. Don't widen it elsewhere.
+  **The ONE exception = `payments_sms/rounded.py` (v1.32, widened v1.44.1, SMS + Blu):** a deposit within ±`rounded_max_toman`
+  (default 2,000 T) of exactly ONE open invoice (order / agency payment), inside its window, not already used by another approved
+  payment (exact or rounded — SMS + Blu copies). BELOW also needs a receipt or a known payer card; ABOVE needs none. Never with 2+
+  candidates, never twice for one deposit; paid amount + signed `shortfall` (invoice − paid, negative = more) recorded; undo = void.
+  Don't widen it elsewhere.
 - **Manual invoices (v1.38, `orders/manual.py`)**: approved only through `approve_payment(confirmed_at=…)` (revenue on the
   entered date) or the normal checkout; never set a manual order / payment status by hand. Tag = `Order.manual_invoice`.
 - **Renewal plans** (v1.42.1): `renewal_plans` = every active plan of the service's panel incl. custom volume; `plan_renews` decides

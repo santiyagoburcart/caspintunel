@@ -203,7 +203,7 @@ sequenceDiagram
     Note over L,DB: any other approval (manual invoice, staff receipt, SMS, agency) → signals → auto-link (same rule)
 ```
 
-## 2c. Rounded-amount auto-approve (v1.32, Blu + SMS)
+## 2c. Rounded-amount auto-approve (v1.32, widened v1.44.1, Blu + SMS)
 
 ```mermaid
 sequenceDiagram
@@ -216,20 +216,21 @@ sequenceDiagram
 
     M->>M: exact amount? → normal auto-confirm (unchanged)
     M->>R: deposit, time, payer last4 (Blu)
-    R->>DB: open orders with deposit < invoice ≤ deposit + max(2,000 T, 1 %), inside the window
-    alt rule off / no such order (e.g. over-payment)
+    R->>DB: open orders + agency payments with |invoice − deposit| ≤ rounded_max_toman (2,000 T), inside the window
+    alt rule off / no such order
         R-->>M: not this rule → near-miss review as before
     else 2+ orders fit
         R-->>M: why_not multiple_orders → «مبلغ نامطابق» queue (reason stored)
-    else this deposit already auto-approved another order (SMS + Blu copy)
+    else this deposit already paid an order or agency payment (exact or rounded · SMS + Blu copy)
         R-->>M: why_not deposit_already_used → queue
-    else 1 order, no receipt and an unknown card
+    else 1 order, paid LESS, no receipt and an unknown card
         R-->>M: why_not no_evidence → queue (reason stored on the pending payment)
-    else 1 order + (receipt uploaded OR card last4 paid this customer's order before)
-        R->>DB: Payment approved, auto_rule rounded, amount = paid, shortfall
+    else 1 order paid MORE (no evidence needed) OR paid LESS + (receipt OR card last4 paid this customer before)
+        R->>DB: Payment approved, auto_rule rounded, amount = paid, shortfall = invoice − paid (negative = more)
         R->>DB: mark_paid_and_fulfill · audit payment.rounded_auto_confirmed
-        R-->>Q: rounded_approved + Telegram (payment.approve)
+        R-->>Q: rounded_approved + Telegram «کمتر X» / «بیشتر X» (payment.approve)
     end
+    Note over Q,DB: Payments queue · a matching Blu deposit pre-fills the receipt amount + tracking number (blu_prefill)
     Note over M,DB: a receipt uploaded later → rounded_retry_task re-checks the linked deposit
     SA->>DB: Transaction → «لغو تأیید» = void_payment (keep service by default)
     DB->>DB: deposit back to unmatched / SMS near-miss · audit payment.rounded_undone

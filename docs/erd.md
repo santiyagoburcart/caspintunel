@@ -312,7 +312,7 @@ erDiagram
         string void_prev_order_status "put back by restore"
         string auto_rule "'' | rounded (v1.32)"
         json auto_reason "rounded rule: conditions matched / why not"
-        decimal shortfall "invoice − paid (rounded only)"
+        decimal shortfall "invoice − paid (rounded / staff short; negative = paid more, v1.44.1)"
         datetime pending_alerted_at "v1.33 unconfirmed-payment alert sent"
         datetime pending_resolved_at "v1.33 silent resolved follow-up sent"
     }

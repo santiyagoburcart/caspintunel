@@ -30,7 +30,9 @@ def _rounded(text: str) -> str:
         if mm := re.match(r"^(\d+) order\(s\) fit$", b):
             bits.append(f"{mm.group(1)} سفارش مناسب")
         elif mm := re.match(r"^short ([\d,]+) T ≤ ([\d,]+) T$", b):
-            bits.append(f"کسری {mm.group(1)} تومان ≤ {mm.group(2)} تومان")
+            bits.append(f"کمتر {mm.group(1)} تومان ≤ {mm.group(2)} تومان")
+        elif mm := re.match(r"^over ([\d,]+) T ≤ ([\d,]+) T$", b):
+            bits.append(f"بیشتر {mm.group(1)} تومان ≤ {mm.group(2)} تومان")
         elif b == "receipt uploaded":
             bits.append("رسید آپلود شده")
         elif mm := re.match(r"^known card \*+(\d+)$", b):
