@@ -81,12 +81,24 @@ def sync_all_services():
         return {"skipped": "no active panel"}
     if not cache.add(SYNC_LOCK, "1", timeout=600):
         return {"skipped": "a sync is already running"}
+    from apps.tenancy.context import for_each_tenant
+
     try:
-        res = sync_services(syncable_services().order_by("id").values_list("id", flat=True))
+        # v1.46 (Phase 4): every store's services (the panel is shared; each store's rows are synced in its own context)
+        per = for_each_tenant(lambda: sync_services(syncable_services().order_by("id").values_list("id", flat=True)),
+                              name="sync_all_services")
     finally:
         cache.delete(SYNC_LOCK)
-    res.pop("skipped_ids", None)
+    res = {"rows": []}
+    for r in per.values():
+        for k, v in (r or {}).items():
+            if k == "rows":
+                res["rows"] += v
+            elif isinstance(v, (int, float)) and not isinstance(v, bool):
+                res[k] = res.get(k, 0) + v
     res["rows"] = res["rows"][:20]
+    if len(per) > 1:
+        res["tenants"] = len(per)
     return res
 
 
@@ -116,17 +128,22 @@ def apply_due_scheduled_renewals():
     volume (ServiceStatus.LIMITED) — while sitting on an unapplied
     ScheduledRenewal."""
     from apps.orders.models import ScheduledRenewal
+    from apps.tenancy.context import for_each_tenant
 
-    due_ids = list(
-        ScheduledRenewal.objects.filter(
-            applied_at__isnull=True,
-            service__status__in=(ServiceStatus.EXPIRED, ServiceStatus.LIMITED),
-            service__user__deleted_at__isnull=True,   # a deleted user's services stay off
-        ).values_list("id", flat=True)
-    )
-    for rid in due_ids:
-        apply_scheduled_renewal_task.delay(rid)
-    return {"dispatched": len(due_ids), "at": timezone.now().isoformat()}
+    def one_store():
+        due_ids = list(
+            ScheduledRenewal.objects.filter(
+                applied_at__isnull=True,
+                service__status__in=(ServiceStatus.EXPIRED, ServiceStatus.LIMITED),
+                service__user__deleted_at__isnull=True,   # a deleted user's services stay off
+            ).values_list("id", flat=True)
+        )
+        for rid in due_ids:
+            apply_scheduled_renewal_task.delay(rid)        # queued inside the store's context → runs for that store
+        return len(due_ids)
+
+    per = for_each_tenant(one_store, name="apply_due_scheduled_renewals")   # v1.46: every store
+    return {"dispatched": sum(v for v in per.values() if isinstance(v, int)), "at": timezone.now().isoformat()}
 
 
 def _flag_provision_failure(service_id: int, detail: str) -> None:

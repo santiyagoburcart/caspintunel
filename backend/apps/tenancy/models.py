@@ -24,6 +24,8 @@ class Tenant(TimeStampedModel):
     is_default = models.BooleanField(default=False)
     export_allowed = models.BooleanField(default=False, help_text="the reseller may download a tenant export (set by us)")
     limits = models.JSONField(default=dict, blank=True, help_text="orders/min, staff count, … (set by us)")
+    # v1.46 (Phase 4, tenancy/quota.py): the reseller quota warning last sent — 0 none, 20 / 10 = % remaining
+    quota_alert_level = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
         db_table = "tenant"

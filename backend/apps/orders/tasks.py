@@ -25,9 +25,14 @@ def expire_stale_reservations_task():
     from .services import expire_stale_reservations
 
     from apps.agency.billing import expire_stale
+    from apps.tenancy.context import for_each_tenant
 
-    with transaction.atomic():
-        out = {"expired": expire_stale_reservations()}
+    def one_store():
+        with transaction.atomic():
+            return expire_stale_reservations()
+
+    per = for_each_tenant(one_store, name="expire_stale_reservations")      # v1.46: every store's checkouts
+    out = {"expired": sum(v for v in per.values() if isinstance(v, int))}
     with transaction.atomic():
         out["agency_expired"] = expire_stale()     # v1.34 unfinished agency checkouts
     return out
@@ -41,17 +46,23 @@ def retry_unfulfilled_orders():
     have to re-approve anything."""
     from django.utils import timezone
 
-    cutoff = timezone.now() - timezone.timedelta(minutes=2)
-    stuck = list(
-        Order.objects.filter(status=OrderStatus.PAID, updated_at__lt=cutoff, needs_new_name=False,
-                             provision_failed_at__isnull=True)    # «ساخت ناموفق»: staff fix it, no retry loop
-        .values_list("id", flat=True)
-    )
-    for oid in stuck:
-        fulfill_order.delay(oid)
-    if stuck:
-        log.info("retry_unfulfilled_orders: re-dispatched %s", stuck)
-    return {"redispatched": len(stuck)}
+    from apps.tenancy.context import for_each_tenant
+
+    def one_store():
+        cutoff = timezone.now() - timezone.timedelta(minutes=2)
+        stuck = list(
+            Order.objects.filter(status=OrderStatus.PAID, updated_at__lt=cutoff, needs_new_name=False,
+                                 provision_failed_at__isnull=True)    # «ساخت ناموفق»: staff fix it, no retry loop
+            .values_list("id", flat=True)
+        )
+        for oid in stuck:
+            fulfill_order.delay(oid)                     # queued inside the store's context → runs for that store
+        if stuck:
+            log.info("retry_unfulfilled_orders: re-dispatched %s", stuck)
+        return len(stuck)
+
+    per = for_each_tenant(one_store, name="retry_unfulfilled_orders")      # v1.46: every store
+    return {"redispatched": sum(v for v in per.values() if isinstance(v, int))}
 
 
 @shared_task(bind=True, **_RETRY)
@@ -71,6 +82,15 @@ def fulfill_order(self, order_id: int):
     if order.status == OrderStatus.CANCELLED:
         # its payment was deleted (voided) with "cancel the order" — never deliver it
         return {"skipped": "cancelled"}
+
+    if order.type in (OrderType.NEW, OrderType.ADDON_VOLUME):
+        # v1.46 (multi-tenant Phase 4): a store's reseller must still have the volume right before the account is made
+        from apps.tenancy import quota
+
+        try:
+            quota.check_order(order)
+        except quota.QuotaShort as exc:
+            return _quota_wait(order, exc)
 
     try:
         if order.type == OrderType.NEW:
@@ -104,6 +124,14 @@ def fulfill_order(self, order_id: int):
     if order.type != OrderType.RENEW:
         _notify_delivered(order)
     return {"order": order_id, "status": "completed"}
+
+
+def _quota_wait(order: Order, exc) -> dict:
+    """Paid, but the store's reseller is out of quota: nothing is created; the order stays `paid` and
+    retry_unfulfilled_orders tries again every minute — it is delivered as soon as the reseller's quota is raised.
+    The reseller (portal notice) and we (staff alert) were told by quota.check, once an hour."""
+    log.warning("order %s waits for the store's reseller quota: %s", order.id, exc)
+    return {"order": order.id, "waiting": "quota", "detail": str(exc)[:200]}
 
 
 def panel_error_text(exc) -> str:

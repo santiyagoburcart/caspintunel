@@ -515,4 +515,11 @@ Everything shipped since v1.6.0 (details in the session log):
   3 LE failures → failed until retry; remove deletes vhost + certificate. Store dashboard lists its domains read-only.
   Migration tenancy 0005 (additive). Tests: `tenancy/tests/test_domains.py` (19), `scripts/test-tenants.sh` (30 checks:
   direct, Iran tunnel port forward without PROXY, unreachable name, backoff + retry, nginx rollback, removal, bad input).
+- 2026-11-08 — **v1.46.0: multi-tenant Phase 4 — catalog + PasarGuard per store.** v1.45.0 deployed + released. `tenancy/celery_ctx.py`
+  (tasks run for the store they were queued from; `for_each_tenant` in service sync, scheduled renewals, retry of paid orders,
+  reservation expiry); `provision_service` → `set_owner` to the reseller + read-back; `tenancy/quota.py` quota guard (create_order
+  → `SaleUnavailable` code `quota`, fulfil waits + retries, manual invoices) + 20 / 10 % warnings (`store_quota_warnings_task`,
+  `Tenant.quota_alert_level`, migration tenancy 0006) + store dashboard banner; `tenancy/catalog.py` store plans (agency panel,
+  role groups, no unlimited for a limited reseller; `plans/store-options/`); Plans in the store menu. Tests:
+  `tenancy/tests/test_phase4.py` (16, incl. a real worker on the memory broker).
 - **Next:** new items to be agreed with the owner.

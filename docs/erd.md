@@ -35,6 +35,7 @@ erDiagram
         bool is_default "exactly one (checked in save)"
         bool export_allowed
         json limits
+        int quota_alert_level "v1.46: 0 · 20 · 10 (% remaining warned)"
     }
     tenant_domain {
         bigint id PK

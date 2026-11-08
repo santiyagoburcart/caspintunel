@@ -40,6 +40,18 @@ log = logging.getLogger("caspintunel")
 ONLINE_WINDOW_MIN = 5
 
 
+def _store_quota() -> dict | None:
+    from apps.tenancy import quota
+
+    st = quota.state()
+    if not st:
+        return None
+    keep = ("limited", "found", "limit", "available", "percent_remaining")
+    out = {k: st.get(k) for k in keep if k in st}
+    out["level"] = quota.level_for(st["percent_remaining"]) if st.get("limited") else 0
+    return out
+
+
 def _store_domains() -> list:
     from apps.tenancy import context, domains
 
@@ -306,7 +318,9 @@ class DashboardView(AdminAPIView):
                                           "online_now": Service.objects.filter(online_at__gte=since).count()},
                              "health": None, "resources": None, "store": True,
                              # v1.45: the store's own domains, read-only (state, certificate, health — no records / errors)
-                             "domains": _store_domains()})
+                             "domains": _store_domains(),
+                             # v1.46: the reseller's quota left for this store (banner at 20 % / 10 %)
+                             "quota": _store_quota()})
         return Response({
             "services": {
                 "total": sum(by_status.values()),

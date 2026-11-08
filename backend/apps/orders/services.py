@@ -261,6 +261,7 @@ def create_order(
         existing.reused = True
         return existing
 
+    quota_guard(plan, custom_volume_gb)          # v1.46: a store's reseller must have the volume (never our own store)
     order = Order(
         user=user, plan=plan, service=service, type=order_type,
         requested_account_name=requested_account_name if order_type == OrderType.NEW else None,
@@ -297,6 +298,32 @@ def base_amount(plan, custom_volume_gb=None) -> tuple[Decimal, int | None]:
             raise OrderError(f"custom volume must be between {lo} and {hi} GB")
         return Decimal(plan.price_for_volume(gb)), gb
     return Decimal(plan.final_price), None
+
+
+class SaleUnavailable(OrderError):
+    """v1.46 (multi-tenant Phase 4): the store's reseller quota cannot cover this purchase (tenancy/quota.py)."""
+
+    code = "quota"
+
+    def __init__(self, exc):
+        self.fa, self.en = exc.fa, getattr(exc, "en_customer", None) or _QUOTA_EN
+        super().__init__(self.fa)
+
+    def message(self, lang="fa"):
+        return self.en if lang == "en" else self.fa
+
+
+def quota_guard(plan, custom_volume_gb=None) -> None:
+    """Store sales only (our own store is never checked): raises SaleUnavailable."""
+    from apps.tenancy import quota
+
+    try:
+        quota.check(quota.plan_bytes(plan, custom_volume_gb))
+    except quota.QuotaShort as exc:
+        raise SaleUnavailable(exc) from exc
+
+
+_QUOTA_EN = "This purchase is temporarily unavailable — please try again a little later or contact support."
 
 
 class DiscountCodeRefused(OrderError):

@@ -10,7 +10,9 @@
 > **Phase 2 done.** **Phase 3 (domains & TLS) built in v1.45.0** (store domains on «فروشگاه», DNS / TXT / proxied checks, HTTP-01 per
 > host via the host watcher `scripts/tenants.sh`, per-host nginx files, health, renewal, alerts — architecture.md + flows.md 16c).
 > The Iran-side PROXY-protocol sender (§7 "Real client IP") was skipped by the owner on 2026-11-08: tunnel visitors keep the
-> per-browser limits. Next: Phase 4. Written against v1.38.4, decisions recorded in v1.38.6.
+> per-browser limits. **Phase 4 (catalog + PasarGuard) built in v1.46.0** (Celery tasks carry the store, set_owner
+> provisioning, quota guard + 20 / 10 % warnings, store plans bounded by the reseller's admin — architecture.md + flows.md 16d).
+> Next: Phase 5 (payments + SMS per store). Written against v1.38.4, decisions recorded in v1.38.6.
 > When a phase is approved and built, the matching parts move into `architecture.md` / `erd.md` / `flows.md` and this page
 > keeps only what is still planned.
 

@@ -95,6 +95,27 @@ def unscoped():
         _unscoped.reset(token)
 
 
+def tenant_ids() -> list[int]:
+    """Every store, ours first (periodic jobs that work on customer data run once per store)."""
+    from .models import Tenant
+
+    return list(Tenant.objects.order_by("-is_default", "id").values_list("id", flat=True))
+
+
+def for_each_tenant(fn, *, name: str = "") -> dict:
+    """v1.46 (Phase 4): run `fn()` once per store inside its tenant context. One store failing never stops the others;
+    returns {tenant_id: result or {"error": …}}."""
+    out = {}
+    for tid in tenant_ids():
+        try:
+            with tenant_context(tid):
+                out[tid] = fn()
+        except Exception as exc:  # noqa: BLE001
+            log.exception("tenancy: %s failed for tenant %s", name or getattr(fn, "__name__", "job"), tid)
+            out[tid] = {"error": f"{exc.__class__.__name__}: {exc}"[:300]}
+    return out
+
+
 # files allowed to call unscoped() — tests/test_isolation.py fails on any other use
 ALLOWED_UNSCOPED = {
     "apps/tenancy/backfill.py",

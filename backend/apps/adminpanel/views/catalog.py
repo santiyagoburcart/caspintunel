@@ -29,6 +29,17 @@ class PlanAdminViewSet(AdminViewSet):
     queryset = Plan.objects.all().order_by("sort_order", "id")
     serializer_class = AdminPlanSerializer
     perms_map = {"GET": ["plans.manage"], "*": ["plans.manage"]}
+    store_ok = True        # v1.46 (Phase 4): the reseller's own plans and prices (tenant-scoped; tenancy/catalog.py bounds them)
+
+    @action(detail=False, methods=["get"], url_path="store-options")
+    def store_options(self, request):
+        """Store panel only: the panel and the groups a store plan may use, and whether unlimited plans are allowed."""
+        from apps.tenancy import catalog
+
+        try:
+            return Response(catalog.options())
+        except catalog.CatalogError as exc:
+            return Response({"detail": exc.en, "detail_fa": exc.fa}, status=404)
 
 
 class BankCardViewSet(AdminViewSet):

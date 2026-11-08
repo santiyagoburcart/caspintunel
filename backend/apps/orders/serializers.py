@@ -3,7 +3,7 @@ from rest_framework import serializers
 from apps.plans.models import Plan
 
 from .models import Order, OrderType
-from .services import AccountNameRefused, DiscountCodeRefused, OrderError, RenewalWaiting, create_order
+from .services import AccountNameRefused, DiscountCodeRefused, OrderError, RenewalWaiting, SaleUnavailable, create_order
 
 
 def manual_info(order) -> dict | None:
@@ -126,5 +126,7 @@ class OrderCreateSerializer(serializers.Serializer):
         except AccountNameRefused as exc:
             raise serializers.ValidationError({"requested_account_name": [exc.message(validated.get("lang", "fa"))],
                                                "suggestion": exc.suggestion or ""})
+        except SaleUnavailable as exc:
+            raise serializers.ValidationError({"detail": exc.message(validated.get("lang", "fa")), "code": exc.code})
         except OrderError as exc:
             raise serializers.ValidationError(str(exc))

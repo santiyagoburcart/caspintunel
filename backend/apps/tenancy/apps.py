@@ -14,3 +14,5 @@ class TenancyConfig(AppConfig):
         from . import registry, scoping
 
         scoping.install([apps.get_model(label) for label in registry.TENANT])
+        # v1.46 (Phase 4): Celery tasks run for the store they were queued from (apps/tenancy/celery_ctx.py)
+        from . import celery_ctx  # noqa: F401

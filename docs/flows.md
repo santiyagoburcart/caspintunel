@@ -1369,3 +1369,35 @@ sequenceDiagram
     Note over DM: active · health every 5 min (alert after 30 min down) · DNS daily · certificate expiry alert at 14 days · renewal = certbot container renew + nginx reload every 6 h
     Note over S: remove → watcher deletes the vhost + certificate · the reseller sees the state read-only on their store dashboard
 ```
+
+## 16d. A store sale · quota guard + set_owner (multi-tenant Phase 4, v1.46)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor C as Store customer (store.example)
+    participant API as web (store context)
+    participant Q as tenancy.quota
+    participant W as Celery worker
+    participant PG as PasarGuard
+    actor R as Reseller (agency portal)
+    C->>API: POST /orders/ (the store's plan)
+    API->>Q: check(plan volume) · available = admin_remaining − open orders − unapplied renewals (live when < 10 % would be left)
+    alt not enough · unlimited plan for a limited reseller · no reseller admin
+        Q-->>C: 400 code quota «این خرید فعلاً در دسترس نیست»
+        Q->>R: portal notice (once an hour) · staff alert
+    else enough
+        API-->>C: invoice (payment flow unchanged)
+    end
+    Note over API,W: payment approved → fulfill_order.delay queued in the store context (header caspin_tenant)
+    W->>W: task_prerun → tenant = the store
+    W->>Q: check again (the order itself excluded)
+    alt short now
+        W-->>W: order stays paid · retry_unfulfilled_orders (per store) tries every minute
+    else
+        W->>PG: POST /api/user (our admin token)
+        W->>PG: PUT /api/user/NAME/set_owner?admin_username=reseller
+        W->>PG: GET /api/user/NAME · admin.username must be the reseller (else «ساخت ناموفق»)
+    end
+    Note over Q,R: every 5 min · 20 % / 10 % left → portal notice + staff alert once per level · store dashboard banner
+```

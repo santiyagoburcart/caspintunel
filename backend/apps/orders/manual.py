@@ -112,6 +112,15 @@ def clean_item(user, data: dict) -> dict:
         if action == MI.ACT_RENEW and plan.type == PlanType.CUSTOM_VOLUME:
             raise ManualInvoiceError("a custom-volume plan cannot renew a service", "plan", "پلن حجم دلخواه برای تمدید نیست")
         out["service"] = svc
+    # v1.46 (multi-tenant Phase 4): a store's reseller must have the volume (never checked for our own store)
+    from apps.tenancy import quota
+
+    need = (out["volume_gb"] * quota.GB) if out["volume_gb"] else quota.plan_bytes(plan, None)
+    try:
+        quota.check(need, what="manual invoice")
+    except quota.QuotaShort as exc:
+        raise ManualInvoiceError(f"the store's reseller quota cannot cover this: {exc}", "plan",
+                                 "حجم باقی‌ماندهٔ نماینده برای این فاکتور کافی نیست")
     return out
 
 

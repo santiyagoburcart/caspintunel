@@ -514,6 +514,16 @@ class Command(BaseCommand):
                 "enabled": True,
             },
         )
+        # v1.46 store quota warnings (apps/tenancy/quota.py): 20 % / 10 % of the reseller's quota left
+        PeriodicTask.objects.update_or_create(
+            name="stores: reseller quota warnings",
+            defaults={
+                "task": "apps.tenancy.tasks.store_quota_warnings_task",
+                "interval": every_5,
+                "kwargs": _json.dumps({}),
+                "enabled": True,
+            },
+        )
         # v1.45 store domains (apps/tenancy/domains.py): DNS → certificate (host watcher) → health, every minute
         PeriodicTask.objects.update_or_create(
             name="stores: domains, certificates and health",

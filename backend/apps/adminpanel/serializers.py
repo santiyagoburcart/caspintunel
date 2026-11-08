@@ -265,6 +265,17 @@ class AdminPlanSerializer(PlanPanelDefaultMixin, serializers.ModelSerializer):
         fields = "__all__"
         extra_kwargs = {"panel": {"required": False}}
 
+    def validate(self, attrs):
+        # v1.46 (multi-tenant Phase 4): a store plan = agency panel, the reseller role's groups, no unlimited volume for a
+        # limited reseller (tenancy/catalog.py) — checked BEFORE the panel default so a store never falls back to another
+        from apps.tenancy import catalog
+
+        try:
+            attrs = catalog.validate_plan(attrs, self.instance)
+        except catalog.CatalogError as exc:
+            raise serializers.ValidationError({exc.field or "detail": [exc.fa], "detail_en": exc.en})
+        return super().validate(attrs)
+
 
 class AdminBankCardSerializer(serializers.ModelSerializer):
     deposit_total = serializers.SerializerMethodField()

@@ -130,6 +130,11 @@ class PasarGuardClient:
     def update_user(self, username: str, payload: dict) -> dict:
         return self._request("PUT", f"/api/user/{username}", json=payload)
 
+    def set_owner(self, username: str, admin_username: str) -> dict:
+        """v1.46 (multi-tenant Phase 4): hand the user to another PasarGuard admin — PUT /api/user/{username}/set_owner
+        ?admin_username= (PasarGuard 5.6 openapi). Its traffic then counts against that admin's quota."""
+        return self._request("PUT", f"/api/user/{username}/set_owner", params={"admin_username": admin_username})
+
     def delete_user(self, username: str) -> None:
         self._request("DELETE", f"/api/user/{username}")
 

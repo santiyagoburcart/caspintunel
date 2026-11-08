@@ -110,13 +110,42 @@ def provision_service(service_id: int, plan=None) -> Service:
     except PanelConflict:
         api_user = _adopt_own_or_refuse(client, service)
 
+    owner = store_owner(service)
+    if owner:
+        api_user = _hand_to_owner(client, service, api_user, owner)
+
     service.current_plan = plan
     apply_user_to_service(service, api_user, service.panel)
     if service.status == ServiceStatus.PENDING:
         service.status = ServiceStatus.ON_HOLD if plan.duration_days else ServiceStatus.ACTIVE
     service.save()
-    write_audit(action="service.provisioned", target=service, detail={"plan": plan.id})
+    write_audit(action="service.provisioned", target=service, detail={"plan": plan.id, **({"owner": owner} if owner else {})})
     return service
+
+
+def store_owner(service) -> str:
+    """v1.46 (multi-tenant Phase 4): the reseller's PasarGuard admin for a store's service ('' for our own store)."""
+    from apps.tenancy.models import Tenant
+
+    t = Tenant.objects.filter(pk=service.tenant_id).values("is_default", "reseller_username").first()
+    return "" if not t or t["is_default"] else (t["reseller_username"] or "")
+
+
+def _owner_of(api_user: dict) -> str:
+    a = (api_user or {}).get("admin") or {}
+    return (a.get("username") if isinstance(a, dict) else str(a or "")) or ""
+
+
+def _hand_to_owner(client, service, api_user: dict, owner: str) -> dict:
+    """Created with OUR admin token → set_owner to the reseller → read back: the panel must show the reseller as owner,
+    else PanelError (the order gets «ساخت ناموفق», staff fix it — never a store customer counted on our quota silently)."""
+    if _owner_of(api_user).lower() != owner.lower():
+        client.set_owner(service.panel_username, owner)
+        api_user = client.get_user(service.panel_username)
+    if _owner_of(api_user).lower() != owner.lower():
+        raise PanelError(f"set_owner did not take: {service.panel_username} is owned by "
+                         f"{_owner_of(api_user) or 'nobody'}, expected the reseller {owner}")
+    return api_user
 
 
 @transaction.atomic

@@ -83,6 +83,7 @@ export default function Dashboard() {
       </div>
       <Alert>{err}</Alert>
 
+      {store && d.quota?.level > 0 && <QuotaBanner q={d.quota} lang={lang} />}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Kpi icon="services" tone="blue" label={t('services_total')} value={digits(d.services?.total ?? '—', lang)}
           sub={byStatus.length ? `${digits(d.services?.by_status?.active ?? 0, lang)} ${t('st_active')}` : ''} />
@@ -257,6 +258,24 @@ function StoreDomainsCard({ domains, lang }) {
       <style>{`.dash-dom { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
 .dash-dom-h { font-weight: 800; overflow-wrap: anywhere; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 13px; }
 .dash-chip.is-ok { color: var(--c-success-fg); }`}</style>
+    </div>
+  )
+}
+
+// v1.46 store mode: the reseller's quota left for this store (backend tenancy/quota.py) — at 20 % / 10 %
+const QB = {
+  fa: { t: 'حجم قابل فروش رو به اتمام است', b: '{p}% باقی مانده ({g} گیگ). برای ادامهٔ فروش از پنل نمایندگی «درخواست شارژ» بزنید؛ وقتی حجم تمام شود خرید جدید متوقف می‌شود.' },
+  en: { t: 'Quota to sell is running low', b: '{p}% left ({g} GB). Send a volume request in the agency portal to keep selling — new purchases stop when it runs out.' },
+}
+function QuotaBanner({ q, lang }) {
+  const s = QB[lang] || QB.fa
+  const gb = (Math.max(0, Number(q.available || 0)) / 1024 ** 3).toFixed(1)
+  return (
+    <div className={'dash-quota' + (q.level <= 10 ? ' is-bad' : '')} role="status" data-testid="store-quota">
+      <b>{s.t}</b> <span>{s.b.replace('{p}', q.percent_remaining).replace('{g}', gb)}</span>
+      <style>{`.dash-quota { border-radius: 14px; padding: 12px 14px; font-size: 13px; line-height: 1.8; color: var(--c-warning-fg);
+  background: color-mix(in srgb, var(--c-warning) 12%, transparent); border: 1px solid color-mix(in srgb, var(--c-warning) 34%, transparent); }
+.dash-quota.is-bad { color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 10%, transparent); border-color: color-mix(in srgb, var(--c-danger) 30%, transparent); }`}</style>
     </div>
   )
 }

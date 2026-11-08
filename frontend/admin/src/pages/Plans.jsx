@@ -6,6 +6,7 @@ import { Alert, Field, Spinner, Toggle } from '../components/ui'
 import { useToast } from '../components/Toast'
 import { copyToClipboard } from '../lib/clipboard'
 import { useDeleteConfirm } from '../lib/confirmDelete'
+import { useAuth } from '../lib/auth'
 
 const GB = 1024 ** 3
 
@@ -141,9 +142,20 @@ export default function Plans() {
   const [fPanel, setFPanel] = useState('')
   const [fStatus, setFStatus] = useState('')
 
+  // v1.46 store mode: the agency panel only, the reseller role's groups (GET /admin/plans/store-options/)
+  const { staff } = useAuth()
+  const store = !!staff?.store
+  const [storeOpts, setStoreOpts] = useState(null)
   const load = () => api.get('/admin/plans/').then((r) => setRows(r.data.results ?? r.data)).catch(() => setRows([]))
   useEffect(() => {
     load()
+    if (store) {
+      api.get('/admin/plans/store-options/').then((r) => {
+        setStoreOpts(r.data)
+        setPanels([{ ...r.data.panel, is_active: true, default_group_ids: [] }])
+      }).catch((e) => { setStoreOpts({ panel: null, groups: [], groups_error: apiError(e) }); setPanels([]) })
+      return
+    }
     api.get('/admin/panels/').then((r) => setPanels(r.data.results || r.data || [])).catch(() => setPanels([]))
   }, [])
 
@@ -153,11 +165,12 @@ export default function Plans() {
   const fetchGroupsFor = (panelId) => {
     setPanelGroups(null); setGroupsErr('')
     if (!panelId) return
+    if (store) { setPanelGroups(storeOpts?.groups || []); setGroupsErr(storeOpts?.groups_error || ''); return }
     api.get(`/admin/panels/${panelId}/groups/`)
       .then((r) => setPanelGroups(r.data.groups || []))
       .catch((e) => { setPanelGroups([]); setGroupsErr(apiError(e)) })
   }
-  useEffect(() => { if (edit?.panel) fetchGroupsFor(edit.panel) }, [edit?.panel])
+  useEffect(() => { if (edit?.panel) fetchGroupsFor(edit.panel) }, [edit?.panel, storeOpts])
 
   const setPanel = (panelId) => setEdit((p) => ({ ...p, panel: panelId, group_ids: [] }))
   const groupName = (id) => panelGroups?.find((g) => g.id === id)?.name || `group ${id}`
@@ -260,7 +273,7 @@ export default function Plans() {
           <h1 className="text-lg font-bold">{s.title}</h1>
           <p className="text-sm text-muted mt-1">{s.subtitle}</p>
         </div>
-        <button className="btn-primary text-sm pl-add" onClick={() => setEdit({ ...blank })}>
+        <button className="btn-primary text-sm pl-add" onClick={() => setEdit({ ...blank, ...(store && storeOpts?.panel ? { panel: storeOpts.panel.id } : {}) })}>
           <Ico d={I.plus} w={15} /> {s.create}
         </button>
       </div>
@@ -296,7 +309,7 @@ export default function Plans() {
           </Field>
 
           <Field label={lang === 'fa' ? 'پنل (روی کدام پنل ساخته شود؟)' : 'Panel (which panel this plan uses)'}>
-            <select className="input" required value={edit.panel} onChange={(e) => setPanel(e.target.value)}>
+            <select className="input" required value={edit.panel} disabled={store} onChange={(e) => setPanel(e.target.value)}>
               <option value="">{lang === 'fa' ? '— انتخاب پنل —' : '— select a panel —'}</option>
               {panels.map((p) => (
                 <option key={p.id} value={p.id}>{p.name}{p.is_active ? '' : (lang === 'fa' ? ' (غیرفعال)' : ' (disabled)')}</option>

@@ -161,6 +161,11 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   by hand, never issue store certificates elsewhere. Lineage `store-<host>`; caspintunel.com's vhost must stay the first 443
   server (unknown names). `/.well-known/caspin/<token>` is answered before any host check (proves a host reaches us). Test the
   watcher only with `scripts/test-tenants.sh`.
+  **Celery + stores (v1.46, `tenancy/celery_ctx.py`)**: a task queued inside a tenant context runs in it (header
+  `caspin_tenant`); a periodic job that touches customer data loops with `context.for_each_tenant` (never just the default).
+  A store's PasarGuard account = our token + `set_owner` to the reseller, read back (`panel.services._hand_to_owner`). Every
+  store sale / renewal / add-on / manual invoice with a service action goes through `tenancy.quota.check` (agency numbers,
+  never a new formula); store plans only through `tenancy.catalog.validate_plan` (agency panel, role groups).
 - The rejected Liquid Glass refresh is archived at tag `archive/ui-refresh-liquid-glass` — don't copy from it.
 
 ## Gotchas (learned the hard way)

@@ -72,7 +72,8 @@ export const isGroupManager = (staff) => !!staff?.group_manager
 // add pages here as their data becomes per store (plans, payments, tickets…).
 export const STORE_GROUPS = [
   ['nav_group_core', [['/', 'dashboard', null, 'dashboard']]],
-  ['nav_group_users', [['/users', 'users', 'users.view', 'users']]],
+  // v1.46 (Phase 4): + the reseller's own plans and prices (agency panel, their role's groups — backend tenancy/catalog.py)
+  ['nav_group_users', [['/users', 'users', 'users.view', 'users'], ['/plans', 'plans', 'plans.manage', 'plans']]],
   ['nav_group_config', [
     ['/branding', 'branding', 'settings.manage', 'branding'],
     ['/settings', 'settings', 'settings.manage', 'settings'],
@@ -83,7 +84,7 @@ export const STORE_GROUPS = [
 export const STORE_BOTNAV = [
   ['/', 'dashboard', null, 'dashboard'],
   ['/users', 'users', 'users.view', 'users'],
-  ['/branding', 'branding', 'settings.manage', 'branding', true],
+  ['/plans', 'plans', 'plans.manage', 'plans', true],
   ['/themes', 'themes', 'themes.manage', 'themes'],
   ['/settings', 'settings', null, 'settings'],
 ]
