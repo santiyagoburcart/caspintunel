@@ -414,10 +414,14 @@ def prefill_for(payment) -> dict | None:
     receipt amount and tracking number filled in: the deposit linked to it, else an unmatched deposit linked
     to its order, else the ONE unmatched deposit within ± the rounded tolerance inside the order's window.
     Read-only — staff still save (and approve) themselves."""
+    from apps.tenancy.context import store_id
+
     from .matching import _blu_window_ok
     from .models import BluStatus, BluTransaction
     from .rounded import config
 
+    if store_id():
+        return None                                   # v1.47: Blu deposits are ours only — never shown to a store
     order = payment.order
     tx = payment.blu_transaction if payment.blu_transaction_id else None
     if tx is None:

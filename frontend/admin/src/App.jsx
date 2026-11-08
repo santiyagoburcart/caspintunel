@@ -73,6 +73,9 @@ export default function App() {
           <Route path="/pages" element={<Pages />} />
           <Route path="/themes" element={<Themes />} />
           <Route path="/plans" element={<Plans />} />
+          <Route path="/payments" element={<Payments />} />
+          <Route path="/sms-log" element={<SmsLog />} />
+          <Route path="/cards" element={<Cards />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -293,6 +293,7 @@ class PendingPaymentsView(AdminAPIView):
     """The card-to-card approval queue — pending receipts from site + bot."""
 
     perms_map = {"GET": ["payment.view"]}
+    store_ok = True        # v1.47 (Phase 5): the store's own payments queue (tenant-scoped)
 
     @extend_schema(responses=AdminPendingPaymentSerializer(many=True),
                    summary="Payments awaiting manual approval")
@@ -433,6 +434,7 @@ class PaymentReceiptInfoView(AdminAPIView):
     tracking number). Only feeds the queue warnings; never approves or changes the order."""
 
     perms_map = {"POST": ["payment.approve"]}
+    store_ok = True        # v1.47 (Phase 5): tenant-scoped payment
 
     @extend_schema(request=dict, responses=AdminPendingPaymentSerializer,
                    summary="Record the receipt's amount and bank document number")
@@ -470,6 +472,7 @@ class PaymentDecisionView(AdminAPIView):
     """POST /admin/payments/<id>/(approve|reject) — the manual decision."""
 
     perms_map = {"POST": ["payment.approve"]}
+    store_ok = True        # v1.47 (Phase 5): approve / reject through approve_payment / reject_payment (tenant-scoped)
 
     @extend_schema(request=dict, responses=AdminPendingPaymentSerializer,
                    summary="Approve or reject a pending payment")
@@ -623,6 +626,7 @@ class SmsLogViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     authentication_classes = _AUTH
     permission_classes = [StaffPermission]
     perms_map = {"GET": ["payment.view"]}
+    store_ok = True        # v1.47 (Phase 5): the store's own SMS (its devices)
 
     def get_serializer_class(self):
         from ..serializers import AdminSmsLogSerializer

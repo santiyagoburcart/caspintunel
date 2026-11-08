@@ -844,7 +844,12 @@ def _grace() -> timedelta:
 
 def open_at(at):
     """Agency payments that could be paid by a deposit made at `at`: still open (waiting for the
-    transfer / under review / expired since) and `at` inside created − 2 min … reservation end + grace."""
+    transfer / under review / expired since) and `at` inside created − 2 min … reservation end + grace.
+    v1.47: none while serving a reseller store — agency payments live in OUR store's pool only."""
+    from apps.tenancy.context import store_id
+
+    if store_id():
+        return AgencyPayment.objects.none()
     return AgencyPayment.objects.filter(
         status__in=(AgencyPayment.PENDING_PAYMENT, AgencyPayment.PENDING_REVIEW, AgencyPayment.EXPIRED),
         created_at__lte=at + CREATED_SKEW, unique_expire_at__gte=at - _grace())
@@ -857,7 +862,9 @@ def exact(amount, at) -> AgencyPayment | None:
 
 
 def paid_duplicate(amount, at) -> AgencyPayment | None:
-    if amount is None:
+    from apps.tenancy.context import store_id
+
+    if amount is None or store_id():
         return None
     return AgencyPayment.objects.filter(status=AgencyPayment.APPROVED, amount_unique=Decimal(amount),
                                         created_at__lte=at + CREATED_SKEW,

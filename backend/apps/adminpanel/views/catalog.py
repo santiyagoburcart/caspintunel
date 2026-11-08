@@ -46,6 +46,7 @@ class BankCardViewSet(AdminViewSet):
     queryset = BankCard.objects.none()
     serializer_class = AdminBankCardSerializer
     perms_map = {"GET": ["payment.view"], "*": ["settings.manage"]}
+    store_ok = True        # v1.47 (Phase 5): the store's own receiving cards
 
     def get_queryset(self):
         approved = Q(payments__status=PaymentStatus.APPROVED, payments__voided_at__isnull=True)
@@ -72,6 +73,7 @@ class SmsSourceViewSet(AdminViewSet):
     queryset = SmsSource.objects.all().order_by("-created_at")
     serializer_class = AdminSmsSourceSerializer
     perms_map = {"GET": ["sms.manage"], "*": ["sms.manage"]}
+    store_ok = True        # v1.47 (Phase 5): the store's own bank sender numbers
 
 
 class SmsAppDeviceViewSet(AdminViewSet):
@@ -82,6 +84,7 @@ class SmsAppDeviceViewSet(AdminViewSet):
     queryset = SmsAppDevice.objects.all().order_by("-created_at")
     serializer_class = AdminSmsDeviceSerializer
     perms_map = {"GET": ["sms.manage"], "*": ["sms.manage"]}
+    store_ok = True        # v1.47 (Phase 5): the store's own SMS devices + tokens
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

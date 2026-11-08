@@ -21,7 +21,7 @@ function wsUrl() {
 
 export function LivePaymentsProvider({ children }) {
   const { staff, can } = useAuth()
-  const enabled = !!staff && !staff.store && can('payment.view')    // v1.44: payments per store in Phase 5
+  const enabled = !!staff && can('payment.view')    // v1.47: a store's panel hears only its own queue (per-store group)
   const [pendingCount, setPendingCount] = useState(null)
   // v1.42.1 «ساخت ناموفق»: paid orders PasarGuard refused — counted on the Transactions tab
   const [failedCount, setFailedCount] = useState(0)
@@ -85,11 +85,13 @@ export function LivePaymentsProvider({ children }) {
       : `${src} amount mismatch (${what}) — order #${msg.order_id}: ${src} ${n(msg.sms_amount)} T, invoice ${n(msg.invoice_amount)} T. Review it in the payment queue.`)
   }
 
+  const isStore = !!staff?.store
   const refreshFailed = useCallback(() => {
-    if (Date.now() - failedAt.current < 5000) return
+    // «ساخت ناموفق» lives on Transactions — a platform page; a store's panel never asks (v1.47)
+    if (isStore || Date.now() - failedAt.current < 5000) return
     failedAt.current = Date.now()
     api.get('/admin/transactions/provision-failed/').then((r) => setFailedCount(r.data.count || 0)).catch(() => {})
-  }, [])
+  }, [isStore])
 
   const refreshCount = useCallback(() => {
     api.get('/admin/payments/pending/')

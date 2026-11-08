@@ -8,6 +8,7 @@ import { ReceiptThumb } from '../components/ReceiptThumb'
 import { useToast } from '../components/Toast'
 import { useConfirm } from '../components/ConfirmDialog'
 import { useLivePayments, usePaymentsEvents } from '../lib/livePayments'
+import { useAuth } from '../lib/auth'
 import BluDeposits from '../components/BluDeposits'
 import { fmtCount, useActionCounts } from '../lib/actionCounts'
 import RoundedReason from '../components/RoundedReason'
@@ -77,13 +78,15 @@ export default function Payments() {
   const { lang } = useI18n()
   const s = T[lang] || T.fa
   const [sp, setSp] = useSearchParams()
-  const view = sp.get('view') === 'blu' ? 'blu' : 'queue'
+  const { staff } = useAuth()
+  const views = staff?.store ? ['queue'] : VIEWS          // v1.47: Blu deposits are ours only — never in a store's panel
+  const view = sp.get('view') === 'blu' && views.includes('blu') ? 'blu' : 'queue'
   const pending = useActionCounts()['/payments']
   return (
     <div className="space-y-3">
       <style>{CSS}</style>
       <div className="pq-views" role="tablist">
-        {VIEWS.map((v) => (
+        {views.map((v) => (
           <button key={v} type="button" role="tab" aria-selected={view === v}
             className={'pq-view' + (view === v ? ' on' : '')}
             onClick={() => setSp(v === 'queue' ? {} : { view: v }, { replace: true })}>

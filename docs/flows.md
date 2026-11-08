@@ -1401,3 +1401,28 @@ sequenceDiagram
     end
     Note over Q,R: every 5 min · 20 % / 10 % left → portal notice + staff alert once per level · store dashboard banner
 ```
+
+## 16e. A store's deposit SMS (multi-tenant Phase 5, v1.47)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor P as Reseller's Android phone (SMS Bridge)
+    participant N as nginx store.example
+    participant M as TenantMiddleware
+    participant API as sms/inbound (device token)
+    participant DB as MySQL (store context)
+    participant L as Live socket staff_payments_t<store>
+    P->>N: POST https://store.example/api/v1/payments/sms/inbound/ · X-Device-Token
+    N->>M: Host store.example
+    M->>M: tenant = the store (sms paths answer on stores · Blu still 404)
+    M->>API: SmsDeviceAuthentication · token looked up among THIS store's devices (another store's token → 401)
+    API->>DB: sender among the store's bank numbers · exact amount among the store's open orders (its own pool)
+    alt exact match
+        API->>DB: approve_payment (unchanged) · order paid → fulfil queued in the store context
+        API->>L: event to the store's panel only
+    else near / rounded rules (store orders only · agency payments never)
+        API->>DB: pending review in the store's queue
+    end
+    Note over API: alerts in a store context → that store's staff only (never our staff / backup chat)
+```

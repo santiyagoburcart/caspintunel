@@ -522,4 +522,10 @@ Everything shipped since v1.6.0 (details in the session log):
   `Tenant.quota_alert_level`, migration tenancy 0006) + store dashboard banner; `tenancy/catalog.py` store plans (agency panel,
   role groups, no unlimited for a limited reseller; `plans/store-options/`); Plans in the store menu. Tests:
   `tenancy/tests/test_phase4.py` (16, incl. a real worker on the memory broker).
+- 2026-11-08 — **v1.47.0: multi-tenant Phase 5 — payments + SMS per store.** v1.46.0 deployed. Pool per store (constraint
+  `order_tenant_amount_lock`, migration orders 0014: composite added before the old unique is dropped); agency payments only in
+  our pool; SMS endpoints answer on store domains (device token → that store), ping returns the store name; store panel: queue,
+  approve / reject, SMS log, cards, devices / sources (+ server URL + APK download strip), checkout timer / unique range per
+  store (TENANT_KEYS); no Blu data in a store; `alert_staff(platform=)`, store-scoped web push and live groups
+  (`staff_payments_t<id>`). APK unchanged (needs an Android build for QR / store name). Tests: `tenancy/tests/test_phase5.py` (9).
 - **Next:** new items to be agreed with the owner.

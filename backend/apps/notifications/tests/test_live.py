@@ -69,7 +69,8 @@ def _staff(perm_codes):
 async def _connect(token):
     from config.asgi import application
 
-    comm = WebsocketCommunicator(application, f"/ws/admin/payments/?token={token}")
+    # v1.47: the socket's Host picks the store's live group (nginx always sends one) — ours here
+    comm = WebsocketCommunicator(application, f"/ws/admin/payments/?token={token}", headers=[(b"host", b"localhost")])
     connected, _ = await comm.connect()
     return comm, connected
 

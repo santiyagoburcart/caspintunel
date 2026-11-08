@@ -62,8 +62,10 @@ class Order(TimeStampedModel):
     # MySQL has no partial indexes, so we mirror amount_unique here only while the
     # reservation is active and NULL it out otherwise (MySQL allows many NULLs in a
     # UNIQUE column). Managed by the allocation logic in the orders phase.
+    # v1.47 (multi-tenant Phase 5): one pool PER STORE — unique (tenant, amount_unique_lock); our store shares its pool with
+    # the agency payments (agency_locked_amounts ↔ customer_locked), a reseller store's SMS come from its own devices
     amount_unique_lock = models.DecimalField(
-        max_digits=12, decimal_places=0, null=True, blank=True, unique=True, editable=False
+        max_digits=12, decimal_places=0, null=True, blank=True, editable=False
     )
     unique_expire_at = models.DateTimeField(help_text="reservation expiry")
 
@@ -87,6 +89,7 @@ class Order(TimeStampedModel):
         db_table = "order"
         ordering = ("-created_at",)
         indexes = [models.Index(fields=["amount_unique", "status"])]
+        constraints = [models.UniqueConstraint(fields=["tenant", "amount_unique_lock"], name="order_tenant_amount_lock")]
 
     def __str__(self) -> str:
         return f"order#{self.pk} {self.type} {self.status}"

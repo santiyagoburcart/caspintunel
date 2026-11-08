@@ -4,7 +4,7 @@
   and the store's `TenantBranding` row for a reseller store (created on first use with the store's name). Both expose
   the same attributes (site_name_fa / en, logo, favicon, support…, site_domain), so callers never choose.
 - `TENANT_KEYS`: the runtime settings a store may set for itself; `utils.get_setting` reads the store's value first
-  while that store is the current tenant. Payment / unique-amount keys follow in Phase 5.
+  while that store is the current tenant. v1.47: + the checkout timer / unique-amount range / pending-payment alert.
 - `is_store()` / `current_tenant()`: whether the request runs for a reseller store (not the default tenant).
 """
 from __future__ import annotations
@@ -13,6 +13,8 @@ TENANT_KEYS = frozenset({
     "alert_volume_percent", "alert_expire_days",
     "email_verification_required", "referral_required", "iran_phone_only",
     "force_channel_join", "force_share_phone", "default_language", "product_display_mode",
+    # v1.47 (Phase 5): each store's checkout timer and unique-amount range, and its own unconfirmed-payment alert delay
+    "unique_amount_reservation_minutes", "unique_amount_min", "unique_amount_max", "pending_payment_alert_minutes",
 })
 
 

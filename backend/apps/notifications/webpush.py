@@ -108,6 +108,12 @@ def push_to_staff(perm: str | None, title: str, body: str = "", url: str = "", t
     qs = PushSubscription.objects.filter(staff__is_active=True).select_related("staff", "staff__role")
     if staff_ids is not None:
         qs = qs.filter(staff_id__in=staff_ids)
+    else:
+        # v1.47: a store's event reaches only that store's staff; ours only our staff (Staff.tenant NULL)
+        from apps.tenancy.context import store_id
+
+        sid = store_id()
+        qs = qs.filter(staff__tenant_id=sid) if sid is not None else qs.filter(staff__tenant__isnull=True)
     ids = [s.id for s in qs if perm is None or s.staff.has_perm(perm)]
     return _queue(ids, _payload(title, body, url, tag))
 

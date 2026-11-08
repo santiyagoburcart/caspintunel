@@ -74,6 +74,12 @@ export const STORE_GROUPS = [
   ['nav_group_core', [['/', 'dashboard', null, 'dashboard']]],
   // v1.46 (Phase 4): + the reseller's own plans and prices (agency panel, their role's groups — backend tenancy/catalog.py)
   ['nav_group_users', [['/users', 'users', 'users.view', 'users'], ['/plans', 'plans', 'plans.manage', 'plans']]],
+  // v1.47 (Phase 5): the store's own payments queue, SMS log and receiving cards (its devices, its pool)
+  ['nav_group_finance', [
+    ['/payments', 'payments', 'payment.view', 'payments'],
+    ['/sms-log', 'sms_log', 'payment.view', 'sms'],
+    ['/cards', 'cards', 'payment.view', 'cards'],
+  ]],
   ['nav_group_config', [
     ['/branding', 'branding', 'settings.manage', 'branding'],
     ['/settings', 'settings', 'settings.manage', 'settings'],
@@ -84,8 +90,8 @@ export const STORE_GROUPS = [
 export const STORE_BOTNAV = [
   ['/', 'dashboard', null, 'dashboard'],
   ['/users', 'users', 'users.view', 'users'],
-  ['/plans', 'plans', 'plans.manage', 'plans', true],
-  ['/themes', 'themes', 'themes.manage', 'themes'],
+  ['/plans', 'plans', 'plans.manage', 'plans'],
+  ['/payments', 'payments', 'payment.view', 'payments', true],
   ['/settings', 'settings', null, 'settings'],
 ]
 export const isStoreMode = (staff) => !!staff?.store

@@ -60,6 +60,23 @@ def _staff_from_token(token: str):
     return staff
 
 
+@database_sync_to_async
+def _payments_group_for(scope):
+    from apps.notifications.live import payments_group
+    from apps.tenancy import context
+    from apps.tenancy.middleware import resolve
+
+    host = ""
+    for k, v in scope.get("headers") or []:
+        if k == b"host":
+            host = v.decode("latin-1")
+            break
+    tid = resolve(host)
+    if tid is None:
+        return None
+    return payments_group(None if tid == context.default_tenant_id() else tid)
+
+
 class StaffPaymentsConsumer(AsyncWebsocketConsumer):
     """Live feed for the admin payments queue + pending-count badge."""
 
@@ -70,13 +87,20 @@ class StaffPaymentsConsumer(AsyncWebsocketConsumer):
         if staff is None:
             await self.close(code=4401)
             return
+        # v1.47 (multi-tenant Phase 5): the store this socket was opened on (Host) picks its live group — a store's panel
+        # never hears our queue and ours never hears a store's
+        group = await _payments_group_for(self.scope)
+        if group is None:
+            await self.close(code=4404)
+            return
+        self.group = group
         self.joined = True
-        await self.channel_layer.group_add(STAFF_PAYMENTS_GROUP, self.channel_name)
+        await self.channel_layer.group_add(self.group, self.channel_name)
         await self.accept()
 
     async def disconnect(self, code):
         if getattr(self, "joined", False):
-            await self.channel_layer.group_discard(STAFF_PAYMENTS_GROUP, self.channel_name)
+            await self.channel_layer.group_discard(self.group, self.channel_name)
 
     async def receive(self, text_data=None, bytes_data=None):
         # client keep-alive ("ping") — some proxies drop idle sockets

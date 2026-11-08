@@ -91,9 +91,11 @@ def test_store_mode_admin_api_answers_only_store_views(live):
 
 def test_platform_endpoints_are_404_on_a_store_domain(live):
     c = APIClient(HTTP_HOST=HOST)
-    for url in ("/api/v1/agency/auth/me/", "/api/v1/payments/blu/webhook/", "/api/v1/payments/sms/ping/",
+    for url in ("/api/v1/agency/auth/me/", "/api/v1/payments/blu/webhook/",
                 "/admin/", "/api/schema/", "/api/v1/payments/1/approve/"):
         assert c.get(url).status_code == 404, url
+    # v1.47 (Phase 5): the SMS devices answer on a store's domain (a store's own device token → that store)
+    assert c.get("/api/v1/payments/sms/ping/").status_code in (401, 403)
     assert APIClient().get("/api/v1/payments/sms/ping/").status_code != 404           # ours still answers
 
 

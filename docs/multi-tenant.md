@@ -12,7 +12,9 @@
 > The Iran-side PROXY-protocol sender (§7 "Real client IP") was skipped by the owner on 2026-11-08: tunnel visitors keep the
 > per-browser limits. **Phase 4 (catalog + PasarGuard) built in v1.46.0** (Celery tasks carry the store, set_owner
 > provisioning, quota guard + 20 / 10 % warnings, store plans bounded by the reseller's admin — architecture.md + flows.md 16d).
-> Next: Phase 5 (payments + SMS per store). Written against v1.38.4, decisions recorded in v1.38.6.
+> **Phase 5 (payments + SMS) built in v1.47.0** (pools per store, SMS on the store's domain, store payments panel, alerts /
+> push / live socket per store — flows.md 16e). The Android APK is unchanged (server URL = store domain); a QR / store-name
+> screen needs a new APK build. Next: Phase 6 (bots + Mini App). Written against v1.38.4, decisions recorded in v1.38.6.
 > When a phase is approved and built, the matching parts move into `architecture.md` / `erd.md` / `flows.md` and this page
 > keeps only what is still planned.
 

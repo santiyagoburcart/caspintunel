@@ -89,6 +89,7 @@ def _info(platform: str) -> dict:
 
 class AppReleaseListView(AdminAPIView):
     perms_map = {"GET": ["settings.manage"]}
+    store_ok = True        # v1.47 (Phase 5): download our SMS app (read-only; upload stays ours)
 
     @extend_schema(summary="Operator apps (Android SMS bridge, iPhone shortcut) — release info", responses=dict)
     def get(self, request):
@@ -163,6 +164,7 @@ class ShortcutQrView(AdminAPIView):
 
 class AppReleaseDownloadView(AdminAPIView):
     perms_map = {"GET": ["settings.manage"]}
+    store_ok = True        # v1.47 (Phase 5): download our SMS app
 
     @extend_schema(summary="Download an operator app from this server", responses=bytes)
     def get(self, request, platform):

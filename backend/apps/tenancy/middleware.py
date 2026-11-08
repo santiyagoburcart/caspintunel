@@ -59,8 +59,9 @@ def resolve(host: str) -> int | None:
 
 # v1.43 (Phase 2): platform endpoints that never answer on a reseller store's domain — they do not use the admin
 # store-mode guard (StaffPermission.store_ok): Django admin, the agency portal / group-manager API, Blu, the SMS devices
-# (per store in Phase 5), staff-only customer-API approve / reject, the API schema.
-STORE_BLOCKED_PREFIXES = ("/admin/", "/api/v1/agency/", "/api/v1/payments/blu/", "/api/v1/payments/sms/",
+# (per store since v1.47 — no longer blocked), staff-only customer-API approve / reject, the API schema.
+# v1.47 (Phase 5): the SMS devices answer on a store's domain (device token → that store's devices, orders, cards)
+STORE_BLOCKED_PREFIXES = ("/admin/", "/api/v1/agency/", "/api/v1/payments/blu/",
                           "/api/schema", "/api/docs", "/api/redoc")
 _STAFF_PAYMENT_ACTIONS = ("/approve/", "/reject/")
 

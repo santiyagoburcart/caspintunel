@@ -194,7 +194,7 @@ const HUB_GROUPS = [
   SETTINGS_SECTIONS,
 ]
 // v1.44 store mode: the store's own pages + only the settings a store may set (alerts, requirements, display)
-const STORE_SECTIONS = ['alerts', 'requirements', 'display']
+const STORE_SECTIONS = ['sms-devices', 'sms-sources', 'unique-amount', 'alerts', 'requirements', 'display']   // v1.47: + payments
 const STORE_HUB_GROUPS = [
   ...STORE_GROUPS.map(([g, items]) => [g, items.filter(([to]) => to !== SELF).map(([to, key, p, icon]) => [to, HUB_TEXT[key] || key, p, icon])]),
   [SETTINGS_SECTIONS[0], SETTINGS_SECTIONS[1].filter(([to]) => STORE_SECTIONS.includes(to.slice(10)))],
@@ -698,6 +698,7 @@ function SmsDevicesSection({ t, s, lang }) {
 
   return (
     <div id="sms-devices" className="card sms-dev-card">
+      <StoreSmsSetup lang={lang} />
       <div className="sms-dev-head">
         <div>
           <h3 className="font-bold text-sm">{s.dev_h}</h3>
@@ -1029,9 +1030,9 @@ export default function Settings() {
 
       {staff?.is_superadmin && !staff?.store && <><style>{SUPER_CSS}</style><RoundedCard /><AutoPurgeCard /></>}
 
-      {!staff?.store && <>{/* SMS sources / devices are per store in Phase 5 */}
+      {/* v1.47: SMS sources / devices are per store (a store's panel manages its own) */}
       <SmsSourcesSection t={t} s={s} lang={lang} />
-      <SmsDevicesSection t={t} s={s} lang={lang} /></>}
+      <SmsDevicesSection t={t} s={s} lang={lang} />
       </div>
 
       {soloForm && (
@@ -1169,3 +1170,45 @@ const CSS = `
   background: var(--c-surface); border: 1px solid var(--c-border); }
 .sms-token-row code { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: 12px; }
 `
+
+// v1.47 (multi-tenant Phase 5) store panel: how the reseller's Android SMS app connects — the store's own address + a device
+// token from the list below; the same APK as ours (Apps & tools), downloaded here.
+const SS = {
+  fa: { t: 'اتصال برنامهٔ پیامک اندروید', url: 'آدرس سرور در برنامه', copy: 'کپی', copied: 'کپی شد', dl: 'دانلود برنامهٔ اندروید',
+    h: 'در برنامه همین آدرس و توکن یکی از دستگاه‌های زیر را وارد کنید؛ پیامک‌های واریز فقط سفارش‌های همین فروشگاه را تأیید می‌کنند.' },
+  en: { t: 'Connect the Android SMS app', url: 'Server URL in the app', copy: 'Copy', copied: 'Copied', dl: 'Download the Android app',
+    h: 'Enter this address and the token of one of the devices below in the app; its deposit SMS confirm only this store\'s orders.' },
+}
+function StoreSmsSetup({ lang }) {
+  const { staff } = useAuth()
+  const toast = useToast()
+  const [busy, setBusy] = useState(false)
+  if (!staff?.store) return null
+  const s = SS[lang] || SS.fa
+  const url = `https://${location.host}`
+  const download = async () => {
+    setBusy(true)
+    try {
+      const r = await api.get('/admin/apps/android/download/', { responseType: 'blob' })
+      const href = URL.createObjectURL(r.data)
+      const a = document.createElement('a'); a.href = href; a.download = 'sms-bridge.apk'
+      document.body.appendChild(a); a.click(); a.remove()
+      setTimeout(() => URL.revokeObjectURL(href), 4000)
+    } catch (e) { toast.error(apiError(e)) } finally { setBusy(false) }
+  }
+  return (
+    <div className="sss" data-testid="store-sms-setup">
+      <b>{s.t}</b>
+      <div className="sss-row"><span className="text-xs text-muted">{s.url}</span>
+        <bdi dir="ltr" className="sss-url">{url}</bdi>
+        <button type="button" className="sss-btn" onClick={async () => { if (await copyToClipboard(url)) toast.success(s.copied) }}>{s.copy}</button>
+        <button type="button" className="sss-btn" disabled={busy} onClick={download}>{busy ? '…' : s.dl}</button></div>
+      <p className="text-xs text-muted">{s.h}</p>
+      <style>{`.sss { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; margin-bottom: 12px; border-radius: 12px;
+  background: color-mix(in srgb, var(--c-primary) 7%, transparent); border: 1px solid color-mix(in srgb, var(--c-primary) 25%, var(--c-border)); }
+.sss-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.sss-url { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 13px; overflow-wrap: anywhere; }
+.sss-btn { min-height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--c-border); background: var(--c-bg); font-size: 12.5px; font-weight: 700; color: var(--c-primary); }`}</style>
+    </div>
+  )
+}

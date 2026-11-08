@@ -338,7 +338,7 @@ def _dt(v):
 def _alert(text: str, key: str, ttl: int = 86400) -> None:
     from apps.common.staff_alert import alert_staff
 
-    transaction.on_commit(lambda: alert_staff(text, perm="agency.manage", dedupe_key=key, ttl=ttl))
+    transaction.on_commit(lambda: alert_staff(text, perm="agency.manage", platform=True, dedupe_key=key, ttl=ttl))
 
 
 def _step_pending(d: TenantDomain, now) -> None:

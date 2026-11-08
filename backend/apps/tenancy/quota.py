@@ -198,7 +198,7 @@ def _short_alert(t, st, need, what) -> None:
         log.exception("quota: reseller notice failed")
     alert_staff(f"⚠️ فروشگاه {t.name} ({t.reseller_username}): {what} به خاطر حجم ناکافی متوقف شد — باقی {_gb(st['available'])} گیگ، "
                 f"درخواست {_gb(need)} گیگ.\nStore {t.slug}: {what} blocked, {_gb(st['available'])} GB available, {_gb(need)} GB asked.",
-                perm="agency.manage", dedupe_key=key + ":staff", ttl=3600)
+                perm="agency.manage", platform=True, dedupe_key=key + ":staff", ttl=3600)
 
 
 # ------------------------------------------------------------------ warnings (every 5 min)
@@ -232,7 +232,7 @@ def warn_all() -> dict:
                        body=f"باقی‌ماندهٔ قابل فروش {_gb(st['available'])} گیگ از {_gb(st['limit'])} گیگ — برای ادامهٔ فروش «درخواست شارژ» بزنید.",
                        body_en=f"{_gb(st['available'])} GB of {_gb(st['limit'])} GB left to sell — send a volume request to keep selling.")
                 alert_staff(f"🔔 فروشگاه {t.name} ({t.reseller_username}): فقط {pct}% حجم باقی مانده ({_gb(st['available'])} گیگ).\n"
-                            f"Store {t.slug}: {pct}% quota left.", perm="agency.manage", silent=lv == 20,
+                            f"Store {t.slug}: {pct}% quota left.", perm="agency.manage", platform=True, silent=lv == 20,
                             dedupe_key=f"tenancy:quota:warn:{t.pk}:{lv}", ttl=6 * 3600)
                 sent[t.slug] = lv
             Tenant.objects.filter(pk=t.pk).update(quota_alert_level=lv)

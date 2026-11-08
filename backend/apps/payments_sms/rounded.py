@@ -140,6 +140,10 @@ def _already_used(deposit: Decimal, at, source: str):
     if p is not None:
         return p.order
     from apps.agency.models import AgencyPayment
+    from apps.tenancy.context import store_id
+
+    if store_id():
+        return None                              # v1.47: agency payments are our store's pool only
 
     return (AgencyPayment.objects.filter(status=AgencyPayment.APPROVED, paid_amount=deposit,
                                          created_at__lte=at + BLU_CREATED_SKEW, unique_expire_at__gte=at - grace)

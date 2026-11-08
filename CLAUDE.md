@@ -166,6 +166,11 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   A store's PasarGuard account = our token + `set_owner` to the reseller, read back (`panel.services._hand_to_owner`). Every
   store sale / renewal / add-on / manual invoice with a service action goes through `tenancy.quota.check` (agency numbers,
   never a new formula); store plans only through `tenancy.catalog.validate_plan` (agency panel, role groups).
+  **Payments per store (v1.47)**: unique-amount pool = the store (`order_tenant_amount_lock`); agency payments are OUR pool only
+  (empty in a store context — keep it so). SMS devices post to their store's domain. `alert_staff` / `push_to_staff` / the live
+  payments socket follow the current store — pass `platform=True` only for alerts meant for US (quota, domains); never let a
+  store's payment data reach our staff, backup chat or our live group. Blu stays ours (blocked on stores, no Blu data in a
+  store's queue).
 - The rejected Liquid Glass refresh is archived at tag `archive/ui-refresh-liquid-glass` — don't copy from it.
 
 ## Gotchas (learned the hard way)

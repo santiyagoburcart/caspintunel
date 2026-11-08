@@ -95,6 +95,16 @@ def unscoped():
         _unscoped.reset(token)
 
 
+def store_id() -> int | None:
+    """v1.47: the reseller store the current code runs for — None for our own store (the default tenant) or unscoped code."""
+    if _unscoped.get():
+        return None
+    tid = _current.get()
+    if tid is None:
+        return None
+    return None if tid == default_tenant_id() else tid
+
+
 def tenant_ids() -> list[int]:
     """Every store, ours first (periodic jobs that work on customer data run once per store)."""
     from .models import Tenant

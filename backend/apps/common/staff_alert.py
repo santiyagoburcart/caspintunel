@@ -14,13 +14,21 @@ log = logging.getLogger("caspintunel")
 
 
 def alert_staff(text: str, *, perm: str, dedupe_key: str | None = None, ttl: int = 3600,
-                buttons: list | None = None, silent: bool = False, push: dict | None = None) -> int:
+                buttons: list | None = None, silent: bool = False, push: dict | None = None,
+                platform: bool = False) -> int:
+    """v1.47 (multi-tenant Phase 5): an alert raised while serving a reseller STORE goes only to that store's own staff
+    (Staff.tenant = the store; none before Phase 8 — their bot comes in Phase 6), never to our staff or our backup chat.
+    `platform=True` = an alert meant for US even when raised in a store context (quota, store domains)."""
     from django.core.cache import cache
 
     from apps.accounts.models import Staff
+    from apps.tenancy.context import store_id
 
     if dedupe_key and not cache.add(dedupe_key, 1, ttl):
         return 0
+    store = None if platform else store_id()
+    if store is not None:
+        return _alert_store_staff(store, text, perm=perm, buttons=buttons, silent=silent, push=push)
     sent = 0
     markup = {"inline_keyboard": buttons} if buttons else None
     quiet = {"disable_notification": True} if silent else {}     # the client rings by default
@@ -29,7 +37,7 @@ def alert_staff(text: str, *, perm: str, dedupe_key: str | None = None, ttl: int
 
         client = sales_client()
         if client is not None:
-            for staff in Staff.objects.filter(is_active=True, telegram_id__isnull=False):
+            for staff in Staff.objects.filter(is_active=True, telegram_id__isnull=False, tenant__isnull=True):
                 if staff.has_perm(perm):
                     try:
                         extra = {"reply_markup": markup} if markup else {}
@@ -55,3 +63,18 @@ def alert_staff(text: str, *, perm: str, dedupe_key: str | None = None, ttl: int
         except Exception as exc:  # noqa: BLE001
             log.warning("staff web push failed: %s", exc)
     return sent
+
+
+def _alert_store_staff(store: int, text: str, *, perm: str, buttons=None, silent=False, push=None) -> int:
+    """A store's alert: its own staff's browsers (Web Push) only, until the store bot (Phase 6) can DM them."""
+    if not push:
+        return 0
+    try:
+        from apps.accounts.models import Staff
+        from apps.notifications.webpush import push_to_staff
+
+        ids = [s.pk for s in Staff.objects.filter(is_active=True, tenant_id=store) if s.has_perm(perm)]
+        return push_to_staff(perm, staff_ids=ids, **push) if ids else 0
+    except Exception as exc:  # noqa: BLE001
+        log.warning("store staff push failed: %s", exc)
+        return 0

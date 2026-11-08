@@ -396,10 +396,12 @@ def _assign_unique_amount(order: Order, base: Decimal) -> None:
         Order.objects.filter(user=order.user, created_at__gte=timezone.now() - timedelta(hours=24))
         .values_list("amount_unique", flat=True)
     )
-    # v1.34: one pool with agency payments (apps/agency/billing.py) — skip what they hold
+    # v1.34: one pool with agency payments (apps/agency/billing.py) — skip what they hold. v1.47: only OUR store shares
+    # that pool; a reseller store has its own (its SMS devices are its own)
     from apps.agency.billing import agency_locked_amounts
+    from apps.tenancy.context import store_id
 
-    agency_held = agency_locked_amounts()
+    agency_held = set() if store_id() else agency_locked_amounts()
     for surcharge in _surcharge_range():
         candidate = base + Decimal(surcharge)
         if candidate in recent or candidate in agency_held:

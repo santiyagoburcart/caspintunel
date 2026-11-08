@@ -213,7 +213,12 @@ class SmsPingView(APIView):
     @extend_schema(responses=dict, summary="Device token check / heartbeat")
     def get(self, request):
         device = request.auth
-        return Response({"device": device.name, "server_time": timezone.now().isoformat()})
+        # v1.47 (Phase 5): the store this device belongs to (the app connects to that store's domain)
+        from apps.settings_app.branding import branding
+
+        b = branding()
+        return Response({"device": device.name, "server_time": timezone.now().isoformat(),
+                         "store": getattr(b, "site_name_fa", "") or getattr(b, "site_name_en", "")})
 
 
 class SmsSourcesView(APIView):

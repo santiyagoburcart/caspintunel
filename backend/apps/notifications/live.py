@@ -24,20 +24,28 @@ def pending_payments_count() -> int:
     return Payment.objects.live().filter(status=PaymentStatus.PENDING).count()
 
 
+def payments_group(tenant_id: int | None) -> str:
+    """v1.47: one live group per store; ours keeps the old name (a store id never shares it)."""
+    return STAFF_PAYMENTS_GROUP if tenant_id is None else f"{STAFF_PAYMENTS_GROUP}_t{int(tenant_id)}"
+
+
 def _send(event: str, data: dict) -> None:
     try:
         from asgiref.sync import async_to_sync
         from channels.layers import get_channel_layer
 
+        from apps.tenancy.context import store_id
+
         layer = get_channel_layer()
         if layer is None:
             return
+        store = store_id()
         async_to_sync(layer.group_send)(
-            STAFF_PAYMENTS_GROUP,
+            payments_group(store),
             {
                 "type": "payments.event",
                 "payload": {"event": event, "pending_count": pending_payments_count(),
-                            "agency_review": _agency_review(), **data},
+                            "agency_review": 0 if store else _agency_review(), **data},
             },
         )
     except Exception as exc:  # noqa: BLE001 — a push failure must never break the payment flow
