@@ -89,3 +89,5 @@ nginx/paths/*
 .domain-state/
 nginx/domain/*
 !nginx/domain/README
+nginx/tenants/*
+!nginx/tenants/README

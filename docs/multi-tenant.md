@@ -7,7 +7,10 @@
 > **Phase 2 Release A in v1.43.0** (our «فروشگاه» tab, `tenant_branding`, `tenant_setting` + `TENANT_KEYS`, themes / pages per
 > store, server-side store mode) **and Release B in v1.44.0** (admin panel store mode: store menu + badge, store dashboard /
 > branding / settings / pages / themes, no platform polling; user site without our brand fallbacks, letter favicon) —
-> **Phase 2 done.** Next: Phase 3 (domains & TLS). Written against v1.38.4, decisions recorded in v1.38.6.
+> **Phase 2 done.** **Phase 3 (domains & TLS) built in v1.45.0** (store domains on «فروشگاه», DNS / TXT / proxied checks, HTTP-01 per
+> host via the host watcher `scripts/tenants.sh`, per-host nginx files, health, renewal, alerts — architecture.md + flows.md 16c).
+> The Iran-side PROXY-protocol sender (§7 "Real client IP") was skipped by the owner on 2026-11-08: tunnel visitors keep the
+> per-browser limits. Next: Phase 4. Written against v1.38.4, decisions recorded in v1.38.6.
 > When a phase is approved and built, the matching parts move into `architecture.md` / `erd.md` / `flows.md` and this page
 > keeps only what is still planned.
 

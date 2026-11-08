@@ -6,15 +6,15 @@ import { jalali } from '../lib/format'
 import { Alert, Spinner } from './ui'
 import { useConfirm } from './ConfirmDialog'
 import { Ic } from './AgencyIcons'
+import StoreDomains from './StoreDomains'
 
 // v1.43 (multi-tenant Phase 2, D5) «فروشگاه» on an agency admin's page — OUR staff open and manage a reseller's store.
-// Domains (Phase 3) and the bot (Phase 6) are added here later; until a domain is active the store is not reachable.
+// v1.45: domains + TLS (StoreDomains); the bot (Phase 6) comes later. Until a domain is active the store is not reachable.
 const T = {
   fa: {
     title: 'فروشگاه', none: 'این ادمین هنوز فروشگاه ندارد.', open: 'ساخت فروشگاه', name: 'نام فروشگاه', slug: 'شناسه',
     status: 'وضعیت', st_draft: 'پیش‌نویس', st_active: 'فعال', st_suspended: 'معلق', st_closed: 'بسته',
-    export: 'اجازهٔ دریافت خروجی فروشگاه', save: 'ذخیره', created: 'ساخته شده در', domains: 'دامنه‌ها',
-    no_domain: 'هنوز دامنه‌ای ثبت نشده — تنظیم دامنه و گواهی در فاز بعد به همین بخش اضافه می‌شود.',
+    export: 'اجازهٔ دریافت خروجی فروشگاه', save: 'ذخیره', created: 'ساخته شده در',
     reachable: 'در دسترس روی دامنهٔ فعال', unreachable: 'در دسترس نیست (فروشگاه فعال با دامنهٔ فعال لازم است)',
     o_title: 'ساخت فروشگاه', o_msg: 'برای {u} یک فروشگاه پیش‌نویس ساخته می‌شود با برندینگ خودش و یک نسخه از صفحه‌های ما (قوانین، راهنما). تا دامنه فعال نشود کسی آن را نمی‌بیند.',
     o_btn: 'بله، بساز', s_title: 'تغییر وضعیت فروشگاه', s_msg: 'وضعیت فروشگاه {n} به «{st}» تغییر می‌کند.', s_btn: 'بله، تغییر بده',
@@ -23,8 +23,7 @@ const T = {
   en: {
     title: 'Store', none: 'This admin has no store yet.', open: 'Open a store', name: 'Store name', slug: 'Slug',
     status: 'Status', st_draft: 'Draft', st_active: 'Active', st_suspended: 'Suspended', st_closed: 'Closed',
-    export: 'May download a store export', save: 'Save', created: 'Created', domains: 'Domains',
-    no_domain: 'No domain yet — domains and certificates are added to this section in the next phase.',
+    export: 'May download a store export', save: 'Save', created: 'Created',
     reachable: 'Reachable on its active domain', unreachable: 'Not reachable (needs an active store with an active domain)',
     o_title: 'Open a store', o_msg: 'A draft store is created for {u} with its own branding and a copy of our pages (rules, help). Nobody sees it until a domain is active.',
     o_btn: 'Yes, open it', s_title: 'Change store status', s_msg: 'Store {n} becomes “{st}”.', s_btn: 'Yes, change it',
@@ -99,14 +98,7 @@ export default function AgencyStoreCard({ username }) {
           {manage && <button className="btn-primary text-sm ags-save" disabled={!form.name.trim()}>{s.save}</button>}
         </form>
         {store.branding && <p className="text-xs text-muted">{s.branding}: <bdi>{lang === 'fa' ? store.branding.site_name_fa : store.branding.site_name_en || store.branding.site_name_fa}</bdi></p>}
-        <div>
-          <div className="text-sm font-semibold mb-1">{s.domains}</div>
-          {store.domains.length === 0 ? <p className="text-xs text-muted">{s.no_domain}</p> : (
-            <ul className="ags-doms">{store.domains.map((d) => (
-              <li key={d.host}><bdi dir="ltr" className="mono-num">{d.host}</bdi> <span className="text-xs text-muted">· {d.state}</span></li>
-            ))}</ul>
-          )}
-        </div>
+        <StoreDomains base={url} domains={store.domains || []} manage={manage} onChanged={load} />
         <p className="text-xs text-muted">{s.manage_note}</p>
       </>}
     </div>

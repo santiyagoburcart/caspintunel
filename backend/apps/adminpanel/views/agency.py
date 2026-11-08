@@ -15,6 +15,7 @@ every write that touches the panel or PAMP's data answers 409 `pre_cutover`.
 """
 from __future__ import annotations
 
+from django.db import transaction
 from django.db.models import Q
 from django.http import Http404
 from rest_framework import status
@@ -633,3 +634,102 @@ class AgencyStoreView(AdminAPIView):
         except stores.StoreError as exc:
             return Response({"detail": exc.en, "detail_fa": exc.fa}, status=exc.status)
         return Response({"store": stores.row(t), "message": "Store saved", "message_fa": "فروشگاه ذخیره شد"})
+
+
+def _store_or_404(username):
+    from apps.tenancy import stores
+
+    t = stores.store_of(username)
+    if t is None:
+        return None, Response({"detail": "this admin has no store", "detail_fa": "این ادمین فروشگاه ندارد"}, status=404)
+    return t, None
+
+
+def _domain_error(exc):
+    return Response({"detail": exc.en, "detail_fa": exc.fa, "field": exc.field}, status=exc.status)
+
+
+class AgencyStoreDomainsView(AdminAPIView):
+    """v1.45 (Phase 3) POST {host, mode: direct|tunnel, www} — add a domain to the admin's store (our staff only, D5). The
+    answer carries the exact records to give the reseller (A to our Finland / Iran IP, www, TXT verification)."""
+
+    perms_map = {"POST": MANAGE}
+
+    def post(self, request, username):
+        from apps.tenancy import domains, stores
+
+        t, err = _store_or_404(username)
+        if err:
+            return err
+        data = request.data or {}
+        try:
+            d = domains.add(t, str(data.get("host") or ""), mode=str(data.get("mode") or "direct"),
+                            include_www=str(data.get("www", True)).lower() not in ("0", "false", "no", "off"),
+                            staff=request.user)
+        except domains.DomainError as exc:
+            return _domain_error(exc)
+        return Response({"store": stores.row(t), "domain": domains.row(d),
+                         "message": f"{d.host} added — send the reseller the records shown",
+                         "message_fa": f"دامنهٔ {d.host} اضافه شد — رکوردهای نمایش داده‌شده را به نماینده بدهید"}, status=201)
+
+
+class AgencyStoreDomainView(AdminAPIView):
+    """v1.45 PATCH {mode?, www?} · DELETE (remove: nginx file + certificate go, the store stops answering on it)."""
+
+    perms_map = {"PATCH": MANAGE, "DELETE": MANAGE}
+
+    def _get(self, username, pk):
+        from apps.tenancy.models import TenantDomain
+
+        t, err = _store_or_404(username)
+        if err:
+            return None, None, err
+        d = TenantDomain.objects.filter(pk=pk, tenant=t).exclude(state=TenantDomain.REMOVED).first()
+        if d is None:
+            return None, None, Response({"detail": "domain not found", "detail_fa": "دامنه پیدا نشد"}, status=404)
+        return t, d, None
+
+    def patch(self, request, username, pk):
+        from apps.tenancy import domains, stores
+
+        t, d, err = self._get(username, pk)
+        if err:
+            return err
+        data = request.data or {}
+        www = data.get("www")
+        try:
+            d = domains.update(d, mode=data.get("mode"), staff=request.user,
+                               include_www=None if www is None else str(www).lower() not in ("0", "false", "no", "off"))
+        except domains.DomainError as exc:
+            return _domain_error(exc)
+        return Response({"store": stores.row(t), "message": f"{d.host} saved", "message_fa": f"دامنهٔ {d.host} ذخیره شد"})
+
+    def delete(self, request, username, pk):
+        from apps.tenancy import domains, stores
+
+        t, d, err = self._get(username, pk)
+        if err:
+            return err
+        domains.remove(d, staff=request.user)
+        return Response({"store": stores.row(t), "message": f"{d.host} removed", "message_fa": f"دامنهٔ {d.host} حذف شد"})
+
+
+class AgencyStoreDomainCheckView(AgencyStoreDomainView):
+    """v1.45 POST — «بررسی الان / تلاش دوباره»: DNS again now; a failed certificate gets fresh attempts."""
+
+    perms_map = {"POST": MANAGE}
+
+    def post(self, request, username, pk):
+        from apps.tenancy import domains, stores
+        from apps.tenancy.tasks import store_domain_check_task
+
+        t, d, err = self._get(username, pk)
+        if err:
+            return err
+        try:
+            d = domains.retry(d, staff=request.user)
+        except domains.DomainError as exc:
+            return _domain_error(exc)
+        transaction.on_commit(lambda: store_domain_check_task.delay(d.pk))
+        return Response({"store": stores.row(t), "message": f"Checking {d.host} now",
+                         "message_fa": f"بررسی {d.host} شروع شد — نتیجه تا یک دقیقه دیگر"})

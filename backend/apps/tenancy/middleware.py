@@ -6,6 +6,8 @@ host → 404 — never the default store, so a stranger's domain pointed at our 
 """
 from __future__ import annotations
 
+import re
+
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import Q
@@ -77,11 +79,37 @@ def forget_hosts(tenant_id: int) -> None:
         cache.delete_many([_CACHE.format(h), _CACHE.format(f"www.{h}")])
 
 
+PROBE_PREFIX = "/.well-known/caspin/"
+
+
+def domain_probe(request):
+    """v1.45 (Phase 3, tenancy/domains.py): GET /.well-known/caspin/<token> on a store domain that is NOT live yet (no
+    ALLOWED_HOSTS entry, no tenant): answers the token when host + token belong to one registered domain, so our checks know a
+    request for that host — through their Cloudflare, the Iran tunnel or directly — reached THIS server. Nothing else."""
+    from django.http import HttpResponse
+
+    from apps.settings_app.access import instance_id
+
+    from .models import TenantDomain
+
+    raw = (request.META.get("HTTP_HOST") or "").split(":")[0].strip().lower().rstrip(".")
+    host = raw[4:] if raw.startswith("www.") else raw
+    token = request.path[len(PROBE_PREFIX):].strip("/")
+    ok = (request.method in ("GET", "HEAD") and host and re.fullmatch(r"[A-Za-z0-9_-]{16,64}", token)
+          and TenantDomain.objects.filter(host=host, verify_token=token).exclude(state=TenantDomain.REMOVED).exists())
+    resp = HttpResponse(token if ok else "not found", status=200 if ok else 404, content_type="text/plain; charset=utf-8")
+    resp["X-Caspin-Instance"] = instance_id()
+    resp["Cache-Control"] = "no-store"
+    return resp
+
+
 class TenantMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
+        if request.path.startswith(PROBE_PREFIX):
+            return domain_probe(request)
         tid = resolve(request.get_host())
         if tid is None:
             return HttpResponseNotFound("unknown site")

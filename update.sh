@@ -155,5 +155,13 @@ if command -v crontab >/dev/null 2>&1; then
   fi
 fi
 "$ROOT/scripts/container-stats.sh" || true
+# v1.45 store domains + TLS (docs/multi-tenant.md §7): host watcher every minute (certificates + nginx/tenants/*.conf)
+if command -v crontab >/dev/null 2>&1; then
+  TN_LINE="* * * * * $ROOT/scripts/tenants.sh apply-request >> /var/log/caspintunel-tenants.log 2>&1"
+  if ! crontab -l 2>/dev/null | grep -qF "scripts/tenants.sh"; then
+    ( crontab -l 2>/dev/null; echo "$TN_LINE" ) | crontab - && echo "   cron: store domain watcher installed"
+  fi
+fi
+mkdir -p "$ROOT/nginx/tenants"
 
 echo "==> now on version: $(cat VERSION)"

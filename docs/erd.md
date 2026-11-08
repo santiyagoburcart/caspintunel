@@ -47,6 +47,15 @@ erDiagram
         datetime cert_expires_at
         datetime last_check_at
         string last_error
+        bool include_www "v1.45"
+        bool proxied "reseller's Cloudflare proxy, detected"
+        datetime verified_at
+        datetime cert_issued_at
+        json dns "last DNS / reachability check"
+        json health "last TLS health check"
+        datetime unhealthy_since
+        int cert_failures "3 → failed"
+        int retry_token "«تلاش دوباره» → the host watcher retries now"
     }
     tenant_branding {
         bigint id PK
@@ -71,7 +80,7 @@ erDiagram
 | Table | Purpose |
 |---|---|
 | `tenant` | one store (v1.40). The default tenant is our own store; reseller stores come in later phases. |
-| `tenant_domain` | a host routed to a tenant; only `active` hosts of an `active` store are served (v1.41 / v1.43). |
+| `tenant_domain` | a host routed to a tenant; only `active` hosts of an `active` store are served (v1.41 / v1.43). v1.45: our staff add it on «فروشگاه» (mode direct / tunnel; `cloudflare` unused — a proxied record is detected into `proxied`), DNS + TXT checks, HTTP-01 certificate + nginx file by the host watcher, health (`tenancy/domains.py`). |
 | `tenant_branding` | v1.43 a reseller store's branding (same fields as `site_config`, which stays our own store's); `theme_id` = its theme. |
 | `tenant_setting` | v1.43 a store's own value for a key in `settings_app.branding.TENANT_KEYS` (wins in `get_setting` for that store). |
 

@@ -155,6 +155,12 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   `SiteConfig.load()` for what a customer sees); a store-settable key goes into `TENANT_KEYS`. The admin SPA's store menu is
   `adminNav.STORE_GROUPS` (+ store routes in App.jsx) — a page joins it only together with `store_ok` on its API; the user SPA
   never hard-codes our brand (names come from `/config/`).
+  **Store domains (v1.45, `tenancy/domains.py`)**: only our staff add / change / remove them («فروشگاه», `agency.manage`). The app
+  only writes `backups/.tenant-domains.json`; certificates + `nginx/tenants/<host>.conf` are made ONLY by the host watcher
+  `scripts/tenants.sh` (cron; pre-check → HTTP-01 webroot → nginx -t → reload → TLS verify → rollback) — never edit those files
+  by hand, never issue store certificates elsewhere. Lineage `store-<host>`; caspintunel.com's vhost must stay the first 443
+  server (unknown names). `/.well-known/caspin/<token>` is answered before any host check (proves a host reaches us). Test the
+  watcher only with `scripts/test-tenants.sh`.
 - The rejected Liquid Glass refresh is archived at tag `archive/ui-refresh-liquid-glass` — don't copy from it.
 
 ## Gotchas (learned the hard way)

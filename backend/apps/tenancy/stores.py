@@ -28,18 +28,19 @@ def store_of(username: str) -> Tenant | None:
     return Tenant.objects.filter(reseller_username__iexact=username, is_default=False).first()
 
 
-def row(t: Tenant | None) -> dict | None:
+def row(t: Tenant | None, *, staff_view: bool = True) -> dict | None:
     if t is None:
         return None
     from apps.settings_app.models import TenantBranding
+
+    from . import domains
 
     with context.tenant_context(t.pk):
         b = TenantBranding.objects.first()
     return {
         "id": t.id, "slug": t.slug, "name": t.name, "status": t.status, "reseller": t.reseller_username,
         "export_allowed": t.export_allowed, "limits": t.limits, "created_at": t.created_at,
-        "domains": [{"host": d.host, "role": d.role, "mode": d.mode, "state": d.state}
-                    for d in TenantDomain.objects.filter(tenant=t).order_by("id")],
+        "domains": domains.rows_for(t.pk, staff=staff_view),      # v1.45 (Phase 3): records, checks, certificate, health
         "branding": {"site_name_fa": b.site_name_fa, "site_name_en": b.site_name_en} if b else None,
         "reachable": t.status == Tenant.ACTIVE and TenantDomain.objects.filter(tenant=t, state=TenantDomain.ACTIVE).exists(),
     }

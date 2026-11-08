@@ -506,4 +506,13 @@ Everything shipped since v1.6.0 (details in the session log):
   none. Signed `shortfall` (negative = paid more); «کمتر X» / «بیشتر X» on Transactions, detail, Blu tab, agency payments,
   Telegram + live toast; Accounting splits less / more. Queue rows get `blu_prefill` (linked deposit, else the one deposit within
   ± tolerance in the window) → receipt amount + tracking number pre-filled. Tests: `test_rounded_v1441.py` (13) + agency over-payment.
+- 2026-11-08 — **v1.45.0: multi-tenant Phase 3 — store domains + TLS** (Phase 3a, the Iran-side PROXY sender, skipped by the owner:
+  tunnel visitors keep per-browser limits). `tenancy/domains.py`: our staff add domains on «فروشگاه» (mode direct → `SERVER_IP` /
+  tunnel → Iran IP, www, exact A + TXT records), DNS via DoH every 5 min (TXT token + A; proxied → `/.well-known/caspin/<token>`
+  probe answered by `TenantMiddleware`), `store_domains_tick_task` every minute; host watcher `scripts/tenants.sh` +
+  `tenants_host.py` (cron installed by update.sh): public-path pre-check → HTTP-01 webroot certificate (`store-<host>`) →
+  `nginx/tenants/<host>.conf` → nginx -t → reload → TLS verify → rollback; health every 5 min, DNS daily, expiry alert 14 days,
+  3 LE failures → failed until retry; remove deletes vhost + certificate. Store dashboard lists its domains read-only.
+  Migration tenancy 0005 (additive). Tests: `tenancy/tests/test_domains.py` (19), `scripts/test-tenants.sh` (30 checks:
+  direct, Iran tunnel port forward without PROXY, unreachable name, backoff + retry, nginx rollback, removal, bad input).
 - **Next:** new items to be agreed with the owner.

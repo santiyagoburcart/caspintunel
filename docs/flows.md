@@ -1335,3 +1335,37 @@ sequenceDiagram
     Note over M: on a store's domain: platform paths 404 · admin views without store_ok → 403 (store mode)
     Note over R: the panel on store.example/panel/ shows only the store menu (v1.44) · the site shows only the store's name
 ```
+
+## 16c. Store domain + TLS (multi-tenant Phase 3, v1.45)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor S as Our staff (agency.manage)
+    participant API as admin/agency/panel-admins/<u>/store/domains/
+    participant DM as tenancy.domains (Celery tick, every minute)
+    participant F as backups/.tenant-domains.json · .tenant-status.json
+    participant H as scripts/tenants.sh (host cron, every minute)
+    participant LE as Let's Encrypt
+    participant N as nginx
+    S->>API: POST {host, mode direct | tunnel, www}
+    API-->>S: exact records · A host (+ www) → Finland IP or Iran IP · TXT _caspin-verify.host = token
+    loop every 5 min (or «بررسی الان»)
+        DM->>DM: DoH: TXT token + A on our IP · proxied (Cloudflare edges) → GET http://host/.well-known/caspin/token must reach THIS server
+    end
+    DM->>F: verified → host in the wanted list (state cert_pending)
+    H->>F: read wanted hosts
+    H->>H: pre-check · random file in the ACME webroot fetched as http://host/… through the PUBLIC path (direct · Iran tunnel port forward without PROXY protocol · their Cloudflare)
+    alt pre-check fails
+        H->>F: challenge_error (Let's Encrypt not asked · retried in 5 min)
+    else
+        H->>LE: certbot certonly --webroot (HTTP-01 · nginx serves the challenge on 80 and 443 for every name)
+        LE->>N: GET /.well-known/acme-challenge/… (direct → our :80 · tunnel → Iran :80 → our :80 · Cloudflare → our :80 or :443)
+        H->>N: nginx/tenants/host.conf → nginx -t → reload → TLS verify (SNI) → restore all on failure
+        H->>F: cert_ok · nginx_ok · cert_expires (or cert_error · 3 failures → failed)
+    end
+    DM->>N: health · TLS to the mode's IP (or their Cloudflare) · probe answered by THIS server
+    DM->>DM: active · host cache + ALLOWED_HOSTS refreshed · staff alert
+    Note over DM: active · health every 5 min (alert after 30 min down) · DNS daily · certificate expiry alert at 14 days · renewal = certbot container renew + nginx reload every 6 h
+    Note over S: remove → watcher deletes the vhost + certificate · the reseller sees the state read-only on their store dashboard
+```

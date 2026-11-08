@@ -57,6 +57,16 @@ class TenantDomain(TimeStampedModel):
     cert_expires_at = models.DateTimeField(null=True, blank=True)
     last_check_at = models.DateTimeField(null=True, blank=True)
     last_error = models.CharField(max_length=500, blank=True, default="")
+    # v1.45 (Phase 3, apps/tenancy/domains.py): www + the reseller's Cloudflare proxy (detected), what the checks saw
+    include_www = models.BooleanField(default=True)
+    proxied = models.BooleanField(default=False)
+    verified_at = models.DateTimeField(null=True, blank=True)
+    cert_issued_at = models.DateTimeField(null=True, blank=True)
+    dns = models.JSONField(default=dict, blank=True)              # last DNS / reachability check
+    health = models.JSONField(default=dict, blank=True)           # last health check
+    unhealthy_since = models.DateTimeField(null=True, blank=True)
+    cert_failures = models.PositiveSmallIntegerField(default=0)
+    retry_token = models.PositiveIntegerField(default=0)          # bumped by «تلاش دوباره» → the host watcher retries now
 
     class Meta:
         db_table = "tenant_domain"

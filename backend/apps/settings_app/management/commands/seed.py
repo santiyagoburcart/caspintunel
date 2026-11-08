@@ -514,6 +514,16 @@ class Command(BaseCommand):
                 "enabled": True,
             },
         )
+        # v1.45 store domains (apps/tenancy/domains.py): DNS → certificate (host watcher) → health, every minute
+        PeriodicTask.objects.update_or_create(
+            name="stores: domains, certificates and health",
+            defaults={
+                "task": "apps.tenancy.tasks.store_domains_tick_task",
+                "interval": every_1,
+                "kwargs": _json.dumps({}),
+                "enabled": True,
+            },
+        )
         PeriodicTask.objects.update_or_create(
             name="domain: host results + retire old domain",
             defaults={

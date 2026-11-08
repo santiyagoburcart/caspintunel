@@ -114,6 +114,8 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {store && <StoreDomainsCard domains={d.domains || []} lang={lang} />}
+
         {!store && <div className="card flex flex-col">
           <div className="mb-3 flex items-center justify-between gap-2">
             <span className="font-bold text-sm">{t('gateway_core_status')}</span>
@@ -228,3 +230,33 @@ const CSS = `
   .dash .kpi-sub { grid-column: 1 / -1; margin-top: 0; }
 }
 `
+
+// v1.45 store mode: the store's own domains, read-only (our staff add / change them on «فروشگاه»)
+const SD = {
+  fa: { title: 'دامنه‌های فروشگاه', none: 'هنوز دامنه‌ای فعال نشده — تنظیم دامنه با پشتیبانی است.', expires: 'گواهی تا',
+    st_pending_dns: 'در انتظار DNS', st_verified: 'تأیید شد', st_cert_pending: 'در انتظار گواهی', st_active: 'فعال', st_failed: 'نیاز به بررسی',
+    healthy: 'در دسترس', unhealthy: 'در دسترس نیست' },
+  en: { title: 'Store domains', none: 'No domain is live yet — our support sets it up.', expires: 'certificate until',
+    st_pending_dns: 'Waiting for DNS', st_verified: 'Verified', st_cert_pending: 'Certificate pending', st_active: 'Active', st_failed: 'Needs attention',
+    healthy: 'reachable', unhealthy: 'unreachable' },
+}
+function StoreDomainsCard({ domains, lang }) {
+  const s = SD[lang] || SD.fa
+  return (
+    <div className="card flex flex-col gap-2" data-testid="store-domains-ro">
+      <span className="font-bold text-sm">{s.title}</span>
+      {domains.length === 0 && <p className="text-sm text-muted">{s.none}</p>}
+      {domains.map((x) => (
+        <div key={x.id} className="dash-dom">
+          <bdi dir="ltr" className="dash-dom-h">{x.host}</bdi>
+          <span className={'dash-chip ' + (x.state === 'active' ? 'is-ok' : '')}>{s['st_' + x.state] || x.state}</span>
+          {x.state === 'active' && x.healthy != null && <span className="text-xs text-muted">{x.healthy ? s.healthy : s.unhealthy}</span>}
+          {x.cert_expires_at && <span className="text-xs text-muted">{s.expires} {jalali(x.cert_expires_at, false, lang)}</span>}
+        </div>
+      ))}
+      <style>{`.dash-dom { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.dash-dom-h { font-weight: 800; overflow-wrap: anywhere; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 13px; }
+.dash-chip.is-ok { color: var(--c-success-fg); }`}</style>
+    </div>
+  )
+}

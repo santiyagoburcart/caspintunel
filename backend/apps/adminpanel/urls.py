@@ -14,7 +14,8 @@ from .views.agency import (AgencyLimitHistoryView, AgencyAdminActionView, Agency
                            AgencyGroupsView, AgencyLedgerExportView, AgencyLedgerOverviewView, AgencyLedgerView,
                            AgencyLedgerVoidView, AgencySettingsView, AgencySyncLogsView, AgencySyncNowView, PathsView,
                            AgencyPortalLinkView, AgencySetLimitPreviewView, AgencyLedgerReportView,
-                           AgencyPanelAdminCreateView, AgencyPanelAdminOptionsView, AgencyPanelAdminView, AgencyStoreView)
+                           AgencyPanelAdminCreateView, AgencyPanelAdminOptionsView, AgencyPanelAdminView, AgencyStoreView,
+                           AgencyStoreDomainCheckView, AgencyStoreDomainsView, AgencyStoreDomainView)
 from .views.catalog import (
     BankCardViewSet,
     PageViewSet,
@@ -118,6 +119,10 @@ urlpatterns = [
     path("agency/panel-admins/options/", AgencyPanelAdminOptionsView.as_view(), name="admin-agency-panel-admin-options"),
     path("agency/panel-admins/", AgencyPanelAdminCreateView.as_view(), name="admin-agency-panel-admin-create"),
     path("agency/panel-admins/<str:username>/store/", AgencyStoreView.as_view(), name="admin-agency-store"),
+    path("agency/panel-admins/<str:username>/store/domains/", AgencyStoreDomainsView.as_view(), name="admin-agency-store-domains"),
+    path("agency/panel-admins/<str:username>/store/domains/<int:pk>/", AgencyStoreDomainView.as_view(), name="admin-agency-store-domain"),
+    path("agency/panel-admins/<str:username>/store/domains/<int:pk>/check/", AgencyStoreDomainCheckView.as_view(),
+         name="admin-agency-store-domain-check"),
     path("agency/panel-admins/<str:username>/", AgencyPanelAdminView.as_view(), name="admin-agency-panel-admin"),
     path("agency/admins/<str:username>/limit-history/", AgencyLimitHistoryView.as_view(), name="admin-agency-limit-history"),
     path("agency/admins/<str:username>/set-limit/preview/", AgencySetLimitPreviewView.as_view(), name="admin-agency-limit-preview"),

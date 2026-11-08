@@ -40,6 +40,12 @@ log = logging.getLogger("caspintunel")
 ONLINE_WINDOW_MIN = 5
 
 
+def _store_domains() -> list:
+    from apps.tenancy import context, domains
+
+    return domains.rows_for(context.current_tenant_id(), staff=False)
+
+
 class ServiceListViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
                          mixins.CreateModelMixin, mixins.DestroyModelMixin, viewsets.GenericViewSet):
     """/admin/services/ — the standalone "sold services" admin page: list +
@@ -298,7 +304,9 @@ class DashboardView(AdminAPIView):
         if is_store():
             return Response({"services": {"total": sum(by_status.values()), "by_status": by_status,
                                           "online_now": Service.objects.filter(online_at__gte=since).count()},
-                             "health": None, "resources": None, "store": True})
+                             "health": None, "resources": None, "store": True,
+                             # v1.45: the store's own domains, read-only (state, certificate, health — no records / errors)
+                             "domains": _store_domains()})
         return Response({
             "services": {
                 "total": sum(by_status.values()),
