@@ -19,6 +19,8 @@ data class InboundResponse(
 data class PingResponse(
     val device: String? = null,
     @SerializedName("server_time") val serverTime: String? = null,
+    /** v1.47: the store name returned when connecting to a reseller store's domain. */
+    val store: String? = null,
 )
 
 data class SmsSourceInfo(

@@ -31,6 +31,10 @@ class Prefs(context: Context) {
         get() = sp.getLong(KEY_LAST_PING_AT, 0L)
         set(value) = sp.edit().putLong(KEY_LAST_PING_AT, value).apply()
 
+    var lastStoreName: String
+        get() = sp.getString(KEY_LAST_STORE, "") ?: ""
+        set(value) = sp.edit().putString(KEY_LAST_STORE, value.trim()).apply()
+
     // cached allowed-sender list, as raw JSON (see SmsRepository for (de)serialization) —
     // kept here rather than Room since it's a small, whole-list replace-on-refresh cache
     var allowedSourcesJson: String
@@ -52,6 +56,7 @@ class Prefs(context: Context) {
         private const val KEY_LAST_PING_OK = "last_ping_ok"
         private const val KEY_LAST_PING_MSG = "last_ping_msg"
         private const val KEY_LAST_PING_AT = "last_ping_at"
+        private const val KEY_LAST_STORE = "last_store_name"
         private const val KEY_SOURCES_JSON = "allowed_sources_json"
         private const val KEY_SOURCES_AT = "sources_fetched_at"
     }

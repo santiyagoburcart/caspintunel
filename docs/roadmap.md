@@ -39,7 +39,7 @@ desktop + 390 px) and **must update [architecture.md](architecture.md),
 
 | Phase | Theme | Notes |
 |---|---|---|
-| C | Multi-tenant reseller storefronts | Design: [multi-tenant.md](multi-tenant.md) — approved 2026-11-04 (decisions D1–D7). **Phase 0 done (v1.39.0, memory limits + watch); Phase 1 done (v1.40.0 tenant tables · v1.41.0 scoping · v1.42.0 NOT NULL, per-store uniques, strict mode).** **Phase 2 done (v1.43.0 stores · v1.44.0 store mode); Phase 3 built (v1.45.0 store domains + TLS); Phase 4 built (v1.46.0 catalog + PasarGuard per store); Phase 5 built (v1.47.0 payments + SMS per store).** Next: Phase 6. Runs on the current server (2 vCPU, 3.7 GiB RAM + 5 GiB swap; it also hosts the PasarGuard nodes) — capacity note in [architecture.md](architecture.md#production-server). |
+| C | Multi-tenant reseller storefronts | Design: [multi-tenant.md](multi-tenant.md) — approved 2026-11-04 (decisions D1–D7). **Phase 0 done (v1.39.0, memory limits + watch); Phase 1 done (v1.40.0 tenant tables · v1.41.0 scoping · v1.42.0 NOT NULL, per-store uniques, strict mode).** **Phase 2 done (v1.43.0 stores · v1.44.0 store mode); Phase 3 built (v1.45.0 store domains + TLS); Phase 4 built (v1.46.0 catalog + PasarGuard per store); Phase 5 built (v1.47.0 payments + SMS per store); Android CI + QR setup built (v1.48.0).** Next: Phase 6 (bots + Mini App). Runs on the current server (2 vCPU, 3.7 GiB RAM + 5 GiB swap; it also hosts the PasarGuard nodes) — capacity note in [architecture.md](architecture.md#production-server). |
 
 ## Phases 1–2 — Ticketing
 

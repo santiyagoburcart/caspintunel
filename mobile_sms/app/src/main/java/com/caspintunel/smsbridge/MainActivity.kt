@@ -59,12 +59,14 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        renderStatus()
-        renderSources()
+        // First-run onboarding: send the user to the Setup screen (QR scan or
+        // manual entry) instead of the bare Settings form.
         if (!prefs.isConfigured()) {
-            startActivity(Intent(this, SettingsActivity::class.java))
+            startActivity(Intent(this, SetupActivity::class.java))
             return
         }
+        renderStatus()
+        renderSources()
         ensurePermissionsThenStartService()
         if (repo.isSourcesCacheStale()) {
             lifecycleScope.launch {
@@ -123,7 +125,8 @@ class MainActivity : AppCompatActivity() {
         val when_ = if (prefs.lastPingAtMillis > 0) {
             DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(prefs.lastPingAtMillis))
         } else "—"
-        return "${prefs.lastPingMessage}  ·  $when_"
+        val storePart = if (prefs.lastStoreName.isNotBlank()) "  ·  ${prefs.lastStoreName}" else ""
+        return "${prefs.lastPingMessage}  ·  $when_$storePart"
     }
 
     private fun runPing() {

@@ -79,12 +79,11 @@ def version() -> str:
         return ""
 
 
-def endpoint_url() -> str:
-    from apps.settings_app.models import SiteConfig
+def endpoint_url(request=None) -> str:
+    """v1.48: the current store's domain (a store's devices post there), our site domain otherwise."""
+    from apps.payments_sms.device_url import server_base
 
-    domain = (SiteConfig.load().site_domain or "").strip().strip("/")
-    base = f"https://{domain}" if domain else settings.PUBLIC_BASE_URL.rstrip("/")
-    return base.rstrip("/") + SMS_PATH
+    return server_base(request).rstrip("/") + SMS_PATH
 
 
 def build(*, endpoint: str, token: str | None = None) -> bytes:

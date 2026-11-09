@@ -98,6 +98,7 @@ class SmsRepository private constructor(context: Context) {
                 val body = resp.body()!!
                 prefs.lastPingOk = true
                 prefs.lastPingMessage = "OK — ${body.device ?: "device"}"
+                prefs.lastStoreName = body.store ?: ""
                 prefs.lastPingAtMillis = System.currentTimeMillis()
                 refreshSources()
                 Result.success(body)

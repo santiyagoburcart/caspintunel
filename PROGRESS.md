@@ -529,3 +529,15 @@ Everything shipped since v1.6.0 (details in the session log):
   store (TENANT_KEYS); no Blu data in a store; `alert_staff(platform=)`, store-scoped web push and live groups
   (`staff_payments_t<id>`). APK unchanged (needs an Android build for QR / store name). Tests: `tenancy/tests/test_phase5.py` (9).
 - **Next:** new items to be agreed with the owner.
+- 2026-11-09 — **v1.48.0: Android setup QR, CI-signed APK, payment watcher.** Reviewed + reworked an untested draft
+  from another session. Android app 1.2.0 (versionCode 3): `SetupActivity` (opened by MainActivity while unconfigured;
+  MainActivity stays the launcher) — built-in scanner (zxing-android-embedded) or manual entry; `SetupQr.kt` accepts ONLY
+  `caspin-sms://<host>[:port]?token=…` → `https://<host>`, unit-tested (`SetupQrTest`); status line shows the store name.
+  Backend: `payments_sms/device_url.py` (`server_base` = the store's live domain / our site domain — also fixes the
+  iPhone Shortcut endpoint on store domains, which pointed at OUR domain; `setup_uri`), `GET /admin/apps/android/qr/`
+  (sms.manage, store_ok, active devices only, token never in the audit). `settings_app/ci_apk.py`: latest GitHub release
+  `SmsBridge-<ver>.apk` copied to `media/apps/ci/` (size + sha256) and served from here (never a GitHub redirect — Iran
+  hosts, store branding); download = upload > CI copy > bundled. CI `.github/workflows/android-release.yml` (main: tests +
+  debug build; tags / manual run: signed release APK, warns when the 4 secrets are missing). `manage.py watch_payments`
+  (next N SMS / Blu / receipt payments of our store; staff alert when one does not match). Tests: `test_apps.py` (+4),
+  `payments_sms/tests/test_watch_payments.py` (2).
