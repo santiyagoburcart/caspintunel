@@ -541,3 +541,8 @@ Everything shipped since v1.6.0 (details in the session log):
   debug build; tags / manual run: signed release APK, warns when the 4 secrets are missing). `manage.py watch_payments`
   (next N SMS / Blu / receipt payments of our store; staff alert when one does not match). Tests: `test_apps.py` (+4),
   `payments_sms/tests/test_watch_payments.py` (2).
+- 2026-11-09 — **v1.48.1: owner dropped the Android QR setup and the signed CI APK** (the installed app has no QR support).
+  Removed `.github/workflows/android-release.yml`, `settings_app/ci_apk.py` (+ `CI_APK_FROM_GITHUB`), `GET /admin/apps/android/qr/`
+  and the Apps page QR block; `mobile_sms/` is back to its v1.47 source (= the bundled APK). Android download = uploaded APK >
+  bundled, as before. Kept from v1.48: `device_url.server_base` (Apps page «آدرس سرور» + iPhone Shortcut endpoint on store
+  domains), `manage.py watch_payments`. Setup stays manual: server address + device token.

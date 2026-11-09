@@ -2,12 +2,10 @@
 downloaded from our own server so it works on an offline / Iran-only host.
 
 GET    /admin/apps/                        both platforms' current release info
-GET    /admin/apps/<platform>/download/    the file — android: uploaded > CI release APK (settings_app/ci_apk.py,
-                                           served from here) > bundled debug APK
+GET    /admin/apps/<platform>/download/    the file (uploaded, or the bundled APK)
                                            ios: built from the repo template, ?device=<id> injects that token
                                            (UNSIGNED — the "advanced" path; iOS 15+ needs it signed on a Mac)
 GET    /admin/apps/ios/qr/                 PNG QR code of the iCloud install link (404 when unset)
-GET    /admin/apps/android/qr/?device=<id> PNG setup QR for the Android app (sms.manage; payments_sms/device_url.py)
 POST   /admin/apps/<platform>/             multipart: file? (android only), version?, link?, notes?, clear_file?,
                                            icloud_url? (ios: the `ios_shortcut_icloud_url` setting)
 
@@ -32,9 +30,9 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
 from apps.common.models import write_audit
-from apps.payments_sms.device_url import server_base, setup_uri
+from apps.payments_sms.device_url import server_base
 from apps.payments_sms.models import SmsAppDevice
-from apps.settings_app import ci_apk, shortcut
+from apps.settings_app import shortcut
 from apps.settings_app.models import AppPlatform, AppRelease
 from apps.settings_app.utils import set_setting
 
@@ -80,13 +78,10 @@ def _info(platform: str, request=None) -> dict:
                 out["updated_at"] = timezone.datetime.fromtimestamp(st.st_mtime, tz=timezone.get_current_timezone())
         out["icloud_url"] = shortcut.icloud_url()
         return out
-    # v1.48: upload > the CI-built release APK (ci_apk) > the bundled debug APK; `server` = what the app is set to
+    # v1.48: `server` = the address to type into the app (this store's domain; ours = the site domain)
     out["server"] = server_base(request)
     if out["source"] is None:
-        ci = ci_apk.latest()
-        if ci:
-            out.update(file_name=ci["name"], size=ci["size"], source="ci", version=ci["version"])
-        elif apk := bundled_apk():
+        if apk := bundled_apk():
             st = apk.stat()
             out.update(file_name=apk.name, size=st.st_size, source="bundled")
             if not out["updated_at"]:
@@ -169,30 +164,6 @@ class ShortcutQrView(AdminAPIView):
         return resp
 
 
-class AndroidSetupQrView(AdminAPIView):
-    """v1.48: setup QR for the Android SMS Bridge — `caspin-sms://<store host>?token=<device token>`
-    (payments_sms/device_url.py; the app's SetupQr.kt parses exactly this). The token is in the image only,
-    never in a URL; sms.manage = the right that can reveal the token anyway. Store-safe: devices are store-scoped."""
-
-    perms_map = {"GET": ["sms.manage"]}
-    store_ok = True
-
-    @extend_schema(summary="Android SMS Bridge setup QR (PNG) for one SMS device", responses=bytes)
-    def get(self, request):
-        device_id = str(request.query_params.get("device") or "")
-        device = SmsAppDevice.objects.filter(pk=device_id, is_active=True).first() if device_id.isdigit() else None
-        if device is None:
-            return Response({"detail": "SMS device not found"}, status=404)
-        base = server_base(request)
-        write_audit(action="apps.android_qr", staff=request.user, target=device,
-                    detail={"device": device.id, "server": base})
-        buf = io.BytesIO()
-        qrcode.make(setup_uri(base, device.api_token), border=4).save(buf, format="PNG")
-        resp = HttpResponse(buf.getvalue(), content_type="image/png")
-        resp["Cache-Control"] = "private, no-store"
-        return resp
-
-
 class AppReleaseDownloadView(AdminAPIView):
     perms_map = {"GET": ["settings.manage"]}
     store_ok = True        # v1.47 (Phase 5): download our SMS app
@@ -216,8 +187,7 @@ class AppReleaseDownloadView(AdminAPIView):
                     resp = FileResponse(rel.file.open("rb"), content_type=ctype)
                 except FileNotFoundError as exc:
                     raise Http404 from exc
-        elif apk := (ci_apk.local_file() or bundled_apk()):
-            # v1.48: the CI-built release APK, copied to and served from this server (never a GitHub redirect)
+        elif apk := bundled_apk():
             filename = apk.name
             resp = FileResponse(apk.open("rb"), content_type=_ctype(filename))
         else:

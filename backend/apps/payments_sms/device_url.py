@@ -1,17 +1,10 @@
-"""Where an SMS device posts to (v1.48): the Android app, its setup QR and the iPhone Shortcut all use these.
+"""Where an SMS device posts to (v1.48): the address shown for the Android app and the iPhone Shortcut endpoint.
 
 A device belongs to one store (tenant), and a store's requests are recognized by their host, so the address must be
 the current store's own domain — our site domain for our store (multi-tenant Phase 5: "SMS devices post to their
 store's domain").
-
-Setup QR = `caspin-sms://<host>[:port]?token=<url-encoded token>`. The app (mobile_sms SetupQr.kt) accepts only this
-form and turns it into the server URL `https://<host>[:port]`. Change both sides together.
 """
 from __future__ import annotations
-
-from urllib.parse import quote, urlsplit
-
-QR_SCHEME = "caspin-sms"
 
 
 def _host_only(host: str) -> str:
@@ -44,8 +37,3 @@ def server_base(request=None) -> str:
     domain = (SiteConfig.load().site_domain or "").strip().strip("/")
     return f"https://{domain}" if domain else settings.PUBLIC_BASE_URL.rstrip("/")
 
-
-def setup_uri(base: str, token: str) -> str:
-    """The Android setup QR content for a device token on `base` (https://host[:port])."""
-    netloc = urlsplit(base).netloc
-    return f"{QR_SCHEME}://{netloc}?token={quote(token, safe='')}"

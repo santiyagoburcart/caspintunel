@@ -11,21 +11,11 @@ file is served from your own server in the admin panel → **Apps & tools**
 (`release/` is mounted into the web container), so it can be downloaded on an
 offline / Iran-only host; a newer APK can be uploaded there too.
 
-Since v1.2.0 every `v*` tag also builds a **signed release APK** on GitHub Actions
-(see [Signed release APK](#signed-release-apk)); the panel copies the newest one to the
-server and offers it instead of the debug build (an uploaded APK still wins).
-
 ## What it does
 
-1. **Setup screen (v1.2.0)** — opened while no server / token is saved: «اسکن کد QR»
-   (built-in scanner, no other app needed) reads the QR of one SMS device from the panel
-   (**Apps & tools** → Android card → «کد QR راه‌اندازی اپ») — `caspin-sms://<host>?token=<token>`,
-   parsed by `SetupQr.kt` and nothing else — and tests the connection at once; or «وارد کردن
-   دستی» (server address + token). On a store's domain the QR carries that store's domain.
-2. **Store name** — after a successful ping the status line shows the store the device
-   belongs to (`sms/ping/` → `store`).
-3. **Settings screen** — reachable from the main screen to change the server URL or token.
-4. **SMS listener** — a manifest-registered `BroadcastReceiver` for
+1. **Settings screen** — enter the server URL and the device's API token, save
+   them to `SharedPreferences`, and test the connection with one tap.
+2. **SMS listener** — a manifest-registered `BroadcastReceiver` for
    `android.provider.Telephony.SMS_RECEIVED`, backed by a **foreground
    service** so Android doesn't kill the app, with a `BOOT_COMPLETED`
    receiver so it comes back after a reboot.
@@ -142,28 +132,9 @@ cd mobile_sms
 
 `local.properties` (holding `sdk.dir=...`) is machine-specific and is not
 committed — create your own pointing at your Android SDK checkout before
-building. Debug builds are debug-signed by AGP and install fine with `adb install`
-or by sideloading. Unit tests: `./gradlew :app:testDebugUnitTest` (`SetupQrTest`).
-
-## Signed release APK
-
-`.github/workflows/android-release.yml`:
-
-- push to `main` touching `mobile_sms/` → unit tests + debug build (compile check, nothing published);
-- a `v*` tag, or Actions → **Android SMS Bridge** → *Run workflow* with an existing tag → unit tests + a
-  release APK signed with the keystore below, attached to that GitHub release as `SmsBridge-<versionName>.apk`.
-
-Repository secrets (Settings → Secrets and variables → Actions): `ANDROID_KEYSTORE_BASE64` (the `.jks`
-file, base64), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`. Without them the
-release job only warns. The keystore itself never goes into git (`*.keystore` / `*.jks` are ignored) —
-keep a backup of it: Android only updates an app signed with the same key.
-
-The panel (`backend/apps/settings_app/ci_apk.py`) looks up the latest release, downloads the APK to
-`media/apps/ci/` (size + sha256 checked) and serves it from our server. Bump `versionCode` /
-`versionName` in `app/build.gradle` for every app change.
-
-Note: the release build has a different application id than the debug build (`…smsbridge` vs
-`…smsbridge.debug`), so it installs next to it — set it up, then uninstall the debug app.
+building. A release build additionally needs a signing config, which isn't
+set up here (debug builds are unsigned-but-debug-signed by AGP and install
+fine with `adb install` or by sideloading).
 
 ## Installing on the phone
 

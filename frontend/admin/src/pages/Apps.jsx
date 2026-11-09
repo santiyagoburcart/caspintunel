@@ -19,7 +19,7 @@ const T = {
     ios_what: 'آیفون اجازه نمی‌دهد اپ‌ها پیامک‌ها را بخوانند؛ به‌جای اپ، یک شورتکات (Shortcuts) با «اتوماسیون پیام» پیامک‌های بانک را به همان آدرس سرور می‌فرستد تا پرداخت‌ها مثل اپ اندروید خودکار تأیید شوند. نصب رسمی از لینک iCloud است (آیفون فقط شورتکات امضاشده را می‌پذیرد).',
     features: 'چه کاری انجام می‌دهد؟', setup: 'راه‌اندازی',
     a_f: ['فقط پیامک‌های شماره‌های بانکیِ تعریف‌شده ارسال می‌شود', 'اجرای دائمی در پس‌زمینه و شروع خودکار پس از روشن شدن گوشی', 'ارسال مجدد خودکار در صورت قطعی اینترنت (تا 3 بار)', 'نمایش وضعیت اتصال و 20 پیامک آخر در خود اپ'],
-    a_s: ['فایل APK را دانلود و روی گوشی نصب کنید (اجازهٔ «نصب از منابع ناشناس» را بدهید).', 'در پنل: تنظیمات ← دستگاه‌های SMS ← «افزودن دستگاه».', 'در اپ «اسکن کد QR» را بزنید و کد همین کارت را اسکن کنید (یا «وارد کردن دستی»: آدرس سرور در اپ و توکن دستگاه) — اپ خودش اتصال را آزمایش می‌کند.', 'مجوز دریافت پیامک را بدهید و بهینه‌سازی باتری را برای اپ خاموش کنید.', 'در تنظیمات ← شماره‌های بانکی، شمارهٔ فرستندهٔ پیامک بانک را اضافه کنید.'],
+    a_s: ['فایل APK را دانلود و روی گوشی نصب کنید (اجازهٔ «نصب از منابع ناشناس» را بدهید).', 'در پنل: تنظیمات ← دستگاه‌های SMS ← «افزودن دستگاه» و توکن ساخته‌شده را کپی کنید.', 'در اپ «آدرس سرور» (همین کارت) و توکن را وارد و «ذخیره و آزمایش اتصال» را بزنید.', 'مجوز دریافت پیامک را بدهید و بهینه‌سازی باتری را برای اپ خاموش کنید.', 'در تنظیمات ← شماره‌های بانکی، شمارهٔ فرستندهٔ پیامک بانک را اضافه کنید.'],
     i_f: ['اتوماسیون «وقتی پیامی از فرستندهٔ بانک رسید» روی خود آیفون', 'هر پیامک اول در صف روی آیفون ذخیره و بعد ارسال می‌شود — با قطعی اینترنت هیچ پیامکی گم نمی‌شود', 'دکمهٔ «ارسال صف پیامک» روی صفحهٔ اصلی برای ارسال دستی صف', 'بدون نصب اپ و بدون نیاز به App Store'],
     i_s: ['در پنل: تنظیمات ← دستگاه‌های SMS ← «افزودن دستگاه» برای این آیفون.', 'روی آیفون «نصب از iCloud» را بزنید (یا کد QR را با دوربین آیفون اسکن کنید) و «Add Shortcut» را بزنید.', 'هنگام نصب، آدرس سرور و توکن دستگاه (همین کارت) را در فیلدهای خواسته‌شده وارد کنید.', 'Shortcuts ← Automation ← «Message»: فرستندهٔ بانک ← اجرای همین شورتکات با «Shortcut Input» ← «Run Immediately» را روشن کنید.', 'اختیاری: شورتکات را با نام «ارسال صف پیامک» به صفحهٔ اصلی اضافه کنید؛ اجرای دستی فقط صف را می‌فرستد.'],
     server: 'آدرس دریافت پیامک در سرور', server_batch: 'آدرس صف پیامک (شورتکات آیفون، NDJSON)', header: 'هدر احراز هویت', body: 'بدنهٔ درخواست (JSON)',
@@ -29,9 +29,7 @@ const T = {
     manage: 'بارگذاری نسخهٔ جدید', file: 'فایل', file_hint_android: 'فایل ‎.apk‎ — حداکثر 60 مگابایت', file_hint_ios: 'فایل ‎.shortcut‎',
     link: 'لینک خارجی (اختیاری)', notes: 'یادداشت / توضیحات نسخه', save: 'ذخیره', saved: 'ذخیره شد', clear: 'حذف فایل بارگذاری‌شده',
     devices_link: 'مدیریت دستگاه‌های SMS', notes_h: 'یادداشت نسخه', mb: 'مگابایت',
-    android_qr_h: 'کد QR راه‌اندازی اپ', android_qr_hint: 'دستگاه را انتخاب کنید و در اپ «اسکن کد QR» را بزنید — آدرس سرور و توکن خودکار تنظیم می‌شود. این کد توکن دستگاه را دارد؛ آن را به کسی نشان ندهید.',
-    android_qr_btn: 'نمایش کد QR', android_qr_scan: 'با «اسکن کد QR» در اپ اسکن کنید', android_qr_dev: 'دستگاه این گوشی',
-    android_server: 'آدرس سرور در اپ', src_ci: 'نسخهٔ امضاشده (GitHub)',
+    android_server: 'آدرس سرور (در اپ وارد کنید)',
     src_repo: 'از مخزن کد (منبع واحد)', device: 'توکن کدام دستگاه داخل فایل قرار گیرد؟', device_none: 'هیچ — توکن هنگام افزودن پرسیده شود',
     manage_ios: 'تنظیمات شورتکات (لینک iCloud و یادداشت)',
     ios_single: 'منبع شورتکات فایل ‎mobile_shortcut/‎ در مخزن است. با هر تغییر: آن را روی آیفون دوباره وارد کنید، از Share ← Copy iCloud Link لینک جدید بسازید، اینجا ذخیره کنید و نسخه و تغییرات را در ‎mobile_shortcut/‎ ثبت کنید.',
@@ -56,7 +54,7 @@ const T = {
     ios_what: "iOS doesn't let apps read SMS, so instead a Shortcut with a Message automation forwards the bank SMS to the same server endpoint, so payments are auto-confirmed just like with the Android app. The official install is the iCloud link (iOS only imports signed shortcuts).",
     features: 'What it does', setup: 'Setup',
     a_f: ['Only SMS from the configured bank numbers are forwarded', 'Runs permanently in the background and restarts after a reboot', 'Automatic retry when the connection drops (up to 3 times)', 'Shows the connection status and the last 20 SMS in the app'],
-    a_s: ['Download the APK and install it on the phone (allow "install unknown apps").', 'In the panel: Settings → SMS devices → "Add device".', 'In the app tap "Scan QR code" and scan the code on this card (or "Enter manually": the server address in the app and the device token) — the app tests the connection itself.', 'Grant the SMS permission and turn battery optimization off for the app.', 'In Settings → Bank numbers add the sender number of the bank SMS.'],
+    a_s: ['Download the APK and install it on the phone (allow "install unknown apps").', 'In the panel: Settings → SMS devices → "Add device", copy the generated token.', 'In the app enter the "Server address" (on this card) and the token, then tap "Save and test connection".', 'Grant the SMS permission and turn battery optimization off for the app.', 'In Settings → Bank numbers add the sender number of the bank SMS.'],
     i_f: ['A "when a message from the bank arrives" automation on the iPhone', 'Every SMS is saved to a queue on the iPhone first, then sent — no SMS is lost when the network drops', 'A home-screen "send SMS queue" button to flush the queue by hand', 'Nothing to install, no App Store needed'],
     i_s: ['In the panel: Settings → SMS devices → "Add device" for this iPhone.', 'On the iPhone tap "Install via iCloud" (or scan the QR code with the iPhone camera) and tap "Add Shortcut".', 'While installing, enter the server address and the device token (on this card) in the fields it asks for.', 'Shortcuts → Automation → "Message": the bank sender → run this shortcut with "Shortcut Input" → turn "Run Immediately" on.', 'Optional: add the shortcut to the home screen as "send SMS queue"; a manual run only sends the queue.'],
     server: 'SMS endpoint on the server', server_batch: 'SMS queue endpoint (iPhone Shortcut, NDJSON)', header: 'Auth header', body: 'Request body (JSON)',
@@ -66,9 +64,7 @@ const T = {
     manage: 'Upload a new version', file: 'File', file_hint_android: '.apk file — max 60 MB', file_hint_ios: '.shortcut file',
     link: 'External link (optional)', notes: 'Notes / release notes', save: 'Save', saved: 'Saved', clear: 'Remove uploaded file',
     devices_link: 'Manage SMS devices', notes_h: 'Release notes', mb: 'MB',
-    android_qr_h: 'App setup QR code', android_qr_hint: 'Pick the device and tap "Scan QR code" in the app — the server address and token are set automatically. The code contains the device token; don\'t show it to anyone.',
-    android_qr_btn: 'Show QR code', android_qr_scan: 'Scan it with "Scan QR code" in the app', android_qr_dev: 'Device for this phone',
-    android_server: 'Server address in the app', src_ci: 'Signed release (GitHub)',
+    android_server: 'Server address (enter it in the app)',
     src_repo: 'From the repository (single source)', device: 'Put which device\'s token in the file?', device_none: 'None — ask for the token when adding',
     manage_ios: 'Shortcut settings (iCloud link & notes)',
     ios_single: 'The shortcut\'s source is mobile_shortcut/ in the repository. After every change: re-import it on an iPhone, create a new link with Share → Copy iCloud Link, save it here, and bump the version + changelog in mobile_shortcut/.',
@@ -208,24 +204,8 @@ function IosInstall({ info, s, devices, canSms, endpoint, download, busy }) {
 
 const mb = (n) => (n ? Math.round((n / 1048576) * 10) / 10 : 0)
 
-/** Android (v1.48): download + per-device setup QR (caspin-sms://<host>?token=…, read by the app's setup screen). */
-function AndroidInstall({ info, s, devices, canSms, download, busy }) {
-  const toast = useToast()
-  const [dev, setDev] = useState('')
-  const [qr, setQr] = useState(null)
-  const [loadingQr, setLoadingQr] = useState(false)
-
-  useEffect(() => () => { if (qr) URL.revokeObjectURL(qr) }, [qr])
-
-  const loadQr = async () => {
-    if (!dev) return
-    setLoadingQr(true)
-    try {
-      const r = await api.get(`/admin/apps/android/qr/?device=${encodeURIComponent(dev)}`, { responseType: 'blob' })
-      setQr(URL.createObjectURL(r.data))
-    } catch (e) { toast.error(apiError(e)) } finally { setLoadingQr(false) }
-  }
-
+/** Android: download + the server address to type into the app (v1.48: this store's domain, from the API). */
+function AndroidInstall({ info, s, download, busy }) {
   return (
     <div className="ap-android">
       <div className="ap-actions">
@@ -239,34 +219,6 @@ function AndroidInstall({ info, s, devices, canSms, download, busy }) {
         <Link to="/settings/sms-devices" className="btn-ghost ap-link">{s.devices_link}</Link>
       </div>
       {info.server && <CopyRow label={s.android_server} value={info.server} s={s} />}
-      {canSms && (
-        <div className="ap-android-qr">
-          <h3 className="ap-h3">{s.android_qr_h}</h3>
-          <p className="text-xs text-muted">{s.android_qr_hint}</p>
-          {devices.length === 0 ? (
-            <p className="text-xs text-muted">{s.token_none} <Link to="/settings/sms-devices" className="ap-inline-link">{s.devices_link}</Link></p>
-          ) : (
-            <div className="ap-tok-pick">
-              <label className="ap-fld">
-                <span className="label">{s.android_qr_dev}</span>
-                <select className="input" value={dev} onChange={(e) => { setDev(e.target.value); setQr(null) }}>
-                  <option value="">{s.token_pick}</option>
-                  {devices.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                </select>
-              </label>
-              <button type="button" className="btn-ghost ap-link" onClick={loadQr} disabled={!dev || loadingQr}>
-                {loadingQr ? <Spinner /> : s.android_qr_btn}
-              </button>
-            </div>
-          )}
-          {qr && (
-            <figure className="ap-qr ap-qr--android">
-              <img src={qr} alt={s.android_qr_h} width="200" height="200" />
-              <figcaption>{s.android_qr_scan}</figcaption>
-            </figure>
-          )}
-        </div>
-      )}
     </div>
   )
 }
@@ -297,7 +249,7 @@ function AppCard({ info, s, lang, onSaved, endpoint }) {
   const { can } = useAuth()
   const [devices, setDevices] = useState([])
   useEffect(() => {
-    if (!can('sms.manage')) return
+    if (android || !can('sms.manage')) return
     api.get('/admin/sms-devices/?limit=100')
       .then((r) => setDevices((r.data.results || r.data || []).filter((d) => d.is_active !== false)))
       .catch(() => setDevices([]))
@@ -349,7 +301,7 @@ function AppCard({ info, s, lang, onSaved, endpoint }) {
           <div className="ap-meta">
             {info.version && <span className="ap-chip">{s.version} {digits(info.version, lang)}</span>}
             {info.size != null && <span className="ap-chip">{s.size}: {digits(mb(info.size), lang)} {s.mb}</span>}
-            {info.source && <span className="ap-chip ap-chip--src">{info.source === 'bundled' ? s.src_bundled : info.source === 'repo' ? s.src_repo : info.source === 'ci' ? s.src_ci : s.src_upload}</span>}
+            {info.source && <span className="ap-chip ap-chip--src">{info.source === 'bundled' ? s.src_bundled : info.source === 'repo' ? s.src_repo : s.src_upload}</span>}
             {info.updated_at && <span className="ap-chip">{s.updated}: {jalali(info.updated_at, false, lang)}{info.updated_by ? ` · ${s.by} ${info.updated_by}` : ''}</span>}
           </div>
         </div>
@@ -375,7 +327,7 @@ function AppCard({ info, s, lang, onSaved, endpoint }) {
       {info.notes && <div className="ap-notes"><b>{s.notes_h}</b><p>{info.notes}</p></div>}
 
       {android ? (
-        <AndroidInstall info={info} s={s} devices={devices} canSms={can('sms.manage')} download={download} busy={busy} />
+        <AndroidInstall info={info} s={s} download={download} busy={busy} />
       ) : (
         <IosInstall info={info} s={s} devices={devices} canSms={can('sms.manage')} endpoint={info.endpoint || endpoint}
           download={download} busy={busy} />
@@ -526,9 +478,6 @@ const CSS = `
 .ap-qr figcaption { font-size: 12px; line-height: 1.6; text-align: center; color: var(--c-text-muted); }
 
 .ap-android { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-.ap-android-qr { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 14px; border: 1px solid var(--c-border); }
-.ap-qr--android { margin-top: 6px; max-width: 220px; }
-.ap-qr--android img { width: 200px; height: 200px; }
 @media (max-width: 560px) {
   .ap-ios-install { grid-template-columns: 1fr; }
   .ap-qr { max-width: none; }

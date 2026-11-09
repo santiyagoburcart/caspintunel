@@ -413,8 +413,6 @@ ACCESS_PROXY_HTTPS_PORT = env.int("ACCESS_PROXY_HTTPS_PORT", default=8843)
 GITHUB_TOKEN = env("GITHUB_TOKEN", default="")
 GITHUB_REPO = env("GITHUB_REPO", default="caspintunel")
 GITHUB_OWNER = env("GITHUB_OWNER", default="santiyagoburcart")
-# v1.48: copy the CI-built SMS Bridge APK from the latest GitHub release (settings_app/ci_apk.py); off in tests
-CI_APK_FROM_GITHUB = env.bool("CI_APK_FROM_GITHUB", default=True)
 
 TELEGRAM_PROXY_URL = env("TELEGRAM_PROXY_URL", default="")
 

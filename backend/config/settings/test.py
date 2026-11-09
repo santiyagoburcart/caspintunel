@@ -86,5 +86,3 @@ def _refuse_production_services():
 
 
 _refuse_production_services()
-
-CI_APK_FROM_GITHUB = False     # never call GitHub from tests (settings_app/ci_apk.py)

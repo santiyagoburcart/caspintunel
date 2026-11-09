@@ -35,16 +35,4 @@
 
     <string name="sources_title">شماره‌های تحت نظارت</string>
     <string name="sources_empty_warning">هیچ شماره بانکی تعریف نشده</string>
-
-    <!-- Setup / onboarding screen -->
-    <string name="setup_welcome">به CaspinTunel SMS خوش آمدید</string>
-    <string name="setup_hint">برای شروع، دستگاه خود را به سرور متصل کنید</string>
-    <string name="setup_scan_qr">اسکن کد QR</string>
-    <string name="setup_manual">وارد کردن دستی</string>
-    <string name="setup_title">اتصال به سرور</string>
-    <string name="setup_back">بازگشت</string>
-    <string name="setup_scan_prompt">کد QR صفحهٔ «اپ‌ها» در پنل را اسکن کنید</string>
-    <string name="setup_qr_invalid">این کد QR مال پنل نیست — کد صفحهٔ «اپ‌ها» را اسکن کنید یا آدرس و توکن را دستی وارد کنید</string>
-    <!-- %1$s = store name, %2$s = device name -->
-    <string name="setup_connected_store">اتصال موفق ✅ · فروشگاه: %1$s · دستگاه: %2$s</string>
 </resources>

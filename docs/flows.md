@@ -1427,36 +1427,7 @@ sequenceDiagram
     Note over API: alerts in a store context → that store's staff only (never our staff / backup chat)
 ```
 
-## 16f. Android SMS Bridge setup via QR · CI-signed APK (v1.48)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor S as Staff / store admin
-    participant A as Admin SPA · Apps page
-    participant API as Django · admin/apps
-    participant P as Phone · SMS Bridge 1.2.0
-    S->>A: download the app
-    A->>API: GET android/download/
-    API-->>A: uploaded APK · else the CI copy (ci_apk, fetched from the GitHub release by THIS server) · else bundled
-    S->>A: pick a device · «نمایش کد QR»
-    A->>API: GET android/qr/?device=<id> (sms.manage · store_ok)
-    API->>API: server_base(request) = this store's live domain (ours = site_domain)
-    API-->>A: PNG of caspin-sms://<host>?token=<token> (audit apps.android_qr · no token in the log)
-    P->>P: «اسکن کد QR» (built-in scanner) → SetupQr.parse → https://<host> + token
-    P->>API: GET <host>/api/v1/payments/sms/ping/ (X-Device-Token)
-    alt token belongs to this host's store
-        API-->>P: device + store name → saved · back to the main screen
-    else wrong / disabled token
-        API-->>P: 401 → the error stays on the setup screen
-    end
-```
-
-CI (`.github/workflows/android-release.yml`): push to main touching `mobile_sms/` → unit tests + debug build; a `v*` tag (or
-«Run workflow» with a tag) → tests + release APK signed with the 4 repository secrets → `SmsBridge-<versionName>.apk` on that
-release. Without the secrets the job only warns.
-
-## 16g. Watching real payments (v1.48, `manage.py watch_payments`)
+## 16f. Watching real payments (v1.48, `manage.py watch_payments`)
 
 ```mermaid
 sequenceDiagram
