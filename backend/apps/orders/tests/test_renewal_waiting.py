@@ -186,7 +186,7 @@ def test_staff_alert_helper_dedupes_and_falls_back(monkeypatch):
         def send_message(self, chat, text, parse_mode=None):
             sent.append((chat, text))
 
-    monkeypatch.setattr(config, "sales_client", lambda: None)
+    monkeypatch.setattr(config, "our_sales_client", lambda: None)   # v1.49: staff = our bot
     monkeypatch.setattr(config, "backup_client", lambda: Client())
     monkeypatch.setattr(config, "get_bot_config", lambda t: type("C", (), {"backup_chat_id": -100})())
     assert alert_staff("hi", perm="payment.approve", dedupe_key="k1") == 1

@@ -1445,3 +1445,37 @@ sequenceDiagram
     end
     W->>T: summary (silent when everything matched)
 ```
+
+## 16g. A store's own Telegram bot + Mini App (multi-tenant Phase 6, v1.49)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor O as Our staff («فروشگاه»)
+    participant API as Django (our host)
+    participant TG as Telegram
+    participant W as Celery worker
+    actor C as Store customer
+    O->>API: POST store/bot/ {token}
+    API->>TG: getMe (never our bots · one store per bot)
+    API->>TG: setWebhook(our host /api/v1/telegram/hook/ID/, secret_token)
+    API->>TG: menu button → https://store-domain/ · description from branding
+    C->>TG: /start in the store bot
+    TG->>API: POST /api/v1/telegram/hook/ID/ + secret header
+    alt wrong secret
+        API-->>TG: 403
+    else store suspended · update_id seen before
+        API-->>TG: 200 (dropped)
+    else ok
+        API->>W: store_bot_update_task(ID, update) in the store context
+        API-->>TG: 200
+        W->>W: sales bot handlers · the store's customers, plans, texts · staff flows off
+        W->>TG: sendMessage with the store's token
+    end
+    C->>API: opens the Mini App on https://store-domain/ (initData)
+    API->>API: validate with the STORE's token (ours refused there)
+    API-->>C: JWT for the store's customer
+    loop every 10 min
+        W->>TG: getWebhookInfo · wrong webhook set again · one alert to us when broken
+    end
+```

@@ -546,3 +546,11 @@ Everything shipped since v1.6.0 (details in the session log):
   and the Apps page QR block; `mobile_sms/` is back to its v1.47 source (= the bundled APK). Android download = uploaded APK >
   bundled, as before. Kept from v1.48: `device_url.server_base` (Apps page «آدرس سرور» + iPhone Shortcut endpoint on store
   domains), `manage.py watch_payments`. Setup stays manual: server address + device token.
+- 2026-11-09 — **v1.49.0: multi-tenant Phase 6 — a store's own Telegram bot (webhook) + Mini App per store.** `TenantBot`
+  (tenancy 0007, platform table): our staff connect / replace / remove it on «فروشگاه» (`tenancy/bots.py`: format, never our
+  bots, getMe, one store per bot, setWebhook on OUR host with a secret, menu button → the store's site, description from its
+  branding, re-applied on branding save). `telegram/webhook.py` (`/api/v1/telegram/hook/<id>/`, secret, dedupe, suspended →
+  dropped, blocked on store domains) → Celery `store_bot_update_task` → the sales bot's handlers on a per-store TeleBot
+  (`telegram/bot/store_bots.py`); per-store step state; staff flows off in store bots. `sales_client()` follows the store,
+  `our_sales_client()` for staff / platform. Mini App initData = the store's token on its domain. Health every 10 min
+  (`store_bots_check_task`, one alert to us). Store dashboard: bot read-only. Tests: `tenancy/tests/test_phase6.py` (10).

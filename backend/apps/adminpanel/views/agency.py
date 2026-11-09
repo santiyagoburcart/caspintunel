@@ -673,6 +673,62 @@ class AgencyStoreDomainsView(AdminAPIView):
                          "message_fa": f"دامنهٔ {d.host} اضافه شد — رکوردهای نمایش داده‌شده را به نماینده بدهید"}, status=201)
 
 
+class AgencyStoreBotView(AdminAPIView):
+    """v1.49 (Phase 6, D5) the store's own Telegram bot — our staff only: POST {token} sets / replaces it (getMe, webhook,
+    menu button → the store's Mini App), DELETE removes it (webhook deleted). The token is never sent back."""
+
+    perms_map = {"POST": MANAGE, "DELETE": MANAGE}
+
+    def post(self, request, username):
+        from apps.tenancy import bots, stores
+
+        t, err = _store_or_404(username)
+        if err:
+            return err
+        try:
+            b = bots.set_token(t, str((request.data or {}).get("token") or ""), staff=request.user)
+        except bots.BotError as exc:
+            return Response({"detail": exc.en, "detail_fa": exc.fa, "field": "token", "code": exc.key}, status=exc.status)
+        t.refresh_from_db()
+        ok = b.state == b.OK
+        return Response({"store": stores.row(t),
+                         "message": f"@{b.username} connected" if ok else f"@{b.username} saved, but: {b.last_error}",
+                         "message_fa": f"ربات @{b.username} وصل شد" if ok else f"ربات @{b.username} ذخیره شد ولی: {b.last_error}"},
+                        status=200 if ok else 202)
+
+    def delete(self, request, username):
+        from apps.tenancy import bots, stores
+
+        t, err = _store_or_404(username)
+        if err:
+            return err
+        bots.remove(t, staff=request.user)
+        t.refresh_from_db()
+        return Response({"store": stores.row(t), "message": "Store bot removed", "message_fa": "ربات فروشگاه حذف شد"})
+
+
+class AgencyStoreBotCheckView(AdminAPIView):
+    """v1.49 POST — «بررسی ربات»: getWebhookInfo now; a wrong webhook / menu button is set again."""
+
+    perms_map = {"POST": MANAGE}
+
+    def post(self, request, username):
+        from apps.tenancy import bots, stores
+        from apps.tenancy.models import TenantBot
+
+        t, err = _store_or_404(username)
+        if err:
+            return err
+        b = TenantBot.objects.filter(tenant=t).first()
+        if b is None:
+            return Response({"detail": "this store has no bot", "detail_fa": "این فروشگاه ربات ندارد"}, status=404)
+        b = bots.apply(b) if str((request.data or {}).get("apply", "")).lower() in ("1", "true") else bots.check(b)
+        t.refresh_from_db()
+        return Response({"store": stores.row(t),
+                         "message": "Bot OK" if b.state == b.OK else f"Bot error: {b.last_error}",
+                         "message_fa": "ربات سالم است" if b.state == b.OK else f"خطای ربات: {b.last_error}"})
+
+
 class AgencyStoreDomainView(AdminAPIView):
     """v1.45 PATCH {mode?, www?} · DELETE (remove: nginx file + certificate go, the store stops answering on it)."""
 

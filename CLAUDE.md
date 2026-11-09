@@ -171,6 +171,10 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   payments socket follow the current store — pass `platform=True` only for alerts meant for US (quota, domains); never let a
   store's payment data reach our staff, backup chat or our live group. Blu stays ours (blocked on stores, no Blu data in a
   store's queue).
+  **Store bots (v1.49, `tenancy/bots.py`)**: only our staff set a store's bot token (never our own bots, one store per bot,
+  never returned / logged / audited). Telegram calls OUR host `/api/v1/telegram/hook/<id>/` (secret header); updates run the
+  sales bot's handlers in Celery inside the store. `sales_client()` = the CURRENT store's bot (None without one) — use it for
+  customer messages; `our_sales_client()` for anything meant for our staff / our bot. Staff flows never run in a store bot.
 - The rejected Liquid Glass refresh is archived at tag `archive/ui-refresh-liquid-glass` — don't copy from it.
 
 ## Gotchas (learned the hard way)

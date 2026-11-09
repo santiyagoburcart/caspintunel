@@ -52,6 +52,13 @@ def _store_quota() -> dict | None:
     return out
 
 
+def _store_bot() -> dict | None:
+    from apps.tenancy import bots, context
+    from apps.tenancy.models import Tenant
+
+    return bots.row(Tenant.objects.filter(pk=context.current_tenant_id()).first(), staff_view=False)
+
+
 def _store_domains() -> list:
     from apps.tenancy import context, domains
 
@@ -320,7 +327,9 @@ class DashboardView(AdminAPIView):
                              # v1.45: the store's own domains, read-only (state, certificate, health — no records / errors)
                              "domains": _store_domains(),
                              # v1.46: the reseller's quota left for this store (banner at 20 % / 10 %)
-                             "quota": _store_quota()})
+                             "quota": _store_quota(),
+                             # v1.49: the store's own bot, read-only (username + state; the token never leaves the server)
+                             "bot": _store_bot()})
         return Response({
             "services": {
                 "total": sum(by_status.values()),

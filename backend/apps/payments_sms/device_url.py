@@ -7,33 +7,8 @@ store's domain").
 from __future__ import annotations
 
 
-def _host_only(host: str) -> str:
-    return (host or "").split(":", 1)[0].strip().lower().rstrip(".")
-
-
 def server_base(request=None) -> str:
-    """`https://<domain>` of the current store (the request's host when it is one of the store's live domains)."""
-    from django.conf import settings
+    """`https://<domain>` of the current store — `branding.public_base` (one implementation)."""
+    from apps.settings_app.branding import public_base
 
-    from apps.settings_app.branding import current_tenant_id, is_store
-
-    if is_store():
-        from apps.tenancy.models import TenantDomain
-
-        hosts = list(TenantDomain.objects.filter(tenant_id=current_tenant_id(), state=TenantDomain.ACTIVE)
-                     .order_by("id").values_list("host", "role"))
-        if request is not None:
-            asked = _host_only(request.get_host())
-            if any(h == asked for h, _ in hosts):
-                return f"https://{asked}"
-        site = [h for h, role in hosts if role != TenantDomain.ADMIN] or [h for h, _ in hosts]
-        if site:
-            return f"https://{site[0]}"
-        if request is not None:          # a store without a live domain yet: the host it is using now
-            return f"https://{_host_only(request.get_host())}"
-
-    from apps.settings_app.models import SiteConfig
-
-    domain = (SiteConfig.load().site_domain or "").strip().strip("/")
-    return f"https://{domain}" if domain else settings.PUBLIC_BASE_URL.rstrip("/")
-
+    return public_base(request)

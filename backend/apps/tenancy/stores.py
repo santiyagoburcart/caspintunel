@@ -33,7 +33,7 @@ def row(t: Tenant | None, *, staff_view: bool = True) -> dict | None:
         return None
     from apps.settings_app.models import TenantBranding
 
-    from . import domains
+    from . import bots, domains
 
     with context.tenant_context(t.pk):
         b = TenantBranding.objects.first()
@@ -41,6 +41,7 @@ def row(t: Tenant | None, *, staff_view: bool = True) -> dict | None:
         "id": t.id, "slug": t.slug, "name": t.name, "status": t.status, "reseller": t.reseller_username,
         "export_allowed": t.export_allowed, "limits": t.limits, "created_at": t.created_at,
         "domains": domains.rows_for(t.pk, staff=staff_view),      # v1.45 (Phase 3): records, checks, certificate, health
+        "bot": bots.row(t, staff_view=staff_view),                 # v1.49 (Phase 6): username + webhook state, never the token
         "branding": {"site_name_fa": b.site_name_fa, "site_name_en": b.site_name_en} if b else None,
         "reachable": t.status == Tenant.ACTIVE and TenantDomain.objects.filter(tenant=t, state=TenantDomain.ACTIVE).exists(),
     }

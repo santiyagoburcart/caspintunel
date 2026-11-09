@@ -35,6 +35,7 @@ from apps.panel.exceptions import PanelError
 from apps.panel.services import revoke_subscription
 from apps.plans.models import Plan, PlanType
 from apps.settings_app.branding import branding
+from apps.settings_app.branding import is_store as branding_is_store
 
 from ..accounts import change_password_via_bot, ensure_bot_user, handle_contact
 from ..config import get_bot_config
@@ -131,7 +132,11 @@ def _t(user, fa: str, en: str) -> str:
 
 
 def _state_key(tg_id) -> str:
-    return f"tgbot:state:{tg_id}"
+    """Per store (v1.49): one Telegram user may be mid-purchase in our bot and in a store's bot at once."""
+    from apps.tenancy.context import store_id
+
+    tid = store_id()
+    return f"tgbot:state:{tg_id}" if tid is None else f"tgbot:state:t{tid}:{tg_id}"
 
 
 def get_state(tg_id) -> dict:
@@ -334,7 +339,7 @@ def _register(bot: telebot.TeleBot):
     def start(msg):
         close_old_connections()
         payload = (msg.text or "").split(maxsplit=1)[1] if len((msg.text or "").split()) > 1 else ""
-        if payload.startswith(STAFF_LINK_PREFIX):
+        if payload.startswith(STAFF_LINK_PREFIX) and not branding_is_store():   # never in a store's bot (v1.49)
             # staff linking their Telegram for ticket DMs — never creates a customer account
             bot.send_message(msg.chat.id, staff_link_reply(payload[len(STAFF_LINK_PREFIX):], msg.from_user.id))
             return
@@ -447,6 +452,8 @@ def _register(bot: telebot.TeleBot):
             bot.answer_callback_query(c.id)      # stop the client spinner right away
         except Exception:  # noqa: BLE001
             pass
+        if (c.data or "").startswith(("ag:", "st:")) and branding_is_store():
+            return                                  # staff flows never run in a store's bot (v1.49; store staff: Phase 8)
         if (c.data or "").startswith("ag:"):
             # v1.33 agency approvals from Telegram — staff only, permission-checked (agency/notify.py)
             from apps.agency import notify as agency_notify
@@ -794,5 +801,5 @@ def _typed(bot, msg, user, awaiting: str) -> None:
 
 
 def bot_settings_summary() -> dict:   # used by tests / ops to see what the bot links to
-    return {"miniapp_url": sc.miniapp_url(), "site": sc.site_url(), "bot": sc.BOT_USERNAME["value"],
+    return {"miniapp_url": sc.miniapp_url(), "site": sc.site_url(), "bot": sc.bot_username(),
             "public_base": getattr(settings, "PUBLIC_BASE_URL", "")}

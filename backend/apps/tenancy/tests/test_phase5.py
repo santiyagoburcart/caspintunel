@@ -207,6 +207,7 @@ def test_store_alerts_never_reach_our_staff_or_backup_chat(store, monkeypatch):
     from apps.telegram import config
 
     monkeypatch.setattr(config, "sales_client", lambda: Bot())
+    monkeypatch.setattr(config, "our_sales_client", lambda: Bot())   # v1.49: staff DMs use our bot
     monkeypatch.setattr(config, "backup_client", lambda: Bot())
     monkeypatch.setattr(config, "get_bot_config", lambda t: type("C", (), {"backup_chat_id": -100})())
     s = Staff(username="ourstaff", is_superadmin=True, telegram_id=777)

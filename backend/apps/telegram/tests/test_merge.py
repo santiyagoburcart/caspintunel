@@ -229,6 +229,7 @@ def test_conflict_alert_goes_to_linked_staff_with_users_manage(monkeypatch):
             sent.append((chat_id, text))
 
     monkeypatch.setattr(config, "sales_client", lambda: Client())
+    monkeypatch.setattr(config, "our_sales_client", lambda: Client())   # v1.49: staff DMs use our bot
     assert accounts.notify_staff_conflict(7006, "x", "09107323128", owner.pk) == 1
     assert sent[0][0] == boss.telegram_id and "09107323128" in sent[0][1]
     assert accounts.notify_staff_conflict(7006, "x", "09107323128", owner.pk) == 0   # once an hour

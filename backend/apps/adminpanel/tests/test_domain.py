@@ -45,7 +45,7 @@ def env(settings, tmp_path, monkeypatch):
         def set_chat_menu_button(self, **kw):
             calls.append(kw)
 
-    monkeypatch.setattr("apps.telegram.config.sales_client", lambda: Bot())
+    monkeypatch.setattr("apps.telegram.config.our_sales_client", lambda: Bot())
     return {"dir": tmp_path, "menu": calls}
 
 

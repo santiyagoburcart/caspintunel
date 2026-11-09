@@ -31,9 +31,9 @@ def new_code(staff) -> str:
 
 def deep_link(code: str) -> str | None:
     try:
-        from apps.telegram.config import sales_client
+        from apps.telegram.config import our_sales_client
 
-        client = sales_client()
+        client = our_sales_client()
         name = client.get_me().get("username") if client else None
     except Exception:  # noqa: BLE001 — the code also works typed after /start
         name = None

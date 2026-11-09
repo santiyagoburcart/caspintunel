@@ -11,7 +11,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.telegram.client import TelegramError
-from apps.telegram.config import sales_client
+from apps.telegram.config import our_sales_client
 
 
 class Command(BaseCommand):
@@ -25,7 +25,7 @@ class Command(BaseCommand):
         url = opts["url"]
         if not url.startswith("https://"):
             raise CommandError(f"MINIAPP_URL must be https:// (got {url!r})")
-        client = sales_client()
+        client = our_sales_client()
         if client is None:
             raise CommandError("sales bot has no active token — set it in the admin panel first")
         try:

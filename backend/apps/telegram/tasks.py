@@ -36,3 +36,23 @@ def sync_required_channels_task():
         except Exception as exc:  # noqa: BLE001
             log.warning("channel %s member count failed: %s", channel.channel_id, exc)
     return {"updated": updated}
+
+
+@shared_task(ignore_result=True)
+def store_bot_update_task(tenant_id: int, update: dict):
+    """v1.49 (Phase 6): one Telegram update for a store's bot (apps/telegram/webhook.py) — the sales bot's handlers,
+    inside that store's tenant context."""
+    from apps.tenancy.context import tenant_context
+
+    from .bot import store_bots
+
+    with tenant_context(tenant_id):
+        return store_bots.process(tenant_id, update)
+
+
+@shared_task(ignore_result=True)
+def store_bots_check_task():
+    """v1.49 (Phase 6): every store bot's webhook state (tenancy/bots.py::check_all) — puts a wrong webhook back, alerts us."""
+    from apps.tenancy.bots import check_all
+
+    return check_all()

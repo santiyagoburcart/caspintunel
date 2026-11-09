@@ -73,13 +73,34 @@ def _clip(text: str) -> str:
 
 
 def miniapp_url() -> str:
+    """The Mini App the bot opens: our MINIAPP_URL, or (v1.49) a store bot's own site — its initData is signed with the
+    store's token, which only the store's domain accepts."""
+    from apps.settings_app.branding import is_store, public_base
+
+    if is_store():
+        base = public_base()
+        return base + "/" if base.startswith("https://") else ""
     url = getattr(settings, "MINIAPP_URL", "") or getattr(settings, "PUBLIC_BASE_URL", "")
     return url if url.startswith("https://") else ""
 
 
+def bot_username() -> str:
+    """@username of the bot serving the current store (ours: filled at start by sales_bot; a store: its TenantBot)."""
+    from apps.tenancy.context import store_id
+
+    tid = store_id()
+    if tid is None:
+        return BOT_USERNAME["value"]
+    from .store_bots import username
+
+    return username(tid)
+
+
 def site_url() -> str:
-    domain = (branding().site_domain or "").strip().strip("/")
-    return f"https://{domain}" if domain else getattr(settings, "PUBLIC_BASE_URL", "").rstrip("/")
+    """The current store's site (v1.49: a store without a live domain has none — never our address for its customers)."""
+    from apps.settings_app.branding import public_base
+
+    return public_base()
 
 
 # --- shared data ---------------------------------------------------------
@@ -168,7 +189,9 @@ def main_menu(user) -> Screen:
     rows.append([_b(tr(user, "btn_tickets"), "tk:home")])
     from apps.accounts.models import Staff
 
-    if user.telegram_id and Staff.objects.filter(telegram_id=user.telegram_id, is_active=True).exists():
+    from apps.settings_app.branding import is_store
+
+    if user.telegram_id and not is_store() and Staff.objects.filter(telegram_id=user.telegram_id, is_active=True).exists():
         rows.append([_b(tr(user, "btn_staff_tickets"), "st:l:o:0")])
     last = [_b(tr(user, "btn_support"), "m:help")]
     app = miniapp_url()
@@ -506,8 +529,8 @@ def history(user, page: int = 0) -> Screen:
 # --- account --------------------------------------------------------------------
 def invite_links(user) -> list[str]:
     links = []
-    if BOT_USERNAME["value"]:
-        links.append(f"https://t.me/{BOT_USERNAME['value']}?start=ref_{user.referral_code}")
+    if bot_username():
+        links.append(f"https://t.me/{bot_username()}?start=ref_{user.referral_code}")
     links.append(f"{site_url()}/register?ref={user.referral_code}")
     return links
 

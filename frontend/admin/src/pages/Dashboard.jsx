@@ -116,6 +116,7 @@ export default function Dashboard() {
         </div>
 
         {store && <StoreDomainsCard domains={d.domains || []} lang={lang} />}
+        {store && <StoreBotCard bot={d.bot} lang={lang} />}
 
         {!store && <div className="card flex flex-col">
           <div className="mb-3 flex items-center justify-between gap-2">
@@ -258,6 +259,29 @@ function StoreDomainsCard({ domains, lang }) {
       <style>{`.dash-dom { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
 .dash-dom-h { font-weight: 800; overflow-wrap: anywhere; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 13px; }
 .dash-chip.is-ok { color: var(--c-success-fg); }`}</style>
+    </div>
+  )
+}
+
+// v1.49 store mode: the store's own Telegram bot, read-only (our staff connect it on «فروشگاه»)
+const SB = {
+  fa: { title: 'ربات تلگرام فروشگاه', none: 'هنوز رباتی وصل نشده — برای اتصال، توکن ربات خود (از ‎@BotFather‎) را به پشتیبانی بدهید.',
+    ok: 'وصل و سالم', error: 'خطا — پشتیبانی در جریان است', last: 'آخرین پیام' },
+  en: { title: 'Store Telegram bot', none: 'No bot connected yet — give support your bot token (from @BotFather) to connect it.',
+    ok: 'Connected', error: 'Error — support has been told', last: 'last update' },
+}
+function StoreBotCard({ bot, lang }) {
+  const s = SB[lang] || SB.fa
+  return (
+    <div className="card flex flex-col gap-2" data-testid="store-bot-ro">
+      <span className="font-bold text-sm">{s.title}</span>
+      {!bot ? <p className="text-sm text-muted">{s.none}</p> : (
+        <div className="dash-dom">
+          <a className="dash-dom-h" href={`https://t.me/${bot.username}`} target="_blank" rel="noreferrer"><bdi dir="ltr">@{bot.username}</bdi></a>
+          <span className={'dash-chip ' + (bot.state === 'ok' ? 'is-ok' : '')}>{bot.state === 'ok' ? s.ok : s.error}</span>
+          {bot.last_update_at && <span className="text-xs text-muted">{s.last} {jalali(bot.last_update_at, true, lang)}</span>}
+        </div>
+      )}
     </div>
   )
 }

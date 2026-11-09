@@ -23,3 +23,13 @@ def store_quota_warnings_task():
     from .quota import warn_all
 
     return warn_all()
+
+
+@shared_task(ignore_result=True)
+def store_bot_apply_task(tenant_id: int):
+    """v1.49 (Phase 6): webhook + menu button + description of a store's bot again (branding saved)."""
+    from .bots import apply
+    from .models import TenantBot
+
+    b = TenantBot.objects.filter(tenant_id=tenant_id).first()
+    return apply(b).state if b is not None else None

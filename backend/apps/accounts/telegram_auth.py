@@ -3,7 +3,7 @@ Telegram Mini App `initData` validation.
 
 A Mini App is our own React user SPA loaded inside Telegram. On launch Telegram
 hands the page a signed `initData` string. This module verifies that signature
-**server-side** with the sales-bot token — the client-supplied Telegram user id
+**server-side** with the bot token of the store the request is for (`sales_bot_token`) — the client-supplied Telegram user id
 is never trusted until this passes.
 
 Algorithm (https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app):
@@ -37,8 +37,16 @@ class InitDataError(Exception):
 
 
 def sales_bot_token() -> str | None:
-    """The token of the active/inactive sales bot (decrypted by the field).
-    Returns None when no sales bot has been configured yet."""
+    """The token the CURRENT store's Mini App is signed with (decrypted by the field): our sales bot on our domains, the
+    store's own bot on a store's domain (v1.49, Phase 6 — never ours there). None when it has none yet."""
+    from apps.tenancy.context import store_id
+
+    tid = store_id()
+    if tid is not None:
+        from apps.tenancy.models import TenantBot
+
+        token = TenantBot.objects.filter(tenant_id=tid).values_list("token", flat=True).first()
+        return (token or "").strip() or None
     from apps.telegram.models import BotType, TelegramConfig
 
     cfg = TelegramConfig.objects.filter(bot_type=BotType.SALES).first()

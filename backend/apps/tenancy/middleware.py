@@ -62,7 +62,8 @@ def resolve(host: str) -> int | None:
 # (per store since v1.47 — no longer blocked), staff-only customer-API approve / reject, the API schema.
 # v1.47 (Phase 5): the SMS devices answer on a store's domain (device token → that store's devices, orders, cards)
 STORE_BLOCKED_PREFIXES = ("/admin/", "/api/v1/agency/", "/api/v1/payments/blu/",
-                          "/api/schema", "/api/docs", "/api/redoc")
+                          "/api/schema", "/api/docs", "/api/redoc",
+                          "/api/v1/telegram/hook/")      # v1.49: store bots call OUR host only
 _STAFF_PAYMENT_ACTIONS = ("/approve/", "/reject/")
 
 

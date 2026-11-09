@@ -206,6 +206,7 @@ def test_reply_alert_has_reply_button(topics, monkeypatch, django_capture_on_com
             out.append((chat_id, text, reply_markup))
 
     monkeypatch.setattr("apps.telegram.config.sales_client", lambda: Fake())
+    monkeypatch.setattr("apps.telegram.config.our_sales_client", lambda: Fake())   # v1.49: staff DMs use our bot
     u = bot_customer()
     t = services.open_ticket(u, topic_id=topics["Other"].id, subject="x", body="y")
     with django_capture_on_commit_callbacks(execute=True):
@@ -276,6 +277,7 @@ def test_staff_alert_buttons(topics, monkeypatch, django_capture_on_commit_callb
             out.append((chat_id, reply_markup))
 
     monkeypatch.setattr("apps.telegram.config.sales_client", lambda: Fake())
+    monkeypatch.setattr("apps.telegram.config.our_sales_client", lambda: Fake())   # v1.49: staff DMs use our bot
     linked_staff()
     with django_capture_on_commit_callbacks(execute=True):
         t = services.open_ticket(customer(active=True), topic_id=topics["Other"].id, subject="x", body="y")

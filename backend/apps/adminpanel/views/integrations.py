@@ -254,7 +254,7 @@ class BotStatsView(AdminAPIView):
 
         from apps.ops.models import BackupLog, BackupStatus
         from apps.telegram.client import TelegramError
-        from apps.telegram.config import get_bot_config, sales_client
+        from apps.telegram.config import get_bot_config, our_sales_client
 
         User = get_user_model()
 
@@ -278,7 +278,7 @@ class BotStatsView(AdminAPIView):
         sales_cfg = get_bot_config("sales")
         proxy = {"configured": bool(sales_cfg and sales_cfg.proxy_url)}
         sales_username = None
-        client = sales_client()
+        client = our_sales_client()
         if client is not None:
             t0 = time.monotonic()
             try:
@@ -367,10 +367,10 @@ class RequiredChannelViewSet(AdminViewSet):
         from django.utils import timezone
 
         from apps.telegram.client import TelegramError
-        from apps.telegram.config import sales_client
+        from apps.telegram.config import our_sales_client
 
         channel = self.get_object()
-        client = sales_client()
+        client = our_sales_client()
         if client is None:
             return Response({"ok": False, "bot_is_admin": False,
                              "detail": "ربات فروش پیکربندی نشده است."})

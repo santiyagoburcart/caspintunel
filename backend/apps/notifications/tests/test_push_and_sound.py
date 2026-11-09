@@ -112,7 +112,7 @@ def test_telegram_messages_ring_unless_low_priority(monkeypatch):
     seen = []
     monkeypatch.setattr(tclient.TelegramClient, "_call", lambda self, m, **p: seen.append((m, p)) or {})
     Staff.objects.create(username="t1", is_superadmin=True, telegram_id=55)
-    monkeypatch.setattr("apps.telegram.config.sales_client", lambda: tclient.TelegramClient("1:x"))
+    monkeypatch.setattr("apps.telegram.config.our_sales_client", lambda: tclient.TelegramClient("1:x"))   # v1.49: staff = our bot
     staff_alert.alert_staff("hi", perm="payment.view")
     staff_alert.alert_staff("ok again", perm="payment.view", silent=True,
                             buttons=[[{"text": "b", "callback_data": "x"}]])

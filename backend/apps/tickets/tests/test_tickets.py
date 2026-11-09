@@ -111,6 +111,7 @@ def bot(monkeypatch):
             return {"username": "caspin_bot"}
 
     monkeypatch.setattr("apps.telegram.config.sales_client", lambda: Fake())
+    monkeypatch.setattr("apps.telegram.config.our_sales_client", lambda: Fake())   # v1.49: staff DMs use our bot
     return BotLog(msgs, markups)
 
 

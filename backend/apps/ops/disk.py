@@ -122,9 +122,9 @@ def send(text: str) -> int:
     except Exception as exc:  # noqa: BLE001
         log.warning("disk alert to backup chat failed: %s", exc)
     try:
-        from apps.telegram.config import sales_client
+        from apps.telegram.config import our_sales_client
 
-        client = sales_client()
+        client = our_sales_client()
         if client is not None:
             for tg in recipients():
                 try:

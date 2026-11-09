@@ -13,8 +13,11 @@
 > per-browser limits. **Phase 4 (catalog + PasarGuard) built in v1.46.0** (Celery tasks carry the store, set_owner
 > provisioning, quota guard + 20 / 10 % warnings, store plans bounded by the reseller's admin — architecture.md + flows.md 16d).
 > **Phase 5 (payments + SMS) built in v1.47.0** (pools per store, SMS on the store's domain, store payments panel, alerts /
-> push / live socket per store — flows.md 16e). The Android APK is unchanged (server URL = store domain); a QR / store-name
-> screen needs a new APK build. Next: Phase 6 (bots + Mini App). Written against v1.38.4, decisions recorded in v1.38.6.
+> push / live socket per store — flows.md 16e). The Android APK is unchanged (server URL = store domain + device token, typed
+> by hand — the owner dropped the QR setup in v1.48.1). **Phase 6 (store bots + Mini App) built in v1.49.0** (webhook on our
+> host, token set by our staff, Mini App signed with the store's token — architecture.md tenancy row, flows.md 16g; the hook is
+> `/api/v1/telegram/hook/<id>/` instead of §6.4's `/tg/hook/` so nginx needs no change). Next: Phase 7. Written against
+> v1.38.4, decisions recorded in v1.38.6.
 > When a phase is approved and built, the matching parts move into `architecture.md` / `erd.md` / `flows.md` and this page
 > keeps only what is still planned.
 

@@ -33,9 +33,9 @@ def alert_staff(text: str, *, perm: str, dedupe_key: str | None = None, ttl: int
     markup = {"inline_keyboard": buttons} if buttons else None
     quiet = {"disable_notification": True} if silent else {}     # the client rings by default
     try:
-        from apps.telegram.config import sales_client
+        from apps.telegram.config import our_sales_client
 
-        client = sales_client()
+        client = our_sales_client()
         if client is not None:
             for staff in Staff.objects.filter(is_active=True, telegram_id__isnull=False, tenant__isnull=True):
                 if staff.has_perm(perm):
@@ -66,15 +66,29 @@ def alert_staff(text: str, *, perm: str, dedupe_key: str | None = None, ttl: int
 
 
 def _alert_store_staff(store: int, text: str, *, perm: str, buttons=None, silent=False, push=None) -> int:
-    """A store's alert: its own staff's browsers (Web Push) only, until the store bot (Phase 6) can DM them."""
-    if not push:
-        return 0
+    """A store's alert: its own staff only (Staff.tenant) — a DM through the STORE's bot (v1.49) to those with a linked
+    Telegram id, and their browsers (Web Push). Never our bot, our staff or our backup chat."""
+    sent = 0
     try:
         from apps.accounts.models import Staff
-        from apps.notifications.webpush import push_to_staff
+        from apps.telegram.config import sales_client       # in a store context = the store's own bot (or None)
 
-        ids = [s.pk for s in Staff.objects.filter(is_active=True, tenant_id=store) if s.has_perm(perm)]
-        return push_to_staff(perm, staff_ids=ids, **push) if ids else 0
+        staff = [s for s in Staff.objects.filter(is_active=True, tenant_id=store) if s.has_perm(perm)]
+        client = sales_client() if any(s.telegram_id for s in staff) else None
+        if client is not None:
+            quiet = {"disable_notification": True} if silent else {}
+            extra = {"reply_markup": {"inline_keyboard": buttons}} if buttons else {}
+            for s in staff:
+                if s.telegram_id:
+                    try:
+                        client.send_message(s.telegram_id, text, parse_mode=None, **extra, **quiet)
+                        sent += 1
+                    except Exception as exc:  # noqa: BLE001
+                        log.warning("store alert DM to staff %s failed: %s", s.pk, exc)
+        if push and staff:
+            from apps.notifications.webpush import push_to_staff
+
+            push_to_staff(perm, staff_ids=[s.pk for s in staff], **push)
     except Exception as exc:  # noqa: BLE001
-        log.warning("store staff push failed: %s", exc)
-        return 0
+        log.warning("store staff alert failed: %s", exc)
+    return sent

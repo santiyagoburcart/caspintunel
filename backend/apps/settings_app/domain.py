@@ -534,11 +534,11 @@ def set_checklist(change, key, done, by) -> DomainChange:
 def _menu_button(domain: str, old: str) -> tuple[str, str]:
     """Point the sales bot's Mini App menu button at the domain. → (state, message)"""
     from apps.telegram.client import TelegramError
-    from apps.telegram.config import sales_client
+    from apps.telegram.config import our_sales_client
 
     url = getattr(settings, "MINIAPP_URL", "") or ""
     url = url.replace(old, domain) if old and old in url else (url if domain in url else f"https://{domain}/")
-    client = sales_client()
+    client = our_sales_client()
     if client is None:
         return "skipped", "sales bot has no token — nothing to update"
     try:

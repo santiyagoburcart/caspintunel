@@ -5,6 +5,7 @@ import secrets
 
 from django.db import models
 
+from apps.common.fields import EncryptedTextField
 from apps.common.models import TimeStampedModel
 
 
@@ -76,6 +77,38 @@ class TenantDomain(TimeStampedModel):
 
     def __str__(self) -> str:
         return self.host
+
+
+
+def _webhook_secret() -> str:
+    return secrets.token_urlsafe(32)        # Telegram allows A-Z a-z 0-9 _ - (1–256 chars)
+
+
+class TenantBot(TimeStampedModel):
+    """v1.49 (Phase 6, tenancy/bots.py): a store's own Telegram bot — webhook mode, set ONLY by our staff (D5).
+    Telegram posts its updates to /api/v1/telegram/hook/<tenant id>/ on OUR host with `webhook_secret` in the
+    X-Telegram-Bot-Api-Secret-Token header. The reseller sees the username and state, never the token."""
+
+    OK, ERROR = "ok", "error"
+    STATES = [(OK, "Webhook OK"), (ERROR, "Error")]
+
+    tenant = models.OneToOneField(Tenant, on_delete=models.CASCADE, related_name="bot")
+    token = EncryptedTextField(help_text="stored encrypted at rest; never returned by the API")
+    webhook_secret = EncryptedTextField(default=_webhook_secret)
+    bot_id = models.BigIntegerField(unique=True, help_text="Telegram id of the bot (getMe) — one store per bot")
+    username = models.CharField(max_length=64)
+    state = models.CharField(max_length=8, choices=STATES, default=OK)
+    last_error = models.CharField(max_length=500, blank=True, default="")
+    webhook_set_at = models.DateTimeField(null=True, blank=True)
+    last_check_at = models.DateTimeField(null=True, blank=True)
+    last_update_at = models.DateTimeField(null=True, blank=True, help_text="last update Telegram delivered")
+    alerted_at = models.DateTimeField(null=True, blank=True, help_text="the one 'bot broken' alert to us")
+
+    class Meta:
+        db_table = "tenant_bot"
+
+    def __str__(self) -> str:
+        return f"@{self.username}"
 
 
 from .fields import tenant_fk  # noqa: E402,F401 — re-export

@@ -22,6 +22,7 @@ tables. The classification is `apps/tenancy/registry.py`; design in [multi-tenan
 ```mermaid
 erDiagram
     tenant ||--o{ tenant_domain : has
+    tenant ||--o| tenant_bot : "v1.49 own Telegram bot"
     tenant ||--o| tenant_branding : "v1.43 branding"
     tenant ||--o{ tenant_setting : "v1.43 TENANT_KEYS"
     theme |o--o{ tenant_branding : "store theme"
@@ -58,6 +59,20 @@ erDiagram
         int cert_failures "3 → failed"
         int retry_token "«تلاش دوباره» → the host watcher retries now"
     }
+    tenant_bot {
+        bigint id PK
+        bigint tenant_id FK "one per store"
+        text token "encrypted, never returned"
+        text webhook_secret "encrypted, X-Telegram-Bot-Api-Secret-Token"
+        bigint bot_id UK "getMe id — one store per bot"
+        string username
+        string state "ok | error"
+        string last_error
+        datetime webhook_set_at
+        datetime last_check_at
+        datetime last_update_at
+        datetime alerted_at "the one alert to us"
+    }
     tenant_branding {
         bigint id PK
         bigint tenant_id FK "UK, one per store"
@@ -82,6 +97,7 @@ erDiagram
 |---|---|
 | `tenant` | one store (v1.40). The default tenant is our own store; reseller stores come in later phases. |
 | `tenant_domain` | a host routed to a tenant; only `active` hosts of an `active` store are served (v1.41 / v1.43). v1.45: our staff add it on «فروشگاه» (mode direct / tunnel; `cloudflare` unused — a proxied record is detected into `proxied`), DNS + TXT checks, HTTP-01 certificate + nginx file by the host watcher, health (`tenancy/domains.py`). |
+| `tenant_bot` | v1.49 (Phase 6): a store's own Telegram bot — set / replaced / removed only by our staff on «فروشگاه» (`tenancy/bots.py`); webhook to `/api/v1/telegram/hook/<tenant id>/` on our host with `webhook_secret`; menu button → the store's Mini App; checked every 10 min. Platform table (keyed by the store, never scoped). |
 | `tenant_branding` | v1.43 a reseller store's branding (same fields as `site_config`, which stays our own store's); `theme_id` = its theme. |
 | `tenant_setting` | v1.43 a store's own value for a key in `settings_app.branding.TENANT_KEYS` (wins in `get_setting` for that store). |
 

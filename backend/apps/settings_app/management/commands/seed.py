@@ -524,6 +524,16 @@ class Command(BaseCommand):
                 "enabled": True,
             },
         )
+        # v1.49 store bots (apps/tenancy/bots.py): webhook state, a wrong webhook set again, alert us once
+        PeriodicTask.objects.update_or_create(
+            name="stores: bot webhooks",
+            defaults={
+                "task": "apps.telegram.tasks.store_bots_check_task",
+                "interval": every_10,
+                "kwargs": _json.dumps({}),
+                "enabled": True,
+            },
+        )
         # v1.45 store domains (apps/tenancy/domains.py): DNS → certificate (host watcher) → health, every minute
         PeriodicTask.objects.update_or_create(
             name="stores: domains, certificates and health",

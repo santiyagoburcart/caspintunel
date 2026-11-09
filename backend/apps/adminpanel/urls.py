@@ -15,7 +15,8 @@ from .views.agency import (AgencyLimitHistoryView, AgencyAdminActionView, Agency
                            AgencyLedgerVoidView, AgencySettingsView, AgencySyncLogsView, AgencySyncNowView, PathsView,
                            AgencyPortalLinkView, AgencySetLimitPreviewView, AgencyLedgerReportView,
                            AgencyPanelAdminCreateView, AgencyPanelAdminOptionsView, AgencyPanelAdminView, AgencyStoreView,
-                           AgencyStoreDomainCheckView, AgencyStoreDomainsView, AgencyStoreDomainView)
+                           AgencyStoreBotCheckView, AgencyStoreBotView, AgencyStoreDomainCheckView, AgencyStoreDomainsView,
+                           AgencyStoreDomainView)
 from .views.catalog import (
     BankCardViewSet,
     PageViewSet,
@@ -120,6 +121,9 @@ urlpatterns = [
     path("agency/panel-admins/", AgencyPanelAdminCreateView.as_view(), name="admin-agency-panel-admin-create"),
     path("agency/panel-admins/<str:username>/store/", AgencyStoreView.as_view(), name="admin-agency-store"),
     path("agency/panel-admins/<str:username>/store/domains/", AgencyStoreDomainsView.as_view(), name="admin-agency-store-domains"),
+    path("agency/panel-admins/<str:username>/store/bot/", AgencyStoreBotView.as_view(), name="admin-agency-store-bot"),
+    path("agency/panel-admins/<str:username>/store/bot/check/", AgencyStoreBotCheckView.as_view(),
+         name="admin-agency-store-bot-check"),
     path("agency/panel-admins/<str:username>/store/domains/<int:pk>/", AgencyStoreDomainView.as_view(), name="admin-agency-store-domain"),
     path("agency/panel-admins/<str:username>/store/domains/<int:pk>/check/", AgencyStoreDomainCheckView.as_view(),
          name="admin-agency-store-domain-check"),
