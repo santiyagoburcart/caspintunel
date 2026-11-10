@@ -9,6 +9,7 @@ import { Ic } from './AgencyIcons'
 import StoreDomains from './StoreDomains'
 import StoreBot from './StoreBot'
 import StoreStaff from './StoreStaff'
+import FailedOrders from './FailedOrders'
 
 // v1.43 (multi-tenant Phase 2, D5) «فروشگاه» on an agency admin's page — OUR staff open and manage a reseller's store.
 // v1.45: domains + TLS (StoreDomains); v1.49: the store's Telegram bot (StoreBot). Until a domain is active the store is not reachable.
@@ -110,6 +111,8 @@ export default function AgencyStoreCard({ username }) {
         <StoreDomains base={url} domains={store.domains || []} manage={manage} onChanged={load} />
         <StoreBot base={url} bot={store.bot} manage={manage} onChanged={load} />
         <StoreStaff base={url} store={store} manage={manage} onChanged={load} />
+        {/* v1.52.1: the store's «ساخت ناموفق» orders — our staff retry them too (same paid order, never a new charge) */}
+        <FailedOrders base={url + 'failed-orders/'} canRetry={manage} hideEmpty={false} onChanged={load} />
         <p className="text-xs text-muted">{s.manage_note}</p>
       </>}
     </div>

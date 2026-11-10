@@ -299,6 +299,18 @@ class ServiceListViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
         return Response(res)
 
 
+def _store_active_topics() -> int:
+    from apps.tickets.models import TicketTopic
+
+    return TicketTopic.objects.filter(is_active=True).count()
+
+
+def _store_failed_orders() -> int:
+    from apps.tenancy import failed_orders
+
+    return failed_orders.count()
+
+
 class DashboardView(AdminAPIView):
     perms_map = {"GET": ["monitoring.view"]}
     store_ok = True                      # v1.43: a store sees its own services; server health stays ours
@@ -329,7 +341,10 @@ class DashboardView(AdminAPIView):
                              # v1.46: the reseller's quota left for this store (banner at 20 % / 10 %)
                              "quota": _store_quota(),
                              # v1.49: the store's own bot, read-only (username + state; the token never leaves the server)
-                             "bot": _store_bot()})
+                             "bot": _store_bot(),
+                             # v1.52.1: warnings — no active ticket topic (customers can't open tickets) · «ساخت ناموفق» orders
+                             "ticket_topics_active": _store_active_topics(),
+                             "failed_orders": _store_failed_orders()})
         return Response({
             "services": {
                 "total": sum(by_status.values()),

@@ -12,6 +12,7 @@ import { useAuth } from '../lib/auth'
 import BluDeposits from '../components/BluDeposits'
 import { fmtCount, useActionCounts } from '../lib/actionCounts'
 import RoundedReason from '../components/RoundedReason'
+import FailedOrders from '../components/FailedOrders'
 
 const T = {
   fa: {
@@ -78,7 +79,7 @@ export default function Payments() {
   const { lang } = useI18n()
   const s = T[lang] || T.fa
   const [sp, setSp] = useSearchParams()
-  const { staff } = useAuth()
+  const { staff, can } = useAuth()
   const views = staff?.store ? ['queue'] : VIEWS          // v1.47: Blu deposits are ours only — never in a store's panel
   const view = sp.get('view') === 'blu' && views.includes('blu') ? 'blu' : 'queue'
   const pending = useActionCounts()['/payments']
@@ -95,6 +96,8 @@ export default function Payments() {
           </button>
         ))}
       </div>
+      {/* v1.52.1: a store's «ساخت ناموفق» orders (ours stay on Transactions → «ساخت ناموفق») */}
+      {staff?.store && view === 'queue' && <FailedOrders base="/admin/orders/provision-failed/" canRetry={can('payment.approve')} live />}
       {view === 'blu' ? <BluDeposits /> : <PaymentQueue />}
     </div>
   )

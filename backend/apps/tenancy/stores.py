@@ -47,9 +47,18 @@ def row(t: Tenant | None, *, staff_view: bool = True) -> dict | None:
         "owner": staff_mod.owner_row(t) if staff_view else None,
         "ceiling": sorted(t.permission_ceiling or []),
         "store_codes": sorted(staff_mod.STORE_CODES) if staff_view else None,
+        # v1.52.1: paid orders PasarGuard refused («ساخت ناموفق») — listed + retried on «فروشگاه» too
+        "failed_orders": _failed_count(t) if staff_view else None,
         "branding": {"site_name_fa": b.site_name_fa, "site_name_en": b.site_name_en} if b else None,
         "reachable": t.status == Tenant.ACTIVE and TenantDomain.objects.filter(tenant=t, state=TenantDomain.ACTIVE).exists(),
     }
+
+
+def _failed_count(t: Tenant) -> int:
+    from . import failed_orders
+
+    with context.tenant_context(t.pk):
+        return failed_orders.count()
 
 
 def _slug(username: str) -> str:
@@ -64,6 +73,8 @@ def _slug(username: str) -> str:
 def enable(username: str, *, name: str = "", staff=None) -> Tenant:
     from apps.agency.models import PanelAdmin
     from apps.settings_app.models import Page, TenantBranding
+    from apps.tickets.defaults import starter_topics
+    from apps.tickets.models import TicketTopic
 
     if not PanelAdmin.objects.filter(username__iexact=username).exists():
         raise StoreError(f"admin {username} not found", f"ادمین {username} پیدا نشد", 404)
@@ -76,12 +87,16 @@ def enable(username: str, *, name: str = "", staff=None) -> Tenant:
                               permission_ceiling=list(DEFAULT_CEILING))     # v1.52: the default template (we can lower it)
     with context.tenant_context(context.default_tenant_id()):
         pages = list(Page.objects.values("slug", "title_fa", "title_en", "body_fa", "body_en", "is_active"))
+        topics = starter_topics()                    # v1.52.1: customers can open tickets from day one
     with context.tenant_context(t.pk):
         TenantBranding.objects.create(site_name_fa=name, site_name_en=name)
         for p in pages:                              # our pages as a starting point; the store edits its own copies
             Page.objects.create(**p)
+        for tp in topics:                            # our ticket topics as a starting point (no staff scopes)
+            TicketTopic.objects.create(**tp)
     write_audit(action="store.enabled", staff=staff, target=t,
-                detail={"reseller": username, "slug": t.slug, "name": name, "pages_copied": len(pages)})
+                detail={"reseller": username, "slug": t.slug, "name": name, "pages_copied": len(pages),
+                        "topics_copied": len(topics)})
     return t
 
 

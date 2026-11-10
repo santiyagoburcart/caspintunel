@@ -16,6 +16,7 @@ from .views.agency import (AgencyLimitHistoryView, AgencyAdminActionView, Agency
                            AgencyPortalLinkView, AgencySetLimitPreviewView, AgencyLedgerReportView,
                            AgencyPanelAdminCreateView, AgencyPanelAdminOptionsView, AgencyPanelAdminView, AgencyStoreView,
                            AgencyStoreBotCheckView, AgencyStoreBotView, AgencyStoreCeilingView, AgencyStoreOwnerView,
+                           AgencyStoreFailedOrdersView, AgencyStoreFailedOrderRetryView,
                            AgencyStoreDomainCheckView, AgencyStoreDomainsView,
                            AgencyStoreDomainView)
 from .views.catalog import (
@@ -39,6 +40,8 @@ from .views.finance import (
     PaymentDecisionView,
     PaymentReceiptInfoView,
     PendingPaymentsView,
+    FailedOrdersView,
+    FailedOrderRetryView,
     SmsLogViewSet,
     TransactionViewSet,
 )
@@ -95,6 +98,8 @@ urlpatterns = [
     path("push/<str:action>/", StaffPushView.as_view(), name="admin-push-action"),
     path("accounting/", AccountingView.as_view(), name="admin-accounting"),
     path("payments/pending/", PendingPaymentsView.as_view(), name="admin-payments-pending"),
+    path("orders/provision-failed/", FailedOrdersView.as_view(), name="admin-orders-provision-failed"),
+    path("orders/provision-failed/<int:pk>/retry/", FailedOrderRetryView.as_view(), name="admin-orders-provision-retry"),
     path("payments/blu-transactions/", BluTransactionListView.as_view(), name="admin-blu-transactions"),
     path("payments/blu-transactions/<int:pk>/attach/", BluAttachView.as_view(), name="admin-blu-attach"),
     path("payments/blu-transactions/<int:pk>/candidates/", BluCandidatesView.as_view(), name="admin-blu-candidates"),
@@ -125,6 +130,10 @@ urlpatterns = [
     path("agency/panel-admins/<str:username>/store/bot/", AgencyStoreBotView.as_view(), name="admin-agency-store-bot"),
     path("agency/panel-admins/<str:username>/store/ceiling/", AgencyStoreCeilingView.as_view(), name="admin-agency-store-ceiling"),
     path("agency/panel-admins/<str:username>/store/owner/", AgencyStoreOwnerView.as_view(), name="admin-agency-store-owner"),
+    path("agency/panel-admins/<str:username>/store/failed-orders/", AgencyStoreFailedOrdersView.as_view(),
+         name="admin-agency-store-failed-orders"),
+    path("agency/panel-admins/<str:username>/store/failed-orders/<int:pk>/retry/", AgencyStoreFailedOrderRetryView.as_view(),
+         name="admin-agency-store-failed-order-retry"),
     path("agency/panel-admins/<str:username>/store/bot/check/", AgencyStoreBotCheckView.as_view(),
          name="admin-agency-store-bot-check"),
     path("agency/panel-admins/<str:username>/store/domains/<int:pk>/", AgencyStoreDomainView.as_view(), name="admin-agency-store-domain"),

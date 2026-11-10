@@ -289,6 +289,37 @@ class TransactionViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, views
         return Response(TransactionSerializer(payment).data)
 
 
+class FailedOrdersView(AdminAPIView):
+    """v1.52.1 «ساخت ناموفق» in the store's own panel (Payments page): paid orders PasarGuard refused, with its error
+    (tenancy/failed_orders.py). Retrying = FailedOrderRetryView; nothing here ever charges the customer again."""
+
+    perms_map = {"GET": ["payment.view"]}
+    store_ok = True        # tenant-scoped: the current store's orders only
+
+    @extend_schema(responses=dict, summary="Paid orders PasarGuard refused («ساخت ناموفق»)")
+    def get(self, request):
+        from apps.tenancy import failed_orders
+
+        return Response({"results": failed_orders.rows(), "count": failed_orders.count()})
+
+
+class FailedOrderRetryView(AdminAPIView):
+    """v1.52.1 POST {account_name?} — «تلاش دوباره» for one failed order of the current store (same paid order)."""
+
+    perms_map = {"POST": ["payment.approve"]}
+    store_ok = True
+
+    @extend_schema(request=dict, responses=dict, summary="Retry a failed provisioning («تلاش دوباره»)")
+    def post(self, request, pk):
+        from apps.tenancy import failed_orders
+
+        try:
+            out = failed_orders.retry(pk, request.user, (request.data or {}).get("account_name"))
+        except failed_orders.RetryError as exc:
+            return Response(exc.payload(), status=exc.status)
+        return Response(out)
+
+
 class PendingPaymentsView(AdminAPIView):
     """The card-to-card approval queue — pending receipts from site + bot."""
 

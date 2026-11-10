@@ -1503,3 +1503,28 @@ sequenceDiagram
     K->>API: Telegram link → /start staff-CODE in the STORE's bot (redeem checks the store)
     API-->>K: ticket DMs through the store's bot
 ```
+
+## 16i. A store's failed order — «ساخت ناموفق» (v1.52.1)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant W as Celery (store context)
+    participant PG as PasarGuard
+    actor R as Store staff (payment.approve)
+    actor O as Our staff («فروشگاه»)
+    actor C as Customer
+    W->>PG: create the paid order's account
+    PG-->>W: 422 (refused)
+    W->>W: order stays paid · provision_error + provision_failed_at
+    W-->>R: alert in the store (its bot) · store panel → Payments → «ساخت ناموفق»
+    W-->>O: alert to us (platform) · «فروشگاه» → «سفارش‌های ناموفق»
+    W-->>C: «سرویس در حال آماده‌سازی است» (site + store bot)
+    alt store staff retry
+        R->>W: POST orders/provision-failed/ID/retry/ {account_name?}
+    else our staff retry
+        O->>W: POST store/failed-orders/ID/retry/ (run inside the store)
+    end
+    W->>W: retry_provision · same order + same payment (no new charge) · fulfil queued in the store
+    W->>PG: create again → set_owner to the reseller
+```

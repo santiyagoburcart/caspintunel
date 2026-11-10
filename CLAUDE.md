@@ -183,6 +183,8 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   **Store staff (v1.52, `tenancy/staff.py`)**: `Staff.tenant` set = a reseller's staff — sign-in / tokens only on that store's
   domains (`tokens.staff_for_payload`), `has_perm` capped by `Tenant.permission_ceiling` (⊆ `STORE_CODES`), never Super Admin.
   Roles / staff queries always filter `tenant_id=store_id()`. A new store_ok view's codes must be in `STORE_CODES` (test).
+  **v1.52.1**: a store's «ساخت ناموفق» is retried only through `tenancy/failed_orders.retry` → `retry_provision` (same paid order,
+  never a new charge), from the store panel or our «فروشگاه» card (inside the store's context).
 - The rejected Liquid Glass refresh is archived at tag `archive/ui-refresh-liquid-glass` — don't copy from it.
 
 ## Gotchas (learned the hard way)

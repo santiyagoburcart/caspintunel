@@ -174,13 +174,28 @@ def _provision_failed(order: Order, exc) -> dict:
         return {"order": order.id, "status": "provision_failed"}
     payment = getattr(order, "payment", None)
     name = order.requested_account_name or (order.service.panel_username if order.service_id else "-")
-    alert_staff(
-        "🚨 ساخت سرویس ناموفق / Provisioning failed\n"
-        f"Order #{order.id} · {order.user.username} · account «{name}» · "
-        f"TX {getattr(payment, 'tx_number', None) or getattr(payment, 'id', '-')} is PAID but PasarGuard refused it:\n"
-        f"{text}\n"
-        "Panel → Transactions → this payment → «ساخت ناموفق»: edit the account name or «تلاش دوباره».",
-        perm="payment.approve", dedupe_key=f"provfail:{order.id}", ttl=86400)
+    from apps.tenancy.context import store_id
+
+    tx = getattr(payment, 'tx_number', None) or getattr(payment, 'id', '-')
+    head = (f"Order #{order.id} · {order.user.username} · account «{name}» · TX {tx} is PAID but PasarGuard refused it:\n"
+            f"{text}\n")
+    sid = store_id()
+    if sid is None:
+        alert_staff("🚨 ساخت سرویس ناموفق / Provisioning failed\n" + head +
+                    "Panel → Transactions → this payment → «ساخت ناموفق»: edit the account name or «تلاش دوباره».",
+                    perm="payment.approve", dedupe_key=f"provfail:{order.id}", ttl=86400)
+    else:
+        # v1.52.1: a reseller store's order — its own staff (store panel → Payments) AND us («فروشگاه» → failed orders)
+        from apps.tenancy.models import Tenant
+
+        store = Tenant.objects.filter(pk=sid).values_list("name", "reseller_username").first() or ("?", "?")
+        alert_staff("🚨 ساخت سرویس ناموفق / Provisioning failed\n" + head +
+                    "پنل فروشگاه → پرداخت‌ها → «ساخت ناموفق»: نام اکانت را اصلاح کنید یا «تلاش دوباره». "
+                    "مبلغی دوباره از مشتری گرفته نمی‌شود.",
+                    perm="payment.approve", dedupe_key=f"provfail:{order.id}", ttl=86400)
+        alert_staff(f"🚨 ساخت سرویس ناموفق در فروشگاه «{store[0]}» ({store[1]})\n" + head +
+                    f"Agency → {store[1]} → «فروشگاه» → «سفارش‌های ناموفق»: edit the account name or «تلاش دوباره».",
+                    perm="agency.manage", dedupe_key=f"provfail-p:{order.id}", ttl=86400, platform=True)
     try:
         from apps.notifications.dispatch import notify_user
         from apps.notifications.models import NotificationType

@@ -158,10 +158,18 @@ def retry_provision(order: Order, staff, account_name: str | None = None) -> Ord
     write_audit(action="order.provision_retry", staff=staff, target=order, detail=detail)
     from django.core.cache import cache
 
-    cache.delete(f"provfail:{order.id}")               # a new failure alerts again
+    cache.delete_many([f"provfail:{order.id}", f"provfail-p:{order.id}"])   # a new failure alerts again (store + us)
+    from apps.tenancy import context as tctx
+
     from .tasks import fulfill_order
 
-    transaction.on_commit(lambda: fulfill_order.delay(order.id))
+    tid = tctx.current_tenant_id()           # v1.52.1: our staff retry a store's order from «فروشگاه» — queue it in THAT store
+
+    def _queue():
+        with tctx.tenant_context(tid):
+            fulfill_order.delay(order.id)
+
+    transaction.on_commit(_queue if tid else (lambda: fulfill_order.delay(order.id)))
     return order
 
 

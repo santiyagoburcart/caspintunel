@@ -773,6 +773,41 @@ class AgencyStoreOwnerView(AdminAPIView):
                          "message_fa": f"ورود مالک فروشگاه ({owner.username}) آماده است — رمز را همین حالا کپی کنید"})
 
 
+class AgencyStoreFailedOrdersView(AdminAPIView):
+    """v1.52.1 GET — the store's «ساخت ناموفق» orders on our «فروشگاه» card (our staff only, read inside the store)."""
+
+    perms_map = {"GET": MANAGE}
+
+    def get(self, request, username):
+        from apps.tenancy import context, failed_orders
+
+        t, err = _store_or_404(username)
+        if err:
+            return err
+        with context.tenant_context(t.pk):
+            return Response({"results": failed_orders.rows(), "count": failed_orders.count()})
+
+
+class AgencyStoreFailedOrderRetryView(AdminAPIView):
+    """v1.52.1 POST {account_name?} — our staff retry a store's failed order (same paid order, in the store's context:
+    the account goes to the reseller's admin as always; the store's staff see the result in their panel)."""
+
+    perms_map = {"POST": MANAGE}
+
+    def post(self, request, username, pk):
+        from apps.tenancy import context, failed_orders
+
+        t, err = _store_or_404(username)
+        if err:
+            return err
+        with context.tenant_context(t.pk):
+            try:
+                out = failed_orders.retry(pk, request.user, (request.data or {}).get("account_name"))
+            except failed_orders.RetryError as exc:
+                return Response(exc.payload(), status=exc.status)
+        return Response(out)
+
+
 class AgencyStoreDomainView(AdminAPIView):
     """v1.45 PATCH {mode?, www?} · DELETE (remove: nginx file + certificate go, the store stops answering on it)."""
 

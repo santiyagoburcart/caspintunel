@@ -23,7 +23,7 @@
 > **Phase 8 (reseller staff) built in v1.52.0** (ceiling per store, owner login from «فروشگاه», store roles / staff in its
 > panel, sign-in only on the store's domain, Telegram via the store's bot — architecture.md tenancy row, flows.md 16h).
 > Deviation from §11: `settings.manage` IS in the store ceiling — on a store's domain it only reaches the store-safe views
-> (its branding, TENANT_KEYS settings, the APK download), never our settings. Written against
+> (its branding, TENANT_KEYS settings, the APK download), never our settings. **v1.52.1 (before the pilot)**: new stores get a copy of our ticket topics; a store's «ساخت ناموفق» orders are listed and retried in its panel and on «فروشگاه» (flows.md 16i). Pilot checklist: [pilot-fa.md](pilot-fa.md). Written against
 > v1.38.4, decisions recorded in v1.38.6.
 > When a phase is approved and built, the matching parts move into `architecture.md` / `erd.md` / `flows.md` and this page
 > keeps only what is still planned.

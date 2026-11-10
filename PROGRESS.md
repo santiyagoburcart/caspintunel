@@ -586,3 +586,11 @@ Everything shipped since v1.6.0 (details in the session log):
   Permissions APIs store_ok and filtered per store (our panel stops listing store rows); role names unique per store
   (accounts 0019). Store staff link Telegram with the store's bot, ticket DMs through it. Fix: `plans/store-options/` 503
   instead of 500 without an agency panel. Tests: `tenancy/tests/test_phase8.py` (7, incl. a sweep signed in as the owner).
+- 2026-11-10 — **v1.52.1: pilot fixes (before Phase 9).** New stores get a copy of our active ticket topics (`tickets/defaults.py`,
+  starter list when we have none; no staff scopes) + store dashboard warning without an active topic. `tenancy/failed_orders.py`:
+  a store's «ساخت ناموفق» orders listed with PasarGuard's error and retried (optional new account name) on the store's Payments
+  page (`orders/provision-failed/`, view = payment.view, retry = payment.approve) and on our «فروشگاه» card
+  (`store/failed-orders/`, agency.manage, run inside the store) — same paid order through `retry_provision` (now queued in the
+  order's store), never a new charge; the failure alerts the store's staff and us (platform). Dashboard banner `failed_orders`.
+  `docs/pilot-fa.md` updated. Tests: `tenancy/tests/test_v1521_pilot.py` (7); browser checks (store Payments / dashboard / our
+  card, phone + desktop, fa / en, light / dark, writes blocked).

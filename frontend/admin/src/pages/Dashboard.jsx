@@ -84,6 +84,8 @@ export default function Dashboard() {
       <Alert>{err}</Alert>
 
       {store && d.quota?.level > 0 && <QuotaBanner q={d.quota} lang={lang} />}
+      {store && d.failed_orders > 0 && <StoreWarn kind="failed" n={d.failed_orders} lang={lang} />}
+      {store && d.ticket_topics_active === 0 && <StoreWarn kind="topics" lang={lang} />}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Kpi icon="services" tone="blue" label={t('services_total')} value={digits(d.services?.total ?? '—', lang)}
           sub={byStatus.length ? `${digits(d.services?.by_status?.active ?? 0, lang)} ${t('st_active')}` : ''} />
@@ -286,6 +288,30 @@ function StoreBotCard({ bot, lang }) {
   )
 }
 
+const WARN_CSS = `.dash-quota { border-radius: 14px; padding: 12px 14px; font-size: 13px; line-height: 1.8; color: var(--c-warning-fg);
+  background: color-mix(in srgb, var(--c-warning) 12%, transparent); border: 1px solid color-mix(in srgb, var(--c-warning) 34%, transparent); }
+.dash-quota.is-bad { color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 10%, transparent); border-color: color-mix(in srgb, var(--c-danger) 30%, transparent); }`
+
+// v1.52.1 store mode: warnings — «ساخت ناموفق» orders waiting for a retry · no active ticket topic (customers can't open tickets)
+const SW = {
+  fa: { failed_t: '{n} سفارش پرداخت‌شده ساخته نشد', failed_b: 'PasarGuard ساخت سرویس را رد کرده. در «پرداخت‌ها» نام اکانت را اصلاح کنید یا «تلاش دوباره» بزنید — مبلغی دوباره گرفته نمی‌شود.', failed_go: 'پرداخت‌ها',
+    topics_t: 'موضوع تیکت فعالی ندارید', topics_b: 'تا وقتی حداقل یک موضوع فعال نباشد، مشتری‌ها نمی‌توانند تیکت باز کنند.', topics_go: 'موضوعات تیکت' },
+  en: { failed_t: '{n} paid order(s) were not created', failed_b: 'PasarGuard refused the service. Fix the account name or press “Retry” in Payments — the customer is never charged again.', failed_go: 'Payments',
+    topics_t: 'No active ticket topic', topics_b: 'Customers cannot open tickets until at least one topic is active.', topics_go: 'Ticket topics' },
+}
+function StoreWarn({ kind, n = 0, lang }) {
+  const s = SW[lang] || SW.fa
+  const failed = kind === 'failed'
+  return (
+    <div className={'dash-quota' + (failed ? ' is-bad' : '')} role="status" data-testid={failed ? 'store-failed-orders' : 'store-no-topics'}>
+      <b>{(failed ? s.failed_t : s.topics_t).replace('{n}', digits(n, lang))}</b> <span>{failed ? s.failed_b : s.topics_b}</span>{' '}
+      <Link to={failed ? '/payments' : '/tickets/topics'} className="font-bold" style={{ color: 'var(--c-primary)' }}>
+        {failed ? s.failed_go : s.topics_go}</Link>
+      <style>{WARN_CSS}</style>
+    </div>
+  )
+}
+
 // v1.46 store mode: the reseller's quota left for this store (backend tenancy/quota.py) — at 20 % / 10 %
 const QB = {
   fa: { t: 'حجم قابل فروش رو به اتمام است', b: '{p}% باقی مانده ({g} گیگ). برای ادامهٔ فروش از پنل نمایندگی «درخواست شارژ» بزنید؛ وقتی حجم تمام شود خرید جدید متوقف می‌شود.' },
@@ -297,9 +323,7 @@ function QuotaBanner({ q, lang }) {
   return (
     <div className={'dash-quota' + (q.level <= 10 ? ' is-bad' : '')} role="status" data-testid="store-quota">
       <b>{s.t}</b> <span>{s.b.replace('{p}', q.percent_remaining).replace('{g}', gb)}</span>
-      <style>{`.dash-quota { border-radius: 14px; padding: 12px 14px; font-size: 13px; line-height: 1.8; color: var(--c-warning-fg);
-  background: color-mix(in srgb, var(--c-warning) 12%, transparent); border: 1px solid color-mix(in srgb, var(--c-warning) 34%, transparent); }
-.dash-quota.is-bad { color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 10%, transparent); border-color: color-mix(in srgb, var(--c-danger) 30%, transparent); }`}</style>
+      <style>{WARN_CSS}</style>
     </div>
   )
 }
