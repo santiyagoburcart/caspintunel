@@ -82,7 +82,8 @@ def update(t: Tenant, data: dict, *, staff=None) -> Tenant:
     t = Tenant.objects.select_for_update().get(pk=t.pk)
     if t.is_default:
         raise StoreError("the default store is not managed here", "فروشگاه اصلی از اینجا مدیریت نمی‌شود", 403)
-    before = {"name": t.name, "status": t.status, "export_allowed": t.export_allowed}
+    before = {"name": t.name, "status": t.status, "export_allowed": t.export_allowed,
+              "requests_per_minute": (t.limits or {}).get("requests_per_minute")}
     if "name" in data:
         n = str(data.get("name") or "").strip()[:150]
         if not n:
@@ -95,8 +96,18 @@ def update(t: Tenant, data: dict, *, staff=None) -> Tenant:
         t.status = st
     if "export_allowed" in data:
         t.export_allowed = str(data.get("export_allowed")).lower() in ("1", "true", "yes", "on") or data.get("export_allowed") is True
+    if "requests_per_minute" in data:                    # v1.51: cap on all of the store's API requests (0 / empty = none)
+        raw = data.get("requests_per_minute")
+        try:
+            rpm = int(raw or 0)
+        except (TypeError, ValueError):
+            raise StoreError("requests_per_minute must be a number", "سقف درخواست باید عدد باشد") from None
+        if rpm and not 60 <= rpm <= 100000:
+            raise StoreError("requests_per_minute must be 0 (no cap) or 60–100000", "سقف درخواست: ۰ (بدون سقف) یا 60 تا 100000")
+        t.limits = {**(t.limits or {}), "requests_per_minute": rpm or None}
     t.save()
-    after = {"name": t.name, "status": t.status, "export_allowed": t.export_allowed}
+    after = {"name": t.name, "status": t.status, "export_allowed": t.export_allowed,
+             "requests_per_minute": (t.limits or {}).get("requests_per_minute")}
     if after != before:
         write_audit(action="store.updated", staff=staff, target=t, detail={"before": before, "after": after})
         from .middleware import forget_hosts

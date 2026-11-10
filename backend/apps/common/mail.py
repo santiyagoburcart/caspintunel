@@ -198,10 +198,13 @@ def _store_sender(email_messages) -> None:
             return
         b = branding()
         name = (b.site_name_fa or b.site_name_en or "").strip()
+        reply = (getattr(b, "support_email", "") or "").strip()      # v1.51: the store's own inbox gets the replies
         for m in email_messages:
             addr = parseaddr(m.from_email or settings.DEFAULT_FROM_EMAIL)[1]
             if name and addr:
                 m.from_email = formataddr((name, addr))
+            if reply and not m.reply_to:
+                m.reply_to = [reply]
     except Exception as exc:  # noqa: BLE001 — a branding problem never stops a mail
         log.warning("store sender name failed: %s", exc)
 

@@ -16,6 +16,7 @@ const T = {
     title: 'فروشگاه', none: 'این ادمین هنوز فروشگاه ندارد.', open: 'ساخت فروشگاه', name: 'نام فروشگاه', slug: 'شناسه',
     status: 'وضعیت', st_draft: 'پیش‌نویس', st_active: 'فعال', st_suspended: 'معلق', st_closed: 'بسته',
     export: 'اجازهٔ دریافت خروجی فروشگاه', save: 'ذخیره', created: 'ساخته شده در',
+    rpm: 'سقف درخواست در دقیقه (کل فروشگاه)', rpm_hint: 'خالی یا ۰ = بدون سقف؛ بیشتر از آن ۴۲۹ می‌گیرد و به ما خبر داده می‌شود.',
     reachable: 'در دسترس روی دامنهٔ فعال', unreachable: 'در دسترس نیست (فروشگاه فعال با دامنهٔ فعال لازم است)',
     o_title: 'ساخت فروشگاه', o_msg: 'برای {u} یک فروشگاه پیش‌نویس ساخته می‌شود با برندینگ خودش و یک نسخه از صفحه‌های ما (قوانین، راهنما). تا دامنه فعال نشود کسی آن را نمی‌بیند.',
     o_btn: 'بله، بساز', s_title: 'تغییر وضعیت فروشگاه', s_msg: 'وضعیت فروشگاه {n} به «{st}» تغییر می‌کند.', s_btn: 'بله، تغییر بده',
@@ -25,6 +26,7 @@ const T = {
     title: 'Store', none: 'This admin has no store yet.', open: 'Open a store', name: 'Store name', slug: 'Slug',
     status: 'Status', st_draft: 'Draft', st_active: 'Active', st_suspended: 'Suspended', st_closed: 'Closed',
     export: 'May download a store export', save: 'Save', created: 'Created',
+    rpm: 'Requests per minute (whole store)', rpm_hint: 'Empty or 0 = no cap; above it requests get 429 and we are alerted.',
     reachable: 'Reachable on its active domain', unreachable: 'Not reachable (needs an active store with an active domain)',
     o_title: 'Open a store', o_msg: 'A draft store is created for {u} with its own branding and a copy of our pages (rules, help). Nobody sees it until a domain is active.',
     o_btn: 'Yes, open it', s_title: 'Change store status', s_msg: 'Store {n} becomes “{st}”.', s_btn: 'Yes, change it',
@@ -40,13 +42,14 @@ export default function AgencyStoreCard({ username }) {
   const confirm = useConfirm()
   const [store, setStore] = useState(undefined)
   const [err, setErr] = useState('')
-  const [form, setForm] = useState({ name: '', export_allowed: false })
+  const [form, setForm] = useState({ name: '', export_allowed: false, requests_per_minute: '' })
   const url = `/admin/agency/panel-admins/${encodeURIComponent(username)}/store/`
   const manage = can('agency.manage')
 
   const load = () => api.get(url).then((r) => {
     setStore(r.data.store)
-    if (r.data.store) setForm({ name: r.data.store.name, export_allowed: r.data.store.export_allowed })
+    if (r.data.store) setForm({ name: r.data.store.name, export_allowed: r.data.store.export_allowed,
+      requests_per_minute: r.data.store.limits?.requests_per_minute ?? '' })
   }).catch(() => { setStore(null); setErr(lang === 'fa' ? 'دریافت فروشگاه ناموفق بود' : 'Failed to load the store') })
   useEffect(() => { load() }, [username])
 
@@ -94,6 +97,10 @@ export default function AgencyStoreCard({ username }) {
         <form className="ags-form" onSubmit={save}>
           <label className="ags-f"><span>{s.name}</span>
             <input className="input" value={form.name} disabled={!manage} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
+          <label className="ags-f"><span>{s.rpm}</span>
+            <input className="input" type="number" min="0" inputMode="numeric" dir="ltr" value={form.requests_per_minute} disabled={!manage}
+              onChange={(e) => setForm({ ...form, requests_per_minute: e.target.value })} placeholder="0" />
+            <small className="text-xs text-muted">{s.rpm_hint}</small></label>
           <label className="ags-chk"><input type="checkbox" checked={form.export_allowed} disabled={!manage}
             onChange={(e) => setForm({ ...form, export_allowed: e.target.checked })} />{s.export}</label>
           {manage && <button className="btn-primary text-sm ags-save" disabled={!form.name.trim()}>{s.save}</button>}

@@ -218,6 +218,7 @@ REST_FRAMEWORK = {
         "apps.common.throttling.UserRateThrottle",
         "apps.common.throttling.ScopedRateThrottle",
         "apps.common.throttling.TunnelAggregateThrottle",
+        "apps.common.throttling.StoreTotalThrottle",       # v1.51: per-store cap we set (Tenant.limits)
     ),
     # Per client IP (anon) / per account (user). Many Iranian mobile users share
     # one carrier NAT address, so the general limits are generous; the

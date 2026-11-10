@@ -22,9 +22,20 @@ from .views import error
 PAGE = 50
 
 
+def _store_staff():
+    """Staff of the CURRENT store (ours on our host) — `Staff` is not tenant-scoped (v1.51)."""
+    from apps.tenancy.context import store_id
+
+    return Staff.objects.filter(tenant_id=store_id())
+
+
 class _StaffView(AdminAPIView):
     """Ticket scopes, assignment and Telegram links belong to a `Staff` account —
-    the Django-superuser break-glass login of StaffPermission is not enough here."""
+    the Django-superuser break-glass login of StaffPermission is not enough here.
+    v1.51 (multi-tenant Phase 7 Release B): open in a store's panel — tickets, topics, canned replies and the ticket
+    settings are the store's own (TENANT_KEYS); staff lookups only reach that store's staff."""
+
+    store_ok = True
 
     def initial(self, request, *args, **kwargs):
         super().initial(request, *args, **kwargs)
@@ -124,7 +135,7 @@ class AssignView(_TicketView):
     def post(self, request, pk):
         t = self.ticket(request, pk)
         sid = request.data.get("staff")
-        assignee = get_object_or_404(Staff, pk=sid) if sid not in (None, "", "null") else None
+        assignee = get_object_or_404(_store_staff(), pk=sid) if sid not in (None, "", "null") else None
         try:
             services.assign(t, request.user, assignee)
         except services.TicketError as exc:
@@ -292,7 +303,7 @@ class StaffScopeDetailView(_StaffView):
 
     @extend_schema(summary="Limit a staff member to these topics ({topic_ids: [...]}, [] = all topics)")
     def put(self, request, pk):
-        staff = get_object_or_404(Staff, pk=pk)
+        staff = get_object_or_404(_store_staff(), pk=pk)
         ids = request.data.get("topic_ids") or []
         if not isinstance(ids, list):
             return Response({"detail": "topic_ids must be a list", "code": "invalid"}, status=400)
@@ -308,6 +319,7 @@ class StaffScopeDetailView(_StaffView):
 # --- my Telegram link (any logged-in staff member, for themselves) --------------
 class TelegramLinkView(_StaffView):
     perms_map = {"GET": [], "POST": [], "DELETE": []}
+    store_ok = False        # links to OUR bot — store staff get their own way in Phase 8
 
     @extend_schema(summary="Is my Telegram linked?")
     def get(self, request):
@@ -337,10 +349,8 @@ class TicketStaffView(_StaffView):
 
     @extend_schema(summary="Staff who handle tickets (for the inbox 'assigned to' filter)")
     def get(self, request):
-        from apps.accounts.models import Staff as S
-
         out = []
-        for s in S.objects.filter(is_active=True).select_related("role"):
+        for s in _store_staff().filter(is_active=True).select_related("role"):
             if s.is_superadmin or s.has_perm("tickets.view"):
                 out.append({"id": s.id, "username": s.username, "display_name": s.display_name})
         return Response(out)

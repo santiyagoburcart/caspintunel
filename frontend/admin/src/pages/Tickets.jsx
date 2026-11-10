@@ -111,7 +111,8 @@ export default function Tickets() {
   const [s, lang] = useT()
   const { id } = useParams()
   const go = useNavigate()
-  const { can } = useAuth()
+  const { can, staff: me } = useAuth()
+  const store = !!me?.store             // v1.51 store mode: no Telegram link to OUR bot here (store staff: Phase 8)
   const { refreshBadge } = useLiveTickets()
   const wrapRef = useRef(null)
   const height = useFillHeight(wrapRef)
@@ -155,7 +156,7 @@ export default function Tickets() {
           <div className="ti-list-title">
             <h1 className="text-lg font-bold">{s.title}</h1>
             <span className="ti-head-acts">
-              <button type="button" className="ti-mini" onClick={() => setTg(true)} title={s.telegram}><Ico d={I.tg} w={16} /></button>
+              {!store && <button type="button" className="ti-mini" onClick={() => setTg(true)} title={s.telegram}><Ico d={I.tg} w={16} /></button>}
               {can('tickets.manage_topics') && <Link to="/tickets/topics" className="ti-mini" title={s.topics}><Ico d={I.tag} w={16} /></Link>}
             </span>
           </div>

@@ -15,6 +15,8 @@ TENANT_KEYS = frozenset({
     "force_channel_join", "force_share_phone", "default_language", "product_display_mode",
     # v1.47 (Phase 5): each store's checkout timer and unique-amount range, and its own unconfirmed-payment alert delay
     "unique_amount_reservation_minutes", "unique_amount_min", "unique_amount_max", "pending_payment_alert_minutes",
+    # v1.51 (Phase 7 Release B): each store's own ticket rules (tickets/rules.py SETTINGS + BOOL_SETTINGS)
+    "tickets_max_open_per_user", "tickets_auto_close_days", "tickets_reopen_days", "tickets_show_staff_name",
 })
 
 

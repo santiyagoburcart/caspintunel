@@ -54,6 +54,7 @@ const FIELDS = [
   ['site_name_en', 'site_name_en', true, false],
   ['site_domain', 'domain', true, false],
   ['support_telegram', 'support_telegram', true, false],
+  ['support_email', 'support_email', true, false],          // v1.51: stores only (Reply-To of their mail)
   ['bot_description_fa', 'bot_desc_fa', false, true],
   ['bot_description_en', 'bot_desc_en', true, true],
   ['meta_description', 'meta_desc', false, true],
@@ -156,7 +157,7 @@ export default function Branding() {
         </div>
 
         <div className="br-fields">
-          {FIELDS.map(([k, label, ltr, area]) => (
+          {FIELDS.filter(([k]) => k !== 'support_email' || store).map(([k, label, ltr, area]) => (
             <label key={k} className={'br-fld' + (area ? ' br-fld--wide' : '')}>
               <span className="br-fld-top">
                 <span className="label">{t(label)}</span>

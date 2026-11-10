@@ -73,18 +73,25 @@ export const isGroupManager = (staff) => !!staff?.group_manager
 export const STORE_GROUPS = [
   ['nav_group_core', [['/', 'dashboard', null, 'dashboard']]],
   // v1.46 (Phase 4): + the reseller's own plans and prices (agency panel, their role's groups — backend tenancy/catalog.py)
-  ['nav_group_users', [['/users', 'users', 'users.view', 'users'], ['/plans', 'plans', 'plans.manage', 'plans']]],
+  // v1.51 (Phase 7 Release B): + the store's own tickets (topics, canned replies, ticket rules) and discount codes
+  ['nav_group_users', [
+    ['/users', 'users', 'users.view', 'users'],
+    ['/tickets', 'tickets', 'tickets.view', 'tickets'],
+    ['/plans', 'plans', 'plans.manage', 'plans'],
+  ]],
   // v1.47 (Phase 5): the store's own payments queue, SMS log and receiving cards (its devices, its pool)
   ['nav_group_finance', [
     ['/payments', 'payments', 'payment.view', 'payments'],
     ['/sms-log', 'sms_log', 'payment.view', 'sms'],
     ['/cards', 'cards', 'payment.view', 'cards'],
+    ['/discounts', 'discounts', 'discounts.view', 'discounts'],
   ]],
   ['nav_group_config', [
     ['/branding', 'branding', 'settings.manage', 'branding'],
     ['/settings', 'settings', 'settings.manage', 'settings'],
     ['/pages', 'pages', 'pages.manage', 'pages'],
     ['/themes', 'themes', 'themes.manage', 'themes'],
+    ['/tickets/topics', 'ticket_topics', ['tickets.view', 'tickets.manage_topics'], 'ticketTopics'],
   ]],
 ]
 export const STORE_BOTNAV = [

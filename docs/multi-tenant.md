@@ -17,8 +17,9 @@
 > by hand — the owner dropped the QR setup in v1.48.1). **Phase 6 (store bots + Mini App) built in v1.49.0** (webhook on our
 > host, token set by our staff, Mini App signed with the store's token — architecture.md tenancy row, flows.md 16g; the hook is
 > `/api/v1/telegram/hook/<id>/` instead of §6.4's `/tg/hook/` so nginx needs no change). **Phase 7 Release A built in v1.50.0** (jobs per store, notifications / email / links / staff loops
-> inside the store — architecture.md tenancy row); Release B next (store panel pages for tickets / CRM / discounts / analytics,
-> TENANT_KEYS for ticket + retention settings, optional store SMTP relay, per-store rate limits). Written against
+> inside the store — architecture.md tenancy row); **Release B built in v1.51.0** (the store's tickets + discounts in its panel, its ticket
+> rules, `set_setting` refuses our keys in a store, per-store throttle buckets + a cap we set, Reply-To = the store's support
+> email). Still open from §12 / §5: the optional store SMTP relay, CRM / analytics pages for stores (not in D5's list). Written against
 > v1.38.4, decisions recorded in v1.38.6.
 > When a phase is approved and built, the matching parts move into `architecture.md` / `erd.md` / `flows.md` and this page
 > keeps only what is still planned.

@@ -81,6 +81,7 @@ erDiagram
         string logo "tenants/ID/branding/"
         string favicon
         string support_telegram
+        string support_email "v1.51 Reply-To of the store's mail"
         string qr_background
         bigint theme_id FK "built-in or the store's own"
     }
@@ -98,8 +99,8 @@ erDiagram
 | `tenant` | one store (v1.40). The default tenant is our own store; reseller stores come in later phases. |
 | `tenant_domain` | a host routed to a tenant; only `active` hosts of an `active` store are served (v1.41 / v1.43). v1.45: our staff add it on «فروشگاه» (mode direct / tunnel; `cloudflare` unused — a proxied record is detected into `proxied`), DNS + TXT checks, HTTP-01 certificate + nginx file by the host watcher, health (`tenancy/domains.py`). |
 | `tenant_bot` | v1.49 (Phase 6): a store's own Telegram bot — set / replaced / removed only by our staff on «فروشگاه» (`tenancy/bots.py`); webhook to `/api/v1/telegram/hook/<tenant id>/` on our host with `webhook_secret`; menu button → the store's Mini App; checked every 10 min. Platform table (keyed by the store, never scoped). |
-| `tenant_branding` | v1.43 a reseller store's branding (same fields as `site_config`, which stays our own store's); `theme_id` = its theme. |
-| `tenant_setting` | v1.43 a store's own value for a key in `settings_app.branding.TENANT_KEYS` (wins in `get_setting` for that store). |
+| `tenant_branding` | v1.43 a reseller store's branding (same fields as `site_config`, which stays our own store's); `theme_id` = its theme. v1.51: `support_email` = Reply-To of the mail we send for the store. |
+| `tenant_setting` | v1.43 a store's own value for a key in `settings_app.branding.TENANT_KEYS` (wins in `get_setting` for that store). v1.51: + the ticket rules (`tickets_max_open_per_user`, `tickets_auto_close_days`, `tickets_reopen_days`, `tickets_show_staff_name`). |
 
 Unique per store (v1.41 added them, v1.42 dropped the old global ones): `user (tenant, username | telegram_id | referral_code)`, `crm_discount_code (tenant, code)`, `crm_tag (tenant, name)`, `crm_warning_rule (tenant, kind, threshold)`, `page (tenant, slug)`. Two stores may use the same username, code, tag or slug. `staff.username` / `staff.telegram_id` stay globally unique (platform).
 

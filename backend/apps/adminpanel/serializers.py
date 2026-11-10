@@ -739,7 +739,7 @@ class TenantBrandingSerializer(serializers.ModelSerializer):
                   "bot_description_fa", "bot_description_en", "support_telegram",
                   "bot_support_telegram", "bot_support_text_fa", "bot_support_text_en",
                   "qr_background", "qr_background_custom",
-                  "meta_description", "updated_at")
+                  "meta_description", "support_email", "updated_at")
         read_only_fields = ("updated_at",)
 
     # logo / favicon: images only, small (the error text is shown in the panel as is)

@@ -213,7 +213,10 @@ function LegacyLayout() {
   const side = useSideNav()
   const closeAll = () => { setOpen(false); side.closeDrawer() }
 
-  const items = isGroupManager(staff) ? GM_GROUPS[0][1].filter(([, , p]) => !p || can(p)) : nav.filter(([, , p]) => !p || can(p))
+  // v1.51: a store's panel shows only the store's pages in every theme (the Caspian layout already did, since v1.44)
+  const items = isGroupManager(staff) ? GM_GROUPS[0][1].filter(([, , p]) => !p || can(p))
+    : isStoreMode(staff) ? STORE_GROUPS.flatMap(([, list]) => list).filter(([, , p]) => !p || can(p))
+      : nav.filter(([, , p]) => !p || can(p))
   const brand = (lang === 'fa' ? config?.site_name_fa : config?.site_name_en) || (lang === 'fa' ? 'کسپین' : 'caspin')
 
   const Brand = ({ children }) => (

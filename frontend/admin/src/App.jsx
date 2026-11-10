@@ -76,6 +76,10 @@ export default function App() {
           <Route path="/payments" element={<Payments />} />
           <Route path="/sms-log" element={<SmsLog />} />
           <Route path="/cards" element={<Cards />} />
+          <Route path="/tickets" element={<Tickets />} />
+          <Route path="/tickets/topics" element={<TicketTopics />} />
+          <Route path="/tickets/:id" element={<Tickets />} />
+          <Route path="/discounts" element={<Discounts />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

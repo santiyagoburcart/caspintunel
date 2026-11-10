@@ -84,7 +84,7 @@ const dict = {
     deposit_count: 'تعداد واریز', deposit_total: 'جمع واریز',
     // branding
     site_name_fa: 'نام سایت (فارسی)', site_name_en: 'نام سایت (انگلیسی)', domain: 'دامنه',
-    support_telegram: 'پشتیبانی تلگرام', bot_desc_fa: 'توضیح ربات (فارسی)',
+    support_telegram: 'پشتیبانی تلگرام', support_email: 'ایمیل پشتیبانی (پاسخ به ایمیل‌های فروشگاه)', bot_desc_fa: 'توضیح ربات (فارسی)',
     bot_desc_en: 'توضیح ربات (انگلیسی)', meta_desc: 'توضیح متا (SEO)',
     logo: 'لوگو', favicon: 'فاویکون', domain_note: 'دامنه بدون بازسازی اعمال می‌شود.',
     // permissions
@@ -233,7 +233,7 @@ const dict = {
     card_number: 'Card number', holder: 'Card holder', bank: 'Bank',
     deposit_count: 'Deposits', deposit_total: 'Total deposited',
     site_name_fa: 'Site name (fa)', site_name_en: 'Site name (en)', domain: 'Domain',
-    support_telegram: 'Support Telegram', bot_desc_fa: 'Bot description (fa)',
+    support_telegram: 'Support Telegram', support_email: 'Support email (replies to the store’s mail)', bot_desc_fa: 'Bot description (fa)',
     bot_desc_en: 'Bot description (en)', meta_desc: 'Meta description (SEO)',
     logo: 'Logo', favicon: 'Favicon', domain_note: 'The domain applies without a rebuild.',
     permissions: 'Permissions',

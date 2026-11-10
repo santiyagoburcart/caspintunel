@@ -133,6 +133,8 @@ class TenantBranding(models.Model):
     qr_background = models.CharField(max_length=32, default="caspian-light")
     qr_background_custom = models.FileField(upload_to=_tenant_upload, null=True, blank=True)
     meta_description = models.TextField(blank=True, default="")
+    # v1.51 (Phase 7 Release B): Reply-To of the mail we send for this store (common/mail.py::_store_sender)
+    support_email = models.EmailField(blank=True, default="")
     # the store's active theme: a built-in one (tenant NULL) or one of its own; NULL = the first built-in
     theme = models.ForeignKey("settings_app.Theme", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     updated_at = models.DateTimeField(auto_now=True)

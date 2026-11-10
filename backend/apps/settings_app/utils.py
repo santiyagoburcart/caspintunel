@@ -23,7 +23,19 @@ def get_setting(key: str, default: Any = None) -> Any:
         return default
 
 
+class StoreSettingRefused(PermissionError):
+    """v1.51: code running for a reseller store tried to change one of OUR global settings."""
+
+
 def set_setting(key: str, value: Any, value_type: str = "str") -> Setting:
+    """Our global setting — or, inside a reseller store (v1.51, multi-tenant Phase 7), that STORE's own value for a key in
+    `branding.TENANT_KEYS`. Any other key from a store context is refused: a store can never change our settings."""
+    from .branding import TENANT_KEYS, is_store, set_store_setting
+
+    if is_store():
+        if key not in TENANT_KEYS:
+            raise StoreSettingRefused(f"{key} is not a store setting")
+        return set_store_setting(key, value, value_type)
     obj, _ = Setting.objects.update_or_create(
         key=key, defaults={"value": str(value), "value_type": value_type}
     )

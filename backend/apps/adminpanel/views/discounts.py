@@ -197,6 +197,7 @@ def _j(v):
 
 
 class DiscountCodeViewSet(AdminViewSet):
+    store_ok = True        # v1.51 (multi-tenant Phase 7 Release B): a store's own codes, plans, customers, orders
     serializer_class = DiscountCodeSerializer
     perms_map = {"GET": ["discounts.view"], "*": ["discounts.manage"]}
     http_method_names = ["get", "post", "patch", "head", "options"]

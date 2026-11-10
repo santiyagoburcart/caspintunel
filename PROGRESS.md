@@ -566,3 +566,11 @@ Everything shipped since v1.6.0 (details in the session log):
   `admin_link` = the store's panel. No platform name on a store (test push, API root). Includes the watch_payments REVIEW fix.
   Tests: `tenancy/tests/test_phase7.py` (10). Release B next: store panel pages (tickets / CRM / discounts / analytics), store
   settings for tickets + retention, optional store SMTP relay, per-store rate limits.
+- 2026-11-10 — **v1.51.0: multi-tenant Phase 7 Release B — store tickets, discounts, settings, caps.** Store panel: tickets (inbox,
+  reply, assign, topics, canned replies, ticket rules) + discount codes (store_ok, STORE_GROUPS, routes; staff lookups = the
+  store's staff; the Telegram link to our bot hidden there). `set_setting` in a store → its own `TENANT_KEYS` value, anything else
+  `StoreSettingRefused`; + 4 ticket rules in TENANT_KEYS. Throttle buckets per store (`t<id>:`), `StoreTotalThrottle` from
+  `Tenant.limits.requests_per_minute` (set on «فروشگاه») → 429 + one alert to us. `TenantBranding.support_email` (settings_app
+  0020) = Reply-To. Fix (from v1.44): the legacy-theme sidebar (Midnight Aurora / Royal Frost) showed our full menu on a
+  store's panel — now the store menu in every theme. Tests: `tenancy/tests/test_phase7b.py` (6, incl. the reverse sweep).
+  Open: optional store SMTP relay.

@@ -178,6 +178,8 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   **Store data stays in the store (v1.50)**: `Staff` is NULLABLE = NOT scoped — every staff loop for a store event filters
   `tenant_id=store_id()` (None = ours). Customer messages go through `notify_user` (delivers in the customer's store); links via
   `branding.public_base()` / `links.admin_link`, never `PUBLIC_BASE_URL` / `PROJECT_NAME` for a customer.
+  **v1.51**: `set_setting` in a store writes ONLY its `TENANT_KEYS` (else `StoreSettingRefused`) — never bypass it with
+  `Setting.objects`. A page joins `STORE_GROUPS` only when the reverse sweep (`test_phase7b.py`) stays green.
 - The rejected Liquid Glass refresh is archived at tag `archive/ui-refresh-liquid-glass` — don't copy from it.
 
 ## Gotchas (learned the hard way)
