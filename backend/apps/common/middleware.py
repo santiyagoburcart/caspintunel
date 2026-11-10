@@ -9,6 +9,7 @@ removed, so a bad value in the panel can't lock anyone out of the env hosts.
 from __future__ import annotations
 
 import logging
+import time
 
 from django.conf import settings
 from django.core.cache import cache
@@ -23,21 +24,32 @@ class DynamicAllowedHostsMiddleware:
         self.get_response = get_response
         self._base_hosts = list(settings.ALLOWED_HOSTS)
         self._base_csrf = list(getattr(settings, "CSRF_TRUSTED_ORIGINS", []))
+        self._seen = None            # the shared token this PROCESS last synced with
+        self._synced_at = 0.0
 
     def __call__(self, request):
         self._sync()
         return self.get_response(request)
 
     def _sync(self):
-        if cache.get(_CACHE_KEY):
+        # v1.53.1: `settings.ALLOWED_HOSTS` lives in each worker process, the marker in Redis is shared. Before, the first
+        # worker to refresh set the marker and every other worker skipped its own refresh, so a new store domain was
+        # refused (DisallowedHost, 400) by some workers until they restarted (pilot rehearsal 2026-11-10). Now the marker
+        # is a token: a worker refreshes when the token changed (`cache.delete` by domains / stores → a new token) or
+        # when its own copy is older than 60 s.
+        token = cache.get(_CACHE_KEY)
+        if token is None:
+            cache.add(_CACHE_KEY, f"{time.time():.6f}", 60)
+            token = cache.get(_CACHE_KEY)
+        if token is not None and token == self._seen and time.monotonic() - self._synced_at < 60:
             return
+        self._seen, self._synced_at = token, time.monotonic()
         try:
             from apps.settings_app.models import SiteConfig
 
             domain = (SiteConfig.objects.values_list("site_domain", flat=True).first() or "").strip()
         except Exception:  # noqa: BLE001 - DB not ready / migrations
             domain = ""
-        cache.set(_CACHE_KEY, domain or "-", 60)
         if not domain:
             return
 

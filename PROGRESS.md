@@ -611,3 +611,10 @@ Everything shipped since v1.6.0 (details in the session log):
   suspension after N days unpaid (off by default) and automatic resume once paid; store dashboard banner. Admin SPA: a deep link to
   a store-only page no longer falls back to the dashboard while sign-in loads. Tests: `tenancy/tests/test_v153_export_fee.py` (10);
   browser checks (store backup page, store dashboard banner, «فروشگاه» card; phone + desktop, fa / en, light / dark).
+- 2026-11-10 — **v1.53.1: pilot rehearsal on pilot-test.caspintunel.com** (test admin `pilottest`, 5 GB, no charge; store «Pilot
+  Test» in Iran-tunnel mode; DNS → certificate → nginx → active in ~30 s). Found: a newly active store domain was refused by some
+  gunicorn workers for minutes (`DisallowedHost`, 400 — 44 in 2 min): `common/middleware.DynamicAllowedHostsMiddleware` shared one
+  "synced" marker in Redis while `ALLOWED_HOSTS` lives per process. Now each worker remembers the token it synced with and refreshes
+  when it changes or after 60 s (`common/tests/test_middleware.py`). `docs/pilot-fa.md` corrected (needs v1.53.1, request cap 300,
+  export / fee switches, store follows our sign-up requirements — Iranian mobile + phone share — until changed, rehearsal ends
+  «معلق»). Test store left suspended.

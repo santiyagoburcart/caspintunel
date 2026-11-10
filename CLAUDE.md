@@ -193,6 +193,8 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
 - The rejected Liquid Glass refresh is archived at tag `archive/ui-refresh-liquid-glass` — don't copy from it.
 
 ## Gotchas (learned the hard way)
+- Process-local state (e.g. `settings.ALLOWED_HOSTS`) must never be guarded by a SHARED Redis "done" flag — other gunicorn
+  workers skip their refresh (v1.53.1: new store domains got 400 DisallowedHost). Keep a per-process token / timestamp.
 - `useEffect(load, [])` where `load` returns a Promise breaks under StrictMode (dev server). Always
   `useEffect(() => { load() }, [])`.
 - **Two migrations with the same name** from different sessions: Django trusts the name, not the schema.
