@@ -839,6 +839,7 @@ class AdminServiceSerializer(serializers.ModelSerializer):
     panel_name = serializers.CharField(source="panel.name", read_only=True, default=None)
     is_online = serializers.SerializerMethodField()
     has_scheduled_renewal = serializers.SerializerMethodField()
+    pending_renewal = serializers.SerializerMethodField()
     user_deleted = serializers.SerializerMethodField()
 
     class Meta:
@@ -847,7 +848,7 @@ class AdminServiceSerializer(serializers.ModelSerializer):
                   "plan", "plan_en", "plan_id", "panel_id", "panel_name", "status",
                   "expire_strategy", "data_limit", "data_used", "expire_at", "online_at",
                   "is_online", "last_synced_at", "subscription_url", "created_at",
-                  "has_scheduled_renewal")
+                  "has_scheduled_renewal", "pending_renewal")
 
     def get_user_deleted(self, obj) -> bool:
         return obj.user.deleted_at is not None
@@ -855,6 +856,22 @@ class AdminServiceSerializer(serializers.ModelSerializer):
     def get_has_scheduled_renewal(self, obj) -> bool:
         renewal = getattr(obj, "scheduled_renewal", None)
         return bool(renewal and renewal.applied_at is None)
+
+    def get_pending_renewal(self, obj) -> dict | None:
+        """v1.51.1: the paid renewal waiting on this service — what it will set and when — so the panel never shows the
+        new plan's name next to the old volume without saying the renewal is still queued."""
+        r = getattr(obj, "scheduled_renewal", None)
+        if r is None or r.applied_at is not None or r.plan_id is None:
+            return None
+        plan = r.plan
+        ended = obj.status in ("expired", "limited")
+        return {"order_id": r.order_id, "paid_at": r.created_at, "mode": r.renewal_mode,
+                "plan_id": plan.id, "plan": plan.name_fa, "plan_en": plan.name_en or plan.name_fa,
+                "data_limit": int(r.data_limit or 0) or int(plan.data_limit or 0) or None,
+                "duration_days": plan.duration_days or None,
+                # it applies when the current volume runs out or at the current expiry, whichever first;
+                # already ended → the next run of apply_due_scheduled_renewals (every 5 min)
+                "applies_by": None if ended else obj.expire_at, "applies_soon": ended}
 
     def get_is_online(self, obj) -> bool:
         if not obj.online_at:

@@ -413,6 +413,8 @@ sequenceDiagram
         W-->>C: "being reviewed" notice · staff alerted (Telegram)
     end
     W->>DB: order → completed (no "delivered" message yet)
+    W-->>C: v1.51.1 «تمدید پرداخت شد — با پایان حجم/زمان فعلی اعمال می‌شود» (site + bot) · new plan, volume, days, when it applies
+    Note over W,DB: admin service list / page show pending_renewal (plan, volume, days, applies_by) until it applies
     loop every 5 min
         B->>W: apply_due_scheduled_renewals
         W->>DB: renewals whose service reached the end of its cycle

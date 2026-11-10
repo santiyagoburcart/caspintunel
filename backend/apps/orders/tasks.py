@@ -120,9 +120,11 @@ def fulfill_order(self, order_id: int):
                               "updated_at"])
     write_audit(action="order.completed", target=order)
     # a renewal isn't "delivered" yet — apply_scheduled_renewal notifies the
-    # user itself once it actually applies the new plan
+    # user itself once it actually applies the new plan; v1.51.1: at payment the customer is told it is queued
     if order.type != OrderType.RENEW:
         _notify_delivered(order)
+    else:
+        _notify_renewal_queued(order)
     return {"order": order_id, "status": "completed"}
 
 
@@ -300,6 +302,59 @@ def _send_bot_rename_prompt(order, name: str) -> bool:
                                 "callback_data": f"nn:{order.id}"}]]}
     client.send_message(user.telegram_id, text, parse_mode="HTML", reply_markup=kb)
     return True
+
+
+def renewal_queued_text(service, plan, data_limit: int | None) -> dict:
+    """v1.51.1 «تمدید پرداخت شد…» for a paid, queued renewal: new plan, volume, days and when it applies (the current
+    volume running out or the current expiry, whichever first; a service already expired / out of volume: in a few
+    minutes — apply_due_scheduled_renewals runs every 5 min). Latin digits, Tehran time."""
+    from apps.common.jalali import to_jalali_str
+    from apps.panel.models import ServiceStatus
+
+    limit = int(data_limit or 0) or int(plan.data_limit or 0)
+    gb = f"{limit / 1024 ** 3:g}" if limit else ""
+    vol_fa, vol_en = (f"{gb} گیگ", f"{gb} GB") if gb else ("نامحدود", "unlimited")
+    days = int(plan.duration_days or 0)
+    days_fa, days_en = (f" · {days} روز", f" · {days} days") if days else ("", "")
+    name_fa, name_en = plan.name_fa, plan.name_en or plan.name_fa
+    if service.status in (ServiceStatus.EXPIRED, ServiceStatus.LIMITED):
+        when_fa, when_en = "ظرف چند دقیقه (سرویس فعلی تمام شده است).", "within a few minutes (the current service has ended)."
+    elif service.expire_at:
+        d = to_jalali_str(service.expire_at)
+        when_fa = f"با تمام شدن حجم فعلی یا در {d}، هرکدام زودتر."
+        when_en = f"when the current volume runs out or on {d} (Tehran time), whichever comes first."
+    else:
+        when_fa, when_en = "با تمام شدن حجم فعلی.", "when the current volume runs out."
+    account = service.panel_username or f"#{service.pk}"
+    return {
+        "title": "تمدید پرداخت شد — با پایان حجم/زمان فعلی اعمال می‌شود",
+        "title_en": "Renewal paid — it applies when the current volume/time ends",
+        "body": (f"سرویس: {account}\nپلن تمدید: {name_fa} · {vol_fa}{days_fa}\nاعمال: {when_fa}\n"
+                 "تا آن موقع سرویس فعلی بدون تغییر کار می‌کند."),
+        "body_en": (f"Service: {account}\nRenewal plan: {name_en} · {vol_en}{days_en}\nApplies: {when_en}\n"
+                    "Until then your current service keeps working as it is."),
+    }
+
+
+def _notify_renewal_queued(order):
+    """v1.51.1: the customer learns at payment that the renewal is queued (site + bot) — before, nothing was sent until
+    it applied, and a paid renewal looked lost (TX-000078). Never blocks fulfilment."""
+    try:
+        from apps.notifications.dispatch import notify_user
+        from apps.notifications.models import NotificationType
+
+        from .models import ScheduledRenewal
+
+        from django.core.cache import cache
+
+        sr = ScheduledRenewal.objects.filter(order=order, applied_at__isnull=True).select_related("plan", "service").first()
+        if sr is None or not cache.add(f"renewal_queued_notice:{order.id}", 1, 14 * 86400):   # once per order
+            return
+        text = renewal_queued_text(sr.service, sr.plan, sr.data_limit)
+        notify_user(order.user, ntype=NotificationType.ORDER_CONFIRMED, via_site=True,
+                    via_bot=bool(order.user.telegram_id), link="/", **text)
+    except Exception as exc:  # noqa: BLE001 - notification must not fail fulfillment
+        log.warning("renewal-queued notification for order %s failed: %s", order.id, exc)
 
 
 def _notify_delivered(order):

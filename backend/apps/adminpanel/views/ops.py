@@ -81,7 +81,7 @@ class ServiceListViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
     serializer_class = AdminServiceSerializer
 
     def get_queryset(self):
-        qs = Service.objects.select_related("user", "current_plan", "panel", "scheduled_renewal").order_by("-created_at")
+        qs = Service.objects.select_related("user", "current_plan", "panel", "scheduled_renewal", "scheduled_renewal__plan").order_by("-created_at")
         kind = self.request.query_params.get("filter")
         if kind == "active":
             qs = qs.filter(status=ServiceStatus.ACTIVE)

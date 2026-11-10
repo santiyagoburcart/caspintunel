@@ -574,3 +574,8 @@ Everything shipped since v1.6.0 (details in the session log):
   0020) = Reply-To. Fix (from v1.44): the legacy-theme sidebar (Midnight Aurora / Royal Frost) showed our full menu on a
   store's panel — now the store menu in every theme. Tests: `tenancy/tests/test_phase7b.py` (6, incl. the reverse sweep).
   Open: optional store SMTP relay.
+- 2026-11-10 — **v1.51.1: queued renewals are visible (TX-000078).** A customer paid a renewal (order #172, Blu auto) and
+  saw nothing change — by design it waits for the current cycle (expiry 2026-11-11 12:44), but nobody was told. Now: at payment
+  the customer gets «تمدید پرداخت شد — با پایان حجم/زمان فعلی اعمال می‌شود» (site + bot, once per order) with plan, volume,
+  days and the expected time; the admin Services list / service page show the queued renewal (`pending_renewal`) instead
+  of only the new plan's name next to the old volume. Tests: `orders/tests/test_renewal_queued_notice.py` (3).

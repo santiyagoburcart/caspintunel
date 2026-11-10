@@ -10,6 +10,7 @@ import { digits, gb, jalali, relTime } from '../lib/format'
 import { copyToClipboard } from '../lib/clipboard'
 import { useServiceActions } from '../lib/serviceActions'
 import { Spinner } from '../components/ui'
+import PendingRenewal from '../components/PendingRenewal'
 import { useToast } from '../components/Toast'
 import { useConfirm } from '../components/ConfirmDialog'
 import { DateRangeModal, DRP_CSS } from '../components/DateRangePicker'
@@ -424,6 +425,8 @@ export default function ServiceEdit() {
         </div>
         {UsageBar}
       </div>
+
+      <PendingRenewal p={d.pending_renewal} lang={lang} />
 
       <div className="card sed-card">
         {/* ---------- desktop header ---------- */}

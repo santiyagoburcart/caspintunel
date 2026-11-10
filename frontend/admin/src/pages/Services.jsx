@@ -7,6 +7,7 @@ import { Alert, Spinner, Toggle } from '../components/ui'
 import { useServiceActions } from '../lib/serviceActions'
 import { useToast } from '../components/Toast'
 import AccountNameInput, { nameOk } from '../components/AccountNameInput'
+import PendingRenewal, { PENDING_RENEWAL_CSS } from '../components/PendingRenewal'
 
 function Ico({ d, w = 16 }) {
   return (
@@ -185,7 +186,7 @@ export default function Services() {
 
   return (
     <div className="svc space-y-4">
-      <style>{CSS}</style>
+      <style>{CSS + PENDING_RENEWAL_CSS}</style>
 
       <div className="svc-head">
         <div>
@@ -281,7 +282,8 @@ export default function Services() {
                   </td>
                   <td data-label={s.col_plan}>{r.plan_id
                     ? <span className="svc-ell" title={(lang === 'fa' ? r.plan : r.plan_en) || r.plan || ''}>{(lang === 'fa' ? r.plan : r.plan_en) || r.plan}</span>
-                    : <span className="svc-noplan" data-testid="no-plan">{s.no_plan}</span>}</td>
+                    : <span className="svc-noplan" data-testid="no-plan">{s.no_plan}</span>}
+                    {r.pending_renewal && <><br /><PendingRenewal p={r.pending_renewal} lang={lang} compact /></>}</td>
                   <td data-label={s.col_panel}><span className="svc-ell" title={r.panel_name || ''}>{r.panel_name || '—'}</span></td>
                   <td data-label={s.col_status}>
                     <StatusPill status={r.status} t={t} />
