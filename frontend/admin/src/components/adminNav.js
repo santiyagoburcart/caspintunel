@@ -92,6 +92,8 @@ export const STORE_GROUPS = [
     ['/pages', 'pages', 'pages.manage', 'pages'],
     ['/themes', 'themes', 'themes.manage', 'themes'],
     ['/tickets/topics', 'ticket_topics', ['tickets.view', 'tickets.manage_topics'], 'ticketTopics'],
+    // v1.52 (Phase 8): the store's own roles + staff (codes within the ceiling we set)
+    ['/roles', 'roles', 'roles.manage', 'roles'],
   ]],
 ]
 export const STORE_BOTNAV = [

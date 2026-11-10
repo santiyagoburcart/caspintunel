@@ -104,7 +104,7 @@ def admin_changed(m, username: str, what: str) -> int:
 def staff_for_tg(tg_id):
     from apps.accounts.models import Staff
 
-    return Staff.objects.filter(telegram_id=tg_id, is_active=True).select_related("role").first()
+    return Staff.objects.filter(telegram_id=tg_id, is_active=True, tenant__isnull=True).select_related("role").first()
 
 
 def handle_callback(bot, chat_id, message, tg_id, data: str) -> str:

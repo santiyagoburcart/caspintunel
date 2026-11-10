@@ -212,17 +212,18 @@ def test_staff_flows_never_run_in_a_store_bot(connected, store, wire, monkeypatc
     from apps.tickets import bot as tbot
     from apps.tickets import staff_link
 
-    Staff.objects.create(username="our-op", is_superadmin=True, telegram_id=TG)
-    redeemed = []
-    monkeypatch.setattr(staff_link, "redeem", lambda code, tg_id: redeemed.append(code) or "linked")
-    store_bot_update_task(store.pk, _update("/start staff-ABC123", 1))
-    assert redeemed == []                                                     # no staff linking through a reseller's bot
+    op = Staff.objects.create(username="our-op", is_superadmin=True, telegram_id=TG)
+    code = staff_link.new_code(Staff.objects.create(username="our-op2", is_superadmin=True))
+    store_bot_update_task(store.pk, _update(f"/start staff-{code}", 1))
+    assert Staff.objects.get(username="our-op2").telegram_id is None          # our staff never link through a store's bot
+    assert op.telegram_id == TG
     cb = {"update_id": 7999, "callback_query": {"id": "q1", "data": "st:l:o:0", "chat_instance": "c",
                                                  "from": {"id": TG, "is_bot": False, "first_name": "Op"},
                                                  "message": {"message_id": 3, "date": 0, "chat": {"id": TG, "type": "private"}}}}
     wire.clear()
     store_bot_update_task(store.pk, cb)
-    assert not [m for _, m, _ in wire if m in ("sendMessage", "editMessageText")]
+    answers = [str(p.get("text", "")) for _, m, p in wire if m in ("sendMessage", "editMessageText")]
+    assert all("⛔️" in a for a in answers)                                   # v1.52: refused — never our staff inbox
     with context.tenant_context(store.pk):
         assert tbot.staff_for(TG) is None
     assert tbot.staff_for(TG) is not None                                     # in our own bot it still works

@@ -319,7 +319,7 @@ class StaffScopeDetailView(_StaffView):
 # --- my Telegram link (any logged-in staff member, for themselves) --------------
 class TelegramLinkView(_StaffView):
     perms_map = {"GET": [], "POST": [], "DELETE": []}
-    store_ok = False        # links to OUR bot — store staff get their own way in Phase 8
+    store_ok = True         # v1.52: a store's staff link THAT store's bot (staff_link.deep_link / redeem)
 
     @extend_schema(summary="Is my Telegram linked?")
     def get(self, request):

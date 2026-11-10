@@ -37,6 +37,7 @@ erDiagram
         bool export_allowed
         json limits
         int quota_alert_level "v1.46: 0 · 20 · 10 (% remaining warned)"
+        json permission_ceiling "v1.52: codes the store's staff may hold / grant (⊆ STORE_CODES)"
     }
     tenant_domain {
         bigint id PK
@@ -150,7 +151,8 @@ erDiagram
     }
     role {
         bigint id PK
-        string name UK
+        bigint tenant_id FK "NULL = ours · v1.52 a store's own roles"
+        string name "UK with tenant (v1.52)"
         string name_fa "v1.25.2 Persian label"
         string description_fa
     }
@@ -188,7 +190,7 @@ erDiagram
 |---|---|
 | `user` | Customer account (site, bot or legacy import). Soft-deleted first; excluded from lists, stats and renewals once `deleted_at` is set. A Super Admin can then permanently delete it (v1.31.2, `accounts/purge.py`): the row stays as «کاربر حذف‌شده #id» (no name / phone / email / Telegram / card / notes, unusable password, `purged_at`) so orders and payments — and every total — are unchanged; services, tickets, CRM rows, notifications, tokens and its `deleted_user_archive` rows are deleted. |
 | `staff` | Admin-panel operator — a separate model from `user`, with its own JWT; `token_version` ends all sessions when bumped. Optional `email` and linked `telegram_id` receive ticket notifications (and, since v1.33, every staff alert they have the permission for, incl. agency approvals with buttons). `notify_prefs` = panel sound on/off + volume. |
-| `role` / `permission` / `role_permission` | RBAC: roles bundle permission codes (`users.view`, `payment.approve`, `agency.view`, `agency.accounting`, `settings.email`, …). Super-admins bypass checks. `name_fa` / `description_fa` (v1.25.2) are shown when the panel is Persian (seeded for built-in roles and every permission). |
+| `role` / `permission` / `role_permission` | RBAC: roles bundle permission codes (`users.view`, `payment.approve`, `agency.view`, `agency.accounting`, `settings.email`, …). Super-admins bypass checks. `name_fa` / `description_fa` (v1.25.2) are shown when the panel is Persian (seeded for built-in roles and every permission). v1.52 (multi-tenant Phase 8): `role.tenant` / `staff.tenant` = a reseller store's own roles and staff; role names unique per store (`role_tenant_name`); a store's staff never exceed `tenant.permission_ceiling` (`tenancy/staff.py`). |
 | `staff_revoked_token` | Spent / revoked staff refresh tokens (by `jti`) until they expire. |
 | `deleted_user_archive` | Full snapshot of a user taken right before a soft delete; restore writes `restored_at/_by`. |
 | `audit_log` | Immutable record of staff and system actions (`write_audit`). `staff_id` is a plain column, not an FK. |

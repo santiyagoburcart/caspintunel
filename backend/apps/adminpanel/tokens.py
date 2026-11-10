@@ -47,7 +47,7 @@ def decode(token: str, expected_type: str) -> dict:
     return payload
 
 
-def staff_for_payload(payload: dict):
+def staff_for_payload(payload: dict, *, tenant_id: int | None = None):
     """The active Staff a decoded token belongs to, or None when the account is
     gone/disabled or the token predates its last session revocation (password
     change, `revoke_staff_sessions`). Tokens without "tv" (issued before
@@ -57,7 +57,25 @@ def staff_for_payload(payload: dict):
     staff = Staff.objects.filter(pk=payload.get("staff_id"), is_active=True).select_related("role").first()
     if staff is None or payload.get("tv") != staff.token_version:
         return None
+    if staff.tenant_id and not store_staff_here(staff, tenant_id=tenant_id):
+        return None                     # v1.52: a store's staff token works only on that store's own domains
     return staff
+
+
+def store_staff_here(staff, *, tenant_id: int | None = None) -> bool:
+    """v1.52 (multi-tenant Phase 8): a reseller store's staff belong to THAT store's domains only (never ours, never another
+    store's); our staff (tenant NULL) are unaffected. `tenant_id` = the store a websocket was opened on (no request context
+    there); otherwise the current request's store."""
+    if not staff.tenant_id:
+        return True
+    if tenant_id is not None:
+        return tenant_id == staff.tenant_id
+    try:
+        from apps.tenancy.context import store_id
+
+        return store_id() == staff.tenant_id
+    except Exception:  # noqa: BLE001 — no tenant resolved: not a store request
+        return False
 
 
 def revoke_refresh(payload: dict) -> bool:

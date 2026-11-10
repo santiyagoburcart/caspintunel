@@ -31,6 +31,10 @@ class StaffLoginView(FreshAuthMixin, APIView):
         ser = StaffLoginSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         staff = Staff.objects.filter(username=ser.validated_data["username"]).first()
+        from ..tokens import store_staff_here
+
+        if staff is not None and not store_staff_here(staff):
+            staff = None                # v1.52: a store's staff sign in on that store's domain only (same answer as unknown)
         if not staff or not staff.check_password(ser.validated_data["password"]):
             return Response(
                 {"detail": "invalid credentials", "code": "invalid_credentials"},
@@ -106,7 +110,13 @@ class StaffMeView(APIView):
 
 def _staff_payload(staff: Staff) -> dict:
     gm = staff.group_manager_row if staff.is_group_manager else None
-    if staff.is_superadmin:
+    if staff.tenant_id:
+        # v1.52 (Phase 8): a store's staff — its role's codes within the store's ceiling (never "*")
+        from apps.tenancy.staff import ceiling
+
+        cap = ceiling(staff.tenant_id)
+        perms = [c for c in staff.role.permissions.values_list("code", flat=True) if c in cap] if staff.role_id else []
+    elif staff.is_superadmin:
         perms = ["*"]
     elif gm is not None:
         perms = [GROUP_MANAGER_PERM, *staff.gm_permissions()]   # v1.27: + its agency.gm.* abilities (Staff.has_perm)
@@ -119,7 +129,8 @@ def _staff_payload(staff: Staff) -> dict:
         "username": staff.username,
         "role": staff.role.name if staff.role_id else None,
         "role_fa": (staff.role.name_fa or "") if staff.role_id else "",
-        "is_superadmin": staff.is_superadmin,
+        "is_superadmin": staff.is_superadmin and not staff.tenant_id,
+        "store_staff": bool(staff.tenant_id),           # v1.52: a reseller store's own staff (not ours)
         "permissions": perms,
         "last_login": staff.last_login,
         # v1.33: panel sound preferences (views/push.py)

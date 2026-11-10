@@ -40,6 +40,9 @@ class PlanAdminViewSet(AdminViewSet):
             return Response(catalog.options())
         except catalog.CatalogError as exc:
             return Response({"detail": exc.en, "detail_fa": exc.fa}, status=404)
+        except Exception as exc:  # noqa: BLE001 — v1.52: no agency panel configured / reachable → 503, never a 500
+            return Response({"detail": f"the agency panel is not available: {exc}"[:300],
+                             "detail_fa": "پنل نمایندگی در دسترس نیست — بعداً دوباره امتحان کنید"}, status=503)
 
 
 class BankCardViewSet(AdminViewSet):
@@ -176,29 +179,75 @@ class ThemeViewSet(AdminViewSet):
         return Response(ThemeSerializer(theme).data)
 
 
+def _here():
+    """The current store (None = ours). v1.52: roles / staff are listed and edited only inside their own store."""
+    from apps.tenancy.context import store_id
+
+    return store_id()
+
+
 class RoleViewSet(AdminViewSet):
-    queryset = Role.objects.prefetch_related("permissions").order_by("name")
+    queryset = Role.objects.none()
     serializer_class = RoleSerializer
     perms_map = {"GET": ["roles.manage"], "*": ["roles.manage"]}
+    store_ok = True        # v1.52 (Phase 8): a store's own roles, codes ⊆ its ceiling (tenancy/staff.py)
+
+    def get_queryset(self):
+        return Role.objects.filter(tenant_id=_here()).prefetch_related("permissions").order_by("name")
+
+    def perform_destroy(self, instance):
+        from apps.tenancy.staff import OWNER_ROLE
+
+        if instance.tenant_id and instance.name == OWNER_ROLE:
+            from rest_framework.exceptions import PermissionDenied
+
+            raise PermissionDenied("the store owner's role is managed by us (it follows the store's ceiling)")
+        instance.delete()
 
 
 class PermissionListViewSet(AdminViewSet):
-    queryset = Permission.objects.all().order_by("code")
+    queryset = Permission.objects.none()
     serializer_class = PermissionSerializer
     http_method_names = ["get"]
     perms_map = {"GET": ["roles.manage"]}
+    store_ok = True        # v1.52: on a store's panel only what that store may grant
+
+    def get_queryset(self):
+        qs = Permission.objects.all().order_by("code")
+        if _here():
+            from apps.tenancy.staff import grantable
+
+            qs = qs.filter(code__in=list(grantable(self.request.user)))
+        return qs
 
 
 class StaffViewSet(AdminViewSet):
-    queryset = Staff.objects.select_related("role", "group_manager").order_by("username")
+    queryset = Staff.objects.none()
     serializer_class = StaffSerializer
     perms_map = {"GET": ["roles.manage"], "*": ["roles.manage"]}
     filter_backends = [filters.SearchFilter]
     search_fields = ["username"]
+    store_ok = True        # v1.52 (Phase 8): a store's own staff only; ours never listed there, a store's never here
+
+    def get_queryset(self):
+        return Staff.objects.filter(tenant_id=_here()).select_related("role", "group_manager").order_by("username")
+
+    def perform_destroy(self, instance):
+        from apps.tenancy.staff import OWNER_ROLE
+
+        if instance.tenant_id and instance.role_id and instance.role.name == OWNER_ROLE:
+            from rest_framework.exceptions import PermissionDenied
+
+            raise PermissionDenied("the store owner's account is managed by us on «فروشگاه»")
+        instance.delete()
 
     @action(detail=False, methods=["get"], url_path="group-manager-options")
     def group_manager_options(self, request):
         """Agency groups + PasarGuard roles for a "Group manager" staff (v1.25.2)."""
+        if _here():
+            from django.http import Http404
+
+            raise Http404           # v1.52: agency data is ours — never on a store's panel
         from apps.agency.managers import options_payload
 
         return Response(options_payload())

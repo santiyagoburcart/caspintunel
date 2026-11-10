@@ -339,7 +339,7 @@ def _register(bot: telebot.TeleBot):
     def start(msg):
         close_old_connections()
         payload = (msg.text or "").split(maxsplit=1)[1] if len((msg.text or "").split()) > 1 else ""
-        if payload.startswith(STAFF_LINK_PREFIX) and not branding_is_store():   # never in a store's bot (v1.49)
+        if payload.startswith(STAFF_LINK_PREFIX):     # v1.52: redeem() only links staff of THIS bot's store
             # staff linking their Telegram for ticket DMs — never creates a customer account
             bot.send_message(msg.chat.id, staff_link_reply(payload[len(STAFF_LINK_PREFIX):], msg.from_user.id))
             return
@@ -452,8 +452,8 @@ def _register(bot: telebot.TeleBot):
             bot.answer_callback_query(c.id)      # stop the client spinner right away
         except Exception:  # noqa: BLE001
             pass
-        if (c.data or "").startswith(("ag:", "st:")) and branding_is_store():
-            return                                  # staff flows never run in a store's bot (v1.49; store staff: Phase 8)
+        if (c.data or "").startswith("ag:") and branding_is_store():
+            return                                  # agency approvals are ours — never in a store's bot (st:* = staff_for)
         if (c.data or "").startswith("ag:"):
             # v1.33 agency approvals from Telegram — staff only, permission-checked (agency/notify.py)
             from apps.agency import notify as agency_notify

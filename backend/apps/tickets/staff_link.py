@@ -30,7 +30,16 @@ def new_code(staff) -> str:
 
 
 def deep_link(code: str) -> str | None:
+    """v1.52: our staff link with OUR bot; a store's staff with THAT store's bot (the current store)."""
     try:
+        from apps.tenancy.context import store_id
+
+        tid = store_id()
+        if tid:
+            from apps.telegram.bot.store_bots import username
+
+            name = username(tid) or None
+            return f"https://t.me/{name}?start={PREFIX}{code}" if name else None
         from apps.telegram.config import our_sales_client
 
         client = our_sales_client()
@@ -50,8 +59,10 @@ def redeem(code: str, telegram_id: int) -> str:
         return "invalid"
     cache.delete(key)
     staff = Staff.objects.filter(pk=staff_id, is_active=True).first()
-    if staff is None:
-        return "invalid"
+    from apps.tenancy.context import store_id
+
+    if staff is None or staff.tenant_id != store_id():
+        return "invalid"            # v1.52: a code is redeemed only in its own store's bot (ours: our bot)
     if Staff.objects.filter(telegram_id=telegram_id).exclude(pk=staff.pk).exists():
         return "taken"
     try:

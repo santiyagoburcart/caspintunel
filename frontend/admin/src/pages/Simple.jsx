@@ -667,7 +667,8 @@ function RoleModal({ row, perms, s, t, lang, onClose, onSaved }) {
 
 function StaffModal({ row, roles, s, t, onClose, onSaved }) {
   const editing = !!row
-  const { can } = useAuth()
+  const { can, staff: me } = useAuth()
+  const inStore = !!me?.store          // v1.52: a store's staff are never Super Admin
   const { lang } = useI18n()
   const manageScopes = can('tickets.manage_topics')
   const [f, setF] = useState(() => (row
@@ -745,7 +746,7 @@ function StaffModal({ row, roles, s, t, onClose, onSaved }) {
             <span className="label">{s.c_role}</span>
             <select className="input" value={f.role || ''} onChange={(e) => setF({ ...f, role: e.target.value })} disabled={f.is_superadmin}>
               <option value="">— {t('select_role')} —</option>
-              {roles.map((r) => <option key={r.id} value={r.id}>{roleName(r, lang)}</option>)}
+              {roles.filter((r) => !(inStore && r.name === OWNER_ROLE)).map((r) => <option key={r.id} value={r.id}>{roleName(r, lang)}</option>)}
             </select>
           </label>
           {isGm && (
@@ -797,10 +798,12 @@ function StaffModal({ row, roles, s, t, onClose, onSaved }) {
             <label className="sm-toggle-row">
               <Toggle checked={f.is_active} onChange={(v) => setF({ ...f, is_active: v })} label={t('active')} /> {t('active')}
             </label>
-            <label className="sm-toggle-row">
-              <Toggle checked={f.is_superadmin} onChange={(v) => setF({ ...f, is_superadmin: v })} label={s.super} />
-              <span>{s.super} <span className="sm-hint">— {s.super_hint}</span></span>
-            </label>
+            {!inStore && (
+              <label className="sm-toggle-row">
+                <Toggle checked={f.is_superadmin} onChange={(v) => setF({ ...f, is_superadmin: v })} label={s.super} />
+                <span>{s.super} <span className="sm-hint">— {s.super_hint}</span></span>
+              </label>
+            )}
           </div>
         </div>
         <div className="sm-modal-foot">
@@ -812,9 +815,13 @@ function StaffModal({ row, roles, s, t, onClose, onSaved }) {
   )
 }
 
+const OWNER_ROLE = 'store-owner'      // v1.52: the store owner's role + account are managed by us on «فروشگاه»
+
 export function Roles() {
   const { t, lang } = useI18n()
   const s = R[lang] || R.fa
+  const { staff: me } = useAuth()
+  const inStore = !!me?.store
   const roles = useList('/admin/roles/?limit=200')
   const staff = useList('/admin/staff/?limit=200')
   const perms = useList('/admin/permissions/?limit=200')
@@ -874,10 +881,12 @@ export function Roles() {
                       <td data-label={s.c_desc} className="text-muted">{roleDesc(r, lang) || '—'}</td>
                       <td data-label={s.c_perms} className="sm-c"><span className="sm-cnt-pill">{digits((r.permission_codes || []).length, lang)}</span></td>
                       <td data-label={s.c_actions} className="sm-c">
-                        <div className="sm-acts">
-                          <button className="sm-btn" onClick={() => setRoleModal({ row: r })}>{t('edit')}</button>
-                          <button className="sm-btn sm-btn--del" onClick={() => delRole(r)}>{t('delete')}</button>
-                        </div>
+                        {!(inStore && r.name === OWNER_ROLE) && (
+                          <div className="sm-acts">
+                            <button className="sm-btn" onClick={() => setRoleModal({ row: r })}>{t('edit')}</button>
+                            <button className="sm-btn sm-btn--del" onClick={() => delRole(r)}>{t('delete')}</button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -892,10 +901,12 @@ export function Roles() {
                     <span className="sm-cnt-pill">{digits((r.permission_codes || []).length, lang)} {s.c_perms}</span>
                   </div>
                   {roleDesc(r, lang) && <p className="sm-role-card-desc">{roleDesc(r, lang)}</p>}
-                  <div className="sm-role-card-acts">
-                    <button className="sm-btn" onClick={() => setRoleModal({ row: r })}>{t('edit')}</button>
-                    <button className="sm-btn sm-btn--del" onClick={() => delRole(r)}>{t('delete')}</button>
-                  </div>
+                  {!(inStore && r.name === OWNER_ROLE) && (
+                    <div className="sm-role-card-acts">
+                      <button className="sm-btn" onClick={() => setRoleModal({ row: r })}>{t('edit')}</button>
+                      <button className="sm-btn sm-btn--del" onClick={() => delRole(r)}>{t('delete')}</button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -935,10 +946,12 @@ export function Roles() {
                       </td>
                       <td data-label={s.c_active} className="sm-c">{r.is_active ? <span className="sm-ok"><Ico d={I.check} w={14} /></span> : <span className="sm-off">—</span>}</td>
                       <td data-label={s.c_actions} className="sm-c">
-                        <div className="sm-acts">
-                          <button className="sm-btn" onClick={() => setStaffModal({ row: r })}>{t('edit')}</button>
-                          <button className="sm-btn sm-btn--del" onClick={() => delStaff(r)}>{t('delete')}</button>
-                        </div>
+                        {!(inStore && r.role_name === OWNER_ROLE) && (
+                          <div className="sm-acts">
+                            <button className="sm-btn" onClick={() => setStaffModal({ row: r })}>{t('edit')}</button>
+                            <button className="sm-btn sm-btn--del" onClick={() => delStaff(r)}>{t('delete')}</button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -961,10 +974,12 @@ export function Roles() {
                           {(r.group_manager?.warnings || []).includes('no_group') && <span className="sm-role-badge sm-warn-badge">⚠ {s.gm_badge_no_group}</span>}</>}
                     </div>
                   </div>
-                  <div className="sm-acts">
-                    <button className="sm-btn" onClick={() => setStaffModal({ row: r })}>{t('edit')}</button>
-                    <button className="sm-btn sm-btn--del" onClick={() => delStaff(r)}>{t('delete')}</button>
-                  </div>
+                  {!(inStore && r.role_name === OWNER_ROLE) && (
+                    <div className="sm-acts">
+                      <button className="sm-btn" onClick={() => setStaffModal({ row: r })}>{t('edit')}</button>
+                      <button className="sm-btn sm-btn--del" onClick={() => delStaff(r)}>{t('delete')}</button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

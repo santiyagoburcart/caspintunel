@@ -288,15 +288,12 @@ def handle_user_input(bot, chat_id, user, tg, st, *, text="", file=None, render,
 
 # ================================= staff ======================================
 def staff_for(tg_id):
-    """The linked, active staff member allowed to see tickets — else None. Never inside a store's bot (v1.49): our staff
-    don't work through a reseller's bot (store staff: Phase 8)."""
+    """The linked, active staff member allowed to see tickets — else None. v1.52: inside a store's bot only THAT store's staff,
+    in our bot only ours (never across)."""
     from apps.accounts.models import Staff
-    from apps.settings_app.branding import is_store
+    from apps.tenancy.context import store_id
 
-    if is_store():
-        return None
-
-    s = Staff.objects.filter(telegram_id=tg_id, is_active=True, tenant__isnull=True).select_related("role").first()
+    s = Staff.objects.filter(telegram_id=tg_id, is_active=True, tenant_id=store_id()).select_related("role").first()
     if s is None or not (s.is_superadmin or s.has_perm("tickets.view")):
         return None
     return s

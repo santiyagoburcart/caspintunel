@@ -152,7 +152,8 @@ class Permission(models.Model):
 
 class Role(models.Model):
     tenant = tenant_fk(null=True)  # NULL = platform role (docs/multi-tenant.md)
-    name = models.CharField(max_length=100, unique=True)
+    # v1.52 (Phase 8): unique per store (a store's «پشتیبانی» may share a name with another store's); ours checked in the serializer
+    name = models.CharField(max_length=100)
     description = models.CharField(max_length=255, blank=True)
     # v1.25.2: Persian name / description (seeded for built-in roles, editable); blank = use `name`
     name_fa = models.CharField(max_length=100, blank=True, default="")
@@ -164,6 +165,7 @@ class Role(models.Model):
     class Meta:
         db_table = "role"
         ordering = ("name",)
+        constraints = [models.UniqueConstraint(fields=["tenant", "name"], name="role_tenant_name")]
 
     def __str__(self) -> str:
         return self.name
@@ -242,6 +244,12 @@ class Staff(TimeStampedModel):
         return sorted(self.role.permissions.filter(code__in=list(GM_PERMS)).values_list("code", flat=True))
 
     def has_perm(self, code: str) -> bool:
+        if self.tenant_id:
+            # v1.52 (multi-tenant Phase 8): a reseller store's staff — never Super Admin, never above the store's ceiling
+            from apps.tenancy.staff import ceiling
+
+            return bool(self.role_id) and code in ceiling(self.tenant_id) and \
+                self.role.permissions.filter(code=code).exists()
         if self.is_superadmin:
             return True
         if self.is_group_manager:

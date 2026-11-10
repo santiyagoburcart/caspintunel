@@ -1483,3 +1483,23 @@ sequenceDiagram
         W->>TG: getWebhookInfo · wrong webhook set again · one alert to us when broken
     end
 ```
+
+## 16h. A reseller's own staff (multi-tenant Phase 8, v1.52)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor O as Our staff («فروشگاه»)
+    actor R as Reseller (store owner)
+    actor K as Store staff
+    participant API as Django (store's domain)
+    O->>API: PUT store/ceiling/ {codes ⊆ STORE_CODES} (our host)
+    API->>API: strip codes above it from the store's roles · owner role = ceiling · audit
+    O->>API: POST store/owner/ {username} → password once
+    R->>API: login on https://store-domain/panel/ (refused on our host / another store)
+    R->>API: POST roles/ {name, codes} → codes ⊆ ceiling ∩ R's own, else 403
+    R->>API: POST staff/ {username, role} → staff.tenant = store, never Super Admin
+    K->>API: login on the store's domain · has_perm = role ∩ ceiling
+    K->>API: Telegram link → /start staff-CODE in the STORE's bot (redeem checks the store)
+    API-->>K: ticket DMs through the store's bot
+```

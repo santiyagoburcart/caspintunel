@@ -80,6 +80,7 @@ export default function App() {
           <Route path="/tickets/topics" element={<TicketTopics />} />
           <Route path="/tickets/:id" element={<Tickets />} />
           <Route path="/discounts" element={<Discounts />} />
+          <Route path="/roles" element={<Roles />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

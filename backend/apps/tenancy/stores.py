@@ -34,6 +34,7 @@ def row(t: Tenant | None, *, staff_view: bool = True) -> dict | None:
     from apps.settings_app.models import TenantBranding
 
     from . import bots, domains
+    from . import staff as staff_mod
 
     with context.tenant_context(t.pk):
         b = TenantBranding.objects.first()
@@ -42,6 +43,10 @@ def row(t: Tenant | None, *, staff_view: bool = True) -> dict | None:
         "export_allowed": t.export_allowed, "limits": t.limits, "created_at": t.created_at,
         "domains": domains.rows_for(t.pk, staff=staff_view),      # v1.45 (Phase 3): records, checks, certificate, health
         "bot": bots.row(t, staff_view=staff_view),                 # v1.49 (Phase 6): username + webhook state, never the token
+        # v1.52 (Phase 8): the store owner's login (never its password) and the permission ceiling we set
+        "owner": staff_mod.owner_row(t) if staff_view else None,
+        "ceiling": sorted(t.permission_ceiling or []),
+        "store_codes": sorted(staff_mod.STORE_CODES) if staff_view else None,
         "branding": {"site_name_fa": b.site_name_fa, "site_name_en": b.site_name_en} if b else None,
         "reachable": t.status == Tenant.ACTIVE and TenantDomain.objects.filter(tenant=t, state=TenantDomain.ACTIVE).exists(),
     }
@@ -65,7 +70,10 @@ def enable(username: str, *, name: str = "", staff=None) -> Tenant:
     if store_of(username) is not None:
         raise StoreError("this admin already has a store", "این ادمین قبلاً فروشگاه دارد", 409)
     name = (name or username).strip()[:150]
-    t = Tenant.objects.create(slug=_slug(username), name=name, reseller_username=username, status=Tenant.DRAFT)
+    from .staff import DEFAULT_CEILING
+
+    t = Tenant.objects.create(slug=_slug(username), name=name, reseller_username=username, status=Tenant.DRAFT,
+                              permission_ceiling=list(DEFAULT_CEILING))     # v1.52: the default template (we can lower it)
     with context.tenant_context(context.default_tenant_id()):
         pages = list(Page.objects.values("slug", "title_fa", "title_en", "body_fa", "body_en", "is_active"))
     with context.tenant_context(t.pk):

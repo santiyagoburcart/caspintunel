@@ -729,6 +729,50 @@ class AgencyStoreBotCheckView(AdminAPIView):
                          "message_fa": "ربات سالم است" if b.state == b.OK else f"خطای ربات: {b.last_error}"})
 
 
+class AgencyStoreCeilingView(AdminAPIView):
+    """v1.52 (Phase 8) PUT {codes: [...]} — the permission codes this store's staff may hold and grant (⊆ STORE_CODES; our staff
+    only). Lowering it strips the codes from the store's roles at once; the owner's role always equals it."""
+
+    perms_map = {"PUT": MANAGE}
+
+    def put(self, request, username):
+        from apps.tenancy import staff as S
+        from apps.tenancy import stores
+
+        t, err = _store_or_404(username)
+        if err:
+            return err
+        try:
+            S.set_ceiling(t, (request.data or {}).get("codes") or [], staff=request.user)
+        except S.StaffError as exc:
+            return Response({"detail": exc.en, "detail_fa": exc.fa, "field": exc.field}, status=exc.status)
+        t.refresh_from_db()
+        return Response({"store": stores.row(t), "message": "Store permissions saved", "message_fa": "سقف دسترسی فروشگاه ذخیره شد"})
+
+
+class AgencyStoreOwnerView(AdminAPIView):
+    """v1.52 (Phase 8) POST {username} — create the store owner's login (first time) or reset its password (then: no body
+    needed). The password is in this answer ONCE — never stored in clear, never audited."""
+
+    perms_map = {"POST": MANAGE}
+
+    def post(self, request, username):
+        from apps.tenancy import staff as S
+        from apps.tenancy import stores
+
+        t, err = _store_or_404(username)
+        if err:
+            return err
+        try:
+            owner, password = S.ensure_owner(t, str((request.data or {}).get("username") or ""), staff=request.user)
+        except S.StaffError as exc:
+            return Response({"detail": exc.en, "detail_fa": exc.fa, "field": exc.field}, status=exc.status)
+        t.refresh_from_db()
+        return Response({"store": stores.row(t), "owner": owner.username, "password": password,
+                         "message": f"Owner login {owner.username} ready — copy the password now",
+                         "message_fa": f"ورود مالک فروشگاه ({owner.username}) آماده است — رمز را همین حالا کپی کنید"})
+
+
 class AgencyStoreDomainView(AdminAPIView):
     """v1.45 PATCH {mode?, www?} · DELETE (remove: nginx file + certificate go, the store stops answering on it)."""
 

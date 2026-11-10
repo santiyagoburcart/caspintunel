@@ -189,9 +189,9 @@ def main_menu(user) -> Screen:
     rows.append([_b(tr(user, "btn_tickets"), "tk:home")])
     from apps.accounts.models import Staff
 
-    from apps.settings_app.branding import is_store
+    from apps.tenancy.context import store_id
 
-    if user.telegram_id and not is_store() and Staff.objects.filter(telegram_id=user.telegram_id, is_active=True).exists():
+    if user.telegram_id and Staff.objects.filter(telegram_id=user.telegram_id, is_active=True, tenant_id=store_id()).exists():
         rows.append([_b(tr(user, "btn_staff_tickets"), "st:l:o:0")])
     last = [_b(tr(user, "btn_support"), "m:help")]
     app = miniapp_url()

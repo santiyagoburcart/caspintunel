@@ -15,7 +15,7 @@ from .notify import STAFF_GROUP
 
 
 @database_sync_to_async
-def _staff(token: str):
+def _staff(token: str, tenant_id: int | None = None):
     import jwt
 
     from apps.adminpanel.tokens import decode, staff_for_payload
@@ -24,7 +24,7 @@ def _staff(token: str):
         payload = decode(token, "staff_access")
     except jwt.InvalidTokenError:
         return None
-    staff = staff_for_payload(payload)
+    staff = staff_for_payload(payload, tenant_id=tenant_id)
     if staff is None or not staff.has_perm("tickets.view"):
         return None
     return staff
@@ -33,7 +33,10 @@ def _staff(token: str):
 class StaffTicketsConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         token = parse_qs((self.scope.get("query_string") or b"").decode()).get("token", [None])[0]
-        staff = await _staff(token) if token else None
+        from apps.notifications.consumers import _socket_tenant
+
+        tid = await _socket_tenant(self.scope)                  # v1.52: a store's staff only on its own store's socket
+        staff = await _staff(token, tid) if token else None
         if staff is None:
             await self.close(code=4401)
             return

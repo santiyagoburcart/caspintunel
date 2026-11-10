@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.db import transaction
-from rest_framework import serializers
+from rest_framework import exceptions, serializers
 from rest_framework.validators import UniqueValidator
 
 from apps.accounts.models import DeletedUserArchive, Permission, Role, Staff
@@ -359,6 +359,38 @@ class RoleSerializer(serializers.ModelSerializer):
         model = Role
         fields = ("id", "name", "description", "name_fa", "description_fa", "permission_codes")
 
+    # v1.52 (multi-tenant Phase 8): roles belong to the current store (ours = NULL); names unique per store; inside a store
+    # the codes stay ⊆ its ceiling ∩ the actor's own codes, and the owner's role follows the ceiling (we manage it)
+    def validate(self, attrs):
+        from apps.tenancy.context import store_id
+        from apps.tenancy.staff import OWNER_ROLE, StaffError, check_role_codes
+
+        here = store_id()
+        name = attrs.get("name", getattr(self.instance, "name", ""))
+        dup = Role.objects.filter(tenant_id=here, name=name)
+        if self.instance is not None:
+            dup = dup.exclude(pk=self.instance.pk)
+        if dup.exists():
+            raise serializers.ValidationError({"name": "role with this name already exists."})
+        if here:
+            if (self.instance is not None and self.instance.name == OWNER_ROLE) or name == OWNER_ROLE:
+                raise exceptions.PermissionDenied("the store owner's role follows the store's ceiling and is managed by us")
+            if "permissions" in attrs:
+                req = self.context.get("request")
+                try:
+                    check_role_codes(getattr(req, "user", None), [p.code for p in attrs["permissions"]])
+                except StaffError as exc:
+                    raise exceptions.PermissionDenied(exc.en) from exc
+        return attrs
+
+    def create(self, validated):
+        from apps.tenancy.context import store_id
+
+        perms = validated.pop("permissions", [])
+        role = Role.objects.create(tenant_id=store_id(), **validated)
+        role.permissions.set(perms)
+        return role
+
 
 class StaffSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=False, min_length=8)
@@ -394,6 +426,23 @@ class StaffSerializer(serializers.ModelSerializer):
         gm = attrs.get("group_manager")
         if gm is not None and not isinstance(gm, dict):
             raise serializers.ValidationError({"group_manager": "must be an object"})
+        # v1.52 (multi-tenant Phase 8): staff and their role belong to the current store (ours = NULL)
+        from apps.tenancy.context import store_id
+        from apps.tenancy.staff import OWNER_ROLE
+
+        here = store_id()
+        role = attrs.get("role")
+        if role is not None and role.tenant_id != here:
+            raise serializers.ValidationError({"role": "pick a role of this store"})
+        if here:
+            if attrs.get("is_superadmin"):
+                raise exceptions.PermissionDenied("a store's staff can never be Super Admin")
+            if gm:
+                raise exceptions.PermissionDenied("group managers are ours — not in a store")
+            if role is not None and role.name == OWNER_ROLE:
+                raise exceptions.PermissionDenied("the store has one owner — set by us on «فروشگاه»")
+            if self.instance is not None and self.instance.role_id and self.instance.role.name == OWNER_ROLE:
+                raise exceptions.PermissionDenied("the store owner's account is managed by us on «فروشگاه»")
         return attrs
 
     def _sync_gm(self, staff, gm):
@@ -408,9 +457,14 @@ class StaffSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated):
+        from apps.tenancy.context import store_id
+
         pwd = validated.pop("password")
         gm = validated.pop("group_manager", None)
         staff = Staff(**validated)
+        staff.tenant_id = store_id()            # v1.52: created inside the current store (ours = NULL)
+        if staff.tenant_id:
+            staff.is_superadmin = False
         staff.set_password(pwd)
         staff.save()
         self._sync_gm(staff, gm)

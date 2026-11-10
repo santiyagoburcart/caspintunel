@@ -112,7 +112,8 @@ export default function Tickets() {
   const { id } = useParams()
   const go = useNavigate()
   const { can, staff: me } = useAuth()
-  const store = !!me?.store             // v1.51 store mode: no Telegram link to OUR bot here (store staff: Phase 8)
+  // v1.52: on a store's panel the Telegram link is the STORE's bot — only for the store's own staff (ours link our bot)
+  const store = !!me?.store && !me?.store_staff
   const { refreshBadge } = useLiveTickets()
   const wrapRef = useRef(null)
   const height = useFillHeight(wrapRef)

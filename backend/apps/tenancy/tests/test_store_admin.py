@@ -79,7 +79,7 @@ def test_store_mode_admin_api_answers_only_store_views(live):
     me = boss.get("/api/v1/admin/auth/me/").json()
     assert me["store"]["id"] == live.pk and me["store"]["name"] == "فروشگاه یک"
     for url in ("/api/v1/admin/agency/", "/api/v1/admin/payments/blu-transactions/", "/api/v1/admin/monitoring/",
-                "/api/v1/admin/backups/", "/api/v1/admin/transactions/", "/api/v1/admin/roles/"):
+                "/api/v1/admin/backups/", "/api/v1/admin/transactions/"):   # roles: the store's own since v1.52
         assert boss.get(url).status_code == 403, url                      # Super Admin too: platform pages
     for url in ("/api/v1/admin/users/", "/api/v1/admin/pages/", "/api/v1/admin/themes/", "/api/v1/admin/branding/",
                 "/api/v1/admin/settings/", "/api/v1/admin/dashboard/"):

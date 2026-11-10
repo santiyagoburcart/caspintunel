@@ -68,7 +68,6 @@ def test_store_panel_never_shows_our_data_or_our_staff(store, our_data):
     for page in ("/api/v1/admin/tickets/", "/api/v1/admin/tickets/topics/", "/api/v1/admin/discounts/",
                  "/api/v1/admin/tickets/staff/", "/api/v1/admin/tickets/settings/"):
         assert page in opened, (page, opened)                                  # the new store pages really answer
-    assert "/api/v1/admin/tickets/telegram-link/" not in opened                 # OUR bot link stays ours
 
 
 def test_store_ticket_rules_are_its_own_and_ours_stay_ours(store):

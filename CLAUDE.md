@@ -180,6 +180,9 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   `branding.public_base()` / `links.admin_link`, never `PUBLIC_BASE_URL` / `PROJECT_NAME` for a customer.
   **v1.51**: `set_setting` in a store writes ONLY its `TENANT_KEYS` (else `StoreSettingRefused`) — never bypass it with
   `Setting.objects`. A page joins `STORE_GROUPS` only when the reverse sweep (`test_phase7b.py`) stays green.
+  **Store staff (v1.52, `tenancy/staff.py`)**: `Staff.tenant` set = a reseller's staff — sign-in / tokens only on that store's
+  domains (`tokens.staff_for_payload`), `has_perm` capped by `Tenant.permission_ceiling` (⊆ `STORE_CODES`), never Super Admin.
+  Roles / staff queries always filter `tenant_id=store_id()`. A new store_ok view's codes must be in `STORE_CODES` (test).
 - The rejected Liquid Glass refresh is archived at tag `archive/ui-refresh-liquid-glass` — don't copy from it.
 
 ## Gotchas (learned the hard way)

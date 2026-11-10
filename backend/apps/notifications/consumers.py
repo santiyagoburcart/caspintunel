@@ -42,7 +42,7 @@ class NotificationConsumer(AsyncWebsocketConsumer):
 
 
 @database_sync_to_async
-def _staff_from_token(token: str):
+def _staff_from_token(token: str, tenant_id: int | None = None):
     """Staff tokens are separate from customer JWTs (see adminpanel.tokens),
     so the customer-oriented JWTAuthMiddleware leaves scope["user"] anonymous
     for them — decode it here and require the payments permission."""
@@ -54,10 +54,18 @@ def _staff_from_token(token: str):
         payload = decode(token, "staff_access")
     except jwt.InvalidTokenError:
         return None
-    staff = staff_for_payload(payload)
+    staff = staff_for_payload(payload, tenant_id=tenant_id)
     if staff is None or not staff.has_perm("payment.view"):
         return None
     return staff
+
+
+@database_sync_to_async
+def _socket_tenant(scope):
+    from apps.tenancy.middleware import resolve
+
+    host = next((v.decode("latin-1") for k, v in scope.get("headers") or [] if k == b"host"), "")
+    return resolve(host)
 
 
 @database_sync_to_async
@@ -83,7 +91,8 @@ class StaffPaymentsConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         query = parse_qs((self.scope.get("query_string") or b"").decode())
         token = query.get("token", [None])[0]
-        staff = await _staff_from_token(token) if token else None
+        tid = await _socket_tenant(self.scope)                  # v1.52: a store's staff only on its own store's socket
+        staff = await _staff_from_token(token, tid) if token else None
         if staff is None:
             await self.close(code=4401)
             return

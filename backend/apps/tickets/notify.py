@@ -195,11 +195,12 @@ def _to_staff(kind, ticket, msg) -> int:
 
 def _bot(staff, ticket, title, body) -> None:
     try:
-        from apps.telegram.config import our_sales_client     # staff = our bot (v1.49), never a store's
+        from apps.telegram.config import our_sales_client, sales_client
 
         from .bot import staff_alert_markup
 
-        client = our_sales_client()
+        # our staff: our bot; a store's staff (v1.52): that store's bot (this runs in the ticket's store)
+        client = sales_client() if staff.tenant_id else our_sales_client()
         if client is not None:
             client.send_message(staff.telegram_id, f"<b>{html.escape(title)}</b>\n\n{html.escape(body)}",
                                 reply_markup=staff_alert_markup(staff, ticket))

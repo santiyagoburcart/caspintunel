@@ -579,3 +579,10 @@ Everything shipped since v1.6.0 (details in the session log):
   the customer gets «تمدید پرداخت شد — با پایان حجم/زمان فعلی اعمال می‌شود» (site + bot, once per order) with plan, volume,
   days and the expected time; the admin Services list / service page show the queued renewal (`pending_renewal`) instead
   of only the new plan's name next to the old volume. Tests: `orders/tests/test_renewal_queued_notice.py` (3).
+- 2026-11-10 — **v1.52.0: multi-tenant Phase 8 — reseller staff.** `tenancy/staff.py`: `STORE_CODES` (= what store pages ask
+  for + roles.manage), `Tenant.permission_ceiling` (tenancy 0008, default template for every store), store owner login created /
+  reset by our staff on «فروشگاه» (password once), owner role = ceiling; lowering the ceiling strips the store's roles.
+  `has_perm` caps store staff, never Super Admin; sign-in + tokens + sockets only on the store's own domains. Roles / Staff /
+  Permissions APIs store_ok and filtered per store (our panel stops listing store rows); role names unique per store
+  (accounts 0019). Store staff link Telegram with the store's bot, ticket DMs through it. Fix: `plans/store-options/` 503
+  instead of 500 without an agency panel. Tests: `tenancy/tests/test_phase8.py` (7, incl. a sweep signed in as the owner).

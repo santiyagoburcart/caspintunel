@@ -19,7 +19,11 @@
 > `/api/v1/telegram/hook/<id>/` instead of §6.4's `/tg/hook/` so nginx needs no change). **Phase 7 Release A built in v1.50.0** (jobs per store, notifications / email / links / staff loops
 > inside the store — architecture.md tenancy row); **Release B built in v1.51.0** (the store's tickets + discounts in its panel, its ticket
 > rules, `set_setting` refuses our keys in a store, per-store throttle buckets + a cap we set, Reply-To = the store's support
-> email). Still open from §12 / §5: the optional store SMTP relay, CRM / analytics pages for stores (not in D5's list). Written against
+> email). Still open from §12 / §5: the optional store SMTP relay, CRM / analytics pages for stores (not in D5's list).
+> **Phase 8 (reseller staff) built in v1.52.0** (ceiling per store, owner login from «فروشگاه», store roles / staff in its
+> panel, sign-in only on the store's domain, Telegram via the store's bot — architecture.md tenancy row, flows.md 16h).
+> Deviation from §11: `settings.manage` IS in the store ceiling — on a store's domain it only reaches the store-safe views
+> (its branding, TENANT_KEYS settings, the APK download), never our settings. Written against
 > v1.38.4, decisions recorded in v1.38.6.
 > When a phase is approved and built, the matching parts move into `architecture.md` / `erd.md` / `flows.md` and this page
 > keeps only what is still planned.

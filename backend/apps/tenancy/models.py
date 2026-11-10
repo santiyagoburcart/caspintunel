@@ -27,6 +27,8 @@ class Tenant(TimeStampedModel):
     limits = models.JSONField(default=dict, blank=True, help_text="orders/min, staff count, … (set by us)")
     # v1.46 (Phase 4, tenancy/quota.py): the reseller quota warning last sent — 0 none, 20 / 10 = % remaining
     quota_alert_level = models.PositiveSmallIntegerField(default=0)
+    # v1.52 (Phase 8, tenancy/staff.py): the permission codes the store's staff may hold and grant (⊆ STORE_CODES, set by us)
+    permission_ceiling = models.JSONField(default=list, blank=True)
 
     class Meta:
         db_table = "tenant"
