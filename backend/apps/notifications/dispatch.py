@@ -93,7 +93,21 @@ def _deliver_site(user, note: Notification, delivery: NotificationDelivery) -> t
         return DeliveryStatus.FAILED, str(exc)[:250]
 
 
-def notify_user(user, *, title: str, body: str, title_en: str = "", body_en: str = "",
+def notify_user(user, **kw) -> Notification:
+    """Deliver to a customer — always in THAT customer's store (v1.50, multi-tenant Phase 7): its bot, its sender name,
+    its links, whatever context the caller runs in."""
+    from apps.settings_app.branding import current_tenant_id
+
+    tid = getattr(user, "tenant_id", None)
+    if tid and tid != current_tenant_id():
+        from apps.tenancy.context import tenant_context
+
+        with tenant_context(tid):
+            return _notify_user(user, **kw)
+    return _notify_user(user, **kw)
+
+
+def _notify_user(user, *, title: str, body: str, title_en: str = "", body_en: str = "",
                 ntype: str = NotificationType.EVENT,
                 via_site: bool = True, via_bot: bool = False, via_email: bool = False,
                 notification: Notification | None = None, staff=None, link: str = "") -> Notification:

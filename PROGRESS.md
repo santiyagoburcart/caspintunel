@@ -558,3 +558,11 @@ Everything shipped since v1.6.0 (details in the session log):
   (`sms_mismatch` / `blu_mismatch`) is REVIEW and alerted even when staff approve it inside the grace time — live Blu #92 (250,000 T
   for a 250,656 T invoice, rounded rule without evidence, approved by staff 85 s later) had been counted as matched. `--want-order`
   (+ `--max-count`): keep watching until a customer order matches automatically.
+- 2026-11-10 — **v1.50.0: multi-tenant Phase 7 Release A — store-owned features stay in the store.** Jobs per store
+  (`for_each_tenant`): CRM detection / win-back / stages, retention + expiry warnings, ticket auto-close, channel member counts
+  (through each store's bot), the pending-payment alert (a store's queue was never checked — Phase 5 gap). `notify_user` delivers
+  inside the customer's store. Store mail = our address under the store's name; verify / reset links = the store's site (they
+  pointed at caspintunel.com). Staff loops for store events filter by store (ticket staff, scope picker, CRM staff list).
+  `admin_link` = the store's panel. No platform name on a store (test push, API root). Includes the watch_payments REVIEW fix.
+  Tests: `tenancy/tests/test_phase7.py` (10). Release B next: store panel pages (tickets / CRM / discounts / analytics), store
+  settings for tickets + retention, optional store SMTP relay, per-store rate limits.

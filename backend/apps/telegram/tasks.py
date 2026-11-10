@@ -15,13 +15,19 @@ def run_backup_task():
 
 @shared_task
 def sync_required_channels_task():
-    """Refresh member counts for the forced-join channels."""
+    """Refresh member counts for the forced-join channels — every store, through its own bot (v1.50)."""
+    from apps.tenancy.context import for_each_tenant
+
+    return for_each_tenant(_sync_required_channels, name="sync_required_channels")
+
+
+def _sync_required_channels():
     from .config import sales_client
     from .models import RequiredChannel
 
     client = sales_client()
     if client is None:
-        return {"skipped": "sales bot not configured"}
+        return {"skipped": "no bot for this store"}
 
     from django.utils import timezone
 

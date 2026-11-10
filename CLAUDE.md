@@ -175,6 +175,9 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   never returned / logged / audited). Telegram calls OUR host `/api/v1/telegram/hook/<id>/` (secret header); updates run the
   sales bot's handlers in Celery inside the store. `sales_client()` = the CURRENT store's bot (None without one) — use it for
   customer messages; `our_sales_client()` for anything meant for our staff / our bot. Staff flows never run in a store bot.
+  **Store data stays in the store (v1.50)**: `Staff` is NULLABLE = NOT scoped — every staff loop for a store event filters
+  `tenant_id=store_id()` (None = ours). Customer messages go through `notify_user` (delivers in the customer's store); links via
+  `branding.public_base()` / `links.admin_link`, never `PUBLIC_BASE_URL` / `PROJECT_NAME` for a customer.
 - The rejected Liquid Glass refresh is archived at tag `archive/ui-refresh-liquid-glass` — don't copy from it.
 
 ## Gotchas (learned the hard way)

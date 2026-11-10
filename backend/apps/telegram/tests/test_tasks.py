@@ -24,4 +24,5 @@ def test_run_backup_task_returns_summary(tmp_path, monkeypatch):
 
 
 def test_sync_channels_skips_without_bot():
-    assert "skipped" in sync_required_channels_task()
+    per = sync_required_channels_task()              # v1.50: one result per store
+    assert per and all("skipped" in r for r in per.values())

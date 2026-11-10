@@ -16,7 +16,9 @@
 > push / live socket per store — flows.md 16e). The Android APK is unchanged (server URL = store domain + device token, typed
 > by hand — the owner dropped the QR setup in v1.48.1). **Phase 6 (store bots + Mini App) built in v1.49.0** (webhook on our
 > host, token set by our staff, Mini App signed with the store's token — architecture.md tenancy row, flows.md 16g; the hook is
-> `/api/v1/telegram/hook/<id>/` instead of §6.4's `/tg/hook/` so nginx needs no change). Next: Phase 7. Written against
+> `/api/v1/telegram/hook/<id>/` instead of §6.4's `/tg/hook/` so nginx needs no change). **Phase 7 Release A built in v1.50.0** (jobs per store, notifications / email / links / staff loops
+> inside the store — architecture.md tenancy row); Release B next (store panel pages for tickets / CRM / discounts / analytics,
+> TENANT_KEYS for ticket + retention settings, optional store SMTP relay, per-store rate limits). Written against
 > v1.38.4, decisions recorded in v1.38.6.
 > When a phase is approved and built, the matching parts move into `architecture.md` / `erd.md` / `flows.md` and this page
 > keeps only what is still planned.

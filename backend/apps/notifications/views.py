@@ -79,6 +79,9 @@ class CustomerPushView(APIView):
             webpush.delete_subscription(d.get("endpoint", ""), user=request.user)
             return Response({"ok": True})
         if action == "test":
-            n = webpush.push_to_user(request.user, "🔔 تست اعلان · Test notification", "caspintunel", url="/", tag="test")
+            from apps.settings_app.branding import branding     # v1.50: the store's name on a store's site, never ours
+
+            name = branding().site_name_fa or branding().site_name_en or ""
+            n = webpush.push_to_user(request.user, "🔔 تست اعلان · Test notification", name, url="/", tag="test")
             return Response({"ok": bool(n), "sent": n})
         return Response({"detail": "not found"}, status=404)

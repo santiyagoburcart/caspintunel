@@ -186,6 +186,26 @@ def _record(success: bool, source: str, error: str = "") -> None:
 
 
 # ---------------------------------------------------------------- backend
+def _store_sender(email_messages) -> None:
+    """v1.50 (multi-tenant Phase 7, docs/multi-tenant.md §12): mail sent for a reseller store goes out from OUR address
+    (deliverability stays ours, no DNS work for resellers) under the STORE's name — never ours to its customers."""
+    try:
+        from email.utils import formataddr, parseaddr
+
+        from apps.settings_app.branding import branding, is_store
+
+        if not is_store():
+            return
+        b = branding()
+        name = (b.site_name_fa or b.site_name_en or "").strip()
+        for m in email_messages:
+            addr = parseaddr(m.from_email or settings.DEFAULT_FROM_EMAIL)[1]
+            if name and addr:
+                m.from_email = formataddr((name, addr))
+    except Exception as exc:  # noqa: BLE001 — a branding problem never stops a mail
+        log.warning("store sender name failed: %s", exc)
+
+
 class DynamicEmailBackend(BaseEmailBackend):
     """settings.EMAIL_BACKEND for the whole app (see module docstring)."""
 
@@ -211,6 +231,7 @@ class DynamicEmailBackend(BaseEmailBackend):
                 # only replace the app default; an explicit sender stays as is
                 if not m.from_email or m.from_email == settings.DEFAULT_FROM_EMAIL:
                     m.from_email = cfg.from_email
+        _store_sender(email_messages)
         smtp = SMTPBackend(
             host=cfg.host, port=cfg.port, username=cfg.username or None, password=cfg.password or None,
             use_tls=cfg.use_tls, use_ssl=cfg.use_ssl, timeout=self.timeout, fail_silently=False,

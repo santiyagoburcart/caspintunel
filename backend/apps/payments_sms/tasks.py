@@ -43,7 +43,10 @@ def rounded_retry_task(self, order_id: int):
 
 @shared_task
 def pending_payment_alert_task():
-    """Payments pending longer than pending_payment_alert_minutes → one alert each (pending_alert.py)."""
+    """Payments pending longer than pending_payment_alert_minutes → one alert each (pending_alert.py) — every store (v1.50:
+    a store's queue was never checked; its alert goes to its own staff, with its own delay)."""
+    from apps.tenancy.context import for_each_tenant
+
     from .pending_alert import run
 
-    return run()
+    return for_each_tenant(run, name="pending_payment_alert")

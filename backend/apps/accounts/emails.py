@@ -38,10 +38,19 @@ def _safe_send(subject: str, body: str, to: str) -> bool:
         return False
 
 
+def _site() -> tuple[str, str]:
+    """(base URL, name) of the store the customer belongs to — v1.50: a store's own domain + name, never ours."""
+    from apps.settings_app.branding import branding, public_base
+
+    b = branding()
+    return public_base(), (b.site_name_en or b.site_name_fa or settings.PROJECT_NAME)
+
+
 def send_verification_email(user, token: str) -> bool:
-    link = f"{settings.PUBLIC_BASE_URL}/verify-email?token={token}"
+    base, name = _site()
+    link = f"{base}/verify-email?token={token}"
     ok = _safe_send(
-        subject=f"{settings.PROJECT_NAME} — email verification",
+        subject=f"{name} — email verification",
         body=f"Hi {user.name or user.username},\n\nVerify your email:\n{link}\n",
         to=user.email or "",
     )
@@ -49,9 +58,10 @@ def send_verification_email(user, token: str) -> bool:
 
 
 def send_password_reset_email(user, token: str) -> bool:
-    link = f"{settings.PUBLIC_BASE_URL}/reset-password?token={token}"
+    base, name = _site()
+    link = f"{base}/reset-password?token={token}"
     ok = _safe_send(
-        subject=f"{settings.PROJECT_NAME} — password reset",
+        subject=f"{name} — password reset",
         body=f"Hi {user.name or user.username},\n\nReset your password:\n{link}\n\n"
         f"If you didn't request this, ignore this email.\n",
         to=user.email or "",

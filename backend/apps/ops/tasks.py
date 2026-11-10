@@ -40,12 +40,14 @@ def service_alerts_task():
     one per threshold per service period, renew button). The old fixed alert
     (ops.alerts.run_service_alerts) only runs when the retention warnings are off."""
     from apps.crm.retention import run_warnings, setting
+    from apps.tenancy.context import for_each_tenant
 
-    if setting("retention_warnings_enabled"):
-        return run_warnings()
     from .alerts import run_service_alerts
 
-    return run_service_alerts()
+    def one_store():                                 # v1.50: every store's customers (through its own bot / name)
+        return run_warnings() if setting("retention_warnings_enabled") else run_service_alerts()
+
+    return for_each_tenant(one_store, name="service_alerts")
 
 
 @shared_task

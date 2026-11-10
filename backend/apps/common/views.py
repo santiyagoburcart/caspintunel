@@ -12,9 +12,11 @@ class ApiRootView(APIView):
 
     @extend_schema(summary="API root / metadata", responses=dict)
     def get(self, request):
+        from apps.settings_app.branding import is_store
+
         return Response(
             {
-                "name": "caspintunel API",
+                "name": "API" if is_store() else "caspintunel API",          # v1.50: no platform name on a store
                 "version": settings.VERSION,
                 "api": "v1",
                 "docs": request.build_absolute_uri("/api/docs/"),

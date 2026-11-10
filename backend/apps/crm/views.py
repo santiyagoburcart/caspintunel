@@ -601,8 +601,10 @@ class StaffListView(_Staff):
     perms_map = {"GET": VIEW}
 
     def get(self, request):
-        return Response([_staff_row(s) for s in Staff.objects.filter(is_active=True).select_related("role")
-                         if s.is_superadmin or s.has_perm("crm.view")])
+        from apps.tenancy.context import store_id
+
+        return Response([_staff_row(s) for s in Staff.objects.filter(is_active=True, tenant_id=store_id())   # v1.50
+                         .select_related("role") if s.is_superadmin or s.has_perm("crm.view")])
 
 
 

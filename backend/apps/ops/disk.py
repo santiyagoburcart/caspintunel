@@ -101,7 +101,7 @@ def recipients() -> list[int]:
     from apps.accounts.models import Staff
 
     ids = []
-    for s in Staff.objects.filter(is_active=True, telegram_id__isnull=False).select_related("role"):
+    for s in Staff.objects.filter(is_active=True, telegram_id__isnull=False, tenant__isnull=True).select_related("role"):
         if s.is_superadmin or (not s.is_group_manager and s.has_perm("monitoring.view")):
             ids.append(s.telegram_id)
     return ids

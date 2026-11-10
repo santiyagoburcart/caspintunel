@@ -10,4 +10,8 @@ def admin_link(route: str = "/") -> str:
         base = state()["admin"] or "/panel"
     except Exception:  # noqa: BLE001
         base = "/panel"
-    return f"{settings.PUBLIC_BASE_URL.rstrip('/')}/{base.strip('/')}/{route.lstrip('/')}"
+    # v1.50: the CURRENT store's address (a store's alert links to its own panel; ours to ours)
+    from apps.settings_app.branding import public_base
+
+    site = public_base() or settings.PUBLIC_BASE_URL
+    return f"{site.rstrip('/')}/{base.strip('/')}/{route.lstrip('/')}"

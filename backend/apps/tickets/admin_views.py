@@ -276,7 +276,10 @@ class StaffScopesView(_StaffView):
     @extend_schema(summary="Staff who can see tickets, with their topic scope ([] = all topics)")
     def get(self, request):
         out = []
-        for s in Staff.objects.filter(is_active=True).select_related("role").prefetch_related("ticket_topics"):
+        from apps.tenancy.context import store_id
+
+        for s in (Staff.objects.filter(is_active=True, tenant_id=store_id())     # v1.50: this store's staff only
+                  .select_related("role").prefetch_related("ticket_topics")):
             if s.is_superadmin or s.has_perm("tickets.view"):
                 out.append({"id": s.id, "username": s.username, "is_superadmin": s.is_superadmin,
                             "topic_ids": sorted(t.id for t in s.ticket_topics.all()),

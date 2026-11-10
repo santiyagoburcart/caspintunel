@@ -95,11 +95,14 @@ def staff_covers(staff, topic_id: int) -> bool:
 
 
 def ticket_staff(topic_id: int):
-    """Active staff who may see tickets of this topic (permission + scope)."""
+    """Active staff who may see tickets of this topic (permission + scope) — of the CURRENT store only (v1.50: a store's
+    ticket never notifies our staff; ours never a store's)."""
     from apps.accounts.models import Staff
+    from apps.tenancy.context import store_id
 
     out = []
-    for s in Staff.objects.filter(is_active=True).select_related("role").prefetch_related("ticket_topics"):
+    for s in (Staff.objects.filter(is_active=True, tenant_id=store_id())
+              .select_related("role").prefetch_related("ticket_topics")):
         if not (s.is_superadmin or s.has_perm("tickets.view")):
             continue
         if staff_covers(s, topic_id):

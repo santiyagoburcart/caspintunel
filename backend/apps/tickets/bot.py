@@ -296,7 +296,7 @@ def staff_for(tg_id):
     if is_store():
         return None
 
-    s = Staff.objects.filter(telegram_id=tg_id, is_active=True).select_related("role").first()
+    s = Staff.objects.filter(telegram_id=tg_id, is_active=True, tenant__isnull=True).select_related("role").first()
     if s is None or not (s.is_superadmin or s.has_perm("tickets.view")):
         return None
     return s
