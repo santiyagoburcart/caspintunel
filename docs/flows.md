@@ -1437,13 +1437,15 @@ sequenceDiagram
     participant T as alert_staff → staff DM · backup chat
     loop every 15 s until N payments
         W->>DB: SMS with an amount · Blu deposits · receipt uploads since start
-        alt matched (order / agency payment) · receipt approved / rejected
-            W->>W: count it once per order
+        alt matched automatically (order / agency payment) · receipt approved / rejected
+            W->>W: AUTO · count it once per order
+        else held for review (sms_mismatch / blu_mismatch payment, even if staff approve it)
+            W->>T: REVIEW «پرداخت خودکار تطبیق نشد — بررسی دستی» + why it was held
         else no match after the grace time · receipt still pending
-            W->>T: «پرداخت تطبیق داده نشد» + the SMS / Blu note
+            W->>T: FAIL «پرداخت تطبیق داده نشد» + the SMS / Blu note
         end
     end
-    W->>T: summary (silent when everything matched)
+    W->>T: summary (silent when everything was AUTO) · --want-order: until a customer order is AUTO
 ```
 
 ## 16g. A store's own Telegram bot + Mini App (multi-tenant Phase 6, v1.49)

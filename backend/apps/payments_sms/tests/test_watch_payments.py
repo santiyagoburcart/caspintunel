@@ -70,7 +70,8 @@ def test_matched_sms_approved_receipt_and_unmatched_blu(monkeypatch, alerts):
     fails = [t for t, kw in alerts if "تطبیق داده نشد" in t]
     assert len(fails) == 1 and "Blu #" in fails[0] and "no order" in fails[0]
     summary = alerts[-1][0]
-    assert "2 matched, 1 failed" in summary and f"order #{o1.pk}" in summary and f"order #{o2.pk}" in summary
+    assert "2 automatic, 0 needed review, 1 not matched" in summary
+    assert f"order #{o1.pk}" in summary and f"order #{o2.pk}" in summary
     assert alerts[-1][1]["perm"] == "payment.view" and not alerts[-1][1].get("platform")
 
 
@@ -88,4 +89,46 @@ def test_all_matched_is_a_quiet_summary_and_store_payments_are_not_ours(monkeypa
 
     _arrive(monkeypatch, make)
     call_command("watch_payments", count=3, grace=0, receipt_wait=0)
-    assert len(alerts) == 1 and alerts[0][1]["silent"] is True and "3 matched, 0 failed" in alerts[0][0]
+    assert len(alerts) == 1 and alerts[0][1]["silent"] is True
+    assert "3 automatic, 0 needed review, 0 not matched" in alerts[0][0]
+
+
+def test_a_deposit_held_for_review_is_not_counted_as_matched_even_after_staff_approve(monkeypatch, alerts):
+    """Live 2026-11-09: Blu #92 paid 250,000 T for a 250,656 T invoice — rounded rule without evidence → blu_mismatch,
+    approved by staff 85 s later (inside the grace time). It must be REVIEW, alerted, not 'matched'."""
+    o = _order(7)
+
+    def make():
+        tx = BluTransaction.objects.create(bank_id="b-7", amount_irr=2500000, amount_toman=Decimal(250000),
+                                           occurred_at=timezone.now(), status=BluStatus.MATCHED, matched_order=o)
+        Payment.objects.create(order=o, method=PaymentMethod.BLU_MISMATCH, amount=Decimal(250000), blu_transaction=tx,
+                               status=PaymentStatus.APPROVED, confirmed_by="admin",
+                               auto_reason={"rule": "rounded", "why_not": "no_evidence"})
+
+    _arrive(monkeypatch, make)
+    with pytest.raises(SystemExit) as exit_:
+        call_command("watch_payments", count=1, grace=0, receipt_wait=0)
+    assert exit_.value.code == 2
+    review = [t for t, kw in alerts if "بررسی دستی" in t]
+    assert len(review) == 1 and "no_evidence" in review[0] and "approved by staff" in review[0]
+    assert "0 automatic, 1 needed review" in alerts[-1][0]
+
+
+def test_want_order_keeps_watching_until_a_customer_order_matches(monkeypatch, alerts):
+    o = _order(8)
+    calls = []
+
+    def sleep(_):
+        calls.append(1)
+        if len(calls) == 1:                                       # first: an agency payment only
+            BluTransaction.objects.create(bank_id="b-8", amount_irr=10000, amount_toman=Decimal(1000),
+                                          occurred_at=timezone.now(), status=BluStatus.MATCHED,
+                                          match_note="agency payment AP-1 — auto-approved")
+        elif len(calls) == 2:                                     # then a customer order, matched automatically
+            SmsMessage.objects.create(raw_text="واریز", parsed_amount=o.amount_unique, matched_order=o)
+        else:
+            raise AssertionError("watch_payments kept waiting")
+
+    monkeypatch.setattr(cmd.time, "sleep", sleep)
+    call_command("watch_payments", count=1, want_order=True, max_count=2, grace=0, receipt_wait=0)
+    assert "2 automatic" in alerts[-1][0] and "customer orders matched automatically: 1" in alerts[-1][0]

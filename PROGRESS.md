@@ -554,3 +554,7 @@ Everything shipped since v1.6.0 (details in the session log):
   (`telegram/bot/store_bots.py`); per-store step state; staff flows off in store bots. `sales_client()` follows the store,
   `our_sales_client()` for staff / platform. Mini App initData = the store's token on its domain. Health every 10 min
   (`store_bots_check_task`, one alert to us). Store dashboard: bot read-only. Tests: `tenancy/tests/test_phase6.py` (10).
+- 2026-11-10 — **watch_payments fix (ships with the next release):** three outcomes AUTO / REVIEW / FAIL. A deposit held for review
+  (`sms_mismatch` / `blu_mismatch`) is REVIEW and alerted even when staff approve it inside the grace time — live Blu #92 (250,000 T
+  for a 250,656 T invoice, rounded rule without evidence, approved by staff 85 s later) had been counted as matched. `--want-order`
+  (+ `--max-count`): keep watching until a customer order matches automatically.
