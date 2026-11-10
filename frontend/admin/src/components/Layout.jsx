@@ -321,7 +321,7 @@ const MOBILE_TITLES = [
   ['/payments', 'nav_pay_queue'], ['/transactions', 'transactions'], ['/sms-log', 'sms_log'], ['/accounting', 'accounting'],
   ['/cards', 'cards'], ['/discounts', 'discounts'], ['/monitoring', 'monitoring'], ['/panel-link', 'panel_link'], ['/bots', 'bots'],
   ['/branding', 'branding'], ['/apps', 'apps'], ['/settings', 'settings'], ['/notifications', 'notifications'],
-  ['/pages', 'pages'], ['/themes', 'themes'], ['/roles', 'roles'], ['/docs', 'docs'],
+  ['/pages', 'pages'], ['/themes', 'themes'], ['/roles', 'roles'], ['/docs', 'docs'], ['/backup', 'store_backup'],
   ['/my-groups/notifications', 'gm_notifications'],
 ]
 const TAB_ROOTS = new Set(['/', '/users', '/payments', '/services', '/settings',

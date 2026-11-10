@@ -51,6 +51,7 @@ PERMISSIONS = [
     ("crm.manage", "CRM: cases, messages, notes, owners, stages, settings"),
     ("discounts.view", "Discount codes: see codes and their reports"),
     ("discounts.manage", "Discount codes: create, edit, disable"),
+    ("store.export", "Store: download a backup of the store's own data (only while we allow it)"),
     # v1.25: held only by the "Group manager" role; never part of Super Admin (it restricts, not grants)
     ("agency.group_manager", "Group manager: own groups only (agency admins, volume, accounting)"),
     # v1.27: one permission per group-manager ability (apps.accounts.models.GM_PERMS)
@@ -93,6 +94,7 @@ PERMISSIONS_FA = {
     "crm.manage": "CRM: پرونده‌ها، پیام‌ها، یادداشت‌ها، مسئول‌ها، مراحل، تنظیمات",
     "discounts.view": "کدهای تخفیف: دیدن کدها و گزارش آن‌ها",
     "discounts.manage": "کدهای تخفیف: ساخت، ویرایش، غیرفعال‌کردن",
+    "store.export": "فروشگاه: دریافت پشتیبان از داده‌های خود فروشگاه (فقط وقتی ما اجازه داده‌ایم)",
     **{code: fa for code, (_en, fa) in GM_PERMS.items()},
     "agency.group_manager": "مدیر گروه: فقط گروه‌های خودش (ادمین‌های نماینده، حجم، حسابداری)",
 }
@@ -589,6 +591,14 @@ class Command(BaseCommand):
         # v1.52.2: daily Telegram summary of agency admins ≥ 95 % of their limit (agency/near_limit.py), 10:00 Tehran.
         # Only created when missing — staff may change the time / switch it off in Django admin; seed never resets it.
         from django_celery_beat.models import CrontabSchedule
+
+        # v1.53 (multi-tenant Phases 10 + 12): export cleanup + the store fee hook (does nothing while no fee is on).
+        # Created only when missing, like the summary below.
+        hourly, _ = IntervalSchedule.objects.get_or_create(every=60, period=IntervalSchedule.MINUTES)
+        for name, task in (("store: export cleanup", "apps.tenancy.tasks.store_exports_cleanup_task"),
+                           ("store: monthly fees", "apps.tenancy.tasks.store_fees_task")):
+            if not PeriodicTask.objects.filter(name=name).exists():
+                PeriodicTask.objects.create(name=name, task=task, interval=hourly, kwargs=_json.dumps({}), enabled=True)
 
         if not PeriodicTask.objects.filter(name="agency: near-limit summary").exists():
             at_ten, _ = CrontabSchedule.objects.get_or_create(minute="0", hour="10", day_of_week="*", day_of_month="*",

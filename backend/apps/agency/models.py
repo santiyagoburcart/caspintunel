@@ -499,8 +499,9 @@ def _num(prefix, n):
 
 class AgencyInvoice(models.Model):
     KIND_QUOTA, KIND_CHARGE, KIND_REQUEST, KIND_SETTLEMENT = "quota_charge", "manual_charge", "request", "settlement"
+    KIND_STORE_FEE = "store_fee"            # v1.53: a reseller store's monthly fee (tenancy/fees.py)
     KINDS = [(KIND_QUOTA, "Volume (staff)"), (KIND_CHARGE, "Manual charge"), (KIND_REQUEST, "Volume request / group manager"),
-             (KIND_SETTLEMENT, "Previous balance")]
+             (KIND_SETTLEMENT, "Previous balance"), (KIND_STORE_FEE, "Store monthly fee")]
     UNPAID, PENDING, PAID, VOIDED = "unpaid", "pending", "paid", "voided"
     STATUSES = [(UNPAID, "Unpaid"), (PENDING, "Pending review"), (PAID, "Paid"), (VOIDED, "Voided")]
 

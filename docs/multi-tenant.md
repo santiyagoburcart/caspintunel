@@ -27,6 +27,9 @@
 > v1.38.4, decisions recorded in v1.38.6.
 > When a phase is approved and built, the matching parts move into `architecture.md` / `erd.md` / `flows.md` and this page
 > keeps only what is still planned.
+> **v1.53.0: Phase 10 (tenant export) and Phase 12 (fee hook, off) built** — `tenancy/export.py` (zip of JSON + CSV, background job,
+> one-time links for 24 h; the zip is not password-protected — the one-time, host-bound link and the private folder protect it)
+> and `tenancy/fees.py` (monthly agency invoice, reminder, optional suspension). Flows 16k / 16l.
 
 Every agency admin (reseller) can get a white-label store — site, Telegram Mini App and their own Telegram bot — on their own
 domain, served by the same codebase and database. Our current store becomes the **default tenant** and keeps working

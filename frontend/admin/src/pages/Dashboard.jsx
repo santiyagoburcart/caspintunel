@@ -86,6 +86,7 @@ export default function Dashboard() {
       {store && d.quota?.level > 0 && <QuotaBanner q={d.quota} lang={lang} />}
       {store && d.failed_orders > 0 && <StoreWarn kind="failed" n={d.failed_orders} lang={lang} />}
       {store && d.ticket_topics_active === 0 && <StoreWarn kind="topics" lang={lang} />}
+      {store && d.fee_due && <FeeBanner f={d.fee_due} lang={lang} />}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Kpi icon="services" tone="blue" label={t('services_total')} value={digits(d.services?.total ?? '—', lang)}
           sub={byStatus.length ? `${digits(d.services?.by_status?.active ?? 0, lang)} ${t('st_active')}` : ''} />
@@ -307,6 +308,26 @@ function StoreWarn({ kind, n = 0, lang }) {
       <b>{(failed ? s.failed_t : s.topics_t).replace('{n}', digits(n, lang))}</b> <span>{failed ? s.failed_b : s.topics_b}</span>{' '}
       <Link to={failed ? '/payments' : '/tickets/topics'} className="font-bold" style={{ color: 'var(--c-primary)' }}>
         {failed ? s.failed_go : s.topics_go}</Link>
+      <style>{WARN_CSS}</style>
+    </div>
+  )
+}
+
+// v1.53 store mode: the store's monthly fee is unpaid (backend tenancy/fees.py) — paid in the agency portal like any invoice
+const FB = {
+  fa: { t: 'اشتراک ماهانهٔ فروشگاه پرداخت نشده', b: '{n} فاکتور · {a}. از پنل نمایندگی (بخش فاکتورها) پرداخت کنید.',
+    sus: 'اگر تا {d} پرداخت نشود، فروشگاه معلق می‌شود.', rev: 'پرداخت شما در حال بررسی است.' },
+  en: { t: 'The store’s monthly fee is unpaid', b: '{n} invoice(s) · {a}. Pay it in the agency portal (Invoices).',
+    sus: 'The store is suspended if it is still unpaid on {d}.', rev: 'Your payment is under review.' },
+}
+function FeeBanner({ f, lang }) {
+  const s = FB[lang] || FB.fa
+  const due = lang === 'fa' ? f.suspend_on_jalali : f.suspend_on
+  return (
+    <div className={'dash-quota' + (f.suspend_on ? ' is-bad' : '')} role="status" data-testid="store-fee-due">
+      <b>{s.t}</b> <span>{s.b.replace('{n}', digits(f.count, lang)).replace('{a}', toman(f.amount, lang))}</span>
+      {f.under_review && <span> {s.rev}</span>}
+      {f.suspend_on && <span> <bdi dir="auto">{s.sus.replace('{d}', due)}</bdi></span>}
       <style>{WARN_CSS}</style>
     </div>
   )

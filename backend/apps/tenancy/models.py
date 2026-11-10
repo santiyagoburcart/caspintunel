@@ -8,6 +8,8 @@ from django.db import models
 from apps.common.fields import EncryptedTextField
 from apps.common.models import TimeStampedModel
 
+from .fields import tenant_fk
+
 
 def _verify_token() -> str:
     return secrets.token_urlsafe(24)
@@ -113,4 +115,74 @@ class TenantBot(TimeStampedModel):
         return f"@{self.username}"
 
 
-from .fields import tenant_fk  # noqa: E402,F401 — re-export
+
+class TenantExport(TimeStampedModel):
+    """v1.53 (Phase 10, tenancy/export.py): a backup of ONE store's own data (zip of JSON + CSV), built in Celery.
+
+    TENANT table (scoped to the store). Asked for in the store's panel (needs `Tenant.export_allowed` + `store.export`) or by
+    our staff on «فروشگاه». The file lives under media/exports/ (nginx 404s it) and is served only through a one-time link
+    (`link_hash` = sha256 of the token; every link works once) until `expires_at` (24 h after it is ready), then deleted."""
+
+    QUEUED, RUNNING, READY, FAILED, EXPIRED = "queued", "running", "ready", "failed", "expired"
+    STATES = [(QUEUED, "Queued"), (RUNNING, "Running"), (READY, "Ready"), (FAILED, "Failed"), (EXPIRED, "Expired")]
+
+    tenant = tenant_fk()
+    requested_by = models.CharField(max_length=150, blank=True, default="")
+    by_platform = models.BooleanField(default=False, help_text="asked for by our staff on «فروشگاه»")
+    state = models.CharField(max_length=8, choices=STATES, default=QUEUED, db_index=True)
+    progress = models.PositiveSmallIntegerField(default=0)          # 0–100
+    step = models.CharField(max_length=40, blank=True, default="")  # the dataset being written
+    file = models.CharField(max_length=255, blank=True, default="")  # media-relative path (exports/<tenant>/<random>.zip)
+    size = models.BigIntegerField(default=0)
+    counts = models.JSONField(default=dict, blank=True)
+    error = models.CharField(max_length=500, blank=True, default="")
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    link_hash = models.CharField(max_length=64, blank=True, default="", db_index=True)
+    link_scope = models.CharField(max_length=8, blank=True, default="")   # store | platform: the host the link works on
+    link_expires_at = models.DateTimeField(null=True, blank=True)
+    downloads = models.PositiveIntegerField(default=0)
+    last_download_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "tenant_export"
+        ordering = ("-created_at", "-id")
+
+
+class TenantFee(TimeStampedModel):
+    """v1.53 (Phase 12, tenancy/fees.py): the monthly store fee — OFF by default, set by our staff on «فروشگاه».
+    When on, an agency invoice (kind store_fee) is issued to the reseller on `next_due` every Jalali month, a reminder
+    follows `remind_after_days` later and — only when `suspend_enabled` — the store is suspended `suspend_after_days`
+    after the due date while the invoice is still unpaid (and made active again once it is paid)."""
+
+    tenant = models.OneToOneField(Tenant, on_delete=models.CASCADE, related_name="fee")
+    enabled = models.BooleanField(default=False)
+    amount = models.DecimalField(max_digits=14, decimal_places=0, default=0, help_text="tomans per month")
+    next_due = models.DateField(null=True, blank=True, help_text="Tehran day the next invoice is issued")
+    remind_after_days = models.PositiveSmallIntegerField(default=3, help_text="0 = no reminder")
+    suspend_enabled = models.BooleanField(default=False)
+    suspend_after_days = models.PositiveSmallIntegerField(default=10)
+    updated_by = models.CharField(max_length=150, blank=True, default="")
+
+    class Meta:
+        db_table = "tenant_fee"
+
+
+class TenantFeeInvoice(models.Model):
+    """One month's store fee: the agency invoice it became, and what the fee job did about it."""
+
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="fee_invoices")
+    period = models.CharField(max_length=7, help_text="Jalali year-month, e.g. 1405-09")
+    due_date = models.DateField()
+    amount = models.DecimalField(max_digits=14, decimal_places=0)
+    invoice = models.ForeignKey("agency.AgencyInvoice", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+    reminded_at = models.DateTimeField(null=True, blank=True)
+    suspended_at = models.DateTimeField(null=True, blank=True)
+    resumed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "tenant_fee_invoice"
+        ordering = ("-due_date", "-id")
+        constraints = [models.UniqueConstraint(fields=["tenant", "period"], name="tenant_fee_invoice_once_per_month")]

@@ -601,3 +601,13 @@ Everything shipped since v1.6.0 (details in the session log):
   < 50 GB above usage) + `full_charge` (unlimited admin without an earlier limit is charged the whole limit) warnings in the
   dialog. Daily silent Telegram summary of admins ≥ 95 % (`near_limit.py`, beat 10:00 Tehran, made once by seed). PAMP
   enforcement untouched. Tests: `agency/tests/test_v1522_limits.py` (9); browser check of the dialog (phone + desktop, fa / en, dark).
+- 2026-11-10 — **v1.53.0: store backups (multi-tenant Phase 10) + monthly store fee hook (Phase 12, off).** `tenancy/export.py`:
+  `TenantExport` (TENANT) — the store panel's «پشتیبان‌گیری» (`/backup`, `store.export` + our `export_allowed` switch, which now also
+  puts `store.export` into the ceiling; one per 6 h) and our «فروشگاه» card (any store, no gap) start a Celery build inside the
+  store: zip of JSON + CSV from explicit field lists (no hashes / tokens / our names; cards last 4; our staff = «support»),
+  progress per dataset, one-time host-bound download links (sha256 stored) until 24 h after ready, hourly cleanup, nginx 404 on
+  `/media/exports/`. `tenancy/fees.py`: `TenantFee` / `TenantFeeInvoice` — per-store monthly fee (off by default, `agency.accounting`):
+  hourly `store_fees_task` issues one agency invoice (new kind `store_fee`) per Jalali month, reminder after N days, optional
+  suspension after N days unpaid (off by default) and automatic resume once paid; store dashboard banner. Admin SPA: a deep link to
+  a store-only page no longer falls back to the dashboard while sign-in loads. Tests: `tenancy/tests/test_v153_export_fee.py` (10);
+  browser checks (store backup page, store dashboard banner, «فروشگاه» card; phone + desktop, fa / en, light / dark).

@@ -210,13 +210,14 @@ def _kind_for(entry: LedgerEntry, volume_request: VolumeRequest | None) -> str:
 
 
 def issue_for_entry(entry: LedgerEntry | None, *, volume_request: VolumeRequest | None = None,
-                    by: str = "") -> AgencyInvoice | None:
-    """The invoice of one charge (called right after the ledger entry is written)."""
+                    by: str = "", kind: str = "") -> AgencyInvoice | None:
+    """The invoice of one charge (called right after the ledger entry is written). `kind` overrides the invoice kind
+    (v1.53: KIND_STORE_FEE for a store's monthly fee)."""
     if entry is None or entry.amount <= 0 or entry.kind not in (LedgerEntry.KIND_QUOTA, LedgerEntry.KIND_CHARGE):
         return None
     g = group_of(entry.admin_username)
     inv = AgencyInvoice.objects.create(
-        admin_username=entry.admin_username, group=g, group_name=_group_name(g), kind=_kind_for(entry, volume_request),
+        admin_username=entry.admin_username, group=g, group_name=_group_name(g), kind=kind or _kind_for(entry, volume_request),
         gb=entry.gb, price_per_gb=entry.price_per_gb, amount=entry.amount, ledger_entry=entry,
         volume_request=volume_request, note=(entry.note or "")[:255], created_by=(by or entry.created_by or "")[:150])
     transaction.on_commit(lambda: _issued(inv))
@@ -321,9 +322,12 @@ def on_ledger_void(entry: LedgerEntry) -> None:
 def invoice_source(inv: AgencyInvoice) -> str:
     """v1.38.2 where an invoice came from (one "request" kind covered two sources):
     admin_request — the admin's own «درخواست شارژ» (portal) · manager — volume a group manager added / a new admin ·
-    manual — staff raised the limit or charged by hand · settlement — the old balance before invoices."""
+    manual — staff raised the limit or charged by hand · settlement — the old balance before invoices ·
+    store_fee — v1.53 a reseller store's monthly fee (tenancy/fees.py)."""
     if inv.kind == AgencyInvoice.KIND_SETTLEMENT:
         return "settlement"
+    if inv.kind == AgencyInvoice.KIND_STORE_FEE:
+        return "store_fee"
     vr = inv.volume_request
     if vr is not None:
         return "admin_request" if vr.kind == "request" else "manager"

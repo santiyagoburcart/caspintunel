@@ -1526,6 +1526,52 @@ sequenceDiagram
     Note over R: enable refused → audit …_release_failed · the next sync's enforcement retries
 ```
 
+## 16k. A store backup (multi-tenant Phase 10, v1.53)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor R as Store staff (store.export)
+    actor O as Our staff («فروشگاه»)
+    participant API as Admin API
+    participant W as Celery (store context)
+    participant N as nginx
+    O->>API: PATCH store {export_allowed: true} → store.export joins the ceiling
+    R->>API: POST store-export/ (export_allowed · one per 6 h · one at a time)
+    API->>W: build_export_task (queued inside the store)
+    loop each dataset (explicit fields · cards masked · our staff = support)
+        W->>W: json/NAME.json + csv/NAME.csv · progress
+    end
+    W->>W: manifest + README · state ready · expires in 24 h · audit
+    R->>API: POST store-export/ID/link/ → one-time URL (sha256 kept)
+    R->>API: GET /api/v1/exports/download/T/TOKEN/ on the store's domain
+    API->>API: token spent (works once · only on the host it was made for) · audit
+    API->>N: X-Accel-Redirect /_protected_media/exports/…
+    N-->>R: the zip
+    Note over W: hourly cleanup — expired files deleted · stuck jobs failed
+```
+
+## 16l. The monthly store fee (multi-tenant Phase 12, v1.53 — off by default)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor O as Our staff (agency.accounting)
+    participant F as store_fees_task (hourly)
+    participant B as agency billing
+    actor R as Reseller (/agency/)
+    participant S as Store
+    O->>F: «فروشگاه» → fee on · amount · first due day · reminder · suspension (off)
+    F->>B: due day → ledger charge + invoice kind store_fee (once per Jalali month)
+    B-->>R: portal notice «فاکتور صادر شد»
+    F-->>R: N days unpaid → reminder (portal + the store's own staff)
+    opt suspension switched on
+        F->>S: N days after due · still unpaid → status suspended (domains 404) · alert us
+        R->>B: pays the invoice (card / SMS / Blu, as any agency invoice)
+        F->>S: nothing overdue left → active again · audit store.fee_resumed
+    end
+```
+
 ## 16i. A store's failed order — «ساخت ناموفق» (v1.52.1)
 
 ```mermaid

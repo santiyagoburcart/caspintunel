@@ -311,6 +311,12 @@ def _store_failed_orders() -> int:
     return failed_orders.count()
 
 
+def _store_fee_due():
+    from apps.tenancy import context, fees
+
+    return fees.store_banner(context.store_id())
+
+
 class DashboardView(AdminAPIView):
     perms_map = {"GET": ["monitoring.view"]}
     store_ok = True                      # v1.43: a store sees its own services; server health stays ours
@@ -344,7 +350,9 @@ class DashboardView(AdminAPIView):
                              "bot": _store_bot(),
                              # v1.52.1: warnings — no active ticket topic (customers can't open tickets) · «ساخت ناموفق» orders
                              "ticket_topics_active": _store_active_topics(),
-                             "failed_orders": _store_failed_orders()})
+                             "failed_orders": _store_failed_orders(),
+                             # v1.53: the store's unpaid monthly fee (tenancy/fees.py; None while nothing is open)
+                             "fee_due": _store_fee_due()})
         return Response({
             "services": {
                 "total": sum(by_status.values()),

@@ -1,4 +1,5 @@
 import Discounts from './pages/Discounts'
+import StoreBackup from './pages/StoreBackup'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './lib/auth'
 import { Spinner } from './components/ui'
@@ -43,7 +44,10 @@ function Private({ children }) {
 }
 
 export default function App() {
-  const { staff } = useAuth()
+  const { staff, loading } = useAuth()
+  // v1.53: pick the route set only once we know who is signed in — before, a deep link to a page that exists only in the
+  // store / group-manager set (e.g. /backup, /my-groups/…) hit our catch-all and was sent to "/"
+  if (loading) return <div className="grid min-h-full place-items-center"><Spinner /></div>
   // v1.25: a group manager gets only its own pages; any other URL lands on /my-groups
   // (the server refuses every other admin API with 403 anyway)
   if (isGroupManager(staff)) {
@@ -81,6 +85,7 @@ export default function App() {
           <Route path="/tickets/:id" element={<Tickets />} />
           <Route path="/discounts" element={<Discounts />} />
           <Route path="/roles" element={<Roles />} />
+          <Route path="/backup" element={<StoreBackup />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

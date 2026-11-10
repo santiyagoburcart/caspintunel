@@ -26,6 +26,7 @@ _RULES: list[tuple[re.Pattern, str]] = [(re.compile(p), r) for p, r in [
     (r"^reduce (\S+) GB$", r"کاهش \1 گیگ"),
     (r"^set (\S+) GB — was unlimited; based on the last limit (.+)$", r"تنظیم \1 گیگ — نامحدود بود؛ بر پایهٔ آخرین سقف \2"),
     (r"^set (\S+) GB$", r"تنظیم \1 گیگ"),
+    (r"^store monthly fee (\d{4})/(\d{2}) — (.+)$", r"اشتراک ماهانهٔ فروشگاه \1/\2 — \3"),
 ]]
 
 

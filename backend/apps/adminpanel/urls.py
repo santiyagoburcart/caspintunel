@@ -19,6 +19,8 @@ from .views.agency import (AgencyLimitHistoryView, AgencyAdminActionView, Agency
                            AgencyStoreFailedOrdersView, AgencyStoreFailedOrderRetryView,
                            AgencyStoreDomainCheckView, AgencyStoreDomainsView,
                            AgencyStoreDomainView)
+from .views.stores_extra import (AgencyStoreExportLinkView, AgencyStoreExportView, AgencyStoreFeeView,
+                                 StoreExportLinkView, StoreExportView)
 from .views.catalog import (
     BankCardViewSet,
     PageViewSet,
@@ -99,6 +101,9 @@ urlpatterns = [
     path("accounting/", AccountingView.as_view(), name="admin-accounting"),
     path("payments/pending/", PendingPaymentsView.as_view(), name="admin-payments-pending"),
     path("orders/provision-failed/", FailedOrdersView.as_view(), name="admin-orders-provision-failed"),
+    # v1.53 (Phase 10): the store's own backups (the one-time download is /api/v1/exports/download/…, config/urls.py)
+    path("store-export/", StoreExportView.as_view(), name="admin-store-export"),
+    path("store-export/<int:pk>/link/", StoreExportLinkView.as_view(), name="admin-store-export-link"),
     path("orders/provision-failed/<int:pk>/retry/", FailedOrderRetryView.as_view(), name="admin-orders-provision-retry"),
     path("payments/blu-transactions/", BluTransactionListView.as_view(), name="admin-blu-transactions"),
     path("payments/blu-transactions/<int:pk>/attach/", BluAttachView.as_view(), name="admin-blu-attach"),
@@ -130,6 +135,11 @@ urlpatterns = [
     path("agency/panel-admins/<str:username>/store/bot/", AgencyStoreBotView.as_view(), name="admin-agency-store-bot"),
     path("agency/panel-admins/<str:username>/store/ceiling/", AgencyStoreCeilingView.as_view(), name="admin-agency-store-ceiling"),
     path("agency/panel-admins/<str:username>/store/owner/", AgencyStoreOwnerView.as_view(), name="admin-agency-store-owner"),
+    # v1.53: store exports (Phase 10) + the monthly store fee (Phase 12) on «فروشگاه»
+    path("agency/panel-admins/<str:username>/store/exports/", AgencyStoreExportView.as_view(), name="admin-agency-store-exports"),
+    path("agency/panel-admins/<str:username>/store/exports/<int:pk>/link/", AgencyStoreExportLinkView.as_view(),
+         name="admin-agency-store-export-link"),
+    path("agency/panel-admins/<str:username>/store/fee/", AgencyStoreFeeView.as_view(), name="admin-agency-store-fee"),
     path("agency/panel-admins/<str:username>/store/failed-orders/", AgencyStoreFailedOrdersView.as_view(),
          name="admin-agency-store-failed-orders"),
     path("agency/panel-admins/<str:username>/store/failed-orders/<int:pk>/retry/", AgencyStoreFailedOrderRetryView.as_view(),

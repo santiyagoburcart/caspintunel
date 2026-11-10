@@ -185,6 +185,11 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   Roles / staff queries always filter `tenant_id=store_id()`. A new store_ok view's codes must be in `STORE_CODES` (test).
   **v1.52.1**: a store's «ساخت ناموفق» is retried only through `tenancy/failed_orders.retry` → `retry_provision` (same paid order,
   never a new charge), from the store panel or our «فروشگاه» card (inside the store's context).
+  **v1.53 exports (`tenancy/export.py`)**: a store backup reads ONLY explicit field lists inside the store's context — a new
+  dataset / field gets the same treatment (no hashes, tokens, our panel / staff names; cards masked); files only under
+  `media/exports/` (nginx 404), served only through `consume` (one-time, host-bound link). **Fees (`tenancy/fees.py`)**: off by
+  default; invoices only through the agency ledger / `issue_for_entry(kind=store_fee)`; suspension only by `run` and only when
+  `suspend_enabled` — never suspend / resume a store elsewhere for a fee.
 - The rejected Liquid Glass refresh is archived at tag `archive/ui-refresh-liquid-glass` — don't copy from it.
 
 ## Gotchas (learned the hard way)

@@ -33,3 +33,28 @@ def store_bot_apply_task(tenant_id: int):
 
     b = TenantBot.objects.filter(tenant_id=tenant_id).first()
     return apply(b).state if b is not None else None
+
+
+@shared_task(ignore_result=True)
+def build_export_task(export_id: int):
+    """v1.53 (Phase 10, tenancy/export.py): build one store export — queued inside the store, so it runs there."""
+    from .export import build
+
+    return build(export_id)
+
+
+@shared_task(ignore_result=True)
+def store_exports_cleanup_task():
+    """v1.53: hourly — delete exports 24 h after they were ready, fail stuck jobs (every store)."""
+    from .export import cleanup
+
+    return cleanup()
+
+
+@shared_task(ignore_result=True)
+def store_fees_task():
+    """v1.53 (Phase 12, tenancy/fees.py): hourly — monthly fee invoices, reminders, optional suspension / resume.
+    Does nothing while no store has its fee switched on (the default)."""
+    from .fees import run
+
+    return run()

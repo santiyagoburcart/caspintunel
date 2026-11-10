@@ -10,6 +10,8 @@ import StoreDomains from './StoreDomains'
 import StoreBot from './StoreBot'
 import StoreStaff from './StoreStaff'
 import FailedOrders from './FailedOrders'
+import StoreExports from './StoreExports'
+import StoreFee from './StoreFee'
 
 // v1.43 (multi-tenant Phase 2, D5) «فروشگاه» on an agency admin's page — OUR staff open and manage a reseller's store.
 // v1.45: domains + TLS (StoreDomains); v1.49: the store's Telegram bot (StoreBot). Until a domain is active the store is not reachable.
@@ -17,7 +19,7 @@ const T = {
   fa: {
     title: 'فروشگاه', none: 'این ادمین هنوز فروشگاه ندارد.', open: 'ساخت فروشگاه', name: 'نام فروشگاه', slug: 'شناسه',
     status: 'وضعیت', st_draft: 'پیش‌نویس', st_active: 'فعال', st_suspended: 'معلق', st_closed: 'بسته',
-    export: 'اجازهٔ دریافت خروجی فروشگاه', save: 'ذخیره', created: 'ساخته شده در',
+    export: 'اجازهٔ دریافت پشتیبان توسط نماینده (پنل فروشگاه)', save: 'ذخیره', created: 'ساخته شده در',
     rpm: 'سقف درخواست در دقیقه (کل فروشگاه)', rpm_hint: 'خالی یا ۰ = بدون سقف؛ بیشتر از آن ۴۲۹ می‌گیرد و به ما خبر داده می‌شود.',
     reachable: 'در دسترس روی دامنهٔ فعال', unreachable: 'در دسترس نیست (فروشگاه فعال با دامنهٔ فعال لازم است)',
     o_title: 'ساخت فروشگاه', o_msg: 'برای {u} یک فروشگاه پیش‌نویس ساخته می‌شود با برندینگ خودش و یک نسخه از صفحه‌های ما (قوانین، راهنما). تا دامنه فعال نشود کسی آن را نمی‌بیند.',
@@ -27,7 +29,7 @@ const T = {
   en: {
     title: 'Store', none: 'This admin has no store yet.', open: 'Open a store', name: 'Store name', slug: 'Slug',
     status: 'Status', st_draft: 'Draft', st_active: 'Active', st_suspended: 'Suspended', st_closed: 'Closed',
-    export: 'May download a store export', save: 'Save', created: 'Created',
+    export: 'The reseller may download a backup (store panel)', save: 'Save', created: 'Created',
     rpm: 'Requests per minute (whole store)', rpm_hint: 'Empty or 0 = no cap; above it requests get 429 and we are alerted.',
     reachable: 'Reachable on its active domain', unreachable: 'Not reachable (needs an active store with an active domain)',
     o_title: 'Open a store', o_msg: 'A draft store is created for {u} with its own branding and a copy of our pages (rules, help). Nobody sees it until a domain is active.',
@@ -113,6 +115,9 @@ export default function AgencyStoreCard({ username }) {
         <StoreStaff base={url} store={store} manage={manage} onChanged={load} />
         {/* v1.52.1: the store's «ساخت ناموفق» orders — our staff retry them too (same paid order, never a new charge) */}
         <FailedOrders base={url + 'failed-orders/'} canRetry={manage} hideEmpty={false} onChanged={load} />
+        {/* v1.53: the store's backups (ours: any time, links work on our panel only) + the monthly fee (off by default) */}
+        {manage && <div className="ags-box"><StoreExports base={url + 'exports/'} platform /></div>}
+        <div className="ags-box"><StoreFee base={url + 'fee/'} fee={store.fee} reseller={username} canEdit={can('agency.accounting')} onChanged={load} /></div>
         <p className="text-xs text-muted">{s.manage_note}</p>
       </>}
     </div>
@@ -139,5 +144,6 @@ const CSS = `
 .ags-chk { display: flex; align-items: center; gap: 8px; font-size: 13px; min-height: 44px; }
 .ags-save { min-height: 44px; }
 .ags-doms { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.ags-box { padding: 12px 14px; border-radius: 14px; border: 1px solid var(--c-border); min-width: 0; }
 @media (max-width: 767px) { .ags-f .input { font-size: 16px; min-height: 44px; } }
 `

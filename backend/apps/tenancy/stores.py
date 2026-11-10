@@ -49,9 +49,17 @@ def row(t: Tenant | None, *, staff_view: bool = True) -> dict | None:
         "store_codes": sorted(staff_mod.STORE_CODES) if staff_view else None,
         # v1.52.1: paid orders PasarGuard refused («ساخت ناموفق») — listed + retried on «فروشگاه» too
         "failed_orders": _failed_count(t) if staff_view else None,
+        # v1.53: the monthly fee hook (off by default) — our staff only
+        "fee": _fee_row(t) if staff_view else None,
         "branding": {"site_name_fa": b.site_name_fa, "site_name_en": b.site_name_en} if b else None,
         "reachable": t.status == Tenant.ACTIVE and TenantDomain.objects.filter(tenant=t, state=TenantDomain.ACTIVE).exists(),
     }
+
+
+def _fee_row(t: Tenant) -> dict:
+    from . import fees
+
+    return fees.row(t)
 
 
 def _failed_count(t: Tenant) -> int:
@@ -129,6 +137,11 @@ def update(t: Tenant, data: dict, *, staff=None) -> Tenant:
             raise StoreError("requests_per_minute must be 0 (no cap) or 60–100000", "سقف درخواست: ۰ (بدون سقف) یا 60 تا 100000")
         t.limits = {**(t.limits or {}), "requests_per_minute": rpm or None}
     t.save()
+    if t.export_allowed != before["export_allowed"]:        # v1.53: the switch also puts store.export in / out of the ceiling
+        from .staff import set_ceiling
+
+        codes = set(t.permission_ceiling or [])
+        set_ceiling(t, (codes | {"store.export"}) if t.export_allowed else (codes - {"store.export"}), staff=staff)
     after = {"name": t.name, "status": t.status, "export_allowed": t.export_allowed,
              "requests_per_minute": (t.limits or {}).get("requests_per_minute")}
     if after != before:

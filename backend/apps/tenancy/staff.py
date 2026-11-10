@@ -26,6 +26,7 @@ STORE_CODES = frozenset({
     "discounts.view", "discounts.manage",
     "monitoring.view",                  # the store dashboard's service counts only (server health is ours)
     "roles.manage",                     # the store's own staff and roles
+    "store.export",                     # v1.53: download the store's own backup (also needs Tenant.export_allowed)
 })
 DEFAULT_CEILING = sorted(STORE_CODES)
 OWNER_ROLE = "store-owner"              # Role.name of the store's owner role (per store; name_fa below)

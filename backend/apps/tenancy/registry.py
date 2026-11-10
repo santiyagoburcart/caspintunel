@@ -20,6 +20,7 @@ TENANT = [
     "tickets.CannedReply",
     "crm.Tag", "crm.CustomerProfile", "crm.CustomerNote", "crm.CaseReason", "crm.FollowUpCase", "crm.MessageTemplate",
     "crm.CrmEvent", "crm.WarningRule", "crm.ServiceWarning", "crm.ServiceEndMark", "crm.DiscountCode",
+    "tenancy.TenantExport",          # v1.53: a store's own backups (tenancy/export.py)
 ]
 
 NULLABLE = [
@@ -44,7 +45,7 @@ PLATFORM = [
     "agency.GroupManagerAssignment", "agency.ManagerSession", "agency.VolumeRequest", "agency.AgencyInvoice",
     "agency.AgencyPayment", "agency.AgencyPaymentItem", "agency.AgencyInvoiceAllocation", "agency.AgencyNotice",
     "agency.AgencyAdminSetting",
-    "tenancy.Tenant", "tenancy.TenantDomain", "tenancy.TenantBot",
+    "tenancy.Tenant", "tenancy.TenantDomain", "tenancy.TenantBot", "tenancy.TenantFee", "tenancy.TenantFeeInvoice",
 ]
 
 PROJECT_APPS = ("accounts", "adminpanel", "agency", "common", "crm", "notifications", "ops", "orders", "panel",

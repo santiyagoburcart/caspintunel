@@ -35,8 +35,9 @@ def test_tenant_column_matches_the_classification():
         assert f.null is (label in registry.NULLABLE), f"{label}: tenant must be NOT NULL unless NULLABLE (Release C)"
     for label in registry.PLATFORM:
         names = {f.name for f in apps.get_model(label)._meta.get_fields()}
-        # platform tables keyed BY a store (its domains, its bot) — set by our staff, never scoped
-        assert "tenant" not in names or label in ("tenancy.TenantDomain", "tenancy.TenantBot"), label
+        # platform tables keyed BY a store (its domains, its bot, v1.53 its fee) — set by our staff, never scoped
+        assert "tenant" not in names or label in ("tenancy.TenantDomain", "tenancy.TenantBot", "tenancy.TenantFee",
+                                                  "tenancy.TenantFeeInvoice"), label
 
 
 def test_default_tenant_and_backfill():

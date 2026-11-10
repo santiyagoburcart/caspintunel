@@ -23,6 +23,10 @@ tables. The classification is `apps/tenancy/registry.py`; design in [multi-tenan
 erDiagram
     tenant ||--o{ tenant_domain : has
     tenant ||--o| tenant_bot : "v1.49 own Telegram bot"
+    tenant ||--o{ tenant_export : "v1.53 backups"
+    tenant ||--o| tenant_fee : "v1.53 monthly fee (off)"
+    tenant ||--o{ tenant_fee_invoice : "v1.53 one per Jalali month"
+    agency_invoice ||--o| tenant_fee_invoice : "kind store_fee"
     tenant ||--o| tenant_branding : "v1.43 branding"
     tenant ||--o{ tenant_setting : "v1.43 TENANT_KEYS"
     theme |o--o{ tenant_branding : "store theme"
@@ -74,6 +78,43 @@ erDiagram
         datetime last_update_at
         datetime alerted_at "the one alert to us"
     }
+    tenant_export {
+        bigint id PK
+        bigint tenant_id FK "TENANT table (scoped)"
+        string requested_by
+        bool by_platform "our staff («فروشگاه»)"
+        string state "queued | running | ready | failed | expired"
+        int progress "0–100"
+        string step
+        string file "media/exports/TENANT/RANDOM.zip"
+        bigint size
+        json counts
+        datetime expires_at "24 h after ready"
+        string link_hash "sha256 of the one-time token"
+        string link_scope "store | platform"
+        int downloads
+    }
+    tenant_fee {
+        bigint id PK
+        bigint tenant_id FK "one per store"
+        bool enabled "off by default"
+        decimal amount "tomans per month"
+        date next_due "Tehran day"
+        int remind_after_days "0 = none"
+        bool suspend_enabled "off by default"
+        int suspend_after_days
+    }
+    tenant_fee_invoice {
+        bigint id PK
+        bigint tenant_id FK
+        string period "Jalali YYYY-MM, unique per store"
+        date due_date
+        decimal amount
+        bigint invoice_id FK "agency_invoice (kind store_fee)"
+        datetime reminded_at
+        datetime suspended_at
+        datetime resumed_at
+    }
     tenant_branding {
         bigint id PK
         bigint tenant_id FK "UK, one per store"
@@ -100,6 +141,9 @@ erDiagram
 | `tenant` | one store (v1.40). The default tenant is our own store; reseller stores come in later phases. |
 | `tenant_domain` | a host routed to a tenant; only `active` hosts of an `active` store are served (v1.41 / v1.43). v1.45: our staff add it on «فروشگاه» (mode direct / tunnel; `cloudflare` unused — a proxied record is detected into `proxied`), DNS + TXT checks, HTTP-01 certificate + nginx file by the host watcher, health (`tenancy/domains.py`). |
 | `tenant_bot` | v1.49 (Phase 6): a store's own Telegram bot — set / replaced / removed only by our staff on «فروشگاه» (`tenancy/bots.py`); webhook to `/api/v1/telegram/hook/<tenant id>/` on our host with `webhook_secret`; menu button → the store's Mini App; checked every 10 min. Platform table (keyed by the store, never scoped). |
+| `tenant_export` | v1.53 (Phase 10): one backup of a store's own data (`tenancy/export.py`) — TENANT table; zip under `media/exports/` (nginx 404), served once per one-time link (sha256 stored) until 24 h after ready, then deleted. |
+| `tenant_fee` | v1.53 (Phase 12): the store's monthly fee settings (`tenancy/fees.py`), off by default — platform table. |
+| `tenant_fee_invoice` | v1.53: one month's fee → its `agency_invoice` (kind `store_fee`), reminder / suspension / resume marks — platform table. |
 | `tenant_branding` | v1.43 a reseller store's branding (same fields as `site_config`, which stays our own store's); `theme_id` = its theme. v1.51: `support_email` = Reply-To of the mail we send for the store. |
 | `tenant_setting` | v1.43 a store's own value for a key in `settings_app.branding.TENANT_KEYS` (wins in `get_setting` for that store). v1.51: + the ticket rules (`tickets_max_open_per_user`, `tickets_auto_close_days`, `tickets_reopen_days`, `tickets_show_staff_name`). |
 

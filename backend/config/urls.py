@@ -4,6 +4,7 @@ from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path, re_path
 from django.views.static import serve
+from apps.adminpanel.views.stores_extra import StoreExportDownloadView
 from apps.telegram.webhook import store_bot_hook
 from drf_spectacular.views import (
     SpectacularAPIView,
@@ -24,6 +25,8 @@ api_v1 = [
     path("agency/", include("apps.agency.urls")),
     path("tickets/", include("apps.tickets.urls")),
     path("telegram/hook/<int:tenant_id>/", store_bot_hook, name="store-bot-hook"),   # v1.49 store bots (webhook)
+    # v1.53 a store backup's one-time link — token only (no staff JWT), so it lives outside the staff API
+    path("exports/download/<int:tenant_id>/<str:token>/", StoreExportDownloadView.as_view(), name="store-export-download"),
 ]
 
 urlpatterns = [
