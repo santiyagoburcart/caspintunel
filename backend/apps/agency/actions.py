@@ -63,6 +63,18 @@ def base_limit(a) -> int:
     return a.last_limit_bytes or 0
 
 
+LOW_HEADROOM_FRACTION = 0.05            # v1.52.2: warn below 5 % of the new limit …
+LOW_HEADROOM_BYTES = 50 * 1024 ** 3     # … or below 50 GB above current usage
+
+
+def low_headroom(new_limit: int, used: int) -> bool:
+    """True when a finite new limit leaves less than 5 % of it or less than 50 GB above current usage."""
+    if not new_limit or new_limit <= 0:
+        return False
+    room = new_limit - int(used or 0)
+    return room < LOW_HEADROOM_BYTES or room < new_limit * LOW_HEADROOM_FRACTION
+
+
 def preview_set_limit(username: str, action: str, value_gb) -> dict:
     """What set_limit WOULD do — no panel call, nothing saved. For the confirm dialog."""
     from .ledger import quote_quota_charge
@@ -88,7 +100,12 @@ def preview_set_limit(username: str, action: str, value_gb) -> dict:
             "charged_gb_basis": "new − last limit" if unlimited and base else "new − current limit",
             "remaining_after_fmt": fmt(max(0, new - a.admin_used_bytes)) if new > 0 else "Unlimited",
             "remaining_after_bytes": max(0, new - a.admin_used_bytes) if new > 0 else None,
-            "charge": q}
+            "charge": q,
+            # v1.52.2 C: the new limit leaves little room above what is already used → blocked again almost at once
+            "used_bytes": a.admin_used_bytes, "used_fmt": fmt(a.admin_used_bytes or 0) if (a.admin_used_bytes or 0) > 0 else "0",
+            "low_headroom": low_headroom(new, a.admin_used_bytes),
+            # v1.52.2 D: an unlimited admin with no earlier limit is charged for the WHOLE new limit
+            "full_charge": bool(unlimited and not base and new > 0)}
 
 
 def set_limit(username: str, action: str, value_gb, by: str = "") -> tuple[bool, str]:
@@ -149,7 +166,9 @@ def set_limit(username: str, action: str, value_gb, by: str = "") -> tuple[bool,
     limit_history.record(username, current_limit, new_limit_bytes, action=action, source="panel", by=by,
                          note=note, ledger_entry=entry)
 
-    return True, f"Limit set to {gb_label(new_limit_bytes)} — {message}"
+    from .release import release_if_room, released_note      # v1.52.2: an enforcement block ends now, not at the next sync
+    rel = release_if_room(username, by=by, reason=f"limit {action}")
+    return True, f"Limit set to {gb_label(new_limit_bytes)} — {message}{released_note(rel)}"
 
 
 def remove_limit(username: str, by: str = "") -> tuple[bool, str]:
@@ -176,7 +195,9 @@ def remove_limit(username: str, by: str = "") -> tuple[bool, str]:
     if old_limit:
         panel_admin.last_limit_bytes = old_limit       # kept: "Add" / the next charge start from it
     panel_admin.save(update_fields=['admin_limit_bytes', 'has_data_limit', 'admin_remaining', 'last_limit_bytes'])
-    return True, f"{message} — admin is now unlimited"
+    from .release import release_if_room, released_note      # v1.52.2: unlimited never stays «محدود‌شده»
+    rel = release_if_room(username, by=by, reason="limit removed")
+    return True, f"{message} — admin is now unlimited{released_note(rel)}"
 
 
 def admin_action(username: str, action: str) -> tuple[bool, str]:

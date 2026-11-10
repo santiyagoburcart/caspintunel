@@ -586,6 +586,16 @@ class Command(BaseCommand):
 
         reconcile_backup_schedule()
 
+        # v1.52.2: daily Telegram summary of agency admins ≥ 95 % of their limit (agency/near_limit.py), 10:00 Tehran.
+        # Only created when missing — staff may change the time / switch it off in Django admin; seed never resets it.
+        from django_celery_beat.models import CrontabSchedule
+
+        if not PeriodicTask.objects.filter(name="agency: near-limit summary").exists():
+            at_ten, _ = CrontabSchedule.objects.get_or_create(minute="0", hour="10", day_of_week="*", day_of_month="*",
+                                                             month_of_year="*", timezone="Asia/Tehran")
+            PeriodicTask.objects.create(name="agency: near-limit summary", task="apps.agency.tasks.near_limit_summary_task",
+                                        crontab=at_ten, kwargs=_json.dumps({}), enabled=True)
+
         # seed rewrites theme palettes with queryset.update (no signals)
         from apps.common.public_cache import bump_public_cache
 

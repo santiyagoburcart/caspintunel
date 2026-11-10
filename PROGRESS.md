@@ -594,3 +594,10 @@ Everything shipped since v1.6.0 (details in the session log):
   order's store), never a new charge; the failure alerts the store's staff and us (platform). Dashboard banner `failed_orders`.
   `docs/pilot-fa.md` updated. Tests: `tenancy/tests/test_v1521_pilot.py` (7); browser checks (store Payments / dashboard / our
   card, phone + desktop, fa / en, light / dark, writes blocked).
+- 2026-11-10 — **v1.52.2: agency limits after the farzin3 case.** farzin3 showed «محدود‌شده» from a stale `pamp_blocked` flag kept
+  while it was unlimited (PAMP enforcement only checks admins with a limit). `agency/release.py`: every limit change through our
+  panel (set / add / remove, approved requests, group-manager adds) ends an enforcement block at once when it leaves room
+  (enable on PasarGuard, flag cleared, audit; failures never fail the change). Set-limit preview: `low_headroom` (< 5 % or
+  < 50 GB above usage) + `full_charge` (unlimited admin without an earlier limit is charged the whole limit) warnings in the
+  dialog. Daily silent Telegram summary of admins ≥ 95 % (`near_limit.py`, beat 10:00 Tehran, made once by seed). PAMP
+  enforcement untouched. Tests: `agency/tests/test_v1522_limits.py` (9); browser check of the dialog (phone + desktop, fa / en, dark).

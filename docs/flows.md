@@ -1504,6 +1504,28 @@ sequenceDiagram
     API-->>K: ticket DMs through the store's bot
 ```
 
+## 16j. A limit raise ends an enforcement block at once (v1.52.2)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor S as Our staff / approval / group manager
+    participant A as agency (actions · billing · managers)
+    participant PG as PasarGuard
+    participant R as release.release_if_room
+    S->>A: set / add / remove limit (preview: low headroom · full charge warnings)
+    A->>PG: PUT /api/admin/NAME {data_limit}
+    A->>A: row + ledger charge + limit history (unchanged)
+    A->>R: after PasarGuard accepted it
+    alt pamp_blocked and (unlimited or used < limit)
+        R->>PG: PUT /api/admin/NAME {status: active}
+        R->>R: pamp_blocked cleared · status active · audit agency.enforcement_released
+    else no block · still over the limit
+        R-->>A: nothing (PAMP enforcement decides at the next sync, as before)
+    end
+    Note over R: enable refused → audit …_release_failed · the next sync's enforcement retries
+```
+
 ## 16i. A store's failed order — «ساخت ناموفق» (v1.52.1)
 
 ```mermaid

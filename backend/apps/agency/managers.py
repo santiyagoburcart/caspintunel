@@ -696,6 +696,8 @@ def add_volume(m: GroupManager, username: str, value) -> dict:
             req.limit_change = h
             req.save(update_fields=["limit_change"])
     _audit(m, "volume_added", a, admin=username, gb=str(gb), old_limit_bytes=old, new_limit_bytes=new, request=req.id)
+    from .release import release_if_room                       # v1.52.2: the raise is live on PasarGuard already
+    release_if_room(username, by=label(m), reason=f"group manager +{gb:g} GB")
     _notify_staff(req)
     return {"username": username, "old_limit_bytes": old, "new_limit_bytes": new, "request": req.id,
             "message": f"{username}: {gb_label(old)} → {gb_label(new)} — waiting for approval"}

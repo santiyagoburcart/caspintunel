@@ -280,3 +280,11 @@ def check_and_enforce_limits():
                 logger.error("Enforcement: enable_admin %s failed: %s", admin.username, msg)
 
     logger.info("Enforcement: done")
+
+
+@shared_task(name='apps.agency.tasks.near_limit_summary_task')
+def near_limit_summary_task():
+    """v1.52.2 (caspintunel, not PAMP): daily Telegram summary of admins ≥ 95 % of their limit — agency/near_limit.py."""
+    from .near_limit import send_summary
+
+    return send_summary()

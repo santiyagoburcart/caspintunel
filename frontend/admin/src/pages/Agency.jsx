@@ -40,7 +40,7 @@ const T = {
     warn80: 'به {p}% سقف رسیده است', blocked_pamp: 'به‌دلیل رسیدن به سقف محدود شده', blocked_panel: 'روی پنل غیرفعال است',
     actions: 'محدودیت‌ها و عملیات', a_set: 'تعیین / تغییر سقف', a_remove: 'حذف سقف', a_disable: 'غیرفعال‌سازی ادمین', a_enable: 'فعال‌سازی ادمین',
     a_disable_users: 'غیرفعال‌سازی همه کاربران', a_enable_users: 'فعال‌سازی همه کاربران', a_reset: 'ریست ترافیک حذف‌شده‌ها',
-    cur_limit: 'سقف فعلی', statement_link: 'صورت‌حساب این نماینده', unit: 'واحد', amount: 'مقدار', p_old_new: 'سقف', p_base: 'آخرین سقف (مبنا)', p_base_hint: '— ادمین الان نامحدود است؛ «افزایش» و شارژ از این مقدار حساب می‌شود', p_base_none: 'سقفی ثبت نشده — شارژ از صفر حساب می‌شود', p_remaining: 'باقی‌مانده پس از تغییر', p_charge: 'شارژ حساب', p_no_charge: 'بدون شارژ (افزایش نیست)', p_no_price: 'برای امروز قیمتی ثبت نشده — شارژ با مبلغ 0 ثبت می‌شود', p_wait: 'در حال محاسبه…', v_positive: 'یک عدد مثبت وارد کنید', d_reset: 'شمارندهٔ «از کاربران حذف‌شده» صفر می‌شود و حجم فروخته‌شده در همگام‌سازی بعدی کم می‌شود.', d_disable_users: 'همهٔ کاربران این ادمین روی پنل غیرفعال می‌شوند.', d_disable: 'دسترسی این ادمین به پنل بسته می‌شود؛ کاربرانش دست نمی‌خورند.', d_remove: 'سقف این ادمین برداشته می‌شود (نامحدود).',
+    cur_limit: 'سقف فعلی', statement_link: 'صورت‌حساب این نماینده', unit: 'واحد', amount: 'مقدار', p_old_new: 'سقف', p_base: 'آخرین سقف (مبنا)', p_base_hint: '— ادمین الان نامحدود است؛ «افزایش» و شارژ از این مقدار حساب می‌شود', p_base_none: 'سقفی ثبت نشده — شارژ از صفر حساب می‌شود', p_low: 'این سقف فقط {room} بالاتر از مصرف فعلی ({used}) است — ادمین تقریباً بلافاصله دوباره به سقف می‌رسد و محدود می‌شود. (هشدار زیر 5% سقف یا 50 گیگ)', p_full: 'این ادمین نامحدود است و سقف قبلی ندارد: کل {gb} گیگ شارژ می‌شود ({amount}) — از جمله {used} که در زمان نامحدود بودن مصرف شده است.', p_remaining: 'باقی‌مانده پس از تغییر', p_charge: 'شارژ حساب', p_no_charge: 'بدون شارژ (افزایش نیست)', p_no_price: 'برای امروز قیمتی ثبت نشده — شارژ با مبلغ 0 ثبت می‌شود', p_wait: 'در حال محاسبه…', v_positive: 'یک عدد مثبت وارد کنید', d_reset: 'شمارندهٔ «از کاربران حذف‌شده» صفر می‌شود و حجم فروخته‌شده در همگام‌سازی بعدی کم می‌شود.', d_disable_users: 'همهٔ کاربران این ادمین روی پنل غیرفعال می‌شوند.', d_disable: 'دسترسی این ادمین به پنل بسته می‌شود؛ کاربرانش دست نمی‌خورند.', d_remove: 'سقف این ادمین برداشته می‌شود (نامحدود).',
     gb: 'گیگابایت', mode: 'نوع', m_set: 'تنظیم روی', m_add: 'افزودن', m_reduce: 'کاهش', confirm_go: 'تأیید',
     snapshots: 'آخرین مصرف کاربران (اسنپ‌شات)', snap_n: '{n} کاربر', user: 'کاربر', last_seen: 'آخرین بررسی', recent_syncs: 'همگام‌سازی‌های اخیر',
     support: 'پشتیبانی', groups_none: 'گروهی تعریف نشده است.', owner: 'مالک', members: 'اعضا', note: 'یادداشت', missing: 'روی پنل نیست',
@@ -80,7 +80,7 @@ const T = {
     warn80: 'reached {p}% of the limit', blocked_pamp: 'Limited: the admin limit was reached', blocked_panel: 'Disabled on the panel',
     actions: 'Limits & actions', a_set: 'Set / change limit', a_remove: 'Remove limit', a_disable: 'Disable admin', a_enable: 'Enable admin',
     a_disable_users: 'Disable all users', a_enable_users: 'Enable all users', a_reset: 'Reset deleted traffic',
-    cur_limit: 'Current limit', statement_link: "This admin's statement", unit: 'Unit', amount: 'Amount', p_old_new: 'Limit', p_base: 'Last limit (base)', p_base_hint: '— the admin is unlimited now; "Add" and the charge start from this', p_base_none: 'no previous limit — charged from 0', p_remaining: 'Remaining after', p_charge: 'Account charge', p_no_charge: 'No charge (not an increase)', p_no_price: 'No price set for today — the charge is recorded at 0', p_wait: 'Calculating…', v_positive: 'Enter a positive number', d_reset: 'The "from deleted users" counter goes to 0; Total Sold drops at the next sync.', d_disable_users: "All of this admin's users are disabled on the panel.", d_disable: 'This admin loses panel access; their users keep working.', d_remove: "This admin's limit is removed (unlimited).",
+    cur_limit: 'Current limit', statement_link: "This admin's statement", unit: 'Unit', amount: 'Amount', p_old_new: 'Limit', p_base: 'Last limit (base)', p_base_hint: '— the admin is unlimited now; "Add" and the charge start from this', p_base_none: 'no previous limit — charged from 0', p_low: 'This limit is only {room} above current usage ({used}) — the admin will hit it and be limited again almost at once. (Warning below 5% of the limit or 50 GB)', p_full: 'This admin is unlimited with no earlier limit: the WHOLE {gb} GB is charged ({amount}) — including {used} used while unlimited.', p_remaining: 'Remaining after', p_charge: 'Account charge', p_no_charge: 'No charge (not an increase)', p_no_price: 'No price set for today — the charge is recorded at 0', p_wait: 'Calculating…', v_positive: 'Enter a positive number', d_reset: 'The "from deleted users" counter goes to 0; Total Sold drops at the next sync.', d_disable_users: "All of this admin's users are disabled on the panel.", d_disable: 'This admin loses panel access; their users keep working.', d_remove: "This admin's limit is removed (unlimited).",
     gb: 'GB', mode: 'Mode', m_set: 'Set to', m_add: 'Add', m_reduce: 'Reduce', confirm_go: 'Confirm',
     snapshots: 'Last known user usage (snapshot)', snap_n: '{n} users', user: 'User', last_seen: 'Last seen', recent_syncs: 'Recent syncs',
     support: 'Support', groups_none: 'No groups defined.', owner: 'Owner', members: 'Members', note: 'Note', missing: 'not on the panel',
@@ -107,6 +107,7 @@ const T = {
 const useT = () => { const { lang } = useI18n(); return [T[lang] || T.fa, lang] }
 // backend strings are PAMP's ("1.23 TB", "Unlimited") — only translate the word
 const fmt = (v, s) => (v === 'Unlimited' ? s.unl : v)
+const iso = (v) => `\u2068${v}\u2069`          // keeps "11.31 TB" in order inside Persian text
 const B = ({ children }) => <bdi dir="ltr" className="ag-num">{children}</bdi>
 // the GB figure next to a TB value (1 TB = 1024 GB, PAMP's units), from the raw bytes
 // the server sends; nothing under 1 TB or for Unlimited. `block` = on its own small line.
@@ -538,6 +539,15 @@ function SetLimitForm({ s, lang, username, current, currentBytes, box }) {
               {p.charge.price_per_gb == null && <small className="ag-form-err">{s.p_no_price}</small>}</>
           )}</dd></div>
         </dl>
+      )}
+      {p && !err && p.full_charge && p.charge && (
+        <p className="ag-limit-warn" role="alert" data-testid="limit-full-charge">{s.p_full
+          .replace('{gb}', Number(p.charge.gb).toLocaleString('en-US', { maximumFractionDigits: 2 }))
+          .replace('{amount}', iso(money(p.charge.amount))).replace('{used}', iso(fmt(p.used_fmt, s)))}</p>
+      )}
+      {p && !err && p.low_headroom && (
+        <p className="ag-limit-warn" role="alert" data-testid="limit-low-headroom">{s.p_low
+          .replace('{room}', iso(fmt(p.remaining_after_fmt, s))).replace('{used}', iso(fmt(p.used_fmt, s)))}</p>
       )}
     </div>
   )
@@ -1105,6 +1115,8 @@ const CSS = `
 .ag-preview { display: flex; flex-direction: column; border-top: 1px solid var(--c-border); margin-top: 4px; }
 .ag-preview > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; padding: 8px 0; border-bottom: 1px solid var(--c-border); font-size: 13px; }
 .ag-preview dt { color: var(--c-muted-fg); }
+.ag-limit-warn { margin: 6px 0 0; padding: 10px 12px; border-radius: 10px; font-size: 12.5px; line-height: 1.8; font-weight: 600;
+  color: var(--c-warning-fg); background: color-mix(in srgb, var(--c-warning) 12%, transparent); border: 1px solid color-mix(in srgb, var(--c-warning) 34%, transparent); }
 .ag-preview-base { background: color-mix(in srgb, var(--c-warning) 10%, transparent); padding-inline: 8px !important; border-radius: 8px; }
 .ag-kpi, .ag-nums > div[data-ac], .ag-nums--counts > div[data-k] {
   background-image: linear-gradient(color-mix(in srgb, var(--ac) 11%, transparent), color-mix(in srgb, var(--ac) 11%, transparent));

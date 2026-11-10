@@ -133,6 +133,20 @@ start from it, and the quota charge of **Add** or **Set** is *new − last limit
 limit is charged from 0). The confirm dialog shows both: "Unlimited now", the last limit used as the base, the new
 limit and the GB × price that will be charged.
 
+**After a limit change (v1.52.2, incident farzin3 2026-11-10)**:
+* **Block released at once** (`release.py::release_if_room`): every limit change through our panel — set / add / remove,
+  an approved charge request, a group manager's add — ends an enforcement block (`pamp_blocked`) right away when the admin is
+  now unlimited or below its limit: `enable_admin` on PasarGuard, flag cleared, audit `agency.enforcement_released`
+  (`…_release_failed` + the next sync retries when PasarGuard refuses; the limit change itself never fails). PAMP's
+  enforcement stays verbatim — it only checks admins WITH a limit, so before this an admin made unlimited kept a stale
+  «محدود‌شده» label.
+* **Dialog warnings**: the new limit leaves < 5 % of it or < 50 GB above current usage → «تقریباً بلافاصله دوباره محدود
+  می‌شود» (`actions.low_headroom`); an unlimited admin that never had a limit → «کل X گیگ شارژ می‌شود» with the amount and the
+  volume already used (`full_charge`).
+* **Daily summary** (`near_limit.py`, beat «agency: near-limit summary», 10:00 Tehran, created once by seed — staff may move or
+  switch it off): admins ≥ 95 % of their limit with % / GB left / state, a silent Telegram message to our staff with
+  `agency.manage`; nothing when none, skipped while the sync is off.
+
 ## Account groups (Agency → Groups, `agency.manage`)
 
 PAMP's account groups, managed from the panel: create (optional name, owner = main admin, members, note),

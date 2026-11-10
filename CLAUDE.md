@@ -222,6 +222,8 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
 - Cut-over done 2026-10-16: sync (`agency_sync_interval_minutes`, production 2 min) + enforcement + portal are ON here; the Finland PAMP has its workers
   stopped. Never run two syncs on one panel (rollback steps in docs/agency.md). Resellers are NOT `accounts.User` rows.
 - Real PAMP data (dumps, recorded panel responses) lives only in `backups/pamp/` and `backend/.golden_local/`.
+- v1.52.2: every limit change through our panel calls `agency/release.release_if_room` after PasarGuard accepted it (ends a
+  `pamp_blocked` block at once when there is room) — a new limit-changing path must call it too; never edit enforcement for it.
 - PasarGuard admin create / edit / delete = `apps/agency/admin_crud.py` on `PasarGuardClient` (never edit the PAMP files
   for it). 5.4 has roles, not `is_sudo`. Passwords are returned once to the UI and never audited / stored.
 

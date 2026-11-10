@@ -462,6 +462,8 @@ def approve_request(r: VolumeRequest, by, staff_label: str):
     h = limit_history.record(r.admin_username, live_limit, new, action="add", source="panel", by=staff_label,
                              note=f"admin request #{r.id}: {gb_label(base)} → {gb_label(new)}", ledger_entry=e)
     r.old_limit_bytes, r.new_limit_bytes, r.limit_change = base, new, h
+    from .release import release_if_room                       # v1.52.2: after commit (the row is locked here)
+    transaction.on_commit(lambda: release_if_room(r.admin_username, by=staff_label, reason=f"request #{r.id} approved"))
     inv = issue_for_entry(e, volume_request=r, by=staff_label)
     if r.manager_id:
         transaction.on_commit(lambda: notice(
