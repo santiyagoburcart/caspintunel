@@ -450,6 +450,7 @@ def manager_row(m: GroupManager, cat: dict | None = None) -> dict:
     return {
         "id": m.id, "username": m.username, "display_name": m.display_name, "is_active": m.is_active, "note": m.note,
         "max_unapproved_gb": m.max_unapproved_gb, "created_by": m.created_by, "created_at": m.created_at,
+        "archived_at": m.archived_at,                                   # v1.54: deleted account → archived manager
         "last_login_at": (m.staff.last_login if m.staff_id else None) or m.last_login_at, "cap": cap_state(m),
         "pending_count": VolumeRequest.objects.filter(manager=m, status="pending").count(),
         # v1.25: the manager signs in to /panel/ as this staff account (None = username taken by other staff)
@@ -1001,24 +1002,26 @@ def admin_summaries(names: list[str], frm: date | None = None, to: date | None =
     for p in _pending_rows(names):
         x = pend.setdefault(p["admin"], {"gb": D0, "amount": D0, "count": 0})
         x["gb"] += p["gb"]; x["amount"] += p["amount"] or D0; x["count"] += 1
-    admins = {a.username: a for a in PanelAdmin.objects.filter(username__in=names)}
+    admins = {a.username: a for a in PanelAdmin.all_objects.filter(username__in=names)}     # v1.54: + archived
     for n in names:
         qs = LedgerEntry.objects.filter(admin_username=n, voided=False)
         if to:
             qs = qs.filter(date__lte=to)
-        charges = payments = balance = D0
+        charges = payments = adjustments = balance = D0
         for e in qs:
             balance += e.signed_amount
             if frm and e.date < frm:
                 continue
             if e.kind == LedgerEntry.KIND_PAYMENT:
                 payments += e.amount
+            elif e.kind == LedgerEntry.KIND_ADJUST:          # v1.54: apart — a «کاهش بدهی» is not negative sales
+                adjustments += e.amount
             else:
                 charges += e.amount
         a = admins.get(n)
-        out.append({"username": n, "charges": charges, "payments": payments, "balance": balance,
+        out.append({"username": n, "charges": charges, "adjustments": adjustments, "payments": payments, "balance": balance,
                     "pending": pend.get(n, {"gb": D0, "amount": D0, "count": 0}),
-                    "on_panel": a is not None})
+                    "on_panel": a is not None and a.archived_at is None, "archived": a is not None and a.archived_at is not None})
     return out
 
 
@@ -1032,7 +1035,7 @@ def group_statement(g: AdminGroup, frm: date | None = None, to: date | None = No
     entries = list(entries)
     opening = sum((e.signed_amount for e in entries if frm and e.date < frm and not e.voided), D0)
     running, rows = opening, []
-    charges = payments = D0
+    charges = payments = adjustments = D0
     for e in entries:
         if frm and e.date < frm:
             continue
@@ -1040,6 +1043,8 @@ def group_statement(g: AdminGroup, frm: date | None = None, to: date | None = No
             running += e.signed_amount
             if e.kind == LedgerEntry.KIND_PAYMENT:
                 payments += e.amount
+            elif e.kind == LedgerEntry.KIND_ADJUST:          # v1.54: apart from sales
+                adjustments += e.amount
             else:
                 charges += e.amount
         rows.append({"id": e.id, "date": e.date, "admin": e.admin_username, "kind": e.kind, "gb": e.gb,
@@ -1052,7 +1057,8 @@ def group_statement(g: AdminGroup, frm: date | None = None, to: date | None = No
         all_bal[e.admin_username] = all_bal.get(e.admin_username, D0) + e.signed_amount
     return {
         "group": {"id": g.id, "name": group_title(g), "owner": g.owner_username, "admins": names},
-        "from": frm, "to": to, "opening": opening, "charges": charges, "payments": payments, "closing": running,
+        "from": frm, "to": to, "opening": opening, "charges": charges, "adjustments": adjustments, "payments": payments,
+        "closing": running,
         "total_debt": sum(all_bal.values(), D0),
         "by_admin": [{"username": n, "balance": all_bal.get(n, D0)} for n in names],
         "entries": rows, "pending": pending,
@@ -1096,6 +1102,7 @@ def group_statement_rows(st: dict, lang: str) -> list[list]:
                      f"#{p['id']} · {p['manager']}", "در انتظار" if fa else "pending"])
     rows.append([])
     rows.append(["جمع شارژ" if fa else "Charges", "", "", "", "", st["charges"]])
+    rows.append(["جمع اصلاحیه" if fa else "Adjustments", "", "", "", "", st.get("adjustments", D0)])
     rows.append(["جمع پرداخت" if fa else "Payments", "", "", "", "", st["payments"]])
     rows.append(["بدهی کل گروه" if fa else "Group total debt", "", "", "", "", st["total_debt"]])
     rows.append(["در انتظار تأیید" if fa else "Pending (not in the balance)", "", "", st["pending_gb"], "", st["pending_amount"]])
@@ -1104,11 +1111,13 @@ def group_statement_rows(st: dict, lang: str) -> list[list]:
 
 def summary_rows(rows: list[dict], lang: str) -> list[list]:
     fa = lang == "fa"
-    head = (["ادمین", "شارژ (تومان)", "پرداخت (تومان)", "بدهی (تومان)", "گیگ در انتظار", "مبلغ در انتظار"] if fa else
-            ["Admin", "Charges (Toman)", "Payments (Toman)", "Balance (Toman)", "Pending GB", "Pending amount"])
-    out = [head] + [[r["username"], r["charges"], r["payments"], r["balance"], r["pending"]["gb"], r["pending"]["amount"]]
-                    for r in rows]
-    out.append(["جمع" if fa else "Total", sum((r["charges"] for r in rows), D0), sum((r["payments"] for r in rows), D0),
+    head = (["ادمین", "شارژ (تومان)", "اصلاحیه (تومان)", "پرداخت (تومان)", "بدهی (تومان)", "گیگ در انتظار", "مبلغ در انتظار"] if fa else
+            ["Admin", "Charges (Toman)", "Adjustments (Toman)", "Payments (Toman)", "Balance (Toman)", "Pending GB", "Pending amount"])
+    arch = " (بایگانی)" if fa else " (archived)"
+    out = [head] + [[r["username"] + (arch if r.get("archived") else ""), r["charges"], r.get("adjustments", D0), r["payments"],
+                     r["balance"], r["pending"]["gb"], r["pending"]["amount"]] for r in rows]
+    out.append(["جمع" if fa else "Total", sum((r["charges"] for r in rows), D0),
+                sum((r.get("adjustments", D0) for r in rows), D0), sum((r["payments"] for r in rows), D0),
                 sum((r["balance"] for r in rows), D0), sum((r["pending"]["gb"] for r in rows), D0),
                 sum((r["pending"]["amount"] for r in rows), D0)])
     return out

@@ -184,12 +184,14 @@ def statement(username: str) -> dict:
               .values("ledger_entry_id", "invoice_id", "amount")):
         settles.setdefault(a["ledger_entry_id"], []).append({"invoice": f"INV-{a['invoice_id']:06d}", "amount": a["amount"]})
     running, rows = Decimal(0), []
-    charges = payments = Decimal(0)
+    charges = payments = adjustments = Decimal(0)
     for e in entries:
         if not e.voided:
             running += e.signed_amount
             if e.kind == LedgerEntry.KIND_PAYMENT:
                 payments += e.amount
+            elif e.kind == LedgerEntry.KIND_ADJUST:          # v1.54: apart from sales (history.py)
+                adjustments += e.amount
             else:
                 charges += e.amount
         rows.append({"id": e.id, "date": e.date, "kind": e.kind, "amount": e.amount, "signed": e.signed_amount,
@@ -203,7 +205,8 @@ def statement(username: str) -> dict:
 
     return {
         "invoices_mismatch": allocation.mismatch(username),
-        "username": username, "charges": charges, "payments": payments, "balance": charges - payments,
+        "username": username, "charges": charges, "adjustments": adjustments, "payments": payments,
+        "balance": charges + adjustments - payments,
         "entries": rows,
         "price": {"price_per_gb": cur.price_per_gb, "valid_from": cur.valid_from} if cur else None,
         "prices": [{"id": p.id, "price_per_gb": p.price_per_gb, "valid_from": p.valid_from, "note": p.note,

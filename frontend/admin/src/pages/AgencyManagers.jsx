@@ -42,7 +42,7 @@ export const GM_T = {
     approve_msg: 'شارژ در حسابداری ثبت می‌شود و در تاریخچهٔ سقف به این تغییر وصل می‌شود.', approved: 'تأیید شد', rejected: 'رد شد — حجم برگشت داده شد',
     reject_msg: 'همین حجم از سقف فعلی این ادمین روی PasarGuard کم می‌شود (هرگز نامحدود نمی‌شود). شارژی ثبت نمی‌شود.', reason: 'دلیل (اختیاری)',
     limit_change: 'سقف', bulk_done: '{n} مورد تأیید شد', bulk_failed: '{n} مورد تأیید نشد: ', decided: 'تصمیم', total: 'جمع',
-    lg_admin: 'بر اساس ادمین', lg_group: 'بر اساس گروه', lg_invoices: 'فاکتورها', lg_payments: 'واریزهای نمایندگان', g_debt: 'بدهی کل گروه', g_pending: 'تأییدنشده', g_statement: 'صورت‌حساب گروه', admins: 'ادمین‌ها', managers: 'مدیران',
+    lg_admin: 'بر اساس ادمین', lg_group: 'بر اساس گروه', lg_invoices: 'فاکتورها', lg_payments: 'واریزهای نمایندگان', lg_history: 'تاریخچه', g_debt: 'بدهی کل گروه', g_pending: 'تأییدنشده', g_statement: 'صورت‌حساب گروه', admins: 'ادمین‌ها', managers: 'مدیران',
     opening: 'مانده از قبل', charges: 'جمع شارژ', payments: 'جمع پرداخت', closing: 'مانده پایان بازه', balance: 'مانده', kind: 'نوع', note_c: 'توضیح',
     range: 'بازهٔ تاریخ', all_time: 'همهٔ زمان‌ها', csv: 'CSV', xlsx: 'Excel', print: 'چاپ', pending_items: 'در انتظار تأیید (در مانده حساب نشده)', no_entries: 'گردشی در این بازه نیست.',
     k_quota_charge: 'شارژ حجم', k_manual_charge: 'بدهکاری', k_adjustment: 'اصلاحیه', k_payment: 'پرداخت', voided: 'باطل‌شده', back: 'همهٔ گروه‌ها',
@@ -74,7 +74,7 @@ export const GM_T = {
     approve_msg: 'The charge is written to accounting and linked to this change in the limit history.', approved: 'Approved', rejected: 'Rejected — the volume was taken back',
     reject_msg: "This volume is taken off the admin's current PasarGuard limit (never made unlimited). No charge.", reason: 'Reason (optional)',
     limit_change: 'Limit', bulk_done: '{n} approved', bulk_failed: '{n} not approved: ', decided: 'Decision', total: 'Total',
-    lg_admin: 'By admin', lg_group: 'By group', lg_invoices: 'Invoices', lg_payments: 'Agency payments', g_debt: 'Group total debt', g_pending: 'Unapproved', g_statement: 'Group statement', admins: 'Admins', managers: 'Managers',
+    lg_admin: 'By admin', lg_group: 'By group', lg_invoices: 'Invoices', lg_payments: 'Agency payments', lg_history: 'History', g_debt: 'Group total debt', g_pending: 'Unapproved', g_statement: 'Group statement', admins: 'Admins', managers: 'Managers',
     opening: 'Opening balance', charges: 'Charges', payments: 'Payments', closing: 'Closing balance', balance: 'Balance', kind: 'Type', note_c: 'Note',
     range: 'Date range', all_time: 'All time', csv: 'CSV', xlsx: 'Excel', print: 'Print', pending_items: 'Pending approval (not in the balance)', no_entries: 'No entries in this range.',
     k_quota_charge: 'Quota charge', k_manual_charge: 'Charge', k_adjustment: 'Adjustment', k_payment: 'Payment', voided: 'voided', back: 'All groups',
@@ -209,7 +209,8 @@ export function AgencyManagersView({ Header }) {
   const { can } = useAuth()
   const confirm = useConfirm()
   const toast = useToast()
-  const [d, err, load] = useGet('/admin/agency/managers/')
+  const [arch, setArch] = useState(false)         // v1.54 «بایگانی»: managers whose account was deleted (kept, deactivated)
+  const [d, err, load] = useGet(`/admin/agency/managers/${arch ? '?archived=1' : ''}`)
   const manage = can('agency.manage')
   // v1.25: managers sign in to the main panel (role "Group manager"), not a separate portal
   const portal = `${window.location.origin}${ADMIN_BASE}/login`
@@ -263,6 +264,12 @@ export function AgencyManagersView({ Header }) {
         <p className="text-sm text-muted">{s.m_intro}</p>
         {manage && <button type="button" className="ag-act" data-tone="primary" onClick={() => edit(null)}><Ic n="plus" />{s.m_new}</button>}
       </div>
+      <div className="gm-seg" role="group">
+        <button type="button" className={'gm-segb' + (!arch ? ' on' : '')} onClick={() => setArch(false)}>{lang === 'fa' ? 'فعال' : 'Active'}</button>
+        <button type="button" className={'gm-segb' + (arch ? ' on' : '')} onClick={() => setArch(true)} data-testid="managers-archived">
+          {lang === 'fa' ? 'بایگانی' : 'Archive'}{d?.archived_count > 0 ? ` (${d.archived_count})` : ''}</button>
+      </div>
+      {arch && <p className="text-xs text-muted">{lang === 'fa' ? 'حساب این مدیران حذف شده؛ مدیر غیرفعال شده ولی درخواست‌ها، پرداخت‌ها و فعالیت‌هایش محفوظ است و گروه‌هایش مستقیم پرداخت می‌کنند.' : 'These managers’ accounts were deleted: the manager is switched off, its requests, payments and activity are kept, and its groups pay directly.'}</p>}
       {portal && <div className="card ag-card gm-portal"><span>{s.m_portal}</span><N>{portal}</N>
         <button type="button" className="ag-act ag-act--sm" data-tone="neutral" onClick={async () => { await copyToClipboard(portal); toast.success(s.copied) }}><Ic n="copy" size={13} />{s.copy}</button></div>}
       <Alert>{err}</Alert>
@@ -507,6 +514,8 @@ export function LedgerSubNav() {
       <NavLink end to="/agency/ledger" className={({ isActive }) => 'gm-segb' + (isActive ? ' on' : '')}>{s.lg_admin}</NavLink>
       <NavLink to="/agency/ledger/groups" className={({ isActive }) => 'gm-segb' + (isActive ? ' on' : '')}>{s.lg_group}</NavLink>
       {can('agency.accounting') && <NavLink to="/agency/ledger/invoices" className={({ isActive }) => 'gm-segb' + (isActive ? ' on' : '')}>{s.lg_invoices}</NavLink>}
+      {/* v1.54 «تاریخچه»: never reset by a settlement / payments / adjustments (apps/agency/history.py) */}
+      {can('agency.accounting') && <NavLink to="/agency/ledger/history" className={({ isActive }) => 'gm-segb' + (isActive ? ' on' : '')} data-testid="lg-history-tab">{s.lg_history}</NavLink>}
       {can('agency.payments') && (
         <NavLink to="/agency/ledger/payments" className={({ isActive }) => 'gm-segb' + (isActive ? ' on' : '')} data-testid="lg-payments-tab">
           {s.lg_payments}{agencyReview > 0 && <span className="ag-tab-badge">{agencyReview > 99 ? '99+' : agencyReview}</span>}
@@ -613,6 +622,7 @@ function StatementBody({ st, s, lang }) {
       <dl className="gm-facts gm-st-sum">
         {st.from && <div><dt>{s.opening}</dt><dd><N>{money(st.opening, lang)}</N></dd></div>}
         <div><dt>{s.charges}</dt><dd><N>{toman(st.charges, lang)}</N></dd></div>
+        {Number(st.adjustments || 0) !== 0 && <div><dt>{lang === 'fa' ? 'اصلاحیه‌ها' : 'Adjustments'}</dt><dd><N>{toman(st.adjustments, lang)}</N></dd></div>}
         <div><dt>{s.payments}</dt><dd><N>{toman(st.payments, lang)}</N></dd></div>
         <div><dt>{s.closing}</dt><dd><N>{money(st.closing, lang)}</N></dd></div>
         <div data-strong><dt>{s.g_debt}</dt><dd><span className="gm-bal" data-sign={Number(st.total_debt) > 0 ? 'owes' : 'zero'}><N>{money(st.total_debt, lang)}</N></span></dd></div>

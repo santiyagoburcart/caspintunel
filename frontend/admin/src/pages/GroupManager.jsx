@@ -1,3 +1,4 @@
+import AgencyHistory from '../components/AgencyHistory'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Navigate, useParams } from 'react-router-dom'
@@ -477,6 +478,7 @@ function Admins({ me, s, lang, reload, can }) {
   const [q, setQ] = useState('')
   const [term, setTerm] = useState('')
   const [sort, setSort] = useState('name')
+  const [arch, setArch] = useState(false)          // v1.54 «بایگانی»: deleted admins of my groups (kept with their accounting)
   const [gid, setGid] = useState('')
   const [page, setPage] = useState(1)
   const [d, setD] = useState(null)
@@ -489,10 +491,10 @@ function Admins({ me, s, lang, reload, can }) {
   useEffect(() => { const t = setTimeout(() => { setTerm(q.trim()); setPage(1) }, 300); return () => clearTimeout(t) }, [q])
   useEffect(() => {
     let stop = false
-    http.get('/admins/', { params: { q: term || undefined, sort, group: gid || undefined, page, page_size: 20 } })
+    http.get('/admins/', { params: { q: term || undefined, sort, group: gid || undefined, page, page_size: 20, archived: arch ? 1 : undefined } })
       .then((r) => { if (!stop) setD(r.data) }).catch((e) => { if (!stop) { setD({ results: [], count: 0, page: 1, pages: 1 }); toast.error(errText(e, s)) } })
     return () => { stop = true }
-  }, [term, sort, gid, page, tick])
+  }, [term, sort, gid, page, tick, arch])
   const close = () => setDlg(null)
   const refresh = () => { setTick((t) => t + 1); reload() }
   const setStatus = async (a, enable) => {
@@ -530,6 +532,11 @@ function Admins({ me, s, lang, reload, can }) {
           <select className="ap-input" value={sort} onChange={(e) => { setSort(e.target.value); setPage(1) }} data-testid="gm-sort">
             {SORTS.filter((k) => k !== 'debt' || seeDebt).map((k) => <option key={k} value={k}>{s['sort_' + k]}</option>)}
           </select></label>
+        <div className="am-chips" role="group" aria-label={lang === 'fa' ? 'فهرست' : 'List'}>
+          <button type="button" className={'am-tab' + (!arch ? ' on' : '')} onClick={() => { setArch(false); setPage(1) }}>{lang === 'fa' ? 'فعال' : 'Active'}</button>
+          <button type="button" className={'am-tab' + (arch ? ' on' : '')} onClick={() => { setArch(true); setPage(1) }} data-testid="gm-archived">
+            {lang === 'fa' ? 'بایگانی' : 'Archive'}{d?.archived_count > 0 ? ` (${d.archived_count})` : ''}</button>
+        </div>
       </div>
       {d === null ? <div className="ap-spin" /> : d.results.length === 0 ? <p className="ap-foot">{term ? s.no_match : s.no_admins}</p> : (
         <>
@@ -762,6 +769,8 @@ function Accounting({ me, s, lang }) {
                   <div className="am-acc-r">
                     <b><bdi>{r.username}</bdi></b>
                     <span>{s.charges}: <N>{toman(r.charges, lang)}</N></span>
+                    {Number(r.adjustments || 0) !== 0 && <span>{lang === 'fa' ? 'اصلاحیه‌ها' : 'Adjustments'}: <N>{toman(r.adjustments, lang)}</N></span>}
+                    {r.archived && <span className="am-pend">{lang === 'fa' ? 'بایگانی (حذف‌شده)' : 'Archived (deleted)'}</span>}
                     <span>{s.payments}: <N>{toman(r.payments, lang)}</N></span>
                     <span>{s.balance}: <span className="am-bal" data-sign={Number(r.balance) > 0 ? 'owes' : 'zero'}><N>{money(r.balance, lang)}</N></span></span>
                     {Number(r.pending.gb) > 0 && <span className="am-pend">{s.pend}: <N>{gbText(r.pending.gb)}</N> · <N>{toman(r.pending.amount, lang)}</N></span>}
@@ -782,6 +791,8 @@ function Accounting({ me, s, lang }) {
         )}
       </section>
       <StaffGroupStatement url={`${BASE}/groups/${gid}/statement/`} />
+      {/* v1.54 «تاریخچه»: my groups' admins + group totals, never reset by a settlement / payments / adjustments */}
+      <AgencyHistory http={http} base="/history/" lang={lang} />
     </>
   )
 }

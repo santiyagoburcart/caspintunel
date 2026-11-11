@@ -25,7 +25,19 @@ def _fmt_bytes(b):
     return f"{sign}{b_abs:.2f} PB"
 
 
+class ActiveAdminManager(models.Manager):
+    """v1.54: the default manager hides ARCHIVED admins («حذف‌شده», agency/archive.py) — the sync, enforcement and every
+    active list never see them; PAMP's code stays verbatim. Accounting / history / the «بایگانی» filter use
+    `PanelAdmin.all_objects`."""
+
+    def get_queryset(self):
+        return super().get_queryset().filter(archived_at__isnull=True)
+
+
 class PanelAdmin(models.Model):
+    objects = ActiveAdminManager()
+    all_objects = models.Manager()
+
     username = models.CharField(max_length=255, unique=True, db_index=True)
     is_sudo = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
@@ -64,6 +76,12 @@ class PanelAdmin(models.Model):
     # Added ONLY into total_user_limit (sold volume) so Sold Limit stays correct.
     deleted_users_used_bytes = models.BigIntegerField(default=0)
     deleted_traffic_reset_at = models.DateTimeField(null=True, blank=True)
+
+    # v1.54 (agency/archive.py): never hard-deleted — gone from PasarGuard (sync) or deleted in our panel → archived;
+    # every ledger line, invoice, payment, limit change, snapshot and group link stays. Back on PasarGuard → restored.
+    archived_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    archived_reason = models.CharField(max_length=16, blank=True, default="")      # panel_missing | deleted
+    archived_by = models.CharField(max_length=150, blank=True, default="")
 
     class Meta:
         db_table = "agency_panel_admin"
@@ -419,6 +437,9 @@ class GroupManager(models.Model):
     # The link — not the role — is what restricts the staff to its groups (StaffPermission).
     staff = models.OneToOneField("accounts.Staff", null=True, blank=True, on_delete=models.SET_NULL,
                                  related_name="group_manager")
+    # v1.54: a deleted manager account is deactivated + archived (never deleted) — its requests, payments, notices and
+    # activity stay; its groups pay directly again (billing.manager_of_group only counts active managers)
+    archived_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = "agency_group_manager"
@@ -657,3 +678,15 @@ class AgencyAdminSetting(models.Model):
 
     class Meta:
         db_table = "agency_admin_setting"
+
+
+class AgencyUserSeen(models.Model):
+    """v1.54 «تاریخچه»: the first time the sync saw a user of an agency admin — append-only (never deleted when the user
+    is), so «کاربران جدید» per period never shrinks. Counts start with v1.54's first sync (no earlier record exists)."""
+    admin_username = models.CharField(max_length=255, db_index=True)
+    user_username = models.CharField(max_length=255)
+    first_seen_at = models.DateTimeField(db_index=True)
+
+    class Meta:
+        db_table = "agency_user_seen"
+        constraints = [models.UniqueConstraint(fields=["admin_username", "user_username"], name="agency_user_seen_once")]

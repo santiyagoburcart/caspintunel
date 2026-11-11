@@ -628,3 +628,13 @@ Everything shipped since v1.6.0 (details in the session log):
   Tests: `tenancy/tests/test_v1532_unavailable.py` (6); browser check of the page (phone + desktop, light + dark).
 - 2026-11-11 — **v1.53.3:** the parked-store page's 503 is expected — no longer logged by Django as an ERROR per visitor
   (`response._has_been_logged`); test in `test_v1532_unavailable.py`.
+- 2026-11-11 — **v1.54.0: agency admins archived, never deleted · «تاریخچه».** Read-only check first: the sync (verbatim PAMP)
+  deleted admins missing from PasarGuard (+ `AdminLimit`, snapshots; ledger / invoices orphaned and hidden), our delete also
+  dropped group links / owned groups, a deleted manager staff left an active manager nobody could sign in as (its groups could
+  not pay). Now `agency/archive.py`: archive + restore (sync line = the one PAMP deviation, PORTING.md), default manager hides
+  archived, «بایگانی» filters (Agency admins, group-manager list, managers), archived balance payable, deleted manager staff
+  → manager deactivated + archived. `agency/history.py`: per period + 12 months from immutable records (ledger, invoices,
+  new `AgencyUserSeen`), staff / manager / portal endpoints + CSV / Excel, shared `AgencyHistory.jsx` (both SPAs). Reports and
+  statements: adjustments apart from sales (6 live «کاهش بدهی» entries, −19.9M T, had lowered «شارژ»). Tests:
+  `agency/tests/test_v154_archive_history.py` (8) + updated report / ledger / delete tests; browser checks (staff, manager,
+  portal; phone + desktop, fa / en, light / dark).

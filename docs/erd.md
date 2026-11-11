@@ -495,6 +495,7 @@ caspintunel additions: reseller sessions, prices and the ledger. Resellers are
 erDiagram
     agency_panel_admin ||--o| agency_admin_limit : "limit config"
     agency_panel_admin ||--o{ agency_user_traffic_snapshot : "last-known users"
+    agency_panel_admin ||..o{ agency_user_seen : "v1.54 first time each user was seen (by username)"
     agency_panel_admin ||..o{ agency_admin_group : "owner / members (by username)"
     agency_panel_admin ||..o{ agency_reseller_session : "portal logins (by username)"
     agency_panel_admin ||..o{ agency_admin_price : "price per GB (by username)"
@@ -510,9 +511,18 @@ erDiagram
     agency_volume_request |o--o| agency_ledger_entry : "charge when approved"
     agency_volume_request |o--o| agency_limit_change : "the change it approves"
 
+    agency_user_seen {
+        bigint id PK
+        string admin_username
+        string user_username "unique with admin_username"
+        datetime first_seen_at "append-only — «کاربران جدید» in «تاریخچه»"
+    }
     agency_panel_admin {
         bigint id PK
         string username UK "PasarGuard admin"
+        datetime archived_at "v1.54: never deleted — archived (hidden from active lists / sync / enforcement)"
+        string archived_reason "panel_missing | deleted"
+        string archived_by
         bool is_sudo
         string status
         bool has_data_limit
@@ -721,7 +731,8 @@ erDiagram
 
 | Table | Description |
 |---|---|
-| `agency_panel_admin` | One PasarGuard admin (reseller) with the PAMP counters refreshed by every sync: limit, used, sold, remaining, user counts, deleted-users traffic, blocked flag. |
+| `agency_panel_admin` | One PasarGuard admin (reseller) with the PAMP counters refreshed by every sync: limit, used, sold, remaining, user counts, deleted-users traffic, blocked flag. v1.54: never deleted — gone from PasarGuard or deleted in our panel → `archived_at` (default manager hides it; `all_objects` sees it), restored when back on the panel. |
+| `agency_user_seen` | v1.54: the first time the sync saw each user of an agency admin — append-only, never deleted with the user; «کاربران جدید» per period in «تاریخچه» (counts start with v1.54). |
 | `agency_admin_limit` | Per-admin limit settings and the 80 % warning flag (PAMP). |
 | `agency_user_traffic_snapshot` | Last-known `used_traffic` per user of each admin — a user missing on the next sync counts as deleted and their traffic is kept in `deleted_users_used_bytes`. |
 | `agency_sync_log` | One row per sync run (Sync logs page). |

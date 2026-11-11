@@ -1,9 +1,10 @@
 """Accounting reports over the agency ledger (read-only; PAMP numbers untouched).
 
 Definitions (voided entries are excluded everywhere):
-  charges   = quota charges + manual charges + adjustments (adjustments are signed)
-  payments  = payments received
-  net       = charges − payments   (what the period added to the resellers' balances)
+  charges     = quota charges + manual charges («فروش / شارژ»)
+  adjustments = adjustments, signed (v1.54: apart — before, a «کاهش بدهی» lowered the period's sales, history.py)
+  payments    = payments received
+  net         = charges + adjustments − payments   (what the period added to the resellers' balances)
   GB        = GB on charge entries (the volume granted)
 Periods and months are Jalali; dates in the API are ISO (Gregorian)."""
 from __future__ import annotations
@@ -27,16 +28,18 @@ def _live():
 
 
 def _sum(entries) -> dict:
-    t = {"charges": D0, "payments": D0, "gb": D0, "payments_count": 0, "resellers": set()}
+    t = {"charges": D0, "adjustments": D0, "payments": D0, "gb": D0, "payments_count": 0, "resellers": set()}
     for e in entries:
         if e.kind == PAY:
             t["payments"] += e.amount
             t["payments_count"] += 1
+        elif e.kind == LedgerEntry.KIND_ADJUST:
+            t["adjustments"] += e.amount
         else:
             t["charges"] += e.amount
             t["gb"] += e.gb or D0
             t["resellers"].add(e.admin_username)
-    t["net"] = t["charges"] - t["payments"]
+    t["net"] = t["charges"] + t["adjustments"] - t["payments"]
     return t
 
 
@@ -74,23 +77,24 @@ def overview(frm: date, to: date) -> dict:
     if by_month:
         y, m = jkey(frm)
         while (y, m) <= jkey(to):
-            buckets[(y, m)] = {"charges": D0, "payments": D0}
+            buckets[(y, m)] = {"charges": D0, "payments": D0, "adjustments": D0}
             y, m = (y + 1, 1) if m == 12 else (y, m + 1)
     else:
         d = frm
         while d <= to:
-            buckets[d] = {"charges": D0, "payments": D0}
+            buckets[d] = {"charges": D0, "payments": D0, "adjustments": D0}
             d += timedelta(days=1)
     for e in entries:
         k = jkey(e.date) if by_month else e.date
         if k in buckets:
-            buckets[k]["payments" if e.kind == PAY else "charges"] += e.amount
+            buckets[k]["payments" if e.kind == PAY else "adjustments" if e.kind == LedgerEntry.KIND_ADJUST else "charges"] += e.amount
     series = [{"key": (f"{k[0]}/{k[1]:02d}" if by_month else k.isoformat()), "charges": _money(v["charges"]),
                "payments": _money(v["payments"])} for k, v in buckets.items()]
     recent = [e for e in reversed(entries) if e.kind == PAY][:50]
     return {
         "from": frm, "to": to, "bucket": "month" if by_month else "day",
-        "kpis": {"charges": _money(t["charges"]), "payments": _money(t["payments"]), "net": _money(t["net"]),
+        "kpis": {"charges": _money(t["charges"]), "adjustments": _money(t["adjustments"]), "payments": _money(t["payments"]),
+                 "net": _money(t["net"]),
                  "gb": _gb(t["gb"]), "payments_count": t["payments_count"],
                  "outstanding": _money(owed), "credit": _money(credit), "resellers_owing": sum(1 for b in bal.values() if b > 0)},
         "series": series,
@@ -108,7 +112,7 @@ def monthly() -> list[dict]:
     for (jy, jm), es in sorted(groups.items(), reverse=True):
         t = _sum(es)
         rows.append({"year": jy, "month": jm, "gb": _gb(t["gb"]), "charges": _money(t["charges"]),
-                     "payments": _money(t["payments"]), "net": _money(t["net"]),
+                     "adjustments": _money(t["adjustments"]), "payments": _money(t["payments"]), "net": _money(t["net"]),
                      "resellers_charged": len(t["resellers"]), "payments_count": t["payments_count"]})
     return rows
 
@@ -124,34 +128,35 @@ def month_breakdown(jy: int, jm: int) -> dict:
     rows = []
     for u, es in per.items():
         t = _sum(es)
-        rows.append({"username": u, "gb": _gb(t["gb"]), "charges": _money(t["charges"]), "payments": _money(t["payments"]),
-                     "net": _money(t["net"]), "balance_end": _money(closing[u])})
+        rows.append({"username": u, "gb": _gb(t["gb"]), "charges": _money(t["charges"]), "adjustments": _money(t["adjustments"]),
+                     "payments": _money(t["payments"]), "net": _money(t["net"]), "balance_end": _money(closing[u])})
     rows.sort(key=lambda r: (-r["charges"], r["username"]))
     tot = _sum([e for es in per.values() for e in es])
     return {"year": jy, "month": jm, "start": start, "end": end, "rows": rows,
-            "totals": {"gb": _gb(tot["gb"]), "charges": _money(tot["charges"]), "payments": _money(tot["payments"]),
-                       "net": _money(tot["net"])}}
+            "totals": {"gb": _gb(tot["gb"]), "charges": _money(tot["charges"]), "adjustments": _money(tot["adjustments"]),
+                       "payments": _money(tot["payments"]), "net": _money(tot["net"])}}
 
 
 # ---- exports ------------------------------------------------------------------
-MONTHLY_HEAD = {"fa": ["ماه", "گیگ واگذارشده", "شارژ (تومان)", "پرداخت (تومان)", "خالص (تومان)", "نماینده‌های شارژشده", "تعداد پرداخت"],
-                "en": ["Month", "GB granted", "Charges (Toman)", "Payments (Toman)", "Net (Toman)", "Resellers charged", "Payments"]}
-BREAK_HEAD = {"fa": ["نماینده", "گیگ واگذارشده", "شارژ (تومان)", "پرداخت (تومان)", "خالص (تومان)", "مانده پایان ماه (تومان)"],
-              "en": ["Reseller", "GB granted", "Charges (Toman)", "Payments (Toman)", "Net (Toman)", "Balance at month end (Toman)"]}
+MONTHLY_HEAD = {"fa": ["ماه", "گیگ واگذارشده", "شارژ (تومان)", "اصلاحیه (تومان)", "پرداخت (تومان)", "خالص (تومان)", "نماینده‌های شارژشده", "تعداد پرداخت"],
+                "en": ["Month", "GB granted", "Charges (Toman)", "Adjustments (Toman)", "Payments (Toman)", "Net (Toman)", "Resellers charged", "Payments"]}
+BREAK_HEAD = {"fa": ["نماینده", "گیگ واگذارشده", "شارژ (تومان)", "اصلاحیه (تومان)", "پرداخت (تومان)", "خالص (تومان)", "مانده پایان ماه (تومان)"],
+              "en": ["Reseller", "GB granted", "Charges (Toman)", "Adjustments (Toman)", "Payments (Toman)", "Net (Toman)", "Balance at month end (Toman)"]}
 
 
 def monthly_rows(lang: str) -> list[list]:
     return [MONTHLY_HEAD.get(lang, MONTHLY_HEAD["en"])] + [
-        [f"{r['year']}/{r['month']:02d}", r["gb"], r["charges"], r["payments"], r["net"], r["resellers_charged"], r["payments_count"]]
+        [f"{r['year']}/{r['month']:02d}", r["gb"], r["charges"], r["adjustments"], r["payments"], r["net"], r["resellers_charged"],
+         r["payments_count"]]
         for r in monthly()]
 
 
 def breakdown_rows(jy: int, jm: int, lang: str) -> list[list]:
     b = month_breakdown(jy, jm)
     out = [BREAK_HEAD.get(lang, BREAK_HEAD["en"])] + [
-        [r["username"], r["gb"], r["charges"], r["payments"], r["net"], r["balance_end"]] for r in b["rows"]]
+        [r["username"], r["gb"], r["charges"], r["adjustments"], r["payments"], r["net"], r["balance_end"]] for r in b["rows"]]
     t = b["totals"]
-    out.append(["جمع" if lang == "fa" else "Total", t["gb"], t["charges"], t["payments"], t["net"], ""])
+    out.append(["جمع" if lang == "fa" else "Total", t["gb"], t["charges"], t["adjustments"], t["payments"], t["net"], ""])
     return out
 
 

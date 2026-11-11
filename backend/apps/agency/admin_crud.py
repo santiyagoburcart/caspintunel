@@ -397,6 +397,9 @@ def create(panel, data: dict, *, by: str = "", charge: bool = True, source: str 
     charge_out, hist = None, None
     if tracked:
         with transaction.atomic():
+            from .archive import restore
+
+            restore([username], by=by or "panel")                 # v1.54: the same name again → its archived history continues
             # the next sync fills every PAMP counter; the row exists now so the detail page works
             PanelAdmin.objects.get_or_create(
                 username=username,
@@ -445,7 +448,7 @@ def modify(panel, username: str, data: dict) -> dict:
             "admin": editable_view(a)}
 
 
-def delete(panel, username: str, typed: str) -> None:
+def delete(panel, username: str, typed: str, *, by: str = "") -> None:
     _gate()
     if (typed or "").strip() != username:
         raise AdminCrudError("type the admin's username exactly to confirm", "confirm", "confirm")
@@ -453,19 +456,12 @@ def delete(panel, username: str, typed: str) -> None:
     try:
         c._request("DELETE", f"/api/admin/{quote(username, safe='')}")
     except PanelNotFound:
-        pass                                   # already gone on the panel — clean up here too
+        pass                                   # already gone on the panel — archive it here too
     except PanelError as exc:
         raise _err(exc) from exc
     if is_agency_panel(panel):
-        # ledger lines and prices stay (accounting history); groups lose the member
-        PanelAdmin.objects.filter(username=username).delete()
-        from . import groups as G
+        # v1.54: never deleted on our side — archived («حذف‌شده»): ledger, invoices, payments, limit history, snapshots
+        # and its group link all stay (agency/archive.py); a group it owns keeps existing with the owner shown archived
+        from .archive import DELETED, archive
 
-        for g in AdminGroup.objects.all():
-            if g.owner_username == username:          # a group without its owner has no meaning
-                g.delete()
-                continue
-            names = G._members(g.member_usernames)
-            if username in names:
-                G.upsert(g.id, owner=g.owner_username, members=[n for n in names if n != username], name=g.name,
-                         note=g.note)
+        archive([username], reason=DELETED, by=by)

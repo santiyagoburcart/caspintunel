@@ -67,7 +67,9 @@ class AgencyAdminListView(AdminAPIView):
 
     def get(self, request):
         p = request.query_params
-        qs = PanelAdmin.objects.all()
+        # v1.54 «بایگانی»: ?archived=1 → only archived («حذف‌شده») admins; default → active ones (the default manager)
+        archived = str(p.get("archived") or "") in ("1", "true", "yes")
+        qs = PanelAdmin.all_objects.filter(archived_at__isnull=False) if archived else PanelAdmin.objects.all()
         if p.get("search"):
             qs = qs.filter(username__icontains=p["search"].strip())
         if p.get("limit") == "limited":
@@ -88,7 +90,8 @@ class AgencyAdminListView(AdminAPIView):
             rows = [r for r in rows if r["status_code"] == p["status"]]
         if p.get("group"):
             rows = [r for r in rows if any(str(g["id"]) == p["group"] for g in r["groups"])]
-        return Response({"count": len(rows), "results": rows, "groups": [
+        return Response({"count": len(rows), "results": rows, "archived_count": PanelAdmin.all_objects.filter(
+            archived_at__isnull=False).count(), "groups": [
             {"id": g.id, "owner": g.owner_username, "name": g.name or g.owner_username} for g in groups]})
 
 
@@ -96,7 +99,7 @@ class AgencyAdminDetailView(AdminAPIView):
     perms_map = {"GET": VIEW}
 
     def get(self, request, username):
-        a = PanelAdmin.objects.filter(username=username).first()
+        a = PanelAdmin.all_objects.filter(username=username).first()        # v1.54: archived admins keep their page
         if a is None:
             raise Http404
         return Response({**api.admin_detail(a), "switches": _switches()})
@@ -122,6 +125,10 @@ class AgencyAdminActionView(AdminAPIView):
             raise Http404
         a = PanelAdmin.objects.filter(username=username).first()
         if a is None:
+            from apps.agency.archive import Archived, is_archived
+
+            if is_archived(username):                                       # v1.54: nothing changes on the panel
+                return Response({"detail": Archived.en, "detail_fa": Archived.fa, "code": "archived"}, status=409)
             raise Http404
         d = request.data
         if action == "set-limit":
@@ -593,12 +600,14 @@ class AgencyPanelAdminView(AdminAPIView):
         data = request.data or {}
         try:
             panel = C.panel_for(data.get("panel") or request.query_params.get("panel"))
-            C.delete(panel, username, data.get("confirm") or request.query_params.get("confirm", ""))
+            C.delete(panel, username, data.get("confirm") or request.query_params.get("confirm", ""),
+                     by=getattr(request.user, "username", ""))
         except Exception as exc:  # noqa: BLE001
             return _crud_error(exc)
         write_audit(action="agency.admin_deleted", staff=request.user, target=None,
                     detail={"username": username, "panel": panel.name})
-        return Response({"ok": True, "message": f"Admin {username} deleted", "message_fa": f"ادمین {username} حذف شد"})
+        return Response({"ok": True, "message": f"Admin {username} deleted on the panel — archived here (accounting and history kept)",
+                         "message_fa": f"ادمین {username} حذف شد و به «بایگانی» رفت — حساب، فاکتورها و سابقه‌اش محفوظ است"})
 
 
 class AgencyStoreView(AdminAPIView):
@@ -868,3 +877,39 @@ class AgencyStoreDomainCheckView(AgencyStoreDomainView):
         transaction.on_commit(lambda: store_domain_check_task.delay(d.pk))
         return Response({"store": stores.row(t), "message": f"Checking {d.host} now",
                          "message_fa": f"بررسی {d.host} شروع شد — نتیجه تا یک دقیقه دیگر"})
+
+
+class AgencyHistoryView(AdminAPIView):
+    """v1.54 «تاریخچه» — our staff: ?scope=all|group|admin &group= &admin= &period=d7|month|prev|custom &from= &to=
+    &export=csv|xlsx. Built from the ledger / invoices (immutable), never reset by settlement, payments or adjustments;
+    archived («حذف‌شده») admins included."""
+
+    perms_map = {"GET": ACCOUNTING}
+
+    def get(self, request):
+        from apps.agency import history as H
+        from apps.agency.reports import export_response
+
+        q = request.query_params
+        scope = q.get("scope") or ("admin" if q.get("admin") else "group" if q.get("group") else "all")
+        groups = list(AdminGroup.objects.order_by("owner_username"))
+        if scope == "admin":
+            if not q.get("admin"):
+                return Response({"detail": "pick an admin", "detail_fa": "ادمین را انتخاب کنید", "field": "admin"}, status=400)
+            names, sc = [q["admin"]], {"kind": "admin", "admin": q["admin"]}
+        elif scope == "group":
+            g = next((x for x in groups if str(x.id) == str(q.get("group"))), None)
+            if g is None:
+                return Response({"detail": "unknown group", "detail_fa": "گروه پیدا نشد", "field": "group"}, status=400)
+            names, sc = g.get_all_usernames(), {"kind": "group", "group": g.id, "name": g.name or g.owner_username}
+        else:
+            names, sc = H.all_usernames(), {"kind": "all"}
+        try:
+            rep = H.report(names, q.get("period") or "month", q.get("from"), q.get("to"), scope=sc)
+        except H.HistoryError as exc:
+            return Response(exc.payload(), status=400)
+        lang = "en" if q.get("lang") == "en" else "fa"
+        if q.get("export") in ("csv", "xlsx"):
+            return export_response(H.export_rows(rep, lang), q["export"], "agency-history", lang)
+        return Response({**rep, "groups": [{"id": g.id, "name": g.name or g.owner_username} for g in groups],
+                         "admins_list": H.all_usernames()})

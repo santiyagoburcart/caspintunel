@@ -9,6 +9,7 @@ urlpatterns = [
     path("portal/logout/", v.PortalLogoutView.as_view(), name="agency-portal-logout"),
     path("portal/me/", v.PortalMeView.as_view(), name="agency-portal-me"),
     path("portal/statement/", v.PortalStatementView.as_view(), name="agency-portal-statement"),
+    path("portal/history/", v.PortalHistoryView.as_view(), name="agency-portal-history"),              # v1.54 «تاریخچه»
     # v1.34 invoices / requests / payments (billing_views.py)
     path("portal/invoices/", bv.PortalInvoicesView.as_view(), name="agency-portal-invoices"),
     path("portal/requests/", bv.PortalRequestsView.as_view(), name="agency-portal-requests"),
@@ -32,6 +33,7 @@ urlpatterns = [
     path("manager/admins/<str:username>/statement/", mv.ManagerAdminStatementView.as_view(), name="agency-manager-statement"),
     path("manager/admins/<str:username>/<str:action>/", mv.ManagerAdminActionView.as_view(), name="agency-manager-admin-action"),
     path("manager/accounting/", mv.ManagerAccountingView.as_view(), name="agency-manager-accounting"),
+    path("manager/history/", mv.ManagerHistoryView.as_view(), name="agency-manager-history"),          # v1.54 «تاریخچه»
     path("manager/groups/<int:group_id>/statement/", mv.ManagerGroupStatementView.as_view(), name="agency-manager-group-statement"),
     path("manager/activity/", mv.ManagerActivityView.as_view(), name="agency-manager-activity"),
     path("manager/password/", mv.ManagerPasswordView.as_view(), name="agency-manager-password"),

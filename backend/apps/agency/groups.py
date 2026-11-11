@@ -33,7 +33,7 @@ def upsert(group_id: int | None, *, owner: str, members, name: str = "", note: s
     owner = (owner or "").strip()
     if not owner:
         raise GroupError("owner_required")
-    known = set(PanelAdmin.objects.values_list("username", flat=True))
+    known = set(PanelAdmin.all_objects.values_list("username", flat=True))     # v1.54: archived members stay
     g = AdminGroup.objects.select_for_update().filter(pk=group_id).first() if group_id else None
     if group_id and g is None:
         raise GroupError("not_found")

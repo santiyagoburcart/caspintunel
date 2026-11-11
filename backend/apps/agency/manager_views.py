@@ -254,7 +254,7 @@ PAGE_SIZES = (10, 20, 50, 100)
 class ManagerAdminCreateView(_Mgr):
     def get(self, request):
         """v1.37 «ادمین‌های گروه»: own groups' admins, searched over ALL of them, sorted, 20 per page.
-        ?q= &sort=name|usage|debt &group= &page= &page_size="""
+        ?q= &sort=name|usage|debt &group= &page= &page_size= · v1.54 &archived=1 → the «بایگانی» (deleted) admins only"""
         from . import ledger
 
         self.need("agency.gm.view_admins")
@@ -268,13 +268,15 @@ class ManagerAdminCreateView(_Mgr):
             x = pend.setdefault(p["admin"], {"gb": 0, "count": 0})
             x["gb"] += p["gb"]; x["count"] += 1
         term = (q.get("q") or "").strip().lower()
+        archived = str(q.get("archived") or "") in ("1", "true", "yes")
         rows, seen = [], set()
         for asg in M.assignments(self.m):
             g = asg.group
             if q.get("group") and str(g.id) != str(q.get("group")):
                 continue
             names = [u for u in g.get_all_usernames() if u not in seen and (not term or term in u.lower())]
-            admins = {a.username: a for a in PanelAdmin.objects.filter(username__in=names)}
+            src = PanelAdmin.all_objects.filter(archived_at__isnull=False) if archived else PanelAdmin.objects
+            admins = {a.username: a for a in src.filter(username__in=names)}
             for u in names:
                 if u not in admins:
                     continue
@@ -303,8 +305,11 @@ class ManagerAdminCreateView(_Mgr):
             page = min(max(1, int(q.get("page") or 1)), pages)
         except ValueError:
             page = 1
+        names_all = set(M.visible_usernames(self.m))
         return Response({"results": rows[(page - 1) * size: page * size], "count": count, "page": page, "pages": pages,
-                         "page_size": size, "sort": sort})
+                         "page_size": size, "sort": sort, "archived": archived,
+                         "archived_count": PanelAdmin.all_objects.filter(username__in=names_all,
+                                                                         archived_at__isnull=False).count()})
 
     def post(self, request):
         self.need("agency.gm.create_admin")
@@ -459,3 +464,33 @@ class ManagerForbiddenView(_Mgr):
 
 def _safe(name: str) -> str:
     return "".join(c for c in name if c.isalnum() or c in "-_") or "admin"
+
+
+class ManagerHistoryView(_Mgr):
+    """v1.54 «تاریخچه» GET manager/history/?period=d7|month|prev|custom&from=&to=&group=&admin=&export=csv|xlsx — own groups only:
+    one admin, one group (its totals) or all its groups; never reset by settlement / payments / adjustments (history.py)."""
+
+    def get(self, request):
+        from . import history as H
+
+        self.need("agency.gm.accounting")
+        q = request.query_params
+        visible = M.visible_usernames(self.m)
+        groups = [{"id": a.group_id, "name": M.group_title(a.group)} for a in M.assignments(self.m)]
+        if q.get("admin"):
+            if q["admin"] not in visible:
+                return Response({"detail": "not an admin of your groups", "detail_fa": "این ادمین در گروه‌های شما نیست"}, status=403)
+            names, scope = [q["admin"]], {"kind": "admin", "admin": q["admin"]}
+        elif q.get("group"):
+            a = M.assignment_for_group(self.m, q["group"])
+            names, scope = a.group.get_all_usernames(), {"kind": "group", "group": a.group_id, "name": M.group_title(a.group)}
+        else:
+            names, scope = visible, {"kind": "all"}
+        try:
+            rep = H.report(names, q.get("period") or "month", q.get("from"), q.get("to"), scope=scope)
+        except H.HistoryError as exc:
+            return Response(exc.payload(), status=400)
+        fmt = q.get("export")
+        if fmt in ("csv", "xlsx"):
+            return export_response(H.export_rows(rep, self.lang()), fmt, "history", self.lang())
+        return Response({**rep, "groups": groups, "admins_list": visible})

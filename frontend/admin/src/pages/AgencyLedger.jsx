@@ -277,6 +277,7 @@ export function LedgerCard({ username }) {
           <dl className="ag-nums lg-sum">
             <div><dt>{s.price}</dt><dd>{st.price ? <><bdi dir="ltr">{toman(st.price.price_per_gb, lang)}</bdi><small> · {s.from} {jalali(st.price.valid_from, false, lang)}</small></> : <span className="text-muted">{s.price_none}</span>}</dd></div>
             <div><dt>{s.charges}</dt><dd><bdi dir="ltr">{toman(st.charges, lang)}</bdi></dd></div>
+            {Number(st.adjustments || 0) !== 0 && <div><dt>{lang === 'fa' ? 'اصلاحیه‌ها' : 'Adjustments'}</dt><dd><bdi dir="ltr">{toman(st.adjustments, lang)}</bdi></dd></div>}
             <div><dt>{s.payments}</dt><dd><bdi dir="ltr">{toman(st.payments, lang)}</bdi></dd></div>
             <div><dt>{s.balance}</dt><dd><BalanceText value={st.balance} lang={lang} /></dd></div>
           </dl>

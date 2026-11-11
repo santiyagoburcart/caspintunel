@@ -65,7 +65,16 @@ def track_deleted_users(panel_admin, current_users):
     from django.db import transaction
 
     now = timezone.now()
+    new_names = [u for u in current_map if u not in prev]
     with transaction.atomic():
+        if new_names:
+            # caspintunel v1.54 «تاریخچه»: when each user was first seen (append-only, never deleted — new-user counts
+            # per period survive the user's later deletion). Not PAMP data; PAMP's own values are untouched.
+            from .models import AgencyUserSeen
+
+            AgencyUserSeen.objects.bulk_create(
+                [AgencyUserSeen(admin_username=panel_admin.username, user_username=u, first_seen_at=now) for u in new_names],
+                ignore_conflicts=True)
         if deleted:
             UserTrafficSnapshot.objects.filter(
                 panel_admin=panel_admin, user_username__in=deleted
@@ -125,6 +134,13 @@ def _pamp_sync(self):
         msg = "/api/admins returned no admins — skipped admin-deletion step this run"
         logger.warning("Panel sync: %s", msg)
         errors.append(msg)
+
+    # caspintunel v1.54 — DELIBERATE DEVIATION from PAMP (PORTING.md): an archived admin that is back on the panel is
+    # restored first, so the update_or_create below updates its row (and history) instead of clashing with it.
+    if admins_data:
+        from .archive import restore as _restore_archived
+
+        _restore_archived({d['username'] for d in admins_data if d.get('username')}, by="sync")
 
     for data in admins_data:
         uname = data.get('username')
@@ -212,9 +228,14 @@ def _pamp_sync(self):
     # /api/admins response (handled above; admins_data is falsy in that case).
     if admins_data:
         synced_usernames = {data['username'] for data in admins_data if data.get('username')}
-        deleted_count = PanelAdmin.objects.exclude(username__in=synced_usernames).delete()[0]
+        # caspintunel v1.54 — DELIBERATE DEVIATION from PAMP (PORTING.md): archive instead of delete, so an admin removed
+        # on PasarGuard keeps its accounting, invoices, payments, limit history, snapshots and group link.
+        from .archive import PANEL_MISSING, archive as _archive
+
+        deleted_count = len(_archive(PanelAdmin.objects.exclude(username__in=synced_usernames)
+                                     .values_list("username", flat=True), reason=PANEL_MISSING, by="sync"))
         if deleted_count:
-            logger.info("Removed %d admins no longer on panel", deleted_count)
+            logger.info("Archived %d admins no longer on panel", deleted_count)
 
     # Auto-enforce data limits
     try:

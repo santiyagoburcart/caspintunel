@@ -80,7 +80,9 @@ def test_balance_statement_void_and_csv():
     bad = ledger.add_entry("ali", "payment", 99999, d0 + timedelta(days=3), method="cash")
     ledger.void(bad.id, "typo", "boss")
     st = ledger.statement("ali")
-    assert st["charges"] == Decimal("480000") and st["payments"] == Decimal("300000") and st["balance"] == Decimal("180000")
+    # v1.54: adjustments apart from sales — the balance is the same
+    assert st["charges"] == Decimal("500000") and st["adjustments"] == Decimal("-20000") and st["payments"] == Decimal("300000")
+    assert st["balance"] == Decimal("180000")
     assert [r["balance"] for r in st["entries"]] == [500000, 480000, 180000, 180000]
     assert ledger.balances()["ali"] == Decimal("180000")
     csv = ledger.statement_csv("ali")

@@ -44,7 +44,7 @@ PLATFORM = [
     "agency.ResellerSession", "agency.AdminPrice", "agency.LedgerEntry", "agency.AdminLimitChange", "agency.GroupManager",
     "agency.GroupManagerAssignment", "agency.ManagerSession", "agency.VolumeRequest", "agency.AgencyInvoice",
     "agency.AgencyPayment", "agency.AgencyPaymentItem", "agency.AgencyInvoiceAllocation", "agency.AgencyNotice",
-    "agency.AgencyAdminSetting",
+    "agency.AgencyAdminSetting", "agency.AgencyUserSeen",
     "tenancy.Tenant", "tenancy.TenantDomain", "tenancy.TenantBot", "tenancy.TenantFee", "tenancy.TenantFeeInvoice",
 ]
 

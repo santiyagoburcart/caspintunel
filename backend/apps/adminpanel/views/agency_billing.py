@@ -206,7 +206,7 @@ class AgencyPortalAccessView(_B):
         mode = str((request.data or {}).get("mode") or "")
         if mode not in (AgencyAdminSetting.AUTO, AgencyAdminSetting.ON, AgencyAdminSetting.OFF):
             return Response({"detail": "mode must be auto, on or off", "field": "mode"}, status=400)
-        if not PanelAdmin.objects.filter(username=username).exists():
+        if not PanelAdmin.all_objects.filter(username=username).exists():      # v1.54: archived admins stay payable
             raise Http404
         AgencyAdminSetting.objects.update_or_create(username=username,
                                                     defaults={"portal_login": mode, "updated_by": request.user.username})

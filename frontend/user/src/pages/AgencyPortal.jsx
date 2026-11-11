@@ -13,6 +13,7 @@ import { PORTAL_PATH } from '../lib/paths'
 import { PortalInvoices, PortalRequest, PortalRequests } from '../components/AgencyBilling'
 import { AgencyBell, AgencyNotificationsPage } from '../components/AgencyBell'
 import { InfoTip, ST, ST_CSS } from '../components/AgencyStats'
+import AgencyHistory from '../components/AgencyHistory'
 import { playChime, unlockSound } from '../lib/notifySound'
 import { currentSubscription, needsHomeScreen, pushSupported, subscribePush, unsubscribePush } from '../lib/webPush'
 
@@ -56,7 +57,7 @@ const T = {
     mgr_link: 'مدیر گروه هستید؟ ورود مدیران گروه',
     use_panel: 'لطفاً از پنل مدیریت گروه وارد شوید', open_panel: 'ورود به پنل مدیریت گروه',
     readonly: 'حساب شما با مدیر گروه {m} است — درخواست شارژ و پرداخت از طریق ایشان انجام می‌شود؛ اینجا فقط مصرف خود را می‌بینید.', group: 'حساب‌های گروه شما', last_sync: 'آخرین به‌روزرسانی', welcome: 'خوش آمدید', bye: 'از پرتال خارج شدید', net: 'ارتباط با سرور برقرار نشد — اینترنت را بررسی کنید.', expired: 'نشست شما تمام شده — دوباره وارد شوید.', locked: 'به‌دلیل تلاش‌های ناموفق، ورود موقتاً بسته شده است — چند دقیقه بعد تلاش کنید.',
-    n_dash: 'داشبورد', n_request: 'درخواست شارژ', n_requests: 'درخواست‌های من', n_invoices: 'فاکتورها و پرداخت', n_statement: 'صورت‌حساب', n_notifications: 'اعلان‌ها', n_settings: 'تنظیمات',
+    n_dash: 'داشبورد', n_request: 'درخواست شارژ', n_requests: 'درخواست‌های من', n_invoices: 'فاکتورها و پرداخت', n_statement: 'صورت‌حساب', n_history: 'تاریخچه', n_notifications: 'اعلان‌ها', n_settings: 'تنظیمات',
     menu: 'منو', close: 'بستن', logout_q: 'از پرتال خارج می‌شوید؟', logout_msg: 'برای ادامه باید دوباره با نام کاربری و رمز پنل وارد شوید.',
     owe_go: 'مشاهده و پرداخت', set_lang: 'زبان', set_theme: 'پوسته', light: 'روشن', dark: 'تاریک', set_prefs: 'نمایش', set_notify: 'اعلان‌ها',
     set_sound: 'صدای اعلان', set_sound_d: 'با رسیدن اعلان تازه (فاکتور، پرداخت، نتیجهٔ درخواست) یک صدای کوتاه پخش می‌شود.', set_volume: 'بلندی صدا', set_test: 'پخش آزمایشی',
@@ -78,7 +79,7 @@ const T = {
     mgr_link: 'Group manager? Sign in here',
     use_panel: 'Please sign in at the group-manager panel', open_panel: 'Open the group-manager panel',
     readonly: 'Your account is with your group manager {m} — volume requests and payments go through them; here you only see your usage.', group: 'Your group\'s accounts', last_sync: 'Last update', welcome: 'Welcome', bye: 'You signed out of the portal', net: 'Could not reach the server — check your connection.', expired: 'Your session ended — please sign in again.', locked: 'Too many failed attempts — sign-in is paused for a few minutes.',
-    n_dash: 'Dashboard', n_request: 'Request volume', n_requests: 'My requests', n_invoices: 'Invoices & payments', n_statement: 'Statement', n_notifications: 'Notifications', n_settings: 'Settings',
+    n_dash: 'Dashboard', n_request: 'Request volume', n_requests: 'My requests', n_invoices: 'Invoices & payments', n_statement: 'Statement', n_history: 'History', n_notifications: 'Notifications', n_settings: 'Settings',
     menu: 'Menu', close: 'Close', logout_q: 'Sign out of the portal?', logout_msg: 'You will need to sign in again with your panel username and password.',
     owe_go: 'View and pay', set_lang: 'Language', set_theme: 'Theme', light: 'Light', dark: 'Dark', set_prefs: 'Display', set_notify: 'Notifications',
     set_sound: 'Notification sound', set_sound_d: 'A short sound plays when a new notification arrives (invoice, payment, request result).', set_volume: 'Volume', set_test: 'Play a test',
@@ -105,7 +106,7 @@ const money = (n, lang) => (Number(n) < 0 ? '-' : '') + toman(Math.abs(Number(n 
 
 const NAV = [
   ['', 'n_dash', 'gauge'], ['request', 'n_request', 'plus', 'full'], ['requests', 'n_requests', 'clock', 'full'],
-  ['invoices', 'n_invoices', 'money', 'full'], ['statement', 'n_statement', 'doc', 'full'], ['notifications', 'n_notifications', 'bell'],
+  ['invoices', 'n_invoices', 'money', 'full'], ['statement', 'n_statement', 'doc', 'full'], ['history', 'n_history', 'clock', 'full'], ['notifications', 'n_notifications', 'bell'],
   ['settings', 'n_settings', 'sliders'],
 ]
 const to = (k) => `${PORTAL_PATH}${k ? '/' + k : ''}`
@@ -257,6 +258,8 @@ function Section({ sec, s, lang, setLang, data, load, ro }) {
   if (sec === 'request') return <PortalRequest http={http} lang={lang} me={data.username} />
   if (sec === 'requests') return <PortalRequests http={http} lang={lang} />
   if (sec === 'invoices') return <PortalInvoices http={http} lang={lang} onChange={load} />
+  // v1.54 «تاریخچه»: own account, never reset by a settlement / payments / adjustments (apps/agency/history.py)
+  if (sec === 'history') return <AgencyHistory http={http} base="/history/" lang={lang} />
   if (sec === 'statement') return (
     <>{data.accounts.map((a) => <StatementCard key={a.username} a={a} s={s} lang={lang} balance={data.balances[a.username]} />)}</>
   )

@@ -49,9 +49,13 @@ class AgencyManagersView(_V):
     def get(self, request, manager_id=None):
         cat = M._safe_catalog()
         qs = GroupManager.objects.all()
+        archived = str(request.query_params.get("archived") or "") in ("1", "true", "yes")
         if manager_id:
             qs = qs.filter(pk=manager_id)
-        return Response({"results": [M.manager_row(m, cat) for m in qs], "roles_live": cat is not None})
+        else:                                       # v1.54 «بایگانی»: deleted managers apart (kept with their history)
+            qs = qs.filter(archived_at__isnull=not archived)
+        return Response({"results": [M.manager_row(m, cat) for m in qs], "roles_live": cat is not None,
+                         "archived_count": GroupManager.objects.filter(archived_at__isnull=False).count()})
 
     def post(self, request, manager_id=None):
         if manager_id:

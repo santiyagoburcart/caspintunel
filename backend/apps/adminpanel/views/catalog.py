@@ -239,6 +239,22 @@ class StaffViewSet(AdminViewSet):
             from rest_framework.exceptions import PermissionDenied
 
             raise PermissionDenied("the store owner's account is managed by us on «فروشگاه»")
+        from apps.agency.models import GroupManager
+
+        gm = GroupManager.objects.filter(staff=instance).first()
+        if gm is not None:
+            # v1.54: a group manager's account is never deleted — the manager is deactivated + archived (its requests,
+            # payments, notices and activity stay; its groups pay directly again) and the login is switched off
+            from apps.agency.archive import deactivate_manager
+            from apps.common.models import write_audit
+
+            deactivate_manager(gm, by=getattr(self.request.user, "username", ""))
+            instance.is_active = False
+            instance.token_version = (instance.token_version or 0) + 1           # ends every session of the account
+            instance.save(update_fields=["is_active", "token_version", "updated_at"])
+            write_audit(action="staff.deactivated_group_manager", staff=self.request.user, target=instance,
+                        detail={"staff": instance.username, "manager": gm.username})
+            return
         instance.delete()
 
     @action(detail=False, methods=["get"], url_path="group-manager-options")

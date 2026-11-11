@@ -72,3 +72,32 @@ class PortalStatementView(_Portal):
             e.pop("created_by", None)
         st["prices"] = []
         return Response(st)
+
+
+class PortalHistoryView(_Portal):
+    """v1.54 «تاریخچه» GET portal/history/?period=…&from=&to=&admin=&export= — the reseller's OWN account (a group owner
+    without a manager: also its members, like the statement). Needs full portal access (the account is with us)."""
+
+    def get(self, request):
+        from . import history as H
+        from .reports import export_response
+
+        if not portal.portal_enabled():
+            return Response({"detail": "The reseller portal is not open yet.", "code": "portal_closed"},
+                            status=status.HTTP_403_FORBIDDEN)
+        q = request.query_params
+        _, allowed = portal.visible_usernames(request.user.username)
+        if portal.check_access(request.user.username)["mode"] != "full":
+            return Response({"detail": "Your account is with your group manager.", "detail_fa": "حساب شما نزد مدیر گروه است.",
+                             "code": "readonly"}, status=status.HTTP_403_FORBIDDEN)
+        name = q.get("admin") or request.user.username
+        if name not in allowed:
+            return Response({"detail": "Not your account."}, status=status.HTTP_403_FORBIDDEN)
+        lang = "en" if q.get("lang") == "en" else "fa"
+        try:
+            rep = H.report([name], q.get("period") or "month", q.get("from"), q.get("to"), scope={"kind": "admin", "admin": name})
+        except H.HistoryError as exc:
+            return Response(exc.payload(), status=400)
+        if q.get("export") in ("csv", "xlsx"):
+            return export_response(H.export_rows(rep, lang), q["export"], "history", lang)
+        return Response({**rep, "admins_list": allowed})

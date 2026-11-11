@@ -14,26 +14,26 @@ import { useToast } from '../components/Toast'
 const T = {
   fa: {
     period: 'بازهٔ زمانی', today: 'امروز', d7: '7 روز اخیر', month: 'ماه جاری', prev: 'ماه گذشته', year: 'امسال', custom: 'بازهٔ دلخواه',
-    charges: 'شارژ (درآمد)', payments: 'پرداخت‌های دریافتی', net: 'خالص (شارژ − پرداخت)', gb: 'گیگ واگذارشده', pay_n: 'تعداد پرداخت',
+    charges: 'شارژ (درآمد)', adjustments: 'اصلاحیه‌ها', payments: 'پرداخت‌های دریافتی', net: 'خالص (شارژ + اصلاحیه − پرداخت)', gb: 'گیگ واگذارشده', pay_n: 'تعداد پرداخت',
     outstanding: 'مانده بدهی همهٔ نماینده‌ها', outstanding_sub: '{n} نماینده بدهکار · بستانکاری {c}', all_time: 'کل دوره',
     chart: 'شارژ و پرداخت در طول زمان', per_day: 'روزانه', per_month: 'ماهانه', no_data: 'در این بازه گردشی ثبت نشده است.',
     recent: 'پرداخت‌های این بازه', date: 'تاریخ', reseller: 'نماینده', amount: 'مبلغ', method: 'روش', note: 'یادداشت',
     m_card: 'کارت به کارت', m_cash: 'نقدی', m_crypto: 'رمزارز', m_other: 'سایر',
     monthly: 'گزارش ماهانه', mon: 'ماه', resellers_charged: 'نماینده‌های شارژشده', open_month: 'جزئیات ماه',
     breakdown: 'جزئیات {m} به تفکیک نماینده', balance_end: 'مانده پایان ماه', total: 'جمع', close: 'بستن',
-    csv: 'CSV', xlsx: 'Excel', downloaded: 'فایل دانلود شد', defs: 'شارژ = شارژ حجم + بدهکاری دستی + اصلاحیه‌ها · خالص = شارژ − پرداخت · ورودی‌های باطل‌شده حساب نمی‌شوند.',
+    csv: 'CSV', xlsx: 'Excel', downloaded: 'فایل دانلود شد', defs: 'شارژ = شارژ حجم + بدهکاری دستی (اصلاحیه‌ها جدا نشان داده می‌شوند تا «کاهش بدهی» فروش را کم نکند) · خالص = شارژ + اصلاحیه − پرداخت · ورودی‌های باطل‌شده حساب نمی‌شوند.',
     toman: 'تومان',
   },
   en: {
     period: 'Period', today: 'Today', d7: 'Last 7 days', month: 'This month', prev: 'Last month', year: 'This year', custom: 'Custom range',
-    charges: 'Charges (income)', payments: 'Payments received', net: 'Net (charges − payments)', gb: 'GB granted', pay_n: 'Payments',
+    charges: 'Charges (income)', adjustments: 'Adjustments', payments: 'Payments received', net: 'Net (charges + adjustments − payments)', gb: 'GB granted', pay_n: 'Payments',
     outstanding: 'Outstanding (all resellers)', outstanding_sub: '{n} resellers owe · credit {c}', all_time: 'all time',
     chart: 'Charges vs payments over time', per_day: 'per day', per_month: 'per month', no_data: 'No ledger activity in this period.',
     recent: 'Payments in this period', date: 'Date', reseller: 'Reseller', amount: 'Amount', method: 'Method', note: 'Note',
     m_card: 'Card to card', m_cash: 'Cash', m_crypto: 'Crypto', m_other: 'Other',
     monthly: 'Monthly report', mon: 'Month', resellers_charged: 'Resellers charged', open_month: 'Month details',
     breakdown: '{m} by reseller', balance_end: 'Balance at month end', total: 'Total', close: 'Close',
-    csv: 'CSV', xlsx: 'Excel', downloaded: 'Downloaded', defs: 'Charges = quota charges + manual charges + adjustments · Net = charges − payments · voided entries are excluded.',
+    csv: 'CSV', xlsx: 'Excel', downloaded: 'Downloaded', defs: 'Charges = quota charges + manual charges (adjustments are shown apart, so a debt reduction never lowers sales) · Net = charges + adjustments − payments · voided entries are excluded.',
     toman: 'T',
   },
 }
@@ -170,6 +170,7 @@ export function AgencyReports() {
 
       <div className="rp-kpis">
         <Kpi label={s.charges} value={k ? fmtN(k.charges) : '…'} unit={s.toman} ac="blue" icon="sold" />
+        <Kpi label={s.adjustments} value={k ? fmtN(k.adjustments) : '…'} unit={s.toman} ac="orange" icon="sliders" />
         <Kpi label={s.payments} value={k ? fmtN(k.payments) : '…'} unit={s.toman} ac="green" icon="money" />
         <Kpi label={s.net} value={k ? fmtN(k.net) : '…'} unit={s.toman} ac="purple" icon="sliders" />
         <Kpi label={s.gb} value={k ? fmtN(k.gb, 2) : '…'} unit="GB" ac="cyan" icon="gauge" />
@@ -219,7 +220,7 @@ export function AgencyReports() {
         {months === null ? <div className="rp-skel" /> : months.length === 0 ? <p className="ag-empty">{s.no_data}</p> : (
           <div className="ag-table-wrap">
             <table className="ag-table rp-months">
-              <thead><tr><th>{s.mon}</th><th>{s.gb}</th><th>{s.charges}</th><th>{s.payments}</th><th>{s.net}</th><th>{s.resellers_charged}</th><th><span className="sr-only">{s.open_month}</span></th></tr></thead>
+              <thead><tr><th>{s.mon}</th><th>{s.gb}</th><th>{s.charges}</th><th>{s.adjustments}</th><th>{s.payments}</th><th>{s.net}</th><th>{s.resellers_charged}</th><th><span className="sr-only">{s.open_month}</span></th></tr></thead>
               <tbody>{months.map((r) => {
                 const on = sel && sel.year === r.year && sel.month === r.month
                 return (
@@ -227,6 +228,7 @@ export function AgencyReports() {
                     <td data-label={s.mon} className="ag-t-name"><b>{mLabel(r)}</b></td>
                     <td data-label={s.gb}><N>{fmtN(r.gb, 2)}</N></td>
                     <td data-label={s.charges}><N>{fmtN(r.charges)}</N></td>
+                    <td data-label={s.adjustments}><N>{fmtN(r.adjustments)}</N></td>
                     <td data-label={s.payments}><N>{fmtN(r.payments)}</N></td>
                     <td data-label={s.net}><N>{fmtN(r.net)}</N></td>
                     <td data-label={s.resellers_charged}><N>{fmtN(r.resellers_charged)}</N></td>
@@ -253,13 +255,14 @@ export function AgencyReports() {
           {!bd ? <div className="rp-skel" /> : (
             <div className="ag-table-wrap">
               <table className="ag-table">
-                <thead><tr><th>{s.reseller}</th><th>{s.gb}</th><th>{s.charges}</th><th>{s.payments}</th><th>{s.net}</th><th>{s.balance_end}</th></tr></thead>
+                <thead><tr><th>{s.reseller}</th><th>{s.gb}</th><th>{s.charges}</th><th>{s.adjustments}</th><th>{s.payments}</th><th>{s.net}</th><th>{s.balance_end}</th></tr></thead>
                 <tbody>
                   {bd.rows.map((r) => (
                     <tr key={r.username}>
                       <td data-label={s.reseller} className="ag-t-name"><Link to={`/agency/admins/${encodeURIComponent(r.username)}#accounting`}>{r.username}</Link></td>
                       <td data-label={s.gb}><N>{fmtN(r.gb, 2)}</N></td>
                       <td data-label={s.charges}><N>{fmtN(r.charges)}</N></td>
+                      <td data-label={s.adjustments}><N>{fmtN(r.adjustments)}</N></td>
                       <td data-label={s.payments}><N>{fmtN(r.payments)}</N></td>
                       <td data-label={s.net}><N>{fmtN(r.net)}</N></td>
                       <td data-label={s.balance_end}><span className="rp-bal" data-sign={r.balance_end > 0 ? 'owes' : r.balance_end < 0 ? 'credit' : 'zero'}><N>{fmtN(r.balance_end)}</N></span></td>
@@ -269,6 +272,7 @@ export function AgencyReports() {
                     <td data-label={s.total}><b>{s.total}</b></td>
                     <td data-label={s.gb}><N>{fmtN(bd.totals.gb, 2)}</N></td>
                     <td data-label={s.charges}><N>{fmtN(bd.totals.charges)}</N></td>
+                    <td data-label={s.adjustments}><N>{fmtN(bd.totals.adjustments)}</N></td>
                     <td data-label={s.payments}><N>{fmtN(bd.totals.payments)}</N></td>
                     <td data-label={s.net}><N>{fmtN(bd.totals.net)}</N></td>
                     <td />

@@ -17,7 +17,7 @@ import SmsLog from './pages/SmsLog'
 import Docs from './pages/Docs'
 import PathsSettings from './pages/PathsSettings'
 import DomainSettings from './pages/DomainSettings'
-import { AgencyAdminDetail, AgencyAdminNew, AgencyAdmins, AgencyApprovals, AgencyDashboard, AgencyGroupStatement, AgencyGroups, AgencyLedger, AgencyLedgerGroups, AgencyLedgerInvoices, AgencyLedgerPayments, AgencyManagers, AgencySettings, AgencySyncLogs } from './pages/Agency'
+import { AgencyAdminDetail, AgencyAdminNew, AgencyAdmins, AgencyApprovals, AgencyDashboard, AgencyGroupStatement, AgencyGroups, AgencyLedger, AgencyLedgerGroups, AgencyLedgerInvoices, AgencyLedgerPayments, AgencyLedgerHistory, AgencyManagers, AgencySettings, AgencySyncLogs } from './pages/Agency'
 import Accounting from './pages/Accounting'
 import Tickets from './pages/Tickets'
 import TicketTopics from './pages/TicketTopics'
@@ -135,6 +135,7 @@ export default function App() {
         <Route path="/agency/ledger/groups" element={<AgencyLedgerGroups />} />
         <Route path="/agency/ledger/invoices" element={<AgencyLedgerInvoices />} />
         <Route path="/agency/ledger/payments" element={<AgencyLedgerPayments />} />
+        <Route path="/agency/ledger/history" element={<AgencyLedgerHistory />} />
         <Route path="/agency/ledger/groups/:id" element={<AgencyGroupStatement />} />
         <Route path="/agency/managers" element={<AgencyManagers />} />
         <Route path="/agency/approvals" element={<AgencyApprovals />} />

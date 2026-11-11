@@ -428,3 +428,42 @@ no control / zero-width / direction marks (ZWNJ kept for Persian); links plain A
   old (not invoiced) balance with «پرداخت مانده قبلی» (issues the settlement invoice, then pays it), invoices (empty state),
   multi-invoice payment, and — with `agency.gm.request_volume` — «درخواست شارژ» for any admin of their groups: same
   Approvals queue / Telegram buttons as admin requests; approval raises that admin's limit and issues its invoice.
+
+## Archive instead of delete (v1.54)
+
+An agency admin is **never deleted** on our side. When it disappears from PasarGuard (the 2-minute sync) or our staff delete
+it (Agency → admin → Settings → delete), it is **archived** («حذف‌شده», `archived_at`, reason `panel_missing` / `deleted`,
+`agency/archive.py`):
+
+- hidden from the active admin list, the sync loop, enforcement, the dashboard numbers and the group-manager admin list
+  (`PanelAdmin.objects` — the default manager — skips archived rows; `PanelAdmin.all_objects` sees them);
+- **kept**: ledger, invoices, payments, allocations, prices, limit history, usage snapshots, `AdminLimit`, volume requests,
+  notices, its group membership (a group it owns stays);
+- shown under **«بایگانی»** (Agency → Admins, and the group manager's admin list), its page opens with a banner; actions that
+  would touch PasarGuard answer 409 `archived`; its balance can still be paid / adjusted, and it stays in the group's debt
+  and «پرداخت کل بدهی»;
+- the same username back on PasarGuard (or created again in our panel) **restores** the row — history continues.
+
+The sync's delete is the one deliberate deviation from PAMP's verbatim code (see `PORTING.md`); `tests/test_golden.py` still
+matches PAMP v1.5.3 for every stored value.
+
+Deleting a **group manager's** staff account deactivates + archives the manager instead (`archived_at`): its requests,
+payments, notices and activity stay; its groups pay directly again (`billing.manager_of_group` counts active managers only).
+Agency → Group managers has its own «بایگانی» list.
+
+## «تاریخچه» — history that never resets (v1.54)
+
+`agency/history.py`, from immutable records only (the ledger — mistakes are voided, never edited — the invoices and
+`AgencyUserSeen`): for the last 7 days, the current Jalali month, the last Jalali month or a custom range, and a 12-month
+table — volume sold (GB on quota + manual charges), sales (T), invoiced, paid, adjustments, opening / closing balance, new
+users (first seen by the sync; counted from v1.54). Before v1.54 the agency reports added adjustments to «شارژ», so a
+«کاهش بدهی» used to settle a debt looked like falling sales; reports and statements now show adjustments apart.
+
+| Who | Where | Scope |
+|---|---|---|
+| our staff (`agency.accounting`) | Agency → حسابداری → «تاریخچه»; admin → حسابداری | all agency · a group · an admin (archived ones included) |
+| group manager (`agency.gm.accounting`) | حسابداری tab | its groups' admins + group totals |
+| the admin | /agency/ portal → «تاریخچه» (full access) | its own account |
+
+Each view exports CSV / Excel (period totals, per admin, 12 months).
+

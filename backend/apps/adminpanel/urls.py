@@ -18,7 +18,7 @@ from .views.agency import (AgencyLimitHistoryView, AgencyAdminActionView, Agency
                            AgencyStoreBotCheckView, AgencyStoreBotView, AgencyStoreCeilingView, AgencyStoreOwnerView,
                            AgencyStoreFailedOrdersView, AgencyStoreFailedOrderRetryView,
                            AgencyStoreDomainCheckView, AgencyStoreDomainsView,
-                           AgencyStoreDomainView)
+                           AgencyStoreDomainView, AgencyHistoryView)
 from .views.stores_extra import (AgencyStoreExportLinkView, AgencyStoreExportView, AgencyStoreFeeView,
                                  StoreExportLinkView, StoreExportView)
 from .views.catalog import (
@@ -130,6 +130,7 @@ urlpatterns = [
     path("agency/admins/", AgencyAdminListView.as_view(), name="admin-agency-admins"),
     path("agency/panel-admins/options/", AgencyPanelAdminOptionsView.as_view(), name="admin-agency-panel-admin-options"),
     path("agency/panel-admins/", AgencyPanelAdminCreateView.as_view(), name="admin-agency-panel-admin-create"),
+    path("agency/history/", AgencyHistoryView.as_view(), name="admin-agency-history"),        # v1.54 «تاریخچه»
     path("agency/panel-admins/<str:username>/store/", AgencyStoreView.as_view(), name="admin-agency-store"),
     path("agency/panel-admins/<str:username>/store/domains/", AgencyStoreDomainsView.as_view(), name="admin-agency-store-domains"),
     path("agency/panel-admins/<str:username>/store/bot/", AgencyStoreBotView.as_view(), name="admin-agency-store-bot"),

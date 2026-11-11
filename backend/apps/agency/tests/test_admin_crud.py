@@ -169,7 +169,7 @@ def test_modify_sends_only_changed_fields_and_never_logs_password(panel):
 
 
 @responses.activate
-def test_delete_needs_typed_username_and_cleans_up_but_keeps_ledger(panel):
+def test_delete_needs_typed_username_and_archives_keeping_ledger_and_groups(panel):
     PanelAdmin.objects.create(username="ali")
     PanelAdmin.objects.create(username="bea")
     g1 = AdminGroup.objects.create(owner_username="bea", member_usernames="ali")
@@ -183,8 +183,11 @@ def test_delete_needs_typed_username_and_cleans_up_but_keeps_ledger(panel):
     assert not [x for x in responses.calls if x.request.method == "DELETE"]
     r = c.delete("/api/v1/admin/agency/panel-admins/ali/", {"confirm": "ali"}, format="json")
     assert r.status_code == 200
+    # v1.54: archived («حذف‌شده»), never deleted — group link and the group it owns stay, ledger untouched
     assert not PanelAdmin.objects.filter(username="ali").exists()
+    a = PanelAdmin.all_objects.get(username="ali")
+    assert a.archived_at is not None and a.archived_reason == "deleted"
     g1.refresh_from_db()
-    assert "ali" not in g1.member_usernames and not AdminGroup.objects.filter(owner_username="ali").exists()
+    assert "ali" in g1.member_usernames and AdminGroup.objects.filter(owner_username="ali").exists()
     assert LedgerEntry.objects.filter(admin_username="ali").count() == 1
     assert AuditLog.objects.filter(action="agency.admin_deleted").exists()

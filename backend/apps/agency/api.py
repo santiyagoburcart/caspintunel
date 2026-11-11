@@ -51,7 +51,14 @@ def admin_row(a: PanelAdmin, groups=None) -> dict:
         "last_synced_at": a.last_synced_at,
         "groups": groups_of(a.username, groups),
         "bytes": volume_bytes(a, e),
+        **_archive_info(a),                                  # v1.54 «حذف‌شده» (agency/archive.py)
     }
+
+
+def _archive_info(a) -> dict:
+    from .archive import row_info
+
+    return row_info(a)
 
 
 def admin_detail(a: PanelAdmin) -> dict:

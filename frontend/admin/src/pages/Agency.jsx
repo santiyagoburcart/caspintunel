@@ -15,7 +15,8 @@ import { GroupDebt } from '../components/AgencyBilling'
 import { AgencyLedgerOverview, BalanceText, LedgerCard, LT } from './AgencyLedger'
 import { AdminInvoicesCard, AgencyInvoicesView, AgencyPaymentsView, PortalAccessCard } from './AgencyBilling'
 import { AdminSettingsTab, AgencyAdminCreate } from './AgencyAdminForms'
-import { AgencyApprovalsView, AgencyGroupStatementView, AgencyLedgerGroupsView, AgencyManagersView, GroupActivity, LedgerSubNav } from './AgencyManagers'
+import AgencyHistory from '../components/AgencyHistory'
+import { AgencyApprovalsView, AgencyGroupStatementView, AgencyLedgerGroupsView, AgencyManagersView, GM_CSS, GroupActivity, LedgerSubNav } from './AgencyManagers'
 import { useLiveApprovals } from '../lib/liveApprovals'
 
 // Agency panel (PAMP port). Every number on these pages comes from the backend
@@ -33,7 +34,7 @@ const T = {
     over_title: 'نزدیک یا بیش از سقف (≥80%)', over_none: 'هیچ نماینده‌ای به 80% سقف نرسیده است.',
     st_active: 'فعال', st_panel_disabled: 'غیرفعال (پنل)', st_pamp_limited: 'محدود‌شده', at_risk: 'در خطر', over: 'بیش از سقف',
     last_sync: 'آخرین همگام‌سازی', never: 'هرگز', active_n: 'فعال', disabled_n: 'غیرفعال', limited_n: 'محدود', near_n: 'نزدیک سقف',
-    search: 'جستجوی نام نماینده…', clear: 'پاک کردن جستجو', all: 'همه', f_status: 'وضعیت', f_limit: 'سقف', limited: 'سقف‌دار', unlimited: 'نامحدود',
+    search: 'جستجوی نام نماینده…', clear: 'پاک کردن جستجو', all: 'همه', f_status: 'وضعیت', f_limit: 'سقف', limited: 'سقف‌دار', unlimited: 'نامحدود', f_list: 'فهرست', list_active: 'فعال', list_archived: 'بایگانی', archived_on: 'حذف‌شده · {d}', arch_t: 'این ادمین بایگانی (حذف) شده است', arch_b: '{why} — از {d}. حساب، فاکتورها، پرداخت‌ها و سابقه‌اش محفوظ است؛ مانده را می‌توانید ثبت پرداخت یا اصلاح کنید. روی پنل تغییری داده نمی‌شود؛ اگر دوباره روی پاسارگارد ساخته شود، خودکار برمی‌گردد.',
     any_group: 'همهٔ گروه‌ها', n_admins: '{n} نماینده', none: 'نماینده‌ای پیدا نشد.', back: 'بازگشت به فهرست', unl: 'نامحدود',
     detail_numbers: 'سقف ادمین', deleted: 'از کاربران حذف‌شده', hidden_clamped: 'پنهان (حداقل صفر)', counts: 'کاربران بر اساس وضعیت',
     c_active: 'فعال', c_on_hold: 'در انتظار', c_limited: 'اتمام حجم', c_disabled: 'غیرفعال', c_expired: 'منقضی', c_total: 'کل',
@@ -73,7 +74,7 @@ const T = {
     over_title: 'At or over the limit (≥80%)', over_none: 'No admin has reached 80% of their limit.',
     st_active: 'Active', st_panel_disabled: 'Disabled (panel)', st_pamp_limited: 'Limited', at_risk: 'At risk', over: 'Over limit',
     last_sync: 'Last sync', never: 'never', active_n: 'active', disabled_n: 'disabled', limited_n: 'limited', near_n: 'near limit',
-    search: 'Search admin name…', clear: 'Clear search', all: 'All', f_status: 'Status', f_limit: 'Limit', limited: 'Limited', unlimited: 'Unlimited',
+    search: 'Search admin name…', clear: 'Clear search', all: 'All', f_status: 'Status', f_limit: 'Limit', limited: 'Limited', unlimited: 'Unlimited', f_list: 'List', list_active: 'Active', list_archived: 'Archive', archived_on: 'Deleted · {d}', arch_t: 'This admin is archived (deleted)', arch_b: '{why} — since {d}. Its account, invoices, payments and history are kept; the balance can still be paid or adjusted. Nothing changes on the panel; if it is created on PasarGuard again it comes back by itself.',
     any_group: 'All groups', n_admins: '{n} admins', none: 'No admin found.', back: 'Back to the list', unl: 'Unlimited',
     detail_numbers: 'Admin limit', deleted: 'From deleted users', hidden_clamped: 'Hidden (min 0)', counts: 'Users by status',
     c_active: 'Active', c_on_hold: 'On hold', c_limited: 'Data used up', c_disabled: 'Disabled', c_expired: 'Expired', c_total: 'Total',
@@ -243,9 +244,10 @@ export function AgencyAdmins() {
   const [st, setSt] = useState('')
   const [lim, setLim] = useState('')
   const [grp, setGrp] = useState('')
+  const [arch, setArch] = useState('')            // v1.54 «بایگانی»: deleted admins, kept with all their accounting
   const [term, setTerm] = useState('')
   useEffect(() => { const h = setTimeout(() => setTerm(q.trim()), 250); return () => clearTimeout(h) }, [q])
-  const qs = new URLSearchParams(Object.entries({ search: term, status: st, limit: lim, group: grp }).filter(([, v]) => v)).toString()
+  const qs = new URLSearchParams(Object.entries({ search: term, status: st, limit: lim, group: grp, archived: arch }).filter(([, v]) => v)).toString()
   const [d, err] = useLoad(`/admin/agency/admins/${qs ? '?' + qs : ''}`, [qs])
   const [dash] = useLoad('/admin/agency/')
   const [sort, setSort] = useState({ k: '', dir: -1 })
@@ -284,6 +286,11 @@ export function AgencyAdmins() {
           <span className="ag-fg"><span className="ag-fg-l">{s.f_limit}</span>
             {chip('', lim, setLim, s.all)}{chip('limited', lim, setLim, s.limited)}{chip('unlimited', lim, setLim, s.unlimited)}
           </span>
+          <span className="ag-fg"><span className="ag-fg-l">{s.f_list}</span>
+            {chip('', arch, setArch, s.list_active)}
+            <button type="button" className={'ag-chip' + (arch ? ' on' : '')} aria-pressed={!!arch} onClick={() => setArch('1')} data-testid="admins-archived">
+              {s.list_archived}{d?.archived_count > 0 && <span className="ag-tab-badge">{d.archived_count}</span>}</button>
+          </span>
           {d?.groups?.length > 0 && (
             <select className="input ag-group" value={grp} onChange={(e) => setGrp(e.target.value)} aria-label={s.group}>
               <option value="">{s.any_group}</option>
@@ -309,6 +316,7 @@ export function AgencyAdmins() {
                   <tr key={r.username}>
                     <td className="ag-t-name" data-label={s.admins}>
                       <Link to={`/agency/admins/${encodeURIComponent(r.username)}`} className="ag-t-nm" title={r.username}>{r.username}</Link>
+                      {r.archived && <span className="ag-arch" data-testid="archived-badge" title={r.archived_reason_fa}>{s.archived_on.replace('{d}', jalali(r.archived_at, false, lang))}</span>}
                       {r.groups.length > 0 && <span className="ag-t-grp" title={r.groups.map((g) => g.name || g.owner).join('، ')}>{r.groups.map((g) => g.name || g.owner).join('، ')}</span>}
                     </td>
                     <td className="ag-t-st" data-label={s.status}><StatusPill code={r.status_code} s={s} /></td>
@@ -406,6 +414,11 @@ export function AgencyAdminDetail() {
         <StatusPill code={d.status_code} s={s} />
         <span className="ag-dhead-lim">{s.limit}: <Lim b={d.bytes?.limit} tb={d.admin_limit_fmt} s={s} />{!d.is_unlimited && <> · <B>{d.usage_percent}%</B></>}</span>
       </div>
+      {d.archived && (
+        <div className="ag-arch-banner" role="status" data-testid="archived-banner">
+          <b>{s.arch_t}</b> <span>{s.arch_b.replace('{why}', lang === 'fa' ? (d.archived_reason_fa || '') : (d.archived_reason === 'deleted' ? 'Deleted in the agency panel' : 'No longer on the panel')).replace('{d}', jalali(d.archived_at, false, lang))}</span>
+        </div>
+      )}
       <nav className="ag-dtabs" role="tablist" aria-label={d.username}>
         {tabs.map((k) => (
           <NavLink key={k} to={k === 'overview' ? base : `${base}/${k}`} end role="tab" aria-selected={tab === k}
@@ -454,7 +467,7 @@ export function AgencyAdminDetail() {
       {tab === 'settings' && <AdminSettingsTab username={d.username} writable={writable} onDeleted={() => go('/agency/admins')} />}
       {tab === 'history' && <AgencyLimitHistory username={d.username} />}
       {tab === 'store' && <AgencyStoreCard username={d.username} />}
-      {tab === 'accounting' && <><LedgerCard username={d.username} /><AdminInvoicesCard username={d.username} /><PortalAccessCard username={d.username} /></>}
+      {tab === 'accounting' && <><LedgerCard username={d.username} /><AdminInvoicesCard username={d.username} /><AgencyHistory http={api} base="/admin/agency/history/" lang={lang} fixedAdmin={d.username} /><PortalAccessCard username={d.username} /></>}
       {tab === 'send' && <>
         <PortalLinkCard s={s} username={d.username} />
         <p className="ag-note card ag-card text-sm text-muted">{s.send_pw_note}</p>
@@ -602,6 +615,11 @@ export function AgencyLedgerGroups() { return <AgencyLedgerGroupsView Header={us
 export function AgencyLedgerInvoices() { return <AgencyInvoicesView Header={useHeader()} /> }
 export function AgencyLedgerPayments() { return <AgencyPaymentsView Header={useHeader()} /> }
 export function AgencyGroupStatement() { return <AgencyGroupStatementView Header={useHeader()} /> }
+// v1.54 «تاریخچه» of all agency / a group / an admin (agency.accounting)
+export function AgencyLedgerHistory() {
+  const { lang } = useI18n()
+  return <div className="ag space-y-4">{useHeader()}<style>{GM_CSS}</style><LedgerSubNav /><AgencyHistory http={api} base="/admin/agency/history/" lang={lang} /></div>
+}
 
 // ------------------------------------------------------------------ groups
 const GERR = {
@@ -900,6 +918,10 @@ export function AgencySettings() {
 }
 
 const CSS = `
+.ag-arch { display: inline-block; margin-inline-start: 6px; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px;
+  color: var(--c-muted-fg); background: color-mix(in srgb, var(--c-text-muted) 16%, transparent); white-space: nowrap; }
+.ag-arch-banner { font-size: 13px; line-height: 1.8; padding: 10px 12px; border-radius: 12px; color: var(--c-text);
+  border: 1px solid color-mix(in srgb, var(--c-warning) 40%, var(--c-border)); background: color-mix(in srgb, var(--c-warning) 10%, var(--c-bg)); }
 .ag-listbar { display: flex; justify-content: flex-end; }
 .ag-new { min-height: 40px; padding-inline: 16px; font-size: 13.5px; text-decoration: none; }
 .ag-dhead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }

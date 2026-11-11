@@ -1572,6 +1572,27 @@ sequenceDiagram
     end
 ```
 
+## 16n. An agency admin is removed — archived, never deleted (v1.54) · «تاریخچه»
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant PG as PasarGuard
+    participant S as Sync (every 2 min, PAMP)
+    actor O as Our staff / group manager
+    participant A as agency.archive
+    participant DB as Ledger · invoices · payments · history
+    PG-->>S: /api/admins without "gone"
+    S->>A: archive(gone) — the ONE deliberate PAMP deviation (PORTING.md)
+    A->>A: archived_at + reason · audit agency.admin_archived
+    Note over A,DB: nothing is deleted — ledger, invoices, payments, limit history, snapshots, group link stay
+    O->>A: Agency → «بایگانی» → page · record payment / adjustment (balance stays payable)
+    PG-->>S: "gone" back on the panel
+    S->>A: restore(gone) before the update loop → same row, history continues
+    O->>DB: «تاریخچه» (7 days · this month · last month · custom · 12 months) — sums of immutable ledger rows
+    Note over DB: sales = quota + manual charges · adjustments, payments, opening / closing apart — a settlement never lowers sales
+```
+
 ## 16m. A store that is not active — parked (v1.53.2) · plain http → https
 
 ```mermaid
