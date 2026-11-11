@@ -112,6 +112,10 @@ class TenantMiddleware:
     def __call__(self, request):
         if request.path.startswith(PROBE_PREFIX):
             return domain_probe(request)
+        from . import unavailable
+
+        if request.path == unavailable.PATH:             # v1.53.2: a parked store's page (its vhost sends every path here)
+            return unavailable.respond(request)
         tid = resolve(request.get_host())
         if tid is None:
             return HttpResponseNotFound("unknown site")

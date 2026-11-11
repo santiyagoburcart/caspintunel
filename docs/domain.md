@@ -40,6 +40,9 @@ test `explain` (+ `error`, `error_fa`), the last host result `explain`.
 
 ## `www` → bare domain (v1.30.3)
 
+Since v1.53.2 plain `http://<domain>/…` (and every store domain) answers **301** (308 for non-GET) to `https://` in
+`nginx/prod.conf` — the ACME challenge and `/.well-known/caspin/` stay on http.
+
 With `www` on (the default), the certificate still covers `www.<domain>`, but nginx serves the site **only** on the
 bare domain: `www.<domain>` on 443, 80 and the tunnel's PROXY-protocol listeners answers **301** to
 `https://<domain>$request_uri` (path + query kept; **308** for POST etc. so a body survives; ACME challenges still

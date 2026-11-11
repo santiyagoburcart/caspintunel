@@ -150,4 +150,8 @@ def update(t: Tenant, data: dict, *, staff=None) -> Tenant:
 
         forget_hosts(t.pk)                                  # host → store answers are cached 60 s
         transaction.on_commit(lambda: forget_hosts(t.pk))   # … and once more after commit (a request in between)
+        if after["status"] != before["status"]:             # v1.53.2: the host watcher parks / unparks its domains next run
+            from .domains import write_desired
+
+            transaction.on_commit(write_desired)
     return t

@@ -1572,6 +1572,27 @@ sequenceDiagram
     end
 ```
 
+## 16m. A store that is not active — parked (v1.53.2) · plain http → https
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor O as Our staff / fee job
+    participant D as Django (stores · domains)
+    participant W as Host watcher (cron, every minute)
+    participant N as nginx
+    actor V as Visitor
+    O->>D: store status → suspended / closed / draft
+    D->>D: write backups/.tenant-domains.json at once (host parked = true)
+    W->>N: parked vhost (certificate, ACME + /.well-known/caspin/ kept) → nginx -t → reload → TLS verify
+    V->>N: http://store.example/any?x=1
+    N-->>V: 301 https://store.example/any?x=1 (308 for POST · never ACME / probe / IPs)
+    V->>N: https://store.example/any
+    N->>D: /api/v1/store-unavailable/ (Host = store)
+    D-->>V: 503 «این فروشگاه در حال حاضر در دسترس نیست» — store name + logo · no data · refresh every 60 s
+    O->>D: status → active → file rewritten → the watcher restores the normal vhost
+```
+
 ## 16i. A store's failed order — «ساخت ناموفق» (v1.52.1)
 
 ```mermaid

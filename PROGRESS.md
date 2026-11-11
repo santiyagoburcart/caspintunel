@@ -618,3 +618,11 @@ Everything shipped since v1.6.0 (details in the session log):
   when it changes or after 60 s (`common/tests/test_middleware.py`). `docs/pilot-fa.md` corrected (needs v1.53.1, request cap 300,
   export / fee switches, store follows our sign-up requirements — Iranian mobile + phone share — until changed, rehearsal ends
   «معلق»). Test store left suspended.
+- 2026-11-11 — **v1.53.2: parked stores + http → https.** A store that is not active (draft / suspended / closed) no longer
+  shows an empty SPA shell: `domains.desired()` marks it `parked`, `scripts/tenants_host.py` renders a vhost that sends every path
+  (ACME + our probe kept) to `/api/v1/store-unavailable/` → `tenancy/unavailable.py` (503, Retry-After, the store's name +
+  inlined logo, no data, our / unknown hosts 404); a status change rewrites the watcher file at once; health only probes a
+  parked store. `nginx/prod.conf`: plain http → https (301 / 308 for non-GET, path + query kept) for every real name; never the
+  TLS hop (`$fwd_proto`), IPs / internal names, ACME or `/.well-known/caspin/`. `scripts/test-tenants.sh` now runs the REAL
+  prod.conf with echo upstreams (`scripts/domaintest/mockapp.py`): redirect, spoofed header, tunnel (80 + 443), parked vhost.
+  Tests: `tenancy/tests/test_v1532_unavailable.py` (6); browser check of the page (phone + desktop, light + dark).

@@ -71,8 +71,12 @@ PS() { ( cd "$T" && PATHS_COMPOSE="$C" ./scripts/paths.sh "$@" ); }
 get() { $C exec -T nginx wget -q -O - --header 'X-Forwarded-Proto: https' "http://127.0.0.1$1" 2>/dev/null || true; }
 code() { $C exec -T nginx sh -c "wget -S -q -O /dev/null 'http://127.0.0.1$1' 2>&1 | grep -m1 -o 'HTTP/1.1 [0-9]*' | cut -d' ' -f2" 2>/dev/null; }
 asset_of() { get "$1/" | grep -o 'src="./assets/[^"]*"' | head -1 | sed 's/src=".//; s/"$//'; }
+# Playwright for the browser checks, installed once into this run's temp dir (was a hard-coded scratch folder)
+mkdir -p "$T/pw"
+docker run --rm -v "$T/pw:/pw" -w /pw mcr.microsoft.com/playwright:v1.49.1-noble \
+  sh -c 'npm init -y >/dev/null 2>&1; npm i -s playwright@1.49.1 >/dev/null 2>&1' || true
 browser() {  # browser JS → stdout JSON
-  docker run --rm --network "${P}_default" --ipc=host -e NODE_PATH=/s/pw/node_modules -v /tmp/claude-0/-root-caspintunel/53956cd9-e7ad-4c1d-b55d-75ec110473bd/scratchpad:/s \
+  docker run --rm --network "${P}_default" --ipc=host -e NODE_PATH=/s/pw/node_modules -v "$T:/s" \
     mcr.microsoft.com/playwright:v1.49.1-noble node -e "$1" 2>/dev/null | tail -1
 }
 BROWSER_JS='

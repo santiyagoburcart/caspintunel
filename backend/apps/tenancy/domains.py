@@ -273,7 +273,8 @@ def health(d: TenantDomain) -> dict:
     r = probe(ip, d.host, f"{PROBE_PATH}{d.verify_token}")
     out = {"at": timezone.now().isoformat(), "ip": ip, "ok": r["ok"] and (r.get("data") or "").strip() == d.verify_token,
            "status": r.get("status"), "ms": r.get("ms"), "error": r.get("error", "")}
-    if out["ok"] and d.state == TenantDomain.ACTIVE:
+    # v1.53.2: a store that is not active answers its «در دسترس نیست» page (503) by design — only its probe is checked
+    if out["ok"] and d.state == TenantDomain.ACTIVE and d.tenant.status == Tenant.ACTIVE:
         a = probe(ip, d.host)
         out["api"] = {"ok": a["ok"], "status": a.get("status"), "error": a.get("error", "")}
         out["ok"] = a["ok"]
@@ -301,8 +302,11 @@ def desired() -> list[dict]:
     """What the host watcher works on: every verified, not failed / removed domain (certificate + nginx file)."""
     rows = (TenantDomain.objects.filter(state__in=(TenantDomain.CERT_PENDING, TenantDomain.ACTIVE), verified_at__isnull=False)
             .select_related("tenant").order_by("id"))
+    # v1.53.2 `parked`: the store is not active (draft / suspended / closed) → the watcher renders a vhost that answers every
+    # path with the store's «در دسترس نیست» page (tenancy/unavailable.py, 503) instead of an empty site shell
     return [{"host": d.host, "www": d.include_www, "tenant": d.tenant_id, "retry": d.retry_token,
-             "probe": f"{PROBE_PATH}{d.verify_token}", "token": d.verify_token} for d in rows]
+             "probe": f"{PROBE_PATH}{d.verify_token}", "token": d.verify_token,
+             "parked": d.tenant.status != Tenant.ACTIVE} for d in rows]
 
 
 def write_desired() -> None:

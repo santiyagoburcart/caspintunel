@@ -425,6 +425,10 @@ sequenceDiagram
 
 ## 7. Domains, TLS and routing
 
+> **v1.53.2:** plain `http://` on our domain and every store domain answers 301 (308 for non-GET) to `https://` — except
+> the ACME challenge and the `/.well-known/caspin/` probe. A store that is not active is *parked*: its domain keeps its
+> certificate and answers every path with its own «این فروشگاه در حال حاضر در دسترس نیست» page (503).
+
 - **Who**: only our staff add / remove a store domain (Agency → admin → «فروشگاه»); the reseller sees the state.
 - **What we give the reseller** (shown on the page, copyable): one A record `store.example → <IP>` where IP = our **Finland IP**
   (mode *direct*) or our **Iran IP** (mode *tunnel*, the same 80/443 TCP passthrough that serves caspintunel.com), the optional

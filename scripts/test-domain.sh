@@ -195,7 +195,8 @@ check "nginx restart keeps the new domain (entrypoint uses the wizard config)" '
 step "5. remove the old domain (transition over)"
 API POST "/domain/$CID/retire/" >/dev/null
 HOSTRUN apply-request
-check "old.test no longer redirects; new.test fine" '[ "$(probe old.test http://old.test/x | cut -d" " -f1)" != 301 ] && [ "$(probe new.test https://new.test/api/v1/health/)" = "200 " ]'
+# v1.53.2: plain http of any real name goes to its own https (prod.conf) — a retired domain just stops pointing at the new one
+check "old.test no longer redirects to new.test; new.test fine" '[ "$(probe old.test http://old.test/x)" != "301 https://new.test/x" ] && [ "$(probe new.test https://new.test/api/v1/health/)" = "200 " ]'
 check ".env: old.test left ALLOWED_HOSTS / CSRF" '! envv ALLOWED_HOSTS | grep -q "old.test" && ! envv CSRF_TRUSTED_ORIGINS | grep -q old.test'
 check "wizard: done" '[ "$(API GET /domain/ | J "d[\"change\"][\"status\"]")" = done ]'
 

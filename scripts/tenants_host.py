@@ -182,7 +182,18 @@ def redirect(host: str) -> str:
             "return 301 https://%s$request_uri; }" % (host, host))
 
 
+UNAVAILABLE = "/api/v1/store-unavailable/"
+PROXY = ["        proxy_pass http://127.0.0.1:80;",
+         "        proxy_set_header Host $host;",
+         "        proxy_set_header X-Real-IP $remote_addr;",
+         "        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;",
+         "        proxy_set_header X-Forwarded-Proto https;",
+         "        proxy_set_header X-Conn-Addr $realip_remote_addr;   # the TCP peer (tunnel source check)"]
+
+
 def render(h: dict) -> str:
+    """The store's vhosts. A PARKED store (v1.53.2: not active — draft / suspended / closed) keeps its certificate, the ACME
+    challenge and our /.well-known/caspin/ probe, and answers every other path with its «در دسترس نیست» page (Django, 503)."""
     host, www = h["host"], h["www"]
     live = f"/etc/letsencrypt/live/{lineage(host)}"
     tls = (f"    ssl_certificate     {live}/fullchain.pem;\n    ssl_certificate_key {live}/privkey.pem;\n"
@@ -191,18 +202,17 @@ def render(h: dict) -> str:
            "server {", "    listen 443 ssl;", "    http2 on;", f"    server_name {host};", tls.rstrip("\n"),
            "    client_max_body_size 15m;",
            "    include /etc/nginx/domain/realip*.conf;        # CF-Connecting-IP only from Cloudflare's ranges",
-           "    location /.well-known/acme-challenge/ { root /var/www/certbot; }",
-           "    location / {",
-           "        proxy_pass http://127.0.0.1:80;",
-           "        proxy_set_header Host $host;",
-           "        proxy_set_header X-Real-IP $remote_addr;",
-           "        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;",
-           "        proxy_set_header X-Forwarded-Proto https;",
-           "        proxy_set_header X-Conn-Addr $realip_remote_addr;   # the TCP peer (tunnel source check)",
-           "        proxy_http_version 1.1;",
-           "        proxy_set_header Upgrade $http_upgrade;",
-           "        proxy_set_header Connection $connection_upgrade;",
-           "    }", "}"]
+           "    location /.well-known/acme-challenge/ { root /var/www/certbot; }"]
+    if h.get("parked"):
+        out += ["    # parked: the store is not active — every path shows its «در دسترس نیست» page (503)",
+                "    location ^~ /.well-known/caspin/ {", *PROXY, "    }",
+                "    location / {", f"        rewrite ^ {UNAVAILABLE}? break;", *PROXY, "    }", "}"]
+    else:
+        out += ["    location / {", *PROXY,
+                "        proxy_http_version 1.1;",
+                "        proxy_set_header Upgrade $http_upgrade;",
+                "        proxy_set_header Connection $connection_upgrade;",
+                "    }", "}"]
     if www:
         out += ["", f"# www.{host} → https://{host} (one host = one browser storage)",
                 "server {", "    listen 443 ssl;", "    http2 on;", f"    server_name www.{host};", tls.rstrip("\n"),
@@ -264,7 +274,8 @@ def run() -> int:
         host = str(h.get("host") or "").lower()
         if HOST_RE.match(host) and TOKEN_RE.match(str(h.get("token") or "")):
             hosts.append({"host": host, "www": bool(h.get("www")), "tenant": int(h.get("tenant") or 0),
-                          "retry": int(h.get("retry") or 0), "token": h["token"], "probe": f"/.well-known/caspin/{h['token']}"})
+                          "retry": int(h.get("retry") or 0), "token": h["token"], "probe": f"/.well-known/caspin/{h['token']}",
+                          "parked": h.get("parked") is True})
         else:
             say(f"skipped an invalid entry: {host!r}")
     old = load(STATUS, {}).get("hosts") or {}

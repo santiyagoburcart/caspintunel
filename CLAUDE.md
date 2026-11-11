@@ -159,7 +159,9 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   only writes `backups/.tenant-domains.json`; certificates + `nginx/tenants/<host>.conf` are made ONLY by the host watcher
   `scripts/tenants.sh` (cron; pre-check → HTTP-01 webroot → nginx -t → reload → TLS verify → rollback) — never edit those files
   by hand, never issue store certificates elsewhere. Lineage `store-<host>`; caspintunel.com's vhost must stay the first 443
-  server (unknown names). `/.well-known/caspin/<token>` is answered before any host check (proves a host reaches us). Test the
+  server (unknown names). v1.53.2: a non-active store's hosts are rendered PARKED (every path → `tenancy/unavailable.py`, 503;
+  ACME + probe kept); `prod.conf` redirects plain http → https for real names only — keep the ACME / `/.well-known/caspin/`
+  exemption and the `$fwd_proto` (TLS hop) rule, and test nginx changes with `scripts/test-tenants.sh` (it runs the real prod.conf). `/.well-known/caspin/<token>` is answered before any host check (proves a host reaches us). Test the
   watcher only with `scripts/test-tenants.sh`.
   **Celery + stores (v1.46, `tenancy/celery_ctx.py`)**: a task queued inside a tenant context runs in it (header
   `caspin_tenant`); a periodic job that touches customer data loops with `context.for_each_tenant` (never just the default).
