@@ -189,7 +189,12 @@ export function PlanCard({ p, lang, t, sel, onSelect }) {
         <span className="csp-plan-icon"><SI d={icon} /></span>
         <span className="csp-plan-radio">{sel && <SI d={ICO.check} w={14} />}</span>
       </div>
-      <h3 className="csp-plan-name csp-headline">{name}</h3>
+      <h3 className="csp-plan-name csp-headline">{name}
+        {/* v1.55: what the plan gives — subscription (V2Ray), WireGuard configs, or both (inside the name: the phone grid) */}
+        {p.vpn_type && p.vpn_type !== 'sub' && (
+          <span className="csp-plan-vpn" data-testid="plan-vpn">{p.vpn_type === 'wireguard'
+            ? (lang === 'fa' ? 'فقط وایرگارد' : 'WireGuard only') : (lang === 'fa' ? 'ساب + وایرگارد' : 'Sub + WireGuard')}</span>
+        )}</h3>
       {desc && <p className="csp-plan-desc">{desc}</p>}
       <dl className="csp-plan-specs">
         <div><dt>{t('volume')}</dt><dd>{custom ? t('selectable') : volNum ? <span className="mono-num">{volNum}</span> : t('fair_use')}</dd></div>
@@ -304,6 +309,8 @@ export const STORE_CSS = `
 }
 .csp-plan.on .csp-plan-radio { background: var(--c-primary); border-color: var(--c-primary); }
 .csp-plan-name { font-size: 17px; font-weight: 800; }
+.csp-plan-vpn { display: inline-block; margin-inline-start: 8px; vertical-align: middle; font-size: 11px; font-weight: 700; padding: 2px 8px;
+  border-radius: 999px; color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 12%, transparent); }
 .csp-plan-desc { font-size: 12px; color: var(--c-text-muted); line-height: 1.7; }
 .csp-plan-specs {
   display: flex; flex-direction: column; gap: 7px; padding: 12px; border-radius: 12px;

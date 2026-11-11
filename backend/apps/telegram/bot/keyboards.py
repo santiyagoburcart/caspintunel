@@ -65,8 +65,10 @@ def service_list(services):
 
 
 def service_detail(svc):
+    from apps.panel.models import customer_sub_url
+
     kb = types.InlineKeyboardMarkup()
-    if svc.subscription_url:
+    if customer_sub_url(svc):                              # v1.55: «فقط وایرگارد» → no QR
         kb.add(types.InlineKeyboardButton("📱 دریافت QR", callback_data=f"s:{svc.id}:qr"))
     kb.add(types.InlineKeyboardButton("🔄 تمدید", callback_data=f"s:{svc.id}:rn"))
     kb.add(types.InlineKeyboardButton("♻️ تغییر لینک ساب", callback_data=f"s:{svc.id}:revoke"))

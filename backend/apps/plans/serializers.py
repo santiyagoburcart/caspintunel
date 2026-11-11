@@ -41,7 +41,7 @@ class PlanSerializer(serializers.ModelSerializer):
             "category_fa", "category_en",
             "data_limit", "duration_days", "device_limit",
             "price", "discount_percent", "final_price",
-            "min_gb", "max_gb", "price_per_gb", "sort_order",
+            "min_gb", "max_gb", "price_per_gb", "sort_order", "vpn_type",
         )
 
     def get_final_price(self, obj) -> str | None:
@@ -59,7 +59,7 @@ class PlanWriteSerializer(PlanPanelDefaultMixin, serializers.ModelSerializer):
             "data_limit", "duration_days", "device_limit",
             "price", "discount_percent", "is_active", "sort_order",
             "min_gb", "max_gb", "price_per_gb", "group_ids",
-            "renewal_mode", "carry_over_data", "renewable_when_inactive",
+            "renewal_mode", "carry_over_data", "renewable_when_inactive", "vpn_type",
         )
         extra_kwargs = {"panel": {"required": False}}
 

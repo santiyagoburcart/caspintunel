@@ -85,6 +85,14 @@ class TelegramClient:
                               chat_id=chat_id, caption=caption or "",
                               disable_notification="true" if disable_notification else "false")
 
+    def send_document_bytes(self, chat_id, filename: str, data: bytes, *, caption=None, parse_mode=None,
+                            content_type: str = "application/octet-stream"):
+        """v1.55: an in-memory file (WireGuard .conf / zip) with its own name — never written to disk."""
+        params = dict(chat_id=chat_id, caption=caption or "", disable_notification="false")
+        if parse_mode:
+            params["parse_mode"] = parse_mode
+        return self._call("sendDocument", files={"document": (filename, data, content_type)}, **params)
+
     def get_chat_member(self, chat_id, user_id) -> dict:
         return self._call("getChatMember", chat_id=chat_id, user_id=user_id)
 

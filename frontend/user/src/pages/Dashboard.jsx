@@ -9,6 +9,7 @@ import { RenewWaiting } from '../components/RenewWaiting'
 import { useToast } from '../components/Toast'
 import { ConfirmDialog, useConfirm } from '../components/ConfirmDialog'
 import { copyToClipboard } from '../lib/clipboard'
+import WireguardSheet, { useWgText } from '../components/WireguardSheet'
 
 export default function Dashboard() {
   return <CaspianDashboard />
@@ -318,6 +319,8 @@ function Stat({ icon, label, value, sub, extra, wide }) {
 function SvcCard({ s, t, lang, onRevoke, onRenewClick }) {
   const toast = useToast()
   const [qrOpen, setQrOpen] = useState(false)
+  const [wgOpen, setWgOpen] = useState(false)          // v1.55 «وایرگارد»
+  const wgT = useWgText(lang)
   const confirm = useConfirm()
   // every device on the old link disconnects, so this is deliberately not one-click
   const askRevoke = async () => {
@@ -409,6 +412,11 @@ function SvcCard({ s, t, lang, onRevoke, onRenewClick }) {
             <DI d={D.link} w={16} />{t('change_sub_link')}
           </button>
         )}
+        {s.wireguard && (
+          <button type="button" className="csp-svc-btn" onClick={() => setWgOpen(true)} data-testid="svc-wireguard">
+            <DI d={D.shield} w={16} />{wgT.open}
+          </button>
+        )}
         {/* one renewal at a time: a paid / in-review renewal applies first */}
         {!s.pending_renewal && (
           <button type="button" className="csp-svc-btn csp-svc-btn--primary" onClick={onRenewClick}>
@@ -418,6 +426,7 @@ function SvcCard({ s, t, lang, onRevoke, onRenewClick }) {
       </div>
 
       {qrOpen && <QrModal s={s} t={t} lang={lang} onClose={() => setQrOpen(false)} />}
+      {wgOpen && <WireguardSheet s={s} lang={lang} onClose={() => setWgOpen(false)} />}
     </div>
   )
 }

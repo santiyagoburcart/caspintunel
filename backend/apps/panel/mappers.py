@@ -120,6 +120,11 @@ def apply_user_to_service(service, api_user: dict, panel) -> list[str]:
         # device (HWID) limit: 0 / null = unlimited, stored as null on our side
         _set("device_limit", int(api_user["hwid_limit"] or 0) or None)
 
+    # v1.55: WireGuard = PasarGuard gave the user peer IPs (it is in a group with WireGuard inbounds)
+    wg = ((api_user.get("proxy_settings") or {}).get("wireguard") or {})
+    if "proxy_settings" in api_user:
+        _set("wireguard", bool(wg.get("peer_ips")))
+
     strategy = _derive_strategy(api_user)
     if strategy:
         _set("expire_strategy", strategy)

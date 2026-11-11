@@ -77,6 +77,13 @@ def options() -> dict:
         log.warning("store plan options: groups of %s unavailable: %s", t.reseller_username, exc)
         g = {"all": False, "groups": [], "error": str(exc)[:200]}
     pa = quota.reseller_of(t)
+    try:                                       # v1.55: which of the reseller's groups are WireGuard groups
+        from apps.panel.wireguard import group_kinds
+
+        kinds = group_kinds(panel)
+        g["groups"] = [{**x, "wireguard": bool(kinds.get(int(x["id"]), {}).get("wireguard"))} for x in g["groups"]]
+    except Exception:  # noqa: BLE001
+        pass
     return {"panel": {"id": panel.id, "name": panel.name}, "groups": g["groups"], "all_groups": g["all"],
             "groups_error": g.get("error", ""), "unlimited_ok": not quota.limited(pa)}
 

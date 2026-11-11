@@ -36,8 +36,15 @@ def _panel_row():
 
 def _panel_groups(panel) -> list[dict]:
     raw = client_for(panel).list_groups()
+    try:                                       # v1.55: WireGuard groups (only WireGuard inbounds) for the plan type
+        from apps.panel.wireguard import group_kinds
+
+        kinds = group_kinds(panel)
+    except Exception:  # noqa: BLE001
+        kinds = {}
     return [
-        {"id": g["id"], "name": g.get("name") or g.get("title") or f"group {g['id']}"}
+        {"id": g["id"], "name": g.get("name") or g.get("title") or f"group {g['id']}",
+         "wireguard": bool(kinds.get(int(g["id"]), {}).get("wireguard"))}
         for g in raw if isinstance(g, dict) and g.get("id") is not None
     ]
 

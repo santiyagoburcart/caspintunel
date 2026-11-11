@@ -14,6 +14,10 @@ class ServiceSerializer(serializers.ModelSerializer):
     pending_renewal = serializers.SerializerMethodField()
     # v1.42.1: being built but PasarGuard refused it — staff are on it («در حال آماده‌سازی، پشتیبانی پیگیری می‌کند»)
     preparing = serializers.SerializerMethodField()
+    # v1.55 WireGuard: the section shows when the PasarGuard user has WireGuard peers; «فقط وایرگارد» hides the link
+    subscription_url = serializers.SerializerMethodField()
+    show_subscription = serializers.SerializerMethodField()
+    plan_vpn_type = serializers.CharField(source="current_plan.vpn_type", read_only=True, default="sub")
 
     class Meta:
         model = Service
@@ -23,7 +27,7 @@ class ServiceSerializer(serializers.ModelSerializer):
             "expire_at", "days_left", "on_hold_duration", "on_hold_timeout",
             "online_at", "device_limit", "current_plan", "plan_name",
             "waiting_for_connection", "validity_days", "last_synced_at", "created_at",
-            "pending_renewal", "preparing",
+            "pending_renewal", "preparing", "wireguard", "show_subscription", "plan_vpn_type",
         )
         read_only_fields = fields
 
@@ -66,8 +70,20 @@ class ServiceSerializer(serializers.ModelSerializer):
             return None  # unlimited
         return max(obj.data_limit - obj.data_used, 0)
 
+    def get_subscription_url(self, obj) -> str:
+        from .models import customer_sub_url
+
+        return customer_sub_url(obj)
+
+    def get_show_subscription(self, obj) -> bool:
+        from .models import shows_subscription
+
+        return shows_subscription(obj)
+
     def get_qr(self, obj) -> str | None:
-        if not obj.subscription_url:
+        from .models import customer_sub_url
+
+        if not customer_sub_url(obj):
             return None
         request = self.context.get("request")
         path = f"/api/v1/services/{obj.id}/qr/"

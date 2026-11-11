@@ -89,6 +89,8 @@ class Service(TimeStampedModel):
 
     alert_vol_sent = models.BooleanField(default=False)
     alert_exp_sent = models.BooleanField(default=False)
+    # v1.55: the PasarGuard user has WireGuard peers (any plan / group, mirrored by every sync — panel/wireguard.py)
+    wireguard = models.BooleanField(default=False)
 
     class Meta:
         db_table = "service"
@@ -101,3 +103,35 @@ class Service(TimeStampedModel):
 
     def __str__(self) -> str:
         return self.panel_username
+
+
+class WireguardLocation(models.Model):
+    """v1.55 «مکان‌های وایرگارد»: the country name + flag of a WireGuard location, matched by the code in its PasarGuard host
+    remark («Ita {USERNAME}» → Ita). Editable by our staff; an unknown code shows as itself. Platform table (shared)."""
+
+    code = models.CharField(max_length=40, unique=True, help_text="the host remark's code, e.g. Ita, de, IR (case-insensitive)")
+    name_fa = models.CharField(max_length=60)
+    name_en = models.CharField(max_length=60)
+    flag = models.CharField(max_length=16, blank=True, default="")
+    slug = models.CharField(max_length=24, blank=True, default="", help_text="file name part, e.g. germany")
+    sort_order = models.IntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "wireguard_location"
+        ordering = ("sort_order", "name_en")
+
+    def __str__(self) -> str:
+        return f"{self.flag} {self.name_en}".strip()
+
+
+def shows_subscription(service) -> bool:
+    """v1.55: a «فقط وایرگارد» plan shows no subscription link anywhere (site, Mini App, bot, delivery message, QR)."""
+    plan = getattr(service, "current_plan", None)
+    return not (plan is not None and getattr(plan, "vpn_type", "sub") == "wireguard")
+
+
+def customer_sub_url(service) -> str:
+    return (service.subscription_url or "") if shows_subscription(service) else ""
+

@@ -4,6 +4,7 @@ from django.http import HttpResponse
 from rest_framework import mixins, permissions, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.throttling import UserRateThrottle
 
 from apps.common.qrcard import qr_card_png
 
@@ -13,6 +14,11 @@ from .serializers import ServiceSerializer
 from .services import refresh_watchable_services, revoke_subscription, sync_service
 
 log = logging.getLogger("caspintunel")
+
+
+class WireguardThrottle(UserRateThrottle):
+    """v1.55: WireGuard downloads per account (each one asks PasarGuard)."""
+    scope = "wireguard"
 
 
 class ServiceViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
@@ -159,9 +165,86 @@ class ServiceViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.
 
     @action(detail=True, methods=["get"], url_path="qr")
     def qr(self, request, pk=None):
+        from .models import customer_sub_url
+
         service = self.get_object()
-        if not service.subscription_url:
+        if not customer_sub_url(service):                  # v1.55: «فقط وایرگارد» shows no link / QR
             return HttpResponse(status=404)
         resp = HttpResponse(qr_card_png(service.subscription_url), content_type="image/png")
         resp["Cache-Control"] = "private, max-age=60"
         return resp
+
+    # ------------------------------------------------------------------ v1.55 WireGuard (panel/wireguard.py)
+    def _wg(self):
+        from . import wireguard as W
+
+        service = self.get_object()                           # the owner's own services only (get_queryset)
+        if not service.wireguard:
+            raise W.WireguardError("this service has no WireGuard", "این سرویس وایرگارد ندارد", 404)
+        return service, W.configs(service)
+
+    def _wg_err(self, exc):
+        return Response(exc.payload(), status=exc.status)
+
+    @action(detail=True, methods=["get"], url_path="wireguard", throttle_classes=[WireguardThrottle])
+    def wireguard(self, request, pk=None):
+        """The service's WireGuard locations (country + flag), one per .conf — generated on demand, never stored."""
+        from . import wireguard as W
+
+        try:
+            service, confs = self._wg()
+        except W.WireguardError as exc:
+            return self._wg_err(exc)
+        return Response({"results": [W.row(service, c) for c in confs], "all_filename": f"{W.prefix(service)}-{service.id}-wireguard.zip"})
+
+    @action(detail=True, methods=["get"], url_path=r"wireguard/(?P<key>[a-z0-9-]{1,40})", throttle_classes=[WireguardThrottle])
+    def wireguard_file(self, request, pk=None, key=None):
+        """GET …/wireguard/<location>/ → that location's .conf · …/wireguard/all/ → every location as a zip."""
+        from . import wireguard as W
+
+        try:
+            service, confs = self._wg()
+        except W.WireguardError as exc:
+            return self._wg_err(exc)
+        if key == "all":
+            body, name, ctype = W.zip_all(service, confs), f"{W.prefix(service)}-{service.id}-wireguard.zip", "application/zip"
+        else:
+            c = next((x for x in confs if x.key == key), None)
+            if c is None:
+                return Response({"detail": "unknown location", "detail_fa": "این مکان پیدا نشد"}, status=404)
+            body, name, ctype = c.body, W.filename(service, c), "application/octet-stream"
+        W.audit(service, what=key, via="site", user=request.user)
+        resp = HttpResponse(body, content_type=ctype)
+        resp["Content-Disposition"] = f'attachment; filename="{name}"'
+        resp["Cache-Control"] = "private, no-store"
+        resp["X-Content-Type-Options"] = "nosniff"
+        return resp
+
+    @action(detail=True, methods=["post"], url_path=r"wireguard/(?P<key>[a-z0-9-]{1,40})/send", throttle_classes=[WireguardThrottle])
+    def wireguard_send(self, request, pk=None, key=None):
+        """Mini App: the bot sends the .conf (or the zip) to the user's own Telegram chat — WebView downloads are unreliable."""
+        from . import wireguard as W
+        from apps.telegram.config import sales_client
+
+        user = request.user
+        if not getattr(user, "telegram_id", None):
+            return Response({"detail": "no Telegram account linked", "detail_fa": "حساب تلگرام به این حساب وصل نیست"}, status=400)
+        try:
+            service, confs = self._wg()
+        except W.WireguardError as exc:
+            return self._wg_err(exc)
+        client = sales_client()
+        if client is None:
+            return Response({"detail": "the bot is not available", "detail_fa": "ربات در دسترس نیست"}, status=503)
+        if key == "all":
+            files = [(f"{W.prefix(service)}-{service.id}-wireguard.zip", W.zip_all(service, confs))]
+        else:
+            c = next((x for x in confs if x.key == key), None)
+            if c is None:
+                return Response({"detail": "unknown location", "detail_fa": "این مکان پیدا نشد"}, status=404)
+            files = [(W.filename(service, c), c.body)]
+        for name, body in files:
+            client.send_document_bytes(user.telegram_id, name, body)
+        W.audit(service, what=key, via="miniapp", user=user)
+        return Response({"ok": True, "message": "Sent to your Telegram chat", "message_fa": "فایل در چت ربات برایتان ارسال شد"})
+

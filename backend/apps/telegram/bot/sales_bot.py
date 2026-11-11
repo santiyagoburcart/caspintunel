@@ -179,6 +179,41 @@ MSG_LINKED = (
 MSG_PHONE_SAVED = ("شماره ثبت شد ✅", "Phone number saved ✅")
 
 
+def _wireguard(bot, chat_id, user, svc, key: str, msg) -> None:
+    """v1.55: list the service's WireGuard locations, or send one .conf (or the zip) as a document. Generated on demand from
+    PasarGuard (never stored), 30 per hour per Telegram user, audit-logged."""
+    from django.core.cache import cache
+
+    from apps.panel import wireguard as W
+
+    if not svc.wireguard:
+        return render(bot, chat_id, sc.Screen(sc.tr(user, "wg_none"), sc._kb([sc._nav(user, f"s:{svc.id}")])), msg)
+    rk = f"wg:bot:{chat_id}"
+    cache.add(rk, 0, 3600)
+    if cache.incr(rk) > 30:
+        return bot.send_message(chat_id, sc.tr(user, "wg_limit"))
+    try:
+        confs = W.configs(svc)
+    except W.WireguardError:
+        return bot.send_message(chat_id, sc.tr(user, "wg_err"))
+    if not key:
+        return render(bot, chat_id, sc.service_wireguard(user, svc, confs), msg)
+    if key == "all":
+        name, body = f"{W.prefix(svc)}-{svc.id}-wireguard.zip", W.zip_all(svc, confs)
+        label = sc.tr(user, "wg_all")
+    else:
+        c = next((x for x in confs if x.key == key), None)
+        if c is None:
+            return render(bot, chat_id, sc.service_wireguard(user, svc, confs), msg)
+        name, body = W.filename(svc, c), c.body
+        label = f"{c.flag} {c.name_en if sc.is_en(user) else c.name_fa}".strip()
+    import io
+
+    f = io.BytesIO(body)
+    bot.send_document(chat_id, f, visible_file_name=name, caption=sc.tr(user, "wg_caption", n=label))
+    W.audit(svc, what=key, via="bot")
+
+
 def render(bot, chat_id, screen: sc.Screen, msg=None) -> None:
     """Show a screen: edit the message the button belongs to (text → text);
     a photo screen, or leaving a photo, replaces the message instead."""
@@ -693,8 +728,12 @@ def _route(bot, chat_id, msg, user, tg, data: str) -> None:
         action = ":".join(parts[2:])
         if action in ("link",):
             return render(bot, chat_id, sc.service_link(user, svc), msg)
+        if action == "wg" or action.startswith("wg:"):           # v1.55 WireGuard configs (panel/wireguard.py)
+            return _wireguard(bot, chat_id, user, svc, action[3:], msg)
         if action == "qr":
-            if not svc.subscription_url:
+            from apps.panel.models import customer_sub_url
+
+            if not customer_sub_url(svc):
                 return render(bot, chat_id, sc.service_link(user, svc), msg)
             return render(bot, chat_id, sc.service_qr(user, svc), msg)
         if action == "revoke":

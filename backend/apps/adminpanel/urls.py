@@ -19,6 +19,7 @@ from .views.agency import (AgencyLimitHistoryView, AgencyAdminActionView, Agency
                            AgencyStoreFailedOrdersView, AgencyStoreFailedOrderRetryView,
                            AgencyStoreDomainCheckView, AgencyStoreDomainsView,
                            AgencyStoreDomainView, AgencyHistoryView)
+from .views.wireguard import WireguardLocationViewSet
 from .views.stores_extra import (AgencyStoreExportLinkView, AgencyStoreExportView, AgencyStoreFeeView,
                                  StoreExportLinkView, StoreExportView)
 from .views.catalog import (
@@ -73,6 +74,7 @@ router = SimpleRouter()
 router.register("users", UserAdminViewSet, basename="admin-users")
 router.register("deleted-users", DeletedUserArchiveViewSet, basename="admin-deleted-users")
 router.register("plans", PlanAdminViewSet, basename="admin-plans")
+router.register("wireguard/locations", WireguardLocationViewSet, basename="admin-wireguard-locations")   # v1.55
 router.register("cards", BankCardViewSet, basename="admin-cards")
 router.register("pages", PageViewSet, basename="admin-pages")
 router.register("themes", ThemeViewSet, basename="admin-themes")

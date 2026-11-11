@@ -642,3 +642,10 @@ Everything shipped since v1.6.0 (details in the session log):
   «افزایش بدهی», in the period the adjustment is recorded (as before v1.54). History, «گزارش‌ها» (KPIs, monthly, breakdown),
   statements, manager views, portal and every CSV / Excel now show «شارژ ناخالص» · «اصلاحیه‌ها» · «فروش خالص» side by side
   (`net_sales` in history.py / reports.py / managers / ledger.statement).
+- 2026-11-11 — **v1.55.0: WireGuard configs.** Research (read-only, docs/wireguard.md): 5 `wg` cores, group «wirgard» with all
+  five inbounds, one zip per user from `/api/user/{id}/subscription/wireguard`. Built: `panel/wireguard.py` (split on demand,
+  names + flags from the new `WireguardLocation` table pre-filled Italy / Türkiye / Germany / Netherlands / Iran, clean file
+  names, zip), `Service.wireguard` from peer IPs, `Plan.vpn_type` (ساب / فقط وایرگارد / هر دو) checked against WireGuard
+  groups (only WireGuard inbounds — per-location groups later need no code), «فقط وایرگارد» hides the link everywhere
+  (`customer_sub_url`), site sheet + Mini App send-to-chat + bot documents, owner-only, rate-limited, audited; stores too.
+  Tests: `panel/tests/test_wireguard.py` (9); browser checks (site sheet, plan badges, plan editor, locations table).

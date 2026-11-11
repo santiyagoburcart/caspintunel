@@ -34,7 +34,7 @@ BACKFILL_FILTER = {
 
 PLATFORM = [
     "accounts.Permission", "accounts.StaffRevokedToken",
-    "panel.Panel",
+    "panel.Panel", "panel.WireguardLocation",
     "payments_sms.BluTransaction", "payments_sms.BluCollector",
     "telegram.TelegramConfig",
     "settings_app.Setting", "settings_app.SiteConfig", "settings_app.AppRelease", "settings_app.EmailSettings",

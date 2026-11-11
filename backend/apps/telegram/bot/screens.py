@@ -399,11 +399,15 @@ def service_detail(user, svc) -> Screen:
     rows = []
     waiting = renewal_waiting_text(user, svc)
     renew = [] if waiting else [_b(tr(user, "btn_renew"), f"s:{svc.id}:rn")]   # one renewal at a time
-    if svc.subscription_url:
+    from apps.panel.models import customer_sub_url
+
+    if customer_sub_url(svc):                                   # v1.55: «فقط وایرگارد» → no link / QR
         rows.append([_b(tr(user, "btn_link"), f"s:{svc.id}:link"), _b(tr(user, "btn_qr"), f"s:{svc.id}:qr")])
         rows.append([_b(tr(user, "btn_revoke"), f"s:{svc.id}:revoke"), *renew])
     elif renew:
         rows.append(renew)
+    if svc.wireguard:
+        rows.append([_b(tr(user, "btn_wg"), f"s:{svc.id}:wg")])
     rows.append(_nav(user, "m:svcs"))
     text = service_text(user, svc)
     if waiting:
@@ -416,7 +420,10 @@ def renew_waiting_screen(user, svc, text: str) -> Screen:
 
 
 def service_link(user, svc) -> Screen:
-    text = tr(user, "link_text", u=html.escape(svc.subscription_url)) if svc.subscription_url else tr(user, "no_link")
+    from apps.panel.models import customer_sub_url
+
+    url = customer_sub_url(svc)
+    text = tr(user, "link_text", u=html.escape(url)) if url else tr(user, "no_link")
     return Screen(f"📦 <b>{html.escape(svc.panel_username)}</b>\n\n{text}",
                   _kb([[_b(tr(user, "btn_qr"), f"s:{svc.id}:qr")], _nav(user, f"s:{svc.id}")]))
 
@@ -638,3 +645,14 @@ def join_channels(user, channels) -> Screen:
 
 def is_en_user(user) -> bool:   # re-export for the router
     return is_en(user)
+
+
+def service_wireguard(user, svc, confs) -> Screen:
+    """v1.55: one button per WireGuard location (flag + country); tapping one sends its .conf as a document."""
+    fa = not is_en(user)
+    rows = [[_b(f"{c.flag} {c.name_fa if fa else c.name_en}".strip(), f"s:{svc.id}:wg:{c.key}")] for c in confs]
+    if len(confs) > 1:
+        rows.append([_b(tr(user, "wg_all"), f"s:{svc.id}:wg:all")])
+    rows.append(_nav(user, f"s:{svc.id}"))
+    return Screen(f"📦 <b>{html.escape(svc.panel_username)}</b>\n\n{tr(user, 'wg_title')}", _kb(rows))
+

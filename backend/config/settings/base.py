@@ -230,6 +230,7 @@ REST_FRAMEWORK = {
         "auth": "10/min",          # login / register / password-reset / OTP
         "receipt": "20/hour",      # receipt upload
         "ticket": "60/hour",       # open a ticket / reply (per account)
+        "wireguard": "60/hour",    # v1.55 WireGuard configs (each asks PasarGuard; per account)
         "sms_ingest": "240/min",   # SMS bridge app / iPhone shortcut
         "blu_webhook": "120/min",  # Blu collector (signed batches, one a minute + retries)
         "tunnel_total": env("THROTTLE_TUNNEL_TOTAL", default="6000/min"),  # everyone through the Iran tunnel together

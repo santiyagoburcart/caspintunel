@@ -274,7 +274,18 @@ class AdminPlanSerializer(PlanPanelDefaultMixin, serializers.ModelSerializer):
             attrs = catalog.validate_plan(attrs, self.instance)
         except catalog.CatalogError as exc:
             raise serializers.ValidationError({exc.field or "detail": [exc.fa], "detail_en": exc.en})
-        return super().validate(attrs)
+        attrs = super().validate(attrs)
+        # v1.55: the plan type must match the groups (WireGuard groups = only WireGuard inbounds; panel/wireguard.py)
+        vpn = attrs.get("vpn_type", getattr(self.instance, "vpn_type", "sub"))
+        panel = attrs.get("panel") or getattr(self.instance, "panel", None)
+        groups = attrs.get("group_ids", getattr(self.instance, "group_ids", None)) or (panel.default_group_ids if panel else [])
+        if panel is not None and ("vpn_type" in attrs or "group_ids" in attrs):
+            from apps.panel.wireguard import check_plan_groups
+
+            why = check_plan_groups(vpn, groups, panel)
+            if why:
+                raise serializers.ValidationError({"vpn_type": [why], "detail_en": "the plan type does not match its groups"})
+        return attrs
 
 
 class AdminBankCardSerializer(serializers.ModelSerializer):

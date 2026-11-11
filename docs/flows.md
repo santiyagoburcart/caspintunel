@@ -1572,6 +1572,27 @@ sequenceDiagram
     end
 ```
 
+## 16o. WireGuard configs (v1.55)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor C as Customer (site · Mini App · bot)
+    participant API as Our API / bot
+    participant PG as PasarGuard
+    C->>API: service → «وایرگارد» (owner only · 60 per hour · audited)
+    API->>PG: GET /api/user/NAME → id · GET /api/user/ID/subscription/wireguard
+    PG-->>API: one zip (one .conf per host / location)
+    API->>API: split per location · names + flags from «مکان‌های وایرگارد» · nothing stored
+    alt site
+        API-->>C: list → «دانلود» CT-12-germany.conf · «دانلود همه» zip
+    else Mini App
+        API-->>C: the bot sends the file to the user's chat
+    else bot
+        API-->>C: a location → the .conf as a document
+    end
+```
+
 ## 16n. An agency admin is removed — archived, never deleted (v1.54) · «تاریخچه»
 
 ```mermaid

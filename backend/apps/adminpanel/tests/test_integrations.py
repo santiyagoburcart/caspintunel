@@ -147,7 +147,7 @@ def test_panel_groups_action_targets_that_panel(boss):
                   json={"groups": [{"id": 7, "name": "WG-DE"}]}, status=200)
     r = boss.get(f"/api/v1/admin/panels/{p.id}/groups/")
     assert r.status_code == 200
-    assert r.data["groups"] == [{"id": 7, "name": "WG-DE"}]
+    assert r.data["groups"] == [{"id": 7, "name": "WG-DE", "wireguard": False}]   # v1.55: no wg core in this mock
 
 
 def test_panels_require_settings_manage(staff_client, perms):

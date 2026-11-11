@@ -7,6 +7,7 @@ import { useToast } from '../components/Toast'
 import { copyToClipboard } from '../lib/clipboard'
 import { useDeleteConfirm } from '../lib/confirmDelete'
 import { useAuth } from '../lib/auth'
+import WireguardLocations from '../components/WireguardLocations'
 
 const GB = 1024 ** 3
 
@@ -103,7 +104,7 @@ const blank = {
   category_fa: '', category_en: '',
   panel: '', price: 0, discount_percent: 0, data_limit_gb: '', duration_days: '',
   device_limit: '', min_gb: '', max_gb: '', price_per_gb: '', is_active: true,
-  group_ids: [], renewal_mode: 'reset', carry_over_data: null, renewable_when_inactive: false,
+  group_ids: [], renewal_mode: 'reset', carry_over_data: null, renewable_when_inactive: false, vpn_type: 'sub',
 }
 
 function toForm(r) {
@@ -122,6 +123,7 @@ function toForm(r) {
     renewal_mode: r.renewal_mode || 'reset',
     carry_over_data: r.carry_over_data ?? null,
     renewable_when_inactive: !!r.renewable_when_inactive,
+    vpn_type: r.vpn_type || 'sub',
   }
 }
 
@@ -143,7 +145,7 @@ export default function Plans() {
   const [fStatus, setFStatus] = useState('')
 
   // v1.46 store mode: the agency panel only, the reseller role's groups (GET /admin/plans/store-options/)
-  const { staff } = useAuth()
+  const { staff, can } = useAuth()
   const store = !!staff?.store
   const [storeOpts, setStoreOpts] = useState(null)
   const load = () => api.get('/admin/plans/').then((r) => setRows(r.data.results ?? r.data)).catch(() => setRows([]))
@@ -197,6 +199,7 @@ export default function Plans() {
       is_active: edit.is_active,
       renewable_when_inactive: !!edit.renewable_when_inactive,
       group_ids: edit.group_ids,
+      vpn_type: edit.vpn_type || 'sub',
       data_limit: isVolume ? null : (edit.data_limit_gb === '' ? null : Math.round(Number(edit.data_limit_gb) * GB)),
       min_gb: isVolume ? numOrNull(edit.min_gb) : null,
       max_gb: isVolume ? numOrNull(edit.max_gb) : null,
@@ -439,6 +442,23 @@ export default function Plans() {
             })()}
           </div>
 
+          {/* v1.55 plan type: ساب (V2Ray) · فقط وایرگارد · هر دو — the server checks it against the groups below
+              (a WireGuard group = only WireGuard inbounds; «فقط وایرگارد» shows the customer no subscription link) */}
+          <div className="sm:col-span-2" data-testid="plan-vpn-type">
+            <span className="label">{lang === 'fa' ? 'نوع پلن' : 'Plan type'}</span>
+            <div className="flex flex-wrap gap-2">
+              {[['sub', lang === 'fa' ? 'ساب (V2Ray)' : 'Subscription (V2Ray)'], ['wireguard', lang === 'fa' ? 'فقط وایرگارد' : 'WireGuard only'],
+                ['both', lang === 'fa' ? 'هر دو' : 'Both']].map(([k, label]) => (
+                <button type="button" key={k} className="pl-group-chip" data-on={edit.vpn_type === k ? '1' : '0'}
+                  onClick={() => setEdit((p) => ({ ...p, vpn_type: k }))} data-testid={`vpn-${k}`}>{edit.vpn_type === k ? '✓ ' : ''}{label}</button>
+              ))}
+            </div>
+            <p className="mt-1 text-xs text-muted">{edit.vpn_type === 'wireguard'
+              ? (lang === 'fa' ? 'فقط گروه‌های وایرگارد را انتخاب کنید (مکان‌ها = گروه‌ها). لینک ساب به مشتری نشان داده نمی‌شود.' : 'Pick WireGuard groups only (locations = groups). The customer sees no subscription link.')
+              : edit.vpn_type === 'both' ? (lang === 'fa' ? 'هم گروه ساب و هم گروه وایرگارد انتخاب کنید.' : 'Pick both subscription and WireGuard groups.')
+              : (lang === 'fa' ? 'گروه وایرگارد انتخاب نکنید.' : 'Do not pick a WireGuard group.')}</p>
+          </div>
+
           <div className="sm:col-span-2 pl-groups">
             <span className="label">
               {lang === 'fa' ? 'گروه‌های پنل' : 'Panel groups'}{selectedPanel ? ` — ${selectedPanel.name}` : ''}
@@ -462,6 +482,7 @@ export default function Plans() {
                     <button type="button" key={g.id} onClick={() => toggleGroup(g.id)}
                       className="pl-group-chip" data-on={on ? '1' : '0'}>
                       {on ? '✓ ' : ''}{g.name} <span className="text-xs text-muted">#{g.id}</span>
+                      {g.wireguard && <span className="pl-wg" title="WireGuard">{lang === 'fa' ? 'وایرگارد' : 'WireGuard'}</span>}
                     </button>
                   )
                 })}
@@ -571,6 +592,8 @@ export default function Plans() {
           </table>
         </div>
       )}
+      {/* v1.55 «مکان‌های وایرگارد» — our panel only (a store sees our names / flags; it never edits them) */}
+      {!store && <WireguardLocations canEdit={can('settings.manage')} />}
     </div>
   )
 }
@@ -611,6 +634,8 @@ const CSS = `
 .pl-typeopt { border-radius: 12px; border: 1px solid var(--c-border); padding: 12px; text-align: start; transition: .15s; background: transparent; }
 .pl-typeopt[data-on="1"] { border-color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 12%, transparent); }
 .pl-group-chip { border-radius: 999px; border: 1px solid var(--c-border); padding: 4px 12px; font-size: 13px; transition: .15s; }
+.pl-wg { margin-inline-start: 6px; font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 999px; color: var(--c-primary);
+  background: color-mix(in srgb, var(--c-primary) 12%, transparent); }
 .pl-group-chip[data-on="1"] { border-color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 14%, transparent); }
 
 .pl-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }

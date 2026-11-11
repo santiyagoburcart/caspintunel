@@ -233,10 +233,13 @@ def account_summary_text(user) -> str:
 
 def sub_link_block(service) -> str:
     """The subscription link as Telegram monospace (<code>): one tap copies it."""
-    if not service.subscription_url:
+    from apps.panel.models import customer_sub_url
+
+    url = customer_sub_url(service)                    # v1.55: «فقط وایرگارد» → no link
+    if not url:
         return ""
     return ("🔗 لینک اشتراک (برای کپی روی لینک بزنید):\n"
-            f"<code>{html.escape(service.subscription_url)}</code>")
+            f"<code>{html.escape(url)}</code>")
 
 
 def service_caption(service, *, title: str = "", summary: str = "") -> str:

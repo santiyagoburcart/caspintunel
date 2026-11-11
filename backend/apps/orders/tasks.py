@@ -380,9 +380,15 @@ def _notify_delivered(order):
         from apps.notifications.dispatch import notify_user
         from apps.notifications.models import NotificationType
 
+        from apps.panel.models import customer_sub_url
+
         svc = order.service
-        link = f"\n\nلینک اشتراک:\n{svc.subscription_url}" if svc and svc.subscription_url else ""
-        link_en = f"\n\nSubscription link:\n{svc.subscription_url}" if svc and svc.subscription_url else ""
+        url = customer_sub_url(svc) if svc else ""             # v1.55: «فقط وایرگارد» → no link anywhere
+        link = f"\n\nلینک اشتراک:\n{url}" if url else ""
+        link_en = f"\n\nSubscription link:\n{url}" if url else ""
+        if svc and (svc.wireguard or getattr(order.plan, "vpn_type", "sub") != "sub"):
+            link += "\n\nکانفیگ‌های وایرگارد: در سرویس، بخش «وایرگارد» (سایت، مینی‌اپ یا ربات)."
+            link_en += "\n\nWireGuard configs: open the service → «WireGuard» (site, Mini App or bot)."
         notify_user(
             order.user,
             title="سرویس شما آماده شد",
@@ -390,9 +396,9 @@ def _notify_delivered(order):
             title_en="Your service is ready",
             body_en=f"Order #{order.id} was approved and your service is now active.{link_en}",
             ntype=NotificationType.SERVICE_READY,
-            via_site=True, via_bot=not (svc and svc.subscription_url), via_email=True,
+            via_site=True, via_bot=not url, via_email=True,
         )
-        if svc and svc.subscription_url:
+        if url:
             _send_bot_service_card(order.user, svc, order)
     except Exception as exc:  # noqa: BLE001 - notification must not fail fulfillment
         log.warning("delivery notification for order %s failed: %s", order.id, exc)

@@ -317,6 +317,12 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
 - SMS / Blu: customer orders are matched first, agency payments after (`billing.match_deposit`, `near`, rounded
   candidates); a deposit equal to both is held for review (`hold_ambiguous`).
 
+## WireGuard (v1.55, docs/wireguard.md)
+- Configs only through `panel/wireguard.py`: fetched from PasarGuard on every request and split per location — never store a
+  `.conf` or a key. A service has WireGuard = `Service.wireguard` (peer IPs, mirrored by the sync). A WireGuard group = only
+  WireGuard inbounds (`group_kinds`) — never hard-code group ids. Customer-facing subscription links go through
+  `panel.models.customer_sub_url` («فقط وایرگارد» shows none).
+
 ## Panel account names
 - Never attach a customer to a panel account we did not create: names are checked in our DB **and** on the panel
   (`orders.services.check_account_name`); a 409 on create is adopted only for our own earlier attempt (note

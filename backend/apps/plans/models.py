@@ -67,6 +67,10 @@ class Plan(TimeStampedModel):
     # Empty (the default) -> fall back to that panel's default_group_ids, so
     # unchecking a group at the panel level takes effect for every plan that
     # hasn't deliberately overridden the set.
+    # v1.55 «نوع»: ساب (V2Ray) · فقط وایرگارد · هر دو — validated against the WireGuard-ness of the chosen groups
+    # (panel/wireguard.check_plan_groups); «فقط وایرگارد» hides the subscription link everywhere
+    vpn_type = models.CharField(max_length=10, choices=[("sub", "Subscription (V2Ray)"), ("wireguard", "WireGuard only"),
+                                                       ("both", "Both")], default="sub")
     group_ids = models.JSONField(
         default=list, blank=True,
         help_text="panel group ids for this plan (from its own panel); empty = the panel's default set",

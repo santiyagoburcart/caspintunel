@@ -260,6 +260,7 @@ erDiagram
         bool is_active
     }
     plan {
+        string vpn_type "v1.55: sub | wireguard | both"
         bigint id PK
         string name_fa
         string name_en
@@ -279,7 +280,16 @@ erDiagram
         decimal price_per_gb
         bool is_active
     }
+    wireguard_location {
+        bigint id PK
+        string code UK "host remark code (Ita, de …)"
+        string name_fa
+        string name_en
+        string flag
+        string slug "file name part"
+    }
     service {
+        bool wireguard "v1.55: PasarGuard user has WireGuard peers"
         bigint id PK
         bigint user_id FK
         bigint panel_id FK
@@ -301,8 +311,9 @@ erDiagram
 | Table | Description |
 |---|---|
 | `panel` | A PasarGuard panel we provision on (multi-panel); credentials and the cached API token encrypted. |
-| `plan` | A sales plan: fixed (volume + days) or custom-volume (GB range × price per GB); panel groups; renewal behaviour copied into each scheduled renewal. |
-| `service` | One VPN account = one username on a panel; mirrors the panel after every operation; synced periodically (usage, expiry, online). Alert flags stop repeated warnings. |
+| `plan` | A sales plan: fixed (volume + days) or custom-volume (GB range × price per GB); panel groups; renewal behaviour copied into each scheduled renewal. v1.55 `vpn_type` sub · wireguard · both. |
+| `service` | One VPN account = one username on a panel; mirrors the panel after every operation; synced periodically (usage, expiry, online). Alert flags stop repeated warnings. v1.55 `wireguard` = the PasarGuard user has WireGuard peers. |
+| `wireguard_location` | v1.55: country name + flag + file slug of a WireGuard location, matched by its PasarGuard host remark code (platform table, our staff). |
 
 ## 3. Orders, payments and SMS (`orders`, `payments_sms`)
 
