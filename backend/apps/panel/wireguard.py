@@ -167,15 +167,8 @@ def configs(service, raw: bytes | None = None) -> list[Conf]:
 
 
 def prefix(service) -> str:
-    """CT for Caspin Tunel — the initials of the CUSTOMER's store name (never our brand on a store)."""
-    from apps.settings_app.branding import branding
-
-    try:
-        name = getattr(branding(), "site_name_en", "") or ""
-    except Exception:  # noqa: BLE001
-        name = ""
-    letters = "".join(w[0] for w in re.findall(r"[A-Za-z0-9]+", name))[:4].upper()
-    return letters or "WG"
+    """The service code customers already see on the service card («#CT-12») — the same in every store."""
+    return "CT"
 
 
 def filename(service, conf: Conf) -> str:

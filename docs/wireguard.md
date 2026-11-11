@@ -17,11 +17,11 @@
   Any such service shows «وایرگارد», whatever plan it came from; others show nothing.
 - **Files**: fetched from PasarGuard on every request and split per location — **never stored**. The location's name and flag
   come from **«مکان‌های وایرگارد»** (Plans page, our staff; `WireguardLocation`, matched by the remark code, case-insensitive);
-  an unknown code shows as itself. File names: `<store initials>-<service id>-<slug>.conf` (e.g. `CT-12-germany.conf`),
+  an unknown code shows as itself. File names: `CT-<service id>-<slug>.conf` (the service code shown on the card, «#CT-12»; e.g. `CT-12-germany.conf`),
   «دانلود همه» = `CT-12-wireguard.zip` with those names.
 - **Where**: site (service card → «وایرگارد» → one «دانلود» per location + «دانلود همه»), Mini App (the bot sends the file to
   the user's chat — WebView downloads are unreliable), bot (service → «🔐 وایرگارد» → a location → the `.conf` as a document,
-  «همه (zip)»). Stores get the same in their site and bot (their own initials in the file name).
+  «همه (zip)»). Stores get the same in their site and bot.
 - **Security**: only the service owner (`/api/v1/services/<id>/wireguard/…` is scoped to the signed-in customer), 60 / hour per
   account (`wireguard` throttle) and 30 / hour per Telegram user in the bot, every download audit-logged
   (`service.wireguard_download`, via site / miniapp / bot). Keys are always PasarGuard's current ones (fetched each time), so

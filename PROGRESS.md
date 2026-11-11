@@ -649,3 +649,5 @@ Everything shipped since v1.6.0 (details in the session log):
   groups (only WireGuard inbounds — per-location groups later need no code), «فقط وایرگارد» hides the link everywhere
   (`customer_sub_url`), site sheet + Mini App send-to-chat + bot documents, owner-only, rate-limited, audited; stores too.
   Tests: `panel/tests/test_wireguard.py` (9); browser checks (site sheet, plan badges, plan editor, locations table).
+- 2026-11-11 — **v1.55.1:** WireGuard file names use the service code customers see («#CT-12» → `CT-12-germany.conf`) —
+  the store-initials rule gave «C-12-…» for our one-word English name.
