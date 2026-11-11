@@ -321,7 +321,8 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
 - Configs only through `panel/wireguard.py`: fetched from PasarGuard on every request and split per location — never store a
   `.conf` or a key. A service has WireGuard = `Service.wireguard` (peer IPs, mirrored by the sync). A WireGuard group = only
   WireGuard inbounds (`group_kinds`) — never hard-code group ids. Customer-facing subscription links go through
-  `panel.models.customer_sub_url` («فقط وایرگارد» shows none).
+  `panel.models.customer_sub_url` («فقط وایرگارد» shows none). A `.conf` name = the tunnel name: `wireguard.filename` only
+  (location «نام فایل» / template, ≤ 15 of A-Z a-z 0-9 _ = + . -) — never prefix anything else.
 
 ## Panel account names
 - Never attach a customer to a panel account we did not create: names are checked in our DB **and** on the panel

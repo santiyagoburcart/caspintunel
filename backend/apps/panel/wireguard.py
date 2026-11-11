@@ -159,7 +159,7 @@ def configs(service, raw: bytes | None = None) -> list[Conf]:
                 key += "-2"
             seen.add(key)
             out.append(Conf(key=key, code=code, name_fa=loc.name_fa if loc else code, name_en=loc.name_en if loc else code,
-                            flag=loc.flag if loc else "", slug=(loc.slug if loc else "") or key,
+                            flag=loc.flag if loc else "", slug=(loc.slug if loc else "") or _fallback_name(code),
                             sort=loc.sort_order if loc else 999, body=z.read(name)))
     if not out:
         raise WireguardError("no WireGuard configs", "این سرویس کانفیگ وایرگارد ندارد", 404)
@@ -171,15 +171,75 @@ def prefix(service) -> str:
     return "CT"
 
 
+# ------------------------------------------------------------------ file names = the tunnel name in the WireGuard app
+# v1.55.2: the .conf name is EXACTLY the location's «نام فایل» (or the global template, default "{location}"). WireGuard's
+# tunnel names: at most 15 characters of A-Z a-z 0-9 _ = + . - (the file name without ".conf" becomes the tunnel name).
+TUNNEL_RE = re.compile(r"^[A-Za-z0-9_=+.\-]{1,15}$")
+TEMPLATE_KEY = "wireguard_name_template"
+DEFAULT_TEMPLATE = "{location}"
+TEMPLATE_RE = re.compile(r"^(?:[A-Za-z0-9_=+.\-]|\{location\}|\{service\}){1,64}$")
+
+
+def tunnel_problem(name: str) -> str | None:
+    """None when `name` is a valid WireGuard tunnel name, else the Persian reason."""
+    if not name:
+        return "نام فایل خالی است"
+    if len(name) > 15:
+        return f"حداکثر ۱۵ نویسه — این نام {len(name)} نویسه است"
+    if not TUNNEL_RE.match(name):
+        return "فقط حروف انگلیسی، رقم و _ = + . - مجاز است (بدون فاصله)"
+    return None
+
+
+def template() -> str:
+    from apps.settings_app.utils import get_setting
+
+    t = str(get_setting(TEMPLATE_KEY, DEFAULT_TEMPLATE) or "").strip()
+    return t if t and TEMPLATE_RE.match(t) and "{location}" in t else DEFAULT_TEMPLATE
+
+
+def render(tpl: str, location: str, service_id) -> str:
+    return tpl.replace("{location}", location).replace("{service}", str(service_id))
+
+
+def template_problem(tpl: str, locations, sample_service_id: int) -> str | None:
+    """The template must keep {location} and only allowed characters; every location's name it renders (with the
+    longest current service number) must stay a valid tunnel name."""
+    tpl = (tpl or "").strip()
+    if not tpl or not TEMPLATE_RE.match(tpl):
+        return "الگو فقط حروف انگلیسی، رقم، _ = + . - و {location} / {service} می‌گیرد"
+    if "{location}" not in tpl:
+        return "الگو باید {location} داشته باشد (وگرنه همهٔ مکان‌ها یک نام می‌گیرند)"
+    for loc in locations:
+        why = tunnel_problem(render(tpl, loc, sample_service_id))
+        if why:
+            return f"برای «{loc}»: {why}"
+    return None
+
+
+def _fallback_name(code: str) -> str:
+    return (re.sub(r"[^A-Za-z0-9_=+.\-]+", "", code or "") or "wg")[:15]
+
+
 def filename(service, conf: Conf) -> str:
-    return f"{prefix(service)}-{service.id}-{conf.slug}.conf"[:64]
+    """«CaspinIran.conf» — the tunnel name the customer sees in the WireGuard app (no service code unless the template asks)."""
+    name = render(template(), conf.slug, service.id)
+    if tunnel_problem(name):                       # never hand out a name the app refuses
+        name = _fallback_name(conf.slug)
+    return f"{name}.conf"
 
 
 def zip_all(service, confs: list[Conf]) -> bytes:
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as z:
+        used = set()
         for c in confs:
-            z.writestr(filename(service, c), c.body)
+            name = filename(service, c)
+            base, n = name[:-5], 2
+            while name.lower() in used:                    # two locations with one name: keep both files
+                name = f"{base[:13]}{n}.conf"; n += 1
+            used.add(name.lower())
+            z.writestr(name, c.body)
     return buf.getvalue()
 
 

@@ -57,15 +57,15 @@ def test_locations_are_prefilled_and_the_zip_is_split_per_location(setup):
     r = c.get(f"/api/v1/services/{svc.id}/wireguard/").json()
     rows = {x["code"]: x for x in r["results"]}
     assert rows["Ita"]["name_fa"] == "ایتالیا" and rows["Ita"]["flag"] == "\U0001F1EE\U0001F1F9"
-    assert rows["de"]["filename"] == f"CT-{svc.id}-germany.conf" and rows["de"]["name_en"] == "Germany"
+    assert rows["de"]["filename"] == "germany.conf" and rows["de"]["name_en"] == "Germany"
     assert rows["XX"]["name_en"] == "XX" and rows["XX"]["flag"] == ""                 # unknown code → the raw code
     assert [x["code"] for x in r["results"]][:2] == ["Ita", "de"]                     # sorted like the table
     f = c.get(f"/api/v1/services/{svc.id}/wireguard/{rows['de']['key']}/")
     assert f.status_code == 200 and f.content == CONF + b"de"
-    assert f["Content-Disposition"] == f'attachment; filename="CT-{svc.id}-germany.conf"' and f["Cache-Control"] == "private, no-store"
+    assert f["Content-Disposition"] == 'attachment; filename="germany.conf"' and f["Cache-Control"] == "private, no-store"
     a = c.get(f"/api/v1/services/{svc.id}/wireguard/all/")
     names = zipfile.ZipFile(io.BytesIO(a.content)).namelist()
-    assert a["Content-Disposition"].endswith(f'CT-{svc.id}-wireguard.zip"') and f"CT-{svc.id}-italy.conf" in names
+    assert a["Content-Disposition"].endswith(f'CT-{svc.id}-wireguard.zip"') and "italy.conf" in names
     assert AuditLog.objects.filter(action="service.wireguard_download").count() == 2
     assert len(calls) == 3                                                               # fetched each time, never stored
 
@@ -158,8 +158,8 @@ def test_locations_are_editable_by_our_staff(setup):
     rows = boss.get("/api/v1/admin/wireguard/locations/").json()
     rows = rows["results"] if isinstance(rows, dict) else rows
     de = next(r for r in rows if r["code"] == "de")
-    r = boss.patch(f"/api/v1/admin/wireguard/locations/{de['id']}/", {"name_fa": "آلمان (فرانکفورت)", "slug": "Germany FRA"}, format="json")
-    assert r.status_code == 200 and r.json()["slug"] == "germany-fra"
+    r = boss.patch(f"/api/v1/admin/wireguard/locations/{de['id']}/", {"name_fa": "آلمان (فرانکفورت)", "slug": "CaspinGermany.conf"}, format="json")
+    assert r.status_code == 200 and r.json()["slug"] == "CaspinGermany"
     assert boss.post("/api/v1/admin/wireguard/locations/", {"code": "DE", "name_fa": "x", "name_en": "x"}, format="json").status_code == 400
     assert AuditLog.objects.filter(action="wireguard.location_updated").exists()
 
@@ -186,7 +186,7 @@ def test_bot_lists_locations_and_sends_each_conf_as_a_document(setup, monkeypatc
     datas = _datas(out[0][2])
     assert f"s:{svc.id}:wg:all" in datas and any(d.endswith(":wg:de") for d in datas)
     out = b.click(f"s:{svc.id}:wg:de")
-    assert out[-1][0] == "doc" and out[-1][1] == f"CT-{svc.id}-germany.conf" and out[-1][2] == CONF + b"de"
+    assert out[-1][0] == "doc" and out[-1][1] == "germany.conf" and out[-1][2] == CONF + b"de"
     assert AuditLog.objects.filter(action="service.wireguard_download", detail__via="bot").exists()
     Service.objects.filter(pk=svc.pk).update(wireguard=False)
     assert not any(d.endswith(":wg") for d in _datas(b.click(f"s:{svc.id}")[0][2]))      # no WireGuard → no button
@@ -204,3 +204,45 @@ def test_mini_app_sends_the_file_to_the_users_chat(setup, monkeypatch):
     r = c.post(f"/api/v1/services/{svc.id}/wireguard/all/send/", {}, format="json")
     assert r.status_code == 200, r.content
     assert sent[0][0] == 7070 and sent[0][1] == f"CT-{svc.id}-wireguard.zip"
+
+
+def test_the_file_name_is_exactly_the_locations_name_and_follows_wireguards_rules(setup):
+    """v1.55.2: the .conf name = the tunnel name in the WireGuard app: the location's «نام فایل» (or the global template),
+    ≤ 15 of A-Z a-z 0-9 _ = + . - — no service code unless the template asks for {service}."""
+    from apps.payments_sms.tests.test_blu import staff_client
+
+    user, svc, c, _ = setup
+    boss = staff_client("super", "wg-boss3")
+    ir = WireguardLocation.objects.get(code="IR")
+    url = f"/api/v1/admin/wireguard/locations/{ir.id}/"
+    for bad in ("Caspin Iran", "CaspinIranServer1", "کاسپین", "a/b"):
+        r = boss.patch(url, {"slug": bad}, format="json")
+        assert r.status_code == 400 and "slug" in r.json(), bad
+    assert boss.patch(url, {"slug": "germany"}, format="json").status_code == 400            # another location has it
+    assert boss.patch(url, {"slug": "CaspinIran"}, format="json").status_code == 200
+    W.Conf  # noqa: B018
+    rows = {x["code"]: x for x in c.get(f"/api/v1/services/{svc.id}/wireguard/").json()["results"]}
+    assert rows.get("de")["filename"] == "germany.conf"
+    conf = W.Conf(key="ir", code="IR", name_fa="", name_en="", flag="", slug="CaspinIran", sort=1, body=b"")
+    assert W.filename(svc, conf) == "CaspinIran.conf"
+    # the global template: preview + validation; {service} only when asked for
+    t = boss.get("/api/v1/admin/wireguard/template/").json()
+    assert t["template"] == "{location}" and any(p["name"] == "CaspinIran" for p in t["preview"])
+    assert boss.put("/api/v1/admin/wireguard/template/", {"template": "CT{service}"}, format="json").status_code == 400  # no {location}
+    assert boss.put("/api/v1/admin/wireguard/template/", {"template": "{location}-{service}"}, format="json").status_code == 400  # too long
+    assert boss.put("/api/v1/admin/wireguard/template/", {"template": "a b{location}"}, format="json").status_code == 400
+    WireguardLocation.objects.all().update(slug="x")
+    WireguardLocation.objects.filter(code="IR").update(slug="IR")
+    r = boss.put("/api/v1/admin/wireguard/template/", {"template": "W{service}{location}"}, format="json")
+    assert r.status_code == 200, r.content
+    assert W.filename(svc, conf) == f"W{svc.id}CaspinIran.conf"
+    # a name the app would refuse is never handed out (falls back to the location's own name)
+    conf2 = W.Conf(key="xx", code="XX", name_fa="", name_en="", flag="", slug="ABCDEFGHIJKLMNO", sort=1, body=b"")
+    assert W.filename(svc, conf2) == "ABCDEFGHIJKLMNO.conf"
+
+
+def test_the_zip_keeps_both_files_when_two_locations_share_a_name(setup):
+    user, svc, c, _ = setup
+    confs = [W.Conf(key=k, code=k, name_fa="", name_en="", flag="", slug="same", sort=1, body=k.encode()) for k in ("a", "b")]
+    names = zipfile.ZipFile(io.BytesIO(W.zip_all(svc, confs))).namelist()
+    assert len(set(names)) == 2 and "same.conf" in names

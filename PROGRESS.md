@@ -651,3 +651,6 @@ Everything shipped since v1.6.0 (details in the session log):
   Tests: `panel/tests/test_wireguard.py` (9); browser checks (site sheet, plan badges, plan editor, locations table).
 - 2026-11-11 — **v1.55.1:** WireGuard file names use the service code customers see («#CT-12» → `CT-12-germany.conf`) —
   the store-initials rule gave «C-12-…» for our one-word English name.
+- 2026-11-11 — **v1.55.2:** WireGuard .conf name = exactly the location's «نام فایل» (the tunnel name in the app, e.g.
+  `CaspinIran.conf`) or the optional global template (`{location}` default, `{service}` available), validated against
+  WireGuard's tunnel-name rules (≤ 15 of A-Z a-z 0-9 _ = + . -) with a live Persian warning + preview; zip keeps `CT-<id>`.

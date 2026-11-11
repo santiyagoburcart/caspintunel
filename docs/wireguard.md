@@ -17,8 +17,11 @@
   Any such service shows «وایرگارد», whatever plan it came from; others show nothing.
 - **Files**: fetched from PasarGuard on every request and split per location — **never stored**. The location's name and flag
   come from **«مکان‌های وایرگارد»** (Plans page, our staff; `WireguardLocation`, matched by the remark code, case-insensitive);
-  an unknown code shows as itself. File names: `CT-<service id>-<slug>.conf` (the service code shown on the card, «#CT-12»; e.g. `CT-12-germany.conf`),
-  «دانلود همه» = `CT-12-wireguard.zip` with those names.
+  an unknown code shows as itself. **File name = the tunnel name in the WireGuard app** (v1.55.2): exactly the location's
+  «نام فایل» (e.g. `CaspinIran.conf`), or the global «الگوی نام فایل» (default `{location}`; `{service}` = the service number
+  if wanted). WireGuard's rule is enforced (live warning + preview in the table, server-side too): at most 15 characters of
+  `A-Z a-z 0-9 _ = + . -`; a name the app would refuse is never handed out. «دانلود همه» = `CT-12-wireguard.zip` (the zip keeps
+  the service code) with those same names inside.
 - **Where**: site (service card → «وایرگارد» → one «دانلود» per location + «دانلود همه»), Mini App (the bot sends the file to
   the user's chat — WebView downloads are unreliable), bot (service → «🔐 وایرگارد» → a location → the `.conf` as a document,
   «همه (zip)»). Stores get the same in their site and bot.
