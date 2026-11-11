@@ -455,9 +455,11 @@ Agency → Group managers has its own «بایگانی» list.
 
 `agency/history.py`, from immutable records only (the ledger — mistakes are voided, never edited — the invoices and
 `AgencyUserSeen`): for the last 7 days, the current Jalali month, the last Jalali month or a custom range, and a 12-month
-table — volume sold (GB on quota + manual charges), sales (T), invoiced, paid, adjustments, opening / closing balance, new
-users (first seen by the sync; counted from v1.54). Before v1.54 the agency reports added adjustments to «شارژ», so a
-«کاهش بدهی» used to settle a debt looked like falling sales; reports and statements now show adjustments apart.
+table — volume sold (GB on quota + manual charges), «شارژ ناخالص» (gross charges), «اصلاحیه‌ها» (adjustments, signed),
+«فروش خالص» = gross charges + adjustments (a «کاهش بدهی» lowers it, an «افزایش بدهی» raises it, in the period it is recorded —
+the sales / income figure, as before v1.54), invoiced, paid, opening / closing balance, new users (first seen by the sync;
+counted from v1.54). The agency reports («گزارش‌ها»), statements, manager views, portal and every CSV / Excel show the same three
+columns side by side (v1.54.1).
 
 | Who | Where | Scope |
 |---|---|---|

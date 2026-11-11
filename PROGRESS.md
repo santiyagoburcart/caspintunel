@@ -638,3 +638,7 @@ Everything shipped since v1.6.0 (details in the session log):
   statements: adjustments apart from sales (6 live «کاهش بدهی» entries, −19.9M T, had lowered «شارژ»). Tests:
   `agency/tests/test_v154_archive_history.py` (8) + updated report / ledger / delete tests; browser checks (staff, manager,
   portal; phone + desktop, fa / en, light / dark).
+- 2026-11-11 — **v1.54.1: «فروش خالص» back as the sales / income figure.** Owner's rule: sales = charges − «کاهش بدهی» +
+  «افزایش بدهی», in the period the adjustment is recorded (as before v1.54). History, «گزارش‌ها» (KPIs, monthly, breakdown),
+  statements, manager views, portal and every CSV / Excel now show «شارژ ناخالص» · «اصلاحیه‌ها» · «فروش خالص» side by side
+  (`net_sales` in history.py / reports.py / managers / ledger.statement).

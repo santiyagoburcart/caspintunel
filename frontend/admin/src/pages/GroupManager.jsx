@@ -768,8 +768,9 @@ function Accounting({ me, s, lang }) {
                 <li key={r.username}>
                   <div className="am-acc-r">
                     <b><bdi>{r.username}</bdi></b>
-                    <span>{s.charges}: <N>{toman(r.charges, lang)}</N></span>
-                    {Number(r.adjustments || 0) !== 0 && <span>{lang === 'fa' ? 'اصلاحیه‌ها' : 'Adjustments'}: <N>{toman(r.adjustments, lang)}</N></span>}
+                    <span>{lang === 'fa' ? 'شارژ ناخالص' : 'Gross charges'}: <N>{toman(r.charges, lang)}</N></span>
+                    <span>{lang === 'fa' ? 'اصلاحیه‌ها' : 'Adjustments'}: <N>{money(r.adjustments, lang)}</N></span>
+                    <span>{lang === 'fa' ? 'فروش خالص' : 'Net sales'}: <N>{money(r.net_sales, lang)}</N></span>
                     {r.archived && <span className="am-pend">{lang === 'fa' ? 'بایگانی (حذف‌شده)' : 'Archived (deleted)'}</span>}
                     <span>{s.payments}: <N>{toman(r.payments, lang)}</N></span>
                     <span>{s.balance}: <span className="am-bal" data-sign={Number(r.balance) > 0 ? 'owes' : 'zero'}><N>{money(r.balance, lang)}</N></span></span>

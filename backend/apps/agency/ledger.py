@@ -205,7 +205,7 @@ def statement(username: str) -> dict:
 
     return {
         "invoices_mismatch": allocation.mismatch(username),
-        "username": username, "charges": charges, "adjustments": adjustments, "payments": payments,
+        "username": username, "charges": charges, "adjustments": adjustments, "net_sales": charges + adjustments, "payments": payments,
         "balance": charges + adjustments - payments,
         "entries": rows,
         "price": {"price_per_gb": cur.price_per_gb, "valid_from": cur.valid_from} if cur else None,
@@ -229,5 +229,6 @@ def statement_csv(username: str) -> str:
         w.writerow([to_jalali_str(r["date"], "%Y/%m/%d"), r["kind"], r["gb"] or "", r["price_per_gb"] or "", r["amount"],
                     r["signed"], r["balance"], r["method"], r["note"], "voided: " + r["void_reason"] if r["voided"] else ""])
     w.writerow([])
-    w.writerow(["charges", st["charges"]]); w.writerow(["payments", st["payments"]]); w.writerow(["balance", st["balance"]])
+    w.writerow(["gross_charges", st["charges"]]); w.writerow(["adjustments", st["adjustments"]])
+    w.writerow(["net_sales", st["net_sales"]]); w.writerow(["payments", st["payments"]]); w.writerow(["balance", st["balance"]])
     return buf.getvalue()

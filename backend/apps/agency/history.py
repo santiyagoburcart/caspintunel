@@ -4,8 +4,9 @@ edited), the invoices and the first time the sync saw each user (`AgencyUserSeen
 
 Per period (last 7 days · current Jalali month · last Jalali month · custom) and per Jalali month (last 12):
   gb          volume sold / charged: GB on quota + manual charges
-  charged     T of quota + manual charges            ← «فروش»; adjustments are NOT mixed in (they used to be, so a
-  adjustments T of adjustments, signed                 «کاهش بدهی» looked like falling sales — v1.54 fix)
+  charged     «شارژ ناخالص»: T of quota + manual charges
+  adjustments «اصلاحیه‌ها»: T of adjustments, signed («کاهش بدهی» −, «افزایش بدهی» +), in the period they are recorded
+  net_sales   «فروش خالص» = charged + adjustments (v1.54.1 — sales / income as before v1.54, shown next to its parts)
   paid        T of payments received
   invoiced    T of invoices issued in the period (voided ones excluded)
   opening / closing  balance before the first day / after the last day (charges + adjustments − payments)
@@ -80,8 +81,8 @@ def _entries(names, to: date):
 
 
 def _empty() -> dict:
-    return {"gb": D0, "charged": D0, "adjustments": D0, "paid": D0, "invoiced": D0, "opening": D0, "closing": D0,
-            "new_users": None}
+    return {"gb": D0, "charged": D0, "adjustments": D0, "net_sales": D0, "paid": D0, "invoiced": D0, "opening": D0,
+            "closing": D0, "new_users": None}
 
 
 def _seen_since():
@@ -104,6 +105,7 @@ def _fold(entries, frm: date, to: date) -> dict:
             t["adjustments"] += e.amount
         elif e.kind == LedgerEntry.KIND_PAYMENT:
             t["paid"] += e.amount
+    t["net_sales"] = t["charged"] + t["adjustments"]
     t["closing"] = t["opening"] + t["charged"] + t["adjustments"] - t["paid"]
     return t
 
@@ -179,12 +181,12 @@ def all_usernames() -> list[str]:
 
 
 # ------------------------------------------------------------------ export
-COLS = ("gb", "charged", "adjustments", "paid", "invoiced", "opening", "closing", "new_users")
+COLS = ("gb", "charged", "adjustments", "net_sales", "paid", "invoiced", "opening", "closing", "new_users")
 HEAD = {
-    "fa": {"what": "عنوان", "gb": "حجم فروخته‌شده (GB)", "charged": "فروش / شارژ (تومان)", "adjustments": "اصلاحیه‌ها (تومان)",
+    "fa": {"what": "عنوان", "gb": "حجم فروخته‌شده (GB)", "charged": "شارژ ناخالص (تومان)", "adjustments": "اصلاحیه‌ها (تومان)", "net_sales": "فروش خالص (تومان)",
            "paid": "پرداخت‌شده (تومان)", "invoiced": "فاکتورشده (تومان)", "opening": "مانده ابتدای بازه", "closing": "مانده پایان بازه",
            "new_users": "کاربران جدید", "total": "جمع بازه", "month": "ماه", "admin": "ادمین", "archived": " (بایگانی)"},
-    "en": {"what": "Item", "gb": "Volume sold (GB)", "charged": "Sales / charged (T)", "adjustments": "Adjustments (T)",
+    "en": {"what": "Item", "gb": "Volume sold (GB)", "charged": "Gross charges (T)", "adjustments": "Adjustments (T)", "net_sales": "Net sales (T)",
            "paid": "Paid (T)", "invoiced": "Invoiced (T)", "opening": "Opening balance", "closing": "Closing balance",
            "new_users": "New users", "total": "Period total", "month": "Month", "admin": "Admin", "archived": " (archived)"},
 }

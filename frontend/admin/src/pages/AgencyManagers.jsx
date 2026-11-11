@@ -621,8 +621,9 @@ function StatementBody({ st, s, lang }) {
     <>
       <dl className="gm-facts gm-st-sum">
         {st.from && <div><dt>{s.opening}</dt><dd><N>{money(st.opening, lang)}</N></dd></div>}
-        <div><dt>{s.charges}</dt><dd><N>{toman(st.charges, lang)}</N></dd></div>
-        {Number(st.adjustments || 0) !== 0 && <div><dt>{lang === 'fa' ? 'اصلاحیه‌ها' : 'Adjustments'}</dt><dd><N>{toman(st.adjustments, lang)}</N></dd></div>}
+        <div><dt>{lang === 'fa' ? 'شارژ ناخالص' : 'Gross charges'}</dt><dd><N>{toman(st.charges, lang)}</N></dd></div>
+        <div><dt>{lang === 'fa' ? 'اصلاحیه‌ها' : 'Adjustments'}</dt><dd><N>{money(st.adjustments, lang)}</N></dd></div>
+        <div><dt>{lang === 'fa' ? 'فروش خالص' : 'Net sales'}</dt><dd><N>{money(st.net_sales, lang)}</N></dd></div>
         <div><dt>{s.payments}</dt><dd><N>{toman(st.payments, lang)}</N></dd></div>
         <div><dt>{s.closing}</dt><dd><N>{money(st.closing, lang)}</N></dd></div>
         <div data-strong><dt>{s.g_debt}</dt><dd><span className="gm-bal" data-sign={Number(st.total_debt) > 0 ? 'owes' : 'zero'}><N>{money(st.total_debt, lang)}</N></span></dd></div>

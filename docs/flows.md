@@ -1590,7 +1590,7 @@ sequenceDiagram
     PG-->>S: "gone" back on the panel
     S->>A: restore(gone) before the update loop → same row, history continues
     O->>DB: «تاریخچه» (7 days · this month · last month · custom · 12 months) — sums of immutable ledger rows
-    Note over DB: sales = quota + manual charges · adjustments, payments, opening / closing apart — a settlement never lowers sales
+    Note over DB: gross charges · adjustments · net sales (= gross + adjustments, in their period) · payments · opening / closing
 ```
 
 ## 16m. A store that is not active — parked (v1.53.2) · plain http → https

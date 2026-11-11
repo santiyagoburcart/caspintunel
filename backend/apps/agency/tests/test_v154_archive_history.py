@@ -173,7 +173,7 @@ def _day(n):
     return ledger.today() - timedelta(days=n)
 
 
-def test_sales_never_shrink_because_of_a_settlement_payment_or_adjustment():
+def test_gross_charges_stay_and_net_sales_follow_the_adjustments():
     PanelAdmin.objects.create(username="farz")
     ledger.set_price("farz", 2000, _day(40))
     ledger.record_quota_charge("farz", 0, 100 * GB, by="t", day=_day(2))                 # 200,000 T, 100 GB
@@ -183,12 +183,22 @@ def test_sales_never_shrink_because_of_a_settlement_payment_or_adjustment():
     after = history.summary(["farz"], *history.bounds("d7"))
     assert (before["gb"], before["charged"]) == (after["gb"], after["charged"]) == (Decimal(100), Decimal(200000))
     assert after["adjustments"] == Decimal(-150000) and after["paid"] == Decimal(50000) and after["closing"] == Decimal(0)
+    # v1.54.1: net sales = gross charges ∓ adjustments («کاهش بدهی» lowers it, «افزایش بدهی» raises it), in their period
+    assert before["net_sales"] == Decimal(200000) and after["net_sales"] == Decimal(50000)
+    ledger.add_entry("farz", LedgerEntry.KIND_ADJUST, 30000, _day(0), direction="increase", by="t")
+    assert history.summary(["farz"], *history.bounds("d7"))["net_sales"] == Decimal(80000)
+    old = history.summary(["farz"], _day(400), _day(3))                                    # before the adjustments: untouched
+    assert old["charged"] == old["net_sales"] == Decimal(0)
     assert after["invoiced"] == Decimal(200000)
     # the agency reports too: «شارژ» no longer shrinks, adjustments are apart
     from apps.agency import reports
 
     k = reports.overview(_day(6), _day(0))["kpis"]
-    assert k["charges"] == 200000 and k["adjustments"] == -150000 and k["net"] == 0
+    assert k["charges"] == 200000 and k["adjustments"] == -120000 and k["net_sales"] == 80000 and k["net"] == 30000
+    m = [r for r in reports.monthly() if r["charges"]][0]
+    assert m["net_sales"] == m["charges"] + m["adjustments"]
+    rows = history.export_rows(history.report(["farz"], "d7"), "fa")
+    assert "فروش خالص (تومان)" in rows[0] and "شارژ ناخالص (تومان)" in rows[0]
 
 
 def test_periods_monthly_table_opening_closing_and_new_users(monkeypatch):

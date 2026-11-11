@@ -234,7 +234,8 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
 - **v1.54: admins / group managers are never hard-deleted** (`agency/archive.py`): `PanelAdmin.objects` hides archived rows
   (sync, enforcement, active lists); accounting / history / admin pages use `PanelAdmin.all_objects`. The sync's archive
   line (was delete) is the ONE deliberate PAMP deviation (PORTING.md) — keep it the only one. «تاریخچه» (`history.py`) and
-  the reports sum immutable records only; adjustments are never mixed into sales.
+  the reports sum immutable records only; «فروش خالص» = gross charges + adjustments (in their period), always shown next to
+  «شارژ ناخالص» and «اصلاحیه‌ها» (v1.54.1).
 - v1.52.2: every limit change through our panel calls `agency/release.release_if_room` after PasarGuard accepted it (ends a
   `pamp_blocked` block at once when there is room) — a new limit-changing path must call it too; never edit enforcement for it.
 - PasarGuard admin create / edit / delete = `apps/agency/admin_crud.py` on `PasarGuardClient` (never edit the PAMP files

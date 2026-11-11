@@ -6,20 +6,20 @@ import { jalali } from '../lib/format'
 // or adjustments); this file only lays it out. Props: http (axios-like), base (endpoint), lang, fixedAdmin (one admin only).
 export const HT = {
   fa: {
-    title: 'تاریخچه', sub: 'از روی دفتر حساب ساخته می‌شود؛ تسویه، پرداخت یا اصلاحیه آن را صفر نمی‌کند.',
+    title: 'تاریخچه', sub: 'از روی دفتر حساب ساخته می‌شود و صفر نمی‌شود. فروش خالص = شارژ ناخالص + اصلاحیه‌ها («کاهش بدهی» کم و «افزایش بدهی» اضافه می‌کند، در همان بازه‌ای که ثبت شده).',
     d7: '7 روز اخیر', month: 'ماه جاری', prev: 'ماه قبل', custom: 'بازهٔ دلخواه', from: 'از', to: 'تا', show: 'نمایش',
     date_hint: 'مثلاً 1405/08/01', scope: 'برای', all: 'همهٔ ادمین‌ها', groups: 'گروه‌ها', admins: 'ادمین‌ها',
-    gb: 'حجم فروخته‌شده', charged: 'فروش / شارژ', invoiced: 'فاکتورشده', paid: 'پرداخت‌شده', adjustments: 'اصلاحیه‌ها',
+    gb: 'حجم فروخته‌شده', charged: 'شارژ ناخالص', net_sales: 'فروش خالص', invoiced: 'فاکتورشده', paid: 'پرداخت‌شده', adjustments: 'اصلاحیه‌ها',
     opening: 'مانده ابتدای بازه', closing: 'مانده پایان بازه', new_users: 'کاربران جدید', no_users: '—',
     users_hint: 'شمارش کاربران جدید از نسخهٔ 1.54 شروع شده است؛ برای قبل از آن سابقه‌ای نیست.',
     per_admin: 'به تفکیک ادمین', monthly: '12 ماه اخیر', mon: 'ماه', admin: 'ادمین', archived: 'بایگانی',
     csv: 'CSV', xlsx: 'Excel', none: 'در این بازه گردشی نیست.', range: '{a} تا {b}', toman: 'تومان', err: 'دریافت تاریخچه ناموفق بود',
   },
   en: {
-    title: 'History', sub: 'Built from the ledger — a settlement, payments or adjustments never reset it.',
+    title: 'History', sub: 'Built from the ledger and never reset. Net sales = gross charges + adjustments (a debt decrease lowers it, an increase raises it, in the period it is recorded).',
     d7: 'Last 7 days', month: 'This month', prev: 'Last month', custom: 'Custom range', from: 'From', to: 'To', show: 'Show',
     date_hint: 'e.g. 1405/08/01', scope: 'For', all: 'All admins', groups: 'Groups', admins: 'Admins',
-    gb: 'Volume sold', charged: 'Sales / charged', invoiced: 'Invoiced', paid: 'Paid', adjustments: 'Adjustments',
+    gb: 'Volume sold', charged: 'Gross charges', net_sales: 'Net sales', invoiced: 'Invoiced', paid: 'Paid', adjustments: 'Adjustments',
     opening: 'Opening balance', closing: 'Closing balance', new_users: 'New users', no_users: '—',
     users_hint: 'New users are counted from version 1.54 on; there is no earlier record.',
     per_admin: 'Per admin', monthly: 'Last 12 months', mon: 'Month', admin: 'Admin', archived: 'archived',
@@ -71,8 +71,8 @@ export default function AgencyHistory({ http, base, lang = 'fa', fixedAdmin = ''
   const money = (v) => <span>{'\u2066' + (num(v) < 0 ? '-' : '') + Math.abs(num(v)).toLocaleString('en-US') + '\u2069 ' + (lang === 'en' ? 'T' : 'تومان')}</span>
   const users = (v) => (v === null || v === undefined ? s.no_users : num(v).toLocaleString('en-US'))
   const tiles = t ? [
-    ['gb', <bdi dir="ltr">{gbt(t.gb)}</bdi>], ['charged', money(t.charged)], ['invoiced', money(t.invoiced)],
-    ['paid', money(t.paid)], ['adjustments', money(t.adjustments)], ['opening', money(t.opening)],
+    ['gb', <bdi dir="ltr">{gbt(t.gb)}</bdi>], ['charged', money(t.charged)], ['adjustments', money(t.adjustments)],
+    ['net_sales', money(t.net_sales)], ['invoiced', money(t.invoiced)], ['paid', money(t.paid)], ['opening', money(t.opening)],
     ['closing', money(t.closing)], ['new_users', users(t.new_users)],
   ] : []
   return (
@@ -120,24 +120,26 @@ export default function AgencyHistory({ http, base, lang = 'fa', fixedAdmin = ''
           {(d.admins || []).length > 0 && (
             <div className="ah-block">
               <h4>{s.per_admin}</h4>
-              <table className="ah-table"><thead><tr><th>{s.admin}</th><th>{s.gb}</th><th>{s.charged}</th><th>{s.paid}</th><th>{s.adjustments}</th><th>{s.closing}</th></tr></thead>
+              <table className="ah-table"><thead><tr><th>{s.admin}</th><th>{s.gb}</th><th>{s.charged}</th><th>{s.adjustments}</th><th>{s.net_sales}</th><th>{s.paid}</th><th>{s.closing}</th></tr></thead>
                 <tbody>{d.admins.map((r) => (
                   <tr key={r.username} data-testid="history-admin">
                     <td data-label={s.admin}><bdi>{r.username}</bdi>{r.archived && <em className="ah-arch">{s.archived}</em>}</td>
                     <td data-label={s.gb}><bdi dir="ltr">{gbt(r.gb)}</bdi></td><td data-label={s.charged}>{money(r.charged)}</td>
-                    <td data-label={s.paid}>{money(r.paid)}</td><td data-label={s.adjustments}>{money(r.adjustments)}</td>
+                    <td data-label={s.adjustments}>{money(r.adjustments)}</td><td data-label={s.net_sales}>{money(r.net_sales)}</td>
+                    <td data-label={s.paid}>{money(r.paid)}</td>
                     <td data-label={s.closing}>{money(r.closing)}</td>
                   </tr>))}</tbody></table>
             </div>
           )}
           <div className="ah-block">
             <h4>{s.monthly}</h4>
-            <table className="ah-table"><thead><tr><th>{s.mon}</th><th>{s.gb}</th><th>{s.charged}</th><th>{s.invoiced}</th><th>{s.paid}</th><th>{s.adjustments}</th><th>{s.closing}</th><th>{s.new_users}</th></tr></thead>
+            <table className="ah-table"><thead><tr><th>{s.mon}</th><th>{s.gb}</th><th>{s.charged}</th><th>{s.adjustments}</th><th>{s.net_sales}</th><th>{s.invoiced}</th><th>{s.paid}</th><th>{s.closing}</th><th>{s.new_users}</th></tr></thead>
               <tbody>{(d.monthly || []).map((m) => (
                 <tr key={m.key} data-testid="history-month">
                   <td data-label={s.mon}><bdi dir="ltr">{m.key}</bdi></td><td data-label={s.gb}><bdi dir="ltr">{gbt(m.gb)}</bdi></td>
-                  <td data-label={s.charged}>{money(m.charged)}</td><td data-label={s.invoiced}>{money(m.invoiced)}</td>
-                  <td data-label={s.paid}>{money(m.paid)}</td><td data-label={s.adjustments}>{money(m.adjustments)}</td>
+                  <td data-label={s.charged}>{money(m.charged)}</td><td data-label={s.adjustments}>{money(m.adjustments)}</td>
+                  <td data-label={s.net_sales}>{money(m.net_sales)}</td><td data-label={s.invoiced}>{money(m.invoiced)}</td>
+                  <td data-label={s.paid}>{money(m.paid)}</td>
                   <td data-label={s.closing}>{money(m.closing)}</td><td data-label={s.new_users}>{users(m.new_users)}</td>
                 </tr>))}</tbody></table>
           </div>

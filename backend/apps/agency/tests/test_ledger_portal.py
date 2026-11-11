@@ -82,6 +82,7 @@ def test_balance_statement_void_and_csv():
     st = ledger.statement("ali")
     # v1.54: adjustments apart from sales — the balance is the same
     assert st["charges"] == Decimal("500000") and st["adjustments"] == Decimal("-20000") and st["payments"] == Decimal("300000")
+    assert st["net_sales"] == Decimal("480000")                              # v1.54.1: gross + adjustments
     assert st["balance"] == Decimal("180000")
     assert [r["balance"] for r in st["entries"]] == [500000, 480000, 180000, 180000]
     assert ledger.balances()["ali"] == Decimal("180000")
