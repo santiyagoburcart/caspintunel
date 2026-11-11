@@ -58,3 +58,28 @@ def store_fees_task():
     from .fees import run
 
     return run()
+
+
+@shared_task(ignore_result=True)
+def scan_import_task(import_id: int):
+    """v1.56 (tenancy/importers): read an uploaded dump + one read-only PasarGuard listing → the preview. Queued inside the
+    store, so it runs there."""
+    from .importers.engine import scan
+
+    return scan(import_id)
+
+
+@shared_task(ignore_result=True)
+def run_import_task(import_id: int):
+    """v1.56: the import itself (DB backup first), inside the store."""
+    from .importers.engine import run
+
+    return run(import_id)
+
+
+@shared_task(ignore_result=True)
+def store_imports_cleanup_task():
+    """v1.56: hourly — delete uploaded dumps 24 h after upload, fail stuck imports (every store)."""
+    from .importers.engine import cleanup
+
+    return cleanup()

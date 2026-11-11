@@ -409,6 +409,28 @@ function tlText(x, s, lang) {
   }
 }
 
+// v1.56 store import: what the customer paid in the reseller's OLD bot (read-only notes, never revenue) + the carried-over credit
+const IMP_KIND = { buy: ['خرید', 'Purchase'], renew: ['تمدید', 'Renewal'], wallet: ['شارژ کیف پول', 'Wallet top-up'], other: ['سایر', 'Other'] }
+function ImportedHistory({ im, lang }) {
+  const en = lang === 'en'
+  return (
+    <div className="space-y-1" data-testid="imported-history">
+      <h4>{en ? 'Previous bot (imported, read-only)' : 'ربات قبلی (واردشده، فقط نمایش)'}</h4>
+      <p className="cr-sub">{en ? 'Paid there — not counted as revenue here.' : 'پرداخت‌ها در ربات قبلی — جزو درآمد این فروشگاه حساب نمی‌شود.'}
+        {im.history.length > 0 && <> {en ? 'Total' : 'جمع'}: <b>{toman(im.history_total, lang)}</b></>}</p>
+      {im.history.map((h, i) => (
+        <div key={i} className="cr-item"><span>{toman(h.amount, lang)}</span><Chip tone="muted">{(IMP_KIND[h.kind] || IMP_KIND.other)[en ? 1 : 0]}</Chip>
+          <span className="cr-sub w-full">{h.at ? jalali(h.at, true, lang) : '—'}{h.service ? <> · <bdi dir="ltr">{h.service}</bdi></> : null}</span></div>
+      ))}
+      {im.credit && (
+        <div className="cr-item"><span>💳 {en ? 'Carried-over credit' : 'اعتبار انتقالی'}: {toman(im.credit.amount, lang)}</span>
+          <Chip tone={im.credit.used_at ? 'muted' : 'success'}>{im.credit.used_at ? (en ? 'used' : 'استفاده شد') : (en ? 'unused' : 'استفاده نشده')}</Chip>
+          <span className="cr-sub w-full"><bdi dir="ltr">{im.credit.code}</bdi>{im.credit.expires_at ? <> · {en ? 'until' : 'تا'} {jalali(im.credit.expires_at, false, lang)}</> : null}</span></div>
+      )}
+    </div>
+  )
+}
+
 export function Customer360() {
   const [s, lang] = useT()
   const { id } = useParams()
@@ -488,6 +510,7 @@ export function Customer360() {
           {d.payments === null ? <p className="cr-sub">{s.no_pay_perm}</p> : d.payments.map((x) => (
             <div key={x.id} className="cr-item"><span>{toman(x.amount, lang)}</span><Chip tone={x.status === 'approved' ? 'success' : 'muted'}>{x.status}</Chip><span className="cr-sub w-full">{jalali(x.created_at, true, lang)}</span></div>
           ))}
+          {d.imported && <ImportedHistory im={d.imported} lang={lang} />}
         </section>
         <section className="card space-y-2">
           <h4>{s.cases}</h4>

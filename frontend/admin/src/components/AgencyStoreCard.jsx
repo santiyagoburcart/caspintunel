@@ -12,6 +12,7 @@ import StoreStaff from './StoreStaff'
 import FailedOrders from './FailedOrders'
 import StoreExports from './StoreExports'
 import StoreFee from './StoreFee'
+import StoreImport from './StoreImport'
 
 // v1.43 (multi-tenant Phase 2, D5) «فروشگاه» on an agency admin's page — OUR staff open and manage a reseller's store.
 // v1.45: domains + TLS (StoreDomains); v1.49: the store's Telegram bot (StoreBot). Until a domain is active the store is not reachable.
@@ -118,6 +119,8 @@ export default function AgencyStoreCard({ username }) {
         {/* v1.53: the store's backups (ours: any time, links work on our panel only) + the monthly fee (off by default) */}
         {manage && <div className="ags-box"><StoreExports base={url + 'exports/'} platform /></div>}
         <div className="ags-box"><StoreFee base={url + 'fee/'} fee={store.fee} reseller={username} canEdit={can('agency.accounting')} onChanged={load} /></div>
+        {/* v1.56: bring the reseller's customers from their previous bot (our staff only; nothing written before «شروع ورود») */}
+        {manage && <div className="ags-box"><StoreImport base={url + 'imports/'} storeName={store.name} /></div>}
         <p className="text-xs text-muted">{s.manage_note}</p>
       </>}
     </div>

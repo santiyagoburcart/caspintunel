@@ -540,6 +540,10 @@ sequenceDiagram
 
 ## 15. Import from other systems (last phase)
 
+> **Built (v1.56.0):** the framework + the **Mirza** bot adapter — see [store-import.md](store-import.md). Balances = one-use
+> credit codes (big ones only when confirmed), paid history = read-only notes, 1-day tests skipped, link only the store's own
+> reseller's accounts. Still open: `csv`, `pasarguard_users`, other bots (one sample each).
+
 Pluggable importers (`tenancy/importers/<name>.py`) with one interface: `detect(file)`, `preview(file) → mapping report`,
 `run(file, mapping)` (idempotent, source ids stored, batches of 500, audit). PasarGuard users are **linked, never created**:
 an imported service is matched to an existing PasarGuard user owned by the reseller (by username / note / sub link);

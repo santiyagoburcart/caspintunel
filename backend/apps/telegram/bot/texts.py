@@ -72,6 +72,10 @@ T: dict[str, tuple[str, str]] = {
     "dc_ask": ("🏷 <b>کد تخفیف دارید؟</b>\nاگر کد تخفیف دارید وارد کنید؛ وگرنه بدون کد ادامه دهید.",
                "🏷 <b>Have a discount code?</b>\nEnter it, or continue without one."),
     "btn_dc_enter": ("🏷 وارد کردن کد تخفیف", "🏷 Enter a discount code"),
+    # v1.56: a balance carried over from the reseller's old bot (store import) — one use, offered by amount
+    "btn_dc_credit": ("💳 استفاده از اعتبار {amount}", "💳 Use my credit of {amount}"),
+    "dc_credit_note": ("\n\n💳 شما <b>{amount}</b> اعتبار از ربات قبلی دارید (یک‌بار مصرف، تا {until}).",
+                       "\n\n💳 You have <b>{amount}</b> credit from the previous bot (one use, until {until})."),
     "btn_dc_skip": ("➡️ ادامه بدون کد", "➡️ Continue without a code"),
     "btn_dc_go": ("✅ ادامه و صدور فاکتور", "✅ Continue to the invoice"),
     "btn_dc_other": ("🔁 کد دیگر", "🔁 Another code"),

@@ -240,6 +240,7 @@ class ServiceEndMark(models.Model):
 class DiscountKind(models.TextChoices):
     WINBACK = "winback", "Win-back (one customer, one use)"
     CAMPAIGN = "campaign", "Discount code"
+    CREDIT = "credit", "Carried-over credit (one customer, one use)"   # v1.56: a balance from an imported bot
 
 
 class DiscountType(models.TextChoices):

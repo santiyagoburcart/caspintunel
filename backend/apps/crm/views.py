@@ -122,6 +122,25 @@ def _winback_extras(c) -> dict:
             "discount": {"code": code.code, "percent": code.percent, "expires_at": code.expires_at} if code else None}
 
 
+def _imported(u) -> dict | None:
+    """v1.56 store import: the old bot's PAID payments (read-only notes — never revenue) + the carried-over credit."""
+    from apps.crm.models import DiscountCode
+    from apps.tenancy.models import ImportRecord
+
+    recs = list(ImportRecord.objects.filter(user=u, kind__in=("history", "credit", "user")))
+    if not recs:
+        return None
+    hist = [r for r in recs if r.kind == "history"]
+    credit = next((r for r in recs if r.kind == "credit"), None)
+    dc = DiscountCode.objects.filter(pk=credit.object_id).first() if credit else None
+    return {"batch": recs[0].batch_id,
+            "history": [{"at": r.at, "amount": (r.data or {}).get("amount"), "kind": (r.data or {}).get("kind"),
+                         "service": (r.data or {}).get("service", "")} for r in sorted(hist, key=lambda r: r.at or r.created_at, reverse=True)],
+            "history_total": sum(int((r.data or {}).get("amount") or 0) for r in hist),
+            "credit": ({"amount": (credit.data or {}).get("amount"), "code": dc.code if dc else "", "used_at": dc.used_at if dc else None,
+                        "expires_at": dc.expires_at if dc else None, "active": bool(dc and dc.is_active)} if credit else None)}
+
+
 # --- customer 360 ------------------------------------------------------------------------
 class CustomerView(_Staff):
     perms_map = {"GET": VIEW, "PATCH": MANAGE}
@@ -154,6 +173,7 @@ class CustomerView(_Staff):
                               for n in u.notifications.order_by("-created_at")[:10]],
             "notes": [{"id": n.id, "body": n.body, "staff": n.staff_label, "created_at": n.created_at} for n in u.crm_notes.all()[:50]],
             "cases": [case_row(c) for c in _cases_qs().filter(user=u)[:20]],
+            "imported": _imported(u),
         }
         if request.user.has_perm("payment.view"):
             from apps.payments_sms.models import Payment

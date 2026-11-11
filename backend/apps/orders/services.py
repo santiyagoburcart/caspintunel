@@ -284,7 +284,7 @@ def create_order(
         for old in Order.objects.select_for_update().filter(user=user, discount_code=dc, status=OrderStatus.PENDING_PAYMENT,
                                                             payment__isnull=True).exclude(pk=order.pk):
             _drop_reservation(old)
-        if dc.kind == "winback":
+        if dc.kind in ("winback", "credit"):      # personal one-use codes (v1.56: + carried-over credit)
             dc.order = order                  # v1.20: used_at is set when this order is paid
             dc.save(update_fields=["order"])
     order.reused = False

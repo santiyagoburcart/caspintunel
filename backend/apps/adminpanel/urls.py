@@ -20,6 +20,8 @@ from .views.agency import (AgencyLimitHistoryView, AgencyAdminActionView, Agency
                            AgencyStoreDomainCheckView, AgencyStoreDomainsView,
                            AgencyStoreDomainView, AgencyHistoryView)
 from .views.wireguard import WireguardLocationViewSet, WireguardTemplateView
+from .views.store_import import (AgencyStoreImportReportView, AgencyStoreImportRunView, AgencyStoreImportsView,
+                                 AgencyStoreImportUndoView, AgencyStoreImportView)
 from .views.stores_extra import (AgencyStoreExportLinkView, AgencyStoreExportView, AgencyStoreFeeView,
                                  StoreExportLinkView, StoreExportView)
 from .views.catalog import (
@@ -144,6 +146,15 @@ urlpatterns = [
     path("agency/panel-admins/<str:username>/store/exports/<int:pk>/link/", AgencyStoreExportLinkView.as_view(),
          name="admin-agency-store-export-link"),
     path("agency/panel-admins/<str:username>/store/fee/", AgencyStoreFeeView.as_view(), name="admin-agency-store-fee"),
+    # v1.56: «ورود داده از ربات قبلی» (tenancy/importers) — our staff only
+    path("agency/panel-admins/<str:username>/store/imports/", AgencyStoreImportsView.as_view(), name="admin-agency-store-imports"),
+    path("agency/panel-admins/<str:username>/store/imports/<int:pk>/", AgencyStoreImportView.as_view(), name="admin-agency-store-import"),
+    path("agency/panel-admins/<str:username>/store/imports/<int:pk>/run/", AgencyStoreImportRunView.as_view(),
+         name="admin-agency-store-import-run"),
+    path("agency/panel-admins/<str:username>/store/imports/<int:pk>/undo/", AgencyStoreImportUndoView.as_view(),
+         name="admin-agency-store-import-undo"),
+    path("agency/panel-admins/<str:username>/store/imports/<int:pk>/report.csv", AgencyStoreImportReportView.as_view(),
+         name="admin-agency-store-import-report"),
     path("agency/panel-admins/<str:username>/store/failed-orders/", AgencyStoreFailedOrdersView.as_view(),
          name="admin-agency-store-failed-orders"),
     path("agency/panel-admins/<str:username>/store/failed-orders/<int:pk>/retry/", AgencyStoreFailedOrderRetryView.as_view(),

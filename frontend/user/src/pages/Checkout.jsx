@@ -190,8 +190,11 @@ export default function Checkout() {
     : { plan: Number(chosenPlan), type: 'new', custom_volume_gb: customGb ? Number(customGb) : undefined })
   // a quote belongs to one purchase: changing the plan / volume asks again
   useEffect(() => { setQuote(null); setCodeErr('') }, [chosenPlan, customGb, renewId])
-  const applyCode = async () => {
-    const c = code.trim().toUpperCase()
+  // v1.56: the customer's carried-over credits from a previous bot (store import) — offered by amount, one tap applies it
+  const [credits, setCredits] = useState([])
+  useEffect(() => { api.get('/orders/credits/').then((r) => setCredits(r.data.results || [])).catch(() => {}) }, [])
+  const applyCode = async (override) => {
+    const c = (typeof override === 'string' ? override : code).trim().toUpperCase()
     if (!c || !chosenPlan) return
     setQuoting(true); setCodeErr('')
     try {
@@ -388,6 +391,17 @@ export default function Checkout() {
           </div>
         )}
 
+        {credits.length > 0 && !(quote && credits.some((c) => c.code === quote.code)) && (
+          <div className="ckt-credits" data-testid="credits">
+            {credits.slice(0, 3).map((c) => (
+              <button key={c.code} type="button" className="ckt-credit" disabled={!chosenPlan || quoting}
+                onClick={() => { setCode(c.code); setShowCode(true); applyCode(c.code) }} data-testid="credit-use">
+                <span>💳 {lang === 'en' ? 'Credit from the previous bot' : 'اعتبار ربات قبلی'}: <b>{toman(c.amount, lang)}</b></span>
+                <small>{lang === 'en' ? 'Use it (one time)' : 'استفاده (یک‌بار مصرف)'}</small>
+              </button>
+            ))}
+          </div>
+        )}
         <div className="ckt-code">
           {showCode ? (
             <Field label={lang === 'en' ? 'Discount code' : 'کد تخفیف'}>
@@ -766,6 +780,12 @@ const CHECKOUT_CSS = `
 .ckt-quote dt { color: var(--c-text-muted); } .ckt-quote dd { font-weight: 700; white-space: nowrap; }
 .ckt-quote .ok dd, .ckt-quote .ok dt { color: var(--c-success-fg, var(--c-success)); }
 .ckt-quote .fin { padding-top: 4px; border-top: 1px dashed var(--c-border); font-size: 14px; }
+.ckt-credits { display: flex; flex-direction: column; gap: 6px; }
+.ckt-credit { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; min-height: 44px; padding: 8px 12px;
+  border-radius: 12px; border: 1px dashed color-mix(in srgb, var(--c-success) 55%, transparent); background: color-mix(in srgb, var(--c-success) 8%, transparent);
+  color: var(--c-text); font-size: 13px; text-align: start; cursor: pointer; }
+.ckt-credit small { color: var(--c-success-fg, var(--c-success)); font-weight: 700; }
+.ckt-credit:disabled { opacity: .6; cursor: default; }
 .ckt-code-toggle { padding: 0; border: 0; background: none; color: var(--c-primary); font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .ckt-renew-banner {
   display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 12px;

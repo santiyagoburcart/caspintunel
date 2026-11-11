@@ -276,9 +276,14 @@ def invoice(user, order, *, reused: bool = False) -> Screen:
     return Screen(_clip("\n".join(lines)), _kb([[_b(tr(user, "btn_check"), f"o:{order.id}:st")], _nav(user, "m:buy")]))
 
 
-def discount_ask(user) -> Screen:
-    return Screen(tr(user, "dc_ask"), _kb([[_b(tr(user, "btn_dc_enter"), "dc:enter")],
-                                           [_b(tr(user, "btn_dc_skip"), "dc:skip")]]))
+def discount_ask(user, credits=()) -> Screen:
+    """v1.56: the customer's carried-over credits (store import) come first, as buttons — they never need the code."""
+    text = tr(user, "dc_ask")
+    rows = [[_b(tr(user, "btn_dc_credit", amount=money(user, c.amount_off)), f"dc:cr:{c.pk}")] for c in credits[:3]]
+    if credits:
+        c = credits[0]
+        text += tr(user, "dc_credit_note", amount=money(user, c.amount_off), until=to_jalali_str(c.expires_at, "%Y/%m/%d") if c.expires_at else "—")
+    return Screen(text, _kb(rows + [[_b(tr(user, "btn_dc_enter"), "dc:enter")], [_b(tr(user, "btn_dc_skip"), "dc:skip")]]))
 
 
 def discount_ok(user, q) -> Screen:

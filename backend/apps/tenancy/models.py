@@ -186,3 +186,68 @@ class TenantFeeInvoice(models.Model):
         db_table = "tenant_fee_invoice"
         ordering = ("-due_date", "-id")
         constraints = [models.UniqueConstraint(fields=["tenant", "period"], name="tenant_fee_invoice_once_per_month")]
+
+
+class StoreImport(TimeStampedModel):
+    """v1.56 (tenancy/importers, docs/store-import.md): customers / services / balances / paid history brought into ONE store
+    from another bot's database dump. TENANT table. Made only by our staff on «فروشگاه».
+
+    uploaded → scanning (Celery: parse + read-only PasarGuard scan) → ready (the preview) → running → done | failed; a done
+    import can be undone (→ undone). The dump lives under media/imports/ (nginx 404s it, 0600) until the import finishes or
+    24 h after upload, then it is deleted; `report` keeps what the CSV needs (no tokens, no cards)."""
+
+    UPLOADED, SCANNING, READY, RUNNING, DONE, FAILED, UNDONE, DISCARDED = (
+        "uploaded", "scanning", "ready", "running", "done", "failed", "undone", "discarded")
+    STATES = [(s, s.title()) for s in (UPLOADED, SCANNING, READY, RUNNING, DONE, FAILED, UNDONE, DISCARDED)]
+
+    tenant = tenant_fk()
+    source = models.CharField(max_length=20, blank=True, default="")       # adapter name (mirza)
+    state = models.CharField(max_length=10, choices=STATES, default=UPLOADED, db_index=True)
+    file = models.CharField(max_length=255, blank=True, default="")        # media-relative (imports/<tenant>/<random>.sql)
+    file_name = models.CharField(max_length=150, blank=True, default="")
+    size = models.BigIntegerField(default=0)
+    sha256 = models.CharField(max_length=64, blank=True, default="")
+    reseller = models.CharField(max_length=255, blank=True, default="", help_text="the PasarGuard admin whose accounts are linked")
+    preview = models.JSONField(default=dict, blank=True)                   # counts + masked rows (the page)
+    report = models.JSONField(default=list, blank=True)                    # per service / customer outcome (the CSV)
+    options = models.JSONField(default=dict, blank=True)                   # plan map, confirmed credits, checklist
+    result = models.JSONField(default=dict, blank=True)
+    progress = models.PositiveSmallIntegerField(default=0)
+    error = models.CharField(max_length=500, blank=True, default="")
+    created_by = models.CharField(max_length=150, blank=True, default="")
+    run_by = models.CharField(max_length=150, blank=True, default="")
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    undone_at = models.DateTimeField(null=True, blank=True)
+    file_expires_at = models.DateTimeField(null=True, blank=True)
+    backup_log_id = models.IntegerField(null=True, blank=True, help_text="the DB backup taken right before the import")
+
+    class Meta:
+        db_table = "tenant_store_import"
+        ordering = ("-created_at", "-id")
+
+
+class ImportRecord(models.Model):
+    """One thing a StoreImport created or touched (TENANT): the key for re-runs (never twice) and for «بازگردانی» (undo
+    removes only rows with `created` and nothing done since). kind=history rows ARE the read-only payment history of
+    the old bot (shown on Customer 360, never revenue)."""
+
+    USER, SERVICE, CREDIT, HISTORY, REFERRAL = "user", "service", "credit", "history", "referral"
+    KINDS = [(k, k) for k in (USER, SERVICE, CREDIT, HISTORY, REFERRAL)]
+
+    tenant = tenant_fk()
+    batch = models.ForeignKey(StoreImport, on_delete=models.CASCADE, related_name="records")
+    kind = models.CharField(max_length=10, choices=KINDS)
+    source_key = models.CharField(max_length=100)
+    user = models.ForeignKey("accounts.User", null=True, blank=True, on_delete=models.CASCADE, related_name="import_records")
+    object_id = models.BigIntegerField(null=True, blank=True)
+    created = models.BooleanField(default=True, help_text="false = an existing row was only linked / updated")
+    data = models.JSONField(default=dict, blank=True)
+    at = models.DateTimeField(null=True, blank=True, help_text="history: when it happened in the old bot")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "tenant_import_record"
+        ordering = ("-at", "-id")
+        constraints = [models.UniqueConstraint(fields=["tenant", "kind", "source_key"], name="tenant_import_record_once")]
+        indexes = [models.Index(fields=["batch", "kind"])]

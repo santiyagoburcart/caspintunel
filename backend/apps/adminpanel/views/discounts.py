@@ -53,7 +53,7 @@ def status_of(dc: DiscountCode, held: int | None = None) -> str:
         return "disabled"
     if dc.expires_at and dc.expires_at <= now:
         return "expired"
-    if dc.kind == "winback" and dc.used_at:
+    if dc.kind in ("winback", "credit") and dc.used_at:
         return "used_up"
     if dc.starts_at and dc.starts_at > now:
         return "scheduled"
@@ -102,7 +102,7 @@ class DiscountCodeSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         inst = self.instance
-        if inst is not None and inst.kind == "winback":
+        if inst is not None and inst.kind in ("winback", "credit"):
             extra = set(attrs) - WINBACK_EDITABLE - {"customer_ids", "plan_ids"}
             if extra or "customer_ids" in attrs or "plan_ids" in attrs:
                 raise serializers.ValidationError(
@@ -127,7 +127,7 @@ class DiscountCodeSerializer(serializers.ModelSerializer):
         if get("min_order_amount") is not None and Decimal(get("min_order_amount")) < 0:
             raise serializers.ValidationError({"min_order_amount": "cannot be negative"})
         audience = get("audience") or "all"
-        if (inst is None or inst.kind != "winback") and audience == "selected":
+        if (inst is None or inst.kind not in ("winback", "credit")) and audience == "selected":
             ids = attrs.get("customer_ids") if "customer_ids" in attrs else (list(inst.customers.values_list("id", flat=True)) if inst else [])
             if not ids:
                 raise serializers.ValidationError({"customer_ids": "pick at least one customer"})
@@ -205,7 +205,7 @@ class DiscountCodeViewSet(AdminViewSet):
     def get_queryset(self):
         qs = DiscountCode.objects.select_related("user").prefetch_related("customers", "plans").order_by("-created_at", "-id")
         q = self.request.query_params
-        if q.get("kind") in ("winback", "campaign"):
+        if q.get("kind") in ("winback", "campaign", "credit"):
             qs = qs.filter(kind=q["kind"])
         if q.get("search"):
             s = q["search"].strip()

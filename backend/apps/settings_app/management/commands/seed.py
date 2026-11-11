@@ -596,7 +596,8 @@ class Command(BaseCommand):
         # Created only when missing, like the summary below.
         hourly, _ = IntervalSchedule.objects.get_or_create(every=60, period=IntervalSchedule.MINUTES)
         for name, task in (("store: export cleanup", "apps.tenancy.tasks.store_exports_cleanup_task"),
-                           ("store: monthly fees", "apps.tenancy.tasks.store_fees_task")):
+                           ("store: monthly fees", "apps.tenancy.tasks.store_fees_task"),
+                           ("store: import cleanup", "apps.tenancy.tasks.store_imports_cleanup_task")):   # v1.56
             if not PeriodicTask.objects.filter(name=name).exists():
                 PeriodicTask.objects.create(name=name, task=task, interval=hourly, kwargs=_json.dumps({}), enabled=True)
 

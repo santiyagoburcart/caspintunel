@@ -28,6 +28,8 @@ from .models import DiscountAppliesTo, DiscountAudience, DiscountCode, DiscountK
 D0 = Decimal(0)
 ALPHA = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 HELD_STATUSES = ("paid", "completed", "failed")
+# one customer, one use: the owner only; used up once its order is paid (v1.20 win-back, v1.56 carried-over credit)
+PERSONAL = (DiscountKind.WINBACK, DiscountKind.CREDIT)
 
 # code → (Persian, English). {n} = an amount already formatted
 MESSAGES = {
@@ -129,7 +131,7 @@ def evaluate(raw: str, *, user, plan, order_type: str, amount, now=None) -> Quot
     dc = DiscountCode.objects.filter(code=normalize(raw)).first()
     if dc is None:
         raise DiscountError("invalid")
-    if dc.kind == DiscountKind.WINBACK and dc.user_id and dc.user_id != user.id:
+    if dc.kind in PERSONAL and dc.user_id and dc.user_id != user.id:
         raise DiscountError("invalid")          # someone else's personal code: don't reveal it exists
     if not dc.is_active:
         raise DiscountError("inactive")
@@ -157,7 +159,7 @@ def evaluate(raw: str, *, user, plan, order_type: str, amount, now=None) -> Quot
         raise DiscountError("already_used")
     if dc.max_uses is not None and held_orders(dc, exclude_user_unpaid=user).count() >= dc.max_uses:
         raise DiscountError("used_up")
-    if dc.kind == DiscountKind.WINBACK and dc.used_at is not None:
+    if dc.kind in PERSONAL and dc.used_at is not None:
         raise DiscountError("already_used")
     return Quote(code=dc, original=amount, discount=compute(dc, amount))
 
@@ -170,7 +172,16 @@ def any_usable_for(user) -> bool:
             .filter(Q(expires_at__isnull=True) | Q(expires_at__gt=now)))
     return (live.filter(kind=DiscountKind.CAMPAIGN, audience=DiscountAudience.ALL).exists()
             or live.filter(kind=DiscountKind.CAMPAIGN, audience=DiscountAudience.SELECTED, customers=user).exists()
-            or live.filter(kind=DiscountKind.WINBACK, user=user, used_at__isnull=True).exists())
+            or live.filter(kind__in=PERSONAL, user=user, used_at__isnull=True).exists())
+
+
+def credits_for(user) -> list[DiscountCode]:
+    """v1.56: the customer's own carried-over credits they can use now (the bot / checkout offer them by name, so the
+    customer never has to know the code)."""
+    now = timezone.now()
+    return list(DiscountCode.objects.filter(kind=DiscountKind.CREDIT, user=user, is_active=True, used_at__isnull=True)
+                .filter(Q(starts_at__isnull=True) | Q(starts_at__lte=now))
+                .filter(Q(expires_at__isnull=True) | Q(expires_at__gt=now)).order_by("-amount_off", "id"))
 
 
 # ------------------------------------------------------------------ reports

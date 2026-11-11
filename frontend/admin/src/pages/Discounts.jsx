@@ -15,7 +15,7 @@ const T = {
   fa: {
     title: 'کدهای تخفیف', sub: 'کدهای تخفیف سایت، مینی‌اپ و ربات — همراه کدهای بازگشت مشتری (CRM).',
     new: 'کد تخفیف جدید', edit: 'ویرایش کد', k_active: 'کد فعال', k_sched: 'زمان‌بندی‌شده', k_uses: 'استفاده (پرداخت‌شده)', k_disc: 'جمع تخفیف', k_rev: 'درآمد با کد',
-    all: 'همه', campaign: 'کد تخفیف', winback: 'بازگشت مشتری', search: 'جستجوی کد یا نام…',
+    all: 'همه', campaign: 'کد تخفیف', winback: 'بازگشت مشتری', credit: 'اعتبار انتقالی', search: 'جستجوی کد یا نام…',
     st_active: 'فعال', st_scheduled: 'زمان‌بندی‌شده', st_expired: 'منقضی', st_disabled: 'غیرفعال', st_used_up: 'تمام‌شده',
     code: 'کد', name: 'نام (داخلی)', random: 'تصادفی', active: 'فعال', start: 'شروع', end: 'پایان', none: 'بدون محدودیت', pick_date: 'انتخاب تاریخ', time: 'ساعت',
     type: 'نوع تخفیف', percent: 'درصدی', fixed: 'مبلغ ثابت', pct: 'درصد', max: 'سقف تخفیف (تومان، اختیاری)', amount: 'مبلغ تخفیف (تومان)',
@@ -25,7 +25,7 @@ const T = {
     note: 'یادداشت', save: 'ذخیره', cancel: 'انصراف', create: 'ساخت کد', saved: 'ذخیره شد', created: 'کد ساخته شد',
     disable: 'غیرفعال کن', enable: 'فعال کن', report: 'گزارش', close: 'بستن', owner: 'مشتری', uses: 'استفاده', customers: 'مشتری', disc: 'تخفیف', rev: 'درآمد',
     held: 'رزرو / در انتظار', no_codes: 'هنوز کدی ساخته نشده است.', upto: 'تا سقف', off: 'تخفیف', of: 'از', unl: 'نامحدود', per: 'هر مشتری',
-    wb_note: 'کد بازگشت مشتری: فقط روشن/خاموش، تاریخ پایان، نام و یادداشت قابل تغییر است.',
+    wb_note: 'کد شخصی (بازگشت مشتری / اعتبار انتقالی): فقط روشن/خاموش، تاریخ پایان، نام و یادداشت قابل تغییر است.',
     o_order: 'سفارش', o_customer: 'مشتری', o_plan: 'پلن', o_orig: 'قیمت', o_final: 'مبلغ نهایی', o_paid: 'پرداخت‌شده', o_status: 'وضعیت', o_none: 'هنوز سفارشی با این کد نیست.',
     ost: { pending_payment: 'در انتظار پرداخت', paid: 'پرداخت‌شده', completed: 'تکمیل', rejected: 'ردشده', expired: 'منقضی', failed: 'ناموفق', cancelled: 'لغوشده' },
     tehran: 'به وقت تهران', need_customer: 'حداقل یک مشتری انتخاب کنید.', check: 'قوانین', first_only: 'اولین خرید', minimum: 'حداقل',
@@ -33,7 +33,7 @@ const T = {
   en: {
     title: 'Discount codes', sub: 'Codes for the site, Mini App and bot — plus the customer win-back codes (CRM).',
     new: 'New discount code', edit: 'Edit code', k_active: 'Active codes', k_sched: 'Scheduled', k_uses: 'Uses (paid)', k_disc: 'Total discount', k_rev: 'Revenue with codes',
-    all: 'All', campaign: 'Discount code', winback: 'Win-back', search: 'Search code or name…',
+    all: 'All', campaign: 'Discount code', winback: 'Win-back', credit: 'Carried-over credit', search: 'Search code or name…',
     st_active: 'Active', st_scheduled: 'Scheduled', st_expired: 'Expired', st_disabled: 'Disabled', st_used_up: 'Used up',
     code: 'Code', name: 'Name (internal)', random: 'Random', active: 'Active', start: 'Starts', end: 'Ends', none: 'No limit', pick_date: 'Pick a date', time: 'Time',
     type: 'Discount type', percent: 'Percent', fixed: 'Fixed amount', pct: 'Percent', max: 'Max discount (Toman, optional)', amount: 'Discount (Toman)',
@@ -43,7 +43,7 @@ const T = {
     note: 'Note', save: 'Save', cancel: 'Cancel', create: 'Create code', saved: 'Saved', created: 'Code created',
     disable: 'Disable', enable: 'Enable', report: 'Report', close: 'Close', owner: 'Customer', uses: 'uses', customers: 'customers', disc: 'Discount', rev: 'Revenue',
     held: 'reserved / pending', no_codes: 'No codes yet.', upto: 'up to', off: 'off', of: 'of', unl: 'unlimited', per: 'per customer',
-    wb_note: 'Win-back code: only on/off, end date, name and note can be changed.',
+    wb_note: 'Personal code (win-back / carried-over credit): only on/off, end date, name and note can be changed.',
     o_order: 'Order', o_customer: 'Customer', o_plan: 'Plan', o_orig: 'Price', o_final: 'Final', o_paid: 'Paid', o_status: 'Status', o_none: 'No orders with this code yet.',
     ost: { pending_payment: 'Pending payment', paid: 'Paid', completed: 'Completed', rejected: 'Rejected', expired: 'Expired', failed: 'Failed', cancelled: 'Cancelled' },
     tehran: 'Tehran time', need_customer: 'Pick at least one customer.', check: 'Rules', first_only: 'First purchase', minimum: 'Min',
@@ -110,7 +110,7 @@ const blank = { code: '', name: '', is_active: true, starts_at: null, expires_at
   max_uses_per_customer: 1, min_order_amount: '', note: '' }
 
 function Editor({ row, plans, s, lang, onClose, onSaved }) {
-  const wb = row?.kind === 'winback'
+  const wb = row?.kind === 'winback' || row?.kind === 'credit'   // personal one-use codes (v1.56: + carried-over credit)
   const [f, setF] = useState(() => (row ? {
     ...blank, ...row, customers: row.customers || [], plan_ids: (row.plans || []).map((p) => p.id),
     max_discount: row.max_discount ?? '', amount_off: row.amount_off ?? '', max_uses: row.max_uses ?? '',
@@ -245,7 +245,7 @@ function rule(c, s, lang) {
   const off = c.discount_type === 'fixed' ? toman(c.amount_off, lang)
     : `${digits(c.percent, lang)}%${c.max_discount ? ` (${s.upto} ${toman(c.max_discount, lang)})` : ''}`
   const bits = [off]
-  if (c.kind === 'winback' && c.owner) bits.push(`${s.owner}: ${c.owner.username}`)
+  if ((c.kind === 'winback' || c.kind === 'credit') && c.owner) bits.push(`${s.owner}: ${c.owner.username}`)
   else if (c.audience === 'selected') bits.push(`${digits(c.customers.length, lang)} ${s.customers}`)
   if (c.plans?.length) bits.push(c.plans.map((p) => (lang === 'en' ? p.name_en || p.name_fa : p.name_fa)).join('، '))
   if (c.applies_to !== 'both') bits.push(c.applies_to === 'new' ? s.f_new : s.f_renew)
@@ -303,7 +303,7 @@ export default function Discounts() {
         </dl>
       )}
       <div className="dc-filters">
-        <div className="dc-seg">{[['', s.all], ['campaign', s.campaign], ['winback', s.winback]].map(([v, t]) => (
+        <div className="dc-seg">{[['', s.all], ['campaign', s.campaign], ['winback', s.winback], ['credit', s.credit]].map(([v, t]) => (
           <button key={v} type="button" className={kind === v ? 'on' : ''} onClick={() => setKind(v)}>{t}</button>))}</div>
         <select className="input dc-sel" value={status} onChange={(e) => setStatus(e.target.value)} aria-label={s.o_status}>
           <option value="">{s.all}</option>{['active', 'scheduled', 'expired', 'disabled'].map((v) => <option key={v} value={v}>{s['st_' + v]}</option>)}
@@ -371,6 +371,7 @@ const CSS = `
 .dc-code { font-family: ui-monospace, monospace; font-size: 14px; letter-spacing: .03em; overflow-wrap: anywhere; }
 .dc-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
 .dc-kind, .dc-st { font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--c-border); color: var(--c-text-muted); white-space: nowrap; }
+.dc-kind[data-k="credit"] { color: var(--c-success-fg); border-color: color-mix(in srgb, var(--c-success) 35%, transparent); }
 .dc-kind[data-k="winback"] { color: #7C3AED; border-color: color-mix(in srgb, #7C3AED 35%, transparent); }
 .dc-st[data-st="active"] { color: var(--c-success); border-color: color-mix(in srgb, var(--c-success) 40%, transparent); }
 .dc-st[data-st="scheduled"] { color: var(--c-primary); border-color: color-mix(in srgb, var(--c-primary) 40%, transparent); }

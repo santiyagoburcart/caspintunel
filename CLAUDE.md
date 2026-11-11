@@ -192,6 +192,11 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   `media/exports/` (nginx 404), served only through `consume` (one-time, host-bound link). **Fees (`tenancy/fees.py`)**: off by
   default; invoices only through the agency ledger / `issue_for_entry(kind=store_fee)`; suspension only by `run` and only when
   `suspend_enabled` — never suspend / resume a store elsewhere for a fee.
+- **Store import (v1.56, `tenancy/importers`, docs/store-import.md)**: our staff only; the dump is read as TEXT (never executed),
+  kept 0600 under `media/imports/` (nginx 404) and deleted after the run / 24 h. Link a PasarGuard account ONLY when its owner is
+  the store's reseller (`link_existing_service(owner_must_be=…)`) — never create / change anything on PasarGuard. Balances = one-use
+  `DiscountCode` kind `credit` (above the review limit only when confirmed); old payments = read-only `ImportRecord` history, never
+  `Payment` / revenue; never message customers from an import. Tests use synthetic dumps only — a real dump never enters the repo.
 - The rejected Liquid Glass refresh is archived at tag `archive/ui-refresh-liquid-glass` — don't copy from it.
 
 ## Gotchas (learned the hard way)

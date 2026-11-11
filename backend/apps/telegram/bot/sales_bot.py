@@ -349,11 +349,11 @@ def _after_draft(bot, chat_id, user, tg_id, msg=None) -> None:
         set_state(tg_id, awaiting=None)
         return render(bot, chat_id, sc.terms(user), msg)
     # v1.26: ask for a discount code — only when some code could apply to this customer
-    from apps.crm.discounts import any_usable_for
+    from apps.crm.discounts import any_usable_for, credits_for
 
     if not get_state(tg_id).get("dc_done") and any_usable_for(user):
         set_state(tg_id, awaiting=None)
-        return render(bot, chat_id, sc.discount_ask(user), msg)
+        return render(bot, chat_id, sc.discount_ask(user, credits_for(user)), msg)
     _place_order(bot, chat_id, user, tg_id, msg)
 
 
@@ -650,6 +650,24 @@ def _route(bot, chat_id, msg, user, tg, data: str) -> None:
         if parts[1:] == ["go"]:
             set_state(tg, dc_done=True, awaiting=None)
             return _place_order(bot, chat_id, user, tg, msg)
+        if len(parts) == 3 and parts[1] == "cr" and parts[2].isdigit():     # v1.56: a carried-over credit, by button
+            from apps.crm.discounts import credits_for
+
+            mine = credits_for(user)
+            dc = next((d for d in mine if d.pk == int(parts[2])), None)
+            if dc is None:
+                return render(bot, chat_id, sc.discount_ask(user, mine), msg)
+            try:
+                q = _draft_quote(user, st, dc.code)
+            except DiscountCodeRefused as exc:
+                return render(bot, chat_id, sc.discount_bad(user, exc.message(user.language)), msg)
+            except RenewalWaiting as exc:
+                clear_state(tg)
+                return bot.send_message(chat_id, html.escape(exc.message(user.language)), reply_markup=sc.main_menu(user).markup)
+            except OrderError as exc:
+                return bot.send_message(chat_id, html.escape(str(exc))[:300])
+            set_state(tg, dcode=q["code"], dc_done=True, awaiting=None)
+            return render(bot, chat_id, sc.discount_ok(user, q), msg)
     if head == "o":
         order = Order.objects.filter(pk=int(parts[1]), user=user).select_related("plan", "payment").first()
         if not order:

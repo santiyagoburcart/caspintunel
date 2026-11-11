@@ -21,6 +21,7 @@ TENANT = [
     "crm.Tag", "crm.CustomerProfile", "crm.CustomerNote", "crm.CaseReason", "crm.FollowUpCase", "crm.MessageTemplate",
     "crm.CrmEvent", "crm.WarningRule", "crm.ServiceWarning", "crm.ServiceEndMark", "crm.DiscountCode",
     "tenancy.TenantExport",          # v1.53: a store's own backups (tenancy/export.py)
+    "tenancy.StoreImport", "tenancy.ImportRecord",   # v1.56: imports from another bot (tenancy/importers)
 ]
 
 NULLABLE = [

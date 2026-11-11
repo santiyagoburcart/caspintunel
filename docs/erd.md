@@ -24,6 +24,9 @@ erDiagram
     tenant ||--o{ tenant_domain : has
     tenant ||--o| tenant_bot : "v1.49 own Telegram bot"
     tenant ||--o{ tenant_export : "v1.53 backups"
+    tenant ||--o{ tenant_store_import : "v1.56 imports from another bot"
+    tenant_store_import ||--o{ tenant_import_record : "what it made (re-run key · undo)"
+    user ||--o{ tenant_import_record : "customer"
     tenant ||--o| tenant_fee : "v1.53 monthly fee (off)"
     tenant ||--o{ tenant_fee_invoice : "v1.53 one per Jalali month"
     agency_invoice ||--o| tenant_fee_invoice : "kind store_fee"
@@ -94,6 +97,32 @@ erDiagram
         string link_scope "store | platform"
         int downloads
     }
+    tenant_store_import {
+        bigint id PK
+        bigint tenant_id FK "TENANT table (scoped)"
+        string source "mirza"
+        string state "uploaded | scanning | ready | running | done | failed | undone | discarded"
+        string file "media/imports/TENANT/RANDOM.sql (0600, deleted after import / 24 h)"
+        string sha256
+        string reseller "PasarGuard admin whose accounts are linked"
+        json preview "counts + masked rows"
+        json report "one row per service / customer"
+        json options "plan map · confirmed credits · checklist"
+        json result
+        int backup_log_id "DB backup before the run"
+    }
+    tenant_import_record {
+        bigint id PK
+        bigint tenant_id FK
+        bigint batch_id FK
+        string kind "user | service | credit | history | referral"
+        string source_key "unique per (tenant, kind)"
+        bigint user_id FK
+        bigint object_id
+        bool created "false = existing row reused"
+        json data "history: amount · kind · service"
+        datetime at "history: when in the old bot"
+    }
     tenant_fee {
         bigint id PK
         bigint tenant_id FK "one per store"
@@ -142,6 +171,8 @@ erDiagram
 | `tenant_domain` | a host routed to a tenant; only `active` hosts of an `active` store are served (v1.41 / v1.43). v1.45: our staff add it on «فروشگاه» (mode direct / tunnel; `cloudflare` unused — a proxied record is detected into `proxied`), DNS + TXT checks, HTTP-01 certificate + nginx file by the host watcher, health (`tenancy/domains.py`). |
 | `tenant_bot` | v1.49 (Phase 6): a store's own Telegram bot — set / replaced / removed only by our staff on «فروشگاه» (`tenancy/bots.py`); webhook to `/api/v1/telegram/hook/<tenant id>/` on our host with `webhook_secret`; menu button → the store's Mini App; checked every 10 min. Platform table (keyed by the store, never scoped). |
 | `tenant_export` | v1.53 (Phase 10): one backup of a store's own data (`tenancy/export.py`) — TENANT table; zip under `media/exports/` (nginx 404), served once per one-time link (sha256 stored) until 24 h after ready, then deleted. |
+| `tenant_store_import` | v1.56 (Phase 11, `tenancy/importers`, [store-import.md](store-import.md)): one import of another bot's dump into a store — TENANT table; the dump under `media/imports/` (nginx 404, 0600) until done / 24 h; preview + report JSON; made only by our staff. |
+| `tenant_import_record` | v1.56: one row per thing an import made or reused (user / service / credit / history / referral), unique (tenant, kind, source_key) — re-runs never duplicate, «بازگردانی» removes only unused ones; `history` rows ARE the old bot's paid payments (read-only, never revenue). |
 | `tenant_fee` | v1.53 (Phase 12): the store's monthly fee settings (`tenancy/fees.py`), off by default — platform table. |
 | `tenant_fee_invoice` | v1.53: one month's fee → its `agency_invoice` (kind `store_fee`), reminder / suspension / resume marks — platform table. |
 | `tenant_branding` | v1.43 a reseller store's branding (same fields as `site_config`, which stays our own store's); `theme_id` = its theme. v1.51: `support_email` = Reply-To of the mail we send for the store. |

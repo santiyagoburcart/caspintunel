@@ -1572,6 +1572,35 @@ sequenceDiagram
     end
 ```
 
+## 16p. Store import from a reseller's previous bot (v1.56)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor S as Our staff («فروشگاه»)
+    participant API as Our API
+    participant W as Celery (inside the store)
+    participant PG as PasarGuard
+    participant DB as Store data
+    S->>API: upload dump (.zip / .sql) · agency.manage
+    API->>API: is it a MySQL dump · keep it 0600 under media/imports (nginx 404)
+    API->>W: scan_import_task
+    W->>PG: GET /api/users (paged · read-only)
+    W->>DB: which accounts are already linked (every store)
+    W-->>S: preview: counts · masked rows · plan map · big balances · store sign-up rules
+    S->>API: run · «ربات قبلی فروش را متوقف کرده است» · plan map · confirmed balances
+    API->>W: run_import_task
+    W->>W: DB backup first (failed = nothing written)
+    W->>PG: GET /api/users again (owner re-checked)
+    W->>DB: customers by Telegram id · services only if owner = the store's reseller · referrals
+    W->>DB: balances → one-use credit codes · paid payments → read-only history
+    W-->>S: done · CSV report · one alert to us (no customer messages)
+    opt undo
+        S->>API: «بازگردانی»
+        API->>DB: remove only rows unused since (PasarGuard untouched)
+    end
+```
+
 ## 16o. WireGuard configs (v1.55)
 
 ```mermaid

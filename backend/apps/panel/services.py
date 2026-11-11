@@ -680,10 +680,15 @@ def search_panel_users(panel: Panel, search: str = "", *, limit: int = 20) -> li
 
 @transaction.atomic
 def link_existing_service(*, user, panel: Panel, panel_username: str, plan=None, staff=None,
-                          confirm_other_admin: bool = False) -> Service:
+                          confirm_other_admin: bool = False, owner_must_be: str | None = None,
+                          api_user: dict | None = None, source: str = "admin") -> Service:
     """Adopt an account that already exists on the panel: create our Service
     (mirrored from the live panel data) + a completed `imported` Order with no
-    payment. Nothing is changed on the panel."""
+    payment. Nothing is changed on the panel.
+
+    v1.56 store import: `owner_must_be` = the store's reseller — the account is linked only when PasarGuard says that
+    admin owns it (anything else raises PanelLinkNeedsConfirmation, never "confirmed"); `api_user` = the account as just
+    read from the panel (skips a second GET)."""
     from apps.orders.models import Order, OrderStatus, OrderType
 
     name = (panel_username or "").strip()
@@ -695,10 +700,14 @@ def link_existing_service(*, user, panel: Panel, panel_username: str, plan=None,
     if existing is not None:
         raise ServiceAlreadyLinked(existing)
 
-    api_user = client_for(panel).get_user(name)          # PanelNotFound -> caller
+    if api_user is None or (api_user.get("username") or "").lower() != name.lower():
+        api_user = client_for(panel).get_user(name)      # PanelNotFound -> caller
     name = api_user.get("username") or name               # the panel's exact spelling
     owner = panel_owner(api_user)
-    if owner and owner != panel.admin_username and not confirm_other_admin:
+    if owner_must_be is not None:
+        if owner.lower() != owner_must_be.lower():
+            raise PanelLinkNeedsConfirmation(name, owner=owner)   # never another admin's account
+    elif owner and owner != panel.admin_username and not confirm_other_admin:
         raise PanelLinkNeedsConfirmation(name, owner=owner)   # e.g. a reseller's customer: staff must choose explicitly
 
     service = Service(user=user, panel=panel, panel_username=name, current_plan=plan, source="import")
@@ -709,14 +718,15 @@ def link_existing_service(*, user, panel: Panel, panel_username: str, plan=None,
     order = Order(
         user=user, plan=plan, service=service, type=OrderType.IMPORTED,
         requested_account_name=name, amount=0, amount_unique=0,
-        unique_expire_at=timezone.now(), status=OrderStatus.COMPLETED, source="admin",
+        unique_expire_at=timezone.now(), status=OrderStatus.COMPLETED, source=source,
     )
     order.sync_unique_lock()
     order.save()
 
     write_audit(action="service.linked_existing", staff=staff, target=service, detail={
         "panel": panel.id, "panel_username": name, "user": user.id, "panel_owner": owner,
-        "other_admin_confirmed": bool(confirm_other_admin and owner and owner != panel.admin_username),
+        "other_admin_confirmed": bool(owner_must_be is None and confirm_other_admin and owner and owner != panel.admin_username),
+        **({"store_reseller": owner_must_be} if owner_must_be is not None else {}),
         "plan": plan.id if plan else None, "order": order.id,
     })
     return service

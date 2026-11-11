@@ -38,6 +38,14 @@ class OrderViewSet(mixins.CreateModelMixin, mixins.ListModelMixin,
         body["reused"] = reused
         return Response(body, status=200 if reused else 201)
 
+    @action(detail=False, methods=["get"], url_path="credits")
+    def credits(self, request):
+        """v1.56: the customer's own carried-over credits (store import) — checkout offers them by amount."""
+        from apps.crm.discounts import credits_for
+
+        return Response({"results": [{"code": d.code, "amount": str(d.amount_off), "expires_at": d.expires_at}
+                                     for d in credits_for(request.user)]})
+
     @action(detail=False, methods=["post"], url_path="quote")
     def quote(self, request):
         """v1.26: the price before payment — original, discount, final — for the

@@ -654,3 +654,11 @@ Everything shipped since v1.6.0 (details in the session log):
 - 2026-11-11 — **v1.55.2:** WireGuard .conf name = exactly the location's «نام فایل» (the tunnel name in the app, e.g.
   `CaspinIran.conf`) or the optional global template (`{location}` default, `{service}` available), validated against
   WireGuard's tunnel-name rules (≤ 15 of A-Z a-z 0-9 _ = + . -) with a live Persian warning + preview; zip keeps `CT-<id>`.
+- 2026-11-11 — **v1.56.0: store import from a reseller's previous bot (Phase 11 started).** Read-only analysis of a real
+  Mirza-bot dump first (kept root-only outside the repo, never in tests). Built `tenancy/importers/`: text-only dump reader,
+  Mirza adapter, engine (`StoreImport` + `ImportRecord`, TENANT): upload on «فروشگاه» (our staff) → read-only scan + masked
+  preview → checklist «ربات قبلی فروش را متوقف کرده است» + plan map + big balances confirmed one by one → run (DB backup
+  first) → CSV report → undo. Services linked only when PasarGuard's owner is the store's reseller; 1-day tests / unpaid
+  skipped; balances → `DiscountCode` kind `credit` (offered by the bot button + checkout chip); paid payments → read-only
+  history on Customer 360 (never revenue); no customer messages; imported customers follow the store's phone rule.
+  Tests: `tenancy/tests/test_v156_store_import.py` (11, synthetic dumps). Docs: [store-import.md](docs/store-import.md).
