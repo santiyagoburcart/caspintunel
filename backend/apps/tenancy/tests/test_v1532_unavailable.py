@@ -54,6 +54,26 @@ def test_a_suspended_store_shows_its_own_unavailable_page(store):
     assert head.status_code == 503 and head.content == b""
 
 
+def test_the_expected_503_is_not_logged_as_an_error(store):
+    """v1.53.3: a parked store's page is expected — no django.request ERROR per visitor. (A handler on the logger
+    itself: our LOGGING config does not let django.request reach the root logger, where caplog listens.)"""
+    import logging
+
+    seen = []
+
+    class Keep(logging.Handler):
+        def emit(self, record):
+            seen.append(record)
+
+    h, log = Keep(level=logging.WARNING), logging.getLogger("django.request")
+    log.addHandler(h)
+    try:
+        assert _get(HOST).status_code == 503
+    finally:
+        log.removeHandler(h)
+    assert not [r for r in seen if r.levelno >= logging.ERROR]         # without the fix: one ERROR per request
+
+
 def test_without_a_logo_a_letter_is_shown_and_draft_stores_retry_sooner(store):
     Tenant.objects.filter(pk=store.pk).update(status="draft")
     with context.tenant_context(store.pk):

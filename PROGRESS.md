@@ -626,3 +626,5 @@ Everything shipped since v1.6.0 (details in the session log):
   TLS hop (`$fwd_proto`), IPs / internal names, ACME or `/.well-known/caspin/`. `scripts/test-tenants.sh` now runs the REAL
   prod.conf with echo upstreams (`scripts/domaintest/mockapp.py`): redirect, spoofed header, tunnel (80 + 443), parked vhost.
   Tests: `tenancy/tests/test_v1532_unavailable.py` (6); browser check of the page (phone + desktop, light + dark).
+- 2026-11-11 — **v1.53.3:** the parked-store page's 503 is expected — no longer logged by Django as an ERROR per visitor
+  (`response._has_been_logged`); test in `test_v1532_unavailable.py`.

@@ -92,4 +92,7 @@ def respond(request):
     resp["Retry-After"] = "3600" if t.status in (Tenant.SUSPENDED, Tenant.CLOSED) else "60"
     resp["Cache-Control"] = "no-store"
     resp["X-Robots-Tag"] = "noindex"
+    # v1.53.3: an expected 503, not a server error — Django's request logger skips a response already marked as logged
+    # (django.utils.log.log_response), so a parked store's visitors never fill the logs with ERROR lines
+    resp._has_been_logged = True
     return resp
