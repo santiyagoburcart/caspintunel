@@ -36,6 +36,8 @@ erDiagram
     tenant ||--o{ user : "tenant_id (and every tenant table)"
     tenant {
         bigint id PK
+        datetime created_at
+        datetime updated_at
         string slug UK "default = our store"
         string name
         string reseller_username "agency admin, empty for the default"
@@ -48,6 +50,8 @@ erDiagram
     }
     tenant_domain {
         bigint id PK
+        datetime created_at
+        datetime updated_at
         bigint tenant_id FK
         string host UK
         string role "site | admin | both"
@@ -69,6 +73,8 @@ erDiagram
     }
     tenant_bot {
         bigint id PK
+        datetime created_at
+        datetime updated_at
         bigint tenant_id FK "one per store"
         text token "encrypted, never returned"
         text webhook_secret "encrypted, X-Telegram-Bot-Api-Secret-Token"
@@ -83,6 +89,8 @@ erDiagram
     }
     tenant_export {
         bigint id PK
+        datetime created_at
+        datetime updated_at
         bigint tenant_id FK "TENANT table (scoped)"
         string requested_by
         bool by_platform "our staff («فروشگاه»)"
@@ -92,23 +100,40 @@ erDiagram
         string file "media/exports/TENANT/RANDOM.zip"
         bigint size
         json counts
+        string error
+        datetime started_at
+        datetime finished_at
         datetime expires_at "24 h after ready"
         string link_hash "sha256 of the one-time token"
         string link_scope "store | platform"
+        datetime link_expires_at
         int downloads
+        datetime last_download_at
     }
     tenant_store_import {
         bigint id PK
+        datetime created_at
+        datetime updated_at
         bigint tenant_id FK "TENANT table (scoped)"
         string source "mirza"
         string state "uploaded | scanning | ready | running | done | failed | undone | discarded"
         string file "media/imports/TENANT/RANDOM.sql (0600, deleted after import / 24 h)"
+        string file_name
+        bigint size
         string sha256
         string reseller "PasarGuard admin whose accounts are linked"
         json preview "counts + masked rows"
         json report "one row per service / customer"
         json options "plan map · confirmed credits · checklist"
         json result
+        int progress
+        string error
+        string created_by
+        string run_by
+        datetime started_at
+        datetime finished_at
+        datetime undone_at
+        datetime file_expires_at
         int backup_log_id "DB backup before the run"
     }
     tenant_import_record {
@@ -122,9 +147,12 @@ erDiagram
         bool created "false = existing row reused"
         json data "history: amount · kind · service"
         datetime at "history: when in the old bot"
+        datetime created_at
     }
     tenant_fee {
         bigint id PK
+        datetime created_at
+        datetime updated_at
         bigint tenant_id FK "one per store"
         bool enabled "off by default"
         decimal amount "tomans per month"
@@ -132,6 +160,7 @@ erDiagram
         int remind_after_days "0 = none"
         bool suspend_enabled "off by default"
         int suspend_after_days
+        string updated_by
     }
     tenant_fee_invoice {
         bigint id PK
@@ -140,6 +169,7 @@ erDiagram
         date due_date
         decimal amount
         bigint invoice_id FK "agency_invoice (kind store_fee)"
+        datetime created_at
         datetime reminded_at
         datetime suspended_at
         datetime resumed_at
@@ -151,10 +181,18 @@ erDiagram
         string site_name_en
         string logo "tenants/ID/branding/"
         string favicon
+        text bot_description_fa
+        text bot_description_en
         string support_telegram
-        string support_email "v1.51 Reply-To of the store's mail"
+        string bot_support_telegram
+        text bot_support_text_fa
+        text bot_support_text_en
         string qr_background
+        string qr_background_custom
+        text meta_description
+        string support_email "v1.51 Reply-To of the store's mail"
         bigint theme_id FK "built-in or the store's own"
+        datetime updated_at
     }
     tenant_setting {
         bigint id PK
@@ -193,71 +231,106 @@ erDiagram
 
     user {
         bigint id PK
+        string password
+        datetime last_login
+        bool is_superuser
+        bigint tenant_id FK "TENANT · the store"
         string username UK
         string email
         bool email_verified
+        string name
         string phone "09xxxxxxxxx, app-level unique"
         bigint telegram_id UK
         string telegram_username
+        string bank_card_number
         string referral_code UK
         bigint referred_by_id FK
         string source "site | bot"
-        bool is_legacy "imported from the old system"
         string language "fa | en"
         bool notify_sound "v1.33 sound on new site notifications"
+        bool is_legacy "imported from the old system"
+        text admin_note
         datetime terms_accepted_at
+        bool is_active
+        bool is_staff
         datetime deleted_at "soft delete"
+        bigint deleted_by_id FK
+        text delete_reason
         datetime purged_at "permanent delete: anonymous placeholder"
         bigint purged_by_id FK "staff"
-        bigint deleted_by_id FK
+        datetime created_at
+        datetime updated_at
     }
     staff {
         bigint id PK
+        datetime created_at
+        datetime updated_at
+        bigint tenant_id FK "TENANT · the store"
         string username UK
         string password_hash
         bigint role_id FK
+        bool is_active
         bool is_superadmin
+        datetime last_login
         int token_version "JWT tv claim"
         string email "ticket notifications"
         string display_name "shown to customers if enabled"
         bigint telegram_id UK "linked via the sales bot"
-        datetime telegram_linked_at
         json notify_prefs "v1.33 {sound, volume}"
+        datetime telegram_linked_at
     }
     role {
         bigint id PK
         bigint tenant_id FK "NULL = ours · v1.52 a store's own roles"
         string name "UK with tenant (v1.52)"
+        string description
         string name_fa "v1.25.2 Persian label"
         string description_fa
     }
     permission {
         bigint id PK
         string code UK "e.g. payment.approve"
+        string name
         string name_fa "v1.25.2 Persian label"
     }
     staff_revoked_token {
         bigint id PK
         string jti UK
         datetime expires_at
+        datetime revoked_at
     }
     deleted_user_archive {
         bigint id PK
+        bigint tenant_id FK "TENANT · the store"
         bigint user_id FK
-        json snapshot
+        string original_username
+        string original_name
+        string original_phone
+        string original_email
+        bigint original_telegram_id
+        string original_telegram_username
+        datetime deleted_at
+        bigint deleted_by_id FK
+        string deleted_by_label
+        text reason
         int orders_count
         decimal total_paid
-        bigint deleted_by_id FK
+        json snapshot
+        datetime restored_at
         bigint restored_by_id FK
+        string restored_by_label
     }
     audit_log {
         bigint id PK
+        bigint tenant_id FK "TENANT · the store"
         bigint staff_id "no FK, survives staff delete"
+        string staff_label
         string action "e.g. payment.sms_auto_confirmed"
         string target_type
         bigint target_id
         json detail
         string ip
+        datetime created_at
     }
 ```
 
@@ -281,35 +354,47 @@ erDiagram
 
     panel {
         bigint id PK
+        datetime created_at
+        datetime updated_at
         string name
         string base_url
         string admin_username
         text admin_password_enc "enc"
         text token_cache "enc"
+        datetime token_expires_at
+        bool is_active
         json default_group_ids
         string subscription_base_url
-        bool is_active
+        bool verify_ssl
     }
     plan {
-        string vpn_type "v1.55: sub | wireguard | both"
         bigint id PK
+        datetime created_at
+        datetime updated_at
+        bigint tenant_id FK "TENANT · the store"
         string name_fa
         string name_en
+        text desc_fa
+        text desc_en
         bigint panel_id FK
+        string category_fa
+        string category_en
         string type "fixed | custom_volume"
         bigint data_limit "bytes, 0 = unlimited"
         int duration_days
         int device_limit
         decimal price
         decimal discount_percent
+        bool is_active
+        bool renewable_when_inactive "v1.42.1 retired plan stays renewable"
+        int sort_order
         string renewal_mode "reset | carry_over"
         string carry_over_data "both | volume_only | time_only"
-        bool renewable_when_inactive "v1.42.1 retired plan stays renewable"
+        string vpn_type "v1.55: sub | wireguard | both"
         json group_ids
         int min_gb
         int max_gb
         decimal price_per_gb
-        bool is_active
     }
     wireguard_location {
         bigint id PK
@@ -318,24 +403,34 @@ erDiagram
         string name_en
         string flag
         string slug "file name part"
+        int sort_order
+        bool is_active
+        datetime updated_at
     }
     service {
-        bool wireguard "v1.55: PasarGuard user has WireGuard peers"
         bigint id PK
+        datetime created_at
+        datetime updated_at
+        bigint tenant_id FK "TENANT · the store"
         bigint user_id FK
         bigint panel_id FK
         string panel_username
         string subscription_url
         string status "pending | on_hold | active | limited | expired | disabled"
+        string expire_strategy
         bigint data_limit
         bigint data_used
         datetime expire_at
         int on_hold_duration
+        datetime on_hold_timeout
+        datetime online_at
+        datetime last_synced_at
         int device_limit "HWID limit"
         bigint current_plan_id FK
         string source "how it was created, e.g. import = linked existing account"
         bool alert_vol_sent
         bool alert_exp_sent
+        bool wireguard "v1.55: PasarGuard user has WireGuard peers"
     }
 ```
 
@@ -369,23 +464,35 @@ erDiagram
 
     order {
         bigint id PK
+        datetime created_at
+        datetime updated_at
+        bigint tenant_id FK "TENANT · the store"
         bigint user_id FK
         bigint service_id FK
         bigint plan_id FK
         string type "new | renew | addon_volume | manual | imported"
+        string requested_account_name
         int custom_volume_gb
         decimal amount "plan price"
+        decimal discount_amount
+        decimal original_amount
+        bigint discount_code_id FK
+        string discount_code_text
         decimal amount_unique "amount + 200..1500 T surcharge"
         decimal amount_unique_lock UK "set while pending/paid"
         datetime unique_expire_at "reservation, 30 min"
         string status "pending_payment | paid | completed | rejected | failed | expired | cancelled"
         string source "site | bot | admin"
-        bigint manual_invoice_id FK "v1.38 «دستی»"
+        bool needs_new_name
         text provision_error "v1.42.1 PasarGuard's refusal («ساخت ناموفق»)"
         datetime provision_failed_at "set = no auto retry, staff fix"
+        bigint manual_invoice_id FK "v1.38 «دستی»"
     }
     manual_invoice {
         bigint id PK "MI-000123"
+        datetime created_at
+        datetime updated_at
+        bigint tenant_id FK "TENANT · the store"
         bigint user_id FK
         string mode "paid | issued"
         string status "open | paid | cancelled"
@@ -396,8 +503,10 @@ erDiagram
         decimal amount
         string service_action "none | new | renew | addon"
         bigint service_id FK
+        string account_name
         datetime due_at
         datetime paid_at
+        text note
         bigint order_id FK "the order that paid it"
         bigint created_by_id FK "staff"
     }
@@ -405,6 +514,9 @@ erDiagram
     manual_invoice ||--o{ order : "checkout / record"
     payment {
         bigint id PK
+        datetime created_at
+        datetime updated_at
+        bigint tenant_id FK "TENANT · the store"
         bigint order_id FK "one per order"
         bigint bank_card_id FK
         string method "card_manual | sms_auto | sms_mismatch | blu_auto | blu_mismatch | gateway"
@@ -416,8 +528,10 @@ erDiagram
         decimal receipt_amount "amount on the receipt, tomans (staff)"
         bigint sms_message_id FK
         bigint blu_transaction_id FK
+        string gateway_ref
         string confirmed_by "admin | system"
         bigint confirmed_by_staff_id FK
+        datetime confirmed_at
         string reject_reason
         int number UK "TX-000123 (= id, backfilled)"
         datetime voided_at "Super Admin delete (void); null = live"
@@ -433,26 +547,35 @@ erDiagram
     }
     bank_card {
         bigint id PK
+        bigint tenant_id FK "TENANT · the store"
         string card_number
         string holder_name
         string bank_name
         int sort_order
         bool is_active
+        datetime created_at
     }
     sms_source {
         bigint id PK
+        bigint tenant_id FK "TENANT · the store"
         string phone_number "bank sender (number or name)"
-        string amount_unit "rial | toman (default for unit-less SMS)"
+        string description
         bool is_active
+        string amount_unit "rial | toman (default for unit-less SMS)"
+        datetime created_at
     }
     sms_app_device {
         bigint id PK
+        bigint tenant_id FK "TENANT · the store"
         string name
         string api_token UK "X-Device-Token"
+        bool is_active
         datetime last_seen_at
+        datetime created_at
     }
     sms_message {
         bigint id PK
+        bigint tenant_id FK "TENANT · the store"
         bigint sms_source_id FK
         bigint device_id FK
         text raw_text
@@ -464,6 +587,9 @@ erDiagram
         bigint mismatch_order_id FK
         string mismatch_kind "less | more"
         string note "why matched / not matched"
+        datetime received_at
+        datetime uploaded_at
+        string dedupe_key
     }
     blu_transaction {
         bigint id PK
@@ -472,6 +598,9 @@ erDiagram
         decimal amount_toman "null unless amount_irr % 10 == 0"
         datetime occurred_at "bank timestamp (UTC)"
         string direction "بستانکار = deposit"
+        string type_label
+        string jalali_date
+        string time_str
         string payer_name
         string payer_card "masked first6******last4"
         string payer_last4
@@ -484,6 +613,7 @@ erDiagram
         bigint matched_order_id FK
         bigint matched_payment_id FK
         string match_note
+        datetime received_at
     }
     blu_collector {
         bigint id PK "single row"
@@ -504,6 +634,9 @@ erDiagram
     }
     scheduled_renewal {
         bigint id PK
+        datetime created_at
+        datetime updated_at
+        bigint tenant_id FK "TENANT · the store"
         bigint service_id FK "one per service"
         bigint plan_id FK
         bigint order_id FK
@@ -562,29 +695,41 @@ erDiagram
     agency_panel_admin {
         bigint id PK
         string username UK "PasarGuard admin"
-        datetime archived_at "v1.54: never deleted — archived (hidden from active lists / sync / enforcement)"
-        string archived_reason "panel_missing | deleted"
-        string archived_by
         bool is_sudo
+        bool is_active
         string status
         bool has_data_limit
         bigint admin_limit_bytes
+        bigint last_limit_bytes
         bigint admin_remaining
         bigint total_user_limit "Total Sold"
         bigint total_user_used
         int user_count
         int active_user_count
+        int limited_users
+        int disabled_users
+        int expired_users
+        int on_hold_users
         bool pamp_blocked "disabled by enforcement"
+        datetime pamp_blocked_at
+        json raw_data
+        datetime created_at
+        datetime updated_at
+        datetime last_synced_at
         bigint deleted_users_used_bytes
         datetime deleted_traffic_reset_at
-        datetime last_synced_at
-        json raw_data
+        datetime archived_at "v1.54: never deleted — archived (hidden from active lists / sync / enforcement)"
+        string archived_reason "panel_missing | deleted"
+        string archived_by
     }
     agency_admin_limit {
         bigint id PK
         bigint panel_admin_id FK
         bigint limit_bytes
         bool warning_sent_80
+        bool is_blocked
+        datetime blocked_at
+        string telegram_username
         string support_telegram
     }
     agency_user_traffic_snapshot {
@@ -600,19 +745,24 @@ erDiagram
         int admins_synced
         text error_message
         float duration_seconds
+        datetime created_at
     }
     agency_admin_group {
         bigint id PK
-        string name
         string owner_username
         text member_usernames
         string note
+        datetime created_at
+        string name
     }
     agency_reseller_session {
         bigint id PK
         string username
         string key_hash "SHA-256 only"
+        datetime created_at
         datetime expires_at "10 days"
+        datetime last_used_at
+        string ip
         bool revoked
     }
     agency_admin_price {
@@ -620,6 +770,9 @@ erDiagram
         string admin_username
         decimal price_per_gb "tomans"
         date valid_from
+        string note
+        string created_by
+        datetime created_at
     }
     agency_ledger_entry {
         bigint id PK
@@ -632,7 +785,11 @@ erDiagram
         bigint old_limit_bytes
         bigint new_limit_bytes
         string method
+        string note
+        string created_by
+        datetime created_at
         bool voided
+        string void_reason
     }
 
     agency_limit_change {
@@ -643,6 +800,7 @@ erDiagram
         string action "create | set | add | reduce | remove | external | baseline"
         string source "panel | pasarguard | history | manager"
         string staff
+        string note
         bigint ledger_entry_id FK
         datetime created_at
     }
@@ -651,10 +809,16 @@ erDiagram
         bigint id PK
         string username UK "= its staff username"
         string password "Django hash (legacy; the staff hash is used)"
-        bigint staff_id FK "v1.25: the /panel/ staff account"
+        string display_name
         bool is_active
         decimal max_unapproved_gb "null = no cap"
+        string note
+        string created_by
+        datetime created_at
+        datetime updated_at
         datetime last_login_at
+        bigint staff_id FK "v1.25: the /panel/ staff account"
+        datetime archived_at
     }
 
     agency_group_manager_group {
@@ -668,21 +832,30 @@ erDiagram
         bigint id PK
         bigint manager_id FK
         string key_hash UK "sha256 of the bearer token"
+        datetime created_at
         datetime expires_at
+        datetime last_used_at
+        string ip
         bool revoked
     }
 
     agency_volume_request {
         bigint id PK
         bigint group_id FK
+        string group_name
         bigint manager_id FK
+        string manager_username
         string admin_username
         string kind "create | add | request (v1.34 admin request)"
         decimal gb
         bigint old_limit_bytes
         bigint new_limit_bytes
         string status "pending | approved | rejected"
+        datetime created_at
+        datetime decided_at
         string decided_by
+        string reason
+        string revert_note
         bigint ledger_entry_id FK
         bigint limit_change_id FK
         string requested_by "kind request: the admin"
@@ -701,6 +874,12 @@ erDiagram
         string status "unpaid | pending | paid | voided"
         bigint ledger_entry_id FK "the charge (none for settlement)"
         bigint volume_request_id FK
+        string note
+        string created_by
+        datetime created_at
+        datetime paid_at
+        datetime voided_at
+        string void_reason
         decimal paid_amount "v1.35.1 active allocations"
         string settled_via "payment | manual | adjustment | outside | balance | mixed"
     }
@@ -713,6 +892,9 @@ erDiagram
         bigint ledger_entry_id FK "the payment / adjustment (none for outside)"
         bigint agency_payment_id FK
         bool auto "oldest first / invariant"
+        string note
+        string created_by
+        datetime created_at
         bool released "source voided"
         datetime released_at
         string release_reason
@@ -728,17 +910,28 @@ erDiagram
         decimal amount_unique_lock UK "while matchable (shared pool with orders)"
         datetime unique_expire_at
         string status "pending_payment | pending_review | approved | rejected | expired | cancelled"
+        bigint bank_card_id FK
         string receipt_image "private media receipts/agency/"
+        string receipt_sha256
+        string receipt_ref
+        datetime receipt_uploaded_at
         string method "sms_auto | blu_auto | manual"
         bigint sms_message_id FK
         bigint blu_transaction_id FK
         string mismatch_kind "less | more"
-        string auto_rule "rounded"
-        decimal paid_amount
-        decimal shortfall
         decimal mismatch_amount "the deposit that did not match"
-        datetime receipt_uploaded_at
+        decimal paid_amount
+        string auto_rule "rounded"
+        json auto_reason
+        decimal shortfall
+        string confirmed_by
+        bigint confirmed_by_staff_id FK
         datetime confirmed_at
+        string reject_reason
+        datetime pending_alerted_at
+        datetime pending_resolved_at
+        datetime created_at
+        datetime updated_at
     }
 
     agency_payment_item {
@@ -753,6 +946,7 @@ erDiagram
         string username UK
         string portal_login "auto | on | off (v1.35)"
         string updated_by
+        datetime updated_at
     }
 
     agency_notice {
@@ -761,6 +955,10 @@ erDiagram
         bigint manager_id FK "group manager"
         string kind
         string title
+        string title_en
+        text body
+        text body_en
+        datetime created_at
         datetime read_at
     }
     agency_ledger_entry ||--o{ agency_invoice : "charge"
@@ -776,6 +974,7 @@ erDiagram
 | `agency_panel_admin` | One PasarGuard admin (reseller) with the PAMP counters refreshed by every sync: limit, used, sold, remaining, user counts, deleted-users traffic, blocked flag. v1.54: never deleted — gone from PasarGuard or deleted in our panel → `archived_at` (default manager hides it; `all_objects` sees it), restored when back on the panel. |
 | `agency_user_seen` | v1.54: the first time the sync saw each user of an agency admin — append-only, never deleted with the user; «کاربران جدید» per period in «تاریخچه» (counts start with v1.54). |
 | `agency_admin_limit` | Per-admin limit settings and the 80 % warning flag (PAMP). |
+| `agency_limit_change` | Every change of a panel admin's data limit (our addition, v1.23): who / where (`source`: `panel` our agency panel · `pasarguard` changed directly on PasarGuard, detected by the sync · `manager` group manager · `history` baseline; `action` create / set / add / reduce / remove / external / baseline) / old → new bytes (0 = unlimited) + note — so a mistake can always be traced and undone. |
 | `agency_user_traffic_snapshot` | Last-known `used_traffic` per user of each admin — a user missing on the next sync counts as deleted and their traffic is kept in `deleted_users_used_bytes`. |
 | `agency_sync_log` | One row per sync run (Sync logs page). |
 | `agency_admin_group` | Several admin accounts under one owner (combined numbers, portal group view). |
@@ -812,6 +1011,7 @@ erDiagram
 
     ticket_topic {
         bigint id PK
+        bigint tenant_id FK "TENANT · the store"
         string name_fa
         string name_en
         string description_fa
@@ -819,9 +1019,12 @@ erDiagram
         bool requires_active_service "true = anyone who ever had a service, false = pre-purchase (everyone)"
         bool is_active
         int sort_order
+        datetime created_at
+        datetime updated_at
     }
     ticket {
         bigint id PK
+        bigint tenant_id FK "TENANT · the store"
         string number UK "100000 + id"
         bigint user_id FK
         bigint topic_id FK
@@ -838,9 +1041,12 @@ erDiagram
         bigint closed_by_id FK
         string closed_by_kind "user | staff | system"
         datetime closed_at
+        datetime created_at
+        datetime updated_at
     }
     ticket_message {
         bigint id PK
+        bigint tenant_id FK "TENANT · the store"
         bigint ticket_id FK
         bigint author_user_id FK
         bigint author_staff_id FK
@@ -849,26 +1055,33 @@ erDiagram
         string channel "site | bot | panel"
         datetime read_by_user_at
         datetime read_by_staff_at
+        datetime created_at
     }
     ticket_attachment {
         bigint id PK
+        bigint tenant_id FK "TENANT · the store"
         bigint message_id FK
         string file "media/tickets/, random name, private"
         string original_name
         string content_type "image/* or application/pdf"
         int size
+        datetime created_at
     }
     ticket_canned_reply {
         bigint id PK
+        bigint tenant_id FK "TENANT · the store"
         string title
         text body
         bigint topic_id FK
         bool is_active
         int sort_order
         string created_by
+        datetime created_at
+        datetime updated_at
     }
     ticket_event {
         bigint id PK
+        bigint tenant_id FK "TENANT · the store"
         bigint ticket_id FK
         string kind "created | user_replied | staff_replied | internal_note | assigned | status | priority | closed | reopened | auto_closed"
         bigint actor_user_id FK
@@ -877,6 +1090,7 @@ erDiagram
         string old_value
         string new_value
         bigint message_id FK
+        datetime created_at
     }
 ```
 
@@ -917,32 +1131,37 @@ erDiagram
 
     crm_customer_profile {
         bigint id PK
+        bigint tenant_id FK "TENANT · the store"
         bigint user_id FK
         string stage "lead | new | active | at_risk | expired | churned | won_back"
         string stage_override "manual, wins over stage"
         datetime stage_changed_at
         bigint owner_id FK
+        datetime updated_at
     }
     crm_tag {
         bigint id PK
+        bigint tenant_id FK "TENANT · the store"
         string name UK
         string color
     }
     crm_customer_note {
         bigint id PK
+        bigint tenant_id FK "TENANT · the store"
         bigint user_id FK
         bigint staff_id FK
+        string staff_label
         text body
+        datetime created_at
     }
     crm_followup_case {
         bigint id PK
+        bigint tenant_id FK "TENANT · the store"
         bigint user_id FK
         bigint service_id FK
         string kind "no_connection | never_connected | lead | manual | winback"
         string status "open | closed"
         string outcome "resolved | still_inactive | lost | won_back"
-        datetime ended_at "win-back"
-        decimal recovered_amount "win-back"
         bigint reason_id FK
         text notes
         bigint assigned_to_id FK
@@ -952,51 +1171,72 @@ erDiagram
         datetime auto_message_at
         datetime opened_at
         datetime closed_at
+        bigint closed_by_id FK
         bool closed_by_system
+        datetime ended_at "win-back"
+        decimal recovered_amount "win-back"
+        datetime updated_at
     }
     crm_case_reason {
         bigint id PK
+        bigint tenant_id FK "TENANT · the store"
+        string category
         string name_fa
         string name_en
         bool is_active
+        int sort_order
     }
     crm_message_template {
         bigint id PK
+        bigint tenant_id FK "TENANT · the store"
+        string category
         string title
         text body_fa "placeholders {name} {username} {service} {site} {guide}"
         text body_en
         bool is_active
+        int sort_order
     }
     crm_warning_rule {
         bigint id PK
+        bigint tenant_id FK "TENANT · the store"
         string kind "data | time"
         int threshold "percent used / days left"
         bool is_active
         string title_fa
+        string title_en
         text body_fa
+        text body_en
     }
     crm_service_warning {
         bigint id PK
+        bigint tenant_id FK "TENANT · the store"
         bigint service_id FK
+        bigint rule_id FK
         string kind
         int threshold
         string period_key "expiry + volume: changes on renewal"
+        datetime created_at
         datetime due_at "bot / email not before (quiet hours)"
         datetime site_sent_at
         datetime bot_sent_at
         datetime email_sent_at
+        string bot_error
+        string email_error
+        bigint notification_id FK
         datetime renewed_at "converted"
     }
     crm_service_end {
         bigint id PK
+        bigint tenant_id FK "TENANT · the store"
         bigint service_id FK
         string status "expired | limited"
         datetime ended_at
     }
     crm_discount_code {
         bigint id PK
+        bigint tenant_id FK "TENANT · the store"
         string code UK "up to 32"
-        string kind "winback | campaign"
+        string kind "winback | campaign | credit (v1.56)"
         string name
         bool is_active
         datetime starts_at
@@ -1012,9 +1252,13 @@ erDiagram
         int max_uses
         int max_uses_per_customer
         decimal min_order_amount
+        string note
         bigint case_id FK
         bigint order_id FK "win-back open invoice"
         datetime used_at
+        string created_by
+        datetime created_at
+        datetime updated_at
     }
     crm_discount_code_customer {
         bigint discountcode_id FK
@@ -1026,11 +1270,13 @@ erDiagram
     }
     crm_event {
         bigint id PK
+        bigint tenant_id FK "TENANT · the store"
         bigint user_id FK
         string kind "stage | owner | tags | note | case_opened | case_updated | case_closed | message | ticket"
         string actor_label
         json detail
         bigint case_id FK
+        datetime created_at
     }
 ```
 
@@ -1046,7 +1292,7 @@ erDiagram
 | `crm_warning_rule` | Pre-expiry warning thresholds (data % / days left) with their fa / en messages. |
 | `crm_service_warning` | One warning per service, threshold and period, with per-channel send times (quiet hours) and conversion. |
 | `crm_service_end` | When a service was first seen expired / used up (drives the win-back grace period). |
-| `crm_discount_code` | Discount codes (v1.26): the Discount codes page codes (`campaign`) and the single-use win-back codes (`winback`, `user` = owner). Percent (+ cap) or fixed amount, start/end, all or selected customers (`crm_discount_code_customer`), first purchase only, plans (`crm_discount_code_plan`, none = all), new / renewal / both, total and per-customer uses, minimum order. |
+| `crm_discount_code` | Discount codes (v1.26): the Discount codes page codes (`campaign`) the single-use win-back codes (`winback`, `user` = owner) and, since v1.56, carried-over credits from a store import (`credit`: one customer, one use, fixed amount, offered to the customer by the bot / checkout). Percent (+ cap) or fixed amount, start/end, all or selected customers (`crm_discount_code_customer`), first purchase only, plans (`crm_discount_code_plan`, none = all), new / renewal / both, total and per-customer uses, minimum order. |
 
 Analytics (Phase 5, `crm/analytics.py`) adds no tables — it reads payments, orders, services, CRM and ticket tables.
 
@@ -1063,6 +1309,7 @@ erDiagram
 
     notification {
         bigint id PK
+        bigint tenant_id FK "TENANT · the store"
         string type "event | broadcast | order_confirmed | service_ready | volume_warning | expiry_warning | admin_broadcast | ticket"
         string title
         text body
@@ -1073,9 +1320,12 @@ erDiagram
         bool via_site
         bool via_bot
         bool via_email
+        bigint created_by_staff_id FK
+        datetime created_at
     }
     push_subscription {
         bigint id PK
+        bigint tenant_id FK "TENANT · the store"
         text endpoint
         string endpoint_hash UK "sha256(endpoint)"
         string p256dh
@@ -1084,11 +1334,13 @@ erDiagram
         bigint staff_id FK "staff, or"
         string reseller "v1.38.2 agency reseller username"
         string user_agent
+        datetime created_at
         datetime last_ok_at
         int failures
     }
     notification_delivery {
         bigint id PK
+        bigint tenant_id FK "TENANT · the store"
         bigint notification_id FK
         bigint user_id FK
         string channel "site | bot | email"
@@ -1122,42 +1374,77 @@ erDiagram
         string site_name_en
         string site_domain
         string logo
+        string favicon
+        text bot_description_fa
+        text bot_description_en
         string support_telegram
+        string bot_support_telegram
+        text bot_support_text_fa
+        text bot_support_text_en
         string qr_background
+        string qr_background_custom
+        text meta_description
+        datetime updated_at
     }
     theme {
         bigint id PK
+        bigint tenant_id FK "TENANT · the store"
         string name
         json palette
         bool is_active
     }
     page {
         bigint id PK
+        bigint tenant_id FK "TENANT · the store"
         string slug UK "rules | tutorial | faq"
         string title_fa
+        string title_en
         text body_fa
+        text body_en
         bool is_active
+        datetime updated_at
     }
     app_release {
         bigint id PK
         string platform "android | ios"
         string file
         string version
+        string link
+        text notes
+        datetime updated_at
+        string updated_by
     }
     email_settings {
         bigint id PK "single row"
         bool enabled
         string host
         int port
+        string security
+        string username
         text password "enc"
+        string from_email
+        string from_name
         datetime last_success_at
         text last_error
+        datetime last_error_at
+        string last_source
+        datetime updated_at
     }
     domain_config {
         bigint id PK "single row"
         text cloudflare_token "enc, write-only"
+        datetime token_updated_at
+        string token_updated_by
         json last_test
         int transition_days
+        string access_mode
+        json iran_ips
+        json tunnel_sources
+        json proxy_protocol
+        json cf_ranges
+        json access_state
+        json dns01
+        datetime updated_at
     }
     domain_change {
         bigint id PK
@@ -1165,11 +1452,19 @@ erDiagram
         string new_domain
         bool include_www
         string mode "cloudflare | manual"
+        string zone_id
         string zone_name
+        string server_ip
         string status "draft | applying | transition | done | rolled_back | cancelled"
         json steps "state per step"
         json checklist
+        int transition_days
         datetime old_until
+        string created_by
+        datetime created_at
+        datetime updated_at
+        datetime applied_at
+        datetime finished_at
     }
     telegram_config {
         bigint id PK
@@ -1177,18 +1472,26 @@ erDiagram
         text token "enc"
         string proxy_url
         bigint backup_chat_id
+        bool is_active
+        datetime updated_at
     }
     required_channel {
         bigint id PK
+        bigint tenant_id FK "TENANT · the store"
         string channel_id
+        string title
         string invite_link
         int member_count
+        datetime last_synced_at
         bool bot_is_admin
+        bool is_active
     }
     telegram_stats {
         bigint id PK
+        bigint tenant_id FK "TENANT · the store"
         int bot_member_count
         int overlap_bot_channels
+        datetime sampled_at
     }
     health_check {
         bigint id PK
@@ -1196,14 +1499,19 @@ erDiagram
         bigint panel_id FK
         bool is_up
         int latency_ms
+        string detail
+        datetime checked_at
     }
     resource_stat {
         bigint id PK
         float cpu_percent
         float ram_percent
+        float swap_percent
         float disk_percent
         bigint net_in
         bigint net_out
+        bigint bandwidth_used
+        datetime sampled_at
     }
     backup_log {
         bigint id PK
@@ -1211,6 +1519,8 @@ erDiagram
         bigint size
         string status "ok | failed"
         bool sent_to_telegram
+        string error
+        datetime created_at
         datetime local_deleted_at
     }
     cleanup_run {

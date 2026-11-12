@@ -7,6 +7,7 @@ encrypted in the DB; `BOT_*_TOKEN` in `.env` only seeds an empty install).
 |-----|-----------|-----|
 | sales bot | `bot_sales` | customers: buy / renew, services, history, account, rules, guide, support, Mini App |
 | backup bot | `bot_backup` | sends each DB backup to `backup_chat_id` |
+| store bots (v1.49) | — (webhook → Celery) | one per reseller store, same handlers as the sales bot, inside the store |
 
 Code: `backend/apps/telegram/` — `bot/screens.py` (every screen as a pure
 function, tested with the DB only), `bot/texts.py` (fa/en, Latin digits),
@@ -76,6 +77,23 @@ everything: *Plain* (bare code), six built-in brand designs (`caspian-light`,
 custom upload (JPEG/PNG/WebP, ≤ 5 MB, 512–8000 px per side; cover-cropped to a
 square). Each picker tile is a server-rendered preview with a sample QR.
 Tests decode the composed image on every background (`zxing-cpp`).
+
+## Discount codes and carried-over credit
+After the plan + account name the bot asks for a discount code — only when some code could apply to this customer
+(`crm.discounts.any_usable_for`). Since v1.56 a customer who has a **carried-over credit** from a store import (discount kind
+`credit`) sees «💳 استفاده از اعتبار <amount>» buttons first (callback `dc:cr:<id>`) — they never type the code; the note under
+the question shows the amount and the expiry date.
+
+## WireGuard (v1.55)
+A service with WireGuard shows «وایرگارد»: one button per location (flag + country), each sends that location's `.conf` as a
+document (named by the location's file name = the tunnel name in the app), plus «همه» = a zip. Generated from PasarGuard on
+every request, never stored; 30 per hour per Telegram user; audit-logged ([wireguard.md](wireguard.md)).
+
+## Reseller store bots (v1.49)
+A reseller store can have its own bot (token set only by our staff on «فروشگاه»). It is NOT a container: Telegram calls our
+webhook `/api/v1/telegram/hook/<store id>/` and Celery runs the same sales-bot handlers inside the store (its customers, plans,
+texts, branding). Staff flows (staff link, `st:*`, `ag:*`) are off there; a store's own staff link their Telegram through the
+store's bot. Health: `store_bots_check_task` every 10 min ([multi-tenant.md](multi-tenant.md), flows.md 16g).
 
 ## Running / restarting
 `docker compose restart bot_sales` (code changes need `./update.sh` first — the

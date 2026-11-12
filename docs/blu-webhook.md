@@ -125,3 +125,10 @@ e.g. `console.log(`poll ok new=${fresh.length}`)` right after a successful `/tra
 whether or not it found anything. Only the words `poll ok` matter (case-insensitive); the time is
 taken from the journal. From the first such line on, "no successful poll for N minutes" is the
 liveness signal.
+
+## Reseller stores (v1.47+)
+
+Blu is OUR account only: `/api/v1/payments/blu/` is blocked on store domains (`tenancy/middleware.STORE_BLOCKED_PREFIXES`), Blu
+deposits are matched against our orders and agency payments only, and a store's payments queue never shows Blu data. A store
+confirms payments with its own SMS devices and cards.
+

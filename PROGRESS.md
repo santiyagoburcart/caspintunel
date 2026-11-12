@@ -8,7 +8,7 @@
 - Frontend (user site + admin panel): **React + Vite + Tailwind** — two SPAs against the API
 - Android SMS app: **Native Kotlin**
 - Server IP: **46.62.192.189** (Finland, production since 2026-10-21; before: 66.245.203.63) · Active domain: **caspintunel.com** (through the Iran tunnel IP; earlier aicaspin.ir, caspin.skin)
-- Panel: host `https://pas.hunaex.shop` — **PasarGuard** (v5.3.0 when built, **v5.4.1** live since 2026-10; Marzban lineage), *not* Marzneshin. Token `POST /api/admin/token` (form), users under `/api/user`, groups (not "services"), user `status` field carries on_hold. `/openapi.json` is the source of truth.
+- Panel: host `https://pas.hunaex.shop` — **PasarGuard** (v5.3.0 when built, v5.4.1 from 2026-10, **v5.6.0** live since 2026-11-04; Marzban lineage), *not* Marzneshin. Token `POST /api/admin/token` (form), users under `/api/user`, groups (not "services"), user `status` field carries on_hold. `/openapi.json` is the source of truth.
 - Django 5.2 LTS · Python 3.12 in container
 
 ## Global rules (always in force)
@@ -485,6 +485,7 @@ Everything shipped since v1.6.0 (details in the session log):
   reference, else one same-amount deposit in 24 h + payer name) + backfill `manage.py link_blu_deposits`. Match notes in Persian
   (`blu_notes.py`). saharsoheili's 175,000 deposit was already on order #125 (shortfall 1,195 T, v1.42.1). Tests:
   `payments_sms/tests/test_blu_link.py` (8).
+- 2026-11-06 — **v1.42.3:** Blu tab layout — the deposit tag on its own line (transaction page, phone), candidate date kept LTR.
 - 2026-11-06 — **v1.43.0: multi-tenant Phase 2 Release A — stores, branding, store mode (server).** Our staff open a store on an
   agency admin's page («فروشگاه»: draft → active / suspended / closed, name, export permission; `tenancy/stores.py`); a store
   starts with its own `TenantBranding` and a copy of our pages; only ACTIVE stores answer on their domains. `branding()` resolves
@@ -662,3 +663,14 @@ Everything shipped since v1.6.0 (details in the session log):
   skipped; balances → `DiscountCode` kind `credit` (offered by the bot button + checkout chip); paid payments → read-only
   history on Customer 360 (never revenue); no customer messages; imported customers follow the store's phone rule.
   Tests: `tenancy/tests/test_v156_store_import.py` (11, synthetic dumps). Docs: [store-import.md](docs/store-import.md).
+- 2026-11-12 — **v1.56.1 (docs only): docs audit after multi-tenant, WireGuard and the store import.** Checked against the code:
+  erd.md entities now list EVERY column of all 86 tables (309 were missing — `tenant_id`, timestamps, newer fields; generated
+  from the models, existing notes kept) + `agency_limit_change` row + discount kind `credit`; all 74 Mermaid diagrams parse
+  (mermaid 11.4.1); flows 16i–16p in order, WireGuard file name example fixed; api.md: stores (our side + store mode),
+  WireGuard, credits, failed orders, Blu linking, history / archive, public probes / hook / export download; architecture.md:
+  7 missing beat rows (stores, near-limit summary) + on-demand store tasks, tenancy / CRM status; multi-tenant.md final phase
+  status; roadmap releases v1.38.4–v1.56.0 + what is left; agency.md invoice kinds + stores; operations.md store / WireGuard /
+  archive tasks, logs, `link_blu_deposits`, `watch_payments`; deploy.md host cron (`tenants.sh`, `container-stats.sh`) + store
+  vhosts; access-mode.md + blu-webhook.md store notes; pilot-fa.md WireGuard + import steps; bots.md / telegram-miniapp.md
+  store bots, WireGuard, credit; docs index (README) lists pilot-fa / store-import / wireguard; PROGRESS PasarGuard 5.6.0 +
+  v1.42.3. Permissions table = the 48 codes in the DB.

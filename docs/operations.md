@@ -83,14 +83,23 @@ node status, and the group ids to put in `Plan.group_ids` / `Panel.default_group
 | move to a new server | `scripts/migrate-export.sh` → `scripts/migrate-import.sh` — runbook in [migration.md](migration.md) |
 | maintenance mode (503 page, nothing reaches the app) | `touch nginx/flags/maintenance` / `rm nginx/flags/maintenance` |
 | keep bots + celery idle | `MIGRATION_HOLD=1` in `.env` + `docker compose up -d --force-recreate bot_sales bot_backup celery_beat celery_worker` |
+| open a store for a reseller | Agency → admin → «فروشگاه» → «ساخت فروشگاه» (draft) → domain (direct / Iran tunnel; give the reseller the exact records shown) → bot token → owner login → status «فعال» — step by step: [pilot-fa.md](pilot-fa.md) |
+| a store domain is stuck | «فروشگاه» → domain → «بررسی الان» / «تلاش دوباره»; host log `/var/log/caspintunel-tenants.log` (watcher `scripts/tenants.sh`, every minute); test the watcher only with `scripts/test-tenants.sh` |
+| suspend / close a store | «فروشگاه» → status: its domains show the «در دسترس نیست» page (503) within about a minute; nothing is deleted |
+| a store's failed orders («ساخت ناموفق») | «فروشگاه» → «سفارش‌های ناموفق» → retry (same paid order) — or the store's own Payments page |
+| store backup / monthly fee | «فروشگاه» → backups (one-time link, 24 h) · fee settings (off by default; `agency.accounting`) |
+| import a reseller's old bot | «فروشگاه» → «ورود داده از ربات قبلی»: upload the dump → check the preview + CSV → stop the old bot → tick the checklist → «شروع ورود»; «بازگردانی» undoes it ([store-import.md](store-import.md)) |
+| WireGuard locations / file names | Plans → «مکان‌های وایرگارد» (names, flags, file name = tunnel name ≤ 15 chars, optional template); plan type ساب / فقط وایرگارد / هر دو ([wireguard.md](wireguard.md)) |
+| an agency admin was removed | it is archived, not deleted: Agency → Admins → «بایگانی»; it comes back by itself when the username is on PasarGuard again ([agency.md](agency.md#archive-instead-of-delete-v154)) |
+| agency history | Agency → حسابداری → «تاریخچه» (7 days / month / custom / 12 months, CSV / Excel) |
 | roll back a bad release | `./update.sh --rollback` (images); restore `backups/pre-update-*.sql.gz` only if a migration must be undone |
 
 ## Logs
 `docker compose logs -f web celery_worker bot_sales` — app logs go to stdout
-(`caspintunel` logger). `audit_log` records staff actions. Host jobs log to `/var/log/caspintunel-{update,paths,domain,disk}.log`.
+(`caspintunel` logger). `audit_log` records staff actions. Host jobs log to `/var/log/caspintunel-{update,paths,domain,disk,containers,tenants}.log`.
 
 ## Management commands
 `seed` · `panel_check` · `cleanup_backups [--dry-run]` · `revoke_staff_sessions [--username]` · `reconcile_agency_invoices [--apply]` ·
 `check_admin_profiles [--apply]` · `import_pamp_dump` · `import_legacy` · `configure_dns [--apply] [--proxied] [--no-mail]` ·
-`cloudflare_token` · `send_test_email` · `set_bot_menu` · `run_sales_bot` / `run_backup_bot` (the bot containers).
+`cloudflare_token` · `send_test_email` · `set_bot_menu` · `link_blu_deposits [--dry-run]` (v1.42.2 one-time backfill: link unmatched Blu deposits to already approved payments — link only) · `watch_payments` (v1.48: follow the next real payments of our store, alert when one is not matched automatically — read-only except alerts) · `run_sales_bot` / `run_backup_bot` (the bot containers).
 Run them with `docker compose exec web python manage.py …` — every command here touches the **live** database.

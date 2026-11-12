@@ -30,6 +30,14 @@
 > **v1.53.0: Phase 10 (tenant export) and Phase 12 (fee hook, off) built** — `tenancy/export.py` (zip of JSON + CSV, background job,
 > one-time links for 24 h; the zip is not password-protected — the one-time, host-bound link and the private folder protect it)
 > and `tenancy/fees.py` (monthly agency invoice, reminder, optional suspension). Flows 16k / 16l.
+> **v1.53.1–v1.53.3**: per-worker `ALLOWED_HOSTS`, parked (503) pages for non-active stores, http → https. **v1.56.0: Phase 11
+> started** — importer framework + Mirza bot dumps ([store-import.md](store-import.md)).
+>
+> **Final status (v1.56.0):** Phases 0–8, 10 and 12 built and live · Phase 11 built for one source (Mirza; `csv`,
+> `pasarguard_users` and other bots still planned) · Phase 9 (pilot): rehearsal done on a test store (2026-11-10, checklist
+> fixed in [pilot-fa.md](pilot-fa.md)), the real pilot with a reseller not started. Still open: the optional store SMTP relay,
+> CRM / analytics pages for stores, the Iran-side PROXY-protocol sender (skipped by the owner). Sections below are the original
+> design; where the code differs, architecture.md / erd.md / flows.md and the notes above win.
 
 Every agency admin (reseller) can get a white-label store — site, Telegram Mini App and their own Telegram bot — on their own
 domain, served by the same codebase and database. Our current store becomes the **default tenant** and keeps working
@@ -40,7 +48,7 @@ the store admin on their own domain (the existing panel pages in store mode). **
 bot token** (Agency → admin → «فروشگاه»); the reseller manages branding, plans, cards, customers, orders, tickets, discounts,
 staff and SMS devices.
 
-Contents: [1 Decisions](#1-decisions-and-what-needs-your-answer) · [2 Architecture](#2-architecture) ·
+Contents: [1 Decisions](#1-decisions) · [2 Architecture](#2-architecture) ·
 [3 Tenant scoping](#3-tenant-scoping-the-isolation-guarantee) · [4 Data model](#4-data-model-erd-changes) ·
 [5 Changes per app](#5-changes-per-existing-app) · [6 Flows](#6-flows) · [7 Domains and TLS](#7-domains-tls-and-routing) ·
 [8 Bots](#8-telegram-bots-and-the-mini-app) · [9 Payments and SMS](#9-payments-unique-amounts-and-the-sms-app) ·
@@ -660,18 +668,18 @@ Size = my estimate of working days for build + tests + browser checks + docs (on
 | Phase | Content | Size | Releases |
 |---|---|---|---|
 | **0 — Prepare (current server)** ✅ v1.39.0 | Container memory limits, tuned gunicorn / Celery / MySQL / Redis, container memory + swap + pressure metrics with alerts (Monitoring card), docs. The owner enlarges swap. | 1–2 days | v1.39.0 |
-| **1 — Tenant core** (A ✅ v1.40.0, B ✅ v1.41.0) | `tenancy/` (models, contextvar, middleware, managers, registry, allow-list), `tenant_id` on all tenant tables + default backfill (Release A→C), JWT `tid`, isolation test suite (inventory, API sweep, lint) | 6–8 days | 3 (A, B, C) |
+| **1 — Tenant core** ✅ (A v1.40.0, B v1.41.0, C v1.42.0) | `tenancy/` (models, contextvar, middleware, managers, registry, allow-list), `tenant_id` on all tenant tables + default backfill (Release A→C), JWT `tid`, isolation test suite (inventory, API sweep, lint) | 6–8 days | 3 (A, B, C) |
 | **2 — Store admin + branding** ✅ (A v1.43.0, B v1.44.0) | Store mode of the admin SPA (D1), «فروشگاه» tab for us, `tenant_branding`, `TENANT_KEYS`, pages / themes per tenant, user SPA branding per host | 5–6 days | 2 |
-| **3 — Domains & TLS** | «فروشگاه» section (our staff): domains + mode + exact A record, TXT / A / proxied verification, HTTP-01 per host on 80 + 443, nginx per-tenant files via host watcher, health, read-only status for the reseller, renewal + alerts | 5–7 days | 2 |
-| **4 — Catalog & PasarGuard** | Plans per tenant, `set_owner` provisioning, quota guard + warnings, renew / add-on per tenant | 4–5 days | 1–2 |
-| **5 — Payments & SMS** | Cards / sources / devices per tenant, unique-amount pools, matching per tenant, reseller payments queue, Android SMS app update (domain + token, QR) | 6–8 days | 2 (+ APK) |
-| **6 — Bots & Mini App** | Webhook endpoint, tenant bot token set by our staff, screens with tenant texts (edited by the reseller), Mini App per tenant | 5–6 days | 1–2 |
-| **7 — Tickets, CRM, retention, discounts, analytics, notifications, push, email** | Scope everything, tenant email display name / optional relay, per-tenant rate limits | 6–8 days | 2 |
-| **8 — Reseller staff** | Store roles, ceiling, sign-in on the store admin path | 3–4 days | 1 |
-| **9 — Pilot** | One reseller, one domain, real sales for 2 weeks; daily isolation + health review; fixes | 2–3 days + 2 weeks | fixes |
-| **10 — Tenant export** | Export job, encrypted zip, permission switch | 2–3 days | 1 |
-| **11 — Importers** | Framework + `csv` + `pasarguard_users`; then one per source bot from your samples | 4 days + 2–3 per source | 1 each |
-| **12 — Fee hook** | `tenant_billing`, monthly invoice generator (off), suspension on unpaid (off) | 1–2 days | 1 |
+| **3 — Domains & TLS** ✅ v1.45.0 | «فروشگاه» section (our staff): domains + mode + exact A record, TXT / A / proxied verification, HTTP-01 per host on 80 + 443, nginx per-tenant files via host watcher, health, read-only status for the reseller, renewal + alerts | 5–7 days | 2 |
+| **4 — Catalog & PasarGuard** ✅ v1.46.0 | Plans per tenant, `set_owner` provisioning, quota guard + warnings, renew / add-on per tenant | 4–5 days | 1–2 |
+| **5 — Payments & SMS** ✅ v1.47.0 (+ v1.48.x) | Cards / sources / devices per tenant, unique-amount pools, matching per tenant, reseller payments queue, Android SMS app update (domain + token, QR) | 6–8 days | 2 (+ APK) |
+| **6 — Bots & Mini App** ✅ v1.49.0 | Webhook endpoint, tenant bot token set by our staff, screens with tenant texts (edited by the reseller), Mini App per tenant | 5–6 days | 1–2 |
+| **7 — Tickets, CRM, retention, discounts, analytics, notifications, push, email** ✅ (A v1.50.0, B v1.51.0; store SMTP relay + store CRM pages open) | Scope everything, tenant email display name / optional relay, per-tenant rate limits | 6–8 days | 2 |
+| **8 — Reseller staff** ✅ v1.52.0 | Store roles, ceiling, sign-in on the store admin path | 3–4 days | 1 |
+| **9 — Pilot** (rehearsal done v1.53.x; real pilot not started) | One reseller, one domain, real sales for 2 weeks; daily isolation + health review; fixes | 2–3 days + 2 weeks | fixes |
+| **10 — Tenant export** ✅ v1.53.0 (zip not encrypted — one-time host-bound link instead) | Export job, encrypted zip, permission switch | 2–3 days | 1 |
+| **11 — Importers** (framework + Mirza ✅ v1.56.0; `csv`, `pasarguard_users`, other bots planned) | Framework + `csv` + `pasarguard_users`; then one per source bot from your samples | 4 days + 2–3 per source | 1 each |
+| **12 — Fee hook** ✅ v1.53.0 (off by default; tables `tenant_fee` / `tenant_fee_invoice`) | `tenant_billing`, monthly invoice generator (off), suspension on unpaid (off) | 1–2 days | 1 |
 
 Total before the pilot (0–8): about **41–54 working days**. Every phase ends with the isolation suite green, browser checks
 (phone + desktop, fa / en, light / dark) and the docs moved into architecture / erd / flows.

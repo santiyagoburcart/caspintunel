@@ -34,12 +34,22 @@ desktop + 390 px) and **must update [architecture.md](architecture.md),
 | v1.36–v1.38.1 | group managers see full reseller stats; group-manager UI cleanup (paged lists, bell, settings, compact cards); manual customer invoices; one receipt picker | [agency.md](agency.md), [architecture.md](architecture.md#manual-customer-invoices-v138) |
 | v1.38.2 | /agency/ portal sections, bell, «پرداخت کل بدهی», reseller push, invoice source | [agency.md](agency.md) |
 | v1.38.3 | Transactions cards = the list; Tehran days everywhere | [architecture.md](architecture.md#days-months-and-the-transactions-cards-v1383) |
+| v1.38.4–v1.38.6 | documentation audit; multi-tenant design + decisions (D1–D7) | [multi-tenant.md](multi-tenant.md) |
+| v1.39.0–v1.39.1 | multi-tenant Phase 0 (container memory limits + watch); Iran tunnel access mode, swap, disk cleanup | [architecture.md](architecture.md#memory-limits-and-tuning-v1390-multi-tenant-phase-0), [access-mode.md](access-mode.md) |
+| v1.40.0–v1.42.0 | multi-tenant Phase 1: tenant tables, scoping, NOT NULL + per-store uniques + strict mode | [multi-tenant.md](multi-tenant.md) |
+| v1.42.1–v1.42.3 | one account-name rule, «ساخت ناموفق», Tehran time for typed dates, renewal plans; Blu deposits link to any payment | [blu-webhook.md](blu-webhook.md) |
+| v1.43.0–v1.44.1 | multi-tenant Phase 2: stores, store mode in both panels; rounded amounts ±2,000 T | [multi-tenant.md](multi-tenant.md) |
+| v1.45.0–v1.52.0 | multi-tenant Phases 3–8: store domains + TLS, catalog + PasarGuard per store, payments + SMS per store, store bots + Mini App, store data / tickets / discounts / caps, reseller staff | [multi-tenant.md](multi-tenant.md), [flows.md](flows.md) |
+| v1.52.1–v1.53.3 | pilot fixes; agency limit release + near-limit summary; Phases 10 + 12 (store backups, monthly fee hook — off); parked-store page, http → https | [pilot-fa.md](pilot-fa.md) |
+| v1.54.0–v1.54.1 | agency admins archived, never deleted; «تاریخچه»; «فروش خالص» = gross + adjustments | [agency.md](agency.md) |
+| v1.55.0–v1.55.2 | WireGuard configs per location (site, Mini App, bot), plan type, tunnel file names | [wireguard.md](wireguard.md) |
+| v1.56.0 | multi-tenant Phase 11 (started): store import from a reseller's previous bot (Mirza) | [store-import.md](store-import.md) |
 
 ## Next (planned, not built)
 
 | Phase | Theme | Notes |
 |---|---|---|
-| C | Multi-tenant reseller storefronts | Design: [multi-tenant.md](multi-tenant.md) — approved 2026-11-04 (decisions D1–D7). **Phase 0 done (v1.39.0, memory limits + watch); Phase 1 done (v1.40.0 tenant tables · v1.41.0 scoping · v1.42.0 NOT NULL, per-store uniques, strict mode).** **Phase 2 done (v1.43.0 stores · v1.44.0 store mode); Phase 3 built (v1.45.0 store domains + TLS); Phase 4 built (v1.46.0 catalog + PasarGuard per store); Phase 5 built (v1.47.0 payments + SMS per store); v1.48.0/v1.48.1 SMS-app address per store + payment watcher; Phase 6 built (v1.49.0 store bots + Mini App); Phase 7 built (v1.50.0 store data stays in the store · v1.51.0 store tickets, discounts, settings, caps); Phase 8 built (v1.52.0 reseller staff); v1.52.1 pilot fixes (store ticket topics, failed store orders); Phase 10 + 12 built early (v1.53.0 store backups · monthly store fee hook, off); Phase 11 started (v1.56.0 importer framework + Mirza bot dumps — [store-import.md](store-import.md)).** Next: Phase 9 (pilot with one reseller — checklist [pilot-fa.md](pilot-fa.md)). Open: optional store SMTP relay. Runs on the current server (2 vCPU, 3.7 GiB RAM + 5 GiB swap; it also hosts the PasarGuard nodes) — capacity note in [architecture.md](architecture.md#production-server). |
+| C | Multi-tenant reseller storefronts — what is left | Phases 0–8, 10, 12 built and live; Phase 11 built for Mirza dumps (v1.56.0). **Next: Phase 9 — the real pilot with one reseller** (rehearsal done; checklist [pilot-fa.md](pilot-fa.md)). Then: more importers (`csv`, `pasarguard_users`, other bots — one sample each), the optional store SMTP relay, CRM / analytics pages for stores. Status per phase: [multi-tenant.md](multi-tenant.md) §20. |
 
 ## Phases 1–2 — Ticketing
 

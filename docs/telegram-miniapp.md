@@ -143,3 +143,10 @@ for Telegram Desktop / Web, which embed the Mini App in an iframe; mobile
 Telegram uses a native WebView and isn't affected). The admin panel and API stay
 locked to `frame-ancestors 'none'`; Django additionally sends its own
 `X-Frame-Options: DENY` on `/api/` and `/admin/`.
+
+## Reseller stores (v1.49)
+On a store's domain the Mini App validates `initData` with **that store's** bot token (`telegram_auth.sales_bot_token()`; ours is
+refused there, 503 while the store has no bot) and the account is created / found inside the store. Inside the Mini App,
+WireGuard files are sent to the customer's bot chat instead of a WebView download (v1.55), and checkout offers a carried-over
+credit as a one-tap chip (v1.56).
+

@@ -325,6 +325,9 @@ only). The list API adds `panel_role`, `permissions[{code,en,fa,on}]` and `assig
   payment entry per admin in the ledger (a rounded shortfall stays owed), the payer notified in the portal / panel.
 - Agency payments never appear in customer Transactions, Accounting revenue, Analytics or the customer queue; Blu
   deposits that paid one are labelled «واریز نماینده» on the Blu tab.
+- Invoice kinds: `quota_charge` (limit raised), `manual_charge`, `request` (approved admin request), `settlement`
+  («تسویه مانده قبلی») and, since v1.53, `store_fee` — a reseller store's monthly fee («اشتراک فروشگاه», `tenancy/fees.py`,
+  off by default), issued through the ledger like any charge and paid the same way.
 
 ## Invoices and the ledger (v1.35.1)
 
@@ -469,3 +472,11 @@ columns side by side (v1.54.1).
 
 Each view exports CSV / Excel (period totals, per admin, 12 months).
 
+## Reseller stores (multi-tenant, v1.43+)
+
+An agency admin can get a white-label store (own domain, bot, Mini App, plans, cards, staff) — opened and managed by our staff
+on Agency → admin → «فروشگاه» (`agency.manage`). The store sells from the admin's own PasarGuard quota (`tenancy/quota.py` reads
+the agency numbers — never a separate formula), its services are created under the admin (`set_owner`), and our agency
+invoicing per GB is unchanged. The same card holds the store's domains, bot, staff ceiling + owner login, failed orders,
+backups, the monthly fee (`agency.accounting`) and «ورود داده از ربات قبلی» (v1.56, [store-import.md](store-import.md)).
+Design and status: [multi-tenant.md](multi-tenant.md); pilot checklist: [pilot-fa.md](pilot-fa.md).

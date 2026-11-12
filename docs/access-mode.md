@@ -139,3 +139,13 @@ Iran box, the domain is filtered on the path (no server-side setting fixes that)
 `POST domain/access/dns01/` · public `GET /api/v1/domain-probe/<nonce>/` (only for a panel-made nonce).
 Beat: *access mode: host nginx result + Cloudflare ranges (daily)* every 5 min.
 Test: `scripts/test-domain.sh` stage 9 (simulated tunnel container, PROXY protocol, real nginx, DNS-01).
+
+## Reseller store domains (v1.45+)
+
+The access mode switches only OUR names (`@` and `www`). A reseller store's domain has its own mode, chosen by our staff on
+«فروشگاه»: *direct* (A → this server's IP) or *tunnel* (A → the first Iran IP of `DomainConfig.iran_ips`, the same tunnel as ours,
+no PROXY protocol) — the reseller creates the records themselves (they are shown on «فروشگاه»). Certificates are HTTP-01 per host
+through the host watcher `scripts/tenants.sh` (works in both modes and behind the reseller's own Cloudflare). Changing the Iran
+IPs here does not rewrite store records — tell those resellers. Plain http → https and the ACME / `/.well-known/caspin/`
+exemptions are in `nginx/prod.conf` ([multi-tenant.md](multi-tenant.md), flows.md 16c / 16m).
+

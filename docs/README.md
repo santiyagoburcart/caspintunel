@@ -7,9 +7,11 @@
 | [deploy.md](deploy.md) | server layout, TLS (auto + manual), DNS/mail, the update button |
 | [architecture.md](architecture.md) | how the system is put together: production server + capacity, containers, request flow, apps, **permissions**, Celery schedule, bots, PasarGuard, agency, tickets, CRM / retention / analytics / discounts, notifications + push, transactions, manual invoices, host jobs, backups, deploy |
 | [erd.md](erd.md) | data model — Mermaid ER diagrams per app + every table explained |
-| [flows.md](flows.md) | sequence diagrams: 2.x payments (card-to-card, SMS, Blu, rounded, alerts, manual invoices, void, discounts, cards), renewal, provisioning, 5.x agency (sync, CRUD, group managers, approvals, invoices, payments, access), sign-in + account linking + purge, tickets, CRM, retention, analytics, domain / access mode, deploy, disk |
-| [roadmap.md](roadmap.md) | phases built since v1.15, releases since v1.22, and what is planned next (multi-tenant reseller storefronts) |
-| [multi-tenant.md](multi-tenant.md) | **proposal (not built)**: multi-tenant reseller storefronts — architecture, tenant scoping, ERD, flows, domains / TLS, bots, payments, capacity, phases, risks |
+| [flows.md](flows.md) | sequence diagrams: 2.x payments (card-to-card, SMS, Blu, rounded, alerts, manual invoices, void, discounts, cards), renewal, provisioning, 5.x agency (sync, CRUD, group managers, approvals, invoices, payments, access), sign-in + account linking + purge, tickets, CRM, retention, analytics, domain / access mode, deploy, disk, 16.x stores (domains, catalog, payments, bots, staff, failed orders, backups, fee, parked page, WireGuard, archive, import) |
+| [roadmap.md](roadmap.md) | phases built since v1.15, releases since v1.22, and what is planned next (the store pilot, more importers) |
+| [multi-tenant.md](multi-tenant.md) | multi-tenant reseller storefronts — design + **status per phase** (0–8, 10, 12 built; 11 started; 9 pilot next): tenant scoping, domains / TLS, bots, payments, capacity, risks |
+| [pilot-fa.md](pilot-fa.md) | (فارسی) چک‌لیست راه‌اندازی اولین فروشگاه نماینده — Phase 9 pilot checklist |
+| [store-import.md](store-import.md) | importing a reseller's previous bot (Mirza dumps) into their store: preview, mapping, import, undo (v1.56) |
 | [api.md](api.md) | API surface overview (full spec at `/api/schema/`, UI at `/api/docs/`) |
 | [operations.md](operations.md) | day-2: backups, monitoring, alerts, user delete/restore, SMS devices & apps, common tasks |
 | [migration.md](migration.md) · [فارسی](migration-fa.md) | moving to a new server: export / import scripts, pre-DNS test, runbook, rollback, server specs |
@@ -17,7 +19,8 @@
 | [domain.md](domain.md) | Settings → Domain & Cloudflare: encrypted token, domain-change wizard, transition, rollback, recovery CLI |
 | [access-mode.md](access-mode.md) | Domain & Cloudflare → Access mode: Direct / Cloudflare proxy / Iran tunnel, switch + verify + auto-revert, real IP, DNS-01, Iran-side diagnosis |
 | [sms-batch.md](sms-batch.md) | iPhone Shortcut offline SMS queue: save first, upload the queue to `inbound-batch` (idempotent, matched at received_at) |
-| [agency.md](agency.md) | agency panel (reseller admins, PAMP port): switches, import, golden test, portal, ledger, limit history, groups, group managers, approvals, invoices / payments, access rules |
+| [agency.md](agency.md) | agency panel (reseller admins, PAMP port): switches, import, golden test, portal, ledger, limit history, groups, group managers, approvals, invoices / payments, access rules, archive + «تاریخچه», reseller stores |
+| [wireguard.md](wireguard.md) | WireGuard configs per location (PasarGuard 5.6 research, site / Mini App / bot, plan type, tunnel file names) |
 | [blu-webhook.md](blu-webhook.md) | Blu Bank deposits: signed collector webhook, matching (customer orders, then agency payments), SSH health check, liveness |
 | [bots.md](bots.md) | the Telegram sales bot: menus, support message, purchase history, QR photos |
 | [telegram-miniapp.md](telegram-miniapp.md) | Telegram Mini App auto-login |

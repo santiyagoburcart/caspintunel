@@ -1504,6 +1504,31 @@ sequenceDiagram
     API-->>K: ticket DMs through the store's bot
 ```
 
+## 16i. A store's failed order — «ساخت ناموفق» (v1.52.1)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant W as Celery (store context)
+    participant PG as PasarGuard
+    actor R as Store staff (payment.approve)
+    actor O as Our staff («فروشگاه»)
+    actor C as Customer
+    W->>PG: create the paid order's account
+    PG-->>W: 422 (refused)
+    W->>W: order stays paid · provision_error + provision_failed_at
+    W-->>R: alert in the store (its bot) · store panel → Payments → «ساخت ناموفق»
+    W-->>O: alert to us (platform) · «فروشگاه» → «سفارش‌های ناموفق»
+    W-->>C: «سرویس در حال آماده‌سازی است» (site + store bot)
+    alt store staff retry
+        R->>W: POST orders/provision-failed/ID/retry/ {account_name?}
+    else our staff retry
+        O->>W: POST store/failed-orders/ID/retry/ (run inside the store)
+    end
+    W->>W: retry_provision · same order + same payment (no new charge) · fulfil queued in the store
+    W->>PG: create again → set_owner to the reseller
+```
+
 ## 16j. A limit raise ends an enforcement block at once (v1.52.2)
 
 ```mermaid
@@ -1572,6 +1597,69 @@ sequenceDiagram
     end
 ```
 
+## 16m. A store that is not active — parked (v1.53.2) · plain http → https
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor O as Our staff / fee job
+    participant D as Django (stores · domains)
+    participant W as Host watcher (cron, every minute)
+    participant N as nginx
+    actor V as Visitor
+    O->>D: store status → suspended / closed / draft
+    D->>D: write backups/.tenant-domains.json at once (host parked = true)
+    W->>N: parked vhost (certificate, ACME + /.well-known/caspin/ kept) → nginx -t → reload → TLS verify
+    V->>N: http://store.example/any?x=1
+    N-->>V: 301 https://store.example/any?x=1 (308 for POST · never ACME / probe / IPs)
+    V->>N: https://store.example/any
+    N->>D: /api/v1/store-unavailable/ (Host = store)
+    D-->>V: 503 «این فروشگاه در حال حاضر در دسترس نیست» — store name + logo · no data · refresh every 60 s
+    O->>D: status → active → file rewritten → the watcher restores the normal vhost
+```
+
+## 16n. An agency admin is removed — archived, never deleted (v1.54) · «تاریخچه»
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant PG as PasarGuard
+    participant S as Sync (every 2 min, PAMP)
+    actor O as Our staff / group manager
+    participant A as agency.archive
+    participant DB as Ledger · invoices · payments · history
+    PG-->>S: /api/admins without "gone"
+    S->>A: archive(gone) — the ONE deliberate PAMP deviation (PORTING.md)
+    A->>A: archived_at + reason · audit agency.admin_archived
+    Note over A,DB: nothing is deleted — ledger, invoices, payments, limit history, snapshots, group link stay
+    O->>A: Agency → «بایگانی» → page · record payment / adjustment (balance stays payable)
+    PG-->>S: "gone" back on the panel
+    S->>A: restore(gone) before the update loop → same row, history continues
+    O->>DB: «تاریخچه» (7 days · this month · last month · custom · 12 months) — sums of immutable ledger rows
+    Note over DB: gross charges · adjustments · net sales (= gross + adjustments, in their period) · payments · opening / closing
+```
+
+## 16o. WireGuard configs (v1.55)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor C as Customer (site · Mini App · bot)
+    participant API as Our API / bot
+    participant PG as PasarGuard
+    C->>API: service → «وایرگارد» (owner only · 60 per hour · audited)
+    API->>PG: GET /api/user/NAME → id · GET /api/user/ID/subscription/wireguard
+    PG-->>API: one zip (one .conf per host / location)
+    API->>API: split per location · names + flags from «مکان‌های وایرگارد» · nothing stored
+    alt site
+        API-->>C: list → «دانلود» Germany.conf (the location file name = tunnel name) · «دانلود همه» CT-12-wireguard.zip
+    else Mini App
+        API-->>C: the bot sends the file to the user's chat
+    else bot
+        API-->>C: a location → the .conf as a document
+    end
+```
+
 ## 16p. Store import from a reseller's previous bot (v1.56)
 
 ```mermaid
@@ -1599,92 +1687,4 @@ sequenceDiagram
         S->>API: «بازگردانی»
         API->>DB: remove only rows unused since (PasarGuard untouched)
     end
-```
-
-## 16o. WireGuard configs (v1.55)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor C as Customer (site · Mini App · bot)
-    participant API as Our API / bot
-    participant PG as PasarGuard
-    C->>API: service → «وایرگارد» (owner only · 60 per hour · audited)
-    API->>PG: GET /api/user/NAME → id · GET /api/user/ID/subscription/wireguard
-    PG-->>API: one zip (one .conf per host / location)
-    API->>API: split per location · names + flags from «مکان‌های وایرگارد» · nothing stored
-    alt site
-        API-->>C: list → «دانلود» CT-12-germany.conf · «دانلود همه» zip
-    else Mini App
-        API-->>C: the bot sends the file to the user's chat
-    else bot
-        API-->>C: a location → the .conf as a document
-    end
-```
-
-## 16n. An agency admin is removed — archived, never deleted (v1.54) · «تاریخچه»
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant PG as PasarGuard
-    participant S as Sync (every 2 min, PAMP)
-    actor O as Our staff / group manager
-    participant A as agency.archive
-    participant DB as Ledger · invoices · payments · history
-    PG-->>S: /api/admins without "gone"
-    S->>A: archive(gone) — the ONE deliberate PAMP deviation (PORTING.md)
-    A->>A: archived_at + reason · audit agency.admin_archived
-    Note over A,DB: nothing is deleted — ledger, invoices, payments, limit history, snapshots, group link stay
-    O->>A: Agency → «بایگانی» → page · record payment / adjustment (balance stays payable)
-    PG-->>S: "gone" back on the panel
-    S->>A: restore(gone) before the update loop → same row, history continues
-    O->>DB: «تاریخچه» (7 days · this month · last month · custom · 12 months) — sums of immutable ledger rows
-    Note over DB: gross charges · adjustments · net sales (= gross + adjustments, in their period) · payments · opening / closing
-```
-
-## 16m. A store that is not active — parked (v1.53.2) · plain http → https
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor O as Our staff / fee job
-    participant D as Django (stores · domains)
-    participant W as Host watcher (cron, every minute)
-    participant N as nginx
-    actor V as Visitor
-    O->>D: store status → suspended / closed / draft
-    D->>D: write backups/.tenant-domains.json at once (host parked = true)
-    W->>N: parked vhost (certificate, ACME + /.well-known/caspin/ kept) → nginx -t → reload → TLS verify
-    V->>N: http://store.example/any?x=1
-    N-->>V: 301 https://store.example/any?x=1 (308 for POST · never ACME / probe / IPs)
-    V->>N: https://store.example/any
-    N->>D: /api/v1/store-unavailable/ (Host = store)
-    D-->>V: 503 «این فروشگاه در حال حاضر در دسترس نیست» — store name + logo · no data · refresh every 60 s
-    O->>D: status → active → file rewritten → the watcher restores the normal vhost
-```
-
-## 16i. A store's failed order — «ساخت ناموفق» (v1.52.1)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant W as Celery (store context)
-    participant PG as PasarGuard
-    actor R as Store staff (payment.approve)
-    actor O as Our staff («فروشگاه»)
-    actor C as Customer
-    W->>PG: create the paid order's account
-    PG-->>W: 422 (refused)
-    W->>W: order stays paid · provision_error + provision_failed_at
-    W-->>R: alert in the store (its bot) · store panel → Payments → «ساخت ناموفق»
-    W-->>O: alert to us (platform) · «فروشگاه» → «سفارش‌های ناموفق»
-    W-->>C: «سرویس در حال آماده‌سازی است» (site + store bot)
-    alt store staff retry
-        R->>W: POST orders/provision-failed/ID/retry/ {account_name?}
-    else our staff retry
-        O->>W: POST store/failed-orders/ID/retry/ (run inside the store)
-    end
-    W->>W: retry_provision · same order + same payment (no new charge) · fulfil queued in the store
-    W->>PG: create again → set_owner to the reseller
 ```

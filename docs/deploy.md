@@ -10,6 +10,7 @@ nginx ──┬─ /            → frontend_user   (static SPA: site, Mini App,
         ├─ <admin path> → frontend_admin  (static SPA; default /panel/, nginx/paths/active.conf)
         ├─ /ws/         → daphne (Channels WebSockets)
         ├─ /api/ /admin/ /static/ /media/ → web (Django + gunicorn ×3)
+        └─ store domains (v1.45) → nginx/tenants/<host>.conf (written only by scripts/tenants.sh) → the same upstreams
 web · daphne · celery_worker · celery_beat · bot_sales · bot_backup   (image: caspintunel-backend)
 db (MySQL 8) · redis · certbot (dns-cloudflare) · mailserver · phpmyadmin (profile "tools", off)
 ```
@@ -159,7 +160,7 @@ watcher runs the rollout:
 ```
 
 Other host cron jobs on this server: `scripts/paths.sh apply-request` and `scripts/domain.sh apply-request` (every minute —
-the panel's Paths / Domain requests), `scripts/disk-report.sh` (daily 03:17, installed by `update.sh`). An `acme.sh` cron
+the panel's Paths / Domain requests), `scripts/tenants.sh apply-request` (every minute — store domains: certificates + `nginx/tenants/<host>.conf`, v1.45), `scripts/container-stats.sh` (every 5 min — container memory for Monitoring, v1.39), `scripts/disk-report.sh` (daily 03:17, installed by `update.sh`). An `acme.sh` cron
 entry exists from an earlier setup; it holds no certificates and is not used.
 
 `watch-update.sh` → `update.sh --prod` (prod is also the default without a flag):
