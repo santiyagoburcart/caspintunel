@@ -86,6 +86,15 @@ export default function App() {
           <Route path="/discounts" element={<Discounts />} />
           <Route path="/roles" element={<Roles />} />
           <Route path="/backup" element={<StoreBackup />} />
+          {/* v1.59: the store's own CRM + «تحلیل کسب‌وکار» (crm.* — opt-in per store; CRM settings stay ours) */}
+          <Route path="/crm" element={<CrmQueue />} />
+          <Route path="/crm/cases/:id" element={<CrmCase />} />
+          <Route path="/crm/customers/:id" element={<Customer360 />} />
+          <Route path="/crm/winback" element={<CrmWinback />} />
+          <Route path="/crm/leads" element={<CrmLeads />} />
+          <Route path="/crm/reports" element={<CrmReports />} />
+          <Route path="/analytics" element={<Analytics />} />
+          <Route path="/analytics/:tab" element={<Analytics />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

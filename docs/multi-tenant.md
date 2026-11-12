@@ -33,10 +33,14 @@
 > **v1.53.1–v1.53.3**: per-worker `ALLOWED_HOSTS`, parked (503) pages for non-active stores, http → https. **v1.56.0: Phase 11
 > started** — importer framework + Mirza bot dumps ([store-import.md](store-import.md)).
 >
+> **v1.59.0**: store CRM + «تحلیل کسب‌وکار» built — the CRM views are `store_ok` (customer 360, queue, win-back, leads, notes,
+> tags, reasons, templates, reports, warning rules; CRM / retention SETTINGS stay ours), codes `crm.view` / `crm.manage` /
+> `crm.analytics` in `STORE_CODES` but never in the default ceiling (`OPT_IN_CODES` — we switch them on per store); our panel
+> sees a store with `?store=<id>` (ignored on a store's domain).
+>
 > **Final status (v1.56.0):** Phases 0–8, 10 and 12 built and live · Phase 11 built for one source (Mirza; `csv`,
 > `pasarguard_users` and other bots still planned) · Phase 9 (pilot): rehearsal done on a test store (2026-11-10, checklist
-> fixed in [pilot-fa.md](pilot-fa.md)), the real pilot with a reseller not started. Still open: the optional store SMTP relay,
-> CRM / analytics pages for stores, the Iran-side PROXY-protocol sender (skipped by the owner). Sections below are the original
+> fixed in [pilot-fa.md](pilot-fa.md)), the real pilot with a reseller not started. Still open: the optional store SMTP relay, the Iran-side PROXY-protocol sender (skipped by the owner). Sections below are the original
 > design; where the code differs, architecture.md / erd.md / flows.md and the notes above win.
 
 Every agency admin (reseller) can get a white-label store — site, Telegram Mini App and their own Telegram bot — on their own

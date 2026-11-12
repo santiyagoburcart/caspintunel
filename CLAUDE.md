@@ -246,6 +246,10 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   line (was delete) is the ONE deliberate PAMP deviation (PORTING.md) — keep it the only one. «تاریخچه» (`history.py`) and
   the reports sum immutable records only; «فروش خالص» = gross charges + adjustments (in their period), always shown next to
   «شارژ ناخالص» and «اصلاحیه‌ها» (v1.54.1).
+- **v1.59 agency payments**: an expired payment is approved by staff ONLY as «تأیید با تأخیر» with `billing.late_deposit`;
+  paid-elsewhere invoices → `superseded` via `_cancel_open_payments` (never by hand); queue buttons = `payment_row.actions`.
+- **v1.59 store CRM**: CRM views are `store_ok`; `crm.*` codes are `OPT_IN_CODES` (never in `DEFAULT_CEILING`); our panel's
+  `?store=` (`crm/views._store_filter`) works only on our host. CRM / retention settings stay platform (`store_ok = False`).
 - **v1.58 «حسابداری»** = ONE table (`agency/accounting.py`) + strip + drawer; never add a second per-admin list or the full
   ledger to that page (it lives on the admin page). Accounting state lives in the URL.
 - **v1.57 sales = «فروش»** = charges + adjustments (in their period) — the ONE sales figure everywhere (history, reports,

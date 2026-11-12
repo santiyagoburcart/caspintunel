@@ -27,8 +27,10 @@ STORE_CODES = frozenset({
     "monitoring.view",                  # the store dashboard's service counts only (server health is ours)
     "roles.manage",                     # the store's own staff and roles
     "store.export",                     # v1.53: download the store's own backup (also needs Tenant.export_allowed)
+    "crm.view", "crm.manage", "crm.analytics",   # v1.59: the store's own CRM + «تحلیل کسب‌وکار» (off until we switch them on)
 })
-DEFAULT_CEILING = sorted(STORE_CODES)
+OPT_IN_CODES = frozenset({"crm.view", "crm.manage", "crm.analytics"})   # v1.59: never in a new store's ceiling by default
+DEFAULT_CEILING = sorted(STORE_CODES - OPT_IN_CODES)
 OWNER_ROLE = "store-owner"              # Role.name of the store's owner role (per store; name_fa below)
 OWNER_ROLE_FA = "مالک فروشگاه"
 

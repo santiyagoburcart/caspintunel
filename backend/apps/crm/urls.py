@@ -3,6 +3,7 @@ from django.urls import path
 from . import views as v
 
 urlpatterns = [
+    path("stores/", v.StoresView.as_view(), name="crm-stores"),                  # v1.59 our panel's store filter
     path("customers/<int:pk>/", v.CustomerView.as_view(), name="crm-customer"),
     path("customers/<int:pk>/timeline/", v.TimelineView.as_view(), name="crm-timeline"),
     path("customers/<int:pk>/notes/", v.NotesView.as_view(), name="crm-notes"),

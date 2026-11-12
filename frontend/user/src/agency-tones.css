@@ -337,3 +337,6 @@ html body .tn-info { display: flex; flex-wrap: wrap; align-items: center; gap: 6
   border: 1px dashed color-mix(in srgb, var(--tn-adjust) 40%, transparent); }
 html body .tn-info b { font-weight: 800; }
 
+/* v1.59 «جایگزین شد» (its invoices were paid by another payment) and «بایگانی‌شده» are grey */
+html body .ag-pill[data-st="superseded"], html body .ap-pill[data-st="superseded"], html body .ab-pill[data-st="superseded"],
+html body .gm-dec[data-st="superseded"] { color: var(--c-muted-fg); background: color-mix(in srgb, var(--c-text-muted) 15%, transparent); }

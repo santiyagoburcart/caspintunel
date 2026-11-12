@@ -626,15 +626,6 @@ const CASPIAN_CSS = `
 .csp-group-badge { font-family: inherit; letter-spacing: 0; text-transform: none; }
 .csp-group-items { display: flex; flex-direction: column; gap: 4px; }
 .csp-nav:has(.csp-group-btn) { gap: 6px; }
-/* v1.58 comfortable sizes (the rail is desktop-only): headers + links match the main content */
-.csp-group-h { font-family: inherit; font-size: 13px; font-weight: 800; letter-spacing: .01em; padding: 8px 12px 4px; }
-[dir="ltr"] .csp-group-h { font-size: 12px; letter-spacing: .06em; }
-.csp-group-btn { min-height: 42px; padding: 8px 12px; }
-.csp-group-items { gap: 2px; padding-bottom: 6px; }
-.csp-link { font-size: 15px; padding: 11px 14px; }
-.csp-link svg { width: 21px; height: 21px; }
-.csp-nav:has(.csp-group-btn) { gap: 8px; }
-.csp-group-chev { width: 16px; height: 16px; }
 
 .csp-link {
   display: flex; align-items: center; gap: 12px;
@@ -643,6 +634,15 @@ const CASPIAN_CSS = `
   transition: background .15s, color .15s;
 }
 .csp-link svg { width: 20px; height: 20px; flex: 0 0 auto; color: var(--c-primary); transition: transform .15s; }
+/* v1.59 (after the base .csp-link rule so it wins) comfortable sizes (the rail is desktop-only): section headers 15px semibold, items 16px, icons 20px, rows ~44px */
+.csp-group-h { font-family: inherit; font-size: 15px; font-weight: 600; letter-spacing: 0; text-transform: none; padding: 10px 14px 6px; }
+[dir="ltr"] .csp-group-h { font-size: 15px; letter-spacing: 0; text-transform: none; }
+.csp-group-btn { min-height: 44px; padding: 8px 14px; border-radius: 10px; }
+.csp-group-items { gap: 2px; padding-bottom: 8px; }
+.csp-link { font-size: 16px; min-height: 44px; padding: 10px 14px; gap: 14px; }
+.csp-link svg { width: 20px; height: 20px; }
+.csp-nav:has(.csp-group-btn) { gap: 6px; }
+.csp-group-chev { width: 16px; height: 16px; }
 .csp-link:hover { background: color-mix(in srgb, var(--c-primary) 8%, transparent); color: #131b2e; }
 .csp-link:hover svg { transform: scale(1.1); }
 /* finance / config group icons pick up the lighter blue accent */

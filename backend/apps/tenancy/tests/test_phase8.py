@@ -217,7 +217,7 @@ def test_store_codes_match_the_store_safe_views_and_hold_no_platform_code():
     assert used <= S.STORE_CODES, f"a store page asks for a code a store can never hold: {sorted(used - S.STORE_CODES)}"
     platform = {"agency.manage", "agency.view", "agency.accounting", "agency.payments", "accounting.view", "settings.email",
                 "users.purge", "bots.manage", "services.manage", "services.delete", "audit.view", "broadcast.send",
-                "payments.manual_invoice", "crm.view", "crm.manage"}
+                "payments.manual_invoice"}          # v1.59: crm.* are store codes now (opt-in per store, OPT_IN_CODES)
     assert not (S.STORE_CODES & platform)
     assert not any(c.startswith("agency.") for c in S.STORE_CODES)
 

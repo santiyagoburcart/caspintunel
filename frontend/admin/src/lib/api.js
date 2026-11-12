@@ -1,5 +1,6 @@
 import { ADMIN_BASE } from './base'
 import axios from 'axios'
+import { getStoreScope, isScopedUrl } from './storeScope'
 
 const ACCESS = 'cta_access'
 const REFRESH = 'cta_refresh'
@@ -86,6 +87,8 @@ api.interceptors.request.use((cfg) => {
   else delete cfg.headers.Authorization
   const cid = clientId()
   if (cid) cfg.headers['X-Client-Id'] = cid
+  const sc = isScopedUrl(cfg.url) ? getStoreScope() : ''          // v1.59 our CRM / analytics store filter
+  if (sc) cfg.params = { ...(cfg.params || {}), store: sc }
   return cfg
 })
 

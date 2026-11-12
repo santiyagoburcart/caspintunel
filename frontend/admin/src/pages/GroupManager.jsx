@@ -1,7 +1,7 @@
 import AgencyHistory from '../components/AgencyHistory'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Navigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { api, tokens } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useTheme } from '../theme/ThemeProvider'
@@ -545,7 +545,7 @@ function Admins({ me, s, lang, reload, can }) {
         <>
           <p className="am-count">{s.count_admins.replace('{n}', d.count)}</p>
           <div className="am-gridw"><div className="am-grid">
-            {d.results.map((a) => <AdminCard key={a.username} a={a} s={s} lang={lang} can={can} full={full} live={live[a.username]} showGroup={me.groups.length > 1}
+            {d.results.map((a) => <AdminCard key={a.username} a={a} archived={!!d.archived} s={s} lang={lang} can={can} full={full} live={live[a.username]} showGroup={me.groups.length > 1}
               writable={me.writes_enabled} capReached={cap.reached} onAct={(k) => setDlg({ k, a, g: groupOf(a) })} />)}
           </div></div>
           <Pager page={d.page} pages={d.pages} onPage={setPage} s={s} />
@@ -627,7 +627,7 @@ function MoreMenu({ label, items }) {
   )
 }
 
-function AdminCard({ a, s, lang, can, full, live, showGroup, writable, capReached, onAct }) {
+function AdminCard({ a, s, lang, can, full, live, showGroup, writable, capReached, onAct, archived = false }) {
   const st = useST(lang)
   const unl = !(Number(a.admin_limit_bytes) > 0)
   const pct = Math.min(Number(a.usage_percent) || 0, 100)
@@ -655,7 +655,8 @@ function AdminCard({ a, s, lang, can, full, live, showGroup, writable, capReache
             <small className="am-tag am-tag--r" title={s.role_l}><Ic n="sliders" size={11} />{roleLabel(a.role)}</small>
           </div>
         </div>
-        <span className="ap-pill" data-st={a.status_code}>{s['st_' + a.status_code] || a.status_code}</span>
+        {archived ? <span className="ap-pill" data-st="archived" data-testid="gm-archived-badge">{lang === 'fa' ? 'بایگانی‌شده' : 'Archived'}</span>
+          : <span className="ap-pill" data-st={a.status_code}>{s['st_' + a.status_code] || a.status_code}</span>}
       </header>
       {unl ? <p className="am-unl"><Ic n="infinity" size={14} />{s.unl}<small> · {s.unl_no}</small></p> : (
         <div className="am-use"><span className="ap-bar" data-tone={tone}><i style={{ width: `${pct}%` }} /></span><N>{a.usage_percent}%</N></div>
@@ -672,7 +673,13 @@ function AdminCard({ a, s, lang, can, full, live, showGroup, writable, capReache
         </div>
       )}
       <CardUsers a={a} live={full ? live : null} s={s} st={st} />
-      {locked ? <p className="am-hint am-foot">{s.sudo}</p> : (
+      {/* v1.59: an archived (deleted) admin has nothing to act on — only «جزئیات» (its account in «حسابداری») */}
+      {archived ? (
+        <div className="am-acts">
+          {can('agency.gm.accounting') ? <Link className="ap-link am-pa" to={`/my-groups/accounting?a_tab=all&a_open=${encodeURIComponent(a.username)}`} data-testid="gm-arch-details"><Ic n="doc" />{st.details}</Link>
+            : full && <button type="button" className="ap-link am-pa" onClick={() => onAct('stats')} data-testid="gm-arch-details"><Ic n="gauge" />{st.details}</button>}
+        </div>
+      ) : locked ? <p className="am-hint am-foot">{s.sudo}</p> : (
         <div className="am-acts">
           {can('agency.gm.add_volume') && <button type="button" className="ap-link am-pa" disabled={!writable || unl || capReached} title={unl ? s.unl_no : undefined} onClick={() => onAct('add')}><Ic n="plus" />{s.add}</button>}
           {can('agency.gm.view_users') && <button type="button" className="ap-link am-pa" onClick={() => onAct('users')}><Ic n="users" />{s.users}</button>}

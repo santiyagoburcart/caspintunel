@@ -698,3 +698,13 @@ Everything shipped since v1.6.0 (details in the session log):
   «صورت‌حساب») with group filter, search, sort by any column, pages — all in the URL — and a side drawer (summary + last 5
   entries + «صفحهٔ کامل ادمین»). Backend `agency/accounting.py` (+ `?recent=` on the statement); `AgencyReports.jsx` removed.
   Same layout for the group manager. Desktop sidebar: section headers 13 px (body font), items 15 px. Tests: `test_v158.py`.
+- 2026-11-13 — **v1.59.0: agency payment states, single tab bar, archived admins for managers, sidebar, store CRM.**
+  (1) Read-only check: expiry worked (AP-000027 expired 1 min after its timer, AP-000026 after 2) — the queue still offered
+  approve / reject on expired payments. Now buttons come from the server: expired → none, or «تأیید با تأخیر» only with a
+  later exact deposit (`billing.late_deposit`, confirm with a warning, the deposit is linked). (2) New status `superseded`
+  («جایگزین شد», `superseded_by`) when another payment / a ledger payment / «تسویه خارج» paid all its invoices; migration
+  agency 0017 fixes existing rows (AP-000026 → AP-000028) and expires stale checkouts, printing what it changed. (3) The
+  payments tab no longer renders a second tab bar. (4) Group manager: archived admins show a grey «بایگانی‌شده» badge and only
+  «جزئیات» (→ «حسابداری» drawer). (5) Sidebar: headers 15 px semibold, items 16 px, icons 20 px, rows 44 px. (6) Store CRM +
+  «تحلیل کسب‌وکار»: CRM views `store_ok`, codes crm.view / crm.manage / new crm.analytics opt-in per store (not in the default
+  ceiling), our panel's store filter (`?store=`, «فروشگاه» picker), CRM / retention settings stay ours. Tests `test_v159.py` (8).

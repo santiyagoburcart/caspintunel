@@ -66,7 +66,40 @@ def _truthy(v) -> bool:
     return v is True or str(v).lower() in ("1", "true", "yes", "on")
 
 
+def _store_filter(request) -> int | None:
+    """v1.59: on OUR panel `?store=<tenant id>` shows a store's CRM / analytics (our staff only — a store's own staff can
+    never sign in on our host). On a store's domain the parameter is ignored: a store only ever sees itself."""
+    from apps.tenancy import context
+    from apps.tenancy.models import Tenant
+
+    raw = str(request.GET.get("store") or "")
+    if not raw.isdigit():
+        return None
+    try:
+        here = context.current_tenant_id()
+    except Exception:  # noqa: BLE001
+        return None
+    if here is not None and here != context.default_tenant_id():
+        return None
+    t = Tenant.objects.filter(pk=int(raw), is_default=False).values_list("pk", flat=True).first()
+    return t
+
+
 class _Staff(AdminAPIView):
+    # v1.59: the CRM + «تحلیل کسب‌وکار» answer on a store's domain with the store's own data (TENANT tables, scoped); the
+    # codes are in tenancy.staff.STORE_CODES but not in the default ceiling — our staff switch them on per store.
+    store_ok = True
+
+    def dispatch(self, request, *args, **kwargs):
+        tid = _store_filter(request)
+        if tid is None:
+            return super().dispatch(request, *args, **kwargs)
+        from apps.tenancy import context
+
+        request._ct_store_filter = tid
+        with context.tenant_context(tid):
+            return super().dispatch(request, *args, **kwargs)
+
     def initial(self, request, *args, **kwargs):
         super().initial(request, *args, **kwargs)
         if not isinstance(request.user, Staff):
@@ -510,6 +543,7 @@ class ReportsView(_Staff):
 # --- settings, reasons, templates, tags ------------------------------------------------------
 class SettingsView(_Staff):
     perms_map = {"GET": VIEW, "PATCH": MANAGE}
+    store_ok = False        # platform `Setting` rows — a store follows our CRM rules
 
     def get(self, request):
         return Response({"settings": S.all_settings(), "limits": {k: [lo, hi] for k, _d, lo, hi in S.INT_SETTINGS}})
@@ -640,6 +674,7 @@ WarningRulesView, WarningRuleDetailView = _crud(
 
 class RetentionSettingsView(_Staff):
     perms_map = {"GET": VIEW, "PATCH": MANAGE}
+    store_ok = False        # platform `Setting` rows (retention_*) — a store follows ours
 
     def get(self, request):
         from . import retention as R
@@ -691,14 +726,20 @@ class RetentionReportView(_Staff):
 
 # --- analytics (phase 5) ------------------------------------------------------------------
 ANALYTICS = ["accounting.view", "crm.view"]
+STORE_ANALYTICS = ["crm.view", "crm.analytics"]          # v1.59: on a store's domain (accounting.view stays ours)
 
 
 class AnalyticsView(_Staff):
+    perms_map = {"GET": STORE_ANALYTICS}                 # what a store needs (the class value the release gate reads)
     """GET analytics/<what>/ — overview | financial | retention | tickets (period: ?preset= or ?from=&to=)
     · ?export=csv|xlsx on financial (with the retention tables) → a file."""
 
     def get_permissions(self):
-        self.perms_map = {"GET": ["crm.view", "tickets.view"] if self.kwargs.get("what") == "tickets" else ANALYTICS}
+        from apps.settings_app.branding import is_store
+
+        on_store = is_store() and not getattr(self.request, "_ct_store_filter", None)
+        self.perms_map = {"GET": ["crm.view", "tickets.view"] if self.kwargs.get("what") == "tickets"
+                          else STORE_ANALYTICS if on_store else ANALYTICS}
         return super().get_permissions()
 
     def get(self, request, what):
@@ -732,3 +773,14 @@ class AnalyticsView(_Staff):
         if what == "tickets":
             return Response({"range": A._rng(start, end), "preset": preset, **A.tickets(start, end)})
         return Response({"detail": "unknown report"}, status=404)
+
+
+class StoresView(AdminAPIView):
+    """v1.59 GET crm/stores/ — the stores our CRM / analytics can be filtered by (our panel only)."""
+    perms_map = {"GET": VIEW}
+
+    def get(self, request):
+        from apps.tenancy.models import Tenant
+
+        return Response([{"id": t.id, "name": t.name, "status": t.status}
+                         for t in Tenant.objects.filter(is_default=False).order_by("name")])

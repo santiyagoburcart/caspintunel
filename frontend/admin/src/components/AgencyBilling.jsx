@@ -343,7 +343,7 @@ const MT = {
     sel_h: 'پرداخت انتخابی (پیشرفته)', sel_hint: 'فقط وقتی لازم است بخشی از بدهی را بپردازید.', sel: '{n} قلم انتخاب شد · {a}', pay_sel: 'پرداخت انتخاب‌شده‌ها',
     hist_none: 'هنوز پرداختی ثبت نکرده‌اید.', open: 'ادامهٔ پرداخت', group: 'گروه', ledger_check: 'دفتر حساب: {a}',
     p_pending_payment: 'در انتظار واریز', p_pending_review: 'در حال بررسی', p_approved: 'تأیید شد', p_rejected: 'رد شد',
-    p_expired: 'منقضی', p_cancelled: 'لغو شد' },
+    p_expired: 'منقضی', p_cancelled: 'لغو شد', p_superseded: 'جایگزین شد' },
   en: { rq_h: 'Request volume for an admin', rq_admin: 'Admin', rq_pick: 'Choose an admin', rq_send: 'Send for approval',
     rq_list: 'My requests', rq_none: 'No requests yet.',
     t_debt: 'Debt', t_hist: 'Payment history', total_h: 'Total group debt', pay_all: 'Pay the whole debt', nothing: 'Nothing owed ✓',
@@ -354,7 +354,7 @@ const MT = {
     sel_h: 'Pay selected items (advanced)', sel_hint: 'Only when you need to pay part of the debt.', sel: '{n} selected · {a}', pay_sel: 'Pay selected',
     hist_none: 'No payments yet.', open: 'Continue', group: 'Group', ledger_check: 'Ledger: {a}',
     p_pending_payment: 'Waiting for transfer', p_pending_review: 'Under review', p_approved: 'Approved', p_rejected: 'Rejected',
-    p_expired: 'Expired', p_cancelled: 'Cancelled' },
+    p_expired: 'Expired', p_cancelled: 'Cancelled', p_superseded: 'Superseded' },
 }
 
 /** v1.35.2 «ریز بدهی»: read-only, one collapsible row per admin (zero-debt admins hidden unless «نمایش همه»).

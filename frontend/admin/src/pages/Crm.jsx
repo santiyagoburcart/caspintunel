@@ -7,6 +7,8 @@ import { jalali, toman, gb, relTime } from '../lib/format'
 import { Spinner, Toggle } from '../components/ui'
 import { useConfirm } from '../components/ConfirmDialog'
 import { ManualInvoiceButton, ManualInvoicesCard } from '../components/ManualInvoice'
+import StoreScope from '../components/StoreScope'
+import { getStoreScope } from '../lib/storeScope'
 
 // CRM (backend: apps/crm). Follow-up queue · case · customer 360 · leads · reports · settings.
 const T = {
@@ -108,11 +110,16 @@ function Chip({ tone = 'muted', children }) { return <span className={`cr-chip c
 export function CrmHeader() {
   const [s] = useT()
   const { can } = useAuth()
-  const tabs = [['/crm', s.t_queue, true], ['/crm/winback', s.t_winback], ['/crm/leads', s.t_leads], ['/crm/reports', s.t_reports], ...(can('crm.manage') ? [['/crm/settings', s.t_settings]] : [])]
+  const { staff } = useAuth()
+  const { lang } = useI18n()
+  // v1.59: CRM settings are ours (platform rules) — not on a store's panel and not while viewing a store
+  const settingsTab = can('crm.manage') && !staff?.store && !getStoreScope()
+  const tabs = [['/crm', s.t_queue, true], ['/crm/winback', s.t_winback], ['/crm/leads', s.t_leads], ['/crm/reports', s.t_reports], ...(settingsTab ? [['/crm/settings', s.t_settings]] : [])]
   return (
     <>
       <style>{CSS}</style>
       <div><h1 className="text-lg font-bold">{s.title}</h1><p className="text-sm text-muted mt-1">{s.sub}</p></div>
+      <StoreScope lang={lang} />
       <nav className="cr-tabs">{tabs.map(([to, l, end]) => <NavLink key={to} to={to} end={!!end} className={({ isActive }) => 'cr-tab' + (isActive ? ' on' : '')}>{l}</NavLink>)}</nav>
     </>
   )
@@ -434,7 +441,7 @@ function ImportedHistory({ im, lang }) {
 export function Customer360() {
   const [s, lang] = useT()
   const { id } = useParams()
-  const { can } = useAuth()
+  const { can, staff: me } = useAuth()
   const go = useNavigate()
   const [d, load] = useGet(`/admin/crm/customers/${id}/`, [id])
   const [tl, loadTl] = useGet(`/admin/crm/customers/${id}/timeline/`, [id])
@@ -448,6 +455,7 @@ export function Customer360() {
   if (!d) return <div className="cr"><CrmHeader /><p className="card">—</p></div>
   const u = d.user, p = d.profile
   const tagIds = p.tags.map((t) => t.id)
+  const storeView = !!me?.store || !!getStoreScope()      // v1.59: manual invoices are ours (not on a store's CRM)
   return (
     <div className="cr space-y-4">
       <CrmHeader />
@@ -459,10 +467,10 @@ export function Customer360() {
             {p.stage_override && <span className="text-xs text-muted">({s.override}; {s.auto}: {s.stg[p.stage]})</span>}
             {p.tags.map((t) => <span key={t.id} className="cr-tag" style={{ '--tag': t.color }}>{t.name}</span>)}</div>
         </div>
-        <ManualInvoiceButton userId={u.id} onDone={() => { setMiKey((k) => k + 1); load(); loadTl() }} />
+        {!storeView && <ManualInvoiceButton userId={u.id} onDone={() => { setMiKey((k) => k + 1); load(); loadTl() }} />}
         {manage && <button type="button" className="btn-ghost text-sm" onClick={() => api.post(`/admin/crm/customers/${id}/cases/`, { kind: d.money.orders ? 'manual' : 'lead' }).then((r) => go(`/crm/cases/${r.data.id}`))}>+ {s.new_case}</button>}
       </div>
-      <ManualInvoicesCard userId={u.id} reloadKey={miKey} />
+      {!storeView && <ManualInvoicesCard userId={u.id} reloadKey={miKey} />}
       <div className="cr-grid3">
         <section className="card space-y-2">
           <h4>{s.profile}</h4>

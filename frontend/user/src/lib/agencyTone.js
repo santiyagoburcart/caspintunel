@@ -22,7 +22,7 @@ const STATUS = {
   // invoices
   unpaid: 'danger', pending: 'warning', paid: 'success', partial: 'warning', voided: 'muted',
   // payments
-  pending_payment: 'warning', pending_review: 'warning', approved: 'success', rejected: 'danger', cancelled: 'muted',
+  pending_payment: 'warning', pending_review: 'warning', approved: 'success', rejected: 'danger', cancelled: 'muted', superseded: 'muted',
   // requests / sync / stores
   ok: 'success', error: 'danger', failed: 'danger', draft: 'muted', suspended: 'warning', closed: 'danger',
 }

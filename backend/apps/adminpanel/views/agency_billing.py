@@ -152,7 +152,7 @@ class AgencyPaymentActionView(_B):
     def post(self, request, pk, action):
         d = request.data or {}
         if action == "approve":
-            p = B.approve_payment(pk, staff=request.user, source="manual")
+            p = B.approve_payment(pk, staff=request.user, source="manual", late=bool(d.get("late")))   # v1.59 «تأیید با تأخیر»
             return Response({**B.payment_row(p, staff=True), "message": f"Payment {p.number} approved",
                              "message_fa": f"واریز {p.number} تأیید شد"})
         if action == "reject":

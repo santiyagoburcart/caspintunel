@@ -501,3 +501,14 @@ Design and status: [multi-tenant.md](multi-tenant.md); pilot checklist: [pilot-f
   debt red · credit green · zero neutral; invoices unpaid red / under review amber / paid green / voided grey; requests and
   payments waiting amber / approved green / rejected red; «اصلاحیه» purple; KPI tiles tinted in their accent.
 
+## Expired and superseded payments (v1.59)
+
+- A checkout expires with its timer (`expire_stale`, beat every 5 min) and is still matched automatically by an exact deposit
+  inside the grace window. After that the queue shows **no approve / reject**: only **«تأیید با تأخیر»**, and only when a
+  deposit of exactly its unique amount arrived later and nothing used it (`billing.late_deposit`: an SMS or Blu deposit) — a
+  confirm with a warning; the deposit is linked and is what was paid. The API refuses any other approval of an expired payment.
+- When every invoice of an open / expired payment gets paid — by another agency payment, a ledger payment or «تسویه خارج از
+  سیستم» — it becomes **«جایگزین شد»** (`superseded`, `superseded_by` = the payment that paid them, linked in the queue) with no
+  actions; a checkout that still has an open invoice is cancelled as before. Migration `agency 0017` fixed the existing ones.
+- The queue's buttons come from the server (`payment_row.actions`).
+

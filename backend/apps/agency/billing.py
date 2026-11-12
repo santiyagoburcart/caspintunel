@@ -535,12 +535,69 @@ def _live(event: str, **data) -> None:
         log.warning("agency live event failed: %s", exc)
 
 
-def _cancel_open_payments(invoice_ids: list[int]) -> None:
-    for p in AgencyPayment.objects.select_for_update().filter(items__invoice_id__in=invoice_ids,
-                                                              status=AgencyPayment.PENDING_PAYMENT).distinct():
-        p.status = AgencyPayment.CANCELLED
-        p.sync_unique_lock()
-        p.save(update_fields=["status", "amount_unique_lock", "updated_at"])
+def _cancel_open_payments(invoice_ids: list[int], *, by: AgencyPayment | None = None) -> None:
+    """Invoices were paid (another payment, a ledger payment, «تسویه خارج از سیستم»): an unfinished checkout or an expired
+    payment for them is done. v1.59: when ALL its invoices are now paid it becomes «جایگزین شد» (`superseded_by` = the
+    payment that paid them, when there is one); an unfinished checkout that still has an open invoice is cancelled."""
+    qs = (AgencyPayment.objects.select_for_update().filter(items__invoice_id__in=invoice_ids,
+                                                          status__in=(AgencyPayment.PENDING_PAYMENT, AgencyPayment.EXPIRED))
+          .distinct())
+    if by is not None:
+        qs = qs.exclude(pk=by.pk)
+    for p in qs:
+        if supersede_if_paid(p, by=by):
+            continue
+        if p.status == AgencyPayment.PENDING_PAYMENT:
+            p.status = AgencyPayment.CANCELLED
+            p.sync_unique_lock()
+            p.save(update_fields=["status", "amount_unique_lock", "updated_at"])
+
+
+def supersede_if_paid(p: AgencyPayment, *, by: AgencyPayment | None = None) -> bool:
+    """v1.59 «جایگزین شد»: every invoice of `p` is paid → status superseded + the payment that paid them (searched when
+    not given: the newest approved payment holding all of them). True when it changed."""
+    ids = list(p.items.values_list("invoice_id", flat=True))
+    if not ids or AgencyInvoice.objects.filter(pk__in=ids).exclude(status=AgencyInvoice.PAID).exists():
+        return False
+    if by is None:
+        cands = (AgencyPayment.objects.filter(status=AgencyPayment.APPROVED, items__invoice_id__in=ids).exclude(pk=p.pk)
+                 .distinct().order_by("-confirmed_at", "-id"))
+        by = next((c for c in cands if set(ids) <= set(c.items.values_list("invoice_id", flat=True))), None)
+    p.status, p.superseded_by = AgencyPayment.SUPERSEDED, by
+    p.sync_unique_lock()
+    p.save(update_fields=["status", "superseded_by", "amount_unique_lock", "updated_at"])
+    write_audit(action="agency.payment.superseded", staff="system", target=p,
+                detail={"payment": p.number, "by": by.number if by else None})
+    return True
+
+
+def late_deposit(p: AgencyPayment):
+    """v1.59 «تأیید با تأخیر»: a deposit of exactly this payment's unique amount that arrived after it was created and that
+    nothing used (no order, no payment, no agency payment) — an SMS or a Blu transaction, else None."""
+    from apps.payments_sms.models import BluStatus, BluTransaction, SmsMessage
+
+    since = p.created_at - CREATED_SKEW
+    used_sms = AgencyPayment.objects.exclude(sms_message=None).values_list("sms_message_id", flat=True)
+    sms = (SmsMessage.objects.filter(parsed_amount=p.amount_unique, received_at__gte=since, matched_order=None, mismatch_order=None)
+           .exclude(pk__in=used_sms).order_by("received_at").first())
+    if sms is not None:
+        return {"kind": "sms", "obj": sms, "at": sms.received_at, "amount": sms.parsed_amount}
+    used_tx = AgencyPayment.objects.exclude(blu_transaction=None).values_list("blu_transaction_id", flat=True)
+    tx = (BluTransaction.objects.filter(amount_toman=p.amount_unique, occurred_at__gte=since, status=BluStatus.UNMATCHED,
+                                        matched_order=None, matched_payment=None)
+          .exclude(pk__in=used_tx).order_by("occurred_at").first())
+    if tx is not None:
+        return {"kind": "blu", "obj": tx, "at": tx.occurred_at, "amount": tx.amount_toman}
+    return None
+
+
+def actions(p: AgencyPayment) -> list[str]:
+    """What staff may do with a payment (the queue shows only these buttons)."""
+    if p.status in (AgencyPayment.PENDING_PAYMENT, AgencyPayment.PENDING_REVIEW):
+        return ["approve", "reject"]
+    if p.status == AgencyPayment.EXPIRED:
+        return ["late_approve"] if late_deposit(p) else []
+    return []
 
 
 @transaction.atomic
@@ -606,6 +663,8 @@ def payment_row(p: AgencyPayment, *, staff: bool = False) -> dict:
            # v1.44.1: signed invoice − paid of a rounded approval («کمتر X» / «بیشتر X»)
            "rounded_diff": (p.amount_unique - p.paid_amount) if p.auto_rule == "rounded" and p.paid_amount is not None else None,
            "method": p.method, "reject_reason": p.reject_reason, "created_at": p.created_at,
+           # v1.59: what staff may do (buttons) + «جایگزین شد»
+           "superseded_by": {"id": p.superseded_by_id, "number": p.superseded_by.number} if p.superseded_by_id else None,
            "confirmed_at": p.confirmed_at, "has_receipt": bool(p.receipt_image),
            "invoices": [{"id": it.invoice_id, "number": it.invoice.number, "admin": it.invoice.admin_username,
                          "group": it.invoice.group_name, "amount": it.amount, "kind": it.invoice.kind,
@@ -621,7 +680,10 @@ def payment_row(p: AgencyPayment, *, staff: bool = False) -> dict:
                     "auto_reason": p.auto_reason or {}, "confirmed_by": p.confirmed_by,
                     "confirmed_by_staff": p.confirmed_by_staff.username if p.confirmed_by_staff_id else None,
                     "sms_message": p.sms_message_id, "blu_transaction": p.blu_transaction_id,
-                    "warnings": warnings(p)})
+                    "warnings": warnings(p), "actions": actions(p)})
+        if p.status == AgencyPayment.EXPIRED:
+            dep = late_deposit(p)
+            row["late_deposit"] = {"kind": dep["kind"], "at": dep["at"], "amount": dep["amount"]} if dep else None
     return row
 
 
@@ -700,13 +762,25 @@ def _ledger_payments(p: AgencyPayment, paid: Decimal, by: str) -> dict[str, Ledg
 
 @transaction.atomic
 def approve_payment(payment_id: int, *, staff=None, source: str = "manual", deposit=None, sms=None, tx=None,
-                    rounded: dict | None = None) -> AgencyPayment:
-    """source: manual (staff) | sms_auto | blu_auto. `deposit` = what arrived (tomans)."""
+                    rounded: dict | None = None, late: bool = False) -> AgencyPayment:
+    """source: manual (staff) | sms_auto | blu_auto. `deposit` = what arrived (tomans).
+    v1.59: staff approve an EXPIRED payment only as «تأیید با تأخیر» (`late=True`) and only when a matching deposit arrived
+    later (`late_deposit`) — that deposit is linked and is what was paid; a superseded payment is never approved."""
     p = AgencyPayment.objects.select_for_update().filter(pk=payment_id).first()
     if p is None:
         raise BillingError("payment not found", "not_found")
     if p.status == AgencyPayment.APPROVED:
         return p
+    if p.status == AgencyPayment.SUPERSEDED:
+        raise BillingError("this payment was superseded — its invoices are already paid", "conflict",
+                           fa="فاکتورهای این پرداخت با پرداخت دیگری پرداخت شده‌اند")
+    if p.status == AgencyPayment.EXPIRED and source == "manual":
+        dep = late_deposit(p)
+        if not late or dep is None:
+            raise BillingError("this payment expired — only a late approval with a matching deposit is possible", "conflict",
+                               fa="مهلت این پرداخت تمام شده؛ فقط اگر واریزی با همین مبلغ رسیده باشد «تأیید با تأخیر» ممکن است")
+        deposit = dep["amount"]
+        sms, tx = (dep["obj"], None) if dep["kind"] == "sms" else (None, dep["obj"])
     if p.status not in (AgencyPayment.PENDING_PAYMENT, AgencyPayment.PENDING_REVIEW, AgencyPayment.EXPIRED,
                         AgencyPayment.REJECTED):
         raise BillingError(f"this payment is {p.status}", "conflict")
@@ -740,6 +814,9 @@ def approve_payment(payment_id: int, *, staff=None, source: str = "manual", depo
     from . import allocation
 
     allocation.allocate_agency_payment(p, entries, by)     # invoices paid through allocation rows
+    _cancel_open_payments(list(p.items.values_list("invoice_id", flat=True)), by=p)   # v1.59: older checkouts → «جایگزین شد»
+    if tx is not None and source == "manual":
+        _mark_tx(tx, p)
     write_audit(action="agency.payment.approved", staff=staff if staff is not None else "system", target=p,
                 detail={"payment": p.number, "source": source, "paid": str(paid), "amount": str(p.amount),
                         "shortfall": str(p.shortfall) if p.shortfall else None,
@@ -780,8 +857,9 @@ def reject_payment(payment_id: int, *, staff, reason: str) -> AgencyPayment:
     p = AgencyPayment.objects.select_for_update().filter(pk=payment_id).first()
     if p is None:
         raise BillingError("payment not found", "not_found")
-    if p.status not in (AgencyPayment.PENDING_PAYMENT, AgencyPayment.PENDING_REVIEW, AgencyPayment.EXPIRED):
-        raise BillingError(f"this payment is {p.status}", "conflict")
+    if p.status not in (AgencyPayment.PENDING_PAYMENT, AgencyPayment.PENDING_REVIEW):
+        raise BillingError(f"this payment is {p.status}", "conflict",
+                           fa="این پرداخت دیگر باز نیست" if p.status != AgencyPayment.EXPIRED else "این پرداخت منقضی شده است")
     reason = (reason or "").strip()
     if len(reason) < 2:
         raise BillingError("a reason is required (the payer sees it)", "invalid", field="reason")

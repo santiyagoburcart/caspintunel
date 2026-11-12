@@ -7,6 +7,7 @@ import { toman } from '../lib/format'
 import { Spinner } from '../components/ui'
 import { DateRangeModal, DRP_CSS } from '../components/DateRangePicker'
 import { useToast } from '../components/Toast'
+import StoreScope from '../components/StoreScope'
 
 // Business overview + CRM accounting & analytics (backend: apps/crm/analytics.py).
 // Read-only: every number comes from the server; this file only lays out and draws.
@@ -80,12 +81,13 @@ function Kpi({ label, value, sub, tone }) {
 }
 
 function Header() {
-  const [s] = useT()
+  const [s, lang] = useT()
   const tabs = [['/analytics', s.t_overview, true], ['/analytics/finance', s.t_fin], ['/analytics/retention', s.t_ret], ['/analytics/support', s.t_tk]]
   return (
     <>
       <style>{CSS + DRP_CSS}</style>
       <div><h1 className="text-lg font-bold">{s.title}</h1><p className="text-sm text-muted mt-1">{s.sub}</p></div>
+      <StoreScope lang={lang} />
       <nav className="an-tabs">{tabs.map(([to, l, end]) => <NavLink key={to} to={to} end={!!end} className={({ isActive }) => 'an-tab' + (isActive ? ' on' : '')}>{l}</NavLink>)}</nav>
     </>
   )

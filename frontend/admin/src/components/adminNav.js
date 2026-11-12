@@ -78,6 +78,8 @@ export const STORE_GROUPS = [
     ['/users', 'users', 'users.view', 'users'],
     ['/tickets', 'tickets', 'tickets.view', 'tickets'],
     ['/plans', 'plans', 'plans.manage', 'plans'],
+    // v1.59: the store's own CRM (customer 360, follow-up queue, win-back, leads, reports) — only when we switch crm.* on
+    ['/crm', 'crm', 'crm.view', 'crm'],
   ]],
   // v1.47 (Phase 5): the store's own payments queue, SMS log and receiving cards (its devices, its pool)
   ['nav_group_finance', [
@@ -85,6 +87,8 @@ export const STORE_GROUPS = [
     ['/sms-log', 'sms_log', 'payment.view', 'sms'],
     ['/cards', 'cards', 'payment.view', 'cards'],
     ['/discounts', 'discounts', 'discounts.view', 'discounts'],
+    // v1.59: «تحلیل کسب‌وکار» of the store (LTV, churn, cohorts, support) — crm.analytics, switched on by us per store
+    ['/analytics', 'analytics', ['crm.view', 'crm.analytics'], 'analytics'],
   ]],
   ['nav_group_config', [
     ['/branding', 'branding', 'settings.manage', 'branding'],

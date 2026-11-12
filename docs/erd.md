@@ -909,7 +909,7 @@ erDiagram
         decimal amount_unique
         decimal amount_unique_lock UK "while matchable (shared pool with orders)"
         datetime unique_expire_at
-        string status "pending_payment | pending_review | approved | rejected | expired | cancelled"
+        string status "pending_payment | pending_review | approved | rejected | expired | cancelled | superseded"
         bigint bank_card_id FK
         string receipt_image "private media receipts/agency/"
         string receipt_sha256
@@ -932,6 +932,7 @@ erDiagram
         datetime pending_resolved_at
         datetime created_at
         datetime updated_at
+        bigint superseded_by_id FK "v1.59 the payment that paid its invoices"
     }
 
     agency_payment_item {
@@ -974,6 +975,7 @@ erDiagram
 | `agency_panel_admin` | One PasarGuard admin (reseller) with the PAMP counters refreshed by every sync: limit, used, sold, remaining, user counts, deleted-users traffic, blocked flag. v1.54: never deleted — gone from PasarGuard or deleted in our panel → `archived_at` (default manager hides it; `all_objects` sees it), restored when back on the panel. |
 | `agency_user_seen` | v1.54: the first time the sync saw each user of an agency admin — append-only, never deleted with the user; «کاربران جدید» per period in «تاریخچه» (counts start with v1.54). |
 | `agency_admin_limit` | Per-admin limit settings and the 80 % warning flag (PAMP). |
+| `agency_payment` (v1.59) | status adds `superseded`; `superseded_by` → the payment that paid its invoices. |
 | `agency_limit_change` | Every change of a panel admin's data limit (our addition, v1.23): who / where (`source`: `panel` our agency panel · `pasarguard` changed directly on PasarGuard, detected by the sync · `manager` group manager · `history` baseline; `action` create / set / add / reduce / remove / external / baseline) / old → new bytes (0 = unlimited) + note — so a mistake can always be traced and undone. |
 | `agency_user_traffic_snapshot` | Last-known `used_traffic` per user of each admin — a user missing on the next sync counts as deleted and their traffic is kept in `deleted_users_used_bytes`. |
 | `agency_sync_log` | One row per sync run (Sync logs page). |

@@ -558,8 +558,10 @@ class AgencyInvoice(models.Model):
 class AgencyPayment(models.Model):
     PENDING_PAYMENT, PENDING_REVIEW, APPROVED, REJECTED, EXPIRED, CANCELLED = (
         "pending_payment", "pending_review", "approved", "rejected", "expired", "cancelled")
+    SUPERSEDED = "superseded"          # v1.59: its invoices were all paid by another payment (or another way)
     STATUSES = [(PENDING_PAYMENT, "Waiting for the transfer"), (PENDING_REVIEW, "Waiting for review"),
-                (APPROVED, "Approved"), (REJECTED, "Rejected"), (EXPIRED, "Expired"), (CANCELLED, "Cancelled")]
+                (APPROVED, "Approved"), (REJECTED, "Rejected"), (EXPIRED, "Expired"), (CANCELLED, "Cancelled"),
+                (SUPERSEDED, "Superseded")]
     ACTIVE = (PENDING_PAYMENT, PENDING_REVIEW)          # these hold the unique amount
 
     payer_kind = models.CharField(max_length=8, choices=[("admin", "Agency admin"), ("manager", "Group manager")])
@@ -594,6 +596,8 @@ class AgencyPayment(models.Model):
                                            related_name="+")
     confirmed_at = models.DateTimeField(null=True, blank=True)
     reject_reason = models.CharField(max_length=255, blank=True, default="")
+    superseded_by = models.ForeignKey("self", null=True, blank=True, on_delete=models.SET_NULL, related_name="superseded",
+                                      help_text="v1.59: the payment that paid this payment's invoices")
     pending_alerted_at = models.DateTimeField(null=True, blank=True)
     pending_resolved_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)

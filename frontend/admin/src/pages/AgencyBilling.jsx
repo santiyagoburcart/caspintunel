@@ -30,7 +30,7 @@ const T = {
     k_quota_charge: 'شارژ حجم', k_manual_charge: 'بدهکاری', k_request: 'درخواست شارژ', k_settlement: 'تسویه مانده قبلی', k_store_fee: 'اشتراک فروشگاه',
     src_admin_request: 'درخواست ادمین', src_manager: 'مدیر گروه', src_manual: 'شارژ دستی', src_settlement: 'تسویه مانده قبلی', src_store_fee: 'اشتراک ماهانهٔ فروشگاه',
     f_review: 'در انتظار بررسی', f_open: 'باز', p_approved: 'تأییدشده', p_rejected: 'ردشده', p_pending_payment: 'در انتظار واریز',
-    p_pending_review: 'در انتظار بررسی', p_expired: 'منقضی', p_cancelled: 'لغو شده',
+    p_pending_review: 'در انتظار بررسی', p_expired: 'منقضی', p_cancelled: 'لغو شده', p_superseded: 'جایگزین شد', sup_note: 'فاکتورهای این پرداخت با پرداخت دیگری پرداخت شده‌اند:', late: 'تأیید با تأخیر', late_t: 'تأیید با تأخیر', late_msg: 'مهلت این پرداخت تمام شده بود، اما واریزی دقیقاً به همین مبلغ ({a}) در {t} رسیده است. فقط اگر مطمئن هستید این واریز مربوط به همین پرداخت است تأیید کنید — فاکتورها پرداخت‌شده ثبت می‌شوند.', late_found: 'واریز دیررس با همین مبلغ پیدا شد: {a} · {t} ({k})', expired_note: 'منقضی شد — واریزی با این مبلغ نرسیده است. نماینده باید دوباره پرداخت را شروع کند.',
     payer: 'پرداخت‌کننده', payer_admin: 'ادمین', payer_manager: 'مدیر گروه', unique: 'مبلغ یکتا', invoices: 'فاکتورها',
     approve: 'تأیید', reject: 'رد', approve_t: 'تأیید واریز نماینده', approve_msg: 'فاکتورها پرداخت‌شده می‌شوند و یک «پرداخت» در حساب ادمین ثبت می‌شود.',
     reject_t: 'رد واریز نماینده', reject_reason: 'دلیل (به پرداخت‌کننده نشان داده می‌شود)', receipt: 'رسید', no_receipt: 'رسید ندارد',
@@ -59,7 +59,7 @@ const T = {
     k_quota_charge: 'Volume', k_manual_charge: 'Charge', k_request: 'Volume request', k_settlement: 'Previous balance', k_store_fee: 'Store fee',
     src_admin_request: 'Admin request', src_manager: 'Group manager', src_manual: 'Manual charge', src_settlement: 'Previous balance', src_store_fee: 'Store monthly fee',
     f_review: 'Waiting for review', f_open: 'Open', p_approved: 'Approved', p_rejected: 'Rejected', p_pending_payment: 'Waiting for transfer',
-    p_pending_review: 'Waiting for review', p_expired: 'Expired', p_cancelled: 'Cancelled',
+    p_pending_review: 'Waiting for review', p_expired: 'Expired', p_cancelled: 'Cancelled', p_superseded: 'Superseded', sup_note: 'Its invoices were paid by another payment:', late: 'Late approval', late_t: 'Late approval', late_msg: 'This payment had expired, but a deposit of exactly this amount ({a}) arrived at {t}. Approve only if you are sure it belongs to this payment — the invoices will be marked paid.', late_found: 'A later deposit of this exact amount was found: {a} · {t} ({k})', expired_note: 'Expired — no deposit of this amount arrived. The reseller must start the payment again.',
     payer: 'Payer', payer_admin: 'admin', payer_manager: 'group manager', unique: 'Unique amount', invoices: 'Invoices',
     approve: 'Approve', reject: 'Reject', approve_t: 'Approve agency payment', approve_msg: 'The invoices become paid and a payment is recorded in the admin’s account.',
     reject_t: 'Reject agency payment', reject_reason: 'Reason (shown to the payer)', receipt: 'Receipt', no_receipt: 'No receipt',
@@ -195,6 +195,10 @@ export function AgencyPaymentsView({ Header }) {
   usePaymentsEvents((e) => { if (e.event?.startsWith('agency_')) load() })
   const approve = (p) => confirm({ tone: 'success', icon: 'check', title: s.approve_t, targetLabel: '#', targetId: p.number, message: s.approve_msg,
     confirmLabel: s.approve, action: async () => { await api.post(`/admin/agency/payments/${p.id}/approve/`); load() } })
+  // v1.59 «تأیید با تأخیر»: an expired payment whose exact deposit arrived later — with a warning, never silently
+  const lateApprove = (p) => confirm({ tone: 'warning', icon: 'check', title: s.late_t, targetLabel: '#', targetId: p.number,
+    message: s.late_msg.replace('{a}', toman(p.late_deposit?.amount, lang)).replace('{t}', jalali(p.late_deposit?.at, true, lang)),
+    confirmLabel: s.late, action: async () => { await api.post(`/admin/agency/payments/${p.id}/approve/`, { late: true }); load() } })
   const reject = (p) => confirm({ tone: 'danger', title: s.reject_t, targetLabel: '#', targetId: p.number, confirmLabel: s.reject,
     reason: { label: s.reject_reason, required: true },
     action: async (reason) => { await api.post(`/admin/agency/payments/${p.id}/reject/`, { reason }); load() } })
@@ -202,9 +206,8 @@ export function AgencyPaymentsView({ Header }) {
   const counts = d?.counts || {}
   return (
     <div className="ag space-y-4">
-      {Header}
+      {Header}{/* v1.59: the «حسابداری» tab bar comes with Header (this view is a tab of /agency/ledger) — never twice */}
       <style>{GM_CSS + CSS}</style>
-      <LedgerSubNav />
       <Alert>{err}</Alert>
       <div className="card ag-card" data-testid="agency-payments">
         <div className="ab-h"><h3 className="ag-sh" data-ac="green"><Ic n="money" size={15} />{s.pay_h}</h3></div>
@@ -233,12 +236,20 @@ export function AgencyPaymentsView({ Header }) {
                 ))}
                 {p.auto_reason?.why_not === 'ambiguous_customer_order' && <p className="ab-warn">{s.ambiguous}</p>}
                 {p.reject_reason && <p className="ab-warn">{p.reject_reason}</p>}
+                {p.status === 'superseded' && (
+                  <p className="ab-sup" data-testid="ap-superseded">{s.sup_note}{p.superseded_by && <> <button type="button" className="ab-link"
+                    onClick={() => { setF('all'); setQ(p.superseded_by.number); setTimeout(load, 0) }}><N>{p.superseded_by.number}</N></button></>}</p>
+                )}
+                {p.status === 'expired' && (p.late_deposit
+                  ? <p className="ab-warn" data-testid="ap-late-deposit">{s.late_found.replace('{a}', toman(p.late_deposit.amount, lang)).replace('{t}', jalali(p.late_deposit.at, true, lang)).replace('{k}', p.late_deposit.kind === 'blu' ? 'Blu' : 'SMS')}</p>
+                  : <p className="ab-muted-note">{s.expired_note}</p>)}
                 <div className="ab-pfoot">
                   <Receipt url={p.receipt_url} s={s} />
-                  {may && ['pending_review', 'pending_payment', 'expired'].includes(p.status) && (
+                  {may && (p.actions || []).length > 0 && (
                     <div className="ab-acts">
-                      <button type="button" className="ab-ok-btn" onClick={() => approve(p)} data-testid="ap-approve">{s.approve}</button>
-                      <button type="button" className="ab-no-btn" onClick={() => reject(p)}>{s.reject}</button>
+                      {p.actions.includes('approve') && <button type="button" className="ab-ok-btn" onClick={() => approve(p)} data-testid="ap-approve">{s.approve}</button>}
+                      {p.actions.includes('reject') && <button type="button" className="ab-no-btn" onClick={() => reject(p)}>{s.reject}</button>}
+                      {p.actions.includes('late_approve') && <button type="button" className="ab-late-btn" onClick={() => lateApprove(p)} data-testid="ap-late">{s.late}</button>}
                     </div>
                   )}
                 </div>
@@ -352,6 +363,11 @@ const CSS = `
 .ab-ok-btn, .ab-no-btn { min-height: 44px; padding: 0 16px; border-radius: 10px; font-weight: 800; font-size: 13px; border: 0; }
 .ab-ok-btn { color: #fff; background: #11AB53; }
 .ab-no-btn { color: var(--c-danger-fg); background: color-mix(in srgb, var(--c-danger) 12%, transparent); }
+.ab-late-btn { min-height: 44px; padding: 0 16px; border-radius: 10px; font-weight: 800; font-size: 13px; border: 1px solid color-mix(in srgb, var(--c-warning) 50%, transparent);
+  color: var(--c-warning-fg); background: color-mix(in srgb, var(--c-warning) 14%, transparent); cursor: pointer; }
+.ab-sup { margin: 0; font-size: 12.5px; color: var(--c-muted-fg); }
+.ab-link { border: 0; background: transparent; color: var(--c-primary-fg); font-weight: 800; cursor: pointer; text-decoration: underline; padding: 0; }
+.ab-muted-note { margin: 0; font-size: 12px; color: var(--c-muted-fg); }
 @media (max-width: 767px) {
   .ab-tbl thead { display: none; }
   .ab-tbl, .ab-tbl tbody, .ab-tbl tr, .ab-tbl td { display: block; width: 100%; }
