@@ -1530,6 +1530,7 @@ erDiagram
         datetime checked_at
         int alerted "0 · 14 · 3 · -1 (failure) — each alert once"
         datetime failing_since
+        int failures "v1.57.1 consecutive failed checks — «unreachable» alerts at 2"
     }
     backup_log {
         bigint id PK

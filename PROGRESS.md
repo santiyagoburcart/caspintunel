@@ -685,3 +685,9 @@ Everything shipped since v1.6.0 (details in the session log):
   accounting and history. (4) `ops/ssl_certs.py` + `SslCertificate`: «گواهی‌های SSL» card, daily + «بررسی الان», alerts at 14 / 3
   days and on failure. (5) Caspian desktop sidebar = accordion, remembered per staff (`prefs.nav_open`). Tests:
   `agency/tests/test_v157.py` (+ updated report / history / prefs tests); browser checks.
+- 2026-11-12 — **v1.57.1: SSL monitor ignores tunnel blips.** Right after the v1.57.0 deploy one round of handshakes to our
+  domain + a store domain failed through the Iran tunnel and was fine seconds later — it would have alerted. Now a failed
+  handshake is retried once (3 s) and «در دسترس نیست» is sent only after two failed checks in a row (`SslCertificate.failures`,
+  migration ops 0006); the first failed check queues one extra check 30 min later, so a real outage still alerts within
+  about 30 min. Expired and the 14 / 3-day alerts unchanged; a blip that never alerted sends no «OK again». Tests in
+  `agency/tests/test_v157.py` (+4).

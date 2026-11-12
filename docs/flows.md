@@ -1301,7 +1301,8 @@ sequenceDiagram
         W->>H: one TLS handshake (SNI) · read issuer + expiry
     end
     W->>W: > 30 days green · 14–30 amber · < 14 red · expired / unreachable red · no TLS where none is expected grey
-    alt 14 or 3 days left / failure (once per level)
+    W->>W: a failed handshake is tried once more (3 s) · a check that still fails counts 1 → one extra check in 30 min
+    alt 14 or 3 days left · expired · 2nd failed check in a row (once per level)
         W-->>T: Telegram alert (monitoring.view)
     else fixed again
         W-->>T: one silent «OK again»

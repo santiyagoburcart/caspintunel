@@ -28,6 +28,9 @@ log = logging.getLogger("caspintunel")
 TIMEOUT = 8
 SOON, URGENT, LAST = 30, 14, 3
 BUSY_KEY = "ops:ssl:busy"
+RETRY_DELAY = 3          # v1.57.1: a failed handshake is tried once more after this many seconds (a tunnel blip)
+CONFIRM = 2              # v1.57.1: «در دسترس نیست» is alerted only after this many consecutive failed checks
+RECHECK_SECONDS = 1800   # … and a first failure queues one extra check this much later (daily checks would wait a day)
 
 
 def _is_ip(h: str) -> bool:
@@ -191,6 +194,17 @@ def probe(host: str, port: int, sni: str = "") -> dict:
             "verified": verified, "error": "" if verified else verr}
 
 
+def probe_twice(host: str, port: int, sni: str = "") -> dict:
+    """v1.57.1: probe(), and once more after RETRY_DELAY when the handshake failed (never for a certificate that was read)."""
+    import time
+
+    r = probe(host, port, sni)
+    if not r.get("ok"):
+        time.sleep(RETRY_DELAY)
+        r = probe(host, port, sni)
+    return r
+
+
 def classify(days_left, res: dict, expect_tls: bool) -> str:
     if not res.get("ok"):
         return "error" if expect_tls else "no_tls"       # a name not configured for TLS (e.g. WireGuard / UDP) is grey
@@ -212,9 +226,9 @@ def run(*, alert: bool = True) -> dict:
         t = targets()
         items = list(t["targets"].items())
         with ThreadPoolExecutor(max_workers=8) as pool:
-            results = list(pool.map(lambda kv: probe(kv[0][0], kv[0][1], kv[0][2]), items))
+            results = list(pool.map(lambda kv: probe_twice(kv[0][0], kv[0][1], kv[0][2]), items))
         now = timezone.now()
-        keep = []
+        keep, recheck = [], False
         for (key, meta), res in zip(items, results):
             host, port, sni = key
             row, _ = SslCertificate.objects.get_or_create(host=host, port=port, sni=sni)
@@ -229,6 +243,8 @@ def run(*, alert: bool = True) -> dict:
             row.days_left = days if res.get("ok") else row.days_left
             row.verified = bool(res.get("verified"))
             row.error = res.get("error", "")[:300]
+            row.failures = row.failures + 1 if state == "error" else 0          # consecutive failed checks
+            recheck = recheck or (state == "error" and row.failures < CONFIRM)
             if alert:
                 _alert(row)
             row.save()
@@ -236,9 +252,25 @@ def run(*, alert: bool = True) -> dict:
         out = {"checked": len(items), "notes": t["notes"],
                "states": {s: SslCertificate.objects.filter(state=s).count() for s in ("ok", "soon", "urgent", "expired", "error", "no_tls")}}
         cache.set("ops:ssl:notes", t["notes"], 86400 * 2)
+        if recheck and alert:                       # confirm a first failure soon instead of waiting for tomorrow
+            _queue_recheck()
+            out["recheck_in"] = RECHECK_SECONDS
         return out
     finally:
         cache.delete(BUSY_KEY)
+
+
+def _queue_recheck() -> None:
+    from django.core.cache import cache
+
+    if not cache.add("ops:ssl:recheck", 1, RECHECK_SECONDS):         # one extra check at a time
+        return
+    try:
+        from .tasks import ssl_check_task
+
+        ssl_check_task.apply_async(countdown=RECHECK_SECONDS)
+    except Exception as exc:  # noqa: BLE001 — the daily check still runs
+        log.warning("ssl re-check not queued: %s", exc)
 
 
 def _send(text: str, *, silent: bool = False) -> None:
@@ -255,12 +287,17 @@ def _name(row) -> str:
 
 
 def _alert(row) -> None:
-    """Once per level per certificate: 14 days, 3 days, failure (-1); renewed / fixed → back to 0 (+ a silent note)."""
+    """Once per level per certificate: 14 days, 3 days, failure (-1); renewed / fixed → back to 0 (+ a silent note).
+    v1.57.1: «در دسترس نیست» only after CONFIRM consecutive failed checks (each check already retried the handshake once);
+    an expired certificate and the 14 / 3-day alerts are unchanged."""
     from apps.common.jalali import to_jalali_str
 
     who = "، ".join(s["label"] for s in row.sources[:3])
     if row.state == "no_tls":
         return
+    if row.state == "error" and row.failures < CONFIRM:
+        row.failing_since = row.failing_since or timezone.now()
+        return                                      # v1.57.1: one failed check may be a blip — wait for the next one
     if row.state in ("error", "expired"):
         if row.alerted != -1:
             row.failing_since = row.failing_since or timezone.now()
@@ -268,6 +305,8 @@ def _alert(row) -> None:
             _send(f"🔒❌ گواهی SSL «{_name(row)}» — {why}\n{who}")
             row.alerted = -1
         return
+    if row.alerted != -1:
+        row.failing_since = None                    # a blip that never alerted: nothing to announce
     if row.alerted == -1:
         _send(f"🔒✅ گواهی SSL «{_name(row)}» دوباره سالم است ({row.days_left} روز مانده).", silent=True)
         row.alerted, row.failing_since = 0, None

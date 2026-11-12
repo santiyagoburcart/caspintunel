@@ -148,6 +148,15 @@ def test_ssl_targets_from_every_source(monkeypatch, settings):
     assert any("addressed by IP" in n for n in t["notes"])
 
 
+@pytest.fixture(autouse=True)
+def fast_ssl(monkeypatch):
+    """No 3-second retry pause in tests; the 30-minute re-check is recorded, not run (Celery is eager in tests)."""
+    monkeypatch.setattr(S, "RETRY_DELAY", 0)
+    rechecks = []
+    monkeypatch.setattr(S, "_queue_recheck", lambda: rechecks.append(1))
+    return rechecks
+
+
 def _res(days=None, ok=True, **kw):
     if not ok:
         return {"ok": False, **kw}
@@ -230,3 +239,68 @@ def test_nav_open_pref_is_validated_and_kept():
     assert c.patch(u, {"nav_open": {"x": "yes"}}, format="json").status_code == 400
     assert c.patch(u, {"nav_open": ["a"]}, format="json").status_code == 400
     assert c.patch(u, {"nav_open": {f"k{i}": True for i in range(40)}}, format="json").status_code == 400
+
+
+# ------------------------------------------------------------------ v1.57.1: retry once + two failed checks before an alert
+def _one_target(monkeypatch, expect=True):
+    monkeypatch.setattr(S, "targets", lambda: {"targets": {("a.test", 443, ""): {"sources": [{"kind": "site", "label": "a.test"}],
+                                                                                    "expect_tls": expect}}, "notes": []})
+
+
+def test_handshake_is_retried_once_and_a_blip_never_alerts(monkeypatch, fast_ssl):
+    sent, calls = [], []
+    monkeypatch.setattr(S, "_send", lambda text, silent=False: sent.append((text, silent)))
+    _one_target(monkeypatch)
+    seq = [_res(ok=False, error="SSLEOFError", unreachable=True), _res(60)]       # fails, then the retry succeeds
+    monkeypatch.setattr(S, "probe", lambda h, p, sni: (calls.append(1), seq.pop(0))[1])
+    out = S.run()
+    a = SslCertificate.objects.get()
+    assert len(calls) == 2 and a.state == "ok" and a.failures == 0 and sent == [] and fast_ssl == [] and "recheck_in" not in out
+    # a whole check fails (both tries) once → no alert yet, one extra check queued; the next check is fine → nothing to say
+    monkeypatch.setattr(S, "probe", lambda h, p, sni: _res(ok=False, error="reset", unreachable=True))
+    out = S.run()
+    a = SslCertificate.objects.get()
+    assert a.state == "error" and a.failures == 1 and sent == [] and fast_ssl == [1] and out["recheck_in"] == S.RECHECK_SECONDS
+    assert a.failing_since is not None and a.days_left == 60                                  # last good values kept
+    monkeypatch.setattr(S, "probe", lambda h, p, sni: _res(60))
+    S.run()
+    a = SslCertificate.objects.get()
+    assert a.state == "ok" and a.failures == 0 and a.failing_since is None and sent == []    # no «OK again» for a blip
+
+
+def test_failure_alerts_only_on_the_second_consecutive_failed_check(monkeypatch, fast_ssl):
+    sent = []
+    monkeypatch.setattr(S, "_send", lambda text, silent=False: sent.append((text, silent)))
+    _one_target(monkeypatch)
+    monkeypatch.setattr(S, "probe", lambda h, p, sni: _res(ok=False, error="DNS: nope", unreachable=True))
+    S.run()
+    assert sent == [] and SslCertificate.objects.get().failures == 1 and fast_ssl == [1]
+    S.run()
+    assert len(sent) == 1 and "در دسترس نیست" in sent[0][0] and SslCertificate.objects.get().alerted == -1
+    S.run(); S.run()
+    assert len(sent) == 1 and SslCertificate.objects.get().failures == 4 and fast_ssl == [1]   # once per incident, no more re-checks
+    monkeypatch.setattr(S, "probe", lambda h, p, sni: _res(50))
+    S.run()
+    assert len(sent) == 2 and sent[-1][1] is True                                           # one silent «OK again»
+
+
+def test_expired_and_expiry_alerts_are_not_delayed(monkeypatch):
+    sent = []
+    monkeypatch.setattr(S, "_send", lambda text, silent=False: sent.append((text, silent)))
+    _one_target(monkeypatch)
+    monkeypatch.setattr(S, "probe", lambda h, p, sni: _res(10))
+    S.run()
+    assert len(sent) == 1 and "10" in sent[0][0]                                             # 14-day alert at once
+    monkeypatch.setattr(S, "probe", lambda h, p, sni: _res(-2))
+    S.run()
+    assert len(sent) == 2 and "منقضی" in sent[1][0]                                          # expired: at once
+
+
+def test_no_tls_names_are_never_retried_into_alerts(monkeypatch, fast_ssl):
+    sent = []
+    monkeypatch.setattr(S, "_send", lambda text, silent=False: sent.append(text))
+    _one_target(monkeypatch, expect=False)
+    monkeypatch.setattr(S, "probe", lambda h, p, sni: _res(ok=False, error="refused", no_tls=True))
+    S.run(); S.run(); S.run()
+    a = SslCertificate.objects.get()
+    assert a.state == "no_tls" and a.failures == 0 and sent == [] and fast_ssl == []

@@ -123,6 +123,7 @@ class SslCertificate(models.Model):
     checked_at = models.DateTimeField(null=True, blank=True)
     alerted = models.SmallIntegerField(default=0)
     failing_since = models.DateTimeField(null=True, blank=True)
+    failures = models.PositiveSmallIntegerField(default=0, help_text="v1.57.1: consecutive failed checks (alert at 2)")
 
     class Meta:
         db_table = "ops_ssl_certificate"

@@ -37,7 +37,9 @@
 - **SSL certificates** (v1.57): Monitoring → «گواهی‌های SSL» — our domain + www, store domains, the PasarGuard panel,
   subscription hosts and PasarGuard host names, with issuer, expiry and days left (> 30 green, 14–30 amber, < 14 red,
   expired / unreachable red; a name that serves no certificate, e.g. a WireGuard endpoint, grey). Checked daily 07:30 Tehran
-  and with «بررسی الان»; Telegram at 14 and 3 days left and on failure (each once, a silent «OK again» after).
+  and with «بررسی الان»; Telegram at 14 and 3 days left and on failure (each once, a silent «OK again» after). v1.57.1: a
+  failed handshake is retried once; «در دسترس نیست» is sent only after two failed checks in a row — the first failure queues
+  one extra check 30 min later, so a tunnel blip never alerts and a real outage is confirmed within about 30 min.
 - **Unconfirmed-payment alert** (v1.33): a payment pending longer than `pending_payment_alert_minutes` (Settings → Alerts,
   default 5, 0 = off) → one Telegram to `payment.approve` staff + live event + browser push; a silent "resolved" follow-up.
 

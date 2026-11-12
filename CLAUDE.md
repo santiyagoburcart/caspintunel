@@ -115,7 +115,8 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   `var(--c-*)` except these **fixed** tokens: toggles `--toggle-on #11AB53` / `--toggle-off` dark gray;
   ConfirmDialog tone colours (danger red, success #11AB53, primary #1464BA, warning amber).
 - **SSL monitor (v1.57, `ops/ssl_certs.py`)**: one TLS handshake per target, read-only; a target that serves no TLS where none is
-  configured (WireGuard / UDP) is `no_tls` (grey, never alerted). Alerts only through `_alert` (14 / 3 days, failure — once each).
+  configured (WireGuard / UDP) is `no_tls` (grey, never alerted). Alerts only through `_alert` (14 / 3 days, expired, failure — once each; v1.57.1: a handshake is retried once and
+  «unreachable» needs 2 failed checks in a row, the first one queues a re-check in 30 min — never alert on one failure).
 - Desktop sidebar (Caspian rail) = accordion (v1.57): only the current page's section opens by default; open / closed per staff
   in `auth/me/prefs.nav_open` (+ localStorage for first paint); mobile unchanged.
 - **Every action gives feedback**: admin `lib/api.js` reports each POST/PUT/PATCH/DELETE to `components/FeedbackBridge.jsx`
