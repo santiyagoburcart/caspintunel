@@ -1284,6 +1284,30 @@ sequenceDiagram
     end
 ```
 
+## 15c. SSL certificate watch (v1.57)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant B as Celery beat (daily 07:30 Tehran) / «بررسی الان»
+    participant W as ops/ssl_certs.run
+    participant PG as PasarGuard
+    participant H as Each host (TLS)
+    participant T as Our staff (Telegram)
+    B->>W: ssl_check_task
+    W->>PG: GET /api/hosts · GET /api/nodes (read-only)
+    W->>W: targets = our domain + www · store domains · panel · subscription hosts · PasarGuard host names / IP + SNI
+    par 8 at a time
+        W->>H: one TLS handshake (SNI) · read issuer + expiry
+    end
+    W->>W: > 30 days green · 14–30 amber · < 14 red · expired / unreachable red · no TLS where none is expected grey
+    alt 14 or 3 days left / failure (once per level)
+        W-->>T: Telegram alert (monitoring.view)
+    else fixed again
+        W-->>T: one silent «OK again»
+    end
+```
+
 ## 16. A request is scoped to its store (multi-tenant, v1.41 · strict v1.42)
 
 ```mermaid

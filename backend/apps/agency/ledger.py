@@ -184,14 +184,20 @@ def statement(username: str) -> dict:
               .values("ledger_entry_id", "invoice_id", "amount")):
         settles.setdefault(a["ledger_entry_id"], []).append({"invoice": f"INV-{a['invoice_id']:06d}", "amount": a["amount"]})
     running, rows = Decimal(0), []
-    charges = payments = adjustments = Decimal(0)
+    charges = payments = adjustments = adj_down = adj_up = Decimal(0)
+    adj_count = 0
     for e in entries:
         if not e.voided:
             running += e.signed_amount
             if e.kind == LedgerEntry.KIND_PAYMENT:
                 payments += e.amount
-            elif e.kind == LedgerEntry.KIND_ADJUST:          # v1.54: apart from sales (history.py)
+            elif e.kind == LedgerEntry.KIND_ADJUST:          # v1.57: inside «فروش», shown apart only as information
                 adjustments += e.amount
+                adj_count += 1
+                if e.amount < 0:
+                    adj_down += -e.amount
+                else:
+                    adj_up += e.amount
             else:
                 charges += e.amount
         rows.append({"id": e.id, "date": e.date, "kind": e.kind, "amount": e.amount, "signed": e.signed_amount,
@@ -205,7 +211,8 @@ def statement(username: str) -> dict:
 
     return {
         "invoices_mismatch": allocation.mismatch(username),
-        "username": username, "charges": charges, "adjustments": adjustments, "net_sales": charges + adjustments, "payments": payments,
+        "username": username, "charges": charges, "adjustments": adjustments, "sales": charges + adjustments,
+        "net_sales": charges + adjustments, "adjust_count": adj_count, "adjust_down": adj_down, "adjust_up": adj_up, "payments": payments,
         "balance": charges + adjustments - payments,
         "entries": rows,
         "price": {"price_per_gb": cur.price_per_gb, "valid_from": cur.valid_from} if cur else None,
@@ -229,6 +236,8 @@ def statement_csv(username: str) -> str:
         w.writerow([to_jalali_str(r["date"], "%Y/%m/%d"), r["kind"], r["gb"] or "", r["price_per_gb"] or "", r["amount"],
                     r["signed"], r["balance"], r["method"], r["note"], "voided: " + r["void_reason"] if r["voided"] else ""])
     w.writerow([])
-    w.writerow(["gross_charges", st["charges"]]); w.writerow(["adjustments", st["adjustments"]])
-    w.writerow(["net_sales", st["net_sales"]]); w.writerow(["payments", st["payments"]]); w.writerow(["balance", st["balance"]])
+    w.writerow(["sales", st["sales"]]); w.writerow(["payments", st["payments"]]); w.writerow(["balance", st["balance"]])
+    w.writerow([])     # v1.57: adjustments are information only (already inside «sales»), never a charge
+    w.writerow(["adjustments_info", f"count {st['adjust_count']}", f"debt decreases {st['adjust_down']}",
+                f"debt increases {st['adjust_up']}"])
     return buf.getvalue()

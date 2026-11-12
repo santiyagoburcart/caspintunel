@@ -418,12 +418,15 @@ class ManagerPrefsView(_Mgr):
     def get(self, request):
         from apps.adminpanel.views.push import staff_prefs
 
-        return Response(staff_prefs(request.user))
+        return Response({k: v for k, v in staff_prefs(request.user).items() if k != "nav_open"})   # no sidebar accordion here
 
     def patch(self, request):
         from apps.adminpanel.views.push import StaffPrefsView
 
-        return StaffPrefsView.patch(self, request)
+        r = StaffPrefsView.patch(self, request)
+        if isinstance(r.data, dict):
+            r.data.pop("nav_open", None)
+        return r
 
     put = patch
 

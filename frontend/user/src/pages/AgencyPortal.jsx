@@ -16,6 +16,7 @@ import { InfoTip, ST, ST_CSS } from '../components/AgencyStats'
 import AgencyHistory from '../components/AgencyHistory'
 import { playChime, unlockSound } from '../lib/notifySound'
 import { currentSubscription, needsHomeScreen, pushSupported, subscribePush, unsubscribePush } from '../lib/webPush'
+import { usageTone } from '../lib/agencyTone'
 
 // Reseller portal (PAMP's per-admin portal). Separate from the customer site:
 // own token ("Agency <token>"), own HTTP client — the customer JWT, its 401
@@ -327,7 +328,7 @@ function Account({ a, s, lang, balance, readonly }) {
   const st = ST[lang] || ST.fa
   const p = a.portal
   const w = Math.min(Number(a.usage_percent) || 0, 100)      // bar width only
-  const tone = a.usage_percent >= 100 ? 'danger' : a.usage_percent >= 80 ? 'warning' : 'primary'
+  const tone = usageTone(a.usage_percent)        // v1.57: < 70 green · 70–90 amber · > 90 red
   const tg = (p.support_telegram || '').replace(/^@/, '')
   const by = a.bytes || {}
   // [label, value, accent, icon, bytes, signed, tooltip]

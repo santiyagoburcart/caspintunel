@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { api, apiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 import { jalali, toman } from '../lib/format'
@@ -8,6 +8,7 @@ import { Alert, Spinner } from '../components/ui'
 import { useConfirm } from '../components/ConfirmDialog'
 import { Ic } from '../components/AgencyIcons'
 import { AgencyReports } from './AgencyReports'
+import { moneyTone } from '../lib/agencyTone'
 
 // Agency accounting (caspintunel addition — never changes PAMP's numbers).
 // Amounts and balances come from the server; this file only formats.
@@ -73,6 +74,21 @@ const isoFromJ = (j) => {
   return toISO(+m[1], +m[2], +m[3])
 }
 const signed = (n, lang) => (Number(n) < 0 ? '-' : '') + toman(Math.abs(Number(n)), lang)
+
+/** v1.57: «اصلاحیه‌ها» as information — count + debt decreases / increases; already inside «فروش», never a charge. */
+export function AdjInfo({ t, lang }) {
+  if (!t) return null
+  const fa = lang !== 'en'
+  const n = Number(t.adjust_count || 0)
+  return (
+    <p className="tn-info" data-testid="adj-info"><b>{fa ? 'اصلاحیه‌ها' : 'Adjustments'}</b>
+      <span>{fa ? `${n} مورد` : `${n} entries`}</span>
+      {Number(t.adjust_down) > 0 && <span>{fa ? 'کاهش بدهی' : 'Debt decreases'}: <bdi dir="ltr">{toman(t.adjust_down, lang)}</bdi></span>}
+      {Number(t.adjust_up) > 0 && <span>{fa ? 'افزایش بدهی' : 'Debt increases'}: <bdi dir="ltr">{toman(t.adjust_up, lang)}</bdi></span>}
+      <span>· {fa ? 'فقط اطلاع — در «فروش» حساب شده' : 'information only — already inside «Sales»'}</span>
+    </p>
+  )
+}
 
 export function BalanceText({ value, lang }) {
   const n = Number(value || 0)
@@ -276,12 +292,11 @@ export function LedgerCard({ username }) {
           {st.invoices_mismatch && <p className="lg-mismatch" data-testid="lg-mismatch">⚠ {s.mismatch.replace('{o}', toman(st.invoices_mismatch.open, lang)).replace('{b}', toman(st.invoices_mismatch.balance, lang))}</p>}
           <dl className="ag-nums lg-sum">
             <div><dt>{s.price}</dt><dd>{st.price ? <><bdi dir="ltr">{toman(st.price.price_per_gb, lang)}</bdi><small> · {s.from} {jalali(st.price.valid_from, false, lang)}</small></> : <span className="text-muted">{s.price_none}</span>}</dd></div>
-            <div><dt>{lang === 'fa' ? 'شارژ ناخالص' : 'Gross charges'}</dt><dd><bdi dir="ltr">{toman(st.charges, lang)}</bdi></dd></div>
-            <div><dt>{lang === 'fa' ? 'اصلاحیه‌ها' : 'Adjustments'}</dt><dd><bdi dir="ltr">{toman(st.adjustments, lang)}</bdi></dd></div>
-            <div><dt>{lang === 'fa' ? 'فروش خالص' : 'Net sales'}</dt><dd><bdi dir="ltr">{toman(st.net_sales, lang)}</bdi></dd></div>
-            <div><dt>{s.payments}</dt><dd><bdi dir="ltr">{toman(st.payments, lang)}</bdi></dd></div>
-            <div><dt>{s.balance}</dt><dd><BalanceText value={st.balance} lang={lang} /></dd></div>
+            <div className="tn-tile" data-tn="info"><dt>{lang === 'fa' ? 'فروش' : 'Sales'}</dt><dd><bdi dir="ltr">{toman(st.sales ?? st.net_sales, lang)}</bdi></dd></div>
+            <div className="tn-tile" data-tn="success"><dt>{s.payments}</dt><dd><bdi dir="ltr">{toman(st.payments, lang)}</bdi></dd></div>
+            <div className="tn-tile" data-tn={moneyTone(st.balance)}><dt>{s.balance}</dt><dd><BalanceText value={st.balance} lang={lang} /></dd></div>
           </dl>
+          <AdjInfo t={st} lang={lang} />
           <p className="lg-hint">{s.quota_note}</p>
           <div className="lg-actions">
             <button type="button" className="ag-act" data-tone="success" onClick={() => add('payment', s.add_payment, 'success')}><Ic n="money" />{s.add_payment}</button>
@@ -326,36 +341,104 @@ export function LedgerCard({ username }) {
 }
 
 /** Overview page: every reseller's balance. */
+const OV = {
+  fa: { search: 'جستجوی ادمین…', all_groups: 'همهٔ گروه‌ها', debtors: 'فقط بدهکارها', sort: 'مرتب‌سازی', by_name: 'نام', by_debt: 'بیشترین بدهی',
+    per_page: 'در هر صفحه', last_pay: 'آخرین پرداخت', unpaid: '{n} فاکتور پرداخت‌نشده', no_unpaid: 'بدون فاکتور باز', none: 'ادمینی با این فیلتر نیست.',
+    page: 'صفحهٔ {p} از {n}', prev: 'قبلی', next: 'بعدی', open: 'جزئیات', close: 'بستن', shown: '{n} ادمین · جمع بدهی این فهرست', debtors_n: '{n} بدهکار',
+    archived: 'بایگانی', group: 'گروه', price: 'قیمت هر گیگ', clear: 'پاک کردن فیلترها', page_link: 'صفحهٔ ادمین' },
+  en: { search: 'Search admin…', all_groups: 'All groups', debtors: 'Only debtors', sort: 'Sort', by_name: 'Name', by_debt: 'Highest debt',
+    per_page: 'Per page', last_pay: 'Last payment', unpaid: '{n} unpaid invoices', no_unpaid: 'no open invoice', none: 'No admin matches these filters.',
+    page: 'Page {p} of {n}', prev: 'Previous', next: 'Next', open: 'Details', close: 'Close', shown: '{n} admins · their total balance', debtors_n: '{n} owe',
+    archived: 'archived', group: 'Group', price: 'Price per GB', clear: 'Clear filters', page_link: 'Admin page' },
+}
+
+/** Overview page: every reseller's balance — v1.57: filters (admin, group, «فقط بدهکارها»), sort by debt, pages, all in the URL;
+ * one collapsed summary line per admin (debt, last payment, unpaid invoices), expand → the full statement card. */
 export function AgencyLedgerOverview({ Header }) {
   const [s, lang] = useLT()
+  const o = OV[lang] || OV.fa
+  const [sp, setSp] = useSearchParams()
   const [d, setD] = useState(null)
   const [err, setErr] = useState('')
-  useEffect(() => { api.get('/admin/agency/ledger/').then((r) => setD(r.data)).catch((e) => { setErr(apiError(e)); setD(false) }) }, [])
+  const [open, setOpen] = useState(null)
+  const f = { q: sp.get('q') || '', group: sp.get('group') || '', debtors: sp.get('debtors') === '1', sort: sp.get('sort') === 'debt' ? 'debt' : 'name',
+    page: Math.max(1, Number(sp.get('page')) || 1), size: [25, 50, 100].includes(Number(sp.get('size'))) ? Number(sp.get('size')) : 25 }
+  const [q, setQ] = useState(f.q)
+  const put = (x) => setSp((cur) => {
+    const n = new URLSearchParams(cur)
+    Object.entries(x).forEach(([k, v]) => (v ? n.set(k, String(v)) : n.delete(k)))
+    if (!('page' in x)) n.delete('page')
+    return n
+  }, { replace: true })
+  useEffect(() => { const t = setTimeout(() => { if (q !== f.q) put({ q: q.trim() }) }, 300); return () => clearTimeout(t) }, [q])
+  const key = sp.toString()
+  useEffect(() => {
+    api.get('/admin/agency/ledger/', { params: { q: f.q, group: f.group, debtors: f.debtors ? 1 : '', sort: f.sort, page: f.page, page_size: f.size } })
+      .then((r) => { setD(r.data); setErr('') }).catch((e) => { setErr(apiError(e)); setD((x) => x || false) })
+  }, [key])
+  const filtered = f.q || f.group || f.debtors
   return (
     <div className="ag space-y-4">
       {Header}
       <style>{LG_CSS}</style>
       <Alert>{err}</Alert>
+      <AgencyReports />
       {d === null ? <div className="grid place-items-center py-16"><Spinner /></div> : d && (
         <>
-          <AgencyReports />
-          <div className="card ag-card lg-total"><span>{s.total}</span><BalanceText value={d.total_balance} lang={lang} /></div>
-          <div className="card ag-table-wrap">
-            <table className="ag-table">
-              <thead><tr><th><span className="ag-th" data-ac="blue"><Ic n="user" size={13} />{s.overview}</span></th><th><span className="ag-th" data-ac="orange"><Ic n="tag" size={13} />{s.price}</span></th><th><span className="ag-th" data-ac="red"><Ic n="wallet" size={13} />{s.balance}</span></th></tr></thead>
-              <tbody>
-                {d.results.map((r) => (
-                  <tr key={r.username}>
-                    <td className="ag-t-name" data-label={s.overview}>
-                      {r.on_panel ? <Link to={`/agency/admins/${encodeURIComponent(r.username)}`}>{r.username}</Link> : <bdi>{r.username}</bdi>}
-                      {!r.on_panel && <span className="ag-t-grp">{s.off_panel}</span>}
-                    </td>
-                    <td data-label={s.price}>{r.price_per_gb != null ? <bdi dir="ltr">{toman(r.price_per_gb, lang)}</bdi> : <span className="text-muted">—</span>}</td>
-                    <td data-label={s.balance}><BalanceText value={r.balance} lang={lang} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="lg-tiles">
+            <div className="tn-tile" data-tn={moneyTone(d.total_balance)}><span className="tn-l">{s.total}</span><span className="tn-v"><BalanceText value={d.total_balance} lang={lang} /></span></div>
+            {filtered && <div className="tn-tile" data-tn={moneyTone(d.filtered_balance)}><span className="tn-l">{o.shown.replace('{n}', d.count)}</span><span className="tn-v"><BalanceText value={d.filtered_balance} lang={lang} /></span></div>}
+            <div className="tn-tile" data-tn={d.debtors_count ? 'danger' : 'success'}><span className="tn-l">{s.overview}</span><span className="tn-v">{o.debtors_n.replace('{n}', d.debtors_count)}</span></div>
+          </div>
+          <div className="card ag-card lg-filters" data-testid="ledger-filters">
+            <input className="input" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={o.search} aria-label={o.search} data-testid="ledger-q" />
+            <select className="input" value={f.group} onChange={(e) => put({ group: e.target.value })} aria-label={o.group} data-testid="ledger-group">
+              <option value="">{o.all_groups}</option>
+              {(d.groups || []).map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+            </select>
+            <label className="lg-tg"><input type="checkbox" checked={f.debtors} onChange={(e) => put({ debtors: e.target.checked ? '1' : '' })} data-testid="ledger-debtors" />{o.debtors}</label>
+            <label className="lg-sel"><span>{o.sort}</span>
+              <select className="input" value={f.sort} onChange={(e) => put({ sort: e.target.value === 'debt' ? 'debt' : '' })} data-testid="ledger-sort">
+                <option value="name">{o.by_name}</option><option value="debt">{o.by_debt}</option></select></label>
+            {filtered && <button type="button" className="ag-act ag-act--sm" data-tone="neutral" onClick={() => { setQ(''); setSp(new URLSearchParams(), { replace: true }) }}><Ic n="x" size={13} />{o.clear}</button>}
+          </div>
+          {d.results.length === 0 ? <p className="card ag-empty">{o.none}</p> : (
+            <ul className="lg-ov" data-testid="ledger-list">
+              {d.results.map((r) => {
+                const on = open === r.username
+                return (
+                  <li key={r.username} className="lg-ov-i" data-tn={moneyTone(r.balance)} data-open={on || undefined}>
+                    <button type="button" className="lg-ov-sum" aria-expanded={on} onClick={() => setOpen(on ? null : r.username)} data-testid="ledger-row">
+                      <span className="lg-ov-name"><bdi>{r.username}</bdi>
+                        {r.archived ? <span className="tn" data-tone="muted">{o.archived}</span> : !r.on_panel && <span className="tn" data-tone="muted">{s.off_panel}</span>}
+                        {r.group && <small className="lg-ov-g"><bdi>{r.group.name}</bdi></small>}</span>
+                      <span className="lg-ov-k"><small>{s.balance}</small><BalanceText value={r.balance} lang={lang} /></span>
+                      <span className="lg-ov-k"><small>{o.last_pay}</small>{r.last_payment ? <bdi dir="ltr">{jalali(r.last_payment, false, lang)}</bdi> : '—'}</span>
+                      <span className="lg-ov-k"><span className="tn" data-tone={r.unpaid_invoices ? 'danger' : 'success'}>{r.unpaid_invoices ? o.unpaid.replace('{n}', r.unpaid_invoices) : o.no_unpaid}</span>
+                        {r.unpaid_invoices > 0 && <small><bdi dir="ltr">{toman(r.unpaid_amount, lang)}</bdi></small>}</span>
+                      <span className="lg-ov-k lg-ov-p"><small>{o.price}</small>{r.price_per_gb != null ? <bdi dir="ltr">{toman(r.price_per_gb, lang)}</bdi> : '—'}</span>
+                      <span className="lg-ov-chev" aria-hidden="true"><Ic n={on ? 'up' : 'down'} size={14} /></span>
+                    </button>
+                    {on && (
+                      <div className="lg-ov-body">
+                        {r.on_panel && <Link className="ag-act ag-act--sm" data-tone="neutral" to={`/agency/admins/${encodeURIComponent(r.username)}#accounting`}><Ic n="user" size={13} />{o.page_link}</Link>}
+                        <LedgerCard username={r.username} />
+                      </div>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+          <div className="lg-pager">
+            <label className="lg-sel"><span>{o.per_page}</span>
+              <select className="input" value={f.size} onChange={(e) => put({ size: Number(e.target.value) === 25 ? '' : e.target.value })}>
+                {[25, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}</select></label>
+            {d.pages > 1 && <>
+              <button type="button" className="ag-act ag-act--sm" data-tone="neutral" disabled={d.page <= 1} onClick={() => put({ page: d.page - 1 > 1 ? d.page - 1 : '' })}>{o.prev}</button>
+              <span>{o.page.replace('{p}', d.page).replace('{n}', d.pages)}</span>
+              <button type="button" className="ag-act ag-act--sm" data-tone="neutral" disabled={d.page >= d.pages} onClick={() => put({ page: d.page + 1 })} data-testid="ledger-next">{o.next}</button>
+            </>}
           </div>
         </>
       )}
@@ -364,6 +447,33 @@ export function AgencyLedgerOverview({ Header }) {
 }
 
 export const LG_CSS = `
+.lg-tiles { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); }
+.lg-tiles .tn-v { display: block; margin-top: 4px; font-size: 18px; font-weight: 800; }
+.lg-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.lg-filters > .input { flex: 1 1 200px; max-width: 280px; }
+.lg-tg { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.lg-tg input { width: 17px; height: 17px; }
+.lg-sel { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; color: var(--c-muted-fg); }
+.lg-sel .input { min-height: 38px; height: 38px; width: auto; }
+.lg-ov { display: flex; flex-direction: column; gap: 8px; list-style: none; margin: 0; padding: 0; }
+.lg-ov-i { border: 1px solid var(--c-border); border-inline-start: 4px solid var(--tn, var(--c-border)); border-radius: 14px; background: var(--c-surface, var(--c-bg)); min-width: 0; }
+.lg-ov-i[data-open] { box-shadow: 0 6px 22px rgba(0,0,0,.08); }
+.lg-ov-sum { width: 100%; display: grid; grid-template-columns: minmax(0, 1.6fr) repeat(4, minmax(0, 1fr)) 24px; align-items: center; gap: 8px 14px;
+  padding: 10px 14px; background: transparent; border: 0; color: var(--c-text); text-align: start; cursor: pointer; min-height: 56px; font-size: 13px; }
+.lg-ov-name { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-weight: 800; min-width: 0; overflow-wrap: anywhere; }
+.lg-ov-g { font-weight: 600; color: var(--c-muted-fg); font-size: 11.5px; }
+.lg-ov-k { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.lg-ov-k > small { font-size: 11px; font-weight: 600; color: var(--c-muted-fg); }
+.lg-ov-chev { color: var(--c-muted-fg); }
+.lg-ov-body { padding: 0 10px 12px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.lg-ov-body > .card { width: 100%; }
+.lg-pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; font-size: 12.5px; }
+@media (max-width: 767px) {
+  .lg-ov-sum { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 20px; }
+  .lg-ov-name { grid-column: 1 / 3; }
+  .lg-ov-p { display: none; }
+  .lg-filters > .input { max-width: none; flex-basis: 100%; font-size: 16px; min-height: 44px; }
+}
 .lg-dir { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
 .lg-dir-btn { min-height: 44px; border-radius: 12px; font-weight: 800; font-size: 13.5px; border: 1.5px solid currentColor; background: transparent; }
 .lg-dir-btn--inc { color: var(--c-danger-fg); }

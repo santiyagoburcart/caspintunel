@@ -367,6 +367,87 @@ const CTR_CSS = `
 @media (max-width: 767px) { .ctr-list li { grid-template-columns: minmax(0, 1fr) auto; } .ctr-v { min-width: 0; } .ctr-bar { grid-column: 1 / -1; grid-row: 2; } .ctr-others summary { min-height: 44px; } }
 `
 
+// v1.57 «گواهی‌های SSL» (apps/ops/ssl_certs.py): every TLS endpoint we depend on — checked daily + «بررسی الان».
+// > 30 days green · 14–30 amber · < 14 red · expired / unreachable red · a name that serves no certificate (WireGuard) grey.
+const SSL_T = {
+  fa: { title: 'گواهی‌های SSL', sub: 'دامنهٔ ما، فروشگاه‌ها، پنل پاسارگارد، لینک‌های اشتراک و هاست‌های پاسارگارد — روزانه بررسی می‌شود؛ هشدار تلگرام در 14 و 3 روز مانده و هنگام خطا.',
+    check: 'بررسی الان', checking: 'در حال بررسی…', none: 'هنوز بررسی نشده — «بررسی الان» را بزنید.', host: 'دامنه', issuer: 'صادرکننده', expiry: 'انقضا',
+    left: '{n} روز', at: 'آخرین بررسی', expired: 'منقضی شده', error: 'در دسترس نیست / خطا', no_tls: 'بدون گواهی روی این پورت', unverified: 'تأییدنشده',
+    k_site: 'سایت ما', k_store: 'فروشگاه', k_panel: 'پنل پاسارگارد', k_sub: 'لینک اشتراک', k_host: 'هاست پاسارگارد', notes: 'یادداشت‌ها', sni: 'SNI' },
+  en: { title: 'SSL certificates', sub: 'Our domain, store domains, the PasarGuard panel, subscription links and PasarGuard hosts — checked daily; Telegram alerts at 14 and 3 days left and on failure.',
+    check: 'Check now', checking: 'Checking…', none: 'Not checked yet — press “Check now”.', host: 'Domain', issuer: 'Issuer', expiry: 'Expires',
+    left: '{n} days', at: 'Last check', expired: 'expired', error: 'unreachable / error', no_tls: 'no certificate on this port', unverified: 'unverified',
+    k_site: 'our site', k_store: 'store', k_panel: 'PasarGuard panel', k_sub: 'subscription link', k_host: 'PasarGuard host', notes: 'Notes', sni: 'SNI' },
+}
+const SSL_TONE = { ok: 'success', soon: 'warning', urgent: 'danger', expired: 'danger', error: 'danger', no_tls: 'muted' }
+function SslCard({ lang, caspian }) {
+  const t = SSL_T[lang] || SSL_T.fa
+  const [d, setD] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const timer = useRef(null)
+  const load = () => api.get('/admin/monitoring/ssl/').then((r) => { setD(r.data); setBusy(!!r.data.busy) }).catch(() => setD((x) => x || { results: [], notes: [] }))
+  useEffect(() => { load(); return () => clearTimeout(timer.current) }, [])
+  useEffect(() => { clearTimeout(timer.current); if (busy) timer.current = setTimeout(load, 3000) }, [busy, d])
+  const check = async () => {
+    setBusy(true)
+    try { await api.post('/admin/monitoring/ssl/', {}) } catch { /* the toast says why */ }
+    load()
+  }
+  const Tag = caspian ? 'section' : 'div'
+  const last = d?.results?.reduce((m, r) => (r.checked_at && (!m || r.checked_at > m) ? r.checked_at : m), null)
+  return (
+    <Tag className={(caspian ? 'cm-card' : 'card') + ' ssl-mon'} data-testid="mon-ssl">
+      <style>{SSL_CSS}</style>
+      <div className="ssl-h">
+        <div><b className={caspian ? 'cm-h2' : 'title'}>{t.title}</b><p className="ssl-sub">{t.sub}</p></div>
+        <button type="button" className="btn-primary text-sm ssl-btn" disabled={busy} onClick={check} data-testid="ssl-check">{busy ? t.checking : t.check}</button>
+      </div>
+      {last && <small className="ssl-muted">{t.at}: <span className="mono-num">{jalali(last, true, lang)}</span></small>}
+      {!d ? null : d.results.length === 0 ? <p className="ssl-note">{t.none}</p> : (
+        <ul className="ssl-list">
+          {d.results.map((r) => {
+            const tone = SSL_TONE[r.state] || 'muted'
+            return (
+              <li key={r.id} data-tn={tone} data-testid="ssl-row" data-state={r.state}>
+                <span className="ssl-n"><bdi dir="ltr">{r.host}{r.port !== 443 ? `:${r.port}` : ''}</bdi>
+                  {r.sni && <small className="ssl-muted"> · {t.sni} <bdi dir="ltr">{r.sni}</bdi></small>}
+                  <span className="ssl-src">{(r.sources || []).slice(0, 3).map((x, i) => <small key={i}>{t['k_' + x.kind] || x.kind}{x.label && x.label !== r.host ? <> · <bdi>{x.label}</bdi></> : null}</small>)}</span></span>
+                <span className="ssl-iss">{r.issuer || '—'}{r.issuer && !r.verified && r.state !== 'no_tls' && <small className="ssl-flag"> {t.unverified}</small>}</span>
+                <span className="ssl-exp">{r.not_after ? <span className="mono-num">{jalali(r.not_after, false, lang)}</span> : '—'}</span>
+                <span className="tn ssl-days" data-tone={tone}>
+                  {r.state === 'expired' ? t.expired : r.state === 'error' ? t.error : r.state === 'no_tls' ? t.no_tls : t.left.replace('{n}', r.days_left)}</span>
+                {r.error && (r.state === 'error' || r.state === 'no_tls') && <small className="ssl-err"><bdi dir="ltr">{r.error}</bdi></small>}
+              </li>
+            )
+          })}
+        </ul>
+      )}
+      {d?.notes?.length > 0 && <details className="ssl-notes"><summary>{t.notes}</summary><ul>{d.notes.map((n, i) => <li key={i}><bdi dir="ltr">{n}</bdi></li>)}</ul></details>}
+    </Tag>
+  )
+}
+const SSL_CSS = `
+.ssl-h { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 8px 12px; }
+.ssl-sub { margin: 4px 0 0; font-size: 12px; line-height: 1.8; color: var(--c-text-muted); max-width: 720px; }
+.ssl-btn { min-height: 44px; }
+.ssl-muted { font-size: 11.5px; color: var(--c-text-muted); font-weight: 600; }
+.ssl-note { margin-top: 8px; font-size: 12.5px; color: var(--c-text-muted); }
+.ssl-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; list-style: none; padding: 0; }
+.ssl-list li { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) 110px 150px; align-items: center; gap: 4px 12px; padding: 8px 12px;
+  border-radius: 12px; border: 1px solid var(--c-border); border-inline-start: 4px solid var(--tn); font-size: 13px;
+  background: color-mix(in srgb, var(--tn) 5%, transparent); }
+.ssl-n { min-width: 0; font-weight: 800; overflow-wrap: anywhere; }
+.ssl-src { display: flex; flex-wrap: wrap; gap: 2px 8px; margin-top: 2px; }
+.ssl-src small { font-size: 11px; font-weight: 600; color: var(--c-text-muted); }
+.ssl-iss { min-width: 0; overflow-wrap: anywhere; font-size: 12.5px; }
+.ssl-flag { color: var(--c-warning-fg); font-weight: 800; }
+.ssl-days { justify-self: end; }
+.ssl-err { grid-column: 1 / -1; font-size: 11.5px; color: var(--c-text-muted); overflow-wrap: anywhere; }
+.ssl-notes { margin-top: 8px; font-size: 12px; color: var(--c-text-muted); }
+.ssl-notes summary { cursor: pointer; min-height: 40px; display: flex; align-items: center; font-weight: 700; }
+@media (max-width: 767px) { .ssl-list li { grid-template-columns: minmax(0, 1fr) auto; } .ssl-iss, .ssl-exp { font-size: 12px; } .ssl-n { grid-column: 1 / -1; } }
+`
+
 function fmtDur(sec, m, d) {
   if (sec == null) return '—'
   const dd = Math.floor(sec / 86400)
@@ -735,6 +816,7 @@ function LegacyMonitoring() {
       {/* ---- Blu collector (v1.33) ---- */}
       {data.blu && <div className="grid r1"><BluCard b={data.blu} lang={lang} /></div>}
       {data.containers && <div className="grid r1"><ContainersCard c={data.containers} lang={lang} /></div>}
+      <div className="grid r1"><SslCard lang={lang} /></div>
 
       {/* ---- recent backups ---- */}
       <div className="grid r1">
@@ -1470,6 +1552,7 @@ function CaspianMonitoring() {
         {/* ================= BLU COLLECTOR (v1.33) ================= */}
         {data.blu && <BluCard b={data.blu} lang={lang} caspian />}
         {data.containers && <ContainersCard c={data.containers} lang={lang} caspian />}
+        <SslCard lang={lang} caspian />
 
         {/* ================= RECENT BACKUPS (last) ================= */}
         <section className="cm-card">

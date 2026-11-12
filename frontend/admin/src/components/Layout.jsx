@@ -3,6 +3,7 @@ import { fmtCount, useActionCounts } from '../lib/actionCounts'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
+import { api } from '../lib/api'
 import { useLivePayments } from '../lib/livePayments'
 import { useLiveTickets } from '../lib/liveTickets'
 import { useLiveApprovals } from '../lib/liveApprovals'
@@ -279,8 +280,48 @@ function LegacyLayout() {
   )
 }
 
+// v1.57 desktop sidebar accordion: only the section of the current page is open at first; each open / closed choice is
+// remembered per staff member (server: auth/me/prefs `nav_open`; localStorage only for an instant first paint) and the section
+// you navigate into always opens. A collapsed header shows the sum of its pages' badges. Phones never see this rail.
+function sectionOf(groups, path) {
+  const hit = groups.find(([, items]) => items.some(([to]) => to === path || (to !== '/' && path.startsWith(to + '/'))))
+  return hit ? hit[0] : null
+}
+function useNavAccordion(groups, withPrefs) {
+  const { staff } = useAuth()
+  const { pathname } = useLocation()
+  const key = `ct_nav_open:${staff?.id ?? 'x'}`
+  const enabled = groups.filter(([, items]) => items.length > 0).length > 1
+  const [saved, setSaved] = useState(() => { try { return JSON.parse(localStorage.getItem(key) || 'null') } catch { return null } })
+  const active = sectionOf(groups, pathname)
+  useEffect(() => {
+    if (!withPrefs || !staff) return
+    api.get('/admin/auth/me/prefs/').then((r) => {
+      const v = r.data?.nav_open
+      if (v && typeof v === 'object') { setSaved(v); try { localStorage.setItem(key, JSON.stringify(v)) } catch { /* private mode */ } }
+    }).catch(() => {})
+  }, [staff?.id])
+  const store = (v) => {
+    setSaved(v)
+    try { localStorage.setItem(key, JSON.stringify(v)) } catch { /* private mode */ }
+    if (withPrefs) api.patch('/admin/auth/me/prefs/', { nav_open: v }, { quiet: true }).catch(() => {})
+  }
+  // navigating into a section opens it (and remembers that)
+  useEffect(() => {
+    if (enabled && active && saved && saved[active] === false) store({ ...saved, [active]: true })
+  }, [active])
+  const isOpen = (g) => (saved && g in saved ? !!saved[g] : g === active)
+  const toggle = (g) => {
+    const base = saved || Object.fromEntries(groups.map(([k]) => [k, k === active]))
+    store({ ...base, [g]: !isOpen(g) })
+  }
+  return { enabled, isOpen, toggle }
+}
+
 // ---- Caspian sidebar (Stitch _9 dark "Caspian Tunnel" / _10 light "Azure Telemetry") ----
 function CaspianNav({ groups, t, brand, logo, onNavigate, account = true, gmLogout = false, store = false }) {
+  const acc = useNavAccordion(groups, !gmLogout)
+  const counts = useActionCounts()
   return (
     <div className="csp-side">
       <div className="csp-brand">
@@ -293,19 +334,37 @@ function CaspianNav({ groups, t, brand, logo, onNavigate, account = true, gmLogo
         </div>
       </div>
       <nav className="csp-nav">
-        {groups.map(([gkey, items]) => items.length > 0 && (
-          <div className="csp-group" key={gkey}>
-            <div className="csp-group-h">{t(gkey)}</div>
-            {items.map(([to, key, , icon]) => (
-              <NavLink key={to} to={to} end onClick={onNavigate}
-                className={({ isActive }) => 'csp-link' + (isActive ? ' csp-active' : '')}>
-                <SideIcon name={icon} />
-                <span className="csp-link-t">{t(key)}</span>
-                <PendingBadge to={to} />
-              </NavLink>
-            ))}
-          </div>
-        ))}
+        {groups.map(([gkey, items]) => {
+          if (items.length === 0) return null
+          const on = !acc.enabled || acc.isOpen(gkey)
+          const sum = items.reduce((n, [to]) => n + (counts[to] || 0), 0)
+          const id = `nav-sec-${gkey}`
+          return (
+            <div className="csp-group" key={gkey} data-open={on || undefined}>
+              {acc.enabled ? (
+                <button type="button" className="csp-group-h csp-group-btn" aria-expanded={on} aria-controls={id}
+                  onClick={() => acc.toggle(gkey)} data-testid={`nav-sec-${gkey}`}>
+                  <span>{t(gkey)}</span>
+                  {!on && sum > 0 && <span className="nav-pending-badge csp-group-badge" aria-label={`${sum}`}>{fmtCount(sum)}</span>}
+                  <svg className="csp-group-chev" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"
+                    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+                </button>
+              ) : <div className="csp-group-h">{t(gkey)}</div>}
+              {on && (
+                <div className="csp-group-items" id={id}>
+                  {items.map(([to, key, , icon]) => (
+                    <NavLink key={to} to={to} end onClick={onNavigate}
+                      className={({ isActive }) => 'csp-link' + (isActive ? ' csp-active' : '')}>
+                      <SideIcon name={icon} />
+                      <span className="csp-link-t">{t(key)}</span>
+                      <PendingBadge to={to} />
+                    </NavLink>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
       </nav>
       {account && <SideAccount className="csp-acc" />}
       {gmLogout && <div className="csp-acc gm-side-out"><LogoutButton testId="gm-side-logout" /></div>}
@@ -557,6 +616,16 @@ const CASPIAN_CSS = `
   color: #707881;
 }
 .dark .csp-group-h { color: #87929a; }
+.csp-group-btn { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 34px; border: 0; border-radius: 8px; background: transparent;
+  cursor: pointer; text-align: start; }
+.csp-group-btn > span:first-child { flex: 1; }
+.csp-group-btn:hover { background: color-mix(in srgb, var(--c-primary) 8%, transparent); }
+.csp-group-btn:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 1px; }
+.csp-group-chev { flex-shrink: 0; transition: transform .15s; }
+.csp-group[data-open] .csp-group-chev { transform: rotate(180deg); }
+.csp-group-badge { font-family: inherit; letter-spacing: 0; text-transform: none; }
+.csp-group-items { display: flex; flex-direction: column; gap: 4px; }
+.csp-nav:has(.csp-group-btn) { gap: 6px; }
 
 .csp-link {
   display: flex; align-items: center; gap: 12px;

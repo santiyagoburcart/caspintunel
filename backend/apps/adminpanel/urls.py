@@ -60,7 +60,7 @@ from .views.integrations import (
     RequiredChannelViewSet,
     TelegramConfigView,
 )
-from .views.monitoring import BackupViewSet, HealthView, MonitoringView, ResourcesView
+from .views.monitoring import BackupViewSet, HealthView, MonitoringView, ResourcesView, SslCertificatesView
 from .views.push import StaffPrefsView, StaffPushView
 from .views.manual_invoices import ManualInvoiceCancelView, UserManualInvoiceOptionsView, UserManualInvoicesView
 from .views.agency_billing import (AgencyInvoicesView, AgencyInvoiceVoidView, AgencyInvoiceOutsideView, AgencyGroupDebtView, AgencyPaymentActionView,
@@ -216,6 +216,7 @@ urlpatterns = [
     path("health/", HealthView.as_view(), name="admin-health"),
     path("resources/", ResourcesView.as_view(), name="admin-resources"),
     path("monitoring/", MonitoringView.as_view(), name="admin-monitoring"),
+    path("monitoring/ssl/", SslCertificatesView.as_view(), name="admin-monitoring-ssl"),       # v1.57
     path("system/", SystemView.as_view(), name="admin-system"),
     path("settings/", SettingsView.as_view(), name="admin-settings"),
     path("integrations/panel/", PanelConfigView.as_view(), name="admin-panel-config"),

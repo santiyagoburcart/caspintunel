@@ -44,6 +44,8 @@ desktop + 390 px) and **must update [architecture.md](architecture.md),
 | v1.54.0–v1.54.1 | agency admins archived, never deleted; «تاریخچه»; «فروش خالص» = gross + adjustments | [agency.md](agency.md) |
 | v1.55.0–v1.55.2 | WireGuard configs per location (site, Mini App, bot), plan type, tunnel file names | [wireguard.md](wireguard.md) |
 | v1.56.0 | multi-tenant Phase 11 (started): store import from a reseller's previous bot (Mirza) | [store-import.md](store-import.md) |
+| v1.56.1 | documentation audit (docs only) | — |
+| v1.57.0 | agency: «فروش» is the one sales figure (adjustments as information), colour system, accounting filters; SSL certificate monitor; sidebar accordion | [agency.md](agency.md#accounting-filters-and-colours-v157), [operations.md](operations.md) |
 
 ## Next (planned, not built)
 

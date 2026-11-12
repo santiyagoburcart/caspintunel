@@ -114,6 +114,10 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   (`user/src/lib/phone.js`, `accounts/phone.py`, `payments_sms/parsing.py`). Themes: Caspian (light/dark), Midnight Aurora, Royal Frost. Colours come from
   `var(--c-*)` except these **fixed** tokens: toggles `--toggle-on #11AB53` / `--toggle-off` dark gray;
   ConfirmDialog tone colours (danger red, success #11AB53, primary #1464BA, warning amber).
+- **SSL monitor (v1.57, `ops/ssl_certs.py`)**: one TLS handshake per target, read-only; a target that serves no TLS where none is
+  configured (WireGuard / UDP) is `no_tls` (grey, never alerted). Alerts only through `_alert` (14 / 3 days, failure — once each).
+- Desktop sidebar (Caspian rail) = accordion (v1.57): only the current page's section opens by default; open / closed per staff
+  in `auth/me/prefs.nav_open` (+ localStorage for first paint); mobile unchanged.
 - **Every action gives feedback**: admin `lib/api.js` reports each POST/PUT/PATCH/DELETE to `components/FeedbackBridge.jsx`
   (toast success / real failure reason). The toast (`components/Toast.jsx`, identical in both SPAs) is the ONLY result
   display — no inline "saved" bars. Pass `{ quiet: true }` only for non-actions (login, live previews).
@@ -241,6 +245,10 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   line (was delete) is the ONE deliberate PAMP deviation (PORTING.md) — keep it the only one. «تاریخچه» (`history.py`) and
   the reports sum immutable records only; «فروش خالص» = gross charges + adjustments (in their period), always shown next to
   «شارژ ناخالص» and «اصلاحیه‌ها» (v1.54.1).
+- **v1.57 sales = «فروش»** = charges + adjustments (in their period) — the ONE sales figure everywhere (history, reports,
+  statements, manager / portal views, CSV / Excel); never show gross charges again. «اصلاحیه‌ها» = an information line only
+  (`adjust_count` / `adjust_down` / `adjust_up`), never a column, never summed into charges. Agency colours come only from
+  `lib/agencyTone.js` + `agency-tones.css` (identical in both SPAs) — add a new state there, not per page.
 - v1.52.2: every limit change through our panel calls `agency/release.release_if_room` after PasarGuard accepted it (ends a
   `pamp_blocked` block at once when there is room) — a new limit-changing path must call it too; never edit enforcement for it.
 - PasarGuard admin create / edit / delete = `apps/agency/admin_crud.py` on `PasarGuardClient` (never edit the PAMP files

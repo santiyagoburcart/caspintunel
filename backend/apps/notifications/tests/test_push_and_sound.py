@@ -34,9 +34,9 @@ def vapid(settings, monkeypatch):
 
 def test_staff_prefs_round_trip():
     c, s = staff_c()
-    assert c.get("/api/v1/admin/auth/me/").json()["notify_prefs"] == {"sound": True, "volume": 60}
+    assert c.get("/api/v1/admin/auth/me/").json()["notify_prefs"] == {"sound": True, "volume": 60, "nav_open": None}
     r = c.patch("/api/v1/admin/auth/me/prefs/", {"sound": False, "volume": 140}, format="json")
-    assert r.json() == {"sound": False, "volume": 100}
+    assert r.json() == {"sound": False, "volume": 100, "nav_open": None}
     assert c.get("/api/v1/admin/auth/me/prefs/").json()["sound"] is False
     assert c.patch("/api/v1/admin/auth/me/prefs/", {"volume": "x"}, format="json").status_code == 400
 

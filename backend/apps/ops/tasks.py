@@ -71,3 +71,11 @@ def reconcile_backup_schedule_task():
     from .schedule import reconcile_backup_schedule
 
     return reconcile_backup_schedule()
+
+
+@shared_task(ignore_result=True)
+def ssl_check_task(alert: bool = True):
+    """v1.57 «گواهی‌های SSL» (ops/ssl_certs.py): daily + «بررسی الان» on Monitoring."""
+    from .ssl_certs import run
+
+    return run(alert=alert)

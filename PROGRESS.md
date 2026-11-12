@@ -674,3 +674,14 @@ Everything shipped since v1.6.0 (details in the session log):
   vhosts; access-mode.md + blu-webhook.md store notes; pilot-fa.md WireGuard + import steps; bots.md / telegram-miniapp.md
   store bots, WireGuard, credit; docs index (README) lists pilot-fa / store-import / wireguard; PROGRESS PasarGuard 5.6.0 +
   v1.42.3. Permissions table = the 48 codes in the DB.
+- 2026-11-12 — **v1.57.0: agency revenue, colours, accounting filters · SSL monitor · sidebar accordion.** (1) «فروش» =
+  charges + adjustments is the one sales figure everywhere (history, «گزارش‌ها», statements, manager / portal views, CSV /
+  Excel); gross charges removed; «اصلاحیه‌ها» only as an information line (count + debt decreases / increases); the ledger lists
+  adjustments as their own row type. Live check (read-only): this Jalali month «فروش» 86,050,000 (= 75,050,000 + 11,000,000 of
+  charges recorded on 11–12 Nov), «اصلاحیه‌ها» 6 · 19,900,000 debt decreases. (2) One colour system for agency pages
+  (`lib/agencyTone.js` + `agency-tones.css`, both SPAs): status, usage 70 / 90 %, debt / credit, invoices, requests, payments,
+  adjustments, tinted KPI tiles. (3) Accounting: admin / group / «فقط بدهکارها» / sort by debt / pages in the URL, collapsed
+  summary per admin (debt, last payment, unpaid invoices), expand → statement; same filters on the group statement, manager
+  accounting and history. (4) `ops/ssl_certs.py` + `SslCertificate`: «گواهی‌های SSL» card, daily + «بررسی الان», alerts at 14 / 3
+  days and on failure. (5) Caspian desktop sidebar = accordion, remembered per staff (`prefs.nav_open`). Tests:
+  `agency/tests/test_v157.py` (+ updated report / history / prefs tests); browser checks.

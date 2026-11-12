@@ -18,6 +18,7 @@ import { AdminSettingsTab, AgencyAdminCreate } from './AgencyAdminForms'
 import AgencyHistory from '../components/AgencyHistory'
 import { AgencyApprovalsView, AgencyGroupStatementView, AgencyLedgerGroupsView, AgencyManagersView, GM_CSS, GroupActivity, LedgerSubNav } from './AgencyManagers'
 import { useLiveApprovals } from '../lib/liveApprovals'
+import { usageTone } from '../lib/agencyTone'
 
 // Agency panel (PAMP port). Every number on these pages comes from the backend
 // (apps/agency: PAMP's own formulas); this file only formats and lays out.
@@ -34,7 +35,7 @@ const T = {
     over_title: 'نزدیک یا بیش از سقف (≥80%)', over_none: 'هیچ نماینده‌ای به 80% سقف نرسیده است.',
     st_active: 'فعال', st_panel_disabled: 'غیرفعال (پنل)', st_pamp_limited: 'محدود‌شده', at_risk: 'در خطر', over: 'بیش از سقف',
     last_sync: 'آخرین همگام‌سازی', never: 'هرگز', active_n: 'فعال', disabled_n: 'غیرفعال', limited_n: 'محدود', near_n: 'نزدیک سقف',
-    search: 'جستجوی نام نماینده…', clear: 'پاک کردن جستجو', all: 'همه', f_status: 'وضعیت', f_limit: 'سقف', limited: 'سقف‌دار', unlimited: 'نامحدود', f_list: 'فهرست', list_active: 'فعال', list_archived: 'بایگانی', archived_on: 'حذف‌شده · {d}', arch_t: 'این ادمین بایگانی (حذف) شده است', arch_b: '{why} — از {d}. حساب، فاکتورها، پرداخت‌ها و سابقه‌اش محفوظ است؛ مانده را می‌توانید ثبت پرداخت یا اصلاح کنید. روی پنل تغییری داده نمی‌شود؛ اگر دوباره روی پاسارگارد ساخته شود، خودکار برمی‌گردد.',
+    search: 'جستجوی نام نماینده…', clear: 'پاک کردن جستجو', all: 'همه', f_status: 'وضعیت', f_limit: 'سقف', limited: 'سقف‌دار', unlimited: 'نامحدود', f_list: 'فهرست', list_active: 'فعال', list_archived: 'بایگانی', archived_pill: 'بایگانی', archived_on: 'حذف‌شده · {d}', arch_t: 'این ادمین بایگانی (حذف) شده است', arch_b: '{why} — از {d}. حساب، فاکتورها، پرداخت‌ها و سابقه‌اش محفوظ است؛ مانده را می‌توانید ثبت پرداخت یا اصلاح کنید. روی پنل تغییری داده نمی‌شود؛ اگر دوباره روی پاسارگارد ساخته شود، خودکار برمی‌گردد.',
     any_group: 'همهٔ گروه‌ها', n_admins: '{n} نماینده', none: 'نماینده‌ای پیدا نشد.', back: 'بازگشت به فهرست', unl: 'نامحدود',
     detail_numbers: 'سقف ادمین', deleted: 'از کاربران حذف‌شده', hidden_clamped: 'پنهان (حداقل صفر)', counts: 'کاربران بر اساس وضعیت',
     c_active: 'فعال', c_on_hold: 'در انتظار', c_limited: 'اتمام حجم', c_disabled: 'غیرفعال', c_expired: 'منقضی', c_total: 'کل',
@@ -74,7 +75,7 @@ const T = {
     over_title: 'At or over the limit (≥80%)', over_none: 'No admin has reached 80% of their limit.',
     st_active: 'Active', st_panel_disabled: 'Disabled (panel)', st_pamp_limited: 'Limited', at_risk: 'At risk', over: 'Over limit',
     last_sync: 'Last sync', never: 'never', active_n: 'active', disabled_n: 'disabled', limited_n: 'limited', near_n: 'near limit',
-    search: 'Search admin name…', clear: 'Clear search', all: 'All', f_status: 'Status', f_limit: 'Limit', limited: 'Limited', unlimited: 'Unlimited', f_list: 'List', list_active: 'Active', list_archived: 'Archive', archived_on: 'Deleted · {d}', arch_t: 'This admin is archived (deleted)', arch_b: '{why} — since {d}. Its account, invoices, payments and history are kept; the balance can still be paid or adjusted. Nothing changes on the panel; if it is created on PasarGuard again it comes back by itself.',
+    search: 'Search admin name…', clear: 'Clear search', all: 'All', f_status: 'Status', f_limit: 'Limit', limited: 'Limited', unlimited: 'Unlimited', f_list: 'List', list_active: 'Active', list_archived: 'Archive', archived_pill: 'Archived', archived_on: 'Deleted · {d}', arch_t: 'This admin is archived (deleted)', arch_b: '{why} — since {d}. Its account, invoices, payments and history are kept; the balance can still be paid or adjusted. Nothing changes on the panel; if it is created on PasarGuard again it comes back by itself.',
     any_group: 'All groups', n_admins: '{n} admins', none: 'No admin found.', back: 'Back to the list', unl: 'Unlimited',
     detail_numbers: 'Admin limit', deleted: 'From deleted users', hidden_clamped: 'Hidden (min 0)', counts: 'Users by status',
     c_active: 'Active', c_on_hold: 'On hold', c_limited: 'Data used up', c_disabled: 'Disabled', c_expired: 'Expired', c_total: 'Total',
@@ -168,14 +169,15 @@ const TH = ({ i, ac, children, className }) => <th className={className}><span c
 // section header with a small coloured icon
 const SecH = ({ i, ac, children, style }) => <h3 className="ag-sec-h ag-sh" data-ac={ac} style={style}><Ic n={i} size={15} />{children}</h3>
 
-function StatusPill({ code, s }) {
-  return <span className="ag-pill" data-st={code}>{s['st_' + code] || code}</span>
+function StatusPill({ code, s, archived }) {
+  // v1.57: archived admins are grey whatever their last PasarGuard status was
+  return <span className="ag-pill" data-st={archived ? 'archived' : code}>{archived ? (s.archived_pill || s['st_' + code] || code) : (s['st_' + code] || code)}</span>
 }
 
 function UsageBar({ pct }) {
   // pct is PAMP's usage_percent (backend); the bar only caps its WIDTH at 100%
   const w = Math.min(Number(pct) || 0, 100)
-  const tone = pct >= 100 ? 'danger' : pct >= 80 ? 'warning' : 'primary'
+  const tone = usageTone(pct)                     // v1.57: < 70 green · 70–90 amber · > 90 red
   return <span className="ag-bar" data-tone={tone}><i style={{ width: `${w}%` }} /></span>
 }
 
@@ -319,7 +321,7 @@ export function AgencyAdmins() {
                       {r.archived && <span className="ag-arch" data-testid="archived-badge" title={r.archived_reason_fa}>{s.archived_on.replace('{d}', jalali(r.archived_at, false, lang))}</span>}
                       {r.groups.length > 0 && <span className="ag-t-grp" title={r.groups.map((g) => g.name || g.owner).join('، ')}>{r.groups.map((g) => g.name || g.owner).join('، ')}</span>}
                     </td>
-                    <td className="ag-t-st" data-label={s.status}><StatusPill code={r.status_code} s={s} /></td>
+                    <td className="ag-t-st" data-label={s.status}><StatusPill code={r.status_code} s={s} archived={r.archived} /></td>
                     <td className="ag-t-usage" data-label={s.usage}>
                       {r.is_unlimited ? <span className="text-muted">{s.unl}</span> : <><UsageBar pct={r.usage_percent} /><B>{r.usage_percent}%</B><span className="ag-lim" title={s.limit}>/ <Lim b={r.bytes?.limit} tb={r.admin_limit_fmt} s={s} block /></span></>}
                     </td>
@@ -383,7 +385,7 @@ export function AgencyAdminDetail() {
   if (d === null) return <div className="ag"><Header s={s} /><div className="grid place-items-center py-16"><Spinner /></div></div>
   if (!d) return <div className="ag space-y-4"><Header s={s} /><Alert>{err}</Alert></div>
   const p = d.portal
-  const usageAc = d.is_unlimited ? 'gray' : d.usage_percent >= 100 ? 'red' : d.usage_percent >= 80 ? 'orange' : 'green'   // same thresholds as the bar
+  const usageAc = d.is_unlimited ? 'gray' : { danger: 'red', warning: 'orange', success: 'green' }[usageTone(d.usage_percent)]   // same thresholds as the bar
   const nums = [
     [s.limit, <Lim b={d.bytes?.limit} tb={d.admin_limit_fmt} s={s} />, 'blue'], [s.total_sold, d.total_sold_fmt, 'blue', d.bytes?.total_sold], [s.used, d.used_fmt, 'purple', d.bytes?.used],
     [s.remaining, fmt(d.remaining_fmt, s), 'green', d.bytes?.remaining], [s.sold_limit, d.sold_limit_fmt, 'cyan', d.bytes?.sold_limit, true], [s.hidden, d.hidden_fmt, 'orange', d.bytes?.hidden],
@@ -411,7 +413,7 @@ export function AgencyAdminDetail() {
       <Link to="/agency/admins" className="ag-back">← {s.back}</Link>
       <div className="ag-dhead">
         <h2 className="font-bold text-base"><bdi>{d.username}</bdi></h2>
-        <StatusPill code={d.status_code} s={s} />
+        <StatusPill code={d.status_code} s={s} archived={d.archived} />
         <span className="ag-dhead-lim">{s.limit}: <Lim b={d.bytes?.limit} tb={d.admin_limit_fmt} s={s} />{!d.is_unlimited && <> · <B>{d.usage_percent}%</B></>}</span>
       </div>
       {d.archived && (
@@ -765,7 +767,7 @@ export function AgencyGroups() {
                           <Link to={`/agency/admins/${encodeURIComponent(r.username)}`}>{r.username}</Link>
                           <span className="ag-t-grp" data-role={r.role}>{r.role === 'owner' ? s.owner : s.g_member}</span>
                         </td>
-                        <td className="ag-t-st" data-label={s.status}><StatusPill code={r.status_code} s={s} /></td>
+                        <td className="ag-t-st" data-label={s.status}><StatusPill code={r.status_code} s={s} archived={r.archived} /></td>
                         <td className="ag-t-usage" data-label={s.usage}>{r.is_unlimited ? <span className="text-muted">{s.unl}</span> : <><UsageBar pct={r.usage_percent} /><B>{r.usage_percent}%</B></>}</td>
                         <td data-label={s.total_sold}><B>{r.total_sold_fmt}</B><GB b={r.bytes?.total_sold} block /></td>
                         <td data-label={s.used}><B>{r.used_fmt}</B><GB b={r.bytes?.used} block /></td>

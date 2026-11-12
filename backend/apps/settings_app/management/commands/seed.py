@@ -601,6 +601,13 @@ class Command(BaseCommand):
             if not PeriodicTask.objects.filter(name=name).exists():
                 PeriodicTask.objects.create(name=name, task=task, interval=hourly, kwargs=_json.dumps({}), enabled=True)
 
+        # v1.57 «گواهی‌های SSL»: daily at 07:30 Tehran (created only when missing)
+        if not PeriodicTask.objects.filter(name="ops: SSL certificates").exists():
+            at_730, _ = CrontabSchedule.objects.get_or_create(minute="30", hour="7", day_of_week="*", day_of_month="*",
+                                                             month_of_year="*", timezone="Asia/Tehran")
+            PeriodicTask.objects.create(name="ops: SSL certificates", task="apps.ops.tasks.ssl_check_task", crontab=at_730,
+                                        kwargs=_json.dumps({}), enabled=True)
+
         if not PeriodicTask.objects.filter(name="agency: near-limit summary").exists():
             at_ten, _ = CrontabSchedule.objects.get_or_create(minute="0", hour="10", day_of_week="*", day_of_month="*",
                                                              month_of_year="*", timezone="Asia/Tehran")

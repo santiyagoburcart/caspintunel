@@ -285,23 +285,78 @@ class _Bad(Exception):
 
 
 class AgencyLedgerOverviewView(AdminAPIView):
-    """GET agency/ledger/ — every admin with a balance or a price."""
+    """GET agency/ledger/ — every admin with a balance or a price.
+
+    v1.57 filters (the page keeps them in its URL): ?q= (admin name contains) · ?group=<id> · ?debtors=1 (a balance owed or an
+    unpaid / under-review invoice) · ?sort=debt|name · ?page= &page_size= (default 25, max 200). Each row carries the collapsed
+    summary: balance, last payment date, unpaid invoices (count + amount), group. `total_balance` = all admins;
+    `filtered_balance` = the filtered set."""
     perms_map = {"GET": ACCOUNTING}
 
     def get(self, request):
-        from apps.agency import ledger
-        from apps.agency.models import AdminPrice, LedgerEntry
+        from django.db.models import Count, Max, Sum
 
-        names = (set(PanelAdmin.objects.values_list("username", flat=True))
+        from apps.agency import ledger
+        from apps.agency.managers import group_title
+        from apps.agency.models import AdminPrice, AgencyInvoice, LedgerEntry
+
+        q = request.query_params
+        names = (set(PanelAdmin.all_objects.values_list("username", flat=True))
                  | set(LedgerEntry.objects.values_list("admin_username", flat=True).distinct())
                  | set(AdminPrice.objects.values_list("admin_username", flat=True).distinct()))
         bal = ledger.balances()
+        total = sum(bal.values()) if bal else 0
+        groups = list(AdminGroup.objects.order_by("owner_username"))
+        group_of = {}
+        for g in groups:
+            for n in g.get_all_usernames():
+                group_of.setdefault(n, g)
+        unpaid = {r["admin_username"]: r for r in AgencyInvoice.objects.filter(status__in=(AgencyInvoice.UNPAID, AgencyInvoice.PENDING))
+                  .values("admin_username").annotate(n=Count("id"), amount=Sum("amount"))}
+        last_pay = dict(LedgerEntry.objects.filter(voided=False, kind=LedgerEntry.KIND_PAYMENT).values("admin_username")
+                        .annotate(d=Max("date")).values_list("admin_username", "d"))
+        active = set(PanelAdmin.objects.values_list("username", flat=True))
+        archived = set(PanelAdmin.all_objects.filter(archived_at__isnull=False).values_list("username", flat=True))
+        term = (q.get("q") or "").strip().lower()
+        gid = q.get("group")
+        debtors = str(q.get("debtors") or "") in ("1", "true", "yes")
         rows = []
-        for n in sorted(names, key=str.lower):
-            p = ledger.price_at(n)
-            rows.append({"username": n, "balance": bal.get(n, 0), "price_per_gb": p.price_per_gb if p else None,
-                         "on_panel": PanelAdmin.objects.filter(username=n).exists()})
-        return Response({"results": rows, "total_balance": sum(bal.values()) if bal else 0})
+        for n in names:
+            if term and term not in n.lower():
+                continue
+            g = group_of.get(n)
+            if gid and (g is None or str(g.id) != str(gid)):
+                continue
+            u = unpaid.get(n) or {}
+            b = bal.get(n, 0) or 0
+            if debtors and not (b > 0 or u.get("n")):
+                continue
+            if n not in bal and n not in active and not AdminPrice.objects.filter(admin_username=n).exists():
+                continue            # an archived admin with nothing on the ledger
+            rows.append({"username": n, "balance": b, "on_panel": n in active, "archived": n in archived,
+                         "last_payment": last_pay.get(n), "unpaid_invoices": u.get("n", 0), "unpaid_amount": u.get("amount") or 0,
+                         "group": {"id": g.id, "name": group_title(g)} if g else None})
+        if q.get("sort") == "debt":
+            rows.sort(key=lambda r: (-(r["balance"] or 0), r["username"].lower()))
+        else:
+            rows.sort(key=lambda r: r["username"].lower())
+        try:
+            size = max(5, min(200, int(q.get("page_size") or 25)))
+        except ValueError:
+            size = 25
+        pages = max(1, -(-len(rows) // size))
+        try:
+            page = max(1, min(pages, int(q.get("page") or 1)))
+        except ValueError:
+            page = 1
+        shown = rows[(page - 1) * size: page * size]
+        for r in shown:                                     # the price only for the rows on this page
+            p = ledger.price_at(r["username"])
+            r["price_per_gb"] = p.price_per_gb if p else None
+        return Response({"results": shown, "count": len(rows), "page": page, "pages": pages, "page_size": size,
+                         "total_balance": total, "filtered_balance": sum((r["balance"] or 0) for r in rows),
+                         "debtors_count": sum(1 for r in rows if (r["balance"] or 0) > 0),
+                         "groups": [{"id": g.id, "name": group_title(g)} for g in groups]})
 
 
 class AgencyLedgerView(AdminAPIView):

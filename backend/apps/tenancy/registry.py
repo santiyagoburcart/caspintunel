@@ -40,7 +40,7 @@ PLATFORM = [
     "telegram.TelegramConfig",
     "settings_app.Setting", "settings_app.SiteConfig", "settings_app.AppRelease", "settings_app.EmailSettings",
     "settings_app.DomainConfig", "settings_app.DomainChange",
-    "ops.BackupLog", "ops.CleanupRun", "ops.HealthCheck", "ops.ResourceStat",
+    "ops.BackupLog", "ops.CleanupRun", "ops.HealthCheck", "ops.ResourceStat", "ops.SslCertificate",
     "agency.PanelAdmin", "agency.AdminLimit", "agency.SyncLog", "agency.UserTrafficSnapshot", "agency.AdminGroup",
     "agency.ResellerSession", "agency.AdminPrice", "agency.LedgerEntry", "agency.AdminLimitChange", "agency.GroupManager",
     "agency.GroupManagerAssignment", "agency.ManagerSession", "agency.VolumeRequest", "agency.AgencyInvoice",

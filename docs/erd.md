@@ -1513,6 +1513,24 @@ erDiagram
         bigint bandwidth_used
         datetime sampled_at
     }
+    ops_ssl_certificate {
+        bigint id PK
+        string host
+        int port "443 unless the PasarGuard host says otherwise"
+        string sni "a name for an IP host"
+        json sources "site · store · panel · sub · host + label"
+        bool expect_tls "false = a name not configured for TLS (WireGuard) → no_tls"
+        string state "ok | soon | urgent | expired | error | no_tls"
+        string issuer
+        string subject
+        datetime not_after
+        int days_left
+        bool verified "chain + name by the system trust store"
+        string error
+        datetime checked_at
+        int alerted "0 · 14 · 3 · -1 (failure) — each alert once"
+        datetime failing_since
+    }
     backup_log {
         bigint id PK
         string filename
@@ -1547,6 +1565,7 @@ erDiagram
 | `required_channel` | Forced-join channels of the sales bot with member counts. |
 | `telegram_stats` | Periodic bot / channel member snapshot. |
 | `health_check` / `resource_stat` | Monitoring samples (targets incl. each panel; CPU / RAM / disk / network). |
+| `ops_ssl_certificate` | v1.57 «گواهی‌های SSL» (`ops/ssl_certs.py`): one TLS endpoint we depend on (our domain + www, active store domains, PasarGuard panel, subscription hosts, PasarGuard host names / IP + SNI) with its last-seen certificate; checked daily 07:30 Tehran + «بررسی الان»; alerts at 14 / 3 days and on failure, each once (`alerted`); rows of targets gone from every source are deleted. PLATFORM. |
 | `backup_log` / `cleanup_run` | Every DB backup (and whether Telegram got it) and every retention run. |
 
 Framework tables (`django_celery_beat_*` periodic tasks, `django_session`,

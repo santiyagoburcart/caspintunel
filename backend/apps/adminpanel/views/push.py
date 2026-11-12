@@ -9,7 +9,7 @@ from apps.notifications import webpush
 
 from ..permissions import StaffJWTAuthentication
 
-DEFAULT_PREFS = {"sound": True, "volume": 60}
+DEFAULT_PREFS = {"sound": True, "volume": 60, "nav_open": None}   # v1.57 nav_open: {menu section key: open?}
 
 
 def staff_prefs(staff) -> dict:
@@ -47,6 +47,12 @@ class StaffPrefsView(_Me):
                 p["volume"] = max(0, min(100, int(d["volume"])))
             except (TypeError, ValueError):
                 return Response({"detail": "volume must be 0–100", "field": "volume"}, status=400)
+        if "nav_open" in d:                           # v1.57 desktop sidebar accordion, remembered per staff member
+            v = d["nav_open"]
+            if v is not None and (not isinstance(v, dict) or len(v) > 30
+                                  or any(not isinstance(k, str) or len(k) > 40 or not isinstance(x, bool) for k, x in v.items())):
+                return Response({"detail": "nav_open: {section: true|false}", "field": "nav_open"}, status=400)
+            p["nav_open"] = v
         request.user.notify_prefs = p
         request.user.save(update_fields=["notify_prefs"])
         return Response(p)

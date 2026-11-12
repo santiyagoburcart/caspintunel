@@ -40,8 +40,10 @@ def c():
 
 def test_overview_kpis_series_and_recent_payments(c):
     d = c.get(URL + "overview/", {"from": "1405/07/01", "to": "1405/07/30"}).json()
-    assert d["kpis"] == {"charges": 730000, "adjustments": 0, "net_sales": 730000, "payments": 400000, "net": 330000, "gb": 350.0, "payments_count": 1,
+    assert d["kpis"] == {"charges": 730000, "adjustments": 0, "adjust_count": 0, "adjust_down": 0, "adjust_up": 0, "sales": 730000,
+                         "net_sales": 730000, "payments": 400000, "net": 330000, "gb": 350.0, "payments_count": 1,
                          "outstanding": 440000, "credit": 10000, "resellers_owing": 1}
+    assert all(p["sales"] == p["charges"] for p in d["series"])      # v1.57: the chart shows «فروش»
     assert d["bucket"] == "day" and len(d["series"]) == 30 and sum(p["charges"] for p in d["series"]) == 730000
     assert [p["username"] for p in d["recent_payments"]] == ["ali"] and d["recent_payments"][0]["method"] == "card"
     y = c.get(URL + "overview/", {"from": "1405/01/01", "to": "1405/12/29"}).json()
@@ -65,7 +67,8 @@ def test_exports_csv_and_xlsx(c):
     r = c.get(URL + "monthly/", {"export": "csv", "lang": "fa"})
     assert r.status_code == 200 and r["Content-Type"].startswith("text/csv")
     text = r.content.decode("utf-8-sig")
-    assert text.splitlines()[0].startswith("ماه,") and "1405/07,350.0,730000,0,730000,400000,330000,2,1" in text
+    assert text.splitlines()[0].startswith("ماه,") and "1405/07,350.0,730000,400000,330000,2,1" in text
+    assert "ناخالص" not in text and "اصلاحیه" not in text.splitlines()[0]          # v1.57: «فروش» only, no gross column
     x = c.get(URL + "monthly/1405/7/", {"export": "xlsx", "lang": "en"})
     assert x.status_code == 200 and "spreadsheetml" in x["Content-Type"]
     z = zipfile.ZipFile(io.BytesIO(x.content))

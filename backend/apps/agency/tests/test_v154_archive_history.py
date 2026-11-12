@@ -198,7 +198,9 @@ def test_gross_charges_stay_and_net_sales_follow_the_adjustments():
     m = [r for r in reports.monthly() if r["charges"]][0]
     assert m["net_sales"] == m["charges"] + m["adjustments"]
     rows = history.export_rows(history.report(["farz"], "d7"), "fa")
-    assert "فروش خالص (تومان)" in rows[0] and "شارژ ناخالص (تومان)" in rows[0]
+    # v1.57: «فروش» is the one sales column; the gross charges are never exported; adjustments = one information row
+    assert "فروش (تومان)" in rows[0] and not any("ناخالص" in str(c) for r in rows for c in r)
+    assert rows[2][0].startswith("اصلاحیه‌ها") and "تعداد: 2" in rows[2][1] and "150000" in rows[2][2] and "30000" in rows[2][3]
 
 
 def test_periods_monthly_table_opening_closing_and_new_users(monkeypatch):

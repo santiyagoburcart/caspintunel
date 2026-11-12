@@ -4,9 +4,10 @@ edited), the invoices and the first time the sync saw each user (`AgencyUserSeen
 
 Per period (last 7 days · current Jalali month · last Jalali month · custom) and per Jalali month (last 12):
   gb          volume sold / charged: GB on quota + manual charges
-  charged     «شارژ ناخالص»: T of quota + manual charges
-  adjustments «اصلاحیه‌ها»: T of adjustments, signed («کاهش بدهی» −, «افزایش بدهی» +), in the period they are recorded
-  net_sales   «فروش خالص» = charged + adjustments (v1.54.1 — sales / income as before v1.54, shown next to its parts)
+  sales       «فروش» (v1.57) = quota + manual charges + adjustments («کاهش بدهی» −, «افزایش بدهی» +) in the period they are
+              recorded — an adjustment corrects a mistake, so it belongs to the sales figure; the gross charges are never shown
+  adjust_*    «اصلاحیه‌ها» — information only, never a column: count, adjust_down (T of «کاهش بدهی»), adjust_up (T of
+              «افزایش بدهی»); `adjustments` = the signed sum. (`charged` / `net_sales` stay in the API for old pages.)
   paid        T of payments received
   invoiced    T of invoices issued in the period (voided ones excluded)
   opening / closing  balance before the first day / after the last day (charges + adjustments − payments)
@@ -81,8 +82,8 @@ def _entries(names, to: date):
 
 
 def _empty() -> dict:
-    return {"gb": D0, "charged": D0, "adjustments": D0, "net_sales": D0, "paid": D0, "invoiced": D0, "opening": D0,
-            "closing": D0, "new_users": None}
+    return {"gb": D0, "charged": D0, "adjustments": D0, "adjust_count": 0, "adjust_down": D0, "adjust_up": D0, "sales": D0,
+            "net_sales": D0, "paid": D0, "invoiced": D0, "opening": D0, "closing": D0, "new_users": None}
 
 
 def _seen_since():
@@ -103,9 +104,11 @@ def _fold(entries, frm: date, to: date) -> dict:
             t["gb"] += e.gb or D0
         elif e.kind == LedgerEntry.KIND_ADJUST:
             t["adjustments"] += e.amount
+            t["adjust_count"] += 1
+            t["adjust_down" if e.amount < 0 else "adjust_up"] += abs(e.amount)
         elif e.kind == LedgerEntry.KIND_PAYMENT:
             t["paid"] += e.amount
-    t["net_sales"] = t["charged"] + t["adjustments"]
+    t["sales"] = t["net_sales"] = t["charged"] + t["adjustments"]
     t["closing"] = t["opening"] + t["charged"] + t["adjustments"] - t["paid"]
     return t
 
@@ -181,14 +184,16 @@ def all_usernames() -> list[str]:
 
 
 # ------------------------------------------------------------------ export
-COLS = ("gb", "charged", "adjustments", "net_sales", "paid", "invoiced", "opening", "closing", "new_users")
+COLS = ("gb", "sales", "paid", "invoiced", "opening", "closing", "new_users")      # v1.57: no gross charges, adjustments apart
 HEAD = {
-    "fa": {"what": "عنوان", "gb": "حجم فروخته‌شده (GB)", "charged": "شارژ ناخالص (تومان)", "adjustments": "اصلاحیه‌ها (تومان)", "net_sales": "فروش خالص (تومان)",
+    "fa": {"what": "عنوان", "gb": "حجم فروخته‌شده (GB)", "sales": "فروش (تومان)",
            "paid": "پرداخت‌شده (تومان)", "invoiced": "فاکتورشده (تومان)", "opening": "مانده ابتدای بازه", "closing": "مانده پایان بازه",
-           "new_users": "کاربران جدید", "total": "جمع بازه", "month": "ماه", "admin": "ادمین", "archived": " (بایگانی)"},
-    "en": {"what": "Item", "gb": "Volume sold (GB)", "charged": "Gross charges (T)", "adjustments": "Adjustments (T)", "net_sales": "Net sales (T)",
+           "new_users": "کاربران جدید", "total": "جمع بازه",
+           "adj": "اصلاحیه‌ها (فقط اطلاع؛ در «فروش» حساب شده)", "adj_n": "تعداد", "adj_down": "کاهش بدهی (تومان)", "adj_up": "افزایش بدهی (تومان)", "month": "ماه", "admin": "ادمین", "archived": " (بایگانی)"},
+    "en": {"what": "Item", "gb": "Volume sold (GB)", "sales": "Sales (T)",
            "paid": "Paid (T)", "invoiced": "Invoiced (T)", "opening": "Opening balance", "closing": "Closing balance",
-           "new_users": "New users", "total": "Period total", "month": "Month", "admin": "Admin", "archived": " (archived)"},
+           "new_users": "New users", "total": "Period total",
+           "adj": "Adjustments (information only, already in «Sales»)", "adj_n": "Count", "adj_down": "Debt decreases (T)", "adj_up": "Debt increases (T)", "month": "Month", "admin": "Admin", "archived": " (archived)"},
 }
 
 
@@ -203,7 +208,10 @@ def _cells(s: dict) -> list:
 def export_rows(rep: dict, lang: str = "fa") -> list[list]:
     h = HEAD.get(lang, HEAD["fa"])
     period = f"{rep['from_jalali']} – {rep['to_jalali']}" if lang == "fa" else f"{rep['from']} – {rep['to']}"
-    rows = [[h["what"], *[h[c] for c in COLS]], [f"{h['total']} {period}", *_cells(rep["totals"])]]
+    t = rep["totals"]
+    rows = [[h["what"], *[h[c] for c in COLS]], [f"{h['total']} {period}", *_cells(t)],
+            [h["adj"], f"{h['adj_n']}: {t.get('adjust_count', 0)}", f"{h['adj_down']}: {int(t.get('adjust_down') or 0)}",
+             f"{h['adj_up']}: {int(t.get('adjust_up') or 0)}"]]
     if rep["admins"]:
         rows.append([])
         rows.append([h["admin"], *[h[c] for c in COLS]])

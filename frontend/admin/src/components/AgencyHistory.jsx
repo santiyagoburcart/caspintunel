@@ -1,25 +1,32 @@
 import { useEffect, useState } from 'react'
 import { jalali } from '../lib/format'
+import { moneyTone } from '../lib/agencyTone'
 
 // v1.54 «تاریخچه» — IDENTICAL in both SPAs (admin: our staff + group managers · user: the /agency/ portal). Every number
 // comes from the server (apps/agency/history.py, built from the ledger + invoices — never reset by a settlement, payments
 // or adjustments); this file only lays it out. Props: http (axios-like), base (endpoint), lang, fixedAdmin (one admin only).
+// v1.57: «فروش» = charges + adjustments is THE sales figure (no gross charges anywhere); «اصلاحیه‌ها» only as an information line.
+// The per-admin table filters (only debtors, sort by debt, page) and the period / scope live in the URL (h_* params).
 export const HT = {
   fa: {
-    title: 'تاریخچه', sub: 'از روی دفتر حساب ساخته می‌شود و صفر نمی‌شود. فروش خالص = شارژ ناخالص + اصلاحیه‌ها («کاهش بدهی» کم و «افزایش بدهی» اضافه می‌کند، در همان بازه‌ای که ثبت شده).',
+    title: 'تاریخچه', sub: 'از روی دفتر حساب ساخته می‌شود و صفر نمی‌شود. فروش = شارژها منهای «کاهش بدهی» به‌اضافهٔ «افزایش بدهی» (در همان بازه‌ای که ثبت شده).',
     d7: '7 روز اخیر', month: 'ماه جاری', prev: 'ماه قبل', custom: 'بازهٔ دلخواه', from: 'از', to: 'تا', show: 'نمایش',
     date_hint: 'مثلاً 1405/08/01', scope: 'برای', all: 'همهٔ ادمین‌ها', groups: 'گروه‌ها', admins: 'ادمین‌ها',
-    gb: 'حجم فروخته‌شده', charged: 'شارژ ناخالص', net_sales: 'فروش خالص', invoiced: 'فاکتورشده', paid: 'پرداخت‌شده', adjustments: 'اصلاحیه‌ها',
+    gb: 'حجم فروخته‌شده', sales: 'فروش', invoiced: 'فاکتورشده', paid: 'پرداخت‌شده', adjustments: 'اصلاحیه‌ها',
+    adj_info: 'فقط برای اطلاع — در «فروش» حساب شده است', adj_n: '{n} مورد', adj_down: 'کاهش بدهی', adj_up: 'افزایش بدهی',
+    debtors: 'فقط بدهکارها', sort_debt: 'مرتب به بدهی', page: 'صفحهٔ {p} از {n}', prev_p: 'قبلی', next_p: 'بعدی', no_rows: 'ادمینی با این فیلتر نیست.',
     opening: 'مانده ابتدای بازه', closing: 'مانده پایان بازه', new_users: 'کاربران جدید', no_users: '—',
     users_hint: 'شمارش کاربران جدید از نسخهٔ 1.54 شروع شده است؛ برای قبل از آن سابقه‌ای نیست.',
     per_admin: 'به تفکیک ادمین', monthly: '12 ماه اخیر', mon: 'ماه', admin: 'ادمین', archived: 'بایگانی',
     csv: 'CSV', xlsx: 'Excel', none: 'در این بازه گردشی نیست.', range: '{a} تا {b}', toman: 'تومان', err: 'دریافت تاریخچه ناموفق بود',
   },
   en: {
-    title: 'History', sub: 'Built from the ledger and never reset. Net sales = gross charges + adjustments (a debt decrease lowers it, an increase raises it, in the period it is recorded).',
+    title: 'History', sub: 'Built from the ledger and never reset. Sales = charges minus debt decreases plus debt increases (in the period they are recorded).',
     d7: 'Last 7 days', month: 'This month', prev: 'Last month', custom: 'Custom range', from: 'From', to: 'To', show: 'Show',
     date_hint: 'e.g. 1405/08/01', scope: 'For', all: 'All admins', groups: 'Groups', admins: 'Admins',
-    gb: 'Volume sold', charged: 'Gross charges', net_sales: 'Net sales', invoiced: 'Invoiced', paid: 'Paid', adjustments: 'Adjustments',
+    gb: 'Volume sold', sales: 'Sales', invoiced: 'Invoiced', paid: 'Paid', adjustments: 'Adjustments',
+    adj_info: 'information only — already inside «Sales»', adj_n: '{n} entries', adj_down: 'Debt decreases', adj_up: 'Debt increases',
+    debtors: 'Only debtors', sort_debt: 'Sort by debt', page: 'Page {p} of {n}', prev_p: 'Previous', next_p: 'Next', no_rows: 'No admin matches this filter.',
     opening: 'Opening balance', closing: 'Closing balance', new_users: 'New users', no_users: '—',
     users_hint: 'New users are counted from version 1.54 on; there is no earlier record.',
     per_admin: 'Per admin', monthly: 'Last 12 months', mon: 'Month', admin: 'Admin', archived: 'archived',
@@ -30,13 +37,30 @@ const PERIODS = ['d7', 'month', 'prev', 'custom']
 const num = (v) => Number(v || 0)
 const gbt = (v) => `${num(v).toLocaleString('en-US', { maximumFractionDigits: 2 })} GB`
 const latin = (v) => String(v ?? '').replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
+const PAGE = 20
+// v1.57: the filters live in the URL (router-agnostic: both SPAs) — a reload or a shared link shows the same view
+const qget = (k, d = '') => { try { return new URLSearchParams(window.location.search).get(k) ?? d } catch { return d } }
+const qset = (o) => {
+  try {
+    const u = new URL(window.location.href)
+    Object.entries(o).forEach(([k, v]) => (v === '' || v === null || v === undefined || v === false ? u.searchParams.delete(k) : u.searchParams.set(k, String(v))))
+    window.history.replaceState(window.history.state, '', u.pathname + (u.search || '') + u.hash)
+  } catch { /* no URL support: filters still work for this view */ }
+}
 
 export default function AgencyHistory({ http, base, lang = 'fa', fixedAdmin = '' }) {
   const s = HT[lang] || HT.fa
-  const [period, setPeriod] = useState('month')
-  const [range, setRange] = useState({ from: '', to: '' })
-  const [applied, setApplied] = useState({ from: '', to: '' })
-  const [scope, setScope] = useState(fixedAdmin ? `a:${fixedAdmin}` : 'all')
+  const [period, setPeriod] = useState(() => (PERIODS.includes(qget('h_period')) ? qget('h_period') : 'month'))
+  const [range, setRange] = useState(() => ({ from: qget('h_from'), to: qget('h_to') }))
+  const [applied, setApplied] = useState(() => ({ from: qget('h_from'), to: qget('h_to') }))
+  const [scope, setScope] = useState(() => (fixedAdmin ? `a:${fixedAdmin}` : qget('h_scope', 'all') || 'all'))
+  const [debtors, setDebtors] = useState(() => qget('h_debt') === '1')
+  const [sortDebt, setSortDebt] = useState(() => qget('h_sort') === 'debt')
+  const [page, setPage] = useState(() => Math.max(1, Number(qget('h_page', '1')) || 1))
+  useEffect(() => {
+    qset({ h_period: period === 'month' ? '' : period, h_from: period === 'custom' ? applied.from : '', h_to: period === 'custom' ? applied.to : '',
+      h_scope: fixedAdmin || scope === 'all' ? '' : scope, h_debt: debtors ? '1' : '', h_sort: sortDebt ? 'debt' : '', h_page: page > 1 ? page : '' })
+  }, [period, applied, scope, debtors, sortDebt, page])
   const [d, setD] = useState(null)
   const [err, setErr] = useState('')
 
@@ -70,11 +94,19 @@ export default function AgencyHistory({ http, base, lang = 'fa', fixedAdmin = ''
   // the signed number isolated (LRI … PDI): in Persian a leading minus would otherwise land on the far side
   const money = (v) => <span>{'\u2066' + (num(v) < 0 ? '-' : '') + Math.abs(num(v)).toLocaleString('en-US') + '\u2069 ' + (lang === 'en' ? 'T' : 'تومان')}</span>
   const users = (v) => (v === null || v === undefined ? s.no_users : num(v).toLocaleString('en-US'))
+  const sales = (r) => r.sales ?? r.net_sales          // v1.57 key (older servers: net_sales — the same number)
   const tiles = t ? [
-    ['gb', <bdi dir="ltr">{gbt(t.gb)}</bdi>], ['charged', money(t.charged)], ['adjustments', money(t.adjustments)],
-    ['net_sales', money(t.net_sales)], ['invoiced', money(t.invoiced)], ['paid', money(t.paid)], ['opening', money(t.opening)],
-    ['closing', money(t.closing)], ['new_users', users(t.new_users)],
+    ['gb', <bdi dir="ltr">{gbt(t.gb)}</bdi>, 'info'], ['sales', money(sales(t)), 'info'], ['invoiced', money(t.invoiced), 'info'],
+    ['paid', money(t.paid), 'success'], ['opening', money(t.opening), moneyTone(t.opening)],
+    ['closing', money(t.closing), moneyTone(t.closing)], ['new_users', users(t.new_users), 'info'],
   ] : []
+  const absT = (v) => <span>{'\u2066' + Math.abs(num(v)).toLocaleString('en-US') + '\u2069 ' + (lang === 'en' ? 'T' : 'تومان')}</span>
+  let rows = [...(d?.admins || [])]
+  if (debtors) rows = rows.filter((r) => num(r.closing) > 0)
+  if (sortDebt) rows.sort((a, b) => num(b.closing) - num(a.closing))
+  const pages = Math.max(1, Math.ceil(rows.length / PAGE))
+  const pg = Math.min(page, pages)
+  const shown = rows.slice((pg - 1) * PAGE, pg * PAGE)
   return (
     <section className="ah" data-testid="agency-history">
       <style>{CSS}</style>
@@ -114,33 +146,52 @@ export default function AgencyHistory({ http, base, lang = 'fa', fixedAdmin = ''
         <>
           <p className="ah-range-txt">{s.range.replace('{a}', jalali(d.from, false, lang)).replace('{b}', jalali(d.to, false, lang))}</p>
           <dl className="ah-kpis" data-testid="history-kpis">
-            {tiles.map(([k, v]) => <div key={k} className="ah-kpi" data-k={k}><dt>{s[k]}</dt><dd>{v}</dd></div>)}
+            {tiles.map(([k, v, tone]) => <div key={k} className="ah-kpi tn-tile" data-k={k} data-tn={tone}><dt>{s[k]}</dt><dd>{v}</dd></div>)}
           </dl>
+          {t && (
+            <p className="tn-info" data-testid="history-adjustments">
+              <b>{s.adjustments}</b><span>{s.adj_n.replace('{n}', num(t.adjust_count).toLocaleString('en-US'))}</span>
+              {num(t.adjust_down) > 0 && <span>{s.adj_down}: {absT(t.adjust_down)}</span>}
+              {num(t.adjust_up) > 0 && <span>{s.adj_up}: {absT(t.adjust_up)}</span>}
+              <span>· {s.adj_info}</span>
+            </p>
+          )}
           {t && (t.new_users === null || t.new_users === undefined) && <p className="ah-hint">{s.users_hint}</p>}
           {(d.admins || []).length > 0 && (
             <div className="ah-block">
-              <h4>{s.per_admin}</h4>
-              <table className="ah-table"><thead><tr><th>{s.admin}</th><th>{s.gb}</th><th>{s.charged}</th><th>{s.adjustments}</th><th>{s.net_sales}</th><th>{s.paid}</th><th>{s.closing}</th></tr></thead>
-                <tbody>{d.admins.map((r) => (
-                  <tr key={r.username} data-testid="history-admin">
-                    <td data-label={s.admin}><bdi>{r.username}</bdi>{r.archived && <em className="ah-arch">{s.archived}</em>}</td>
-                    <td data-label={s.gb}><bdi dir="ltr">{gbt(r.gb)}</bdi></td><td data-label={s.charged}>{money(r.charged)}</td>
-                    <td data-label={s.adjustments}>{money(r.adjustments)}</td><td data-label={s.net_sales}>{money(r.net_sales)}</td>
-                    <td data-label={s.paid}>{money(r.paid)}</td>
-                    <td data-label={s.closing}>{money(r.closing)}</td>
-                  </tr>))}</tbody></table>
+              <div className="ah-bh">
+                <h4>{s.per_admin}</h4>
+                <label className="ah-tg"><input type="checkbox" checked={debtors} onChange={(e) => { setDebtors(e.target.checked); setPage(1) }} data-testid="history-debtors" />{s.debtors}</label>
+                <label className="ah-tg"><input type="checkbox" checked={sortDebt} onChange={(e) => { setSortDebt(e.target.checked); setPage(1) }} data-testid="history-sort-debt" />{s.sort_debt}</label>
+              </div>
+              {shown.length === 0 ? <p className="ah-hint">{s.no_rows}</p> : (
+                <table className="ah-table"><thead><tr><th>{s.admin}</th><th>{s.gb}</th><th>{s.sales}</th><th>{s.paid}</th><th>{s.closing}</th></tr></thead>
+                  <tbody>{shown.map((r) => (
+                    <tr key={r.username} data-testid="history-admin">
+                      <td data-label={s.admin}><bdi>{r.username}</bdi>{r.archived && <em className="ah-arch">{s.archived}</em>}</td>
+                      <td data-label={s.gb}><bdi dir="ltr">{gbt(r.gb)}</bdi></td><td data-label={s.sales}>{money(sales(r))}</td>
+                      <td data-label={s.paid}><span className="tn-money" data-tone={num(r.paid) > 0 ? 'success' : 'muted'}>{money(r.paid)}</span></td>
+                      <td data-label={s.closing}><span className="tn-money" data-tone={moneyTone(r.closing)}>{money(r.closing)}</span></td>
+                    </tr>))}</tbody></table>
+              )}
+              {pages > 1 && (
+                <div className="ah-pager">
+                  <button type="button" className="ah-btn" disabled={pg <= 1} onClick={() => setPage(pg - 1)}>{s.prev_p}</button>
+                  <span>{s.page.replace('{p}', pg).replace('{n}', pages)}</span>
+                  <button type="button" className="ah-btn" disabled={pg >= pages} onClick={() => setPage(pg + 1)} data-testid="history-next">{s.next_p}</button>
+                </div>
+              )}
             </div>
           )}
           <div className="ah-block">
             <h4>{s.monthly}</h4>
-            <table className="ah-table"><thead><tr><th>{s.mon}</th><th>{s.gb}</th><th>{s.charged}</th><th>{s.adjustments}</th><th>{s.net_sales}</th><th>{s.invoiced}</th><th>{s.paid}</th><th>{s.closing}</th><th>{s.new_users}</th></tr></thead>
+            <table className="ah-table"><thead><tr><th>{s.mon}</th><th>{s.gb}</th><th>{s.sales}</th><th>{s.invoiced}</th><th>{s.paid}</th><th>{s.closing}</th><th>{s.new_users}</th></tr></thead>
               <tbody>{(d.monthly || []).map((m) => (
                 <tr key={m.key} data-testid="history-month">
                   <td data-label={s.mon}><bdi dir="ltr">{m.key}</bdi></td><td data-label={s.gb}><bdi dir="ltr">{gbt(m.gb)}</bdi></td>
-                  <td data-label={s.charged}>{money(m.charged)}</td><td data-label={s.adjustments}>{money(m.adjustments)}</td>
-                  <td data-label={s.net_sales}>{money(m.net_sales)}</td><td data-label={s.invoiced}>{money(m.invoiced)}</td>
-                  <td data-label={s.paid}>{money(m.paid)}</td>
-                  <td data-label={s.closing}>{money(m.closing)}</td><td data-label={s.new_users}>{users(m.new_users)}</td>
+                  <td data-label={s.sales}>{money(sales(m))}</td><td data-label={s.invoiced}>{money(m.invoiced)}</td>
+                  <td data-label={s.paid}><span className="tn-money" data-tone={num(m.paid) > 0 ? 'success' : 'muted'}>{money(m.paid)}</span></td>
+                  <td data-label={s.closing}><span className="tn-money" data-tone={moneyTone(m.closing)}>{money(m.closing)}</span></td><td data-label={s.new_users}>{users(m.new_users)}</td>
                 </tr>))}</tbody></table>
           </div>
         </>
@@ -169,9 +220,11 @@ const CSS = `
 .ah-range label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 700; min-width: 0; }
 .ah-err { font-size: 13px; color: var(--c-danger-fg, #b91c1c); margin: 0; }
 .ah-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 8px; margin: 0; }
-.ah-kpi { padding: 10px 12px; border-radius: 12px; border: 1px solid var(--c-border); background: var(--c-bg); min-width: 0; }
-.ah-kpi dt { font-size: 11.5px; font-weight: 700; color: var(--c-text-muted); }
-.ah-kpi dd { margin: 4px 0 0; font-size: 15px; font-weight: 800; overflow-wrap: anywhere; }
+.ah-kpi { min-width: 0; }
+.ah-bh { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
+.ah-tg { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.ah-tg input { width: 17px; height: 17px; }
+.ah-pager { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 8px; font-size: 12.5px; }
 .ah-block h4 { font-size: 13.5px; font-weight: 800; margin: 6px 0; }
 .ah-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .ah-table th { text-align: start; font-weight: 700; color: var(--c-text-muted); padding: 6px 8px; border-bottom: 1px solid var(--c-border); white-space: nowrap; }

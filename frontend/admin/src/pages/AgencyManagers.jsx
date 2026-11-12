@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, NavLink, useParams } from 'react-router-dom'
+import { Link, NavLink, useParams, useSearchParams } from 'react-router-dom'
 import { api, apiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 import { useAuth } from '../lib/auth'
@@ -12,7 +12,8 @@ import { useToast } from '../components/Toast'
 import { DateRangeModal, DRP_CSS } from '../components/DateRangePicker'
 import { Ic } from '../components/AgencyIcons'
 import { useLiveApprovals } from '../lib/liveApprovals'
-import { LG_CSS, LT, addAdjustment } from './AgencyLedger'
+import { AdjInfo, LG_CSS, LT, addAdjustment } from './AgencyLedger'
+import { moneyTone } from '../lib/agencyTone'
 
 // Agency → group managers, approvals, group statements and group activity
 // (backend: apps/agency/managers.py, adminpanel/views/agency_managers.py).
@@ -612,24 +613,53 @@ export function GroupStatement({ url }) {
 }
 
 function StatementBody({ st, s, lang }) {
-  // v1.27: filter the statement by admin name (instant)
-  const [q, setQ] = useState('')
-  const term = q.trim().toLowerCase()
-  const entries = term ? st.entries.filter((e) => String(e.admin || '').toLowerCase().includes(term)) : st.entries
-  const pending = term ? st.pending.filter((p) => String(p.admin || '').toLowerCase().includes(term)) : st.pending
+  // v1.27 filter by admin · v1.57: admin picker + «فقط بدهکارها» + debt breakdown sorted by debt + pages, kept in the URL
+  const [sp, setSp] = useSearchParams()
+  const admin = sp.get('s_admin') || ''
+  const debtors = sp.get('s_debt') === '1'
+  const page = Math.max(1, Number(sp.get('s_page')) || 1)
+  const put = (o) => setSp((cur) => {
+    const n = new URLSearchParams(cur)
+    Object.entries(o).forEach(([k, v]) => (v ? n.set(k, String(v)) : n.delete(k)))
+    return n
+  }, { replace: true })
+  const bal = Object.fromEntries((st.by_admin || []).map((r) => [r.username, Number(r.balance) || 0]))
+  const keep = (name) => (!admin || name === admin) && (!debtors || (bal[name] || 0) > 0)
+  const all = st.entries.filter((e) => keep(e.admin))
+  const PER = 50
+  const pages = Math.max(1, Math.ceil(all.length / PER))
+  const pg = Math.min(page, pages)
+  // newest page first would break the running balance: pages run in date order, last page = newest
+  const entries = all.slice((pg - 1) * PER, pg * PER)
+  const pending = st.pending.filter((p) => keep(p.admin))
+  const byDebt = [...(st.by_admin || [])].filter((r) => keep(r.username)).sort((a, b) => Number(b.balance) - Number(a.balance))
+  const fa = lang === 'fa'
   return (
     <>
       <dl className="gm-facts gm-st-sum">
-        {st.from && <div><dt>{s.opening}</dt><dd><N>{money(st.opening, lang)}</N></dd></div>}
-        <div><dt>{lang === 'fa' ? 'شارژ ناخالص' : 'Gross charges'}</dt><dd><N>{toman(st.charges, lang)}</N></dd></div>
-        <div><dt>{lang === 'fa' ? 'اصلاحیه‌ها' : 'Adjustments'}</dt><dd><N>{money(st.adjustments, lang)}</N></dd></div>
-        <div><dt>{lang === 'fa' ? 'فروش خالص' : 'Net sales'}</dt><dd><N>{money(st.net_sales, lang)}</N></dd></div>
-        <div><dt>{s.payments}</dt><dd><N>{toman(st.payments, lang)}</N></dd></div>
-        <div><dt>{s.closing}</dt><dd><N>{money(st.closing, lang)}</N></dd></div>
-        <div data-strong><dt>{s.g_debt}</dt><dd><span className="gm-bal" data-sign={Number(st.total_debt) > 0 ? 'owes' : 'zero'}><N>{money(st.total_debt, lang)}</N></span></dd></div>
-        <div><dt>{s.g_pending}</dt><dd><N>{gbText(st.pending_gb)}</N> · <N>{toman(st.pending_amount, lang)}</N></dd></div>
+        {st.from && <div className="tn-tile" data-tn={moneyTone(st.opening)}><dt>{s.opening}</dt><dd><N>{money(st.opening, lang)}</N></dd></div>}
+        <div className="tn-tile" data-tn="info"><dt>{fa ? 'فروش' : 'Sales'}</dt><dd><N>{money(st.sales ?? st.net_sales, lang)}</N></dd></div>
+        <div className="tn-tile" data-tn="success"><dt>{s.payments}</dt><dd><N>{toman(st.payments, lang)}</N></dd></div>
+        <div className="tn-tile" data-tn={moneyTone(st.closing)}><dt>{s.closing}</dt><dd><N>{money(st.closing, lang)}</N></dd></div>
+        <div className="tn-tile" data-tn={moneyTone(st.total_debt)} data-strong><dt>{s.g_debt}</dt><dd><span className="gm-bal" data-sign={Number(st.total_debt) > 0 ? 'owes' : 'zero'}><N>{money(st.total_debt, lang)}</N></span></dd></div>
+        <div className="tn-tile" data-tn="warning"><dt>{s.g_pending}</dt><dd><N>{gbText(st.pending_gb)}</N> · <N>{toman(st.pending_amount, lang)}</N></dd></div>
       </dl>
-      <input className="input gm-st-q mt-3" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={s.st_search} aria-label={s.st_search} />
+      <AdjInfo t={st} lang={lang} />
+      <div className="gm-st-filters mt-3" data-testid="statement-filters">
+        <select className="input" value={admin} onChange={(e) => put({ s_admin: e.target.value, s_page: '' })} aria-label={s.admin} data-testid="statement-admin">
+          <option value="">{fa ? 'همهٔ ادمین‌ها' : 'All admins'}</option>
+          {(st.group?.admins || []).map((n) => <option key={n} value={n}>{n}</option>)}
+        </select>
+        <label className="gm-st-tg"><input type="checkbox" checked={debtors} onChange={(e) => put({ s_debt: e.target.checked ? '1' : '', s_page: '' })} data-testid="statement-debtors" />{fa ? 'فقط بدهکارها' : 'Only debtors'}</label>
+      </div>
+      {byDebt.length > 1 && (
+        <ul className="gm-st-debts" data-testid="statement-debts">
+          {byDebt.map((r) => (
+            <li key={r.username}><button type="button" onClick={() => put({ s_admin: admin === r.username ? '' : r.username, s_page: '' })} aria-pressed={admin === r.username}>
+              <bdi>{r.username}</bdi><span className="tn-money" data-tone={moneyTone(r.balance)}><N>{money(r.balance, lang)}</N></span></button></li>
+          ))}
+        </ul>
+      )}
       {entries.length === 0 ? <p className="text-sm text-muted mt-3">{s.no_entries}</p> : (
         <div className="gm-st-wrap mt-3">
           <table className="gm-st-table">
@@ -650,6 +680,13 @@ function StatementBody({ st, s, lang }) {
           </table>
         </div>
       )}
+      {pages > 1 && (
+        <div className="gm-st-pager">
+          <button type="button" className="ag-act ag-act--sm" data-tone="neutral" disabled={pg <= 1} onClick={() => put({ s_page: pg - 1 > 1 ? pg - 1 : '' })}>{fa ? 'قبلی' : 'Previous'}</button>
+          <span>{fa ? `صفحهٔ ${pg} از ${pages}` : `Page ${pg} of ${pages}`}</span>
+          <button type="button" className="ag-act ag-act--sm" data-tone="neutral" disabled={pg >= pages} onClick={() => put({ s_page: pg + 1 })} data-testid="statement-next">{fa ? 'بعدی' : 'Next'}</button>
+        </div>
+      )}
       {pending.length > 0 && (
         <div className="gm-pend mt-3">
           <h4>{s.pending_items}</h4>
@@ -665,6 +702,16 @@ function StatementBody({ st, s, lang }) {
 }
 
 export const GM_CSS = `
+.gm-st-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.gm-st-filters .input { max-width: 260px; }
+.gm-st-tg { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.gm-st-tg input { width: 17px; height: 17px; }
+.gm-st-debts { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.gm-st-debts button { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 4px 11px; border-radius: 999px; font-size: 12.5px;
+  font-weight: 700; border: 1px solid var(--c-border); background: var(--c-bg); color: var(--c-text); cursor: pointer; }
+.gm-st-debts button[aria-pressed="true"] { border-color: var(--c-primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--c-primary) 25%, transparent); }
+.gm-st-pager { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 10px; font-size: 12.5px; }
+@media (max-width: 767px) { .gm-st-filters .input { max-width: none; width: 100%; font-size: 16px; min-height: 44px; } }
 .gm-req { display: inline-block; font-size: 11.5px; font-weight: 800; padding: 2px 9px; border-radius: 999px; color: #fff; background: #0891B2; white-space: nowrap; }
 .gm-portal { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 13px; }
 .gm-portal span { font-weight: 700; color: var(--c-muted-fg); }

@@ -385,3 +385,30 @@ def _server_snapshot() -> dict:
         "tcp_open": socks["tcp"],
         "udp_open": socks["udp"],
     }
+
+
+class SslCertificatesView(AdminAPIView):
+    """v1.57 «گواهی‌های SSL» (apps/ops/ssl_certs.py) — GET the last check · POST «بررسی الان» (queued, the page polls)."""
+
+    perms_map = {"GET": ["monitoring.view"], "POST": ["monitoring.view"]}
+
+    @extend_schema(responses=dict, summary="TLS certificates we depend on")
+    def get(self, request):
+        from apps.ops.ssl_certs import rows
+
+        out, notes, busy = rows()
+        return Response({"results": out, "notes": notes, "busy": busy,
+                         "thresholds": {"green_above": 30, "red_below": 14, "alerts_at": [14, 3]}})
+
+    def post(self, request):
+        from django.core.cache import cache
+
+        from apps.common.models import write_audit
+        from apps.ops.ssl_certs import BUSY_KEY
+        from apps.ops.tasks import ssl_check_task
+
+        if not cache.add(BUSY_KEY, 1, 600):
+            return Response({"detail": "a check is already running", "detail_fa": "یک بررسی در جریان است", "busy": True}, status=409)
+        ssl_check_task.delay()
+        write_audit(action="ops.ssl_check", staff=request.user, detail={})
+        return Response({"busy": True, "message": "Checking now", "message_fa": "بررسی شروع شد"}, status=202)

@@ -459,10 +459,11 @@ Agency → Group managers has its own «بایگانی» list.
 `agency/history.py`, from immutable records only (the ledger — mistakes are voided, never edited — the invoices and
 `AgencyUserSeen`): for the last 7 days, the current Jalali month, the last Jalali month or a custom range, and a 12-month
 table — volume sold (GB on quota + manual charges), «شارژ ناخالص» (gross charges), «اصلاحیه‌ها» (adjustments, signed),
-«فروش خالص» = gross charges + adjustments (a «کاهش بدهی» lowers it, an «افزایش بدهی» raises it, in the period it is recorded —
-the sales / income figure, as before v1.54), invoiced, paid, opening / closing balance, new users (first seen by the sync;
-counted from v1.54). The agency reports («گزارش‌ها»), statements, manager views, portal and every CSV / Excel show the same three
-columns side by side (v1.54.1).
+**«فروش»** (v1.57, the one sales / income figure) = charges + adjustments — a «کاهش بدهی» lowers it, an «افزایش بدهی» raises
+it, in the period it is recorded (an adjustment corrects a mistake, e.g. a wrong charge); invoiced, paid, opening / closing
+balance, new users (first seen by the sync; counted from v1.54). The gross charges are never shown — not in the KPIs, tables,
+statements, manager views, portal or any CSV / Excel. **«اصلاحیه‌ها»** appear only as a separate information line (count +
+debt decreases + debt increases), never as a column, and in the ledger each adjustment is its own row type «اصلاحیه».
 
 | Who | Where | Scope |
 |---|---|---|
@@ -480,3 +481,18 @@ the agency numbers — never a separate formula), its services are created under
 invoicing per GB is unchanged. The same card holds the store's domains, bot, staff ceiling + owner login, failed orders,
 backups, the monthly fee (`agency.accounting`) and «ورود داده از ربات قبلی» (v1.56, [store-import.md](store-import.md)).
 Design and status: [multi-tenant.md](multi-tenant.md); pilot checklist: [pilot-fa.md](pilot-fa.md).
+
+## Accounting filters and colours (v1.57)
+
+- **Accounting** (Agency → حسابداری): filter by admin (search), by group, «فقط بدهکارها» (a balance owed or an unpaid / under-review
+  invoice), sort by name or highest debt, 25 / 50 / 100 per page — all kept in the URL (a reload or a shared link shows the same
+  list). One collapsed line per admin: debt, last payment, unpaid invoices (count + amount), price, group; expand → the full
+  statement card. API `agency/ledger/?q=&group=&debtors=1&sort=debt&page=&page_size=`.
+- The **group statement** (staff + group manager) filters by admin and «فقط بدهکارها», lists the admins' debts sorted by debt and
+  pages long statements (50 lines); the **manager's accounting** has «فقط بدهکارها» + sort by debt + the summary line; the
+  **history** per-admin table has «فقط بدهکارها», sort by debt and pages — all in the URL.
+- **Colours** (`lib/agencyTone.js` + `agency-tones.css`, identical in both SPAs, light + dark, contrast-safe `--c-*-fg` text):
+  active green · limited amber · disabled / blocked red · archived grey; usage bars < 70 % green, 70–90 % amber, > 90 % red;
+  debt red · credit green · zero neutral; invoices unpaid red / under review amber / paid green / voided grey; requests and
+  payments waiting amber / approved green / rejected red; «اصلاحیه» purple; KPI tiles tinted in their accent.
+

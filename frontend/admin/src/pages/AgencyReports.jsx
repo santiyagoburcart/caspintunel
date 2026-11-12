@@ -7,6 +7,7 @@ import { addDays, addMonths, cellFromISO, monthName, toISO, todayCell } from '..
 import { DateRangeModal, DRP_CSS } from '../components/DateRangePicker'
 import { Ic } from '../components/AgencyIcons'
 import { useToast } from '../components/Toast'
+import { moneyTone } from '../lib/agencyTone'
 
 // Agency → Accounting: period overview + Jalali monthly report, all from the ledger
 // (apps/agency/reports.py). Numbers come from the server; this file only lays out.
@@ -14,26 +15,26 @@ import { useToast } from '../components/Toast'
 const T = {
   fa: {
     period: 'بازهٔ زمانی', today: 'امروز', d7: '7 روز اخیر', month: 'ماه جاری', prev: 'ماه گذشته', year: 'امسال', custom: 'بازهٔ دلخواه',
-    charges: 'شارژ ناخالص', adjustments: 'اصلاحیه‌ها', net_sales: 'فروش خالص (درآمد)', payments: 'پرداخت‌های دریافتی', net: 'خالص (شارژ + اصلاحیه − پرداخت)', gb: 'گیگ واگذارشده', pay_n: 'تعداد پرداخت',
+    sales: 'فروش', adjustments: 'اصلاحیه‌ها', adj_n: '{n} مورد', adj_d: 'کاهش بدهی {v}', adj_u: 'افزایش بدهی {v}', adj_note: 'فقط اطلاع، در «فروش» حساب شده', payments: 'پرداخت‌های دریافتی', net: 'خالص (فروش − پرداخت)', gb: 'گیگ واگذارشده', pay_n: 'تعداد پرداخت',
     outstanding: 'مانده بدهی همهٔ نماینده‌ها', outstanding_sub: '{n} نماینده بدهکار · بستانکاری {c}', all_time: 'کل دوره',
-    chart: 'شارژ و پرداخت در طول زمان', per_day: 'روزانه', per_month: 'ماهانه', no_data: 'در این بازه گردشی ثبت نشده است.',
+    chart: 'فروش و پرداخت در طول زمان', per_day: 'روزانه', per_month: 'ماهانه', no_data: 'در این بازه گردشی ثبت نشده است.',
     recent: 'پرداخت‌های این بازه', date: 'تاریخ', reseller: 'نماینده', amount: 'مبلغ', method: 'روش', note: 'یادداشت',
     m_card: 'کارت به کارت', m_cash: 'نقدی', m_crypto: 'رمزارز', m_other: 'سایر',
     monthly: 'گزارش ماهانه', mon: 'ماه', resellers_charged: 'نماینده‌های شارژشده', open_month: 'جزئیات ماه',
     breakdown: 'جزئیات {m} به تفکیک نماینده', balance_end: 'مانده پایان ماه', total: 'جمع', close: 'بستن',
-    csv: 'CSV', xlsx: 'Excel', downloaded: 'فایل دانلود شد', defs: 'شارژ ناخالص = شارژ حجم + بدهکاری دستی · فروش خالص (درآمد) = شارژ ناخالص + اصلاحیه‌ها («کاهش بدهی» کم و «افزایش بدهی» اضافه می‌کند، در ماهی که ثبت شده) · خالص = فروش خالص − پرداخت · ورودی‌های باطل‌شده حساب نمی‌شوند.',
+    csv: 'CSV', xlsx: 'Excel', downloaded: 'فایل دانلود شد', defs: 'فروش = شارژ حجم + بدهکاری دستی، منهای «کاهش بدهی» و به‌اضافهٔ «افزایش بدهی» (اصلاحیه یعنی اصلاح یک اشتباه؛ در ماهی که ثبت شده) · خالص = فروش − پرداخت · ورودی‌های باطل‌شده حساب نمی‌شوند.',
     toman: 'تومان',
   },
   en: {
     period: 'Period', today: 'Today', d7: 'Last 7 days', month: 'This month', prev: 'Last month', year: 'This year', custom: 'Custom range',
-    charges: 'Gross charges', adjustments: 'Adjustments', net_sales: 'Net sales (income)', payments: 'Payments received', net: 'Net (charges + adjustments − payments)', gb: 'GB granted', pay_n: 'Payments',
+    sales: 'Sales', adjustments: 'Adjustments', adj_n: '{n} entries', adj_d: 'debt decreases {v}', adj_u: 'debt increases {v}', adj_note: 'information only, already in «Sales»', payments: 'Payments received', net: 'Net (sales − payments)', gb: 'GB granted', pay_n: 'Payments',
     outstanding: 'Outstanding (all resellers)', outstanding_sub: '{n} resellers owe · credit {c}', all_time: 'all time',
-    chart: 'Charges vs payments over time', per_day: 'per day', per_month: 'per month', no_data: 'No ledger activity in this period.',
+    chart: 'Sales vs payments over time', per_day: 'per day', per_month: 'per month', no_data: 'No ledger activity in this period.',
     recent: 'Payments in this period', date: 'Date', reseller: 'Reseller', amount: 'Amount', method: 'Method', note: 'Note',
     m_card: 'Card to card', m_cash: 'Cash', m_crypto: 'Crypto', m_other: 'Other',
     monthly: 'Monthly report', mon: 'Month', resellers_charged: 'Resellers charged', open_month: 'Month details',
     breakdown: '{m} by reseller', balance_end: 'Balance at month end', total: 'Total', close: 'Close',
-    csv: 'CSV', xlsx: 'Excel', downloaded: 'Downloaded', defs: 'Gross charges = quota charges + manual charges · Net sales (income) = gross charges + adjustments (a debt decrease lowers it, an increase raises it, in the month it is recorded) · Net = net sales − payments · voided entries are excluded.',
+    csv: 'CSV', xlsx: 'Excel', downloaded: 'Downloaded', defs: 'Sales = quota charges + manual charges, minus debt decreases, plus debt increases (an adjustment corrects a mistake; in the month it is recorded) · Net = sales − payments · voided entries are excluded.',
     toman: 'T',
   },
 }
@@ -66,9 +67,14 @@ async function download(url, name, toast, s, lang) {
   } catch (e) { toast.error(failureReason(e, lang)) }
 }
 
-function Kpi({ label, value, unit, ac, icon, sub }) {
+// v1.57 «اصلاحیه‌ها» information line: count + only the non-zero directions
+const adjLine = (t, s) => [s.adj_n.replace('{n}', fmtN(t.adjust_count || 0)),
+  Number(t.adjust_down) > 0 && s.adj_d.replace('{v}', `${fmtN(t.adjust_down)} ${s.toman}`),
+  Number(t.adjust_up) > 0 && s.adj_u.replace('{v}', `${fmtN(t.adjust_up)} ${s.toman}`), s.adj_note].filter(Boolean).join(' · ')
+
+function Kpi({ label, value, unit, ac, icon, sub, testid }) {
   return (
-    <div className="card ag-kpi" data-ac={ac}>
+    <div className="card ag-kpi" data-ac={ac} data-testid={testid}>
       <span className="ag-kpi-ico"><Ic n={icon} size={16} /></span>
       <span className="ag-kpi-l">{label}</span>
       <span className="ag-kpi-val"><N>{value}</N>{unit && <span className="rp-unit">{unit}</span>}</span>
@@ -88,7 +94,8 @@ function Chart({ series, bucket, s, lang }) {
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
-  const max = Math.max(1, ...series.map((p) => Math.max(p.charges, p.payments)))
+  const sv = (p) => Math.max(0, Number(p.sales ?? p.charges) || 0)        // v1.57: «فروش» (charges + adjustments)
+  const max = Math.max(1, ...series.map((p) => Math.max(sv(p), p.payments)))
   const n = series.length
   const W = Math.max(cw, n * 14), H = 210, L = 44, B = 26, top = 8
   const bw = Math.max(3, Math.min(9, (W - L) / n / 2 - 2))
@@ -112,8 +119,8 @@ function Chart({ series, bucket, s, lang }) {
         ))}
         {series.map((p, i) => (
           <g key={p.key}>
-            <title>{`${label(p.key)} — ${s.charges}: ${fmtN(p.charges)} · ${s.payments}: ${fmtN(p.payments)}`}</title>
-            <rect x={x(i) - bw - 1} y={y(p.charges)} width={bw} height={Math.max(0, y(0) - y(p.charges))} rx="2" className="rp-bar rp-bar--c" />
+            <title>{`${label(p.key)} — ${s.sales}: ${fmtN(sv(p))} · ${s.payments}: ${fmtN(p.payments)}`}</title>
+            <rect x={x(i) - bw - 1} y={y(sv(p))} width={bw} height={Math.max(0, y(0) - y(sv(p)))} rx="2" className="rp-bar rp-bar--c" />
             <rect x={x(i) + 1} y={y(p.payments)} width={bw} height={Math.max(0, y(0) - y(p.payments))} rx="2" className="rp-bar rp-bar--p" />
             {i % every === 0 && <text x={x(i)} y={H - 8} className="rp-axis" textAnchor="middle">{label(p.key)}</text>}
           </g>
@@ -169,9 +176,7 @@ export function AgencyReports() {
       {err && <p className="ag-err" role="alert">{err}</p>}
 
       <div className="rp-kpis">
-        <Kpi label={s.charges} value={k ? fmtN(k.charges) : '…'} unit={s.toman} ac="blue" icon="sold" />
-        <Kpi label={s.adjustments} value={k ? fmtN(k.adjustments) : '…'} unit={s.toman} ac="orange" icon="sliders" />
-        <Kpi label={s.net_sales} value={k ? fmtN(k.net_sales) : '…'} unit={s.toman} ac="blue" icon="sold" />
+        <Kpi label={s.sales} value={k ? fmtN(k.sales ?? k.net_sales) : '…'} unit={s.toman} ac="blue" icon="sold" testid="kpi-sales" />
         <Kpi label={s.payments} value={k ? fmtN(k.payments) : '…'} unit={s.toman} ac="green" icon="money" />
         <Kpi label={s.net} value={k ? fmtN(k.net) : '…'} unit={s.toman} ac="purple" icon="sliders" />
         <Kpi label={s.gb} value={k ? fmtN(k.gb, 2) : '…'} unit="GB" ac="cyan" icon="gauge" />
@@ -179,14 +184,18 @@ export function AgencyReports() {
         <Kpi label={`${s.outstanding}`} value={k ? fmtN(k.outstanding) : '…'} unit={s.toman} ac="red" icon="wallet"
           sub={k ? s.outstanding_sub.replace('{n}', fmtN(k.resellers_owing)).replace('{c}', `${fmtN(k.credit)} ${s.toman}`) + ` · ${s.all_time}` : null} />
       </div>
+      {k && (
+        <p className="tn-info" data-testid="reports-adjustments"><b>{s.adjustments}</b>
+          <span>{adjLine(k, s)}</span></p>
+      )}
       <p className="rp-defs">{s.defs}</p>
 
       <div className="card ag-card">
         <div className="ag-card-h">
           <h3 className="ag-sh" data-ac="blue"><Ic n="sold" size={15} />{s.chart} <small className="rp-sub">({d?.bucket === 'month' ? s.per_month : s.per_day})</small></h3>
-          <span className="rp-legend"><i className="rp-dot rp-dot--c" />{s.charges} <i className="rp-dot rp-dot--p" />{s.payments}</span>
+          <span className="rp-legend"><i className="rp-dot rp-dot--c" />{s.sales} <i className="rp-dot rp-dot--p" />{s.payments}</span>
         </div>
-        {d === null ? <div className="rp-skel" /> : d && (d.series.some((p) => p.charges || p.payments)
+        {d === null ? <div className="rp-skel" /> : d && (d.series.some((p) => (p.sales ?? p.charges) || p.payments)
           ? <Chart series={d.series} bucket={d.bucket} s={s} lang={lang} /> : <p className="ag-empty">{s.no_data}</p>)}
       </div>
 
@@ -221,18 +230,16 @@ export function AgencyReports() {
         {months === null ? <div className="rp-skel" /> : months.length === 0 ? <p className="ag-empty">{s.no_data}</p> : (
           <div className="ag-table-wrap">
             <table className="ag-table rp-months">
-              <thead><tr><th>{s.mon}</th><th>{s.gb}</th><th>{s.charges}</th><th>{s.adjustments}</th><th>{s.net_sales}</th><th>{s.payments}</th><th>{s.net}</th><th>{s.resellers_charged}</th><th><span className="sr-only">{s.open_month}</span></th></tr></thead>
+              <thead><tr><th>{s.mon}</th><th>{s.gb}</th><th>{s.sales}</th><th>{s.payments}</th><th>{s.net}</th><th>{s.resellers_charged}</th><th><span className="sr-only">{s.open_month}</span></th></tr></thead>
               <tbody>{months.map((r) => {
                 const on = sel && sel.year === r.year && sel.month === r.month
                 return (
                   <tr key={`${r.year}-${r.month}`} className={on ? 'rp-on' : ''} onClick={() => setSel(on ? null : r)}>
                     <td data-label={s.mon} className="ag-t-name"><b>{mLabel(r)}</b></td>
                     <td data-label={s.gb}><N>{fmtN(r.gb, 2)}</N></td>
-                    <td data-label={s.charges}><N>{fmtN(r.charges)}</N></td>
-                    <td data-label={s.adjustments}><N>{fmtN(r.adjustments)}</N></td>
-                    <td data-label={s.net_sales}><N>{fmtN(r.net_sales)}</N></td>
-                    <td data-label={s.payments}><N>{fmtN(r.payments)}</N></td>
-                    <td data-label={s.net}><N>{fmtN(r.net)}</N></td>
+                    <td data-label={s.sales}><N>{fmtN(r.sales ?? r.net_sales)}</N></td>
+                    <td data-label={s.payments}><span className="tn-money" data-tone={r.payments > 0 ? 'success' : 'muted'}><N>{fmtN(r.payments)}</N></span></td>
+                    <td data-label={s.net}><span className="tn-money" data-tone={moneyTone(r.net)}><N>{fmtN(r.net)}</N></span></td>
                     <td data-label={s.resellers_charged}><N>{fmtN(r.resellers_charged)}</N></td>
                     <td><button type="button" className="ag-act ag-act--sm" data-tone={on ? 'primary' : 'neutral'} aria-expanded={!!on}
                       onClick={(e) => { e.stopPropagation(); setSel(on ? null : r) }}><Ic n="list" size={13} />{s.open_month}</button></td>
@@ -257,16 +264,14 @@ export function AgencyReports() {
           {!bd ? <div className="rp-skel" /> : (
             <div className="ag-table-wrap">
               <table className="ag-table">
-                <thead><tr><th>{s.reseller}</th><th>{s.gb}</th><th>{s.charges}</th><th>{s.adjustments}</th><th>{s.net_sales}</th><th>{s.payments}</th><th>{s.net}</th><th>{s.balance_end}</th></tr></thead>
+                <thead><tr><th>{s.reseller}</th><th>{s.gb}</th><th>{s.sales}</th><th>{s.payments}</th><th>{s.net}</th><th>{s.balance_end}</th></tr></thead>
                 <tbody>
                   {bd.rows.map((r) => (
                     <tr key={r.username}>
                       <td data-label={s.reseller} className="ag-t-name"><Link to={`/agency/admins/${encodeURIComponent(r.username)}#accounting`}>{r.username}</Link></td>
                       <td data-label={s.gb}><N>{fmtN(r.gb, 2)}</N></td>
-                      <td data-label={s.charges}><N>{fmtN(r.charges)}</N></td>
-                      <td data-label={s.adjustments}><N>{fmtN(r.adjustments)}</N></td>
-                      <td data-label={s.net_sales}><N>{fmtN(r.net_sales)}</N></td>
-                      <td data-label={s.payments}><N>{fmtN(r.payments)}</N></td>
+                      <td data-label={s.sales}><N>{fmtN(r.sales ?? r.net_sales)}</N></td>
+                      <td data-label={s.payments}><span className="tn-money" data-tone={r.payments > 0 ? 'success' : 'muted'}><N>{fmtN(r.payments)}</N></span></td>
                       <td data-label={s.net}><N>{fmtN(r.net)}</N></td>
                       <td data-label={s.balance_end}><span className="rp-bal" data-sign={r.balance_end > 0 ? 'owes' : r.balance_end < 0 ? 'credit' : 'zero'}><N>{fmtN(r.balance_end)}</N></span></td>
                     </tr>
@@ -274,15 +279,16 @@ export function AgencyReports() {
                   <tr className="rp-total">
                     <td data-label={s.total}><b>{s.total}</b></td>
                     <td data-label={s.gb}><N>{fmtN(bd.totals.gb, 2)}</N></td>
-                    <td data-label={s.charges}><N>{fmtN(bd.totals.charges)}</N></td>
-                    <td data-label={s.adjustments}><N>{fmtN(bd.totals.adjustments)}</N></td>
-                    <td data-label={s.net_sales}><N>{fmtN(bd.totals.net_sales)}</N></td>
+                    <td data-label={s.sales}><N>{fmtN(bd.totals.sales ?? bd.totals.net_sales)}</N></td>
                     <td data-label={s.payments}><N>{fmtN(bd.totals.payments)}</N></td>
                     <td data-label={s.net}><N>{fmtN(bd.totals.net)}</N></td>
                     <td />
                   </tr>
                 </tbody>
               </table>
+              {(bd.totals.adjust_count || 0) > 0 && (
+                <p className="tn-info"><b>{s.adjustments}</b><span>{adjLine(bd.totals, s)}</span></p>
+              )}
             </div>
           )}
         </div>

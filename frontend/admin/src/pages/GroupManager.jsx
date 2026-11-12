@@ -1,7 +1,7 @@
 import AgencyHistory from '../components/AgencyHistory'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Navigate, useParams } from 'react-router-dom'
+import { Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { api, tokens } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useTheme } from '../theme/ThemeProvider'
@@ -22,6 +22,8 @@ import { currentSubscription, needsHomeScreen, pushSupported, subscribePush, uns
 import { StatGrid, ST_CSS, useST } from '../components/AgencyStats'
 import { GmNotificationsPage } from '../components/GmBell'
 import LogoutButton, { LOGOUT_CSS } from '../components/LogoutButton'
+import { moneyTone, usageTone } from '../lib/agencyTone'
+import { AdjInfo } from './AgencyLedger'
 
 // Group-manager pages inside the main panel (v1.25). A group manager signs in at
 // /panel/ like any staff (role "Group manager") and sees only this menu
@@ -628,7 +630,7 @@ function AdminCard({ a, s, lang, can, full, live, showGroup, writable, capReache
   const st = useST(lang)
   const unl = !(Number(a.admin_limit_bytes) > 0)
   const pct = Math.min(Number(a.usage_percent) || 0, 100)
-  const tone = a.usage_percent >= 100 ? 'danger' : a.usage_percent >= 80 ? 'warning' : 'primary'
+  const tone = usageTone(a.usage_percent)        // v1.57: < 70 green · 70–90 amber · > 90 red
   const locked = a.is_sudo
   const more = []
   if (!locked) {
@@ -738,16 +740,32 @@ function Accounting({ me, s, lang }) {
   const [range, setRange] = useState({ from: '', to: '' })
   const [d, setD] = useState(null)
   const [open, setOpen] = useState(null)
-  const [q, setQ] = useState('')
-  const [size, setSize] = useState(20)
-  const [page, setPage] = useState(1)
+  // v1.57: search, «فقط بدهکارها», sort by debt, page size and page live in the URL
+  const [sp, setSp] = useSearchParams()
+  const q = sp.get('a_q') || ''
+  const debtors = sp.get('a_debt') === '1'
+  const sortDebt = sp.get('a_sort') === 'debt'
+  const size = [20, 50, 100].includes(Number(sp.get('a_size'))) ? Number(sp.get('a_size')) : 20
+  const page = Math.max(1, Number(sp.get('a_page')) || 1)
+  const put = (o) => setSp((cur) => {
+    const n = new URLSearchParams(cur)
+    Object.entries(o).forEach(([k, v]) => (v ? n.set(k, String(v)) : n.delete(k)))
+    return n
+  }, { replace: true })
+  const setQ = (v) => put({ a_q: v, a_page: '' })
+  const setSize = (v) => put({ a_size: v === 20 ? '' : v, a_page: '' })
+  const setPage = (v) => put({ a_page: v > 1 ? v : '' })
   const toast = useToast()
   const params = useMemo(() => ({ ...(range.from ? { from: range.from } : {}), ...(range.to ? { to: range.to } : {}) }), [range])
   useEffect(() => { if (!gid) return; setD(null); http.get('/accounting/', { params: { group: gid, ...params } }).then((r) => setD(r.data.groups[0])).catch((e) => toast.error(errText(e, s))) }, [gid, params])
-  useEffect(() => { setPage(1) }, [q, size, gid, params])
+  const first = useRef(true)
+  useEffect(() => { if (first.current) { first.current = false; return } setPage(1) }, [gid, params])
   const exp = (url, fmt, extra = {}) => download(url, { ...params, ...extra, export: fmt, lang }, `export.${fmt}`).catch((e) => toast.error(errText(e, s)))
   if (!gid) return null
-  const rows = d ? d.admins.filter((r) => !q.trim() || r.username.toLowerCase().includes(q.trim().toLowerCase())) : []
+  let rows = d ? d.admins.filter((r) => (!q.trim() || r.username.toLowerCase().includes(q.trim().toLowerCase())) && (!debtors || Number(r.balance) > 0)) : []
+  if (sortDebt) rows = [...rows].sort((a, b) => Number(b.balance) - Number(a.balance))
+  const adj = d ? d.admins.reduce((t, r) => ({ adjust_count: t.adjust_count + (r.adjust_count || 0), adjust_down: t.adjust_down + Number(r.adjust_down || 0),
+    adjust_up: t.adjust_up + Number(r.adjust_up || 0) }), { adjust_count: 0, adjust_down: 0, adjust_up: 0 }) : null
   const pages = Math.max(1, Math.ceil(rows.length / size))
   const shown = rows.slice((page - 1) * size, page * size)
   return (
@@ -760,20 +778,25 @@ function Accounting({ me, s, lang }) {
         {!d ? <div className="ap-spin" /> : (
           <>
             <div className="am-kpis" data-testid="gm-kpis">
-              <div data-strong><span>{s.group_debt}</span><b className="am-bal" data-sign={Number(d.total_debt) > 0 ? 'owes' : 'zero'}><N>{money(d.total_debt, lang)}</N></b></div>
-              <div><span>{s.pending_sep}</span><b><N>{gbText(d.pending_gb)}</N> · <N>{toman(d.pending_amount, lang)}</N></b></div>
+              <div data-strong className="tn-tile" data-tn={moneyTone(d.total_debt)}><span>{s.group_debt}</span><b className="am-bal" data-sign={Number(d.total_debt) > 0 ? 'owes' : 'zero'}><N>{money(d.total_debt, lang)}</N></b></div>
+              <div className="tn-tile" data-tn="warning"><span>{s.pending_sep}</span><b><N>{gbText(d.pending_gb)}</N> · <N>{toman(d.pending_amount, lang)}</N></b></div>
+            </div>
+            <AdjInfo t={adj} lang={lang} />
+            <div className="am-frow am-acc-f" data-testid="gm-acc-filters">
+              <label className="am-tg"><input type="checkbox" checked={debtors} onChange={(e) => put({ a_debt: e.target.checked ? '1' : '', a_page: '' })} data-testid="gm-debtors" />{lang === 'fa' ? 'فقط بدهکارها' : 'Only debtors'}</label>
+              <label className="am-tg"><input type="checkbox" checked={sortDebt} onChange={(e) => put({ a_sort: e.target.checked ? 'debt' : '', a_page: '' })} data-testid="gm-sort-debt" />{lang === 'fa' ? 'مرتب به بدهی' : 'Sort by debt'}</label>
             </div>
             <ul className="am-acc" data-testid="gm-acc-list">
               {shown.map((r) => (
                 <li key={r.username}>
                   <div className="am-acc-r">
                     <b><bdi>{r.username}</bdi></b>
-                    <span>{lang === 'fa' ? 'شارژ ناخالص' : 'Gross charges'}: <N>{toman(r.charges, lang)}</N></span>
-                    <span>{lang === 'fa' ? 'اصلاحیه‌ها' : 'Adjustments'}: <N>{money(r.adjustments, lang)}</N></span>
-                    <span>{lang === 'fa' ? 'فروش خالص' : 'Net sales'}: <N>{money(r.net_sales, lang)}</N></span>
+                    <span>{s.balance}: <span className="am-bal" data-sign={Number(r.balance) > 0 ? 'owes' : Number(r.balance) < 0 ? 'credit' : 'zero'}><N>{money(r.balance, lang)}</N></span></span>
+                    <span>{lang === 'fa' ? 'آخرین پرداخت' : 'Last payment'}: {r.last_payment ? <N>{jalali(r.last_payment, false, lang)}</N> : '—'}</span>
+                    <span className="tn" data-tone={r.unpaid_invoices ? 'danger' : 'success'}>{lang === 'fa' ? `${r.unpaid_invoices || 0} فاکتور پرداخت‌نشده` : `${r.unpaid_invoices || 0} unpaid invoices`}</span>
+                    <span>{lang === 'fa' ? 'فروش' : 'Sales'}: <N>{money(r.sales ?? r.net_sales, lang)}</N></span>
                     {r.archived && <span className="am-pend">{lang === 'fa' ? 'بایگانی (حذف‌شده)' : 'Archived (deleted)'}</span>}
                     <span>{s.payments}: <N>{toman(r.payments, lang)}</N></span>
-                    <span>{s.balance}: <span className="am-bal" data-sign={Number(r.balance) > 0 ? 'owes' : 'zero'}><N>{money(r.balance, lang)}</N></span></span>
                     {Number(r.pending.gb) > 0 && <span className="am-pend">{s.pend}: <N>{gbText(r.pending.gb)}</N> · <N>{toman(r.pending.amount, lang)}</N></span>}
                     <button type="button" className="ap-link am-btn-sm" aria-expanded={open === r.username} onClick={() => setOpen(open === r.username ? null : r.username)}><Ic n="doc" size={14} />{open === r.username ? s.hide : s.statement}</button>
                   </div>
@@ -1249,6 +1272,9 @@ const CSS = `
   background: transparent; color: var(--c-text); font-size: 12.5px; font-weight: 700; }
 .am-chip.on { background: var(--c-primary); border-color: var(--c-primary); color: #fff; }
 .am-frow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.am-acc-f { margin: 8px 0 4px; gap: 4px 16px; }
+.am-tg { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.am-tg input { width: 17px; height: 17px; }
 .am-in-sm { height: 38px; min-height: 38px; padding: 0 10px; font-size: 13px; border-radius: 10px; width: 150px; }
 .am-grow { flex: 1 1 160px; width: auto; }
 .am-btn-sm { min-height: 38px; padding: 0 12px; font-size: 12.5px; display: inline-flex; align-items: center; gap: 5px; }
