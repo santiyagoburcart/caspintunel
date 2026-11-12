@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import AgencyStoreCard from '../components/AgencyStoreCard'
-import { Link, NavLink, useNavigate, useParams } from 'react-router-dom'
+import { Link, Navigate, NavLink, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { api, apiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 import { useAuth } from '../lib/auth'
@@ -12,7 +12,7 @@ import { useToast } from '../components/Toast'
 import AgencyLimitHistory from './AgencyLimitHistory'
 import { ACCENT_CSS, Ic } from '../components/AgencyIcons'
 import { GroupDebt } from '../components/AgencyBilling'
-import { AgencyLedgerOverview, BalanceText, LedgerCard, LT } from './AgencyLedger'
+import { AgencyAccounting, BalanceText, LedgerCard, LT } from './AgencyLedger'
 import { AdminInvoicesCard, AgencyInvoicesView, AgencyPaymentsView, PortalAccessCard } from './AgencyBilling'
 import { AdminSettingsTab, AgencyAdminCreate } from './AgencyAdminForms'
 import AgencyHistory from '../components/AgencyHistory'
@@ -600,10 +600,19 @@ function PortalLinkCard({ s, username }) {
 }
 
 // ------------------------------------------------------------------ accounting overview
+// v1.58 «حسابداری»: tabs in the URL (?tab=debtors|all|payments|history) — one table, the reseller payments queue, the
+// 12-month history; group statements and invoices stay their own pages (links in the same bar).
 export function AgencyLedger() {
-  const [s] = useT()
+  const [s, lang] = useT()
   const [dash] = useLoad('/admin/agency/')
-  return <AgencyLedgerOverview Header={<><Header s={s} switches={dash?.switches} /><LedgerSubNav /></>} />
+  const [sp] = useSearchParams()
+  const tab = sp.get('tab')
+  const head = <><Header s={s} switches={dash?.switches} /><LedgerSubNav /></>
+  if (tab === 'payments') return <AgencyPaymentsView Header={head} />
+  if (tab === 'history') {
+    return <div className="ag space-y-4">{head}<style>{GM_CSS}</style><AgencyHistory http={api} base="/admin/agency/history/" lang={lang} monthlyOnly /></div>
+  }
+  return <AgencyAccounting Header={head} />
 }
 
 function useHeader() {
@@ -615,13 +624,10 @@ export function AgencyManagers() { return <AgencyManagersView Header={useHeader(
 export function AgencyApprovals() { return <AgencyApprovalsView Header={useHeader()} /> }
 export function AgencyLedgerGroups() { return <AgencyLedgerGroupsView Header={useHeader()} /> }
 export function AgencyLedgerInvoices() { return <AgencyInvoicesView Header={useHeader()} /> }
-export function AgencyLedgerPayments() { return <AgencyPaymentsView Header={useHeader()} /> }
+export function AgencyLedgerPayments() { return <Navigate to="/agency/ledger?tab=payments" replace /> }   // v1.58: a tab now
 export function AgencyGroupStatement() { return <AgencyGroupStatementView Header={useHeader()} /> }
-// v1.54 «تاریخچه» of all agency / a group / an admin (agency.accounting)
-export function AgencyLedgerHistory() {
-  const { lang } = useI18n()
-  return <div className="ag space-y-4">{useHeader()}<style>{GM_CSS}</style><LedgerSubNav /><AgencyHistory http={api} base="/admin/agency/history/" lang={lang} /></div>
-}
+// v1.58: «تاریخچه ۱۲ ماهه» is a tab of «حسابداری» (the per-admin / group history stays on the admin and group pages)
+export function AgencyLedgerHistory() { return <Navigate to="/agency/ledger?tab=history" replace /> }
 
 // ------------------------------------------------------------------ groups
 const GERR = {

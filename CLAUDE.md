@@ -246,6 +246,8 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   line (was delete) is the ONE deliberate PAMP deviation (PORTING.md) — keep it the only one. «تاریخچه» (`history.py`) and
   the reports sum immutable records only; «فروش خالص» = gross charges + adjustments (in their period), always shown next to
   «شارژ ناخالص» and «اصلاحیه‌ها» (v1.54.1).
+- **v1.58 «حسابداری»** = ONE table (`agency/accounting.py`) + strip + drawer; never add a second per-admin list or the full
+  ledger to that page (it lives on the admin page). Accounting state lives in the URL.
 - **v1.57 sales = «فروش»** = charges + adjustments (in their period) — the ONE sales figure everywhere (history, reports,
   statements, manager / portal views, CSV / Excel); never show gross charges again. «اصلاحیه‌ها» = an information line only
   (`adjust_count` / `adjust_down` / `adjust_up`), never a column, never summed into charges. Agency colours come only from

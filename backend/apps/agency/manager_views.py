@@ -375,6 +375,9 @@ class ManagerAccountingView(_Mgr):
             rows = M.admin_summaries(a.group.get_all_usernames(), frm, to)
             out.append({"id": a.group_id, "name": M.group_title(a.group), "admins": rows,
                         "total_debt": sum((r["balance"] for r in rows), 0),
+                        # v1.58 strip: what the group's admins owe now, how many owe, the period's sales / paid
+                        "debt_now": sum((r["debt"] for r in rows if r["debt"] > 0), 0), "debtors": sum(1 for r in rows if r["debt"] > 0),
+                        "sales": sum((r["sales"] for r in rows), 0), "paid": sum((r["payments"] for r in rows), 0),
                         "pending_gb": sum((r["pending"]["gb"] for r in rows), 0),
                         "pending_amount": sum((r["pending"]["amount"] for r in rows), 0)})
         fmt = request.query_params.get("export")

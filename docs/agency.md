@@ -482,15 +482,20 @@ invoicing per GB is unchanged. The same card holds the store's domains, bot, sta
 backups, the monthly fee (`agency.accounting`) and «ورود داده از ربات قبلی» (v1.56, [store-import.md](store-import.md)).
 Design and status: [multi-tenant.md](multi-tenant.md); pilot checklist: [pilot-fa.md](pilot-fa.md).
 
-## Accounting filters and colours (v1.57)
+## Accounting page (v1.58) and colours (v1.57)
 
-- **Accounting** (Agency → حسابداری): filter by admin (search), by group, «فقط بدهکارها» (a balance owed or an unpaid / under-review
-  invoice), sort by name or highest debt, 25 / 50 / 100 per page — all kept in the URL (a reload or a shared link shows the same
-  list). One collapsed line per admin: debt, last payment, unpaid invoices (count + amount), price, group; expand → the full
-  statement card. API `agency/ledger/?q=&group=&debtors=1&sort=debt&page=&page_size=`.
-- The **group statement** (staff + group manager) filters by admin and «فقط بدهکارها», lists the admins' debts sorted by debt and
-  pages long statements (50 lines); the **manager's accounting** has «فقط بدهکارها» + sort by debt + the summary line; the
-  **history** per-admin table has «فقط بدهکارها», sort by debt and pages — all in the URL.
+- **Agency → «حسابداری»** (`agency/accounting.py`, API `agency/ledger/`): a period selector (this month · last month · 7 days ·
+  custom) and a summary strip — «فروش», «پرداخت‌شده» (period), «جمع بدهی» (what admins owe now), «تعداد بدهکارها», with
+  «اصلاحیه‌ها» as an information line only. Tabs: **«بدهکارها»** (default: owes, or has an open invoice) · **«همه نماینده‌ها»** ·
+  **«واریزهای نمایندگان»** (the review queue) · **«تاریخچه ۱۲ ماهه»**; group statements and invoices are links in the same bar.
+- **One table**: admin · group · sales (period) · paid (period) · debt · last payment · open invoices (count + still owed) ·
+  «ثبت پرداخت» / «صورت‌حساب». Filter by group and search (admin or group name), sort by any column, 25 / 50 / 100 per page —
+  every choice in the URL. A row opens a **side drawer**: a short summary + the last 5 ledger entries
+  (`agency/ledger/<u>/?recent=5`) + «ثبت پرداخت» + «صفحهٔ کامل ادمین» — the full ledger lives only on the admin page. The old
+  KPIs, chart and «جزئیات ماه به تفکیک نماینده» list were removed (their numbers are the table's columns); the export endpoints stay.
+- The **group manager's «حسابداری»** has the same layout: period + strip, tabs «بدهکارها» · «همهٔ ادمین‌ها» · «صورت‌حساب گروه» ·
+  «تاریخچه ۱۲ ماهه», one sortable table, a drawer with the last 5 entries, CSV / Excel and the full statement on demand.
+  Its rows carry `debt` (now) next to `balance` (at the range end) and `open_amount`.
 - **Colours** (`lib/agencyTone.js` + `agency-tones.css`, identical in both SPAs, light + dark, contrast-safe `--c-*-fg` text):
   active green · limited amber · disabled / blocked red · archived grey; usage bars < 70 % green, 70–90 % amber, > 90 % red;
   debt red · credit green · zero neutral; invoices unpaid red / under review amber / paid green / voided grey; requests and

@@ -626,6 +626,15 @@ const CASPIAN_CSS = `
 .csp-group-badge { font-family: inherit; letter-spacing: 0; text-transform: none; }
 .csp-group-items { display: flex; flex-direction: column; gap: 4px; }
 .csp-nav:has(.csp-group-btn) { gap: 6px; }
+/* v1.58 comfortable sizes (the rail is desktop-only): headers + links match the main content */
+.csp-group-h { font-family: inherit; font-size: 13px; font-weight: 800; letter-spacing: .01em; padding: 8px 12px 4px; }
+[dir="ltr"] .csp-group-h { font-size: 12px; letter-spacing: .06em; }
+.csp-group-btn { min-height: 42px; padding: 8px 12px; }
+.csp-group-items { gap: 2px; padding-bottom: 6px; }
+.csp-link { font-size: 15px; padding: 11px 14px; }
+.csp-link svg { width: 21px; height: 21px; }
+.csp-nav:has(.csp-group-btn) { gap: 8px; }
+.csp-group-chev { width: 16px; height: 16px; }
 
 .csp-link {
   display: flex; align-items: center; gap: 12px;

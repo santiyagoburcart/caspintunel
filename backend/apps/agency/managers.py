@@ -1007,8 +1007,15 @@ def admin_summaries(names: list[str], frm: date | None = None, to: date | None =
 
     from .models import AgencyInvoice
 
-    unpaid = dict(AgencyInvoice.objects.filter(admin_username__in=names, status__in=(AgencyInvoice.UNPAID, AgencyInvoice.PENDING))
-                  .values_list("admin_username").annotate(n=Count("id")).values_list("admin_username", "n"))
+    from django.db.models import Sum
+
+    from . import ledger as _ledger
+
+    open_inv = {r["admin_username"]: r for r in AgencyInvoice.objects.filter(
+        admin_username__in=names, status__in=(AgencyInvoice.UNPAID, AgencyInvoice.PENDING))
+        .values("admin_username").annotate(n=Count("id"), amount=Sum("amount"), paid=Sum("paid_amount"))}
+    unpaid = {n: r["n"] for n, r in open_inv.items()}
+    now_bal = _ledger.balances()                          # v1.58: the debt column = what is owed NOW (not at the range end)
     for n in names:
         qs = LedgerEntry.objects.filter(admin_username=n, voided=False)
         if to:
@@ -1036,7 +1043,8 @@ def admin_summaries(names: list[str], frm: date | None = None, to: date | None =
         out.append({"username": n, "charges": charges, "adjustments": adjustments, "sales": charges + adjustments,
                     "net_sales": charges + adjustments, "adjust_count": adj_count, "adjust_down": adj_down, "adjust_up": adj_up,
                     "payments": payments, "balance": balance, "last_payment": last_payment,
-                    "unpaid_invoices": unpaid.get(n, 0),
+                    "unpaid_invoices": unpaid.get(n, 0), "debt": now_bal.get(n, D0) or D0,
+                    "open_amount": ((open_inv.get(n) or {}).get("amount") or D0) - ((open_inv.get(n) or {}).get("paid") or D0),
                     "pending": pend.get(n, {"gb": D0, "amount": D0, "count": 0}),
                     "on_panel": a is not None and a.archived_at is None, "archived": a is not None and a.archived_at is not None})
     return out

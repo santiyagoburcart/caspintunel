@@ -140,7 +140,7 @@ def test_accounting_api_and_permissions():
     assert acc.post(f"/api/v1/admin/agency/ledger/entries/{eid}/void/", {"reason": "dup"}, format="json").json()["balance"] == 0
     resp = acc.get("/api/v1/admin/agency/ledger/ali/export.csv")
     assert resp.status_code == 200 and resp["Content-Type"].startswith("text/csv") and b"1405/07/13" in resp.content
-    ov = acc.get("/api/v1/admin/agency/ledger/").json()
+    ov = acc.get("/api/v1/admin/agency/ledger/", {"tab": "all"}).json()          # v1.58: the default tab = debtors
     assert {r["username"] for r in ov["results"]} >= {"ali", "bea", "cyrus"}
 
 

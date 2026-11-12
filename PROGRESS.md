@@ -691,3 +691,10 @@ Everything shipped since v1.6.0 (details in the session log):
   migration ops 0006); the first failed check queues one extra check 30 min later, so a real outage still alerts within
   about 30 min. Expired and the 14 / 3-day alerts unchanged; a blip that never alerted sends no «OK again». Tests in
   `agency/tests/test_v157.py` (+4).
+- 2026-11-12 — **v1.58.0: «حسابداری» redesign + larger sidebar text.** The page showed the same data three times (monthly
+  per-admin breakdown, a balance list, admin rows expanding into the full ledger). Now: period selector + summary strip («فروش»,
+  «پرداخت‌شده», «جمع بدهی», «تعداد بدهکارها», «اصلاحیه‌ها» as info), tabs «بدهکارها» · «همه نماینده‌ها» · «واریزهای نمایندگان» ·
+  «تاریخچه ۱۲ ماهه», ONE table (admin, group, sales + paid in the period, debt, last payment, open invoices, «ثبت پرداخت» /
+  «صورت‌حساب») with group filter, search, sort by any column, pages — all in the URL — and a side drawer (summary + last 5
+  entries + «صفحهٔ کامل ادمین»). Backend `agency/accounting.py` (+ `?recent=` on the statement); `AgencyReports.jsx` removed.
+  Same layout for the group manager. Desktop sidebar: section headers 13 px (body font), items 15 px. Tests: `test_v158.py`.

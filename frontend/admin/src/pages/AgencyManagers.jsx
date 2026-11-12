@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, NavLink, useParams, useSearchParams } from 'react-router-dom'
+import { Link, NavLink, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import { api, apiError } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 import { useAuth } from '../lib/auth'
@@ -14,6 +14,7 @@ import { Ic } from '../components/AgencyIcons'
 import { useLiveApprovals } from '../lib/liveApprovals'
 import { AdjInfo, LG_CSS, LT, addAdjustment } from './AgencyLedger'
 import { moneyTone } from '../lib/agencyTone'
+import { ACC_CSS, useAT } from '../components/AccountingParts'
 
 // Agency → group managers, approvals, group statements and group activity
 // (backend: apps/agency/managers.py, adminpanel/views/agency_managers.py).
@@ -506,22 +507,29 @@ export function ActivityRow({ a, s, lang }) {
 }
 
 // ------------------------------------------------------------------ accounting → by group
+// v1.58 «حسابداری» tabs (?tab=) on /agency/ledger + the group statements and invoices pages, all in one bar
 export function LedgerSubNav() {
-  const [s] = useS()
+  const [s, lang] = useS()
+  const t = useAT(lang)
   const { can } = useAuth()
   const { agencyReview } = useLiveApprovals()
+  const { pathname, search } = useLocation()
+  const tab = pathname === '/agency/ledger' ? (new URLSearchParams(search).get('tab') || 'debtors') : ''
+  const T = ({ k, label, n, testid }) => (
+    <Link to={k === 'debtors' ? '/agency/ledger' : `/agency/ledger?tab=${k}`} className={'ac-tab' + (tab === k ? ' on' : '')}
+      aria-current={tab === k ? 'page' : undefined} data-testid={testid}>{label}{n > 0 && <span className="ac-tab-n">{n > 99 ? '99+' : n}</span>}</Link>
+  )
   return (
-    <nav className="gm-seg gm-subnav">
-      <NavLink end to="/agency/ledger" className={({ isActive }) => 'gm-segb' + (isActive ? ' on' : '')}>{s.lg_admin}</NavLink>
-      <NavLink to="/agency/ledger/groups" className={({ isActive }) => 'gm-segb' + (isActive ? ' on' : '')}>{s.lg_group}</NavLink>
-      {can('agency.accounting') && <NavLink to="/agency/ledger/invoices" className={({ isActive }) => 'gm-segb' + (isActive ? ' on' : '')}>{s.lg_invoices}</NavLink>}
-      {/* v1.54 «تاریخچه»: never reset by a settlement / payments / adjustments (apps/agency/history.py) */}
-      {can('agency.accounting') && <NavLink to="/agency/ledger/history" className={({ isActive }) => 'gm-segb' + (isActive ? ' on' : '')} data-testid="lg-history-tab">{s.lg_history}</NavLink>}
-      {can('agency.payments') && (
-        <NavLink to="/agency/ledger/payments" className={({ isActive }) => 'gm-segb' + (isActive ? ' on' : '')} data-testid="lg-payments-tab">
-          {s.lg_payments}{agencyReview > 0 && <span className="ag-tab-badge">{agencyReview > 99 ? '99+' : agencyReview}</span>}
-        </NavLink>
-      )}
+    <nav className="ac-tabs" aria-label={s.lg_admin}>
+      <style>{ACC_CSS}</style>
+      {can('agency.accounting') && <T k="debtors" label={t.t_debtors} testid="lg-tab-debtors" />}
+      {can('agency.accounting') && <T k="all" label={t.t_all} testid="lg-tab-all" />}
+      {can('agency.payments') && <T k="payments" label={t.t_payments} n={agencyReview} testid="lg-payments-tab" />}
+      {can('agency.accounting') && <T k="history" label={t.t_history} testid="lg-history-tab" />}
+      <span className="ac-links">
+        <NavLink to="/agency/ledger/groups" className={({ isActive }) => 'ac-tab' + (isActive ? ' on' : '')}>{s.lg_group}</NavLink>
+        {can('agency.accounting') && <NavLink to="/agency/ledger/invoices" className={({ isActive }) => 'ac-tab' + (isActive ? ' on' : '')}>{s.lg_invoices}</NavLink>}
+      </span>
     </nav>
   )
 }

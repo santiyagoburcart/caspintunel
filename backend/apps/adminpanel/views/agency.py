@@ -285,78 +285,26 @@ class _Bad(Exception):
 
 
 class AgencyLedgerOverviewView(AdminAPIView):
-    """GET agency/ledger/ — every admin with a balance or a price.
+    """GET agency/ledger/ — v1.58 «حسابداری»: the one table + the summary strip (apps/agency/accounting.py).
 
-    v1.57 filters (the page keeps them in its URL): ?q= (admin name contains) · ?group=<id> · ?debtors=1 (a balance owed or an
-    unpaid / under-review invoice) · ?sort=debt|name · ?page= &page_size= (default 25, max 200). Each row carries the collapsed
-    summary: balance, last payment date, unpaid invoices (count + amount), group. `total_balance` = all admins;
-    `filtered_balance` = the filtered set."""
+    ?period=month|prev|d7|custom &from= &to= · ?tab=debtors|all · ?group=<id> · ?q= · ?sort=username|group|sales|paid|debt|
+    last_payment|open_invoices &dir=asc|desc · ?page= &page_size= (default 25). Old `debtors=1` = tab debtors."""
     perms_map = {"GET": ACCOUNTING}
 
     def get(self, request):
-        from django.db.models import Count, Max, Sum
-
-        from apps.agency import ledger
-        from apps.agency.managers import group_title
-        from apps.agency.models import AdminPrice, AgencyInvoice, LedgerEntry
+        from apps.agency import accounting
 
         q = request.query_params
-        names = (set(PanelAdmin.all_objects.values_list("username", flat=True))
-                 | set(LedgerEntry.objects.values_list("admin_username", flat=True).distinct())
-                 | set(AdminPrice.objects.values_list("admin_username", flat=True).distinct()))
-        bal = ledger.balances()
-        total = sum(bal.values()) if bal else 0
-        groups = list(AdminGroup.objects.order_by("owner_username"))
-        group_of = {}
-        for g in groups:
-            for n in g.get_all_usernames():
-                group_of.setdefault(n, g)
-        unpaid = {r["admin_username"]: r for r in AgencyInvoice.objects.filter(status__in=(AgencyInvoice.UNPAID, AgencyInvoice.PENDING))
-                  .values("admin_username").annotate(n=Count("id"), amount=Sum("amount"))}
-        last_pay = dict(LedgerEntry.objects.filter(voided=False, kind=LedgerEntry.KIND_PAYMENT).values("admin_username")
-                        .annotate(d=Max("date")).values_list("admin_username", "d"))
-        active = set(PanelAdmin.objects.values_list("username", flat=True))
-        archived = set(PanelAdmin.all_objects.filter(archived_at__isnull=False).values_list("username", flat=True))
-        term = (q.get("q") or "").strip().lower()
-        gid = q.get("group")
-        debtors = str(q.get("debtors") or "") in ("1", "true", "yes")
-        rows = []
-        for n in names:
-            if term and term not in n.lower():
-                continue
-            g = group_of.get(n)
-            if gid and (g is None or str(g.id) != str(gid)):
-                continue
-            u = unpaid.get(n) or {}
-            b = bal.get(n, 0) or 0
-            if debtors and not (b > 0 or u.get("n")):
-                continue
-            if n not in bal and n not in active and not AdminPrice.objects.filter(admin_username=n).exists():
-                continue            # an archived admin with nothing on the ledger
-            rows.append({"username": n, "balance": b, "on_panel": n in active, "archived": n in archived,
-                         "last_payment": last_pay.get(n), "unpaid_invoices": u.get("n", 0), "unpaid_amount": u.get("amount") or 0,
-                         "group": {"id": g.id, "name": group_title(g)} if g else None})
-        if q.get("sort") == "debt":
-            rows.sort(key=lambda r: (-(r["balance"] or 0), r["username"].lower()))
-        else:
-            rows.sort(key=lambda r: r["username"].lower())
+        tab = q.get("tab") or ("debtors" if str(q.get("debtors") or "") in ("1", "true") else "debtors")
         try:
-            size = max(5, min(200, int(q.get("page_size") or 25)))
-        except ValueError:
-            size = 25
-        pages = max(1, -(-len(rows) // size))
-        try:
-            page = max(1, min(pages, int(q.get("page") or 1)))
-        except ValueError:
-            page = 1
-        shown = rows[(page - 1) * size: page * size]
-        for r in shown:                                     # the price only for the rows on this page
-            p = ledger.price_at(r["username"])
-            r["price_per_gb"] = p.price_per_gb if p else None
-        return Response({"results": shown, "count": len(rows), "page": page, "pages": pages, "page_size": size,
-                         "total_balance": total, "filtered_balance": sum((r["balance"] or 0) for r in rows),
-                         "debtors_count": sum(1 for r in rows if (r["balance"] or 0) > 0),
-                         "groups": [{"id": g.id, "name": group_title(g)} for g in groups]})
+            return Response(accounting.table(
+                period=q.get("period") or "month", frm=q.get("from"), to=q.get("to"), tab=tab, q=q.get("q") or "",
+                group=q.get("group"), sort=q.get("sort") or "debt", desc=(q.get("dir") or "desc") != "asc",
+                page=int(q.get("page") or 1), size=int(q.get("page_size") or 25)))
+        except accounting.history.HistoryError as exc:
+            return Response({"detail": exc.en, "detail_fa": exc.fa, "field": exc.field}, status=400)
+        except ValueError as exc:
+            return Response({"detail": str(exc), "detail_fa": "مقدار نامعتبر"}, status=400)
 
 
 class AgencyLedgerView(AdminAPIView):
@@ -366,7 +314,13 @@ class AgencyLedgerView(AdminAPIView):
     def get(self, request, username):
         from apps.agency import ledger
 
-        return Response(ledger.statement(username))
+        st = ledger.statement(username)
+        n = request.query_params.get("recent")           # v1.58 the «حسابداری» drawer: only the last N entries
+        if n and str(n).isdigit():
+            st["entries_total"] = len(st["entries"])
+            st["entries"] = st["entries"][-max(1, min(50, int(n))):]
+            st["prices"] = st["prices"][:1]
+        return Response(st)
 
     def post(self, request, username, what):
         from apps.agency import ledger

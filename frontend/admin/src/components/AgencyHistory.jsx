@@ -48,7 +48,8 @@ const qset = (o) => {
   } catch { /* no URL support: filters still work for this view */ }
 }
 
-export default function AgencyHistory({ http, base, lang = 'fa', fixedAdmin = '' }) {
+export default function AgencyHistory({ http, base, lang = 'fa', fixedAdmin = '', monthlyOnly = false }) {
+  // v1.58 monthlyOnly: «حسابداری» → «تاریخچه ۱۲ ماهه» — only the 12-month table (+ CSV / Excel)
   const s = HT[lang] || HT.fa
   const [period, setPeriod] = useState(() => (PERIODS.includes(qget('h_period')) ? qget('h_period') : 'month'))
   const [range, setRange] = useState(() => ({ from: qget('h_from'), to: qget('h_to') }))
@@ -111,13 +112,13 @@ export default function AgencyHistory({ http, base, lang = 'fa', fixedAdmin = ''
     <section className="ah" data-testid="agency-history">
       <style>{CSS}</style>
       <div className="ah-head">
-        <div><h3 className="ah-title">{s.title}</h3><p className="ah-sub">{s.sub}</p></div>
+        <div><h3 className="ah-title">{monthlyOnly ? s.monthly : s.title}</h3><p className="ah-sub">{s.sub}</p></div>
         <div className="ah-exp">
           <button type="button" className="ah-btn" onClick={() => download('csv')} data-testid="history-csv">{s.csv}</button>
           <button type="button" className="ah-btn" onClick={() => download('xlsx')}>{s.xlsx}</button>
         </div>
       </div>
-      {!fixedAdmin && d && ((d.groups || []).length > 0 || (d.admins_list || []).length > 1) && (
+      {!fixedAdmin && !monthlyOnly && d && ((d.groups || []).length > 0 || (d.admins_list || []).length > 1) && (
         <label className="ah-scope"><span>{s.scope}</span>
           <select className="input" value={scope} onChange={(e) => setScope(e.target.value)} data-testid="history-scope">
             <option value="all">{s.all}</option>
@@ -126,13 +127,13 @@ export default function AgencyHistory({ http, base, lang = 'fa', fixedAdmin = ''
           </select>
         </label>
       )}
-      <div className="ah-chips" role="radiogroup" aria-label={s.title}>
+      {!monthlyOnly && <div className="ah-chips" role="radiogroup" aria-label={s.title}>
         {PERIODS.map((p) => (
           <button key={p} type="button" role="radio" aria-checked={period === p} className={'ah-chip' + (period === p ? ' on' : '')}
             onClick={() => setPeriod(p)} data-testid={`history-period-${p}`}>{s[p]}</button>
         ))}
-      </div>
-      {period === 'custom' && (
+      </div>}
+      {period === 'custom' && !monthlyOnly && (
         <form className="ah-range" onSubmit={(e) => { e.preventDefault(); setApplied({ from: latin(range.from).trim(), to: latin(range.to).trim() }) }}>
           <label><span>{s.from}</span><input className="input" dir="ltr" inputMode="numeric" placeholder={s.date_hint} value={range.from}
             onChange={(e) => setRange({ ...range, from: e.target.value })} data-testid="history-from" /></label>
@@ -142,7 +143,7 @@ export default function AgencyHistory({ http, base, lang = 'fa', fixedAdmin = ''
         </form>
       )}
       {err && <p className="ah-err" role="alert">{err}</p>}
-      {d && (
+      {d && !monthlyOnly && (
         <>
           <p className="ah-range-txt">{s.range.replace('{a}', jalali(d.from, false, lang)).replace('{b}', jalali(d.to, false, lang))}</p>
           <dl className="ah-kpis" data-testid="history-kpis">
@@ -183,8 +184,11 @@ export default function AgencyHistory({ http, base, lang = 'fa', fixedAdmin = ''
               )}
             </div>
           )}
-          <div className="ah-block">
-            <h4>{s.monthly}</h4>
+        </>
+      )}
+      {d && (
+          <div className="ah-block" data-testid="history-monthly">
+            {!monthlyOnly && <h4>{s.monthly}</h4>}
             <table className="ah-table"><thead><tr><th>{s.mon}</th><th>{s.gb}</th><th>{s.sales}</th><th>{s.invoiced}</th><th>{s.paid}</th><th>{s.closing}</th><th>{s.new_users}</th></tr></thead>
               <tbody>{(d.monthly || []).map((m) => (
                 <tr key={m.key} data-testid="history-month">
@@ -194,7 +198,6 @@ export default function AgencyHistory({ http, base, lang = 'fa', fixedAdmin = ''
                   <td data-label={s.closing}><span className="tn-money" data-tone={moneyTone(m.closing)}>{money(m.closing)}</span></td><td data-label={s.new_users}>{users(m.new_users)}</td>
                 </tr>))}</tbody></table>
           </div>
-        </>
       )}
     </section>
   )

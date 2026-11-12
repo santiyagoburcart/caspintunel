@@ -98,25 +98,26 @@ def test_this_month_numbers_match_the_ledger(book):
 
 # ------------------------------------------------------------------ (3) accounting filters
 def test_ledger_overview_filters_sort_and_pages(book):
+    """v1.58 shape: tab=debtors (default) | all, `debt` = the all-time balance, open invoices, pages."""
     c = staff_client(["agency.accounting"], "acc")
     url = "/api/v1/admin/agency/ledger/"
-    d = c.get(url).json()
+    d = c.get(url, {"tab": "all"}).json()
     assert {r["username"] for r in d["results"]} == {"ali", "bea", "cyrus"} and d["count"] == 3
     ali = next(r for r in d["results"] if r["username"] == "ali")
-    assert ali["last_payment"] == _day(1).isoformat() and ali["unpaid_invoices"] >= 1 and ali["group"]["name"] == "North"
-    assert Decimal(str(ali["balance"])) == Decimal(170000)
-    d = c.get(url, {"debtors": 1}).json()
-    assert [r["username"] for r in d["results"]] == ["ali"] and d["debtors_count"] == 1
-    d = c.get(url, {"group": AdminGroup.objects.get().id}).json()
+    assert ali["last_payment"] == _day(1).isoformat() and ali["open_invoices"] >= 1 and ali["group"]["name"] == "North"
+    assert Decimal(str(ali["debt"])) == Decimal(170000)
+    d = c.get(url).json()                                          # default tab: debtors
+    assert [r["username"] for r in d["results"]] == ["ali"] and d["summary"]["debtors"] == 1
+    d = c.get(url, {"tab": "all", "group": AdminGroup.objects.get().id}).json()
     assert {r["username"] for r in d["results"]} == {"ali", "bea"}
-    assert [r["username"] for r in c.get(url, {"q": "BE"}).json()["results"]] == ["bea"]
-    assert c.get(url, {"sort": "debt"}).json()["results"][0]["username"] == "ali"
-    p = c.get(url, {"page_size": 5, "page": 9}).json()
+    assert [r["username"] for r in c.get(url, {"tab": "all", "q": "BE"}).json()["results"]] == ["bea"]
+    assert c.get(url, {"tab": "all", "sort": "debt"}).json()["results"][0]["username"] == "ali"
+    p = c.get(url, {"tab": "all", "page_size": 5, "page": 9}).json()
     assert p["page"] == 1 and p["pages"] == 1 and p["page_size"] == 5
     for i in range(8):
         PanelAdmin.objects.create(username=f"z{i}")
         ledger.set_price(f"z{i}", 1000, _day(400))
-    p2 = c.get(url, {"page_size": 5, "page": 3}).json()
+    p2 = c.get(url, {"tab": "all", "page_size": 5, "page": 3}).json()
     assert p2["pages"] == 3 and len(p2["results"]) == 1 and p2["count"] == 11
     assert staff_client(["agency.view"], "viewer").get(url).status_code == 403
 

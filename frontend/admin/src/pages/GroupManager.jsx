@@ -24,6 +24,7 @@ import { GmNotificationsPage } from '../components/GmBell'
 import LogoutButton, { LOGOUT_CSS } from '../components/LogoutButton'
 import { moneyTone, usageTone } from '../lib/agencyTone'
 import { AdjInfo } from './AgencyLedger'
+import { ACC_CSS, Drawer, DrawerFacts, Money, PERIODS, Pager as AccPager, PeriodChips, RecentEntries, SortSelect, SortTh, SummaryStrip, useAT } from '../components/AccountingParts'
 
 // Group-manager pages inside the main panel (v1.25). A group manager signs in at
 // /panel/ like any staff (role "Group manager") and sees only this menu
@@ -708,120 +709,145 @@ function Pager({ page, pages, onPage, s }) {
 // v1.37 compact filter bar: period chips + from / to + search + export, one block
 const jStr = (c) => toJalaliStr(c.jy, c.jm, c.jd)
 
-function FilterBar({ s, lang, range, setRange, q, setQ, onExport }) {
-  const [f, setF] = useState(range.from)
-  const [t, setT] = useState(range.to)
-  const presets = presetRanges(lang).filter((p) => ['month', 'prevMonth', 'd30'].includes(p.key))
-  const norm = (v) => faDigits(v).replace(/-/g, '/').trim()
-  const pick = (from, to) => { setF(from); setT(to); setRange({ from, to }) }
-  const active = (p) => range.from === jStr(p.from) && range.to === jStr(p.to)
-  return (
-    <div className="am-fbar am-noprint" data-testid="gm-fbar">
-      <div className="am-chips" role="group" aria-label={s.period}>
-        {presets.map((p) => <button key={p.key} type="button" className={'am-chip' + (active(p) ? ' on' : '')} aria-pressed={active(p)} onClick={() => pick(jStr(p.from), jStr(p.to))}>{p.label}</button>)}
-        <button type="button" className={'am-chip' + (!range.from && !range.to ? ' on' : '')} aria-pressed={!range.from && !range.to} onClick={() => pick('', '')}>{s.clear}</button>
-      </div>
-      <form className="am-frow" onSubmit={(e) => { e.preventDefault(); setRange({ from: norm(f), to: norm(t) }) }}>
-        <input className="ap-input am-in-sm" dir="ltr" placeholder={`${s.from} ${s.date_ph}`} aria-label={s.from} value={f} onChange={(e) => setF(e.target.value)} />
-        <input className="ap-input am-in-sm" dir="ltr" placeholder={`${s.to} ${s.date_ph}`} aria-label={s.to} value={t} onChange={(e) => setT(e.target.value)} />
-        <button className="ap-link am-btn-sm">{s.apply}</button>
-      </form>
-      <div className="am-frow">
-        <input className="ap-input am-in-sm am-grow" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={s.search_admins} aria-label={s.search_admins} />
-        <button type="button" className="ap-link am-btn-sm" onClick={() => onExport('csv')}><Ic n="download" size={14} />{s.csv}</button>
-        <button type="button" className="ap-link am-btn-sm" onClick={() => onExport('xlsx')}><Ic n="download" size={14} />{s.xlsx}</button>
-      </div>
-    </div>
-  )
-}
 
+// v1.58 «حسابداری» (same layout as our staff's page): period chips + summary strip, tabs (debtors · all admins · group statement ·
+// 12-month history) and ONE sortable table; a row opens a side drawer (summary + last 5 entries + the full statement on demand).
+// Every choice lives in the URL (a_* params).
+const GM_SORTS = ['username', 'sales', 'paid', 'debt', 'last_payment', 'open_invoices']
 function Accounting({ me, s, lang }) {
-  const [gid, setGid] = useState(me.groups[0]?.id)
-  const [range, setRange] = useState({ from: '', to: '' })
-  const [d, setD] = useState(null)
-  const [open, setOpen] = useState(null)
-  // v1.57: search, «فقط بدهکارها», sort by debt, page size and page live in the URL
+  const t = useAT(lang)
+  const toast = useToast()
   const [sp, setSp] = useSearchParams()
-  const q = sp.get('a_q') || ''
-  const debtors = sp.get('a_debt') === '1'
-  const sortDebt = sp.get('a_sort') === 'debt'
-  const size = [20, 50, 100].includes(Number(sp.get('a_size'))) ? Number(sp.get('a_size')) : 20
-  const page = Math.max(1, Number(sp.get('a_page')) || 1)
-  const put = (o) => setSp((cur) => {
+  const put = (o, keepPage = false) => setSp((cur) => {
     const n = new URLSearchParams(cur)
-    Object.entries(o).forEach(([k, v]) => (v ? n.set(k, String(v)) : n.delete(k)))
+    Object.entries(o).forEach(([k, v]) => (v === '' || v === null || v === undefined || v === false ? n.delete(k) : n.set(k, String(v))))
+    if (!keepPage && !('a_page' in o)) n.delete('a_page')
     return n
   }, { replace: true })
-  const setQ = (v) => put({ a_q: v, a_page: '' })
-  const setSize = (v) => put({ a_size: v === 20 ? '' : v, a_page: '' })
-  const setPage = (v) => put({ a_page: v > 1 ? v : '' })
-  const toast = useToast()
+  const gid = Number(sp.get('a_group')) || me.groups[0]?.id
+  const tab = ['all', 'statement', 'history'].includes(sp.get('a_tab')) ? sp.get('a_tab') : 'debtors'
+  const period = PERIODS.includes(sp.get('a_period')) ? sp.get('a_period') : 'month'
+  const cf = sp.get('a_from') || ''; const ct = sp.get('a_to') || ''
+  const q = sp.get('a_q') || ''
+  const sort = GM_SORTS.includes(sp.get('a_sort')) ? sp.get('a_sort') : 'debt'
+  const desc = sp.get('a_dir') !== 'asc'
+  const size = [25, 50, 100].includes(Number(sp.get('a_size'))) ? Number(sp.get('a_size')) : 25
+  const page = Math.max(1, Number(sp.get('a_page')) || 1)
+  const open = sp.get('a_open') || ''
+  const range = useMemo(() => {
+    if (period === 'custom') return { from: cf, to: ct }
+    const p = presetRanges(lang).find((x) => x.key === { month: 'month', prev: 'prevMonth', d7: 'd7' }[period])
+    return p ? { from: jStr(p.from), to: jStr(p.to) } : { from: '', to: '' }
+  }, [period, cf, ct])
   const params = useMemo(() => ({ ...(range.from ? { from: range.from } : {}), ...(range.to ? { to: range.to } : {}) }), [range])
-  useEffect(() => { if (!gid) return; setD(null); http.get('/accounting/', { params: { group: gid, ...params } }).then((r) => setD(r.data.groups[0])).catch((e) => toast.error(errText(e, s))) }, [gid, params])
-  const first = useRef(true)
-  useEffect(() => { if (first.current) { first.current = false; return } setPage(1) }, [gid, params])
+  const [d, setD] = useState(null)
+  useEffect(() => {
+    if (!gid || (period === 'custom' && !(cf && ct))) return
+    setD(null)
+    http.get('/accounting/', { params: { group: gid, ...params } }).then((r) => setD(r.data.groups[0])).catch((e) => toast.error(errText(e, s)))
+  }, [gid, params])
   const exp = (url, fmt, extra = {}) => download(url, { ...params, ...extra, export: fmt, lang }, `export.${fmt}`).catch((e) => toast.error(errText(e, s)))
   if (!gid) return null
-  let rows = d ? d.admins.filter((r) => (!q.trim() || r.username.toLowerCase().includes(q.trim().toLowerCase())) && (!debtors || Number(r.balance) > 0)) : []
-  if (sortDebt) rows = [...rows].sort((a, b) => Number(b.balance) - Number(a.balance))
-  const adj = d ? d.admins.reduce((t, r) => ({ adjust_count: t.adjust_count + (r.adjust_count || 0), adjust_down: t.adjust_down + Number(r.adjust_down || 0),
-    adjust_up: t.adjust_up + Number(r.adjust_up || 0) }), { adjust_count: 0, adjust_down: 0, adjust_up: 0 }) : null
+  const all = d ? d.admins.map((r) => ({ ...r, paid: r.payments, debt: r.debt ?? r.balance, open_invoices: r.unpaid_invoices || 0 })) : []
+  const sum = d ? { sales: d.sales ?? all.reduce((x, r) => x + Number(r.sales || 0), 0), paid: d.paid ?? all.reduce((x, r) => x + Number(r.paid || 0), 0),
+    debt: d.debt_now ?? all.reduce((x, r) => x + Math.max(0, Number(r.debt || 0)), 0), debtors: d.debtors ?? all.filter((r) => Number(r.debt) > 0).length,
+    credit: all.reduce((x, r) => x + Math.max(0, -Number(r.debt || 0)), 0),
+    adjust_count: all.reduce((x, r) => x + (r.adjust_count || 0), 0), adjust_down: all.reduce((x, r) => x + Number(r.adjust_down || 0), 0),
+    adjust_up: all.reduce((x, r) => x + Number(r.adjust_up || 0), 0) } : null
+  let rows = all.filter((r) => (tab !== 'debtors' || Number(r.debt) > 0 || r.open_invoices > 0) && (!q.trim() || r.username.toLowerCase().includes(q.trim().toLowerCase())))
+  const val = (r) => (sort === 'username' ? r.username.toLowerCase() : sort === 'last_payment' ? (r.last_payment || '') : Number(r[sort] || 0))
+  rows = [...rows].sort((a, b) => (val(a) < val(b) ? -1 : val(a) > val(b) ? 1 : a.username.localeCompare(b.username)) * (desc ? -1 : 1))
   const pages = Math.max(1, Math.ceil(rows.length / size))
-  const shown = rows.slice((page - 1) * size, page * size)
+  const pg = Math.min(page, pages)
+  const shown = rows.slice((pg - 1) * size, pg * size)
+  const row = all.find((r) => r.username === open)
+  const cols = [['username', t.c_admin], ['sales', t.c_sales], ['paid', t.c_paid], ['debt', t.c_debt], ['last_payment', t.c_last], ['open_invoices', t.c_open]]
+  const TabB = ({ k, label }) => <button type="button" className={'ac-tab' + (tab === k ? ' on' : '')} aria-current={tab === k ? 'page' : undefined}
+    onClick={() => put({ a_tab: k === 'debtors' ? '' : k, a_open: '' })} data-testid={`gm-tab-${k}`}>{label}</button>
   return (
     <>
+      <style>{ACC_CSS}</style>
       {me.groups.length > 1 && (
-        <div className="am-seg am-noprint">{me.groups.map((g) => <button key={g.id} type="button" className={'am-tab' + (gid === g.id ? ' on' : '')} onClick={() => { setGid(g.id); setOpen(null) }}><bdi>{g.name}</bdi></button>)}</div>
+        <div className="am-seg am-noprint">{me.groups.map((g) => <button key={g.id} type="button" className={'am-tab' + (gid === g.id ? ' on' : '')} onClick={() => put({ a_group: g.id, a_open: '' })}><bdi>{g.name}</bdi></button>)}</div>
       )}
-      <section className="ap-card am-noprint am-accw">
-        <FilterBar s={s} lang={lang} range={range} setRange={setRange} q={q} setQ={setQ} onExport={(fmt) => exp('/accounting/', fmt, { group: gid })} />
-        {!d ? <div className="ap-spin" /> : (
-          <>
-            <div className="am-kpis" data-testid="gm-kpis">
-              <div data-strong className="tn-tile" data-tn={moneyTone(d.total_debt)}><span>{s.group_debt}</span><b className="am-bal" data-sign={Number(d.total_debt) > 0 ? 'owes' : 'zero'}><N>{money(d.total_debt, lang)}</N></b></div>
-              <div className="tn-tile" data-tn="warning"><span>{s.pending_sep}</span><b><N>{gbText(d.pending_gb)}</N> · <N>{toman(d.pending_amount, lang)}</N></b></div>
-            </div>
-            <AdjInfo t={adj} lang={lang} />
-            <div className="am-frow am-acc-f" data-testid="gm-acc-filters">
-              <label className="am-tg"><input type="checkbox" checked={debtors} onChange={(e) => put({ a_debt: e.target.checked ? '1' : '', a_page: '' })} data-testid="gm-debtors" />{lang === 'fa' ? 'فقط بدهکارها' : 'Only debtors'}</label>
-              <label className="am-tg"><input type="checkbox" checked={sortDebt} onChange={(e) => put({ a_sort: e.target.checked ? 'debt' : '', a_page: '' })} data-testid="gm-sort-debt" />{lang === 'fa' ? 'مرتب به بدهی' : 'Sort by debt'}</label>
-            </div>
-            <ul className="am-acc" data-testid="gm-acc-list">
-              {shown.map((r) => (
-                <li key={r.username}>
-                  <div className="am-acc-r">
-                    <b><bdi>{r.username}</bdi></b>
-                    <span>{s.balance}: <span className="am-bal" data-sign={Number(r.balance) > 0 ? 'owes' : Number(r.balance) < 0 ? 'credit' : 'zero'}><N>{money(r.balance, lang)}</N></span></span>
-                    <span>{lang === 'fa' ? 'آخرین پرداخت' : 'Last payment'}: {r.last_payment ? <N>{jalali(r.last_payment, false, lang)}</N> : '—'}</span>
-                    <span className="tn" data-tone={r.unpaid_invoices ? 'danger' : 'success'}>{lang === 'fa' ? `${r.unpaid_invoices || 0} فاکتور پرداخت‌نشده` : `${r.unpaid_invoices || 0} unpaid invoices`}</span>
-                    <span>{lang === 'fa' ? 'فروش' : 'Sales'}: <N>{money(r.sales ?? r.net_sales, lang)}</N></span>
-                    {r.archived && <span className="am-pend">{lang === 'fa' ? 'بایگانی (حذف‌شده)' : 'Archived (deleted)'}</span>}
-                    <span>{s.payments}: <N>{toman(r.payments, lang)}</N></span>
-                    {Number(r.pending.gb) > 0 && <span className="am-pend">{s.pend}: <N>{gbText(r.pending.gb)}</N> · <N>{toman(r.pending.amount, lang)}</N></span>}
-                    <button type="button" className="ap-link am-btn-sm" aria-expanded={open === r.username} onClick={() => setOpen(open === r.username ? null : r.username)}><Ic n="doc" size={14} />{open === r.username ? s.hide : s.statement}</button>
-                  </div>
-                  {open === r.username && <AdminStatement username={r.username} params={params} s={s} lang={lang} exp={exp} />}
-                </li>
-              ))}
-            </ul>
-            {rows.length === 0 && <p className="ap-foot">{s.no_match}</p>}
-            <div className="am-pager am-pager--acc">
-              <label className="am-psize"><span>{s.per_page}</span>
-                <select className="ap-input am-in-sm" value={size} onChange={(e) => setSize(Number(e.target.value))} data-testid="gm-psize">
-                  {[20, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}</select></label>
-              <Pager page={page} pages={pages} onPage={setPage} s={s} />
-            </div>
-          </>
-        )}
+      <section className="ap-card am-noprint ac" data-testid="gm-accounting">
+        <PeriodChips period={period} from={cf} to={ct} lang={lang} onChange={(x) => put({ a_period: x.period === 'month' ? '' : x.period, a_from: x.from, a_to: x.to })} />
+        {!d ? <div className="ap-spin" /> : <SummaryStrip sum={sum} lang={lang} from={null} />}
+        <nav className="ac-tabs">
+          <TabB k="debtors" label={t.t_debtors} /><TabB k="all" label={t.t_all_gm} /><TabB k="statement" label={t.t_statement} /><TabB k="history" label={t.t_history} />
+        </nav>
+        {(tab === 'debtors' || tab === 'all') && d && <>
+          <div className="ac-tools">
+            <input className="input" type="search" value={q} onChange={(e) => put({ a_q: e.target.value })} placeholder={t.search} aria-label={t.search} data-testid="gm-acc-q" />
+            <button type="button" className="ap-link am-btn-sm" onClick={() => exp('/accounting/', 'csv', { group: gid })}><Ic n="download" size={14} />{s.csv}</button>
+            <button type="button" className="ap-link am-btn-sm" onClick={() => exp('/accounting/', 'xlsx', { group: gid })}><Ic n="download" size={14} />{s.xlsx}</button>
+            <SortSelect cols={cols} sort={sort} desc={desc} lang={lang} onSort={(kk, dd) => put({ a_sort: kk === 'debt' ? '' : kk, a_dir: dd ? '' : 'asc' })} />
+            <span className="ac-count">{t.total_rows.replace('{n}', rows.length)}</span>
+          </div>
+          <div className="ac-tw">
+            {shown.length === 0 ? <p className="ac-empty">{t.none}</p> : (
+              <table className="ac-t" data-testid="gm-acc-table">
+                <thead><tr>
+                  {cols.map(([k, l]) => <SortTh key={k} k={k} label={l} sort={sort} desc={desc} lang={lang} onSort={(kk, dd) => put({ a_sort: kk === 'debt' ? '' : kk, a_dir: dd ? '' : 'asc' })} />)}
+                  <th className="ac-th-plain">{t.c_act}</th>
+                </tr></thead>
+                <tbody>{shown.map((r) => (
+                  <tr key={r.username} data-debt={Number(r.debt) > 0 || undefined} onClick={() => put({ a_open: r.username }, true)} data-testid="gm-acc-row"
+                    tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') put({ a_open: r.username }, true) }}>
+                    <td className="ac-td-name" data-label={t.c_admin}><span className="ac-name"><bdi>{r.username}</bdi>{r.archived && <span className="tn" data-tone="muted">{t.archived}</span>}</span></td>
+                    <td data-label={t.c_sales}><Money v={r.sales ?? r.net_sales} lang={lang} tone="info" /></td>
+                    <td data-label={t.c_paid}><Money v={r.paid} lang={lang} tone={Number(r.paid) > 0 ? 'success' : 'muted'} /></td>
+                    <td data-label={t.c_debt}><span className="am-bal" data-sign={Number(r.debt) > 0 ? 'owes' : Number(r.debt) < 0 ? 'credit' : 'zero'}><N>{money(r.debt, lang)}</N></span></td>
+                    <td data-label={t.c_last}>{r.last_payment ? <N>{jalali(r.last_payment, false, lang)}</N> : <span className="ac-muted">—</span>}</td>
+                    <td data-label={t.c_open}>{r.open_invoices ? <span className="tn" data-tone="danger">{t.open_n.replace('{n}', r.open_invoices).replace('{v}', toman(r.open_amount || 0, lang))}</span>
+                      : <span className="tn" data-tone="success">{t.no_open}</span>}</td>
+                    <td className="ac-td-act" onClick={(e) => e.stopPropagation()}><span className="ac-acts">
+                      <button type="button" className="ag-act ag-act--sm" data-tone="neutral" onClick={() => put({ a_open: r.username }, true)}><Ic n="doc" size={13} />{t.statement}</button>
+                    </span></td>
+                  </tr>))}</tbody>
+              </table>
+            )}
+          </div>
+          <AccPager page={pg} pages={pages} size={size} lang={lang} onPage={(p) => put({ a_page: p > 1 ? p : '' })} onSize={(n) => put({ a_size: n === 25 ? '' : n })} />
+        </>}
       </section>
-      <StaffGroupStatement url={`${BASE}/groups/${gid}/statement/`} />
-      {/* v1.54 «تاریخچه»: my groups' admins + group totals, never reset by a settlement / payments / adjustments */}
-      <AgencyHistory http={http} base="/history/" lang={lang} />
+      {tab === 'statement' && <StaffGroupStatement url={`${BASE}/groups/${gid}/statement/`} />}
+      {tab === 'history' && <AgencyHistory http={http} base="/history/" lang={lang} monthlyOnly />}
+      <GmAdminDrawer username={open} row={row} s={s} lang={lang} params={params} exp={exp} onClose={() => put({ a_open: '' }, true)} />
     </>
   )
 }
 
-const Kind = ({ k, s }) => <span className="ap-st-k" data-kind={k}>{s['k_' + k] || k}</span>
+function GmAdminDrawer({ username, row, s, lang, params, exp, onClose }) {
+  const t = useAT(lang)
+  const [st, setSt] = useState(null)
+  const [full, setFull] = useState(false)
+  const url = username ? `/admins/${encodeURIComponent(username)}/statement/` : ''
+  useEffect(() => { setFull(false); if (!username) { setSt(null); return } setSt(null); http.get(url).then((r) => setSt(r.data)).catch(() => setSt(false)) }, [username])
+  return (
+    <Drawer open={!!username} onClose={onClose} title={username} lang={lang}>
+      {st === null ? <div className="ap-spin" /> : st === false ? <div className="ap-alert">{s.error}</div> : <>
+        <h4>{t.d_summary}</h4>
+        <DrawerFacts items={[
+          [t.c_debt, <N>{money(st.balance, lang)}</N>, moneyTone(st.balance)],
+          row && [t.c_sales, <N>{toman(row.sales ?? row.net_sales, lang)}</N>, 'info'],
+          row && [t.c_paid, <N>{toman(row.paid, lang)}</N>, 'success'],
+          [t.c_last, row?.last_payment ? <N>{jalali(row.last_payment, false, lang)}</N> : '—', 'info'],
+          row && [t.c_open, row.open_invoices ? t.open_n.replace('{n}', row.open_invoices).replace('{v}', toman(row.open_amount || 0, lang)) : t.no_open, row.open_invoices ? 'danger' : 'success'],
+        ]} />
+        <AdjInfo t={st} lang={lang} />
+        <h4>{t.d_recent}</h4>
+        <RecentEntries entries={(st.entries || []).slice(-5)} lang={lang} />
+        <div className="ac-dbtns">
+          <button type="button" className="ap-link" onClick={() => exp(url, 'csv')}><Ic n="download" />{s.csv}</button>
+          <button type="button" className="ap-link" onClick={() => exp(url, 'xlsx')}><Ic n="download" />{s.xlsx}</button>
+          <button type="button" className="ap-link" aria-expanded={full} onClick={() => setFull(!full)} data-testid="gm-full-statement"><Ic n="doc" />{full ? s.hide : s.statement}</button>
+        </div>
+        {full && <AdminStatement username={username} params={params} s={s} lang={lang} exp={exp} />}
+      </>}
+    </Drawer>
+  )
+}
 
 function AdminStatement({ username, params, s, lang, exp }) {
   const [st, setSt] = useState(null)
