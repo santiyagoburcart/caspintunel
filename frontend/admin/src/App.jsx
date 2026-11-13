@@ -31,6 +31,7 @@ import Branding from './pages/Branding'
 import Settings from './pages/Settings'
 import Notifications from './pages/Notifications'
 import Apps from './pages/Apps'
+import BotSettings from './pages/BotSettings'
 import { PanelConnection, Bots } from './pages/Integrations'
 import EmailSettings from './pages/EmailSettings'
 import { Pages, Roles, Themes } from './pages/Simple'
@@ -79,6 +80,7 @@ export default function App() {
           <Route path="/services" element={<Services />} />
           <Route path="/services/:id" element={<ServiceEdit />} />
           <Route path="/apps" element={<Apps />} />
+          <Route path="/bot" element={<BotSettings />} />
           <Route path="/plans" element={<Plans />} />
           <Route path="/payments" element={<Payments />} />
           <Route path="/sms-log" element={<SmsLog />} />

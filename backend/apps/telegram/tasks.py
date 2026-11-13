@@ -29,15 +29,12 @@ def _sync_required_channels():
     if client is None:
         return {"skipped": "no bot for this store"}
 
-    from django.utils import timezone
+    from .channels import refresh
 
     updated = 0
     for channel in RequiredChannel.objects.filter(is_active=True):
         try:
-            count = client._call("getChatMemberCount", chat_id=channel.channel_id)
-            channel.member_count = int(count)
-            channel.last_synced_at = timezone.now()
-            channel.save(update_fields=["member_count", "last_synced_at"])
+            refresh(channel, client)            # v1.60.1: also whether the bot is still admin there (stores enforce only then)
             updated += 1
         except Exception as exc:  # noqa: BLE001
             log.warning("channel %s member count failed: %s", channel.channel_id, exc)

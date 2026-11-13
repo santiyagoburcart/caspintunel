@@ -500,6 +500,17 @@ sequenceDiagram
 
 ## 8. Telegram bots and the Mini App
 
+> **v1.60.1 (store bot fixes):** Telegram never delivered a single update to a store bot (wireguardcenter, 4 pending, «Connection
+> refused»): the webhook URL is on our domain, which in access mode *tunnel* resolves to the Iran IP that Telegram cannot reach.
+> `setWebhook` now carries `ip_address = SERVER_IP` (same URL and certificate, the connection goes straight to Finland) and the
+> 10-min check sets it again when Telegram reports another address. `/start` always answers (a failing step still sends the
+> welcome). A store's «ربات تلگرام» page (`/bot`, settings.manage): its bot (read-only), «اشتراک شماره تلفن اجباری باشد»
+> (`force_share_phone` — bot, Mini App and site sign-up), mandatory channels (`RequiredChannel` per store, `channels/`
+> store_ok; enforced only where its bot is admin — `telegram/channels.py`; no channel = off; «عضو شدم» re-check in the bot and
+> the Mini App) and «اتصال تلگرام من»: a numeric id (the bot sends a «تأیید اتصال» button — the tap is the proof) or the
+> one-time link; then the store bot treats them as the store's staff: alerts, tickets, and approve / reject buttons on the
+> pending-payment alert (`py:*`, two steps, `payment.approve`, `approve_payment` / `reject_payment`). Never our staff, never our bot.
+
 - **Webhook mode for every tenant bot**: `setWebhook(url=https://<our platform host>/tg/hook/<tenant_id>/, secret_token=…,
   allowed_updates=[…])`. One endpoint, per-tenant secret (Telegram sends it in `X-Telegram-Bot-Api-Secret-Token`), no process per
   bot. The hook answers within a second and queues heavy work; `update_id` deduplicated. The webhook URL is on **our platform

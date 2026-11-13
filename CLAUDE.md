@@ -204,6 +204,11 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   Store services (`services/` store_ok, opt-in `services.view/.manage/.link/.create`): link ONLY users the reseller's PasarGuard
   admin owns (`owner_must_be`), manual create = `quota.check` first + `set_owner` read back (else delete the account) — never
   reset / delete / groups from a store. Store domains show five steps (`domains.steps`) and alert us once after 15 min on one.
+- **Store bots v1.60.1**: a store bot's webhook MUST carry `ip_address = SERVER_IP` (`bots.hook_ip`) — our domain may resolve to
+  the Iran tunnel IP, which Telegram cannot reach. Store channels are enforced only where the store's bot is admin
+  (`telegram/channels.enforced`) — never lock a store's customers out on an unchecked channel. Store staff decide payments from
+  the store bot only via `py:*` (their own store, `payment.approve`, `approve_payment` / `reject_payment`); a Telegram id is
+  linked only after the account taps the bot's «تأیید اتصال» button (`staff_link.link_by_id`).
 - **Store import (v1.56, `tenancy/importers`, docs/store-import.md)**: our staff only; the dump is read as TEXT (never executed),
   kept 0600 under `media/imports/` (nginx 404) and deleted after the run / 24 h. Link a PasarGuard account ONLY when its owner is
   the store's reseller (`link_existing_service(owner_must_be=…)`) — never create / change anything on PasarGuard. Balances = one-use

@@ -66,7 +66,15 @@ def run(now=None) -> dict:
             text = (f"⏳ پرداخت تأییدنشده {p.tx_number} — سفارش #{p.order_id} ({p.order.user.username}) · "
                     f"{p.amount:,} تومان · {fa} · {age} دقیقه\n"
                     f"Unconfirmed payment {p.tx_number} — order #{p.order_id}, {p.amount:,} T, {en}, {age} min\n{link}")
-            alert_staff(text, perm="payment.approve", dedupe_key=f"pending-alert:{p.id}", ttl=86400)
+            from apps.tenancy.context import store_id
+
+            # v1.60.1: a store's staff decide from its bot (approve / reject buttons → telegram/bot/sales_bot._payment_cb)
+            buttons = None
+            if store_id():
+                from apps.telegram.bot.sales_bot import payment_buttons
+
+                buttons = payment_buttons(p.id)
+            alert_staff(text, perm="payment.approve", dedupe_key=f"pending-alert:{p.id}", ttl=86400, buttons=buttons)
             push_payments_event("payment_pending_alert", order_id=p.order_id, payment_id=p.id, minutes=age,
                                 tx=p.tx_number)
             out["alerted"] += 1

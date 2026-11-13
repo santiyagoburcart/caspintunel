@@ -4,6 +4,7 @@ import { useAuth } from './lib/auth'
 import { isTelegramMiniApp, isTelegramWebView, tgRequestContact, tgStartParam } from './lib/telegram'
 import { useI18n } from './lib/i18n'
 import { Alert, Spinner } from './components/ui'
+import { useTheme } from './theme/ThemeProvider'
 import Layout from './components/Layout'
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -27,10 +28,29 @@ const TG_ROUTES = { store: '/store', dashboard: '/', history: '/history', help: 
 /** Inside Telegram the session comes from initData: never a login form —
  *  a spinner, then the app, or a clear error with what to do. */
 function TelegramGate() {
-  const { tgError, retryTelegram } = useAuth()
+  const { tgError, tgChannels, retryTelegram } = useAuth()
   const { lang } = useI18n()
+  const { config } = useTheme()
   const fa = lang !== 'en'
   const [asked, setAsked] = useState(false)
+  // v1.60.1: the store's OWN bot (from /config/) — never ours
+  const botLink = config?.bot_username ? `https://t.me/${config.bot_username}` : ''
+  const openBot = () => { try { window.Telegram?.WebApp?.openTelegramLink(botLink) } catch { window.open(botLink, '_blank') } }
+  if (tgError === 'join_channels') {
+    return (
+      <div className="mx-auto grid min-h-full max-w-sm place-items-center p-6">
+        <div className="card space-y-3 text-center" data-testid="tg-join">
+          <div className="text-3xl" aria-hidden="true">📢</div>
+          <p className="text-sm leading-7">{fa ? 'برای استفاده، اول عضو این کانال‌ها شوید:' : 'To continue, join these channels first:'}</p>
+          {(tgChannels || []).map((c) => c.url ? (
+            <a key={c.url} className="btn-ghost w-full" href={c.url} target="_blank" rel="noreferrer"
+              onClick={(e) => { try { window.Telegram?.WebApp?.openTelegramLink(c.url); e.preventDefault() } catch { /* the plain link opens it */ } }}>{c.title}</a>
+          ) : <p key={c.title} className="text-sm font-bold">{c.title}</p>)}
+          <button className="btn-primary w-full" onClick={retryTelegram}>{fa ? 'عضو شدم' : 'I joined'}</button>
+        </div>
+      </div>
+    )
+  }
   if (tgError === 'phone_required') {
     const share = () => {
       const ok = tgRequestContact((shared) => { if (shared) setTimeout(retryTelegram, 1500) })
@@ -45,8 +65,9 @@ function TelegramGate() {
             : 'To sign in, share your phone number with the bot.'}</p>
           <button className="btn-primary w-full" onClick={share}>{fa ? 'اشتراک‌گذاری شماره' : 'Share phone number'}</button>
           {asked && <p className="text-xs text-muted">{fa
-            ? 'از دکمهٔ «اشتراک‌گذاری شماره» در خود ربات استفاده کنید، سپس «تلاش دوباره» را بزنید.'
+            ? 'از دکمهٔ «ارسال شماره» در خود ربات استفاده کنید، سپس «تلاش دوباره» را بزنید.'
             : 'Use the “Share phone number” button in the bot chat, then tap Retry.'}</p>}
+          {botLink && <button className="btn-ghost w-full" onClick={openBot} data-testid="tg-open-bot">{fa ? 'باز کردن ربات' : 'Open the bot'}</button>}
           <button className="btn-ghost w-full" onClick={retryTelegram}>{fa ? 'تلاش دوباره' : 'Retry'}</button>
         </div>
       </div>

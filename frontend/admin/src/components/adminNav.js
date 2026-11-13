@@ -99,6 +99,8 @@ export const STORE_GROUPS = [
     // v1.60: no «پوسته‌ها» — a store always shows our active theme (or the override our staff set on «فروشگاه»)
     // v1.60: the store's own SMS auto-confirm tools (white-label Android app + a step-by-step iPhone Shortcut guide)
     ['/apps', 'apps', 'settings.manage', 'apps'],
+    // v1.60.1: the store's bot — status, «اشتراک شماره تلفن اجباری», mandatory channels, staff Telegram link
+    ['/bot', 'store_bot', 'settings.manage', 'bots'],
     ['/tickets/topics', 'ticket_topics', ['tickets.view', 'tickets.manage_topics'], 'ticketTopics'],
     // v1.52 (Phase 8): the store's own roles + staff (codes within the ceiling we set)
     ['/roles', 'roles', 'roles.manage', 'roles'],

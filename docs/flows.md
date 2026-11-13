@@ -1745,3 +1745,21 @@ sequenceDiagram
     PG-->>API: owner = reseller → Service + manual Order (completed)
     API->>PG: owner wrong → delete the account · error
 ```
+
+## 16r. A store bot update · store staff decide a payment (v1.60.1)
+
+```mermaid
+sequenceDiagram
+    participant TG as Telegram
+    participant FI as Our server (SERVER_IP)
+    participant C as Celery (store context)
+    participant SB as Store bot handlers
+    participant ST as Store staff (linked)
+    TG->>FI: POST /api/v1/telegram/hook/<id>/ (ip_address = SERVER_IP · not the tunnel)
+    FI->>C: secret ok → store_bot_update_task
+    C->>SB: /start → welcome + menu (or «ارسال شماره» first)
+    SB-->>TG: sendMessage with the store's bot
+    C->>ST: pending payment alert + «تأیید / رد»
+    ST->>SB: py:a:<id> → «بله، تأیید شود»
+    SB->>C: approve_payment(actor = that staff, payment.approve)
+```

@@ -722,3 +722,13 @@ Everything shipped since v1.6.0 (details in the session log):
   «ساخت ناموفق» / «تمدید» (manual invoice preset), link reseller-owned PasarGuard users only, manual create under the reseller
   with the quota guard, «فاکتور دستی»; opt-in codes services.view / .manage / .link / .create + payments.manual_invoice. Tests
   `tenancy/tests/test_v160.py`.
+- 2026-11-13 — **v1.60.1: store bot fixes.** Read-only check (live v1.59): @imanpaneltestbot (wireguardcenter) had state
+  error «Connection refused», `last_update_at` empty, 4 updates pending at Telegram — the webhook URL is on caspintunel.com,
+  which resolves to the Iran tunnel IP; Telegram cannot connect there, so no /start and no shared contact ever arrived (the
+  missing «ارسال شماره» had the same cause; the handlers were fine). Our Finland IP answers the same URL with a valid
+  certificate. Fix: `setWebhook(ip_address=SERVER_IP)` + the check re-applies when Telegram reports another IP (the live bot is
+  fixed within 10 min of the deploy, or with «بررسی»; the pending /start presses are then delivered). /start always answers.
+  Store «ربات تلگرام» page: bot status, «اشتراک شماره تلفن اجباری باشد» (also site sign-up + Mini App), mandatory channels per
+  store (checked: bot admin, member count; enforced only when the bot is admin; Mini App 403 `join_channels` + «عضو شدم»), my
+  Telegram (numeric id → confirm button, or one-time link). Store staff get approve / reject buttons on the pending-payment
+  alert (two steps). Tests `tenancy/tests/test_v1601.py` (6).

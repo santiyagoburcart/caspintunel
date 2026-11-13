@@ -367,12 +367,72 @@ def _draft_quote(user, st, code):
                        discount_code=code)
 
 
+def _payment_cb(bot, c) -> None:
+    """py:a:<id> / py:r:<id> ask first; py:A:<id> / py:R:<id> do it — only a linked, active staff member of THIS bot's store
+    (ours: our staff) holding payment.approve, through approve_payment / reject_payment (never a status set by hand)."""
+    from django.db import transaction
+
+    from apps.accounts.models import Staff
+    from apps.payments_sms.models import Payment
+    from apps.payments_sms.services import PaymentError, approve_payment, reject_payment
+    from apps.tenancy.context import store_id
+
+    _, op, pid = (c.data.split(":") + ["", ""])[:3]
+    staff = Staff.objects.filter(telegram_id=c.from_user.id, is_active=True, tenant_id=store_id()).first()
+    chat = c.message.chat.id
+    if staff is None or not (staff.is_superadmin or staff.has_perm("payment.approve")):
+        bot.send_message(chat, "⛔️ این حساب تلگرام به ادمینی با دسترسی تأیید پرداخت وصل نیست.")
+        return
+    p = Payment.objects.filter(pk=int(pid) if pid.isdigit() else 0).select_related("order").first()
+    if p is None:
+        bot.send_message(chat, "⚠️ این پرداخت پیدا نشد.")
+        return
+    if op in ("a", "r"):
+        word = "تأیید" if op == "a" else "رد"
+        kb_ = types.InlineKeyboardMarkup()
+        kb_.row(types.InlineKeyboardButton(f"بله، {word} شود", callback_data=f"py:{op.upper()}:{p.id}"),
+                types.InlineKeyboardButton("انصراف", callback_data="noop"))
+        bot.send_message(chat, f"{word} پرداخت {p.tx_number} — {p.amount:,} تومان (سفارش #{p.order_id})؟", reply_markup=kb_)
+        return
+    try:
+        with transaction.atomic():
+            if op == "A":
+                p = approve_payment(p.pk, actor=staff)
+                done = f"✅ پرداخت {p.tx_number} تأیید شد."
+            elif op == "R":
+                p = reject_payment(p.pk, reason="رد از تلگرام", actor=staff)
+                done = f"❌ پرداخت {p.tx_number} رد شد."
+            else:
+                return
+    except PaymentError as exc:
+        bot.send_message(chat, f"⚠️ {exc}")
+        return
+    bot.send_message(chat, done)
+
+
+def payment_buttons(payment_id: int) -> list:
+    return [[{"text": "✅ تأیید", "callback_data": f"py:a:{payment_id}"},
+             {"text": "❌ رد", "callback_data": f"py:r:{payment_id}"}]]
+
+
 # --- handlers -------------------------------------------------------
 def _register(bot: telebot.TeleBot):
 
     @bot.message_handler(commands=["start"])
     def start(msg):
         close_old_connections()
+        try:
+            _start(msg)
+        except Exception as exc:  # noqa: BLE001 — v1.60.1: /start ALWAYS answers (welcome + menu, or at least the welcome)
+            log.exception("/start failed for %s: %s", msg.from_user.id, exc)
+            try:
+                name = html.escape(branding().site_name_fa or "")
+            except Exception:  # noqa: BLE001
+                name = ""
+            bot.send_message(msg.chat.id, f"👋 به {name} خوش آمدید.\nلطفاً چند لحظه بعد دوباره /start را بزنید." if name
+                             else "👋 خوش آمدید. لطفاً چند لحظه بعد دوباره /start را بزنید.")
+
+    def _start(msg):
         payload = (msg.text or "").split(maxsplit=1)[1] if len((msg.text or "").split()) > 1 else ""
         if payload.startswith(STAFF_LINK_PREFIX):     # v1.52: redeem() only links staff of THIS bot's store
             # staff linking their Telegram for ticket DMs — never creates a customer account
@@ -487,6 +547,23 @@ def _register(bot: telebot.TeleBot):
             bot.answer_callback_query(c.id)      # stop the client spinner right away
         except Exception:  # noqa: BLE001
             pass
+        if (c.data or "") == "noop":                 # «انصراف» on a staff question — nothing to do, no customer gate
+            return
+        if (c.data or "").startswith("sl:"):         # v1.60.1: staff link confirmed by the account that got the button
+            from apps.tickets.staff_link import redeem
+
+            res = redeem(c.data[3:], c.from_user.id)
+            bot.send_message(c.message.chat.id, {"linked": "✅ این حساب تلگرام به پنل وصل شد.",
+                                                 "taken": "⚠️ این حساب تلگرام به ادمین دیگری وصل است."}.get(
+                res, "⚠️ این لینک منقضی یا نامعتبر است — از پنل دوباره بفرستید."))
+            return
+        if (c.data or "").startswith("py:"):         # v1.60.1: approve / reject a customer payment (store staff)
+            try:
+                _payment_cb(bot, c)
+            except Exception as exc:  # noqa: BLE001
+                log.exception("payment callback %s failed: %s", c.data, exc)
+                bot.send_message(c.message.chat.id, "⚠️ مشکلی پیش آمد.")
+            return
         if (c.data or "").startswith("ag:") and branding_is_store():
             return                                  # agency approvals are ours — never in a store's bot (st:* = staff_for)
         if (c.data or "").startswith("ag:"):

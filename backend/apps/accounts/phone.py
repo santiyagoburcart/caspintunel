@@ -84,6 +84,13 @@ def is_iranian(raw) -> bool:
     return normalize_ir_phone(raw) is not None
 
 
+def phone_required_on_site() -> bool:
+    """v1.60.1: «اشتراک شماره تلفن اجباری باشد» (force_share_phone, per store) also makes the phone required on the site."""
+    from apps.settings_app.utils import get_setting
+
+    return bool(get_setting("force_share_phone", False))
+
+
 def iran_phone_only() -> bool:
     from apps.settings_app.utils import get_setting
 
@@ -120,7 +127,7 @@ def clean_site_phone(raw, *, required: bool | None = None, exclude_pk=None) -> s
     """
     iran_only = iran_phone_only()
     if required is None:
-        required = iran_only
+        required = iran_only or phone_required_on_site()
     if not str(raw or "").strip():
         if required:
             raise PhoneError(PHONE_REQUIRED_ERROR, "phone_required")

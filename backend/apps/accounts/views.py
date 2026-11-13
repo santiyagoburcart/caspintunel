@@ -146,6 +146,15 @@ class TelegramMiniAppLoginView(FreshAuthMixin, GenericAPIView):
         if needs_phone(user):
             return Response({"detail": "share your phone number with the bot first", "code": "phone_required"},
                             status=status.HTTP_403_FORBIDDEN)
+        # v1.60.1: the same mandatory channels as the bot (a store: its own, checked with its bot)
+        from apps.telegram.gate import missing_channel_memberships
+
+        missing = missing_channel_memberships(int(tg["id"]))
+        if missing:
+            return Response({"detail": "join the channels first", "code": "join_channels", "channels": [
+                {"title": c.title or str(c.channel_id), "url": c.invite_link or (
+                    f"https://t.me/{str(c.channel_id).lstrip('@')}" if str(c.channel_id).startswith("@") else "")}
+                for c in missing]}, status=status.HTTP_403_FORBIDDEN)
 
         user.last_login = timezone.now()
         user.save(update_fields=["last_login"])

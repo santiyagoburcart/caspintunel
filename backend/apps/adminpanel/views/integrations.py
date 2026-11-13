@@ -5,6 +5,8 @@ after install: the Pasargad panel connection and the two Telegram bots.
 Secrets (panel password, bot tokens) are write-only — a GET never returns them,
 only a boolean saying whether one is stored.
 """
+import logging
+
 from django.db import transaction
 from django.db.models import ProtectedError
 from drf_spectacular.utils import extend_schema
@@ -26,6 +28,8 @@ from ..serializers import (
     TelegramConfigSerializer,
 )
 from .base import AdminAPIView, AdminViewSet
+
+log = logging.getLogger("caspintunel")
 
 _BOTS = (BotType.SALES, BotType.BACKUP)
 
@@ -340,86 +344,87 @@ _ENFORCEMENT_KEYS = ("force_channel_join", "force_share_phone")
 class RequiredChannelViewSet(AdminViewSet):
     """Forced-join channels for the sales bot (flowchart 1.7) + the two
     enforcement toggles. The bot must be an ADMIN of each channel to read its
-    membership — see the `test` action."""
+    membership — see the `test` action.
+
+    v1.60.1: also on a store's panel («ربات تلگرام», settings.manage) — the store's own channels (tenant-scoped), checked with
+    ITS bot; a store has no join switch (its checked channels are enforced, telegram/channels.py) and sets only its own
+    force_share_phone. The class codes are the store's (release gate); our panel keeps bots.manage."""
 
     queryset = RequiredChannel.objects.order_by("id")
     serializer_class = AdminRequiredChannelSerializer
-    perms_map = {"GET": ["bots.manage"], "*": ["bots.manage"]}
+    perms_map = {"GET": ["settings.manage"], "*": ["settings.manage"]}
+    store_ok = True
+
+    def get_permissions(self):
+        from apps.settings_app.branding import is_store
+
+        if not is_store():
+            self.perms_map = {"GET": ["bots.manage"], "*": ["bots.manage"]}
+        return super().get_permissions()
+
+    @staticmethod
+    def _client():
+        from apps.settings_app.branding import is_store
+        from apps.telegram.config import our_sales_client, sales_client
+
+        return sales_client() if is_store() else our_sales_client()
 
     def list(self, request, *args, **kwargs):
         resp = super().list(request, *args, **kwargs)
         data = resp.data
         rows = data["results"] if isinstance(data, dict) and "results" in data else data
-        return Response({
-            "results": rows,
-            "enforcement": {k: bool(get_setting(k, False)) for k in _ENFORCEMENT_KEYS},
-        })
+        out = {"results": rows, "enforcement": {k: bool(get_setting(k, False)) for k in _ENFORCEMENT_KEYS}}
+        from apps.settings_app.branding import is_store
+
+        if is_store():                      # v1.60.1: the store's «ربات تلگرام» page shows its bot (username + state)
+            from apps.tenancy import bots, catalog
+
+            out["bot"] = bots.row(catalog.current_store(), staff_view=False)
+        return Response(out)
+
+    def perform_create(self, serializer):
+        ch = serializer.save()
+        client = self._client()
+        if client is not None:              # v1.60.1: the status shows at once (is the bot admin there?)
+            try:
+                from apps.telegram.channels import refresh
+
+                refresh(ch, client)
+            except Exception as exc:  # noqa: BLE001
+                log.info("channel %s first check failed: %s", ch.channel_id, exc)
 
     @action(detail=False, methods=["get", "put", "patch"], url_path="enforcement")
     def enforcement(self, request):
+        from apps.settings_app.branding import is_store
+
+        keys = ("force_share_phone",) if is_store() else _ENFORCEMENT_KEYS
         if request.method != "GET":
-            for k in _ENFORCEMENT_KEYS:
+            for k in keys:
                 if k in request.data:
                     val = request.data[k]
                     val = val is True or str(val).strip().lower() in ("1", "true", "yes", "on")
                     set_setting(k, "true" if val else "false", "bool")
             write_audit(action="telegram.enforcement_updated", staff=request.user,
-                        detail={k: bool(get_setting(k, False)) for k in _ENFORCEMENT_KEYS})
+                        detail={k: bool(get_setting(k, False)) for k in keys})
         return Response({k: bool(get_setting(k, False)) for k in _ENFORCEMENT_KEYS})
 
     @action(detail=True, methods=["post"], url_path="test")
     def test(self, request, pk=None):
-        """Verify the sales bot can read this channel's membership.
-        Passes only when the bot is an administrator of the channel."""
-        from django.utils import timezone
-
-        from apps.telegram.client import TelegramError
-        from apps.telegram.config import our_sales_client
+        """Verify the bot (ours, or the store's own) can read this channel's membership — only as an administrator."""
+        from apps.telegram.channels import refresh
 
         channel = self.get_object()
-        client = our_sales_client()
+        client = self._client()
         if client is None:
             return Response({"ok": False, "bot_is_admin": False,
-                             "detail": "ربات فروش پیکربندی نشده است."})
-        try:
-            chat = client._call("getChat", chat_id=channel.channel_id)
-        except TelegramError as exc:
-            return Response({"ok": False, "bot_is_admin": False,
-                             "detail": f"دسترسی به کانال ممکن نشد: {exc}"})
-
-        title = chat.get("title") or channel.title
-        member_count = None
-        try:
-            member_count = int(client._call("getChatMemberCount", chat_id=channel.channel_id))
-        except TelegramError:
-            pass
-
-        bot_is_admin = False
-        try:
-            me = client.get_me()
-            status = client.get_chat_member(channel.channel_id, me["id"]).get("status")
-            bot_is_admin = status in ("administrator", "creator")
-        except TelegramError as exc:
-            return Response({"ok": False, "bot_is_admin": False, "title": title,
-                             "member_count": member_count,
-                             "detail": f"بررسی عضویت ممکن نشد: {exc}"})
-
-        # opportunistically refresh the stored row
-        fields = ["bot_is_admin", "last_synced_at"]
-        channel.bot_is_admin = bot_is_admin
-        channel.last_synced_at = timezone.now()
-        if title and title != channel.title:
-            channel.title = title; fields.append("title")
-        if member_count is not None:
-            channel.member_count = member_count; fields.append("member_count")
-        channel.save(update_fields=fields)
-
-        if bot_is_admin:
+                             "detail": "ربات تلگرام پیکربندی نشده است."})
+        st = refresh(channel, client)
+        if st["error"] and not st["bot_is_admin"]:
+            detail = f"دسترسی به کانال ممکن نشد: {st['error']}"
+        elif st["bot_is_admin"]:
             detail = "✅ ربات ادمین کانال است و می‌تواند عضویت را بررسی کند."
         else:
             detail = ("⚠️ ربات عضو/ادمین این کانال نیست. برای بررسی عضویت کاربران، "
                       "ربات را در کانال ادمین کنید.")
-        return Response({
-            "ok": bot_is_admin, "bot_is_admin": bot_is_admin,
-            "title": title, "member_count": member_count, "detail": detail,
-        })
+        return Response({"ok": st["bot_is_admin"], "bot_is_admin": st["bot_is_admin"],
+                         "title": st["title"], "member_count": st["member_count"], "detail": detail})

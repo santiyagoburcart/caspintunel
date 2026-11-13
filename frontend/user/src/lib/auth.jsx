@@ -9,6 +9,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [tgError, setTgError] = useState('')
+  const [tgChannels, setTgChannels] = useState([])   // v1.60.1: the channels the Mini App must be joined first
   const booted = useRef(false)
 
   // a deploy / network blip (no response, 5xx) is retried and never treated as a logout;
@@ -50,7 +51,8 @@ export function AuthProvider({ children }) {
       tokens.clear()
       setUser(null)
       const code = e?.response?.data?.code
-      setTgError(code === 'phone_required' ? 'phone_required'
+      setTgChannels(code === 'join_channels' ? (e?.response?.data?.channels || []) : [])
+      setTgError(code === 'phone_required' || code === 'join_channels' ? code
         : apiError(e, 'Telegram session could not be verified.'))
     } finally {
       setLoading(false)
@@ -93,7 +95,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <Ctx.Provider value={{ user, loading, tgError, login, register, logout, refreshMe, setUser,
+    <Ctx.Provider value={{ user, loading, tgError, tgChannels, login, register, logout, refreshMe, setUser,
       retryTelegram: () => { setLoading(true); bootstrapTelegram() } }}>
       {children}
     </Ctx.Provider>

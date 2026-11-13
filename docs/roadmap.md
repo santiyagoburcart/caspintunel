@@ -45,6 +45,7 @@ desktop + 390 px) and **must update [architecture.md](architecture.md),
 | v1.55.0–v1.55.2 | WireGuard configs per location (site, Mini App, bot), plan type, tunnel file names | [wireguard.md](wireguard.md) |
 | v1.56.0 | multi-tenant Phase 11 (started): store import from a reseller's previous bot (Mirza) | [store-import.md](store-import.md) |
 | v1.56.1 | documentation audit (docs only) | — |
+| v1.60.1 | store bots: webhook straight to our server IP (Telegram could not reach the tunnel), /start always answers, phone flow, «اشتراک شماره تلفن اجباری» per store, mandatory channels per store, store staff in the store bot (Telegram link by id, payment buttons) | [multi-tenant.md](multi-tenant.md) |
 | v1.60.0 | store domains as five steps (+ stuck alert), stores follow our theme, white-label SMS tools (setup code, iPhone guide, Android 2.0 source), store service management | [multi-tenant.md](multi-tenant.md) |
 | v1.59.0 | expired / superseded agency payments, single tab bar, archived admins for managers, larger sidebar, store CRM + analytics | [agency.md](agency.md), [multi-tenant.md](multi-tenant.md) |
 | v1.58.0 | «حسابداری» redesigned: strip + tabs + one table + side drawer (staff + group manager); larger sidebar text | [agency.md](agency.md#accounting-page-v158-and-colours-v157) |

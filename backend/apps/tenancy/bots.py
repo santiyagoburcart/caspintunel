@@ -42,6 +42,13 @@ def _client(token: str):
     return TelegramClient(token, proxy_url=getattr(settings, "TELEGRAM_PROXY_URL", "") or None)
 
 
+def hook_ip() -> str:
+    """v1.60.1: the address Telegram must post to — OUR server (SERVER_IP), never what our domain resolves to. In access mode
+    *tunnel* caspintunel.com resolves to the Iran IP, which Telegram cannot reach («Connection refused», no update was ever
+    delivered to a store bot). Same URL and certificate, only the connection goes straight to us (setWebhook ip_address)."""
+    return (getattr(settings, "SERVER_IP", "") or "").strip()
+
+
 def hook_url(tenant_id: int) -> str:
     """On OUR host (never the store's domain), so a store domain problem never stops its bot."""
     from apps.settings_app.models import SiteConfig
@@ -149,8 +156,9 @@ def apply(b: TenantBot) -> TenantBot:
 
     c = _client(b.token)
     try:
+        extra = {"ip_address": hook_ip()} if hook_ip() else {}
         c._call("setWebhook", url=hook_url(b.tenant_id), secret_token=b.webhook_secret, max_connections=10,
-                allowed_updates=json.dumps(ALLOWED_UPDATES))
+                allowed_updates=json.dumps(ALLOWED_UPDATES), **extra)
         with tenant_context(b.tenant_id):
             base, brand = public_base(), branding()
             desc_fa = (brand.bot_description_fa or "").strip()
@@ -174,8 +182,8 @@ def check(b: TenantBot) -> TenantBot:
     was = b.state
     try:
         info = _client(b.token)._call("getWebhookInfo")
-        if info.get("url") != hook_url(b.tenant_id):
-            return _after_check(apply(b), was)
+        if info.get("url") != hook_url(b.tenant_id) or (hook_ip() and info.get("ip_address") != hook_ip()):
+            return _after_check(apply(b), was)        # wrong URL, or Telegram still resolving our domain (v1.60.1)
         err_at = info.get("last_error_date") or 0
         recent = err_at and timezone.now().timestamp() - err_at < 3600
         if recent and (info.get("pending_update_count") or 0) > 0:

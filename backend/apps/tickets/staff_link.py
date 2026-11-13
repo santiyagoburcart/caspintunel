@@ -76,3 +76,38 @@ def redeem(code: str, telegram_id: int) -> str:
 
     write_audit(action="staff.telegram_linked", staff=staff, target=staff)
     return "linked"
+
+
+CONFIRM_PREFIX = "sl:"
+
+
+def link_by_id(staff, telegram_id: int) -> str:
+    """v1.60.1 «آیدی عددی تلگرام»: the bot (the store's own on a store, ours on ours) DMs that id a one-time «تأیید اتصال»
+    button — tapping it (from that account) is the proof, exactly like the deep link. 'sent' | 'not_started' | 'no_bot' |
+    'taken'. The account must have opened the bot (/start) once, else Telegram refuses the message."""
+    from apps.accounts.models import Staff
+
+    if Staff.objects.filter(telegram_id=telegram_id).exclude(pk=staff.pk).exists():
+        return "taken"
+    from apps.tenancy.context import store_id
+
+    if store_id():
+        from apps.telegram.config import sales_client
+
+        client = sales_client()
+    else:
+        from apps.telegram.config import our_sales_client
+
+        client = our_sales_client()
+    if client is None:
+        return "no_bot"
+    code = new_code(staff)
+    try:
+        client.send_message(telegram_id, f"🔐 اتصال این حساب تلگرام به پنل به‌عنوان «{staff.username}»؟\n"
+                                         f"Link this Telegram account to the panel as “{staff.username}”?", parse_mode=None,
+                            reply_markup={"inline_keyboard": [[{"text": "✅ تأیید اتصال · Confirm",
+                                                                "callback_data": f"{CONFIRM_PREFIX}{code}"}]]})
+    except Exception:  # noqa: BLE001 — Telegram: "chat not found" / "bot was blocked" = never opened the bot
+        cache.delete(_key(code))
+        return "not_started"
+    return "sent"

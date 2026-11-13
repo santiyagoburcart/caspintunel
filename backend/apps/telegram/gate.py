@@ -20,9 +20,14 @@ class GateResult:
 
 
 def missing_channel_memberships(telegram_id: int, client=None) -> list[RequiredChannel]:
-    if not get_setting("force_channel_join", False):
+    from apps.settings_app.branding import is_store
+
+    from .channels import enforced
+
+    # v1.60.1: a store has no switch — its active channels where its bot is admin are enforced (none = off)
+    if not is_store() and not get_setting("force_channel_join", False):
         return []
-    channels = list(RequiredChannel.objects.filter(is_active=True))
+    channels = enforced(list(RequiredChannel.objects.filter(is_active=True)))
     if not channels:
         return []
     client = client or sales_client()

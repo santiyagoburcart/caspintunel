@@ -332,6 +332,23 @@ class TelegramLinkView(_StaffView):
         return Response({"code": code, "command": f"/start {staff_link.PREFIX}{code}",
                          "deep_link": staff_link.deep_link(code), "expires_in": staff_link.TTL}, status=201)
 
+    @extend_schema(summary="v1.60.1: link by numeric Telegram id — the bot sends that account a «تأیید اتصال» button")
+    def put(self, request):
+        raw = str((request.data or {}).get("telegram_id") or "").strip()
+        if not raw.isdigit() or not (5 <= len(raw) <= 15):
+            return Response({"detail": "a numeric Telegram id (5–15 digits)", "field": "telegram_id",
+                             "detail_fa": "آیدی عددی تلگرام (۵ تا ۱۵ رقم) را وارد کنید."}, status=400)
+        res = staff_link.link_by_id(request.user, int(raw))
+        msgs = {
+            "sent": ("A confirmation was sent — tap «تأیید اتصال» in Telegram", "پیام تأیید فرستاده شد — در تلگرام «تأیید اتصال» را بزنید."),
+            "not_started": ("Open the bot and press Start first, then try again", "اول ربات را باز کنید و Start را بزنید، بعد دوباره امتحان کنید."),
+            "no_bot": ("No bot is connected yet", "هنوز رباتی وصل نشده است."),
+            "taken": ("That Telegram account is linked to another staff member", "این حساب تلگرام به ادمین دیگری وصل است."),
+        }
+        en, fa = msgs[res]
+        return Response({"result": res, "message": en, "message_fa": fa} if res == "sent"
+                        else {"result": res, "detail": en, "detail_fa": fa}, status=200 if res == "sent" else 400)
+
     @extend_schema(summary="Unlink my Telegram")
     def delete(self, request):
         s = request.user

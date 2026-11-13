@@ -136,11 +136,13 @@ export function Copyable({ text }) {
 export function usePhoneRule() {
   const { t } = useI18n()
   const { config } = useTheme()
-  const required = config?.iran_phone_only !== false
+  const iranOnly = config?.iran_phone_only !== false
+  // v1.60.1: «اشتراک شماره تلفن اجباری باشد» (phone_required) also makes the phone required on site sign-up
+  const required = iranOnly || !!config?.phone_required
   const error = (value) => {
     const v = String(value || '').trim()
     if (!v) return required ? t('phone_err_required') : ''
-    if (required && !normalizeIrPhone(v)) return t('phone_err_ir')
+    if (iranOnly && !normalizeIrPhone(v)) return t('phone_err_ir')
     return ''
   }
   return { required, error }
