@@ -131,6 +131,14 @@ def store_owner(service) -> str:
     return "" if not t or t["is_default"] else (t["reseller_username"] or "")
 
 
+def _store_owner_now(tenant_id) -> str:
+    """The reseller of the current store ('' on ours)."""
+    from apps.tenancy.models import Tenant
+
+    t = Tenant.objects.filter(pk=tenant_id).values("is_default", "reseller_username").first() if tenant_id else None
+    return "" if not t or t["is_default"] else (t["reseller_username"] or "")
+
+
 def _owner_of(api_user: dict) -> str:
     a = (api_user or {}).get("admin") or {}
     return (a.get("username") if isinstance(a, dict) else str(a or "")) or ""
@@ -507,6 +515,14 @@ def create_manual_service(*, user, plan, panel: Panel | None = None, group_ids=N
     if plan.panel_id != panel.id:
         raise PanelError(f"plan {plan.id} belongs to panel {plan.panel_id}, not panel {panel.id}")
 
+    # v1.60: a store's manual service = the reseller's quota (block if short, before PasarGuard) + handed to the reseller
+    from apps.tenancy import quota
+    from apps.tenancy.context import current_tenant_id
+
+    owner = _store_owner_now(current_tenant_id())
+    if owner:
+        quota.check(quota.plan_bytes(plan, None), what="manual service")      # QuotaShort → the view answers 409
+
     name = (account_name or "").strip() or _auto_account_name(panel)
     if Service.objects.filter(panel=panel, panel_username__iexact=name).exists():
         raise PanelError("that account name is already taken on this panel")
@@ -537,6 +553,16 @@ def create_manual_service(*, user, plan, panel: Panel | None = None, group_ids=N
     except PanelConflict:
         api_user = _adopt_own_or_refuse(client, service)
 
+    if owner:
+        try:
+            api_user = _hand_to_owner(client, service, api_user, owner)
+        except PanelError:
+            try:                                  # never leave an account on OUR quota for a store's customer
+                client.delete_user(name)
+            except PanelError as exc:
+                log.warning("store manual service: cleanup of %s after a failed set_owner failed: %s", name, exc)
+            raise
+
     apply_user_to_service(service, api_user, panel)
     if service.status == ServiceStatus.PENDING:
         service.status = ServiceStatus.ON_HOLD if plan.duration_days else ServiceStatus.ACTIVE
@@ -544,7 +570,7 @@ def create_manual_service(*, user, plan, panel: Panel | None = None, group_ids=N
     service.save()
 
     write_audit(action="service.created_manually", staff=staff, target=service,
-                detail={"plan": plan.id, "order": order.id})
+                detail={"plan": plan.id, "order": order.id, **({"owner": owner} if owner else {})})
     return service
 
 
@@ -647,11 +673,14 @@ def update_service(service_id: int, *, status=None, data_limit=None, expire_at=_
     return service, api_user
 
 
-def search_panel_users(panel: Panel, search: str = "", *, limit: int = 20) -> list[dict]:
+def search_panel_users(panel: Panel, search: str = "", *, limit: int = 20, owner: str | None = None) -> list[dict]:
     """Live search of a panel's accounts (by username) for the admin "link an
     existing panel account" flow. Each row says whether it is already linked
-    to one of our users."""
-    users, _total = client_for(panel).list_users(search=search.strip(), limit=limit)
+    to one of our users. v1.60: `owner` = only that admin's accounts (a store: its reseller) — asked from PasarGuard
+    with `admin=` AND checked again on every row (never another admin's account)."""
+    users, _total = client_for(panel).list_users(search=search.strip(), limit=limit, admin=[owner] if owner else None)
+    if owner:
+        users = [u for u in users if panel_owner(u).lower() == owner.lower()]
     names = [u["username"] for u in users if u.get("username")]
     match = Q(pk__in=[])
     for n in names:

@@ -75,7 +75,10 @@ export default function App() {
           <Route path="/settings" element={<Settings />} />
           <Route path="/settings/:section" element={<Settings />} />
           <Route path="/pages" element={<Pages />} />
-          <Route path="/themes" element={<Themes />} />
+          {/* v1.60: no /themes on a store (it follows our theme); + its services and its own SMS tools */}
+          <Route path="/services" element={<Services />} />
+          <Route path="/services/:id" element={<ServiceEdit />} />
+          <Route path="/apps" element={<Apps />} />
           <Route path="/plans" element={<Plans />} />
           <Route path="/payments" element={<Payments />} />
           <Route path="/sms-log" element={<SmsLog />} />

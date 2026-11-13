@@ -6,6 +6,7 @@ import { copyToClipboard } from '../lib/clipboard'
 import { useConfirm } from './ConfirmDialog'
 import { useToast } from './Toast'
 import { Ic } from './AgencyIcons'
+import DomainSteps from './DomainSteps'
 
 // v1.45 (multi-tenant Phase 3) store domains on «فروشگاه» — our staff only (backend apps/tenancy/domains.py). Each domain shows the
 // exact records for the reseller's Cloudflare, what the DNS / certificate / health checks saw, and the actions.
@@ -25,7 +26,7 @@ const T = {
     m_title: 'تغییر حالت دامنه', m_msg: 'رکورد A باید به «{ip}» عوض شود (رکوردهای تازه نمایش داده می‌شود). تا تأیید DNS جدید، دامنه دوباره بررسی می‌شود{active}.', m_active: ' (سایت فعال تا آن موقع کار می‌کند)', m_btn: 'بله، تغییر بده',
     w_title: 'تغییر www', w_msg: 'برای {h} گواهی تازه گرفته می‌شود.', w_btn: 'بله',
     a_title: 'افزودن دامنه', a_msg: 'دامنهٔ {h} برای این فروشگاه ثبت می‌شود و رکوردهای لازم نمایش داده می‌شود.', a_btn: 'بله، اضافه کن',
-    failures: 'تلاش ناموفق گواهی', steps: 'مراحل: DNS → گواهی (HTTP-01) → فعال', fails_note: 'بعد از ۳ تلاش ناموفق متوقف می‌شود — «تلاش دوباره».',
+    failures: 'تلاش ناموفق گواهی', steps: 'مراحل: DNS → گواهی → پیکربندی nginx → بررسی سلامت → فعال (صفحه خودکار به‌روز می‌شود)', fails_note: 'بعد از ۳ تلاش ناموفق متوقف می‌شود — «تلاش دوباره».',
   },
   en: {
     title: 'Domains', none: 'No domain yet.', add: 'Add domain', host: 'Domain (e.g. shop.example.com)',
@@ -42,7 +43,7 @@ const T = {
     m_title: 'Change domain mode', m_msg: 'The A record must change to “{ip}” (the new records are shown). The domain is checked again until the new DNS is verified{active}.', m_active: ' (the live site keeps working meanwhile)', m_btn: 'Yes, change it',
     w_title: 'Change www', w_msg: 'A new certificate is issued for {h}.', w_btn: 'Yes',
     a_title: 'Add domain', a_msg: 'The domain {h} is registered for this store and the records to create are shown.', a_btn: 'Yes, add it',
-    failures: 'failed certificate attempts', steps: 'Steps: DNS → certificate (HTTP-01) → active', fails_note: 'Stops after 3 failed attempts — “Retry”.',
+    failures: 'failed certificate attempts', steps: 'Steps: DNS → certificate → nginx config → health check → live (this page refreshes itself)', fails_note: 'Stops after 3 failed attempts — “Retry”.',
   },
 }
 
@@ -129,6 +130,7 @@ function Domain({ d, s, lang, base, manage, copy, confirm, onChanged }) {
         <span className="sd-chip">{s['m_' + d.mode]}</span>
         {d.proxied && <span className="sd-chip">{s.proxied}</span>}
       </div>
+      <DomainSteps steps={d.steps} certExpires={d.cert_expires_at} />
       {d.state !== 'active' && ins.records.length > 0 && (
         <div className="sd-recs">
           <div className="sd-sub">{s.records}</div>

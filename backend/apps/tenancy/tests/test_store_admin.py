@@ -79,9 +79,10 @@ def test_store_mode_admin_api_answers_only_store_views(live):
     me = boss.get("/api/v1/admin/auth/me/").json()
     assert me["store"]["id"] == live.pk and me["store"]["name"] == "فروشگاه یک"
     for url in ("/api/v1/admin/agency/", "/api/v1/admin/payments/blu-transactions/", "/api/v1/admin/monitoring/",
-                "/api/v1/admin/backups/", "/api/v1/admin/transactions/"):   # roles: the store's own since v1.52
+                "/api/v1/admin/backups/", "/api/v1/admin/transactions/",
+                "/api/v1/admin/themes/"):                     # roles: the store's own since v1.52 · themes: ours only (v1.60)
         assert boss.get(url).status_code == 403, url                      # Super Admin too: platform pages
-    for url in ("/api/v1/admin/users/", "/api/v1/admin/pages/", "/api/v1/admin/themes/", "/api/v1/admin/branding/",
+    for url in ("/api/v1/admin/users/", "/api/v1/admin/pages/", "/api/v1/admin/branding/",
                 "/api/v1/admin/settings/", "/api/v1/admin/dashboard/"):
         assert boss.get(url).status_code == 200, url
     dash = boss.get("/api/v1/admin/dashboard/").json()
@@ -124,22 +125,15 @@ def test_store_branding_edits_the_store_not_ours(live):
     assert APIClient(HTTP_HOST=HOST).get("/api/v1/config/").json()["site_name_fa"] == "شاپ نو"
 
 
-def test_store_themes_are_its_own_plus_built_in(live):
-    builtin = Theme.objects.create(name="Built-in", palette={"style": "caspian"}, is_active=True)
+def test_store_shows_our_active_theme_and_cannot_manage_themes(live):
+    """v1.60 (was: a store's own themes): a store follows our active theme; its panel has no theme API at all."""
+    Theme.objects.create(name="Built-in", palette={"style": "caspian"}, is_active=True)
     boss = _on(staff_client("super", "theme-boss"), HOST)
-    r = boss.post("/api/v1/admin/themes/", {"name": "Shop Green", "palette": {"style": "caspian", "primary": "#0a0"}},
-                  format="json")
-    assert r.status_code == 201, r.content
-    mine = Theme.objects.get(name="Shop Green")
-    assert mine.tenant_id == live.pk and not mine.is_active
-    assert boss.patch(f"/api/v1/admin/themes/{builtin.id}/", {"name": "x"}, format="json").status_code == 403
-    assert boss.post(f"/api/v1/admin/themes/{mine.id}/activate/").status_code == 200
-    builtin.refresh_from_db()
-    assert builtin.is_active                                                           # ours still active for us
-    assert APIClient(HTTP_HOST=HOST).get("/api/v1/theme/").json()["name"] == "Shop Green"
+    assert boss.post("/api/v1/admin/themes/", {"name": "Shop Green", "palette": {"style": "caspian"}},
+                     format="json").status_code == 403
+    assert not Theme.objects.filter(name="Shop Green").exists()
+    assert APIClient(HTTP_HOST=HOST).get("/api/v1/theme/").json()["name"] == "Built-in"
     assert APIClient().get("/api/v1/theme/").json()["name"] == "Built-in"
-    names = [t["name"] for t in staff_client("super", "our-theme").get("/api/v1/admin/themes/").json()["results"]]
-    assert "Shop Green" not in names                                                    # never another store's theme
 
 
 def test_store_pages_are_separate(live):

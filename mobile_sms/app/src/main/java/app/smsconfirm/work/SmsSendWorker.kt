@@ -1,4 +1,4 @@
-package com.caspintunel.smsbridge.work
+package app.smsconfirm.work
 
 import android.content.Context
 import androidx.work.BackoffPolicy
@@ -8,8 +8,8 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
-import com.caspintunel.smsbridge.repo.MAX_SEND_ATTEMPTS
-import com.caspintunel.smsbridge.repo.SmsRepository
+import app.smsconfirm.repo.MAX_SEND_ATTEMPTS
+import app.smsconfirm.repo.SmsRepository
 import java.util.concurrent.TimeUnit
 
 private const val KEY_ENTRY_ID = "entry_id"

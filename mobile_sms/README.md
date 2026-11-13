@@ -1,20 +1,28 @@
-# mobile_sms — CaspinTunel SMS Bridge (Android)
+# mobile_sms — «تأیید پیامک خودکار» (Android)
 
-Native **Kotlin** Android app for the operator side. It runs on a phone that
-receives the bank's card-to-card deposit SMS notifications, and forwards each
-one to the CaspinTunel backend so payments can be auto-confirmed.
+Native **Kotlin** Android app for the operator side (ours and every reseller store's — **white-label since 2.0**: the app name,
+icon, package id `app.smsconfirm` and every text are neutral; nothing inside names our brand). It runs on a phone that
+receives the bank's card-to-card deposit SMS and forwards each one to the store's site so payments are auto-confirmed.
 
-A pre-built debug APK is committed at
-[`release/CaspinTunelSmsBridge-debug.apk`](release/CaspinTunelSmsBridge-debug.apk)
-— install it directly on the operator's phone, no build step required. The same
-file is served from your own server in the admin panel → **Apps & tools**
-(`release/` is mounted into the web container), so it can be downloaded on an
-offline / Iran-only host; a newer APK can be uploaded there too.
+**Setup (2.0):** the panel's «اپلیکیشن‌ها» page makes a **«کد راه‌اندازی»** for an SMS device — one string
+`SMS1:` + base64url(JSON `{"u": "<store address>", "t": "<device token>"}`), no padding
+(`backend/apps/payments_sms/device_url.py::setup_code`). In the app: Settings → paste it → «اعمال و آزمایش اتصال»
+(`SettingsActivity.parseSetupCode`). Typing the address + token by hand stays as the fallback.
+
+**APKs served by the panel:** the newest `*.apk` in [`release/`](release/) (mounted read-only into `web`, so a new file is live
+without a deploy). A store gets only a white-label build — a file named `sms-confirm*.apk` — and downloads it as
+`sms-confirm.apk`; until one exists the store page says the new app is being prepared. `release/CaspinTunelSmsBridge-debug.apk`
+is the old 1.1.0 build (old name, `com.caspintunel.smsbridge.debug`), still served on our own panel until the 2.0 build lands.
+
+**Building:** this server has no Android toolchain. 2.0 has **not been compiled yet** — the plan (waiting for the owner's OK)
+is a GitHub Actions job that builds the debug-signed APK on a tag and attaches it to the GitHub release; we then copy it to
+`release/sms-confirm-<version>.apk`. Because the package id and the signing key change, 2.0 installs **next to** the old app
+(uninstall the old one after the new one works); Play Protect may warn about an unknown developer — "Install anyway".
 
 ## What it does
 
-1. **Settings screen** — enter the server URL and the device's API token, save
-   them to `SharedPreferences`, and test the connection with one tap.
+1. **Settings screen** — paste the panel's «کد راه‌اندازی» (or enter the server URL and the device's API token by hand),
+   save them to `SharedPreferences`, and test the connection with one tap.
 2. **SMS listener** — a manifest-registered `BroadcastReceiver` for
    `android.provider.Telephony.SMS_RECEIVED`, backed by a **foreground
    service** so Android doesn't kill the app, with a `BOOT_COMPLETED`
@@ -40,7 +48,7 @@ offline / Iran-only host; a newer APK can be uploaded there too.
 6. **Retry** — a failed send is retried by WorkManager up to 3 times with
    exponential backoff (30s, 60s, 120s…), then left marked as failed in the
    local log.
-7. **Persistent notification** — "CaspinTunel SMS — فعال" while the
+7. **Persistent notification** — "تأیید پیامک خودکار — فعال" while the
    foreground service is running.
 
 ## Authentication — important correction
@@ -101,7 +109,7 @@ mobile_sms/
     ├── build.gradle
     └── src/main/
         ├── AndroidManifest.xml
-        ├── java/com/caspintunel/smsbridge/
+        ├── java/app/smsconfirm/
         │   ├── App.kt                     # notification channel setup
         │   ├── MainActivity.kt            # status + last-20 log + test ping
         │   ├── SettingsActivity.kt        # server URL + token

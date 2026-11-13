@@ -43,11 +43,11 @@ class PublicActiveThemeView(APIView):
     @extend_schema(responses=PublicThemeSerializer, summary="The active theme's palette")
     def get(self, request):
         def build():
-            from .branding import is_store, store_branding
+            from .branding import is_store
+            from .themes import store_theme
 
-            if is_store():                      # v1.43: the store's chosen theme (built-in or its own)
-                b = store_branding()
-                theme = b.theme or Theme.objects.filter(tenant__isnull=True).order_by("id").first()
+            if is_store():                      # v1.60: OUR active theme, or the override our staff set for this store
+                theme = store_theme()
                 if not theme:
                     return Response({}, status=204)
                 return Response(PublicThemeSerializer(theme).data)

@@ -6,6 +6,7 @@ import { jalali, toman, digits } from '../lib/format'
 import { Alert, Spinner } from '../components/ui'
 import { DataTable } from '../components/DataTable'
 import { useAuth } from '../lib/auth'
+import DomainSteps from '../components/DomainSteps'
 
 const ICONS = {
   services: 'M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L21.75 12l-4.179 2.25m0 0l4.179 2.25L12 21.75 2.25 16.5l4.179-2.25m11.142 0l-5.571 3-5.571-3',
@@ -257,6 +258,7 @@ function StoreDomainsCard({ domains, lang }) {
           <span className={'dash-chip ' + (x.state === 'active' ? 'is-ok' : '')}>{s['st_' + x.state] || x.state}</span>
           {x.state === 'active' && x.healthy != null && <span className="text-xs text-muted">{x.healthy ? s.healthy : s.unhealthy}</span>}
           {x.cert_expires_at && <span className="text-xs text-muted">{s.expires} {jalali(x.cert_expires_at, false, lang)}</span>}
+          {x.state !== 'active' && <div className="w-full"><DomainSteps steps={x.steps} /></div>}
         </div>
       ))}
       <style>{`.dash-dom { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }

@@ -51,6 +51,40 @@ def bundled_apk() -> Path | None:
     return apks[0] if apks else None
 
 
+WHITELABEL_PREFIX = "sms-confirm"     # v1.60: the rebranded app «تأیید پیامک خودکار» (mobile_sms/, no brand inside)
+WHITELABEL_NAME = "sms-confirm.apk"   # the file name a store downloads (never ours)
+
+
+def is_whitelabel(file_name: str) -> bool:
+    return (file_name or "").lower().startswith(WHITELABEL_PREFIX)
+
+
+def _store() -> bool:
+    from apps.settings_app.branding import is_store
+
+    return is_store()
+
+
+def _store_info(platform: str, request=None) -> dict:
+    """v1.60 a store's «اپلیکیشن‌ها»: white-label only — Android = the rebranded APK (if it exists yet), never our release
+    notes / staff names; iPhone = no file, no iCloud link (ours is on our domain): the page shows a build-it-yourself guide
+    with this store's endpoint."""
+    from apps.payments_sms.device_url import server_base
+
+    base = server_base(request)
+    out = {"platform": platform, "version": "", "link": "", "notes": "", "updated_at": None, "updated_by": "",
+           "file_name": "", "size": None, "source": None, "whitelabel": True}
+    if platform == AppPlatform.IOS:
+        out.update(endpoint=f"{base}/api/v1/payments/sms/inbound/", guide=True)
+        return out
+    ours = _info(platform, request)
+    if is_whitelabel(ours.get("file_name") or ""):
+        out.update(version=ours["version"], size=ours["size"], source=ours["source"], updated_at=ours["updated_at"],
+                   file_name=WHITELABEL_NAME)
+    out["server"] = base
+    return out
+
+
 def _info(platform: str, request=None) -> dict:
     rel = AppRelease.objects.filter(platform=platform).first()
     out = {
@@ -80,6 +114,7 @@ def _info(platform: str, request=None) -> dict:
         return out
     # v1.48: `server` = the address to type into the app (this store's domain; ours = the site domain)
     out["server"] = server_base(request)
+    out["whitelabel"] = is_whitelabel(out.get("file_name") or "")
     if out["source"] is None:
         if apk := bundled_apk():
             st = apk.stat()
@@ -95,7 +130,8 @@ class AppReleaseListView(AdminAPIView):
 
     @extend_schema(summary="Operator apps (Android SMS bridge, iPhone shortcut) — release info", responses=dict)
     def get(self, request):
-        return Response({"results": [_info(p, request) for p in AppPlatform.values]})
+        info = _store_info if _store() else _info
+        return Response({"results": [info(p, request) for p in AppPlatform.values]})
 
 
 class AppReleaseDetailView(AdminAPIView):
@@ -173,6 +209,8 @@ class AppReleaseDownloadView(AdminAPIView):
         if platform not in AppPlatform.values:
             raise Http404
         if platform == AppPlatform.IOS:
+            if _store():                     # v1.60: our shortcut file names our brand — a store builds its own (guide)
+                raise Http404
             return self._ios(request)
         rel = AppRelease.objects.filter(platform=platform).first()
         if rel and rel.file:
@@ -192,6 +230,10 @@ class AppReleaseDownloadView(AdminAPIView):
             resp = FileResponse(apk.open("rb"), content_type=_ctype(filename))
         else:
             raise Http404
+        if _store():                         # v1.60: a store only ever gets the white-label app, under a neutral name
+            if not is_whitelabel(filename):
+                raise Http404
+            filename = WHITELABEL_NAME
         resp["Content-Disposition"] = f'attachment; filename="{filename}"'
         resp["Cache-Control"] = "private, no-store"
         return resp

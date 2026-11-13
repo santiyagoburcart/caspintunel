@@ -1,11 +1,11 @@
-package com.caspintunel.smsbridge.receiver
+package app.smsconfirm.receiver
 
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import com.caspintunel.smsbridge.data.Prefs
-import com.caspintunel.smsbridge.service.SmsForegroundService
+import app.smsconfirm.data.Prefs
+import app.smsconfirm.service.SmsForegroundService
 
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {

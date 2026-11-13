@@ -72,13 +72,30 @@ class ServiceListViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
 
     authentication_classes = _AUTH
     permission_classes = [StaffPermission]
-    perms_map = {
-        "GET": ["monitoring.view"], "POST": ["services.manage"],
-        "PATCH": ["services.manage"], "DELETE": ["services.delete"],
-    }
-    action_perms = {"panel_users": ["services.manage"], "sync_now": ["services.manage"], "sync_one": ["services.manage"]}
+    # v1.60: on a store's domain the store's own services (tenant-scoped) with the store codes below — opt-in per store,
+    # never delete / reset / groups there. The class values are the store's (the release gate reads them); our panel
+    # gets OUR_PERMS / OUR_ACTIONS in get_permissions.
+    store_ok = True
+    perms_map = {"GET": ["services.view"], "POST": ["services.manage"], "PATCH": ["services.manage"],
+                 "DELETE": ["services.manage"]}
+    action_perms = {"create": ["services.create"], "panel_users": ["services.link"], "link_existing": ["services.link"],
+                    "sync_now": ["services.manage"], "sync_one": ["services.manage"]}
+    OUR_PERMS = {"GET": ["monitoring.view"], "POST": ["services.manage"], "PATCH": ["services.manage"],
+                 "DELETE": ["services.delete"]}
+    OUR_ACTIONS = {"panel_users": ["services.manage"], "sync_now": ["services.manage"], "sync_one": ["services.manage"]}
     queryset = Service.objects.none()
     serializer_class = AdminServiceSerializer
+
+    def get_permissions(self):
+        from apps.settings_app.branding import is_store
+
+        if not is_store():
+            self.perms_map, self.action_perms = self.OUR_PERMS, self.OUR_ACTIONS
+        return super().get_permissions()
+
+    @staticmethod
+    def _store_refuse(en: str, fa: str, status: int = 403):
+        return Response({"detail": en, "detail_fa": fa, "code": "store_refused"}, status=status)
 
     def get_queryset(self):
         qs = Service.objects.select_related("user", "current_plan", "panel", "scheduled_renewal", "scheduled_renewal__plan").order_by("-created_at")
@@ -109,7 +126,12 @@ class ServiceListViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
         return AdminServiceCreateSerializer if self.action == "create" else AdminServiceSerializer
 
     def list(self, request, *args, **kwargs):
+        from apps.settings_app.branding import is_store
+
         resp = super().list(request, *args, **kwargs)
+        if is_store():                     # v1.60: never our panel's name on a store's page
+            for r in (resp.data.get("results") if isinstance(resp.data, dict) else resp.data) or []:
+                r["panel_name"] = None
         resp.data["last_synced_at"] = Service.objects.aggregate(m=Max("last_synced_at"))["m"]
         by_status = dict(Service.objects.values_list("status").annotate(n=Count("id")).values_list("status", "n"))
         resp.data["stats"] = {
@@ -123,15 +145,28 @@ class ServiceListViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
 
     def create(self, request, *args, **kwargs):
         """Manual service creation (فاز ۲) — no payment, real panel account."""
+        from apps.settings_app.branding import is_store
+        from apps.tenancy import quota
+
         ser = self.get_serializer(data=request.data)
         ser.is_valid(raise_exception=True)
         v = ser.validated_data
+        store = is_store()
+        if store:                          # v1.60: the store's plan on the agency panel, under the reseller (no groups)
+            from apps.tenancy import catalog
+
+            if v["plan"].panel_id != catalog.store_panel().id:
+                return self._store_refuse("a store service uses the store's own plans only",
+                                          "سرویس فروشگاه فقط با پلن‌های خود فروشگاه ساخته می‌شود", 400)
         try:
             service = create_manual_service(
-                user=v["user"], plan=v["plan"], panel=v.get("panel"),
-                group_ids=v.get("group_ids"), account_name=v.get("account_name"),
+                user=v["user"], plan=v["plan"], panel=None if store else v.get("panel"),
+                group_ids=None if store else v.get("group_ids"), account_name=v.get("account_name"),
                 staff=request.user,
             )
+        except quota.QuotaShort as exc:
+            return Response({"detail": str(exc), "detail_fa": "حجم باقی‌ماندهٔ نماینده برای این سرویس کافی نیست — اول حجم را افزایش دهید.",
+                             "code": "quota", **{k: exc.detail.get(k) for k in ("need", "available") if k in exc.detail}}, status=409)
         except PanelNameTaken as exc:      # exists on the panel: staff must choose "Link existing account" explicitly
             return Response({"detail": str(exc), "code": "exists_on_panel", "panel_username": exc.username,
                              "owner": exc.owner or ""}, status=409)
@@ -151,6 +186,10 @@ class ServiceListViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
 
     @action(detail=True, methods=["post"], url_path="reset")
     def reset_usage(self, request, pk=None):
+        from apps.settings_app.branding import is_store
+
+        if is_store():                     # resetting usage would hand out traffic outside the reseller's quota check
+            return self._store_refuse("resetting usage is not available in a store", "ریست مصرف در فروشگاه در دسترس نیست")
         try:
             service = reset_service_usage(int(pk), staff=request.user)
         except PanelError as exc:
@@ -171,10 +210,28 @@ class ServiceListViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
         from datetime import datetime, time
         from zoneinfo import ZoneInfo
 
+        from apps.settings_app.branding import is_store
+
         service = self.get_object()
         ser = AdminServiceUpdateSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         v = ser.validated_data
+        if is_store():                     # v1.60: groups come from the plan; more volume = the reseller's quota
+            from apps.tenancy import quota
+
+            if "group_ids" in v:
+                return self._store_refuse("groups are set by the store's plan", "گروه‌ها را پلن فروشگاه تعیین می‌کند", 400)
+            if "plan" in v and v["plan"] is not None and v["plan"].panel_id != service.panel_id:
+                return self._store_refuse("that plan is not on this service's panel", "این پلن برای این سرویس نیست", 400)
+            if "data_limit_gb" in v:
+                new = int(v["data_limit_gb"] * 1024 ** 3)
+                if new == 0 or (service.data_limit and new > service.data_limit) or not service.data_limit:
+                    need = None if new == 0 else new - int(service.data_limit or 0)
+                    try:
+                        quota.check(need, what="service edit")
+                    except quota.QuotaShort as exc:
+                        return Response({"detail": str(exc), "code": "quota",
+                                         "detail_fa": "حجم باقی‌ماندهٔ نماینده برای این افزایش کافی نیست."}, status=409)
         kw = {}
         if "status" in v:
             kw["status"] = v["status"]
@@ -210,6 +267,10 @@ class ServiceListViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
         return Response(AdminServiceRawSerializer(service, context={"panel_raw": raw}).data)
 
     def destroy(self, request, *args, **kwargs):
+        from apps.settings_app.branding import is_store
+
+        if is_store():                     # a store disables a service, never deletes the PasarGuard account
+            return self._store_refuse("deleting a service is not available in a store", "حذف سرویس در فروشگاه در دسترس نیست")
         instance = self.get_object()
         try:
             delete_service(instance.id, staff=request.user)
@@ -234,12 +295,32 @@ class ServiceListViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
     def panel_users(self, request):
         """Live search of a panel's accounts (?panel=<id>&search=<username>) for
         "link an existing panel account" — each row says if it's already linked."""
-        panel = Panel.objects.filter(pk=request.query_params.get("panel") or 0, is_active=True).first()
+        from apps.settings_app.branding import is_store
+
+        owner = None
+        if is_store():                     # v1.60: only the reseller's own PasarGuard users, on the agency panel
+            from apps.tenancy import catalog
+
+            panel, owner = catalog.store_panel(), (catalog.current_store().reseller_username or "-")
+        else:
+            panel = Panel.objects.filter(pk=request.query_params.get("panel") or 0, is_active=True).first()
         if panel is None:
             return Response({"detail": "unknown or inactive panel"}, status=400)
         try:
-            rows = search_panel_users(panel, request.query_params.get("search") or "", limit=20)
+            rows = search_panel_users(panel, request.query_params.get("search") or "", limit=20, owner=owner)
+            if owner is not None:          # mark rows linked in another store / ours (never whose)
+                from apps.tenancy.context import current_tenant_id
+                from apps.tenancy.importers.engine import linked_anywhere
+
+                where = linked_anywhere(panel, {r["username"].lower() for r in rows if r["username"]})
+                for r in rows:
+                    tid = where.get((r["username"] or "").lower())
+                    r["linked_elsewhere"] = bool(tid and tid != current_tenant_id())
+                    r["other_admin"] = False
         except PanelError as exc:
+            if owner is not None:          # a store: PasarGuard unreachable is shown in the dialog, never a 5xx page
+                return Response({"results": [], "unavailable": True, "detail": "the panel is not reachable right now",
+                                 "detail_fa": "پنل پاسارگارد الان در دسترس نیست — کمی بعد دوباره جستجو کنید."})
             return Response({"detail": str(exc)}, status=502)
         return Response({"results": rows})
 
@@ -247,14 +328,35 @@ class ServiceListViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
     def link_existing(self, request):
         """Adopt an existing panel account: our Service (synced from the panel) +
         an `imported` Order with no payment. Nothing changes on the panel."""
-        ser = AdminServiceLinkSerializer(data=request.data)
+        from apps.settings_app.branding import is_store
+
+        data = request.data.copy() if hasattr(request.data, "copy") else dict(request.data)
+        owner = None
+        if is_store():                     # v1.60: the agency panel, and ONLY an account the reseller's admin owns
+            from apps.tenancy import catalog
+
+            data["panel"] = catalog.store_panel().id
+            data["confirm_other_admin"] = False
+            owner = catalog.current_store().reseller_username or "-"
+        ser = AdminServiceLinkSerializer(data=data)
         ser.is_valid(raise_exception=True)
         v = ser.validated_data
+        if owner is not None:              # linked in another store (or ours)? say so without showing whose
+            from apps.tenancy.context import current_tenant_id
+            from apps.tenancy.importers.engine import linked_anywhere
+
+            where = linked_anywhere(v["panel"], {v["panel_username"].strip().lower()})
+            if where and set(where.values()) != {current_tenant_id()}:
+                return Response({"detail": "already linked to a customer elsewhere", "code": "linked_elsewhere",
+                                 "detail_fa": "این کاربر قبلاً به مشتری دیگری وصل شده است."}, status=409)
         try:
             service = link_existing_service(user=v["user"], panel=v["panel"], panel_username=v["panel_username"],
                                             plan=v.get("plan"), staff=request.user,
-                                            confirm_other_admin=v.get("confirm_other_admin", False))
+                                            confirm_other_admin=v.get("confirm_other_admin", False), owner_must_be=owner)
         except PanelLinkNeedsConfirmation as exc:
+            if owner is not None:
+                return Response({"detail": f"{exc.username} belongs to another admin", "code": "not_reseller",
+                                 "detail_fa": "این کاربر متعلق به ادمین دیگری است — فقط کاربران خود نماینده قابل اتصال‌اند."}, status=403)
             return Response({"detail": str(exc), "code": "other_admin", "panel_username": exc.username,
                              "owner": exc.owner}, status=409)
         except ServiceAlreadyLinked as exc:

@@ -53,6 +53,10 @@ def row(t: Tenant | None, *, staff_view: bool = True) -> dict | None:
         "fee": _fee_row(t) if staff_view else None,
         "branding": {"site_name_fa": b.site_name_fa, "site_name_en": b.site_name_en} if b else None,
         "reachable": t.status == Tenant.ACTIVE and TenantDomain.objects.filter(tenant=t, state=TenantDomain.ACTIVE).exists(),
+        # v1.60: why not (the card says which one): the store is not active / no domain is active yet
+        "unreachable_because": [k for k, bad in (
+            ("store_inactive", t.status != Tenant.ACTIVE),
+            ("no_active_domain", not TenantDomain.objects.filter(tenant=t, state=TenantDomain.ACTIVE).exists())) if bad],
     }
 
 

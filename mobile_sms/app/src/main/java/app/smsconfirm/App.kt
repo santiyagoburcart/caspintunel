@@ -1,4 +1,4 @@
-package com.caspintunel.smsbridge
+package app.smsconfirm
 
 import android.app.Application
 import android.app.NotificationChannel

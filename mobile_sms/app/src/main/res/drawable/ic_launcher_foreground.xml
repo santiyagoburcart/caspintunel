@@ -4,13 +4,15 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- simple envelope glyph, centered within the 66dp adaptive-icon safe zone -->
+    <!-- v2.0 neutral icon: a message bubble with a check mark, inside the 66dp adaptive-icon safe zone (same drawing as the panel's AppIcon) -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M29,37 L79,37 A6,6 0 0 1 85,43 L85,71 A6,6 0 0 1 79,77 L29,77 A6,6 0 0 1 23,71 L23,43 A6,6 0 0 1 29,37 Z" />
+        android:pathData="M30,34 L78,34 A6,6 0 0 1 84,40 L84,66 A6,6 0 0 1 78,72 L50,72 L38,82 L38,72 L30,72 A6,6 0 0 1 24,66 L24,40 A6,6 0 0 1 30,34 Z" />
     <path
         android:fillColor="#00000000"
-        android:strokeColor="#4F46E5"
-        android:strokeWidth="4"
-        android:pathData="M25,42 L54,61 L83,42" />
+        android:strokeColor="#0F766E"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M41,53 L50,62 L67,45" />
 </vector>

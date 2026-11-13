@@ -15,7 +15,7 @@ from .views.agency import (AgencyLimitHistoryView, AgencyAdminActionView, Agency
                            AgencyLedgerVoidView, AgencySettingsView, AgencySyncLogsView, AgencySyncNowView, PathsView,
                            AgencyPortalLinkView, AgencySetLimitPreviewView, AgencyLedgerReportView,
                            AgencyPanelAdminCreateView, AgencyPanelAdminOptionsView, AgencyPanelAdminView, AgencyStoreView,
-                           AgencyStoreBotCheckView, AgencyStoreBotView, AgencyStoreCeilingView, AgencyStoreOwnerView,
+                           AgencyStoreBotCheckView, AgencyStoreBotView, AgencyStoreCeilingView, AgencyStoreOwnerView, AgencyStoreThemeView,
                            AgencyStoreFailedOrdersView, AgencyStoreFailedOrderRetryView,
                            AgencyStoreDomainCheckView, AgencyStoreDomainsView,
                            AgencyStoreDomainView, AgencyHistoryView)
@@ -140,6 +140,7 @@ urlpatterns = [
     path("agency/panel-admins/<str:username>/store/domains/", AgencyStoreDomainsView.as_view(), name="admin-agency-store-domains"),
     path("agency/panel-admins/<str:username>/store/bot/", AgencyStoreBotView.as_view(), name="admin-agency-store-bot"),
     path("agency/panel-admins/<str:username>/store/ceiling/", AgencyStoreCeilingView.as_view(), name="admin-agency-store-ceiling"),
+    path("agency/panel-admins/<str:username>/store/theme/", AgencyStoreThemeView.as_view(), name="admin-agency-store-theme"),
     path("agency/panel-admins/<str:username>/store/owner/", AgencyStoreOwnerView.as_view(), name="admin-agency-store-owner"),
     # v1.53: store exports (Phase 10) + the monthly store fee (Phase 12) on «فروشگاه»
     path("agency/panel-admins/<str:username>/store/exports/", AgencyStoreExportView.as_view(), name="admin-agency-store-exports"),

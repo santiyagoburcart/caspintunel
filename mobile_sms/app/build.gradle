@@ -5,20 +5,20 @@ plugins {
 }
 
 android {
-    namespace 'com.caspintunel.smsbridge'
+    namespace 'app.smsconfirm'
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.caspintunel.smsbridge"
+        applicationId "app.smsconfirm"
         minSdk 26
         targetSdk 34
-        versionCode 2
-        versionName "1.1.0"
+        versionCode 3
+        versionName "2.0.0"
     }
 
     buildTypes {
         debug {
-            applicationIdSuffix ".debug"
+            // v2.0: no ".debug" suffix — the debug-signed build IS the distributed app (same id as release)
         }
         release {
             minifyEnabled false

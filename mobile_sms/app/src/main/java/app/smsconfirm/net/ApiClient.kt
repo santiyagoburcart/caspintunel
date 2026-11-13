@@ -1,6 +1,6 @@
-package com.caspintunel.smsbridge.net
+package app.smsconfirm.net
 
-import com.caspintunel.smsbridge.BuildConfig
+import app.smsconfirm.BuildConfig
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit

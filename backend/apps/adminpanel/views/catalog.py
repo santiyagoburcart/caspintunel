@@ -103,6 +103,15 @@ class SmsAppDeviceViewSet(AdminViewSet):
         device = self.get_object()
         return Response({"api_token": device.api_token})
 
+    @action(detail=True, methods=["get"], url_path="setup-code")
+    def setup_code(self, request, pk=None):
+        """v1.60 «کد راه‌اندازی»: one string (this store's address + the device token) pasted once into the Android app."""
+        from apps.payments_sms.device_url import server_base, setup_code
+
+        device = self.get_object()
+        base = server_base(request)
+        return Response({"code": setup_code(base, device.api_token), "server": base, "device": device.name})
+
 
 class PageViewSet(AdminViewSet):
     queryset = Page.objects.all().order_by("slug")
@@ -112,70 +121,23 @@ class PageViewSet(AdminViewSet):
 
 
 class ThemeViewSet(AdminViewSet):
-    """Themes. v1.43 on a store's domain: the built-in themes (read-only there) + the store's own; «فعال‌سازی» sets the
-    store's theme (TenantBranding.theme) — the global active flag is our own store's."""
+    """Themes — OUR panel only. v1.60: stores never manage themes (not store_ok, `themes.manage` is not a store code); a
+    store shows our active theme or the override our staff set on «فروشگاه» (settings_app/themes.py)."""
 
     queryset = Theme.objects.all().order_by("name")
     serializer_class = ThemeSerializer
     perms_map = {"GET": ["themes.manage"], "*": ["themes.manage"]}
-    store_ok = True
 
     def get_queryset(self):
-        from django.db.models import Q
+        from apps.settings_app.themes import our_themes
 
-        from apps.settings_app.branding import current_tenant_id
-
-        # built-in themes + the current tenant's own (never another store's)
-        return super().get_queryset().filter(Q(tenant__isnull=True) | Q(tenant_id=current_tenant_id()))
-
-    def list(self, request, *args, **kwargs):
-        """On a store's domain «فعال» = the store's theme (TenantBranding.theme, else the first built-in)."""
-        from apps.settings_app.branding import is_store, store_branding
-
-        resp = super().list(request, *args, **kwargs)
-        if is_store():
-            b = store_branding()
-            active = b.theme_id or Theme.objects.filter(tenant__isnull=True).order_by("id").values_list("id", flat=True).first()
-            rows = resp.data["results"] if isinstance(resp.data, dict) and "results" in resp.data else resp.data
-            for r in rows:
-                r["is_active"] = r["id"] == active
-        return resp
-
-    def perform_create(self, serializer):
-        from apps.settings_app.branding import current_tenant_id, is_store
-
-        serializer.save(**({"tenant_id": current_tenant_id(), "is_active": False} if is_store() else {}))
-
-    def _own_only(self, theme):
-        from rest_framework.exceptions import PermissionDenied
-
-        from apps.settings_app.branding import is_store
-
-        if is_store() and theme.tenant_id is None:
-            raise PermissionDenied("a built-in theme can't be changed from a store — copy it as a new theme")
-
-    def perform_update(self, serializer):
-        self._own_only(serializer.instance)
-        from apps.settings_app.branding import is_store
-
-        serializer.save(**({"is_active": False} if is_store() else {}))
-
-    def perform_destroy(self, instance):
-        self._own_only(instance)
-        instance.delete()
+        return our_themes()
 
     @action(detail=True, methods=["post"], url_path="activate")
     def activate(self, request, pk=None):
-        from apps.settings_app.branding import is_store, store_branding
-
         theme = self.get_object()
-        if is_store():
-            b = store_branding()
-            b.theme = theme
-            b.save(update_fields=["theme", "updated_at"])
-            return Response({**ThemeSerializer(theme).data, "is_active": True})
         theme.is_active = True
-        theme.save()  # model.save() deactivates the others
+        theme.save()  # model.save() deactivates the others; every store that follows ours switches with it
         return Response(ThemeSerializer(theme).data)
 
 

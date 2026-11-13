@@ -1,4 +1,4 @@
-package com.caspintunel.smsbridge
+package app.smsconfirm
 
 import android.Manifest
 import android.content.Intent
@@ -12,12 +12,12 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.caspintunel.smsbridge.data.Prefs
-import com.caspintunel.smsbridge.databinding.ActivityMainBinding
-import com.caspintunel.smsbridge.net.SmsSourceInfo
-import com.caspintunel.smsbridge.repo.SmsRepository
-import com.caspintunel.smsbridge.service.SmsForegroundService
-import com.caspintunel.smsbridge.ui.SmsLogAdapter
+import app.smsconfirm.data.Prefs
+import app.smsconfirm.databinding.ActivityMainBinding
+import app.smsconfirm.net.SmsSourceInfo
+import app.smsconfirm.repo.SmsRepository
+import app.smsconfirm.service.SmsForegroundService
+import app.smsconfirm.ui.SmsLogAdapter
 import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.util.Date

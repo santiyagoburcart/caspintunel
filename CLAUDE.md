@@ -197,6 +197,13 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   `media/exports/` (nginx 404), served only through `consume` (one-time, host-bound link). **Fees (`tenancy/fees.py`)**: off by
   default; invoices only through the agency ledger / `issue_for_entry(kind=store_fee)`; suspension only by `run` and only when
   `suspend_enabled` — never suspend / resume a store elsewhere for a fee.
+- **Store panel v1.60**: stores NEVER manage themes (`themes.manage` is not a store code, `ThemeViewSet` not store_ok) — they
+  show our active theme, or a per-store override of OUR themes set only by our staff (`settings_app/themes.py`, «فروشگاه» →
+  «پوسته»). A store's «اپلیکیشن‌ها» is white-label: never our name, no iPhone file / iCloud link (a build-it-yourself guide),
+  Android only a `sms-confirm*.apk` build (`mobile_sms/` 2.0, package `app.smsconfirm`), setup = `sms-devices/<id>/setup-code/`.
+  Store services (`services/` store_ok, opt-in `services.view/.manage/.link/.create`): link ONLY users the reseller's PasarGuard
+  admin owns (`owner_must_be`), manual create = `quota.check` first + `set_owner` read back (else delete the account) — never
+  reset / delete / groups from a store. Store domains show five steps (`domains.steps`) and alert us once after 15 min on one.
 - **Store import (v1.56, `tenancy/importers`, docs/store-import.md)**: our staff only; the dump is read as TEXT (never executed),
   kept 0600 under `media/imports/` (nginx 404) and deleted after the run / 24 h. Link a PasarGuard account ONLY when its owner is
   the store's reseller (`link_existing_service(owner_must_be=…)`) — never create / change anything on PasarGuard. Balances = one-use

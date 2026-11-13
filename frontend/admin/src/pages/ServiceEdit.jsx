@@ -175,7 +175,8 @@ export default function ServiceEdit() {
   const { id } = useParams()
   const { t, lang } = useI18n()
   const s = T[lang] || T.fa
-  const { can } = useAuth()
+  const { can, staff } = useAuth()
+  const store = !!staff?.store          // v1.60: a store's service — groups come from its plan, no reset / delete
   const toast = useToast()
   const confirm = useConfirm()
   const navigate = useNavigate()
@@ -212,7 +213,7 @@ export default function ServiceEdit() {
   }, [d?.panel_id])
 
   useEffect(() => {
-    if (!d?.panel_id) return
+    if (!d?.panel_id || store) return
     api.get(`/admin/panels/${d.panel_id}/groups/`)
       .then((r) => setGroups(r.data.groups || []))
       .catch(() => setGroups('fail'))
@@ -385,9 +386,9 @@ export default function ServiceEdit() {
 
   const actionBtns = can('services.manage') && (
     <div className="sed-actions">
-      <button type="button" className="sed-act sed-act--success" onClick={() => doAction('reset')}><Ico d={P.refresh} w={16} />{s.act_reset}</button>
+      {!store && <button type="button" className="sed-act sed-act--success" onClick={() => doAction('reset')}><Ico d={P.refresh} w={16} />{s.act_reset}</button>}
       <button type="button" className="sed-act sed-act--warning" onClick={() => doAction('revoke')}><Ico d={P.link} w={16} />{s.act_revoke}</button>
-      {can('services.delete') && (
+      {can('services.delete') && !store && (
         <button type="button" className="sed-act sed-act--danger" onClick={() => doAction('remove')}><Ico d={P.trash} w={16} />{s.act_delete}</button>
       )}
     </div>
@@ -530,8 +531,8 @@ export default function ServiceEdit() {
             <div className="sed-desk">{UsageBar}</div>
           </div>
 
-          {/* groups */}
-          <div className="sed-fld">
+          {/* groups (never on a store: its plan decides them) */}
+          {!store && <div className="sed-fld">
             <div className="sed-groups-head">
               <span className="sed-lbl">{s.groups}</span>
               {canEdit && Array.isArray(groups) && groups.length > 0 && (
@@ -541,7 +542,7 @@ export default function ServiceEdit() {
               )}
             </div>
             {Groups}
-          </div>
+          </div>}
 
           {/* device (HWID) limit */}
           <label className="sed-fld sed-hwid">

@@ -654,6 +654,31 @@ class AgencyStoreView(AdminAPIView):
         return Response({"store": stores.row(t), "message": "Store saved", "message_fa": "فروشگاه ذخیره شد"})
 
 
+class AgencyStoreThemeView(AdminAPIView):
+    """v1.60 «پوسته» on «فروشگاه» — our staff only: PUT {theme: <id> | null}. null = the store follows our active theme
+    (default); an id = one of OUR themes for this store only (settings_app/themes.py). Stores can never change it."""
+
+    perms_map = {"GET": VIEW, "PUT": MANAGE}
+
+    def get(self, request, username):
+        from apps.settings_app import themes
+
+        t, err = _store_or_404(username)
+        return err or Response(themes.store_row(t))
+
+    def put(self, request, username):
+        from apps.settings_app import themes
+
+        t, err = _store_or_404(username)
+        if err:
+            return err
+        try:
+            row = themes.set_store_override(t, (request.data or {}).get("theme"), staff=request.user)
+        except themes.ThemeRefused as exc:
+            return Response({"detail": exc.en, "detail_fa": exc.fa, "field": "theme"}, status=400)
+        return Response({**row, "message": "Store theme saved", "message_fa": "پوستهٔ فروشگاه ذخیره شد"})
+
+
 def _store_or_404(username):
     from apps.tenancy import stores
 

@@ -84,11 +84,11 @@ function DateField({ label, value, onChange, s, lang, testid }) {
   )
 }
 
-function Form({ box, opts, s, lang }) {
+function Form({ box, opts, s, lang, preset }) {
   const today = todayCell()
   const [v, setV] = useState({ mode: 'paid', kind: 'plan', plan: '', title: '', gb: '', days: '', amount: '',
     date: tehranNow().date || toISO(today.jy, today.jm, today.jd), time: tehranNow().time, method: 'card', card: '', ref: '', file: null,
-    note: '', due: '', svc: false, action: 'renew', service: '', account: '' })
+    note: '', due: '', svc: false, action: 'renew', service: '', account: '', ...(preset || {}) })
   const [pct, setPct] = useState(null)
   const put = (nv) => { setV(nv); Object.assign(box, nv) }
   useEffect(() => { Object.assign(box, v); box.onPct = setPct }, [])
@@ -171,7 +171,8 @@ function Form({ box, opts, s, lang }) {
 }
 
 /** «+ فاکتور دستی» — Users → user (purchase history) and CRM 360. Needs payments.manual_invoice. */
-export function ManualInvoiceButton({ userId, onDone, className = '' }) {
+// v1.60 `renew` = {service, plan}: the Services page's «تمدید» opens it as a renewal of that service (plan pre-picked)
+export function ManualInvoiceButton({ userId, onDone, className = '', renew = null, label = '' }) {
   const [s, lang] = useMT()
   const { can } = useAuth()
   const confirm = useConfirm()
@@ -180,8 +181,14 @@ export function ManualInvoiceButton({ userId, onDone, className = '' }) {
   const open = async () => {
     const opts = (await api.get(`/admin/users/${userId}/manual-invoices/options/`)).data
     const box = {}
+    let preset = null
+    if (renew) {
+      const p = (opts.plans || []).find((x) => String(x.id) === String(renew.plan))
+      preset = { svc: true, action: 'renew', service: String(renew.service),
+        ...(p ? { plan: String(p.id), amount: String(p.price), gb: p.data_limit_gb ? String(p.data_limit_gb) : '', days: p.duration_days ? String(p.duration_days) : '' } : {}) }
+    }
     await confirm({
-      tone: 'primary', title: s.h, confirmLabel: s.save, content: <Form box={box} opts={opts} s={s} lang={lang} />,
+      tone: 'primary', title: s.h, confirmLabel: s.save, content: <Form box={box} opts={opts} s={s} lang={lang} preset={preset} />,
       action: async () => {
         if (box.kind === 'plan' ? !box.plan : !box.title?.trim()) throw new Error(s.err_item)
         if (!(Number(box.amount) > 0)) throw new Error(s.err_amount)
@@ -217,7 +224,7 @@ export function ManualInvoiceButton({ userId, onDone, className = '' }) {
       },
     })
   }
-  return <button type="button" className={'mi-btn ' + className} onClick={open} data-testid="mi-open"><style>{CSS}</style>+ {s.btn}</button>
+  return <button type="button" className={'mi-btn ' + className} onClick={open} data-testid={renew ? 'mi-renew' : 'mi-open'}><style>{CSS}</style>{label || `+ ${s.btn}`}</button>
 }
 
 /** The customer's manual invoices (purchase history page / CRM 360). */

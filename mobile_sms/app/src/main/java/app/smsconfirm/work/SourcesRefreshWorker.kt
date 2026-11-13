@@ -1,4 +1,4 @@
-package com.caspintunel.smsbridge.work
+package app.smsconfirm.work
 
 import android.content.Context
 import androidx.work.CoroutineWorker
@@ -6,8 +6,8 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import com.caspintunel.smsbridge.repo.SOURCES_STALE_MILLIS
-import com.caspintunel.smsbridge.repo.SmsRepository
+import app.smsconfirm.repo.SOURCES_STALE_MILLIS
+import app.smsconfirm.repo.SmsRepository
 import java.util.concurrent.TimeUnit
 
 private const val UNIQUE_NAME = "sms_sources_refresh"

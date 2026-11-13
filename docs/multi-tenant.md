@@ -437,6 +437,14 @@ sequenceDiagram
 
 ## 7. Domains, TLS and routing
 
+> **v1.60:** the panel shows a domain's walk as five steps «DNS → گواهی → پیکربندی nginx → بررسی سلامت → فعال» (each with its
+> state, time, last error — errors only for our staff), plus the certificate expiry, and refreshes itself every 10 s while a
+> domain is on its way. A domain that stays on one step longer than 15 min sends ONE alert to us (per step; `failed` keeps
+> its own alert) — `domains._track_stage`, fields `stage` / `stage_since` / `stage_alerted`. The «فروشگاه» card says why a
+> store is not reachable (store not active · no domain live yet). Diagnosis that led to it (wireguardcenter.com, 2026-11-13):
+> nothing was stuck on the server — the domain went live by itself 2 min after the certificate; the page simply never refreshed
+> and the store was still a draft (parked, 503) while the certificate was issued.
+
 > **v1.53.2:** plain `http://` on our domain and every store domain answers 301 (308 for non-GET) to `https://` — except
 > the ACME challenge and the `/.well-known/caspin/` probe. A store that is not active is *parked*: its domain keeps its
 > certificate and answers every path with its own «این فروشگاه در حال حاضر در دسترس نیست» page (503).
@@ -472,6 +480,23 @@ sequenceDiagram
   TLS → rollback. The container never reloads the host by itself (same rule as `domain.sh`).
 - **Health**: every 5 min per active host — TLS handshake, days to expiry, `GET /api/v1/health/` answers for the right tenant,
   DNS still reaching us; shown in «فروشگاه» and (read-only) to the reseller; alerts to us.
+
+## 7a. Store panel additions (v1.60)
+
+- **Themes**: a store never manages themes — `themes.manage` is not a store code, `ThemeViewSet` is ours only. A store's
+  customers see our active theme (`settings_app/themes.store_theme`); switching ours switches every store that follows (public
+  cache bumped by the theme save). Our staff may pin one of OUR themes per store on «فروشگاه» («پوسته»). Branding stays the store's.
+- **«اپلیکیشن‌ها»** (white-label, never our name): Android = the rebranded app «تأیید پیامک خودکار» (`mobile_sms/` 2.0, package
+  `app.smsconfirm`) offered only when a `sms-confirm*.apk` build is in `mobile_sms/release/`, downloaded as `sms-confirm.apk`;
+  setup with one «کد راه‌اندازی» (store address + device token). iPhone = no file and no iCloud link (ours point to our domain):
+  a step-by-step guide to build a Message automation with one «Get Contents of URL» to the store's `/api/v1/payments/sms/inbound/`.
+- **Services** (opt-in codes `services.view` / `services.manage` / `services.link` / `services.create`): the store's customers'
+  services (list, filters, sync, status / expiry / volume / plan edit — no groups, no reset, no delete), «ساخت ناموفق» retry,
+  «تمدید» = a manual invoice preset to renew; «اتصال سرویس موجود» = only users the reseller's PasarGuard admin owns (PasarGuard
+  `admin=` filter + `link_existing_service(owner_must_be=…)`; one linked in another store → refused without saying whose);
+  «ایجاد سرویس دستی» = created with our token, `set_owner` to the reseller, read back (else the account is deleted again), the
+  quota guard first (`quota.check`, 409 `quota`). «فاکتور دستی» (`payments.manual_invoice`, opt-in) on the store's customers —
+  its plans, cards, pool.
 
 ## 8. Telegram bots and the Mini App
 

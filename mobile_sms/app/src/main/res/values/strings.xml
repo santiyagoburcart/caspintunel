@@ -1,13 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">CaspinTunel SMS</string>
+    <string name="app_name">تأیید پیامک خودکار</string>
 
-    <string name="notification_channel_name">سرویس پیامک کاسپین</string>
+    <string name="notification_channel_name">سرویس تأیید پیامک</string>
     <string name="notification_channel_desc">اجرای پس‌زمینه برای دریافت و ارسال پیامک‌های واریزی</string>
-    <string name="notification_title">CaspinTunel SMS — فعال</string>
+    <string name="notification_title">تأیید پیامک خودکار — فعال</string>
     <string name="notification_text">در حال گوش دادن به پیامک‌های ورودی</string>
 
     <string name="settings_title">تنظیمات اتصال</string>
+    <string name="setup_code_label">کد راه‌اندازی (از پنل کپی کنید)</string>
+    <string name="btn_apply_setup_code">اعمال و آزمایش اتصال</string>
+    <string name="setup_code_hint">کد راه‌اندازی را از پنل ← اپلیکیشن‌ها کپی کنید و اینجا بچسبانید. یا آدرس و توکن را پایین‌تر دستی وارد کنید.</string>
+    <string name="setup_code_bad">کد راه‌اندازی نامعتبر است — دوباره از پنل کپی کنید</string>
+    <string name="manual_entry_title">ورود دستی</string>
     <string name="server_url_label">آدرس سرور (مثلاً https://panel.example.com)</string>
     <string name="api_token_label">توکن دستگاه (API Token)</string>
     <string name="btn_save">ذخیره</string>

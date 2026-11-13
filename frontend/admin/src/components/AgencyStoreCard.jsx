@@ -7,6 +7,7 @@ import { Alert, Spinner } from './ui'
 import { useConfirm } from './ConfirmDialog'
 import { Ic } from './AgencyIcons'
 import StoreDomains from './StoreDomains'
+import StoreTheme from './StoreTheme'
 import StoreBot from './StoreBot'
 import StoreStaff from './StoreStaff'
 import FailedOrders from './FailedOrders'
@@ -22,7 +23,7 @@ const T = {
     status: 'وضعیت', st_draft: 'پیش‌نویس', st_active: 'فعال', st_suspended: 'معلق', st_closed: 'بسته',
     export: 'اجازهٔ دریافت پشتیبان توسط نماینده (پنل فروشگاه)', save: 'ذخیره', created: 'ساخته شده در',
     rpm: 'سقف درخواست در دقیقه (کل فروشگاه)', rpm_hint: 'خالی یا ۰ = بدون سقف؛ بیشتر از آن ۴۲۹ می‌گیرد و به ما خبر داده می‌شود.',
-    reachable: 'در دسترس روی دامنهٔ فعال', unreachable: 'در دسترس نیست (فروشگاه فعال با دامنهٔ فعال لازم است)',
+    reachable: 'در دسترس روی دامنهٔ فعال', unreachable: 'در دسترس نیست (فروشگاه فعال با دامنهٔ فعال لازم است)', why_store_inactive: 'وضعیت فروشگاه «فعال» نیست', why_no_active_domain: 'هنوز هیچ دامنه‌ای به مرحلهٔ «فعال» نرسیده',
     o_title: 'ساخت فروشگاه', o_msg: 'برای {u} یک فروشگاه پیش‌نویس ساخته می‌شود با برندینگ خودش و یک نسخه از صفحه‌های ما (قوانین، راهنما). تا دامنه فعال نشود کسی آن را نمی‌بیند.',
     o_btn: 'بله، بساز', s_title: 'تغییر وضعیت فروشگاه', s_msg: 'وضعیت فروشگاه {n} به «{st}» تغییر می‌کند.', s_btn: 'بله، تغییر بده',
     branding: 'نام در سایت', manage_note: 'برندینگ، صفحه‌ها، پوسته و تنظیمات فروشگاه از پنل همین فروشگاه روی دامنهٔ خودش مدیریت می‌شود.',
@@ -32,7 +33,7 @@ const T = {
     status: 'Status', st_draft: 'Draft', st_active: 'Active', st_suspended: 'Suspended', st_closed: 'Closed',
     export: 'The reseller may download a backup (store panel)', save: 'Save', created: 'Created',
     rpm: 'Requests per minute (whole store)', rpm_hint: 'Empty or 0 = no cap; above it requests get 429 and we are alerted.',
-    reachable: 'Reachable on its active domain', unreachable: 'Not reachable (needs an active store with an active domain)',
+    reachable: 'Reachable on its active domain', unreachable: 'Not reachable (needs an active store with an active domain)', why_store_inactive: 'the store status is not “active”', why_no_active_domain: 'no domain has reached “live” yet',
     o_title: 'Open a store', o_msg: 'A draft store is created for {u} with its own branding and a copy of our pages (rules, help). Nobody sees it until a domain is active.',
     o_btn: 'Yes, open it', s_title: 'Change store status', s_msg: 'Store {n} becomes “{st}”.', s_btn: 'Yes, change it',
     branding: 'Name on the site', manage_note: 'Branding, pages, theme and store settings are managed in the store’s own panel on its domain.',
@@ -57,6 +58,13 @@ export default function AgencyStoreCard({ username }) {
       requests_per_minute: r.data.store.limits?.requests_per_minute ?? '' })
   }).catch(() => { setStore(null); setErr(lang === 'fa' ? 'دریافت فروشگاه ناموفق بود' : 'Failed to load the store') })
   useEffect(() => { load() }, [username])
+  // v1.60: while a domain is on its way (DNS / certificate / nginx / health) refresh every 10 s — the steps move by themselves
+  const moving = (store?.domains || []).some((d) => ['pending_dns', 'verified', 'cert_pending'].includes(d.state))
+  useEffect(() => {
+    if (!moving) return undefined
+    const id = setInterval(() => { api.get(url).then((r) => setStore(r.data.store)).catch(() => {}) }, 10000)
+    return () => clearInterval(id)
+  }, [moving, url])
 
   const open = async () => {
     const ok = await confirm({ tone: 'primary', icon: 'cart', title: s.o_title, targetLabel: s.title, targetId: username,
@@ -92,7 +100,9 @@ export default function AgencyStoreCard({ username }) {
           <span className="ags-pill" data-st={store.status}>{s['st_' + store.status]}</span>
           <span className="text-xs text-muted">{s.slug}: <bdi dir="ltr">{store.slug}</bdi> · {s.created}: {jalali(store.created_at, false, lang)}</span>
         </div>
-        <p className={'ags-reach' + (store.reachable ? ' ok' : '')}>{store.reachable ? s.reachable : s.unreachable}</p>
+        <p className={'ags-reach' + (store.reachable ? ' ok' : '')} data-testid="store-reach">{store.reachable ? s.reachable : s.unreachable}
+          {!store.reachable && (store.unreachable_because || []).length > 0 && (
+            <span className="ags-why"> — {store.unreachable_because.map((k) => s['why_' + k] || k).join(' · ')}</span>)}</p>
         <div className="ags-st" role="radiogroup" aria-label={s.status}>
           {STATUSES.map((st) => (
             <button key={st} type="button" role="radio" aria-checked={store.status === st} disabled={!manage}
@@ -113,6 +123,7 @@ export default function AgencyStoreCard({ username }) {
         {store.branding && <p className="text-xs text-muted">{s.branding}: <bdi>{lang === 'fa' ? store.branding.site_name_fa : store.branding.site_name_en || store.branding.site_name_fa}</bdi></p>}
         <StoreDomains base={url} domains={store.domains || []} manage={manage} onChanged={load} />
         <StoreBot base={url} bot={store.bot} manage={manage} onChanged={load} />
+        <div className="ags-box"><StoreTheme base={url} manage={manage} /></div>
         <StoreStaff base={url} store={store} manage={manage} onChanged={load} />
         {/* v1.52.1: the store's «ساخت ناموفق» orders — our staff retry them too (same paid order, never a new charge) */}
         <FailedOrders base={url + 'failed-orders/'} canRetry={manage} hideEmpty={false} onChanged={load} />

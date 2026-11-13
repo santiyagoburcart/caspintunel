@@ -1713,3 +1713,35 @@ sequenceDiagram
         API->>DB: remove only rows unused since (PasarGuard untouched)
     end
 ```
+
+## 16q. A store domain's steps · a store's manual service (v1.60)
+
+```mermaid
+sequenceDiagram
+    participant S as Our staff («فروشگاه»)
+    participant API as Panel API
+    participant T as tick (Celery, every minute)
+    participant W as Host watcher (cron)
+    participant A as alert_staff (ours)
+    S->>API: add domain → state pending_dns · step «DNS»
+    T->>T: DNS ok → cert_pending · step «گواهی»
+    W->>W: certificate → nginx file → nginx -t → reload
+    T->>T: watcher status → step «nginx» → «بررسی سلامت» → active · step «فعال»
+    T->>A: same step for 15 min → one alert (per step)
+    S->>API: GET store (every 10 s while moving) → steps with time and last error
+```
+
+```mermaid
+sequenceDiagram
+    participant R as Store staff (services.create)
+    participant API as services/ (store)
+    participant Q as quota.check
+    participant PG as PasarGuard
+    R->>API: POST user + store plan (+ account name)
+    API->>Q: plan volume vs the reseller's remaining
+    Q-->>API: short → 409 quota (nothing on PasarGuard)
+    API->>PG: create user (our token)
+    API->>PG: set_owner → the reseller · read back
+    PG-->>API: owner = reseller → Service + manual Order (completed)
+    API->>PG: owner wrong → delete the account · error
+```

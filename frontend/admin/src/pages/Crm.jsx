@@ -455,7 +455,7 @@ export function Customer360() {
   if (!d) return <div className="cr"><CrmHeader /><p className="card">—</p></div>
   const u = d.user, p = d.profile
   const tagIds = p.tags.map((t) => t.id)
-  const storeView = !!me?.store || !!getStoreScope()      // v1.59: manual invoices are ours (not on a store's CRM)
+  const storeView = !!getStoreScope()      // v1.60: a store's own panel may issue manual invoices (payments.manual_invoice); our store filter may not
   return (
     <div className="cr space-y-4">
       <CrmHeader />

@@ -21,15 +21,20 @@ STORE_CODES = frozenset({
     "users.view", "users.manage", "users.delete",
     "plans.manage",
     "payment.view", "payment.approve", "sms.manage",
-    "settings.manage", "pages.manage", "themes.manage",
+    "settings.manage", "pages.manage",            # v1.60: no themes.manage — stores follow our theme
     "tickets.view", "tickets.reply", "tickets.assign", "tickets.close", "tickets.manage_topics",
     "discounts.view", "discounts.manage",
     "monitoring.view",                  # the store dashboard's service counts only (server health is ours)
     "roles.manage",                     # the store's own staff and roles
     "store.export",                     # v1.53: download the store's own backup (also needs Tenant.export_allowed)
     "crm.view", "crm.manage", "crm.analytics",   # v1.59: the store's own CRM + «تحلیل کسب‌وکار» (off until we switch them on)
+    # v1.60: the store's customers' services (list / sync / edit · link a reseller's PasarGuard user · manual create under
+    # the reseller with the quota guard) and «فاکتور دستی» for the store's customers — off until we switch them on
+    "services.view", "services.manage", "services.link", "services.create", "payments.manual_invoice",
 })
-OPT_IN_CODES = frozenset({"crm.view", "crm.manage", "crm.analytics"})   # v1.59: never in a new store's ceiling by default
+OPT_IN_CODES = frozenset({"crm.view", "crm.manage", "crm.analytics",     # v1.59
+                          "services.view", "services.manage", "services.link", "services.create",
+                          "payments.manual_invoice"})                    # v1.60 — never in a new store's ceiling by default
 DEFAULT_CEILING = sorted(STORE_CODES - OPT_IN_CODES)
 OWNER_ROLE = "store-owner"              # Role.name of the store's owner role (per store; name_fa below)
 OWNER_ROLE_FA = "مالک فروشگاه"

@@ -1,4 +1,4 @@
-package com.caspintunel.smsbridge.data
+package app.smsconfirm.data
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey

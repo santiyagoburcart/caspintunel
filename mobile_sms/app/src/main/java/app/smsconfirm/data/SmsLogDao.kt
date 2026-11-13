@@ -1,4 +1,4 @@
-package com.caspintunel.smsbridge.data
+package app.smsconfirm.data
 
 import androidx.lifecycle.LiveData
 import androidx.room.Dao

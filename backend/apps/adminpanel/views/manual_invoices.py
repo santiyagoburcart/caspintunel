@@ -32,6 +32,7 @@ def _user(pk) -> User:
 
 
 class UserManualInvoicesView(AdminAPIView):
+    store_ok = True        # v1.60: a store's own customers; money goes to the store's cards / pool (tenant-scoped)
     perms_map = {"GET": ["payment.view"], "POST": PERM}
 
     def get(self, request, user_id):
@@ -61,6 +62,7 @@ class UserManualInvoicesView(AdminAPIView):
 
 
 class UserManualInvoiceOptionsView(AdminAPIView):
+    store_ok = True        # v1.60: a store's own customers; money goes to the store's cards / pool (tenant-scoped)
     perms_map = {"GET": PERM}
 
     def get(self, request, user_id):
@@ -82,6 +84,7 @@ class UserManualInvoiceOptionsView(AdminAPIView):
 
 
 class ManualInvoiceCancelView(AdminAPIView):
+    store_ok = True        # v1.60: a store's own customers; money goes to the store's cards / pool (tenant-scoped)
     perms_map = {"POST": PERM}
 
     def post(self, request, pk):

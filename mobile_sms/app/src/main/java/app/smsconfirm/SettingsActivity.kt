@@ -1,12 +1,14 @@
-package com.caspintunel.smsbridge
+package app.smsconfirm
 
 import android.os.Bundle
+import android.util.Base64
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import com.caspintunel.smsbridge.data.Prefs
-import com.caspintunel.smsbridge.databinding.ActivitySettingsBinding
-import com.caspintunel.smsbridge.repo.SmsRepository
+import app.smsconfirm.data.Prefs
+import app.smsconfirm.databinding.ActivitySettingsBinding
+import app.smsconfirm.repo.SmsRepository
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 
 class SettingsActivity : AppCompatActivity() {
 
@@ -26,6 +28,7 @@ class SettingsActivity : AppCompatActivity() {
         binding.inputServerUrl.setText(prefs.serverUrl)
         binding.inputApiToken.setText(prefs.apiToken)
 
+        binding.btnApplySetupCode.setOnClickListener { applySetupCode() }
         binding.btnSave.setOnClickListener { save() }
         binding.btnTestConnection.setOnClickListener { save(thenTest = true) }
     }
@@ -33,6 +36,21 @@ class SettingsActivity : AppCompatActivity() {
     override fun onSupportNavigateUp(): Boolean {
         finish()
         return true
+    }
+
+    /**
+     * «کد راه‌اندازی» from the panel: "SMS1:" + base64url(JSON {"u": server address, "t": device token}), no padding
+     * (backend apps/payments_sms/device_url.py::setup_code). Fills the two fields below, saves and tests the connection.
+     */
+    private fun applySetupCode() {
+        val parsed = parseSetupCode(binding.inputSetupCode.text?.toString().orEmpty())
+        if (parsed == null) {
+            binding.resultText.text = getString(R.string.setup_code_bad)
+            return
+        }
+        binding.inputServerUrl.setText(parsed.first)
+        binding.inputApiToken.setText(parsed.second)
+        save(thenTest = true)
     }
 
     private fun save(thenTest: Boolean = false) {
@@ -60,6 +78,25 @@ class SettingsActivity : AppCompatActivity() {
                 getString(R.string.settings_test_ok, result.getOrNull()?.device ?: "")
             } else {
                 getString(R.string.settings_test_fail, result.exceptionOrNull()?.message ?: "")
+            }
+        }
+    }
+
+    companion object {
+        private const val SETUP_PREFIX = "SMS1:"
+
+        /** (server address, token) or null when the text is not a valid setup code. */
+        fun parseSetupCode(raw: String): Pair<String, String>? {
+            val code = raw.trim()
+            if (!code.startsWith(SETUP_PREFIX)) return null
+            return try {
+                val bytes = Base64.decode(code.removePrefix(SETUP_PREFIX), Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
+                val json = JSONObject(String(bytes, Charsets.UTF_8))
+                val url = json.optString("u").trim()
+                val token = json.optString("t").trim()
+                if (url.startsWith("http") && token.isNotEmpty()) url to token else null
+            } catch (e: Exception) {
+                null
             }
         }
     }

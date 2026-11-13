@@ -10,16 +10,17 @@ import { copyToClipboard } from '../lib/clipboard'
 import { useToast } from '../components/Toast'
 import { useAuth } from '../lib/auth'
 import { Spinner } from '../components/ui'
+import { DeviceSecret, StoreApps, AppIcon, SX_CSS } from '../components/SmsSetup'
 
 const T = {
   fa: {
     h1: 'اپلیکیشن‌ها و ابزارها', sub: 'ابزارهای گوشیِ دریافت‌کنندهٔ پیامک بانک برای تأیید خودکار پرداخت‌ها — مستقیم از سرور خودتان دانلود کنید',
-    android_t: 'اپلیکیشن اندروید SMS Bridge', ios_t: 'شورتکات آیفون (Shortcuts)',
+    android_t: 'اپ اندروید «تأیید پیامک خودکار»', ios_t: 'شورتکات آیفون (Shortcuts)',
     android_what: 'این اپ روی گوشی اندرویدی‌ای نصب می‌شود که پیامک‌های واریز بانک به آن می‌رسد. هر پیامکِ فرستندهٔ بانکی مجاز را فوراً به سرور می‌فرستد تا سامانه مبلغ را با سفارش‌ها تطبیق دهد و پرداخت را خودکار تأیید کند — بدون نیاز به تأیید دستی ادمین.',
     ios_what: 'آیفون اجازه نمی‌دهد اپ‌ها پیامک‌ها را بخوانند؛ به‌جای اپ، یک شورتکات (Shortcuts) با «اتوماسیون پیام» پیامک‌های بانک را به همان آدرس سرور می‌فرستد تا پرداخت‌ها مثل اپ اندروید خودکار تأیید شوند. نصب رسمی از لینک iCloud است (آیفون فقط شورتکات امضاشده را می‌پذیرد).',
     features: 'چه کاری انجام می‌دهد؟', setup: 'راه‌اندازی',
     a_f: ['فقط پیامک‌های شماره‌های بانکیِ تعریف‌شده ارسال می‌شود', 'اجرای دائمی در پس‌زمینه و شروع خودکار پس از روشن شدن گوشی', 'ارسال مجدد خودکار در صورت قطعی اینترنت (تا 3 بار)', 'نمایش وضعیت اتصال و 20 پیامک آخر در خود اپ'],
-    a_s: ['فایل APK را دانلود و روی گوشی نصب کنید (اجازهٔ «نصب از منابع ناشناس» را بدهید).', 'در پنل: تنظیمات ← دستگاه‌های SMS ← «افزودن دستگاه» و توکن ساخته‌شده را کپی کنید.', 'در اپ «آدرس سرور» (همین کارت) و توکن را وارد و «ذخیره و آزمایش اتصال» را بزنید.', 'مجوز دریافت پیامک را بدهید و بهینه‌سازی باتری را برای اپ خاموش کنید.', 'در تنظیمات ← شماره‌های بانکی، شمارهٔ فرستندهٔ پیامک بانک را اضافه کنید.'],
+    a_s: ['فایل APK را دانلود و روی گوشی نصب کنید (اجازهٔ «نصب از منابع ناشناس» را بدهید).', 'در پنل: تنظیمات ← دستگاه‌های SMS ← «افزودن دستگاه» و توکن ساخته‌شده را کپی کنید.', 'در اپ «تنظیمات» ← «کد راه‌اندازی» (پایین همین کارت) را بچسبانید ← «اعمال و آزمایش اتصال» (نسخه‌های قدیمی: آدرس سرور و توکن را دستی وارد کنید).', 'مجوز دریافت پیامک را بدهید و بهینه‌سازی باتری را برای اپ خاموش کنید.', 'در تنظیمات ← شماره‌های بانکی، شمارهٔ فرستندهٔ پیامک بانک را اضافه کنید.'],
     i_f: ['اتوماسیون «وقتی پیامی از فرستندهٔ بانک رسید» روی خود آیفون', 'هر پیامک اول در صف روی آیفون ذخیره و بعد ارسال می‌شود — با قطعی اینترنت هیچ پیامکی گم نمی‌شود', 'دکمهٔ «ارسال صف پیامک» روی صفحهٔ اصلی برای ارسال دستی صف', 'بدون نصب اپ و بدون نیاز به App Store'],
     i_s: ['در پنل: تنظیمات ← دستگاه‌های SMS ← «افزودن دستگاه» برای این آیفون.', 'روی آیفون «نصب از iCloud» را بزنید (یا کد QR را با دوربین آیفون اسکن کنید) و «Add Shortcut» را بزنید.', 'هنگام نصب، آدرس سرور و توکن دستگاه (همین کارت) را در فیلدهای خواسته‌شده وارد کنید.', 'Shortcuts ← Automation ← «Message»: فرستندهٔ بانک ← اجرای همین شورتکات با «Shortcut Input» ← «Run Immediately» را روشن کنید.', 'اختیاری: شورتکات را با نام «ارسال صف پیامک» به صفحهٔ اصلی اضافه کنید؛ اجرای دستی فقط صف را می‌فرستد.'],
     server: 'آدرس دریافت پیامک در سرور', server_batch: 'آدرس صف پیامک (شورتکات آیفون، NDJSON)', header: 'هدر احراز هویت', body: 'بدنهٔ درخواست (JSON)',
@@ -29,7 +30,7 @@ const T = {
     manage: 'بارگذاری نسخهٔ جدید', file: 'فایل', file_hint_android: 'فایل ‎.apk‎ — حداکثر 60 مگابایت', file_hint_ios: 'فایل ‎.shortcut‎',
     link: 'لینک خارجی (اختیاری)', notes: 'یادداشت / توضیحات نسخه', save: 'ذخیره', saved: 'ذخیره شد', clear: 'حذف فایل بارگذاری‌شده',
     devices_link: 'مدیریت دستگاه‌های SMS', notes_h: 'یادداشت نسخه', mb: 'مگابایت',
-    android_server: 'آدرس سرور (در اپ وارد کنید)',
+    android_server: 'آدرس سرور (در اپ وارد کنید)', code_h: 'کد راه‌اندازی', old_app: 'فایل فعلی نسخهٔ قدیمی (با نام قبلی) است؛ نسخهٔ جدید «تأیید پیامک خودکار» بعد از ساخت جایگزین آن می‌شود.',
     src_repo: 'از مخزن کد (منبع واحد)', device: 'توکن کدام دستگاه داخل فایل قرار گیرد؟', device_none: 'هیچ — توکن هنگام افزودن پرسیده شود',
     manage_ios: 'تنظیمات شورتکات (لینک iCloud و یادداشت)',
     ios_single: 'منبع شورتکات فایل ‎mobile_shortcut/‎ در مخزن است. با هر تغییر: آن را روی آیفون دوباره وارد کنید، از Share ← Copy iCloud Link لینک جدید بسازید، اینجا ذخیره کنید و نسخه و تغییرات را در ‎mobile_shortcut/‎ ثبت کنید.',
@@ -49,12 +50,12 @@ const T = {
   },
   en: {
     h1: 'Apps & tools', sub: 'Tools for the phone that receives the bank SMS, for automatic payment confirmation — downloaded straight from your own server',
-    android_t: 'Android SMS Bridge app', ios_t: 'iPhone Shortcut',
+    android_t: 'Android app “SMS auto-confirm”', ios_t: 'iPhone Shortcut',
     android_what: 'Install this on the Android phone that receives the bank deposit SMS. It instantly forwards every SMS from an allowed bank sender to the server, which matches the amount to an order and confirms the payment automatically — no manual approval.',
     ios_what: "iOS doesn't let apps read SMS, so instead a Shortcut with a Message automation forwards the bank SMS to the same server endpoint, so payments are auto-confirmed just like with the Android app. The official install is the iCloud link (iOS only imports signed shortcuts).",
     features: 'What it does', setup: 'Setup',
     a_f: ['Only SMS from the configured bank numbers are forwarded', 'Runs permanently in the background and restarts after a reboot', 'Automatic retry when the connection drops (up to 3 times)', 'Shows the connection status and the last 20 SMS in the app'],
-    a_s: ['Download the APK and install it on the phone (allow "install unknown apps").', 'In the panel: Settings → SMS devices → "Add device", copy the generated token.', 'In the app enter the "Server address" (on this card) and the token, then tap "Save and test connection".', 'Grant the SMS permission and turn battery optimization off for the app.', 'In Settings → Bank numbers add the sender number of the bank SMS.'],
+    a_s: ['Download the APK and install it on the phone (allow "install unknown apps").', 'In the panel: Settings → SMS devices → "Add device", copy the generated token.', 'In the app: Settings → paste the “setup code” (bottom of this card) → “Apply and test” (old versions: type the server address and the token by hand).', 'Grant the SMS permission and turn battery optimization off for the app.', 'In Settings → Bank numbers add the sender number of the bank SMS.'],
     i_f: ['A "when a message from the bank arrives" automation on the iPhone', 'Every SMS is saved to a queue on the iPhone first, then sent — no SMS is lost when the network drops', 'A home-screen "send SMS queue" button to flush the queue by hand', 'Nothing to install, no App Store needed'],
     i_s: ['In the panel: Settings → SMS devices → "Add device" for this iPhone.', 'On the iPhone tap "Install via iCloud" (or scan the QR code with the iPhone camera) and tap "Add Shortcut".', 'While installing, enter the server address and the device token (on this card) in the fields it asks for.', 'Shortcuts → Automation → "Message": the bank sender → run this shortcut with "Shortcut Input" → turn "Run Immediately" on.', 'Optional: add the shortcut to the home screen as "send SMS queue"; a manual run only sends the queue.'],
     server: 'SMS endpoint on the server', server_batch: 'SMS queue endpoint (iPhone Shortcut, NDJSON)', header: 'Auth header', body: 'Request body (JSON)',
@@ -64,7 +65,7 @@ const T = {
     manage: 'Upload a new version', file: 'File', file_hint_android: '.apk file — max 60 MB', file_hint_ios: '.shortcut file',
     link: 'External link (optional)', notes: 'Notes / release notes', save: 'Save', saved: 'Saved', clear: 'Remove uploaded file',
     devices_link: 'Manage SMS devices', notes_h: 'Release notes', mb: 'MB',
-    android_server: 'Server address (enter it in the app)',
+    android_server: 'Server address (enter it in the app)', code_h: 'Setup code', old_app: 'The current file is the old version (old name); the new “SMS auto-confirm” build replaces it once it is built.',
     src_repo: 'From the repository (single source)', device: 'Put which device\'s token in the file?', device_none: 'None — ask for the token when adding',
     manage_ios: 'Shortcut settings (iCloud link & notes)',
     ios_single: 'The shortcut\'s source is mobile_shortcut/ in the repository. After every change: re-import it on an iPhone, create a new link with Share → Copy iCloud Link, save it here, and bump the version + changelog in mobile_shortcut/.',
@@ -219,6 +220,9 @@ function AndroidInstall({ info, s, download, busy }) {
         <Link to="/settings/sms-devices" className="btn-ghost ap-link">{s.devices_link}</Link>
       </div>
       {info.server && <CopyRow label={s.android_server} value={info.server} s={s} />}
+      {info.source && !info.whitelabel && <p className="text-xs text-muted">{s.old_app}</p>}
+      <h3 className="ap-h3">{s.code_h}</h3>
+      <DeviceSecret mode="code" />
     </div>
   )
 }
@@ -293,9 +297,10 @@ function AppCard({ info, s, lang, onSaved, endpoint }) {
   return (
     <section className="card ap-card">
       <div className="ap-head">
-        <span className="ap-ico" style={{ color: tone, background: `color-mix(in srgb, ${tone} 13%, transparent)` }}>
-          <Ico d={android ? I.android : I.ios} w={26} />
-        </span>
+        {android ? <AppIcon size={54} /> : (
+          <span className="ap-ico" style={{ color: tone, background: `color-mix(in srgb, ${tone} 13%, transparent)` }}>
+            <Ico d={I.ios} w={26} />
+          </span>)}
         <div className="min-w-0 flex-1">
           <h2 className="ap-title">{android ? s.android_t : s.ios_t}</h2>
           <div className="ap-meta">
@@ -375,6 +380,12 @@ function AppCard({ info, s, lang, onSaved, endpoint }) {
 }
 
 export default function Apps() {
+  const { staff } = useAuth()
+  if (staff?.store) return <StoreApps />      // v1.60: a store's page is white-label (components/SmsSetup.jsx)
+  return <OurApps />
+}
+
+function OurApps() {
   const { t, lang } = useI18n()
   const s = T[lang] || T.fa
   const [rows, setRows] = useState(null)
@@ -389,7 +400,7 @@ export default function Apps() {
 
   return (
     <div className="ap space-y-5">
-      <style>{CSS}</style>
+      <style>{CSS + SX_CSS}</style>
       <div>
         <h1 className="text-lg font-bold">{s.h1}</h1>
         <p className="text-sm text-muted mt-1">{s.sub}</p>

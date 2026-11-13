@@ -68,6 +68,9 @@ erDiagram
         json dns "last DNS / reachability check"
         json health "last TLS health check"
         datetime unhealthy_since
+        string stage "v1.60 dns | cert | nginx | health | active"
+        datetime stage_since "v1.60 since when on that step"
+        string stage_alerted "v1.60 the one «stuck» alert, per step"
         int cert_failures "3 → failed"
         int retry_token "«تلاش دوباره» → the host watcher retries now"
     }
@@ -976,6 +979,8 @@ erDiagram
 | `agency_user_seen` | v1.54: the first time the sync saw each user of an agency admin — append-only, never deleted with the user; «کاربران جدید» per period in «تاریخچه» (counts start with v1.54). |
 | `agency_admin_limit` | Per-admin limit settings and the 80 % warning flag (PAMP). |
 | `agency_payment` (v1.59) | status adds `superseded`; `superseded_by` → the payment that paid its invoices. |
+| `tenant_domain` (v1.60) | + `stage` / `stage_since` / `stage_alerted`: the step it is on (dns → cert → nginx → health → active, `tenancy/domains.stage_of`), since when, and the one alert to us after 15 min on one step. |
+| `tenant_branding.theme` (v1.60) | now set ONLY by our staff (an override with one of OUR themes); NULL = the store follows our active theme. Migration tenancy 0012 cleared every store's value and removed `themes.manage` from store ceilings / roles. |
 | `agency_limit_change` | Every change of a panel admin's data limit (our addition, v1.23): who / where (`source`: `panel` our agency panel · `pasarguard` changed directly on PasarGuard, detected by the sync · `manager` group manager · `history` baseline; `action` create / set / add / reduce / remove / external / baseline) / old → new bytes (0 = unlimited) + note — so a mistake can always be traced and undone. |
 | `agency_user_traffic_snapshot` | Last-known `used_traffic` per user of each admin — a user missing on the next sync counts as deleted and their traffic is kept in `deleted_users_used_bytes`. |
 | `agency_sync_log` | One row per sync run (Sync logs page). |

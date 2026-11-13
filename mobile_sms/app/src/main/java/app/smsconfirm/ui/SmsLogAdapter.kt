@@ -1,14 +1,14 @@
-package com.caspintunel.smsbridge.ui
+package app.smsconfirm.ui
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.caspintunel.smsbridge.R
-import com.caspintunel.smsbridge.data.SendStatus
-import com.caspintunel.smsbridge.data.SmsLogEntity
-import com.caspintunel.smsbridge.databinding.ItemSmsLogBinding
+import app.smsconfirm.R
+import app.smsconfirm.data.SendStatus
+import app.smsconfirm.data.SmsLogEntity
+import app.smsconfirm.databinding.ItemSmsLogBinding
 import java.text.DateFormat
 import java.util.Date
 

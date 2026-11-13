@@ -76,6 +76,8 @@ export const STORE_GROUPS = [
   // v1.51 (Phase 7 Release B): + the store's own tickets (topics, canned replies, ticket rules) and discount codes
   ['nav_group_users', [
     ['/users', 'users', 'users.view', 'users'],
+    // v1.60: the store's customers' services (list, sync, edit, link, manual create) — services.view, opt-in per store
+    ['/services', 'services', 'services.view', 'services'],
     ['/tickets', 'tickets', 'tickets.view', 'tickets'],
     ['/plans', 'plans', 'plans.manage', 'plans'],
     // v1.59: the store's own CRM (customer 360, follow-up queue, win-back, leads, reports) — only when we switch crm.* on
@@ -94,7 +96,9 @@ export const STORE_GROUPS = [
     ['/branding', 'branding', 'settings.manage', 'branding'],
     ['/settings', 'settings', 'settings.manage', 'settings'],
     ['/pages', 'pages', 'pages.manage', 'pages'],
-    ['/themes', 'themes', 'themes.manage', 'themes'],
+    // v1.60: no «پوسته‌ها» — a store always shows our active theme (or the override our staff set on «فروشگاه»)
+    // v1.60: the store's own SMS auto-confirm tools (white-label Android app + a step-by-step iPhone Shortcut guide)
+    ['/apps', 'apps', 'settings.manage', 'apps'],
     ['/tickets/topics', 'ticket_topics', ['tickets.view', 'tickets.manage_topics'], 'ticketTopics'],
     // v1.52 (Phase 8): the store's own roles + staff (codes within the ceiling we set)
     ['/roles', 'roles', 'roles.manage', 'roles'],

@@ -74,6 +74,10 @@ class TenantDomain(TimeStampedModel):
     unhealthy_since = models.DateTimeField(null=True, blank=True)
     cert_failures = models.PositiveSmallIntegerField(default=0)
     retry_token = models.PositiveIntegerField(default=0)          # bumped by «تلاش دوباره» → the host watcher retries now
+    # v1.60: the step it is on (dns / cert / nginx / health / active, domains.stage_of) since when, and the one «stuck» alert
+    stage = models.CharField(max_length=8, blank=True, default="")
+    stage_since = models.DateTimeField(null=True, blank=True)
+    stage_alerted = models.CharField(max_length=8, blank=True, default="")
 
     class Meta:
         db_table = "tenant_domain"

@@ -1,16 +1,16 @@
-package com.caspintunel.smsbridge.repo
+package app.smsconfirm.repo
 
 import android.content.Context
 import android.util.Log
 import androidx.lifecycle.LiveData
-import com.caspintunel.smsbridge.data.AppDatabase
-import com.caspintunel.smsbridge.data.Prefs
-import com.caspintunel.smsbridge.data.SendStatus
-import com.caspintunel.smsbridge.data.SmsLogEntity
-import com.caspintunel.smsbridge.net.ApiClient
-import com.caspintunel.smsbridge.net.InboundRequest
-import com.caspintunel.smsbridge.net.PingResponse
-import com.caspintunel.smsbridge.net.SmsSourceInfo
+import app.smsconfirm.data.AppDatabase
+import app.smsconfirm.data.Prefs
+import app.smsconfirm.data.SendStatus
+import app.smsconfirm.data.SmsLogEntity
+import app.smsconfirm.net.ApiClient
+import app.smsconfirm.net.InboundRequest
+import app.smsconfirm.net.PingResponse
+import app.smsconfirm.net.SmsSourceInfo
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import java.text.SimpleDateFormat

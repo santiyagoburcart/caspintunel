@@ -708,3 +708,17 @@ Everything shipped since v1.6.0 (details in the session log):
   «جزئیات» (→ «حسابداری» drawer). (5) Sidebar: headers 15 px semibold, items 16 px, icons 20 px, rows 44 px. (6) Store CRM +
   «تحلیل کسب‌وکار»: CRM views `store_ok`, codes crm.view / crm.manage / new crm.analytics opt-in per store (not in the default
   ceiling), our panel's store filter (`?store=`, «فروشگاه» picker), CRM / retention settings stay ours. Tests `test_v159.py` (8).
+- 2026-11-13 — **v1.60.0: store fixes.** (1) wireguardcenter.com (store iman2, direct): read-only check — nothing was stuck on
+  the server: domain added 17:04:50 while the store was a draft (parked → 503), DNS ok 17:05:39, «تلاش دوباره» twice (each waits
+  for the host watcher), certificate 17:06:16, store set active 17:06:48, domain active 17:07:39 (health 200). The page never
+  refreshed, so it kept «در انتظار گواهی». Now: five steps with state / time / last error + certificate expiry
+  (`domains.steps`), the card refreshes every 10 s while moving and says why a store is unreachable, one alert to us after
+  15 min on one step (`TenantDomain.stage*`, migration tenancy 0011). (2) Stores follow our theme (`settings_app/themes.py`;
+  override only by our staff on «فروشگاه»); `themes.manage` removed from store codes; migration tenancy 0012 strips it from
+  ceilings / roles and resets store themes (prints what it changed). (3) White-label «اپلیکیشن‌ها»: setup code
+  (`sms-devices/<id>/setup-code/`), iPhone step-by-step guide with drawings, store downloads only a `sms-confirm*.apk`;
+  `mobile_sms/` 2.0 source: «تأیید پیامک خودکار», neutral icon, package `app.smsconfirm`, setup-code field — NOT compiled yet
+  (no Android toolchain here; GitHub Actions proposal waits for the owner's OK). (4) Store services: list / sync / edit / plan /
+  «ساخت ناموفق» / «تمدید» (manual invoice preset), link reseller-owned PasarGuard users only, manual create under the reseller
+  with the quota guard, «فاکتور دستی»; opt-in codes services.view / .manage / .link / .create + payments.manual_invoice. Tests
+  `tenancy/tests/test_v160.py`.

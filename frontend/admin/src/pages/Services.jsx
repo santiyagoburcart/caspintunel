@@ -8,6 +8,9 @@ import { useServiceActions } from '../lib/serviceActions'
 import { useToast } from '../components/Toast'
 import AccountNameInput, { nameOk } from '../components/AccountNameInput'
 import PendingRenewal, { PENDING_RENEWAL_CSS } from '../components/PendingRenewal'
+import { useAuth } from '../lib/auth'
+import FailedOrders from '../components/FailedOrders'
+import { ManualInvoiceButton } from '../components/ManualInvoice'
 
 function Ico({ d, w = 16 }) {
   return (
@@ -46,7 +49,9 @@ const T = {
     res_title: 'نتیجهٔ همگام‌سازی', res_close: 'بستن', not_found: 'روی پاسارگارد پیدا نشد',
     pc_expiry_extended: 'تمدید روی پاسارگارد', pc_usage_reset: 'ریست مصرف', pc_volume_added: 'افزایش حجم', pc_reactivated: 'فعال‌شدن دوباره',
     f_status: 'وضعیت', f_expire_at: 'انقضا', f_data_limit: 'حجم', f_data_used: 'مصرف', f_expire_strategy: 'نوع انقضا', f_on_hold_duration: 'مدت On-Hold', f_device_limit: 'دستگاه', f_on_hold_timeout: 'مهلت اتصال',
-    act_reset: 'ریست حجم', act_revoke: 'تغییر لینک ساب', act_delete: 'حذف سرویس', act_details: 'جزئیات / ویرایش',
+    act_reset: 'ریست حجم', act_revoke: 'تغییر لینک ساب', act_delete: 'حذف سرویس', act_details: 'جزئیات / ویرایش', act_renew: 'تمدید',
+    store_quota_hint: 'سرویس زیر ادمین پاسارگارد نماینده ساخته می‌شود و از حجم او کم می‌شود؛ اگر حجم باقی‌مانده کافی نباشد ساخته نمی‌شود.',
+    l_note_store: 'فقط کاربران ادمین پاسارگارد خود نماینده نمایش داده و وصل می‌شوند. چیزی روی پاسارگارد تغییر نمی‌کند.', l_elsewhere: 'قبلاً به مشتری دیگری وصل شده',
     create_title: 'ایجاد سرویس دستی', create_sub: 'بدون پرداخت — مستقیماً روی پنل ساخته می‌شود',
     f_user: 'کاربر', f_user_ph: 'جستجوی نام کاربری، نام یا تلگرام…', f_user_none: 'کاربری یافت نشد',
     f_panel: 'پنل', f_plan: 'پلن', f_plan_none: 'این پنل پلنی ندارد',
@@ -83,7 +88,9 @@ const T = {
     res_title: 'Sync result', res_close: 'Close', not_found: 'not found on PasarGuard',
     pc_expiry_extended: 'renewed on PasarGuard', pc_usage_reset: 'usage reset', pc_volume_added: 'volume added', pc_reactivated: 'reactivated',
     f_status: 'status', f_expire_at: 'expiry', f_data_limit: 'volume', f_data_used: 'usage', f_expire_strategy: 'expiry type', f_on_hold_duration: 'on-hold', f_device_limit: 'devices', f_on_hold_timeout: 'connect deadline',
-    act_reset: 'Reset usage', act_revoke: 'Revoke subscription', act_delete: 'Delete service', act_details: 'Details / edit',
+    act_reset: 'Reset usage', act_revoke: 'Revoke subscription', act_delete: 'Delete service', act_details: 'Details / edit', act_renew: 'Renew',
+    store_quota_hint: 'The service is created under the reseller’s PasarGuard admin and uses its quota; it is not created when the remaining volume is short.',
+    l_note_store: 'Only users of the reseller’s own PasarGuard admin are listed and can be linked. Nothing changes on PasarGuard.', l_elsewhere: 'already linked to another customer',
     create_title: 'Create a manual service', create_sub: 'No payment — provisioned directly on the panel',
     f_user: 'User', f_user_ph: 'Search username, name or Telegram…', f_user_none: 'No user found',
     f_panel: 'Panel', f_plan: 'Plan', f_plan_none: 'This panel has no plans',
@@ -132,6 +139,12 @@ export default function Services() {
   const [createOpen, setCreateOpen] = useState(false)
   const navigate = useNavigate()
   const actions = useServiceActions()
+  // v1.60 store mode: the store's own services; buttons follow the store codes (services.manage / link / create,
+  // payments.manual_invoice for «تمدید»); never reset / delete / groups on a store
+  const { staff, can } = useAuth()
+  const store = !!staff?.store
+  const canManage = !store || can('services.manage')
+  const canAdd = !store || can('services.create') || can('services.link')
 
   const load = () => {
     setErr('')
@@ -194,14 +207,14 @@ export default function Services() {
           <p className="text-sm text-muted mt-1">{s.sub}</p>
         </div>
         <div className="svc-head-acts">
-          <button type="button" className="btn-ghost text-sm inline-flex items-center gap-1.5 svc-sync-btn" onClick={syncNow} disabled={syncing}
+          {canManage && <button type="button" className="btn-ghost text-sm inline-flex items-center gap-1.5 svc-sync-btn" onClick={syncNow} disabled={syncing}
             aria-label={syncing ? s.syncing : s.sync_btn} title={syncing ? s.syncing : s.sync_btn}>
             <Ico d={ICONS.sync} w={14} /><span className="svc-btn-t">{syncing ? s.syncing : s.sync_btn}</span>
-          </button>
-          <button type="button" className="btn-primary text-sm inline-flex items-center gap-1.5 svc-create-btn" onClick={() => setCreateOpen(true)}
-            aria-label={s.create_btn} title={s.create_btn}>
+          </button>}
+          {canAdd && <button type="button" className="btn-primary text-sm inline-flex items-center gap-1.5 svc-create-btn" onClick={() => setCreateOpen(true)}
+            aria-label={s.create_btn} title={s.create_btn} data-testid="svc-create">
             <Ico d={ICONS.plus} w={14} /><span className="svc-btn-t">{s.create_btn}</span>
-          </button>
+          </button>}
         </div>
       </div>
 
@@ -300,21 +313,24 @@ export default function Services() {
                   </td>
                   <td data-label={s.col_actions} className="svc-c">
                     <div className="svc-acts">
-                      <button type="button" className="svc-icon-btn" title={s.act_sync} aria-label={s.act_sync} disabled={busyId === r.id} onClick={() => syncOne(r)}>
+                      {canManage && <button type="button" className="svc-icon-btn" title={s.act_sync} aria-label={s.act_sync} disabled={busyId === r.id} onClick={() => syncOne(r)}>
                         <Ico d={ICONS.sync} w={15} />
-                      </button>
-                      <button type="button" className="svc-icon-btn" title={s.act_reset} disabled={busyId === r.id} onClick={() => resetUsage(r)}>
+                      </button>}
+                      {!store && <button type="button" className="svc-icon-btn" title={s.act_reset} disabled={busyId === r.id} onClick={() => resetUsage(r)}>
                         <Ico d={ICONS.reset} w={15} />
-                      </button>
-                      <button type="button" className="svc-icon-btn" title={s.act_revoke} disabled={busyId === r.id} onClick={() => revoke(r)}>
+                      </button>}
+                      {canManage && <button type="button" className="svc-icon-btn" title={s.act_revoke} aria-label={s.act_revoke} disabled={busyId === r.id} onClick={() => revoke(r)}>
                         <Ico d={ICONS.revoke} w={15} />
-                      </button>
-                      <button type="button" className="svc-icon-btn svc-icon-btn--edit" title={s.act_details} onClick={() => navigate(`/services/${r.id}`)}>
+                      </button>}
+                      {store && !r.user_deleted && (
+                        <ManualInvoiceButton userId={r.user_id} className="svc-renew" label={s.act_renew}
+                          renew={{ service: r.id, plan: r.plan_id }} onDone={() => load()} />)}
+                      <button type="button" className="svc-icon-btn svc-icon-btn--edit" title={s.act_details} aria-label={s.act_details} onClick={() => navigate(`/services/${r.id}`)}>
                         <Ico d={ICONS.edit} w={15} />
                       </button>
-                      <button type="button" className="svc-icon-btn svc-icon-btn--del" title={s.act_delete} disabled={busyId === r.id} onClick={() => deleteService(r)}>
+                      {!store && <button type="button" className="svc-icon-btn svc-icon-btn--del" title={s.act_delete} disabled={busyId === r.id} onClick={() => deleteService(r)}>
                         <Ico d={ICONS.trash} w={15} />
-                      </button>
+                      </button>}
                     </div>
                   </td>
                 </tr>
@@ -324,8 +340,12 @@ export default function Services() {
         </div>
       )}
 
+      {/* v1.60: the store's paid orders PasarGuard refused («ساخت ناموفق») — retried here too (same paid order, no new charge) */}
+      {store && <FailedOrders base="/admin/orders/provision-failed/" canRetry={can('payment.approve')} />}
+
       {createOpen && (
-        <ManualCreateModal s={s} t={t} lang={lang}
+        <ManualCreateModal s={s} t={t} lang={lang} store={store}
+          canCreate={!store || can('services.create')} canLink={!store || can('services.link')}
           onClose={() => setCreateOpen(false)}
           onCreated={(msg) => { setCreateOpen(false); toast.success(msg || s.created_ok); load() }} />
       )}
@@ -395,8 +415,8 @@ function PanelAccountRow({ a, s, t, lang, picked, onPick }) {
   const tone = `var(--c-${LINK_TONE[a.status] || 'text-muted'})`
   const exp = a.expire ? jalali(a.expire, false, lang) : (a.status === 'on_hold' ? s.on_first_conn : s.no_expiry)
   return (
-    <button type="button" className={'svc-acc' + (picked ? ' on' : '') + (a.linked ? ' linked' : '')}
-      disabled={!!a.linked} onClick={() => onPick(a)} aria-pressed={picked}>
+    <button type="button" className={'svc-acc' + (picked ? ' on' : '') + (a.linked || a.linked_elsewhere ? ' linked' : '')}
+      disabled={!!a.linked || !!a.linked_elsewhere} onClick={() => onPick(a)} aria-pressed={picked}>
       <span className="svc-acc-top">
         <b dir="ltr" className="svc-mono">{a.username}</b>
         <span className="svc-pill" style={{ color: tone, background: `color-mix(in srgb, ${tone} 14%, transparent)` }}>
@@ -410,6 +430,7 @@ function PanelAccountRow({ a, s, t, lang, picked, onPick }) {
       {a.owner && (
         <span className={a.other_admin ? 'svc-acc-other' : 'svc-acc-owner'}>{(a.other_admin ? s.l_other_admin : s.l_owner).replace('{o}', a.owner)}</span>
       )}
+      {a.linked_elsewhere && <span className="svc-acc-linked">{s.l_elsewhere}</span>}
       {a.linked && (
         <span className="svc-acc-linked">{s.l_linked.replace('{u}', a.linked.username)}{a.linked.user_deleted ? ` (${s.l_deleted})` : ''}</span>
       )}
@@ -417,8 +438,8 @@ function PanelAccountRow({ a, s, t, lang, picked, onPick }) {
   )
 }
 
-function ManualCreateModal({ s, t, lang, onClose, onCreated }) {
-  const [mode, setMode] = useState('create') // 'create' | 'link'
+function ManualCreateModal({ s, t, lang, onClose, onCreated, store = false, canCreate = true, canLink = true }) {
+  const [mode, setMode] = useState(canCreate ? 'create' : 'link') // 'create' | 'link'
   const [user, setUser] = useState(null)
   const [panels, setPanels] = useState([])
   const [panelId, setPanelId] = useState('')
@@ -441,6 +462,13 @@ function ManualCreateModal({ s, t, lang, onClose, onCreated }) {
   const [err, setErr] = useState('')
 
   useEffect(() => {
+    if (store) {                       // v1.60: a store has one panel (ours for its reseller) — never listed, taken from its plans
+      api.get('/admin/plans/?limit=200').then((r) => {
+        const list = r.data.results || r.data || []
+        setPlans(list); setPanelId(list[0] ? String(list[0].panel) : 'store')
+      }).catch(() => setPlans([]))
+      return
+    }
     api.get('/admin/panels/?limit=200').then((r) => setPanels((r.data.results || r.data || []).filter((p) => p.is_active))).catch(() => setPanels([]))
     api.get('/admin/plans/?limit=200').then((r) => setPlans(r.data.results || r.data || [])).catch(() => setPlans([]))
   }, [])
@@ -450,8 +478,8 @@ function ManualCreateModal({ s, t, lang, onClose, onCreated }) {
     if (mode !== 'link' || !panelId) { setAccResults(null); return undefined }
     setAccLoading(true); setAccErr('')
     const id = setTimeout(() => {
-      api.get(`/admin/services/panel-users/?panel=${panelId}&search=${encodeURIComponent(accQuery.trim())}`)
-        .then((r) => setAccResults(r.data.results || []))
+      api.get(`/admin/services/panel-users/?${store ? '' : `panel=${panelId}&`}search=${encodeURIComponent(accQuery.trim())}`)
+        .then((r) => { setAccResults(r.data.results || []); if (r.data.unavailable) setAccErr(lang === 'fa' ? r.data.detail_fa : r.data.detail) })
         .catch((e) => { setAccResults([]); setAccErr(apiError(e)) })
         .finally(() => setAccLoading(false))
     }, 350)
@@ -480,14 +508,14 @@ function ManualCreateModal({ s, t, lang, onClose, onCreated }) {
     try {
       if (mode === 'link') {
         await api.post('/admin/services/link/', {
-          panel: Number(panelId), panel_username: picked.username, user: user.id,
+          ...(store ? {} : { panel: Number(panelId) }), panel_username: picked.username, user: user.id,
           plan: planId ? Number(planId) : null, confirm_other_admin: !!(ownerOfPicked && confirmOther),
         })
         onCreated(s.linked_ok)
       } else {
         await api.post('/admin/services/', {
-          user: user.id, plan: Number(planId), panel: panelId ? Number(panelId) : undefined,
-          group_ids: selectedGroups.length ? selectedGroups : undefined,
+          user: user.id, plan: Number(planId), panel: !store && panelId ? Number(panelId) : undefined,
+          group_ids: !store && selectedGroups.length ? selectedGroups : undefined,
           account_name: accountName.trim() || undefined,
         })
         onCreated(s.created_ok)
@@ -518,7 +546,7 @@ function ManualCreateModal({ s, t, lang, onClose, onCreated }) {
           <button type="button" className="svc-icon-btn" onClick={onClose} aria-label={s.cancel}><Ico d={ICONS.close} w={16} /></button>
         </div>
         <div className="svc-mode-tabs" role="tablist">
-          {[['create', s.tab_create, ICONS.plus], ['link', s.tab_link, ICONS.revoke]].map(([m, label, icon]) => (
+          {[['create', s.tab_create, ICONS.plus], ['link', s.tab_link, ICONS.revoke]].filter(([m]) => (m === 'create' ? canCreate : canLink)).map(([m, label, icon]) => (
             <button key={m} type="button" role="tab" aria-selected={mode === m}
               className={'svc-mode-tab' + (mode === m ? ' on' : '')} onClick={() => switchMode(m)}>
               <Ico d={icon} w={14} />{label}
@@ -534,13 +562,13 @@ function ManualCreateModal({ s, t, lang, onClose, onCreated }) {
           {mode === 'create' && <UserPicker s={s} user={user} setUser={setUser} />}
 
           <div className={mode === 'create' ? 'svc-grid2' : ''}>
-            <label className="svc-fld">
+            {!store && <label className="svc-fld">
               <span className="label">{s.f_panel}</span>
               <select className="input" value={panelId} onChange={(e) => changePanel(e.target.value)}>
                 <option value="">{s.select_panel_ph}</option>
                 {panels.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
-            </label>
+            </label>}
             {mode === 'create' && (
               <label className="svc-fld">
                 <span className="label">{s.f_plan}</span>
@@ -557,7 +585,8 @@ function ManualCreateModal({ s, t, lang, onClose, onCreated }) {
             )}
           </div>
 
-          {mode === 'create' && panelId && (
+          {mode === 'create' && store && <p className="svc-hint" data-testid="svc-store-quota">{s.store_quota_hint}</p>}
+          {mode === 'create' && panelId && !store && (
             <div className="svc-fld">
               <div className="svc-groups-head">
                 <span className="label mb-0">{s.f_groups}</span>
@@ -644,7 +673,7 @@ function ManualCreateModal({ s, t, lang, onClose, onCreated }) {
                 </select>
                 <span className="svc-hint">{s.l_plan_hint}</span>
               </label>
-              <p className="svc-hint svc-link-note">{s.l_note}</p>
+              <p className="svc-hint svc-link-note">{store ? s.l_note_store : s.l_note}</p>
             </>
           )}
         </div>
@@ -662,6 +691,8 @@ function ManualCreateModal({ s, t, lang, onClose, onCreated }) {
 const CSS = `
 .svc-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between; }
 .svc-head-acts { display: flex; flex-wrap: wrap; gap: 8px; }
+.svc-acts .mi-btn.svc-renew { min-height: 32px; padding: 0 10px; font-size: 12px; white-space: nowrap; }
+@media (max-width: 767px) { .svc-acts .mi-btn.svc-renew { min-height: 44px; } }
 .svc-sync-line { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--c-text-muted); flex-wrap: wrap; }
 .svc-stats-inline { white-space: nowrap; }
 

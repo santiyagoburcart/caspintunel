@@ -1,11 +1,11 @@
-package com.caspintunel.smsbridge.receiver
+package app.smsconfirm.receiver
 
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.provider.Telephony
-import com.caspintunel.smsbridge.repo.SmsRepository
-import com.caspintunel.smsbridge.work.SmsSendWorker
+import app.smsconfirm.repo.SmsRepository
+import app.smsconfirm.work.SmsSendWorker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

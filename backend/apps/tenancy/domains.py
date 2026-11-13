@@ -18,6 +18,10 @@ A domain walks through:
   failed        3 certificate attempts failed (Let's Encrypt limits) — «تلاش دوباره» puts it back.
   removed       nginx file + certificate are removed by the watcher; the row stays for the audit trail.
 
+v1.60: the panel shows the walk as five steps «DNS → گواهی → پیکربندی nginx → بررسی سلامت → فعال» (`steps`), each with its
+state, time and last error; `stage` / `stage_since` remember the current step and a domain that stays on one step longer
+than STUCK_AFTER (15 min) gets ONE staff alert per step (`_track_stage`).
+
 The container never touches nginx or certbot itself (same rule as scripts/domain.sh).
 """
 from __future__ import annotations
@@ -44,6 +48,8 @@ CHECK_EVERY = timedelta(minutes=5)          # pending DNS / health
 DNS_RECHECK = timedelta(days=1)             # active domains: still pointing at us?
 MAX_CERT_FAILURES = 3
 EXPIRY_ALERT_DAYS = 14
+STUCK_AFTER = timedelta(minutes=15)         # v1.60: a domain that stays on one step longer → one alert to us
+STEPS = ("dns", "cert", "nginx", "health", "active")
 LIVE = (TenantDomain.PENDING_DNS, TenantDomain.VERIFIED, TenantDomain.CERT_PENDING, TenantDomain.ACTIVE, TenantDomain.FAILED)
 MODES = (TenantDomain.DIRECT, TenantDomain.TUNNEL)
 
@@ -432,6 +438,74 @@ def _step_active(d: TenantDomain, st: dict, now) -> None:
     d.save()
 
 
+# ------------------------------------------------------------------ v1.60 steps («DNS → گواهی → nginx → سلامت → فعال»)
+def stage_of(d: TenantDomain, st: dict) -> dict:
+    """The step the domain is on: {step, error, at, waiting_watcher}. `st` = the host watcher's line for this host."""
+    st = st or {}
+    health_err = "" if (d.health or {}).get("ok") else (d.health or {}).get("error") or ""
+    if d.state in (TenantDomain.PENDING_DNS, TenantDomain.VERIFIED):
+        return {"step": "dns", "error": d.last_error, "at": d.last_check_at}
+    if d.state == TenantDomain.ACTIVE:
+        if d.health and not d.health.get("ok"):
+            return {"step": "health", "error": health_err or d.last_error, "at": d.health.get("at")}
+        return {"step": "active", "error": "", "at": d.cert_issued_at}
+    if d.state in (TenantDomain.CERT_PENDING, TenantDomain.FAILED):
+        if not st or st.get("retry", d.retry_token) != d.retry_token:
+            return {"step": "cert", "error": "" if d.state != TenantDomain.FAILED else d.last_error, "at": None,
+                    "waiting_watcher": True}
+        if not st.get("cert_ok"):
+            return {"step": "cert", "error": st.get("cert_error") or st.get("challenge_error") or d.last_error,
+                    "at": st.get("cert_tried_at") or st.get("challenge_at")}
+        if not st.get("nginx_ok"):
+            return {"step": "nginx", "error": st.get("nginx_error") or "", "at": st.get("nginx_at")}
+        return {"step": "health", "error": health_err if d.health else "", "at": (d.health or {}).get("at")}
+    return {"step": "", "error": "", "at": None}
+
+
+def steps(d: TenantDomain, st: dict) -> list[dict]:
+    """The five steps with state done / current / error / failed / waiting, the time and the last error of each."""
+    st = st or {}
+    cur = stage_of(d, st)
+    idx = STEPS.index(cur["step"]) if cur["step"] in STEPS else -1
+    done_at = {"dns": d.verified_at, "cert": st.get("cert_tried_at") or (d.verified_at if st.get("cert_ok") else None),
+               "nginx": st.get("nginx_at"), "health": (d.health or {}).get("at") if (d.health or {}).get("ok") else None,
+               "active": d.cert_issued_at}
+    out = []
+    for i, key in enumerate(STEPS):
+        row = {"key": key, "state": "waiting", "at": None, "error": "", "since": None}
+        if d.state == TenantDomain.ACTIVE and key == "active":
+            row.update(state="done", at=d.cert_issued_at)
+        elif i < idx or (d.state == TenantDomain.ACTIVE and i < len(STEPS) - 1 and key != cur["step"]):
+            row.update(state="done", at=done_at.get(key))
+        elif i == idx:
+            state = "failed" if d.state == TenantDomain.FAILED else ("error" if cur["error"] else "current")
+            row.update(state=state, at=cur["at"], error=(cur["error"] or "")[:500],
+                       since=d.stage_since if d.stage == key else None, waiting_watcher=bool(cur.get("waiting_watcher")))
+        out.append(row)
+    return out
+
+
+def _track_stage(d: TenantDomain, st: dict, now) -> None:
+    """Remember the step and since when; one alert to us when it stays on one step (not «active») longer than 15 min."""
+    step = stage_of(d, st)["step"]
+    fields = []
+    if step != d.stage:
+        d.stage, d.stage_since, d.stage_alerted = step, now, ""
+        fields += ["stage", "stage_since", "stage_alerted"]
+    elif (step and step != "active" and d.stage_since and now - d.stage_since >= STUCK_AFTER
+          and d.stage_alerted != step and d.state != TenantDomain.FAILED):     # failed has its own alert
+        names = {"dns": "DNS", "cert": "گواهی", "nginx": "پیکربندی nginx", "health": "بررسی سلامت"}
+        mins = int((now - d.stage_since).total_seconds() // 60)
+        err = stage_of(d, st)["error"] or ""
+        _alert(f"⏳ دامنهٔ فروشگاه {d.host} ({d.tenant.name}) {mins} دقیقه است در مرحلهٔ «{names.get(step, step)}» مانده"
+               f"{(': ' + err[:200]) if err else ''}\nStore domain {d.host} stuck at step «{step}» for {mins} min",
+               f"tenant-domain:stuck:{d.pk}:{step}:{d.stage_since:%Y%m%d%H%M}")
+        d.stage_alerted = step
+        fields.append("stage_alerted")
+    if fields:
+        d.save(update_fields=fields + ["updated_at"])
+
+
 def tick(*, only: int | None = None) -> dict:
     """Advance every live domain one step; keep the watcher's file in step. Returns counts by state."""
     now = timezone.now()
@@ -449,6 +523,7 @@ def tick(*, only: int | None = None) -> dict:
                     _step_cert(d, st_all.get(d.host) or {}, now)
                 elif d.state == TenantDomain.ACTIVE:
                     _step_active(d, st_all.get(d.host) or {}, now)
+                _track_stage(d, st_all.get(d.host) or {}, now)
         except Exception:  # noqa: BLE001 — one domain never stops the others
             log.exception("tenant domain tick failed for %s", d.host)
     write_desired()
@@ -463,7 +538,12 @@ def row(d: TenantDomain, st: dict | None = None, *, staff: bool = True) -> dict:
     out = {"id": d.id, "host": d.host, "www": d.include_www, "mode": d.mode, "state": d.state, "proxied": d.proxied,
            "cert_expires_at": d.cert_expires_at, "verified_at": d.verified_at, "last_check_at": d.last_check_at,
            "unhealthy_since": d.unhealthy_since, "role": d.role,
-           "healthy": (d.health or {}).get("ok") if d.health else None}
+           "healthy": (d.health or {}).get("ok") if d.health else None,
+           "stage": d.stage, "stage_since": d.stage_since}
+    stp = steps(d, st)
+    if not staff:                                                    # the store sees the steps, never our raw errors
+        stp = [{**x, "error": ""} for x in stp]
+    out["steps"] = stp
     if staff:
         out.update(instructions=instructions(d), dns=d.dns or None, cert_failures=d.cert_failures, last_error=d.last_error,
                    health={k: d.health.get(k) for k in ("ok", "at", "ip", "status", "ms", "error")} if d.health else None,

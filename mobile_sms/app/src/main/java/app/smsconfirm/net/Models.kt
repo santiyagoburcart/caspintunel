@@ -1,4 +1,4 @@
-package com.caspintunel.smsbridge.net
+package app.smsconfirm.net
 
 import com.google.gson.annotations.SerializedName
 

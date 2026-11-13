@@ -92,7 +92,8 @@ def test_on_a_store_domain_both_apps_point_at_that_store():
     rows = {x["platform"]: x for x in boss.get("/api/v1/admin/apps/").data["results"]}
     base = f"https://{STORE_HOST}"
     assert rows["android"]["server"] == base
-    assert rows["ios"]["endpoint"] == f"{base}/api/v1/payments/sms/inbound-batch/"   # was our domain before v1.48
+    # was our domain before v1.48 · v1.60: a store builds its own one-action Shortcut → the single-SMS endpoint
+    assert rows["ios"]["endpoint"] == f"{base}/api/v1/payments/sms/inbound/"
     # what the app does with the address typed in by hand + the store's device token
     app = APIClient(HTTP_HOST=STORE_HOST)
     app.credentials(HTTP_X_DEVICE_TOKEN=device.api_token)

@@ -13,5 +13,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "CaspinTunelSmsBridge"
+rootProject.name = "SmsAutoConfirm"
 include ":app"
