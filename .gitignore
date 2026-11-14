@@ -77,8 +77,8 @@ mail/
 # the SMS app's own "data" package (SharedPreferences/Room code) and its
 # committed release APK would otherwise be swallowed by the generic
 # `data/` and `*.apk` rules above
-!mobile_sms/app/src/main/java/com/caspintunel/smsbridge/data/
-!mobile_sms/app/src/main/java/com/caspintunel/smsbridge/data/*
+!mobile_sms/app/src/main/java/app/smsconfirm/data/
+!mobile_sms/app/src/main/java/app/smsconfirm/data/*
 !mobile_sms/release/
 !mobile_sms/release/*
 nginx/flags/maintenance
@@ -91,3 +91,14 @@ nginx/domain/*
 !nginx/domain/README
 nginx/tenants/*
 !nginx/tenants/README
+
+# ---- signing keys: NEVER in git (v1.60.2; must stay after the mobile_sms/release/ exception — last match wins) ----
+.android-signing/
+**/.android-signing/
+*.jks
+*.keystore
+mobile_sms/**/*.jks
+mobile_sms/**/*.keystore
+mobile_sms/**/*.properties
+!mobile_sms/gradle.properties
+!mobile_sms/gradle/wrapper/gradle-wrapper.properties

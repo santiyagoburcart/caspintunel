@@ -46,6 +46,7 @@ desktop + 390 px) and **must update [architecture.md](architecture.md),
 | v1.56.0 | multi-tenant Phase 11 (started): store import from a reseller's previous bot (Mirza) | [store-import.md](store-import.md) |
 | v1.56.1 | documentation audit (docs only) | — |
 | v1.60.1 | store bots: webhook straight to our server IP (Telegram could not reach the tunnel), /start always answers, phone flow, «اشتراک شماره تلفن اجباری» per store, mandatory channels per store, store staff in the store bot (Telegram link by id, payment buttons) | [multi-tenant.md](multi-tenant.md) |
+| v1.60.2 | Android app «تأیید پیامک خودکار» 2.0.0 built on our server and release-signed (one fixed key, root-only, never in git); served on our and every store's «اپلیکیشن‌ها»; old branded APK removed; Apps page no longer calls the new build old | [mobile_sms/README.md](../mobile_sms/README.md) |
 | v1.60.0 | store domains as five steps (+ stuck alert), stores follow our theme, white-label SMS tools (setup code, iPhone guide, Android 2.0 source), store service management | [multi-tenant.md](multi-tenant.md) |
 | v1.59.0 | expired / superseded agency payments, single tab bar, archived admins for managers, larger sidebar, store CRM + analytics | [agency.md](agency.md), [multi-tenant.md](multi-tenant.md) |
 | v1.58.0 | «حسابداری» redesigned: strip + tabs + one table + side drawer (staff + group manager); larger sidebar text | [agency.md](agency.md#accounting-page-v158-and-colours-v157) |

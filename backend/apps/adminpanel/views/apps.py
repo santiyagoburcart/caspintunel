@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import io
 import mimetypes
+import re
 from pathlib import Path
 
 import qrcode
@@ -114,13 +115,15 @@ def _info(platform: str, request=None) -> dict:
         return out
     # v1.48: `server` = the address to type into the app (this store's domain; ours = the site domain)
     out["server"] = server_base(request)
-    out["whitelabel"] = is_whitelabel(out.get("file_name") or "")
     if out["source"] is None:
         if apk := bundled_apk():
             st = apk.stat()
             out.update(file_name=apk.name, size=st.st_size, source="bundled")
+            if not out["version"] and (m := re.search(r"-(\d+(?:\.\d+)+)\.apk$", apk.name)):
+                out["version"] = m.group(1)                      # sms-confirm-2.0.0.apk → 2.0.0
             if not out["updated_at"]:
                 out["updated_at"] = timezone.datetime.fromtimestamp(st.st_mtime, tz=timezone.get_current_timezone())
+    out["whitelabel"] = is_whitelabel(out.get("file_name") or "")     # after the bundled fallback (was: always False)
     return out
 
 

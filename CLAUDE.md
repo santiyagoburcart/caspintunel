@@ -393,7 +393,9 @@ the **durable rules and gotchas**. Keep both short; don't duplicate them.
   `FIELD_ENCRYPTION_KEY`) comes from the source. A new server-specific `.env` key must be added to `KEEP_KEYS`.
 
 ## Operator phone tools
-- Android SMS Bridge: `mobile_sms/` (Kotlin); the APK in `mobile_sms/release/` is served by the panel.
+- Android app «تأیید پیامک خودکار»: `mobile_sms/` (Kotlin, `app.smsconfirm`); the newest APK in `mobile_sms/release/` is served by
+  the panel. **No CI (owner rule)** — built on this server (recipe in `mobile_sms/README.md`), signed ONLY with
+  `/root/.android-signing/sms-confirm-release.jks` (root-only, never in git / `backups/`; same key + higher `versionCode` every release).
 - **iPhone Shortcut: single source `mobile_shortcut/CaspinSMS.shortcut`** (XML plist, no secrets; endpoint +
   token are import questions). **Official distribution = an iCloud link** (setting `ios_shortcut_icloud_url`,
   validated `https://www.icloud.com/shortcuts/<id>`, edited on Apps & tools; button + QR). iOS 15+ refuses

@@ -732,3 +732,10 @@ Everything shipped since v1.6.0 (details in the session log):
   store (checked: bot admin, member count; enforced only when the bot is admin; Mini App 403 `join_channels` + «عضو شدم»), my
   Telegram (numeric id → confirm button, or one-time link). Store staff get approve / reject buttons on the pending-payment
   alert (two steps). Tests `tenancy/tests/test_v1601.py` (6).
+- 2026-11-14 — **v1.60.2: Android app 2.0.0 built + served.** v1.60.0 + v1.60.1 deployed (store bot webhook re-pointed to
+  SERVER_IP by the 10-min check; 5 pending updates delivered). `mobile_sms/release/sms-confirm-2.0.0.apk` (app.smsconfirm,
+  versionCode 3, 5,756,114 B) built ON this server (owner: no CI) with a temporary JDK 17 + SDK (removed after), release-signed
+  with one fixed key `/root/.android-signing/` (root-only, never in git; `.gitignore` refuses keys / `*.properties` under
+  `mobile_sms/`, placed after the release/ exception). Old `CaspinTunelSmsBridge-debug.apk` removed. Apps page: `whitelabel` +
+  version now read after the bundled fallback (our page called the new build «نسخهٔ قدیمی»). `.gitignore` data/ exception moved to
+  the 2.0 package path. Build recipe in `mobile_sms/README.md` (Google downloads 404 over IPv4 here → IPv6).

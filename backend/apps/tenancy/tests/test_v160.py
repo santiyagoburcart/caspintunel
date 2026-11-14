@@ -209,7 +209,12 @@ def test_store_apps_page_is_white_label(codes, releases):
     assert parse_setup_code(code) == {"u": f"https://{HOST}", "t": dev.api_token}
     # once the white-label build is in release/, the store downloads it under a neutral name
     (releases / "sms-confirm-2.0.0.apk").write_bytes(b"new")
-    assert {x["platform"]: x for x in c.get("/api/v1/admin/apps/").json()["results"]}["android"]["file_name"] == "sms-confirm.apk"
+    row = {x["platform"]: x for x in c.get("/api/v1/admin/apps/").json()["results"]}["android"]
+    assert row["file_name"] == "sms-confirm.apk" and row["version"] == "2.0.0"
+    from apps.adminpanel.views.apps import _info
+
+    ours = _info("android")                       # our page: the new build is not flagged as «نسخهٔ قدیمی»
+    assert ours["whitelabel"] is True and ours["version"] == "2.0.0" and ours["file_name"] == "sms-confirm-2.0.0.apk"
     d = c.get("/api/v1/admin/apps/android/download/")
     assert d.status_code == 200 and 'filename="sms-confirm.apk"' in d["Content-Disposition"]
 

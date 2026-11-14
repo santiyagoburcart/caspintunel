@@ -11,13 +11,14 @@ receives the bank's card-to-card deposit SMS and forwards each one to the store'
 
 **APKs served by the panel:** the newest `*.apk` in [`release/`](release/) (mounted read-only into `web`, so a new file is live
 without a deploy). A store gets only a white-label build — a file named `sms-confirm*.apk` — and downloads it as
-`sms-confirm.apk`; until one exists the store page says the new app is being prepared. `release/CaspinTunelSmsBridge-debug.apk`
-is the old 1.1.0 build (old name, `com.caspintunel.smsbridge.debug`), still served on our own panel until the 2.0 build lands.
+`sms-confirm.apk`. Current build: **`release/sms-confirm-2.0.0.apk`** (versionCode 3, release-signed, built 2026-11-14 —
+served on our panel and on every store's). The old 1.1.0 build (`com.caspintunel.smsbridge.debug`) was removed in v1.60.2.
 
-**Building:** this server has no Android toolchain. 2.0 has **not been compiled yet** — the plan (waiting for the owner's OK)
-is a GitHub Actions job that builds the debug-signed APK on a tag and attaches it to the GitHub release; we then copy it to
-`release/sms-confirm-<version>.apk`. Because the package id and the signing key change, 2.0 installs **next to** the old app
-(uninstall the old one after the new one works); Play Protect may warn about an unknown developer — "Install anyway".
+**Building (owner rule: no GitHub Actions / CI):** built on our server with a temporary toolchain that is removed afterwards
+(see «Building» below), signed with **one fixed release key** kept root-only on the server (`/root/.android-signing/`, never in
+git — `.gitignore` refuses `*.jks` / `*.keystore` / `*.properties` here). Every later version MUST be signed with the same key
+and get a higher `versionCode`, or phones refuse the update. 2.0 has a new package id + key, so it installs **next to** the old
+app (uninstall the old one after the new one works); Play Protect may warn about an unknown developer — "Install anyway".
 
 ## What it does
 
@@ -104,7 +105,7 @@ the last 100 entries) · WorkManager (retry with backoff) · coroutines.
 mobile_sms/
 ├── build.gradle, settings.gradle, gradle.properties
 ├── gradlew, gradlew.bat, gradle/wrapper/         # Gradle 8.7 wrapper
-├── release/CaspinTunelSmsBridge-debug.apk        # pre-built, installable APK
+├── release/sms-confirm-<version>.apk             # release-signed APK served by the panel
 └── app/
     ├── build.gradle
     └── src/main/
@@ -138,18 +139,24 @@ cd mobile_sms
 # -> app/build/outputs/apk/debug/app-debug.apk
 ```
 
-`local.properties` (holding `sdk.dir=...`) is machine-specific and is not
-committed — create your own pointing at your Android SDK checkout before
-building. A release build additionally needs a signing config, which isn't
-set up here (debug builds are unsigned-but-debug-signed by AGP and install
-fine with `adb install` or by sideloading).
+`local.properties` (holding `sdk.dir=...`) is machine-specific and is not committed.
+
+**Release build on our server** (what v2.0.0 used — ~2 GB temporary, ~4 min; remove the toolchain afterwards):
+
+1. JDK 17 + Android command-line tools into a scratch folder; `sdkmanager "platforms;android-34" "build-tools;34.0.0"`.
+2. `export JAVA_TOOL_OPTIONS=-Djava.net.preferIPv6Addresses=true` — `dl.google.com` and Google Maven answer **404 over IPv4**
+   from this server (IPv6 works); the same flag goes into `SDKMANAGER_OPTS`. Keep Gradle small (`-Xmx1200m`, 1 worker,
+   Kotlin in-process) — the live site shares the memory.
+3. Bump `versionCode` / `versionName` in `app/build.gradle`, then `./gradlew :app:assembleRelease` (unsigned).
+4. `zipalign -p 4`, then `apksigner sign --ks /root/.android-signing/sms-confirm-release.jks --ks-key-alias smsconfirm`
+   (passwords in the `.properties` file next to it), `apksigner verify --print-certs` — certificate SHA-256 starts `f924b9af`.
+5. Copy to `release/sms-confirm-<versionName>.apk`, remove the old one, commit.
 
 ## Installing on the phone
 
 ```bash
-adb install -r mobile_sms/release/CaspinTunelSmsBridge-debug.apk
+adb install -r mobile_sms/release/sms-confirm-2.0.0.apk
 ```
 
 or copy the APK to the phone and open it (enable "install unknown apps" for
-the file manager / browser used to open it — this is a debug sideload, not a
-Play Store install).
+the file manager / browser used to open it — a sideload, not a Play Store install).
